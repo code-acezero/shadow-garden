@@ -1,18 +1,15 @@
-'use client';
-
 import React, { useState, useEffect, useMemo } from 'react';
-import { useRouter, useSearchParams } from 'next/navigation';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { 
   Play, SkipForward, Server as ServerIcon, 
-  Layers, CheckCircle, Info, Heart, Calendar, Clock, 
-  Loader2, Globe, Captions 
+  Layers, Heart, Loader2
 } from 'lucide-react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion } from 'framer-motion';
 import { 
   AnimeAPI, WatchlistAPI, UserAPI, 
-  ConsumetAnimeInfo, ServerData, V2SourceResponse 
+  ConsumetAnimeInfo, ServerData 
 } from '@/lib/api';
-import AnimePlayer from '@/components/Player/AnimePlayer'; // Ensure this uses HLS.js or ReactPlayer
+import AnimePlayer from '@/components/Player/AnimePlayer'; 
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
@@ -21,13 +18,13 @@ import { Badge } from '@/components/ui/badge';
 const CHUNK_SIZE = 100;
 
 export default function WatchClient({ animeId }: { animeId: string }) {
-  const router = useRouter();
-  const searchParams = useSearchParams();
+  const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
 
   // --- DATA STATE ---
   const [info, setInfo] = useState<ConsumetAnimeInfo | null>(null);
   const [loading, setLoading] = useState(true);
-  const [userId, setUserId] = useState<string>('guest'); // Default to guest if not logged in
+  const [userId, setUserId] = useState<string>('guest'); 
 
   // --- PLAYBACK STATE ---
   const [currentEpId, setCurrentEpId] = useState<string | null>(null);
@@ -36,7 +33,7 @@ export default function WatchClient({ animeId }: { animeId: string }) {
   
   // Preferences
   const [category, setCategory] = useState<'sub' | 'dub' | 'raw'>('sub');
-  const [selectedServerName, setSelectedServerName] = useState<string>('hd-1'); // Default hianime server
+  const [selectedServerName, setSelectedServerName] = useState<string>('hd-1'); 
   const [autoPlay, setAutoPlay] = useState(true);
   
   // UI State
@@ -59,12 +56,8 @@ export default function WatchClient({ animeId }: { animeId: string }) {
 
         // Load Watch History
         const watchlist = await WatchlistAPI.getUserWatchlist(user ? user.id : 'guest');
-        // Logic to populate watchedEpisodes set based on your specific DB structure
-        // For now, we assume we just track the current anime's progress
         const currentItem = watchlist.find(i => i.anime_id === animeId);
         if (currentItem && currentItem.progress) {
-             // If you tracked just the last number, you might only mark that one.
-             // Ideally you'd want an array of watched IDs in your DB.
              setWatchedEpisodes(new Set([currentItem.progress]));
         }
 
@@ -89,20 +82,20 @@ export default function WatchClient({ animeId }: { animeId: string }) {
   useEffect(() => {
     if (!currentEpId) return;
 
-    // Update URL URL without reload
-    const newUrl = `/watch/${animeId}?ep=${currentEpId}`;
-    window.history.replaceState({ ...window.history.state, as: newUrl, url: newUrl }, '', newUrl);
+    // Update URL query parameter without full reload
+    setSearchParams(prev => {
+        prev.set('ep', currentEpId);
+        return prev;
+    }, { replace: true });
 
     const loadStream = async () => {
-      setStreamUrl(null); // Clear player to show loading state
+      setStreamUrl(null); 
       
       try {
         // A. Get Servers (only if ID changed)
-        // Optimization: You might want to cache this if switching servers for same EP
         const serverRes = await AnimeAPI.getEpisodeServers(currentEpId);
         if (serverRes?.data) {
            setServers(serverRes.data);
-           // If current category is empty, switch to available one
            if (category === 'sub' && !serverRes.data.sub.length && serverRes.data.dub.length) setCategory('dub');
         }
 
@@ -110,11 +103,10 @@ export default function WatchClient({ animeId }: { animeId: string }) {
         const sourceRes = await AnimeAPI.getEpisodeSourcesV2(
             currentEpId, 
             selectedServerName, 
-            category as 'sub' | 'dub' // Cast for strict type if needed, or update API type
+            category as 'sub' | 'dub'
         );
 
         if (sourceRes?.data?.sources) {
-          // Find M3U8 (HLS) or fallback to first
           const bestSource = sourceRes.data.sources.find(s => s.isM3U8) || sourceRes.data.sources[0];
           setStreamUrl(bestSource?.url);
         }
@@ -138,19 +130,16 @@ export default function WatchClient({ animeId }: { animeId: string }) {
 
   // --- HELPERS ---
 
-  // Get current episode object
   const currentEpObj = useMemo(() => 
     info?.episodes.find(e => e.id === currentEpId), 
   [info, currentEpId]);
 
-  // Calculate Next Episode
   const nextEpisode = useMemo(() => {
     if (!info?.episodes || !currentEpId) return null;
     const index = info.episodes.findIndex(e => e.id === currentEpId);
     return info.episodes[index + 1] || null;
   }, [info, currentEpId]);
 
-  // Chunk Episodes
   const episodeChunks = useMemo(() => {
     if (!info?.episodes) return [];
     const chunks = [];
@@ -160,7 +149,6 @@ export default function WatchClient({ animeId }: { animeId: string }) {
     return chunks;
   }, [info?.episodes]);
 
-  // Handle Play Click
   const handleEpisodeClick = (epId: string) => {
     setCurrentEpId(epId);
     window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -194,7 +182,6 @@ export default function WatchClient({ animeId }: { animeId: string }) {
             />
           ) : (
             <div className="w-full h-full bg-zinc-900 flex flex-col items-center justify-center relative overflow-hidden">
-               {/* Loading Animation */}
                <div className="absolute inset-0 bg-gradient-to-tr from-red-900/10 to-transparent animate-pulse" />
                <Loader2 className="w-12 h-12 text-red-600 animate-spin mb-4 relative z-10" />
                <p className="text-gray-400 font-mono text-sm relative z-10">
@@ -247,7 +234,6 @@ export default function WatchClient({ animeId }: { animeId: string }) {
 
           {/* Server Selector Right */}
           <div className="flex items-center gap-3">
-             {/* Category Toggle */}
              <div className="flex bg-black/40 rounded-lg p-1 border border-white/10">
                 {(['sub', 'dub', 'raw'] as const).map((cat) => (
                   <button
@@ -264,7 +250,6 @@ export default function WatchClient({ animeId }: { animeId: string }) {
                 ))}
              </div>
 
-             {/* Server Dropdown */}
              <div className="relative group">
                 <div className="flex items-center gap-2 bg-black/40 border border-white/10 rounded-lg px-3 py-1.5 cursor-pointer hover:border-red-500/50 transition-colors">
                    <ServerIcon size={14} className="text-red-500" />
@@ -273,7 +258,6 @@ export default function WatchClient({ animeId }: { animeId: string }) {
                       value={selectedServerName}
                       onChange={(e) => setSelectedServerName(e.target.value)}
                    >
-                      {/* Show servers based on current category */}
                       {servers?.[category as keyof ServerData]?.length ? (
                         (servers[category as keyof ServerData] as any[]).map((s) => (
                           <option key={s.serverId} value={s.serverName} className="bg-zinc-900 text-gray-300">
@@ -293,10 +277,9 @@ export default function WatchClient({ animeId }: { animeId: string }) {
       {/* 3. MAIN CONTENT GRID */}
       <div className="max-w-7xl mx-auto px-4 mt-8 grid grid-cols-1 lg:grid-cols-12 gap-8">
         
-        {/* LEFT: EPISODE LIST (Col Span 4) */}
+        {/* LEFT: EPISODE LIST */}
         <div className="lg:col-span-4 space-y-4">
            <div className="bg-[#0f0f0f] rounded-xl border border-white/5 overflow-hidden flex flex-col h-[600px]">
-              {/* Header */}
               <div className="p-4 bg-white/5 border-b border-white/5 flex justify-between items-center">
                  <h3 className="font-bold text-gray-100 flex items-center gap-2">
                     <Layers size={18} className="text-red-500"/> Episodes
@@ -306,7 +289,6 @@ export default function WatchClient({ animeId }: { animeId: string }) {
                  </Badge>
               </div>
 
-              {/* Chunk Selector */}
               {episodeChunks.length > 1 && (
                  <ScrollArea className="w-full whitespace-nowrap border-b border-white/5 bg-black/20">
                     <div className="flex p-2 gap-2">
@@ -325,7 +307,6 @@ export default function WatchClient({ animeId }: { animeId: string }) {
                  </ScrollArea>
               )}
 
-              {/* List */}
               <ScrollArea className="flex-1 p-2">
                  <div className="grid grid-cols-4 sm:grid-cols-5 lg:grid-cols-4 gap-2 p-2">
                     {episodeChunks[epChunkIndex]?.map((ep) => {
@@ -364,10 +345,9 @@ export default function WatchClient({ animeId }: { animeId: string }) {
            </div>
         </div>
 
-        {/* RIGHT: INFO & RECS (Col Span 8) */}
+        {/* RIGHT: INFO & RECS */}
         <div className="lg:col-span-8 space-y-8">
            
-           {/* CAPSULE DOCK (Related) */}
            {info.relatedAnime && info.relatedAnime.length > 0 && (
               <div className="flex flex-wrap gap-3 items-center p-4 bg-white/5 rounded-2xl border border-white/5">
                  <span className="text-xs font-bold text-gray-400 uppercase tracking-wider mr-2">Related:</span>
@@ -382,14 +362,12 @@ export default function WatchClient({ animeId }: { animeId: string }) {
 
            {/* INFO CARD */}
            <div className="relative rounded-3xl overflow-hidden bg-[#0a0a0a] border border-white/5 group">
-              {/* Bg Blur */}
               <div className="absolute inset-0 z-0">
                  <img src={info.image} className="w-full h-full object-cover opacity-20 blur-3xl scale-110" />
                  <div className="absolute inset-0 bg-gradient-to-r from-[#0a0a0a] via-[#0a0a0a]/90 to-transparent" />
               </div>
 
               <div className="relative z-10 p-6 md:p-8 flex flex-col md:flex-row gap-8">
-                 {/* Poster */}
                  <div className="w-full md:w-[220px] flex-shrink-0">
                     <img src={info.image} className="w-full rounded-xl shadow-2xl ring-1 ring-white/10 object-cover aspect-[2/3]" />
                     <Button className="w-full mt-4 bg-red-600 hover:bg-red-700 text-white font-bold rounded-xl shadow-lg shadow-red-900/20">
@@ -397,7 +375,6 @@ export default function WatchClient({ animeId }: { animeId: string }) {
                     </Button>
                  </div>
 
-                 {/* Details */}
                  <div className="flex-1">
                     <h1 className="text-3xl md:text-4xl font-black text-white mb-2 font-cinzel leading-none tracking-tight">
                        {info.title}
@@ -450,7 +427,7 @@ export default function WatchClient({ animeId }: { animeId: string }) {
                    {info.recommendations.slice(0, 8).map((rec) => (
                       <div 
                          key={rec.id} 
-                         onClick={() => router.push(`/watch/${rec.id}`)}
+                         onClick={() => navigate(`/watch/${rec.id}`)}
                          className="group cursor-pointer relative aspect-[2/3] rounded-xl overflow-hidden bg-zinc-900 border border-white/5"
                       >
                          <img 

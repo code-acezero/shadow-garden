@@ -1,20 +1,16 @@
-'use client';
-
 import React, { useState, useEffect } from 'react';
-import { usePathname, useRouter } from 'next/navigation';
-import Link from 'next/link';
+import { useLocation, useNavigate, Link } from 'react-router-dom';
 import { 
   Home, User, Heart, MessageCircle, 
   ArrowLeft, Bot 
 } from 'lucide-react';
 
-// Importing your custom logic components as requested
 import SearchBar from '@/components/Anime/SearchBar';
 import Notifications from '@/components/Anime/Notifications';
 
 export default function Navigation() {
-  const pathname = usePathname();
-  const router = useRouter();
+  const location = useLocation();
+  const navigate = useNavigate();
   const [scrolled, setScrolled] = useState(false);
 
   // Handle scroll effect for the glass transparency
@@ -25,9 +21,8 @@ export default function Navigation() {
   }, []);
 
   // Handle Back Navigation
-  // Triggers browser history back, compatible with mouse/keyboard shortcuts
   const handleBack = () => {
-    router.back();
+    navigate(-1); // React Router way to go back
   };
 
   // Define Navigation Items with real Routes
@@ -38,13 +33,13 @@ export default function Navigation() {
     { id: 'profile', icon: User, label: 'Profile', path: '/profile' },
   ];
 
+  const pathname = location.pathname;
   const isHomePage = pathname === '/';
 
   return (
     <>
       {/* ==============================
           TOP DOCK (Sticky)
-          'sticky' prevents content from hiding behind the navbar
       ============================== */}
       <header 
         className={`sticky top-0 z-50 w-full transition-all duration-300 ${
@@ -69,7 +64,7 @@ export default function Navigation() {
             )}
 
             {/* Logo */}
-            <Link href="/" className="flex flex-col cursor-pointer group">
+            <Link to="/" className="flex flex-col cursor-pointer group">
               <h1 className="text-xl font-black tracking-widest text-transparent bg-clip-text bg-gradient-to-r from-red-500 via-red-600 to-red-800 font-[Cinzel] group-hover:scale-105 transition-transform">
                 SHADOW GARDEN
               </h1>
@@ -118,7 +113,7 @@ export default function Navigation() {
               return (
                 <Link
                   key={item.id}
-                  href={item.path}
+                  to={item.path}
                   className="relative group flex flex-col items-center justify-center w-12"
                 >
                   {/* Icon */}
