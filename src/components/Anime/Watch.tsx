@@ -1,12 +1,16 @@
-import React, { useState, useEffect, useMemo } from 'react';
-import { useNavigate, useSearchParams } from 'react-router-dom';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
+import { useNavigate, useSearchParams, useParams } from 'react-router-dom';
 import { 
   SkipForward, SkipBack, Server as ServerIcon, 
-  Layers, Heart, Clock, Loader2, AlertCircle, RefreshCw, Home,
-  Tv, Film
+  Layers, Heart, Clock, AlertCircle, RefreshCw, Home,
+  Tv, Play, Share2
 } from 'lucide-react';
 import { motion } from 'framer-motion';
-import { AnimeV2API, UserAPI } from '@/lib/api'; 
+
+// API IMPORTS (Corrected Name)
+import { AnimeAPI_V2 } from '@/lib/api'; 
+
+// COMPONENT IMPORTS
 import AnimePlayer from '@/components/Player/AnimePlayer'; 
 import AnimeCard from '@/components/Anime/AnimeCard';
 import { Button } from '@/components/ui/button';
@@ -14,7 +18,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
 import { useSettings } from '@/hooks/useSettings';
 
-// --- SAFETY TYPES ---
+// --- TYPES ---
 interface LocalEpisode {
   number: number;
   title: string;
@@ -22,13 +26,18 @@ interface LocalEpisode {
   isFiller: boolean;
 }
 
-interface LocalServerData {
-  sub: Array<{ serverId: number; serverName: string }>;
-  dub: Array<{ serverId: number; serverName: string }>;
-  raw: Array<{ serverId: number; serverName: string }>;
+interface LocalServer {
+  serverId: number;
+  serverName: string;
 }
 
-// --- FANTASY LOADER ---
+interface LocalServerData {
+  sub: LocalServer[];
+  dub: LocalServer[];
+  raw: LocalServer[];
+}
+
+// --- FANTASY LOADER COMPONENT ---
 const FantasyLoader = ({ text = "SUMMONING..." }) => (
   <div className="w-full h-full min-h-[500px] flex flex-col items-center justify-center relative overflow-hidden bg-[#050505]">
     <div className="absolute inset-0 bg-gradient-to-tr from-red-900/10 to-purple-900/10 animate-pulse" />
@@ -55,10 +64,14 @@ const FantasyLoader = ({ text = "SUMMONING..." }) => (
   </div>
 );
 
-export default function WatchClient({ animeId }: { animeId: string }) {
+export default function WatchClient({ animeId: propAnimeId }: { animeId?: string }) {
   const navigate = useNavigate();
+  const params = useParams();
   const [searchParams, setSearchParams] = useSearchParams();
   const { settings } = useSettings();
+
+  // Handle ID from Prop or URL Params
+  const animeId = propAnimeId || params.id || "";
 
   // --- STATE ---
   const [data, setData] = useState<any | null>(null);
@@ -81,41 +94,42 @@ export default function WatchClient({ animeId }: { animeId: string }) {
   const [epChunkIndex, setEpChunkIndex] = useState(0);
   const [isDescExpanded, setIsDescExpanded] = useState(false);
 
-  // --- 1. INITIAL LOAD ---
+  // --- 1. INITIAL LOAD (Info & Episodes) ---
   useEffect(() => {
     let isMounted = true;
     const init = async () => {
       console.log(`[Watch] Initializing for ID: ${animeId}`);
       setIsLoadingInfo(true);
       setInfoError(null);
+      
       try {
         if (!animeId) throw new Error("No Anime ID provided");
 
-        // Info
-        const infoData = await AnimeV2API.getAnimeInfo(animeId);
+        // 1. Fetch Info
+        const infoData = await AnimeAPI_V2.getAnimeInfo(animeId);
         if (!isMounted) return;
-        if (!infoData) throw new Error("Anime info not found. ID might be invalid.");
+        if (!infoData) throw new Error("Anime info not found.");
         setData(infoData);
 
-        // Episodes
-        const epData = await AnimeV2API.getEpisodes(animeId);
+        // 2. Fetch Episodes
+        const epData = await AnimeAPI_V2.getEpisodes(animeId);
         if (!isMounted) return;
 
         if (epData?.episodes && epData.episodes.length > 0) {
           console.log(`[Watch] Found ${epData.episodes.length} episodes`);
           setEpisodes(epData.episodes as unknown as LocalEpisode[]);
           
+          // Determine starting episode
           const urlEp = searchParams.get('ep');
           const foundEp = epData.episodes.find((e: any) => e.episodeId === urlEp);
           
           if (foundEp) {
             setCurrentEpId(foundEp.episodeId);
           } else {
-            console.log(`[Watch] Defaulting to first episode: ${epData.episodes[0].episodeId}`);
+            // Default to first episode
             setCurrentEpId(epData.episodes[0].episodeId);
           }
         } else {
-          console.warn("[Watch] No episodes found");
           setInfoError("No episodes found for this anime.");
         }
       } catch (err: any) {
@@ -129,59 +143,72 @@ export default function WatchClient({ animeId }: { animeId: string }) {
     return () => { isMounted = false; };
   }, [animeId]);
 
-  // --- 2. FETCH STREAM ---
+  // --- 2. FETCH STREAM LOGIC ---
   useEffect(() => {
     if (!currentEpId) return;
 
-    console.log(`[Watch] Fetching Stream for EP: ${currentEpId} | Server: ${selectedServerName} | Cat: ${category}`);
+    // Update URL without full reload
+    setSearchParams(prev => { 
+      prev.set('ep', currentEpId); 
+      return prev; 
+    }, { replace: true });
     
-    // Update URL
-    setSearchParams(prev => { prev.set('ep', currentEpId); return prev; }, { replace: true });
-    
-    // Reset Stream
+    // Reset Stream State
     setStreamUrl(null);
     setStreamError(null);
     setIsStreamLoading(true);
 
     let isMounted = true;
-    
-    // Timeout Safety
     const timeout = setTimeout(() => {
       if (isMounted && isStreamLoading) {
         setIsStreamLoading(false);
         setStreamError("Server timed out. Try switching servers.");
       }
-    }, 20000); // 20s timeout
+    }, 20000);
 
     const loadStream = async () => {
       try {
-        // 1. Get Servers (Only if we haven't loaded them for this EP yet, or forcing refresh)
-        // Note: We refetch servers on every ep change to be safe
-        const serverRes = await AnimeV2API.getEpisodeServers(currentEpId);
+        // A. Fetch Servers
+        const serverRes = await AnimeAPI_V2.getEpisodeServers(currentEpId);
         if (!isMounted) return;
+
+        let activeServer = selectedServerName;
+        let activeCategory = category;
 
         if (serverRes) {
            const localServers = serverRes as unknown as LocalServerData;
            setServers(localServers);
            
-           // Auto-switch to Dub if Sub is empty
+           // Category Fallback: Switch to Dub/Raw if Sub is empty
            const subList = localServers.sub || [];
            const dubList = localServers.dub || [];
-           
-           console.log("[Watch] Servers loaded:", { sub: subList.length, dub: dubList.length });
+           const rawList = localServers.raw || [];
 
-           if (category === 'sub' && subList.length === 0 && dubList.length > 0) {
-             console.log("[Watch] Auto-switching to DUB");
-             setCategory('dub');
-             return; // Let effect re-run with new category
+           if (activeCategory === 'sub' && subList.length === 0) {
+              if (dubList.length > 0) activeCategory = 'dub';
+              else if (rawList.length > 0) activeCategory = 'raw';
+           }
+
+           // State Sync (Only if changed)
+           if (activeCategory !== category) {
+             setCategory(activeCategory);
+             // Return here to let useEffect re-run with new category
+             return; 
+           }
+
+           // Server Fallback: Ensure selected server exists in current category
+           const currentList = localServers[activeCategory] || [];
+           const serverExists = currentList.find(s => s.serverName === activeServer);
+           
+           if (!serverExists && currentList.length > 0) {
+             activeServer = currentList[0].serverName;
+             setSelectedServerName(activeServer);
            }
         }
 
-        // 2. Get Source
-        const sourceRes = await AnimeV2API.getEpisodeSources(currentEpId, selectedServerName, category);
+        // B. Fetch Source
+        const sourceRes = await AnimeAPI_V2.getEpisodeSources(currentEpId, activeServer, activeCategory);
         if (!isMounted) return;
-
-        console.log("[Watch] Source response:", sourceRes);
 
         if (sourceRes?.sources && sourceRes.sources.length > 0) {
           const bestSource = sourceRes.sources.find((s: any) => s.quality === 'auto') || sourceRes.sources[0];
@@ -191,6 +218,7 @@ export default function WatchClient({ animeId }: { animeId: string }) {
         } else {
           throw new Error("No video sources found.");
         }
+
       } catch (error: any) {
         console.error("[Watch] Stream Failed:", error);
         if (isMounted) setStreamError("Stream unavailable. Try changing the server.");
@@ -235,7 +263,7 @@ export default function WatchClient({ animeId }: { animeId: string }) {
     dub: item.episodes?.dub,
   });
 
-  // --- UI ---
+  // --- UI RENDER ---
 
   if (isLoadingInfo) return <FantasyLoader text="SUMMONING ANIME..." />;
 
@@ -262,7 +290,7 @@ export default function WatchClient({ animeId }: { animeId: string }) {
   return (
     <div className="min-h-screen bg-[#050505] text-gray-100 pb-20">
       
-      {/* PLAYER */}
+      {/* === PLAYER SECTION === */}
       <div className="w-full bg-black relative shadow-2xl shadow-red-900/10">
         <div className="max-w-[1600px] mx-auto aspect-video md:aspect-[21/9] lg:aspect-[16/9] max-h-[85vh] relative z-10 bg-black">
           
@@ -302,7 +330,7 @@ export default function WatchClient({ animeId }: { animeId: string }) {
         </div>
       </div>
 
-      {/* CONTROLS */}
+      {/* === CONTROLS & HEADER === */}
       <div className="bg-[#0a0a0a] border-b border-white/5 sticky top-[56px] z-30 shadow-lg backdrop-blur-md bg-opacity-90">
         <div className="max-w-7xl mx-auto px-4 py-3 flex flex-col md:flex-row gap-4 justify-between items-center">
           
@@ -314,7 +342,7 @@ export default function WatchClient({ animeId }: { animeId: string }) {
                 <div className="h-8 w-[1px] bg-white/10" />
                 <div className="flex flex-col">
                    <span className="text-[10px] text-red-500 font-bold uppercase tracking-wider">Now Playing</span>
-                   <span className="text-sm text-gray-300 truncate max-w-[200px]">
+                   <span className="text-sm text-gray-300 truncate max-w-[200px] lg:max-w-md">
                      {currentEpisode?.title || `Episode ${currentEpisode?.number || ''}`}
                    </span>
                 </div>
@@ -358,8 +386,11 @@ export default function WatchClient({ animeId }: { animeId: string }) {
                   <button
                     key={cat}
                     onClick={() => setCategory(cat)}
+                    disabled={!servers?.[cat]?.length}
                     className={`px-3 py-1 rounded-md text-[10px] font-bold uppercase transition-all ${
-                      category === cat ? 'bg-red-600 text-white shadow-md' : 'text-gray-500 hover:text-gray-300'
+                      category === cat 
+                        ? 'bg-red-600 text-white shadow-md' 
+                        : 'text-gray-500 hover:text-gray-300 disabled:opacity-30 disabled:cursor-not-allowed'
                     }`}
                   >
                     {cat}
@@ -375,9 +406,8 @@ export default function WatchClient({ animeId }: { animeId: string }) {
                       value={selectedServerName}
                       onChange={(e) => setSelectedServerName(e.target.value)}
                    >
-                      {/* Safety Check: Only map if servers exist */}
-                      {servers?.[category as keyof LocalServerData]?.length ? (
-                        (servers[category as keyof LocalServerData] as any[]).map((s) => (
+                      {servers?.[category]?.length ? (
+                        servers[category].map((s) => (
                           <option key={s.serverId} value={s.serverName} className="bg-zinc-900 text-gray-300">
                              {s.serverName}
                           </option>
@@ -392,9 +422,10 @@ export default function WatchClient({ animeId }: { animeId: string }) {
         </div>
       </div>
 
-      {/* LISTS */}
+      {/* === LISTS & INFO === */}
       <div className="max-w-7xl mx-auto px-4 mt-8 grid grid-cols-1 lg:grid-cols-12 gap-8">
         
+        {/* EPISODE LIST */}
         <div className="lg:col-span-4 space-y-4">
            <div className="bg-[#0a0a0a] rounded-xl border border-white/5 overflow-hidden flex flex-col h-[600px] shadow-xl">
               <div className="p-4 bg-white/5 border-b border-white/5 flex justify-between items-center">
@@ -416,9 +447,9 @@ export default function WatchClient({ animeId }: { animeId: string }) {
                              className={`px-3 py-1 text-[10px] font-bold rounded-md transition-all ${
                                 epChunkIndex === idx ? 'bg-red-600 text-white' : 'bg-white/5 text-gray-500 hover:bg-white/10'
                              }`}
-                          >
-                             {(idx * 100) + 1} - {Math.min((idx + 1) * 100, episodes.length)}
-                          </button>
+                           >
+                              {(idx * 100) + 1} - {Math.min((idx + 1) * 100, episodes.length)}
+                           </button>
                        ))}
                     </div>
                  </ScrollArea>
@@ -439,12 +470,12 @@ export default function WatchClient({ animeId }: { animeId: string }) {
                                    : 'bg-zinc-900 border-zinc-800 text-gray-300 hover:bg-zinc-800 hover:border-gray-600'
                                 }
                              `}
-                          >
-                             <span className={`text-sm font-bold ${isCurrent ? 'scale-125' : ''} transition-transform`}>
-                                {ep.number}
-                             </span>
-                             {ep.isFiller && <span className="absolute top-1 right-1 w-1.5 h-1.5 bg-orange-500 rounded-full" title="Filler" />}
-                          </button>
+                           >
+                              <span className={`text-sm font-bold ${isCurrent ? 'scale-125' : ''} transition-transform`}>
+                                 {ep.number}
+                              </span>
+                              {ep.isFiller && <span className="absolute top-1 right-1 w-1.5 h-1.5 bg-orange-500 rounded-full" title="Filler" />}
+                           </button>
                        )
                     })}
                  </div>
@@ -452,6 +483,7 @@ export default function WatchClient({ animeId }: { animeId: string }) {
            </div>
         </div>
 
+        {/* ANIME DETAILS */}
         <div className="lg:col-span-8 space-y-8">
            <div className="relative rounded-3xl overflow-hidden bg-[#0a0a0a] border border-white/5 group p-6 md:p-8 flex flex-col md:flex-row gap-8 shadow-2xl">
               <div className="absolute inset-0 z-0">
@@ -491,7 +523,7 @@ export default function WatchClient({ animeId }: { animeId: string }) {
               </div>
            </div>
 
-           {/* RELATED */}
+           {/* RELATED ANIME */}
            {data.relatedAnimes && data.relatedAnimes.length > 0 && (
               <div>
                  <h3 className="text-xl font-bold text-white mb-6 flex items-center gap-3">
@@ -506,7 +538,7 @@ export default function WatchClient({ animeId }: { animeId: string }) {
               </div>
            )}
 
-           {/* RECOMMENDED */}
+           {/* RECOMMENDED ANIME */}
            {data.recommendedAnimes && data.recommendedAnimes.length > 0 && (
               <div>
                  <h3 className="text-xl font-bold text-white mb-6 flex items-center gap-3">

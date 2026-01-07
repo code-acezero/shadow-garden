@@ -4,19 +4,22 @@ import { TrendingUp, Star, Clock, ArrowRight, Loader2 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { toast } from 'sonner';
 
+// COMPONENT IMPORTS
 import AnimeCard from '@/components/Anime/AnimeCard';
 import SpotlightSlider from '@/components/Anime/SpotlightSlider';
+
+// API IMPORTS (V1 BASE API)
 import { 
-  AnimeAPI, 
+  AnimeAPI,          // <--- V1 API Class
   WatchlistAPI, 
   UserAPI, 
-  ConsumetAnime, 
+  ConsumetAnime,     // <--- V1 Type
   AppUser, 
-  ConsumetAnimeInfo 
+  ConsumetAnimeInfo  // <--- V1 Info Type
 } from '@/lib/api';
 
 // Interface for the local state
-// Updated to accept both the Base Anime type and the Detailed Info type
+// We allow both types to ensure compatibility with the Card component
 export interface ContinueWatchingItem {
   anime: ConsumetAnime | ConsumetAnimeInfo;
   progress: number;
@@ -35,7 +38,7 @@ export default function Index({ setIsAuthModalOpen }: IndexProps) {
   const [user, setUser] = useState<AppUser | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   
-  // Data States
+  // Data States (All using V1 Types)
   const [spotlightAnimes, setSpotlightAnimes] = useState<ConsumetAnime[]>([]);
   const [trendingAnimes, setTrendingAnimes] = useState<ConsumetAnime[]>([]);
   const [latestEpisodes, setLatestEpisodes] = useState<ConsumetAnime[]>([]);
@@ -52,26 +55,27 @@ export default function Index({ setIsAuthModalOpen }: IndexProps) {
       const currentUser = await UserAPI.getCurrentUser();
       if (currentUser) {
         setUser(currentUser);
-        // Load Continue Watching
+        // Load Continue Watching from Supabase/Local
         const watchlist = await WatchlistAPI.getUserWatchlist(currentUser.id);
         const watching = watchlist.filter(item => item.status === 'watching' && item.progress > 0);
         
         if (watching.length > 0) {
            const historyItems: ContinueWatchingItem[] = [];
-           // Limit to 5 to prevent massive API spam on load
+           // Limit to 5 items to prevent V1 API rate limits/spam
            for (const item of watching.slice(0, 5)) {
              try {
-               // Uses V1 API (Base URL)
+               // FETCH DETAILS USING V1 BASE API
                const animeInfo = await AnimeAPI.getAnimeInfo(item.anime_id);
                
                if (animeInfo) {
-                 // Mock total duration calculation or use data if available
-                 const estimatedTotal = animeInfo.duration ? parseInt(animeInfo.duration) * 60 : 1440; 
+                 // Calculate estimated duration (V1 often returns "24 min" string)
+                 const durationStr = animeInfo.duration || "24";
+                 const durationNum = parseInt(durationStr.replace(/\D/g, '')) || 24;
                  
                  historyItems.push({
                    anime: animeInfo,
                    progress: item.progress, 
-                   totalDuration: animeInfo.totalEpisodes || 12,
+                   totalDuration: animeInfo.totalEpisodes || 12, // Fallback if totalEpisodes missing
                    episodeId: item.episode_id || '', 
                    episodeNumber: item.progress,
                    timestamp: Date.now() 
@@ -83,13 +87,14 @@ export default function Index({ setIsAuthModalOpen }: IndexProps) {
         }
       }
 
-      // 2. Fetch Public Content (V1 API)
+      // 2. Fetch Public Content (STRICTLY V1 API)
       const [spotData, latestData, trendingData] = await Promise.all([
         AnimeAPI.getSpotlight(),
         AnimeAPI.getRecentlyUpdated(),
         AnimeAPI.getMostPopular()
       ]);
 
+      // V1 API returns data inside a 'results' array
       if (spotData?.results) setSpotlightAnimes(spotData.results);
       if (latestData?.results) setLatestEpisodes(latestData.results);
       if (trendingData?.results) setTrendingAnimes(trendingData.results);
@@ -103,6 +108,7 @@ export default function Index({ setIsAuthModalOpen }: IndexProps) {
   };
 
   const handleWatchTransition = (animeId: string, episodeId?: string) => {
+    // Navigate to Watch page (which will then pick up V2 API)
     const path = episodeId ? `/watch/${animeId}?ep=${episodeId}` : `/watch/${animeId}`;
     navigate(path);
   };
@@ -135,7 +141,7 @@ export default function Index({ setIsAuthModalOpen }: IndexProps) {
             />
           )}
 
-          {/* Continue Watching (Only if User Logged In & Has Data) */}
+          {/* Continue Watching */}
           {user && continueWatching.length > 0 && (
             <section>
               <div className="flex items-center gap-3 mb-6">
@@ -178,7 +184,7 @@ export default function Index({ setIsAuthModalOpen }: IndexProps) {
             </div>
           </section>
 
-          {/* Trending */}
+          {/* Trending / Popular */}
           <section>
             <div className="flex items-center justify-between mb-8">
               <div className="flex items-center gap-3">
