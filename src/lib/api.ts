@@ -1,13 +1,11 @@
 import { createClient } from '@supabase/supabase-js';
 
 // ==========================================
-//  EXISTING V1 API LOGIC (DO NOT CHANGE)
+//  EXISTING V1 API LOGIC
 // ==========================================
 
-// 1. API CONSTANTS
 const BASE_URL = 'https://shadow-garden-wqkq.vercel.app/anime/hianime';
 
-// --- SUPABASE CONFIG ---
 const supabaseUrl = import.meta.env?.VITE_SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL || '';
 const supabaseKey = import.meta.env?.VITE_SUPABASE_ANON_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '';
 
@@ -15,7 +13,7 @@ export const supabase = supabaseUrl && supabaseKey
   ? createClient(supabaseUrl, supabaseKey) 
   : null;
 
-// TYPES & INTERFACES (V1)
+// TYPES (V1)
 export interface AppUser {
   id: string;
   email?: string;
@@ -37,6 +35,8 @@ export interface ConsumetAnime {
   rank?: number;
   type?: string;
   duration?: string;
+  banner?: string; 
+  japaneseTitle?: string;
 }
 
 export interface ConsumetEpisode {
@@ -161,7 +161,7 @@ export class UserAPI {
 
 
 // ==========================================
-//  NEW V2 API IMPLEMENTATION (FOR FUTURE USE)
+//  NEW V2 API IMPLEMENTATION
 // ==========================================
 
 const BASE_URL_V2 = 'https://hianime-api-mu.vercel.app/api/v2/hianime';
@@ -258,6 +258,9 @@ export interface V2EpisodeServers {
   raw: V2Server[];
 }
 
+// FIX: Export alias for Watch.tsx compatibility
+export type ServerData = V2EpisodeServers;
+
 export interface V2Source {
   url: string;
   isM3U8: boolean;
@@ -268,9 +271,14 @@ export interface V2StreamingLinks {
   headers: any;
   sources: V2Source[];
   subtitles: { lang: string; url: string }[];
+  intro?: { start: number; end: number };
+  outro?: { start: number; end: number };
   anilistID: number | null;
   malID: number | null;
 }
+
+// FIX: Export alias for Watch.tsx compatibility
+export type V2SourceResponse = V2StreamingLinks;
 
 export interface V2SearchResult {
   animes: V2BaseAnime[];
