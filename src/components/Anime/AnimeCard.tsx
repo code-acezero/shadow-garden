@@ -1,11 +1,17 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Play, Plus, Check, Star, Calendar, Info } from 'lucide-react';
+import { Play, Plus, Check, Info, Calendar, Clock } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card } from '@/components/ui/card';
 import { ConsumetAnime } from '@/lib/api';
+
+// Extended interface to handle "Recent Episode" data safely
+interface ExtendedAnime extends ConsumetAnime {
+  episodeId?: string;
+  episodeNumber?: number;
+}
 
 interface AnimeCardProps {
   anime: ConsumetAnime;
@@ -24,117 +30,160 @@ export default function AnimeCard({
 }: AnimeCardProps) {
   const navigate = useNavigate();
   const [isHovered, setIsHovered] = useState(false);
+  
+  // Safe cast to access optional episode data
+  const data = anime as ExtendedAnime;
 
   // Smart Navigation Logic
   const handleCardClick = () => {
-    // Navigate to general watch page (Resumes from history or Ep 1)
-    navigate(`/watch/${anime.id}`);
+    navigate(`/watch/${data.id}`);
   };
 
   const handleQuickPlay = (e: React.MouseEvent) => {
     e.stopPropagation();
-    // Navigate directly to the current latest episode if available
-    const epId = (anime as any).episodeId;
-    navigate(`/watch/${anime.id}${epId ? `?ep=${epId}` : ''}`);
+    // Prioritize jumping to the specific episode (common in "Latest Updates")
+    if (data.episodeId) {
+      navigate(`/watch/${data.id}?ep=${data.episodeId}`);
+    } else {
+      navigate(`/watch/${data.id}`);
+    }
   };
 
   return (
     <motion.div
       layout
+      initial={{ opacity: 0, scale: 0.9 }}
+      animate={{ opacity: 1, scale: 1 }}
+      whileHover={{ y: -8, transition: { duration: 0.3 } }}
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
-      className="relative w-full"
+      className="relative w-full h-full"
     >
       <Card
         onClick={handleCardClick}
-        className={`relative overflow-hidden cursor-pointer bg-zinc-900 border-zinc-800 transition-all duration-500 
-          ${isHovered ? 'ring-2 ring-red-600 shadow-2xl shadow-red-900/20 -translate-y-2' : ''}
+        className={`
+          relative overflow-hidden cursor-pointer bg-zinc-900 border-zinc-800 
+          transition-all duration-300 group
+          ${isHovered ? 'ring-2 ring-red-600/80 shadow-[0_0_20px_rgba(220,38,38,0.3)]' : 'shadow-md'}
           ${variant === 'compact' ? 'aspect-[2/3]' : 'aspect-[2/3]'}
         `}
       >
         {/* Poster Image */}
-        <img
-          src={anime.image}
-          alt={anime.title}
-          className={`w-full h-full object-cover transition-transform duration-700 ${isHovered ? 'scale-110 blur-[2px]' : 'scale-100'}`}
-          loading="lazy"
-        />
+        <div className="absolute inset-0 overflow-hidden">
+          <img
+            src={data.image}
+            alt={data.title}
+            className={`
+              w-full h-full object-cover transition-transform duration-700 ease-out
+              ${isHovered ? 'scale-110 blur-[3px] brightness-50' : 'scale-100'}
+            `}
+            loading="lazy"
+            onError={(e) => {
+              (e.target as HTMLImageElement).src = 'https://placehold.co/400x600/18181b/ffffff?text=Shadow+Garden';
+            }}
+          />
+        </div>
 
-        {/* Overlay Gradients */}
-        <div className="absolute inset-0 bg-gradient-to-t from-black via-black/20 to-transparent opacity-80" />
-        
-        {/* Dynamic Badges */}
-        <div className="absolute top-2 left-2 flex flex-col gap-1 z-10">
-          {anime.rank && (
-            <Badge className="bg-red-600 text-white font-bold border-none shadow-lg">
-              #{anime.rank}
+        {/* Gradient Overlays */}
+        <div className="absolute inset-0 bg-gradient-to-t from-black via-transparent to-black/40 opacity-90" />
+
+        {/* --- TOP BADGES --- */}
+        <div className="absolute top-3 left-3 flex flex-col gap-1.5 z-20">
+          {/* Rank Badge for Trending */}
+          {data.rank && (
+            <Badge className="bg-red-600 hover:bg-red-700 text-white font-bold border-none shadow-md px-2">
+              #{data.rank}
             </Badge>
           )}
-          {anime.subOrDub && (
-            <Badge variant="outline" className="bg-black/60 backdrop-blur-md text-white border-white/10 text-[10px] uppercase">
-              {anime.subOrDub}
+          {/* Sub/Dub Quality Badge */}
+          {data.subOrDub && (
+            <Badge variant="outline" className="bg-black/60 backdrop-blur-md text-white border-white/20 text-[10px] uppercase font-bold px-2">
+              {data.subOrDub}
             </Badge>
           )}
         </div>
 
-        {/* Action Overlay */}
+        {/* --- EPISODE BADGE (Top Right) --- */}
+        {data.episodeNumber && (
+          <div className="absolute top-3 right-3 z-20">
+            <Badge className="bg-white text-black hover:bg-white font-extrabold border-none shadow-lg px-2">
+              EP {data.episodeNumber}
+            </Badge>
+          </div>
+        )}
+
+        {/* --- HOVER ACTIONS (Center) --- */}
         <AnimatePresence>
           {isHovered && (
             <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              className="absolute inset-0 flex flex-col items-center justify-center gap-3 bg-black/40 backdrop-blur-[1px] z-20"
+              initial={{ opacity: 0, scale: 0.8 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.8 }}
+              className="absolute inset-0 flex flex-col items-center justify-center gap-4 z-30"
             >
+              {/* Big Play Button */}
               <Button
                 onClick={handleQuickPlay}
                 size="icon"
-                className="w-14 h-14 rounded-full bg-red-600 hover:bg-red-700 shadow-xl shadow-red-900/40"
+                className="w-16 h-16 rounded-full bg-red-600 hover:bg-red-700 hover:scale-110 transition-all shadow-[0_0_20px_rgba(220,38,38,0.6)]"
               >
-                <Play className="w-7 h-7 fill-white ml-1" />
+                <Play className="w-8 h-8 fill-white ml-1" />
               </Button>
-              <div className="flex gap-2">
+
+              {/* Secondary Actions */}
+              <div className="flex gap-3">
                 <Button 
-                  size="sm" 
+                  size="icon" 
                   variant="secondary" 
-                  className="rounded-full bg-zinc-800 hover:bg-zinc-700"
-                  onClick={(e) => { e.stopPropagation(); onAdd?.(anime.id); }}
+                  className="w-10 h-10 rounded-full bg-white/10 hover:bg-white/20 backdrop-blur-md border border-white/10"
+                  onClick={(e) => { e.stopPropagation(); onAdd?.(data.id); }}
                 >
-                  {isInWatchlist ? <Check className="w-4 h-4 text-green-500" /> : <Plus className="w-4 h-4" />}
+                  {isInWatchlist ? (
+                    <Check className="w-5 h-5 text-green-400" />
+                  ) : (
+                    <Plus className="w-5 h-5 text-white" />
+                  )}
                 </Button>
                 <Button 
-                  size="sm" 
+                  size="icon" 
                   variant="secondary" 
-                  className="rounded-full bg-zinc-800 hover:bg-zinc-700"
-                  onClick={(e) => { e.stopPropagation(); navigate(`/watch/${anime.id}`); }}
+                  className="w-10 h-10 rounded-full bg-white/10 hover:bg-white/20 backdrop-blur-md border border-white/10"
+                  onClick={(e) => { e.stopPropagation(); handleCardClick(); }}
                 >
-                  <Info className="w-4 h-4" />
+                  <Info className="w-5 h-5 text-white" />
                 </Button>
               </div>
             </motion.div>
           )}
         </AnimatePresence>
 
-        {/* Title & Info Footer */}
-        <div className="absolute bottom-0 left-0 right-0 p-3 z-10">
-          <h3 className="text-sm font-bold text-white line-clamp-2 mb-1 group-hover:text-red-500 transition-colors leading-tight">
-            {anime.title}
+        {/* --- BOTTOM INFO --- */}
+        <div className="absolute bottom-0 left-0 right-0 p-4 z-20">
+          <h3 className="text-sm font-bold text-white line-clamp-2 leading-tight drop-shadow-md group-hover:text-red-500 transition-colors">
+            {data.title}
           </h3>
-          <div className="flex items-center justify-between text-[10px] text-zinc-400 font-medium uppercase tracking-wider">
-            <span className="flex items-center gap-1">
-              <Calendar className="w-3 h-3" /> {anime.releaseDate || 'TV'}
+          
+          <div className="flex items-center justify-between mt-2 text-[11px] font-medium text-zinc-300 uppercase tracking-wide">
+            <span className="flex items-center gap-1.5">
+              <Calendar className="w-3 h-3 text-red-500" /> 
+              {data.releaseDate || 'N/A'}
             </span>
-            {anime.type && <span>{anime.type}</span>}
+            {data.type && (
+              <span className="opacity-80 px-1.5 py-0.5 rounded bg-white/10">
+                {data.type}
+              </span>
+            )}
           </div>
         </div>
 
-        {/* Progress Bar (Professional Visual for History) */}
+        {/* --- PROGRESS BAR (For History) --- */}
         {progress > 0 && (
-          <div className="absolute bottom-0 left-0 right-0 h-1 bg-white/10 z-30">
+          <div className="absolute bottom-0 left-0 right-0 h-1 bg-gray-800 z-30">
             <motion.div 
               initial={{ width: 0 }}
               animate={{ width: `${progress}%` }}
-              className="h-full bg-red-600 shadow-[0_0_8px_rgba(220,38,38,0.8)]" 
+              transition={{ duration: 1, delay: 0.2 }}
+              className="h-full bg-red-600 shadow-[0_0_10px_rgba(220,38,38,0.8)]" 
             />
           </div>
         )}
