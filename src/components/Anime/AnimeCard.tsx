@@ -7,6 +7,18 @@ import { Badge } from '@/components/ui/badge';
 import { Card } from '@/components/ui/card';
 import { ConsumetAnime } from '@/lib/api';
 
+import { useSettings } from '@/hooks/useSettings'; // Import the hook
+
+export default function AnimeCard({ ... }) {
+  const { settings } = useSettings(); // Get global settings
+  
+  // Use the setting!
+  const displayTitle = settings.useJapaneseTitle 
+    ? (data.japaneseTitle || data.title) 
+    : data.title;
+
+
+
 // --- INTERFACE UPDATE ---
 interface ExtendedAnime extends ConsumetAnime {
   episodeId?: string;

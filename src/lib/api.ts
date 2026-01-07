@@ -86,6 +86,30 @@ export interface NextEpSchedule {
   secondsUntilAiring: number | null;
 }
 
+export interface SearchSuggestion {
+  id: string;
+  name: string;
+  poster: string;
+  jname: string;
+  moreInfo: string[]; // e.g. ["Jan 21, 2022", "Movie", "17m"]
+}
+
+export interface V2SearchResult {
+  animes: Array<{
+    id: string;
+    name: string;
+    poster: string;
+    duration: string;
+    type: string;
+    rating: string;
+    episodes: { sub: number; dub: number };
+  }>;
+  mostPopularAnimes: any[];
+  currentPage: number;
+  totalPages: number;
+  hasNextPage: boolean;
+}
+
 // --- SUPABASE CONFIG ---
 
 // Use process.env for Next.js compatibility (Vite env vars might not work if you switched to Next.js)
@@ -176,6 +200,18 @@ export class AnimeAPI {
   // Endpoint: /api/v2/hianime/anime/{animeId}/next-episode-schedule
   static async getNextEpisodeSchedule(animeId: string): Promise<{ data: NextEpSchedule } | null> {
     return this.request(BASE_URL_V2, `/anime/${animeId}/next-episode-schedule`);
+  }
+  
+// NEW: V2 Search Suggestions
+  static async getSearchSuggestionsV2(query: string): Promise<SearchSuggestion[]> {
+    const res = await this.request(BASE_URL_V2, '/search/suggestion', { q: query });
+    return res?.data?.suggestions || [];
+  }
+
+  // NEW: V2 Advanced Search
+  static async searchAnimeV2(query: string, page = 1): Promise<V2SearchResult | null> {
+    const res = await this.request(BASE_URL_V2, '/search', { q: query, page });
+    return res?.data || null;
   }
 }
 

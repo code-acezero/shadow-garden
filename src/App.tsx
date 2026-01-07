@@ -9,6 +9,9 @@ import OtakuVerse from './components/Social/OtakuVerse';
 import ImageSearch from './components/AI/ImageSearch';
 import { Toaster } from './components/ui/toaster';
 import './App.css';
+// Import Settings
+import Settings from './components/Settings/Settings';
+
 
 function App() {
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
@@ -37,6 +40,11 @@ function App() {
               </div>
             } 
           />
+
+          // ... Inside Routes ...
+        <Route path="/settings" element={<Settings />} />
+
+          
           
           <Route path="/profile" element={
               <div className="flex items-center justify-center min-h-[60vh]">

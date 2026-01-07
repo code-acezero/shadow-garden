@@ -14,6 +14,10 @@ import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
 
+import { useSettings } from '@/hooks/useSettings';
+
+
+  
 // Constants
 const CHUNK_SIZE = 100;
 
@@ -40,6 +44,13 @@ export default function WatchClient({ animeId }: { animeId: string }) {
   const [epChunkIndex, setEpChunkIndex] = useState(0);
   const [watchedEpisodes, setWatchedEpisodes] = useState<Set<number>>(new Set());
   const [isDescriptionExpanded, setIsDescriptionExpanded] = useState(false);
+
+
+  const { settings } = useSettings();
+  
+  // Initialize state with settings
+  const [autoPlay, setAutoPlay] = useState(settings.autoPlay);
+
 
   // --- 1. INITIAL LOAD (Info & User) ---
   useEffect(() => {
