@@ -4,7 +4,11 @@ import { createClient } from '@supabase/supabase-js';
 //  1. CONFIGURATION
 // ==========================================
 
+// V1: Home Page (Shadow Garden / Consumet)
 const BASE_URL = 'https://shadow-garden-wqkq.vercel.app/anime/hianime';
+
+// V2: Watch Page (HiAnime Direct)
+// We keep the original URL but will wrap it with a proxy in the class below
 const BASE_URL_V2 = 'https://hianime-api-mu.vercel.app/api/v2/hianime';
 
 const supabaseUrl = import.meta.env?.VITE_SUPABASE_URL || '';
@@ -251,7 +255,6 @@ export interface V2SearchSuggestion {
 }
 
 export interface V2GenericListResult {
-  // Used for Producer, Genre, Category
   producerName?: string;
   genreName?: string;
   category?: string;
@@ -322,29 +325,40 @@ export interface V2StreamingLinks {
   malID: number | null;
 }
 
-// Aliases for Watch Page compatibility
 export type ServerData = V2EpisodeServers; 
 export type V2SourceResponse = V2StreamingLinks;
 
 // ==========================================
-//  6. V2 API CLASS (Uses BASE_URL_V2)
+//  6. V2 API CLASS (Uses BASE_URL_V2 + PROXY)
 // ==========================================
 
 export class AnimeAPI_V2 {
   
   private static async request<T>(endpoint: string, params: Record<string, any> = {}): Promise<T | null> {
     try {
-      const url = new URL(`${BASE_URL_V2}${endpoint}`);
-      Object.keys(params).forEach(key => {
-        if (params[key] !== undefined && params[key] !== null) {
-          url.searchParams.append(key, params[key]);
-        }
-      });
+      // 1. Construct the target URL manually
+      let targetUrl = `${BASE_URL_V2}${endpoint}`;
       
-      const response = await fetch(url.toString());
+      // 2. Add query parameters
+      const queryString = Object.keys(params)
+        .filter(key => params[key] !== undefined && params[key] !== null)
+        .map(key => `${encodeURIComponent(key)}=${encodeURIComponent(params[key])}`)
+        .join('&');
+      
+      if (queryString) {
+        targetUrl += `?${queryString}`;
+      }
+
+      // 3. Wrap with CORS Proxy to bypass browser restrictions
+      // We use corsproxy.io which is fast and free for this purpose
+      const proxyUrl = `https://corsproxy.io/?${encodeURIComponent(targetUrl)}`;
+      
+      const response = await fetch(proxyUrl);
       if (!response.ok) throw new Error(`V2 API Error: ${response.statusText}`);
+      
       const json = await response.json();
       return json.success ? json.data : null;
+
     } catch (error) {
       console.error(`V2 Fetch failed [${endpoint}]:`, error);
       return null;
@@ -361,19 +375,18 @@ export class AnimeAPI_V2 {
     return this.request<V2AZListResult>(`/azlist/${sortOption}`, { page });
   }
 
-  // 3. QTIP INFO (Quick Popup)
+  // 3. QTIP INFO
   static async getQtipInfo(animeId: string): Promise<V2QTipInfo | null> {
     return this.request<V2QTipInfo>(`/qtip/${animeId}`);
   }
 
-  // 4. ANIME ABOUT INFO (Details)
+  // 4. ANIME ABOUT INFO
   static async getAnimeInfo(animeId: string): Promise<V2AnimeInfo | null> {
     return this.request<V2AnimeInfo>(`/anime/${animeId}`);
   }
 
   // 5. SEARCH
   static async search(query: string, page = 1, filters: Record<string, string> = {}): Promise<V2SearchResult | null> {
-    // Filters include: genres, type, sort, season, language, status, rated, score, start_date, end_date
     return this.request<V2SearchResult>('/search', { q: query, page, ...filters });
   }
 
@@ -391,13 +404,11 @@ export class AnimeAPI_V2 {
   }
 
   static async getCategoryAnimes(category: string, page = 1): Promise<V2GenericListResult | null> {
-    // Categories: "most-favorite", "most-popular", "subbed-anime", "dubbed-anime", "recently-updated", "recently-added", "top-upcoming", "top-airing", "movie", "special", "ova", "ona", "tv", "completed"
     return this.request<V2GenericListResult>(`/category/${category}`, { page });
   }
 
   // 7. SCHEDULE
   static async getSchedule(date: string): Promise<V2ScheduleResult | null> {
-    // Format: yyyy-mm-dd
     return this.request<V2ScheduleResult>('/schedule', { date });
   }
 
