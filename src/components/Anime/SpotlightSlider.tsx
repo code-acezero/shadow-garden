@@ -6,36 +6,18 @@ import {
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { motion, AnimatePresence } from 'framer-motion';
-
-// --- Types based on your provided JSON ---
-interface SpotlightAnime {
-  id: string;
-  title: string;
-  japaneseTitle?: string;
-  banner: string; // Using the wide banner from your API
-  image?: string; // Fallback
-  rank: number;
-  description: string;
-  type?: string;
-  duration?: string;
-  releaseDate?: string;
-  quality?: string;
-  sub?: number;
-  dub?: number;
-  episodes?: number;
-}
+import { ConsumetAnime } from '@/lib/api';
 
 interface SpotlightProps {
-  animes: SpotlightAnime[];
-  onWatch: (anime: SpotlightAnime) => void;
+  animes: ConsumetAnime[];
+  onWatch: (anime: ConsumetAnime) => void;
   onInfo: (id: string) => void;
 }
 
 export default function SpotlightSlider({ animes, onWatch, onInfo }: SpotlightProps) {
   const [activeIndex, setActiveIndex] = useState(0);
-  const [direction, setDirection] = useState(0); // -1 for prev, 1 for next
+  const [direction, setDirection] = useState(0); 
 
-  // Auto-play logic
   useEffect(() => {
     const interval = setInterval(() => {
       handleNext();
@@ -56,8 +38,8 @@ export default function SpotlightSlider({ animes, onWatch, onInfo }: SpotlightPr
   if (!animes || animes.length === 0) return null;
 
   const currentAnime = animes[activeIndex];
+  const displayImage = (currentAnime as any).banner || currentAnime.image;
 
-  // Animation Variants
   const slideVariants = {
     enter: (direction: number) => ({
       x: direction > 0 ? 1000 : -1000,
@@ -78,7 +60,6 @@ export default function SpotlightSlider({ animes, onWatch, onInfo }: SpotlightPr
   return (
     <section className="relative w-full h-[600px] md:h-[650px] mb-12 group perspective-1000">
       
-      {/* Main Container with 3D-ish glossy border effect */}
       <div className="relative w-full h-full rounded-[2rem] overflow-hidden shadow-[0_20px_50px_rgba(0,0,0,0.7)] border border-white/10 ring-1 ring-white/5">
         
         <AnimatePresence initial={false} custom={direction} mode="popLayout">
@@ -95,9 +76,8 @@ export default function SpotlightSlider({ animes, onWatch, onInfo }: SpotlightPr
             }}
             className="absolute inset-0 w-full h-full bg-[#050505]"
           >
-            {/* --- BACKGROUND IMAGE (Ken Burns Effect) --- */}
             <motion.img 
-              src={currentAnime.banner || currentAnime.image} 
+              src={displayImage} 
               alt={currentAnime.title}
               initial={{ scale: 1.1 }}
               animate={{ scale: 1 }}
@@ -105,19 +85,13 @@ export default function SpotlightSlider({ animes, onWatch, onInfo }: SpotlightPr
               className="w-full h-full object-cover opacity-60"
             />
 
-            {/* --- GRADIENT OVERLAYS --- */}
-            {/* Bottom fade */}
             <div className="absolute inset-0 bg-gradient-to-t from-[#050505] via-[#050505]/40 to-transparent" />
-            {/* Left fade for text readability */}
             <div className="absolute inset-0 bg-gradient-to-r from-[#050505] via-[#050505]/80 to-transparent" />
-            {/* Stylized vignette */}
             <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,transparent_0%,#000000_120%)] opacity-50" />
 
-            {/* --- CONTENT LAYER --- */}
             <div className="absolute inset-0 flex flex-col justify-end p-8 md:p-16 z-20">
               <div className="max-w-3xl">
                 
-                {/* 1. Rank & Spotlight Badge */}
                 <motion.div 
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
@@ -127,59 +101,64 @@ export default function SpotlightSlider({ animes, onWatch, onInfo }: SpotlightPr
                   <div className="flex items-center gap-2 px-3 py-1 rounded-full bg-gradient-to-r from-yellow-500/20 to-orange-500/20 border border-yellow-500/30 backdrop-blur-md">
                     <Sparkles className="w-3 h-3 text-yellow-400 animate-pulse" />
                     <span className="text-yellow-200 text-xs font-bold tracking-wider uppercase">
-                      Spotlight #{currentAnime.rank}
+                      Spotlight #{currentAnime.rank || activeIndex + 1}
                     </span>
                   </div>
-                  {currentAnime.quality && (
-                    <Badge variant="outline" className="border-white/20 text-white/80 bg-white/5 backdrop-blur-sm">
-                      {currentAnime.quality}
+                  {(currentAnime as any).quality && (
+                    /* FIX: Removed variant="outline" */
+                    <Badge className="border border-white/20 text-white/80 bg-white/5 backdrop-blur-sm">
+                      {(currentAnime as any).quality}
                     </Badge>
                   )}
                 </motion.div>
 
-                {/* 2. Title Section */}
                 <motion.div
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: 0.3 }}
                 >
-                  <h2 className="text-sm md:text-base font-medium text-purple-300 mb-1 tracking-[0.2em] uppercase font-[Cinzel]">
-                    {currentAnime.japaneseTitle}
-                  </h2>
+                  {(currentAnime as any).japaneseTitle && (
+                    <h2 className="text-sm md:text-base font-medium text-purple-300 mb-1 tracking-[0.2em] uppercase font-[Cinzel]">
+                      {(currentAnime as any).japaneseTitle}
+                    </h2>
+                  )}
                   <h1 className="text-4xl md:text-6xl lg:text-7xl font-black text-white mb-6 leading-[0.9] tracking-tighter drop-shadow-[0_0_15px_rgba(255,255,255,0.3)] line-clamp-2">
                     {currentAnime.title}
                   </h1>
                 </motion.div>
 
-                {/* 3. Meta Data (Glass Strip) */}
                 <motion.div 
                   initial={{ opacity: 0, x: -20 }}
                   animate={{ opacity: 1, x: 0 }}
                   transition={{ delay: 0.4 }}
                   className="flex flex-wrap items-center gap-4 mb-6 text-sm text-gray-300"
                 >
-                  <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-white/5 border border-white/10 backdrop-blur-md">
-                    <Calendar className="w-4 h-4 text-purple-400" />
-                    <span>{currentAnime.releaseDate}</span>
-                  </div>
-                  <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-white/5 border border-white/10 backdrop-blur-md">
-                    <Clock className="w-4 h-4 text-blue-400" />
-                    <span>{currentAnime.duration}</span>
-                  </div>
+                  {currentAnime.releaseDate && (
+                    <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-white/5 border border-white/10 backdrop-blur-md">
+                      <Calendar className="w-4 h-4 text-purple-400" />
+                      <span>{currentAnime.releaseDate}</span>
+                    </div>
+                  )}
+                  {currentAnime.duration && (
+                    <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-white/5 border border-white/10 backdrop-blur-md">
+                      <Clock className="w-4 h-4 text-blue-400" />
+                      <span>{currentAnime.duration}</span>
+                    </div>
+                  )}
+                  
                   <div className="flex items-center gap-3 px-3 py-1.5 rounded-lg bg-white/5 border border-white/10 backdrop-blur-md">
                     <div className="flex items-center gap-1.5">
                       <Captions className="w-4 h-4 text-green-400" />
-                      <span className="font-bold">{currentAnime.sub || 0}</span>
+                      <span className="font-bold">{(currentAnime as any).sub || '?'}</span>
                     </div>
                     <div className="w-[1px] h-3 bg-white/20" />
                     <div className="flex items-center gap-1.5">
                       <Mic className="w-4 h-4 text-yellow-400" />
-                      <span className="font-bold">{currentAnime.dub || 0}</span>
+                      <span className="font-bold">{(currentAnime as any).dub || '?'}</span>
                     </div>
                   </div>
                 </motion.div>
 
-                {/* 4. Description */}
                 <motion.p 
                   initial={{ opacity: 0 }}
                   animate={{ opacity: 1 }}
@@ -189,7 +168,6 @@ export default function SpotlightSlider({ animes, onWatch, onInfo }: SpotlightPr
                   {currentAnime.description}
                 </motion.p>
 
-                {/* 5. Actions */}
                 <motion.div 
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
@@ -204,10 +182,10 @@ export default function SpotlightSlider({ animes, onWatch, onInfo }: SpotlightPr
                     Watch Now
                   </Button>
                   
+                  {/* FIX: Removed variant="outline" */}
                   <Button 
                     onClick={() => onInfo(currentAnime.id)}
-                    variant="outline"
-                    className="h-14 px-8 rounded-2xl bg-white/5 hover:bg-white/10 border-white/10 hover:border-white/30 text-white backdrop-blur-xl transition-all"
+                    className="h-14 px-8 rounded-2xl bg-white/5 hover:bg-white/10 border border-white/10 hover:border-white/30 text-white backdrop-blur-xl transition-all"
                   >
                     <Info className="mr-2 h-5 w-5" />
                     Details
@@ -219,10 +197,7 @@ export default function SpotlightSlider({ animes, onWatch, onInfo }: SpotlightPr
           </motion.div>
         </AnimatePresence>
 
-        {/* --- NAVIGATION CONTROLS --- */}
         <div className="absolute bottom-12 right-8 md:right-16 z-30 flex items-center gap-4">
-          
-          {/* Progress Indicators */}
           <div className="flex gap-2 mr-4">
             {animes.map((_, idx) => (
               <button
