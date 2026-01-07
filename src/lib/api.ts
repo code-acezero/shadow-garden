@@ -80,10 +80,45 @@ export interface ConsumetAnimeInfo extends Omit<ConsumetAnime, 'episodes'> {
   recommendations?: ConsumetAnime[];
   relatedAnime?: ConsumetAnime[];
   japaneseTitle?: string;
+  otherName?: string;
+}
+
+export interface ConsumetSearchResult {
+  currentPage: number;
+  hasNextPage: boolean;
+  totalPages?: number;
+  results: ConsumetAnime[];
+}
+
+export interface ConsumetAdvancedSearchParams {
+  page?: number;
+  type?: 'movie' | 'tv' | 'ova' | 'ona' | 'special';
+  status?: 'currently-airing' | 'finished-airing';
+  rated?: 'r' | 'pg-13' | 'pg';
+  score?: number;
+  season?: 'spring' | 'summer' | 'fall' | 'winter';
+  language?: 'sub' | 'dub';
+  startDate?: string; // YYYY-MM-DD
+  endDate?: string;   // YYYY-MM-DD
+  sort?: 'recently-added' | 'most-popular';
+  genres?: string;    // comma separated
+}
+
+export interface ConsumetStreamingLinks {
+  headers: {
+    Referer: string;
+    "User-Agent": string;
+  };
+  sources: {
+    url: string;
+    quality: string;
+    isM3U8: boolean;
+  }[];
+  download?: string;
 }
 
 // ==========================================
-//  4. API CLASS (Uses BASE_URL)
+//  4. API CLASS (Uses BASE_URL - V1)
 // ==========================================
 
 export class AnimeAPI {
@@ -104,28 +139,111 @@ export class AnimeAPI {
     }
   }
 
-  static async getSpotlight(): Promise<{ results: ConsumetAnime[] } | null> {
-    return this.request('/spotlight');
+  // --- Search & Info ---
+  
+  static async search(query: string, page = 1): Promise<ConsumetSearchResult | null> {
+    return this.request(`/${encodeURIComponent(query)}`, { page });
+  }
+
+  static async advancedSearch(params: ConsumetAdvancedSearchParams): Promise<ConsumetSearchResult | null> {
+    return this.request('/advanced-search', params as Record<string, any>);
+  }
+
+  static async searchSuggestions(query: string): Promise<{ suggestions: ConsumetAnime[] } | null> {
+    return this.request(`/search-suggestions/${encodeURIComponent(query)}`);
   }
 
   static async getAnimeInfo(id: string): Promise<ConsumetAnimeInfo | null> {
     return this.request('/info', { id });
   }
 
-  static async getTopAiring(page = 1): Promise<{ results: ConsumetAnime[] } | null> {
+  // --- Lists & Categories ---
+
+  static async getSpotlight(): Promise<{ spotlightAnimes: ConsumetAnime[] } | null> {
+    return this.request('/spotlight');
+  }
+
+  static async getTopAiring(page = 1): Promise<ConsumetSearchResult | null> {
     return this.request('/top-airing', { page });
   }
 
-  static async getMostPopular(page = 1): Promise<{ results: ConsumetAnime[] } | null> {
+  static async getMostPopular(page = 1): Promise<ConsumetSearchResult | null> {
     return this.request('/most-popular', { page });
   }
 
-  static async getRecentlyUpdated(page = 1): Promise<{ results: ConsumetAnime[] } | null> {
+  static async getMostFavorite(page = 1): Promise<ConsumetSearchResult | null> {
+    return this.request('/most-favorite', { page });
+  }
+
+  static async getLatestCompleted(page = 1): Promise<ConsumetSearchResult | null> {
+    return this.request('/latest-completed', { page });
+  }
+
+  static async getRecentlyUpdated(page = 1): Promise<ConsumetSearchResult | null> {
     return this.request('/recently-updated', { page });
   }
 
+  static async getRecentlyAdded(page = 1): Promise<ConsumetSearchResult | null> {
+    return this.request('/recently-added', { page });
+  }
+
+  static async getTopUpcoming(page = 1): Promise<ConsumetSearchResult | null> {
+    return this.request('/top-upcoming', { page });
+  }
+
+  // --- Specific Types ---
+
+  static async getSubbedAnime(page = 1): Promise<ConsumetSearchResult | null> {
+    return this.request('/subbed-anime', { page });
+  }
+
+  static async getDubbedAnime(page = 1): Promise<ConsumetSearchResult | null> {
+    return this.request('/dubbed-anime', { page });
+  }
+
+  static async getMovie(page = 1): Promise<ConsumetSearchResult | null> {
+    return this.request('/movie', { page });
+  }
+
+  static async getTV(page = 1): Promise<ConsumetSearchResult | null> {
+    return this.request('/tv', { page });
+  }
+
+  static async getOVA(page = 1): Promise<ConsumetSearchResult | null> {
+    return this.request('/ova', { page });
+  }
+
+  static async getONA(page = 1): Promise<ConsumetSearchResult | null> {
+    return this.request('/ona', { page });
+  }
+
+  static async getSpecial(page = 1): Promise<ConsumetSearchResult | null> {
+    return this.request('/special', { page });
+  }
+
+  // --- Metadata Filters ---
+
+  static async getGenres(): Promise<{ id: string; name: string }[] | null> {
+    return this.request('/genres');
+  }
+
+  static async getGenre(genre: string, page = 1): Promise<ConsumetSearchResult | null> {
+    return this.request(`/genre/${genre}`, { page });
+  }
+
+  static async getStudio(studio: string, page = 1): Promise<ConsumetSearchResult | null> {
+    return this.request(`/studio/${studio}`, { page });
+  }
+
+  // --- Misc ---
+
   static async getSchedule(date: string): Promise<{ scheduledAnimes: ConsumetAnime[] } | null> {
+    // date format: YYYY-MM-DD
     return this.request('/schedule', { date });
+  }
+
+  static async getEpisodeStreamingLinks(episodeId: string, server?: string, category?: 'sub' | 'dub'): Promise<ConsumetStreamingLinks | null> {
+    return this.request(`/watch/${episodeId}`, { server, category });
   }
 }
 
@@ -350,7 +468,6 @@ export class AnimeAPI_V2 {
       }
 
       // 3. Wrap with CORS Proxy to bypass browser restrictions
-      // We use corsproxy.io which is fast and free for this purpose
       const proxyUrl = `https://corsproxy.io/?${encodeURIComponent(targetUrl)}`;
       
       const response = await fetch(proxyUrl);

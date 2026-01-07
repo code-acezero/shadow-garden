@@ -1,14 +1,15 @@
-import React, { useState, useEffect, useMemo, useRef } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useNavigate, useSearchParams, useParams } from 'react-router-dom';
 import { 
   SkipForward, SkipBack, Server as ServerIcon, 
   Layers, Heart, Clock, AlertCircle, RefreshCw, Home,
-  Tv, Play, Share2
+  Tv, Share2, Star, Calendar
 } from 'lucide-react';
 import { motion } from 'framer-motion';
 
-// API IMPORTS (Corrected Name)
-import { AnimeAPI_V2 } from '@/lib/api'; 
+// --- HYBRID API IMPORTS ---
+// V1 for Info/Episodes (Base), V2 for Streaming (Proxy)
+import { AnimeAPI, AnimeAPI_V2, ConsumetAnimeInfo } from '@/lib/api'; 
 
 // COMPONENT IMPORTS
 import AnimePlayer from '@/components/Player/AnimePlayer'; 
@@ -19,25 +20,13 @@ import { Badge } from '@/components/ui/badge';
 import { useSettings } from '@/hooks/useSettings';
 
 // --- TYPES ---
-interface LocalEpisode {
-  number: number;
-  title: string;
-  episodeId: string;
-  isFiller: boolean;
-}
-
-interface LocalServer {
-  serverId: number;
-  serverName: string;
-}
-
 interface LocalServerData {
-  sub: LocalServer[];
-  dub: LocalServer[];
-  raw: LocalServer[];
+  sub: Array<{ serverId: number; serverName: string }>;
+  dub: Array<{ serverId: number; serverName: string }>;
+  raw: Array<{ serverId: number; serverName: string }>;
 }
 
-// --- FANTASY LOADER COMPONENT ---
+// --- FANTASY LOADER ---
 const FantasyLoader = ({ text = "SUMMONING..." }) => (
   <div className="w-full h-full min-h-[500px] flex flex-col items-center justify-center relative overflow-hidden bg-[#050505]">
     <div className="absolute inset-0 bg-gradient-to-tr from-red-900/10 to-purple-900/10 animate-pulse" />
@@ -74,8 +63,8 @@ export default function WatchClient({ animeId: propAnimeId }: { animeId?: string
   const animeId = propAnimeId || params.id || "";
 
   // --- STATE ---
-  const [data, setData] = useState<any | null>(null);
-  const [episodes, setEpisodes] = useState<LocalEpisode[]>([]);
+  // Data comes from V1 Base API now
+  const [info, setInfo] = useState<ConsumetAnimeInfo | null>(null);
   const [isLoadingInfo, setIsLoadingInfo] = useState(true);
   const [infoError, setInfoError] = useState<string | null>(null);
 
@@ -94,40 +83,36 @@ export default function WatchClient({ animeId: propAnimeId }: { animeId?: string
   const [epChunkIndex, setEpChunkIndex] = useState(0);
   const [isDescExpanded, setIsDescExpanded] = useState(false);
 
-  // --- 1. INITIAL LOAD (Info & Episodes) ---
+  // --- 1. INITIAL LOAD (Base API V1) ---
   useEffect(() => {
     let isMounted = true;
     const init = async () => {
-      console.log(`[Watch] Initializing for ID: ${animeId}`);
+      console.log(`[Watch] Initializing V1 Info for ID: ${animeId}`);
       setIsLoadingInfo(true);
       setInfoError(null);
       
       try {
         if (!animeId) throw new Error("No Anime ID provided");
 
-        // 1. Fetch Info
-        const infoData = await AnimeAPI_V2.getAnimeInfo(animeId);
+        // Fetch Info & Episodes from V1 (Base API)
+        // V1 returns everything in one call, which is faster
+        const infoData = await AnimeAPI.getAnimeInfo(animeId);
+        
         if (!isMounted) return;
         if (!infoData) throw new Error("Anime info not found.");
-        setData(infoData);
+        
+        setInfo(infoData);
 
-        // 2. Fetch Episodes
-        const epData = await AnimeAPI_V2.getEpisodes(animeId);
-        if (!isMounted) return;
-
-        if (epData?.episodes && epData.episodes.length > 0) {
-          console.log(`[Watch] Found ${epData.episodes.length} episodes`);
-          setEpisodes(epData.episodes as unknown as LocalEpisode[]);
+        if (infoData.episodes && infoData.episodes.length > 0) {
+          console.log(`[Watch] Found ${infoData.episodes.length} episodes via Base API`);
           
-          // Determine starting episode
           const urlEp = searchParams.get('ep');
-          const foundEp = epData.episodes.find((e: any) => e.episodeId === urlEp);
+          const foundEp = infoData.episodes.find((e) => e.id === urlEp);
           
           if (foundEp) {
-            setCurrentEpId(foundEp.episodeId);
+            setCurrentEpId(foundEp.id);
           } else {
-            // Default to first episode
-            setCurrentEpId(epData.episodes[0].episodeId);
+            setCurrentEpId(infoData.episodes[0].id);
           }
         } else {
           setInfoError("No episodes found for this anime.");
@@ -143,11 +128,11 @@ export default function WatchClient({ animeId: propAnimeId }: { animeId?: string
     return () => { isMounted = false; };
   }, [animeId]);
 
-  // --- 2. FETCH STREAM LOGIC ---
+  // --- 2. FETCH STREAM (V2 API) ---
   useEffect(() => {
     if (!currentEpId) return;
 
-    // Update URL without full reload
+    // Update URL
     setSearchParams(prev => { 
       prev.set('ep', currentEpId); 
       return prev; 
@@ -168,7 +153,10 @@ export default function WatchClient({ animeId: propAnimeId }: { animeId?: string
 
     const loadStream = async () => {
       try {
-        // A. Fetch Servers
+        // DELAY: Tiny pause to ensure UI updates before heavy fetch
+        await new Promise(r => setTimeout(r, 100));
+
+        // A. Fetch Servers (FROM V2 API)
         const serverRes = await AnimeAPI_V2.getEpisodeServers(currentEpId);
         if (!isMounted) return;
 
@@ -179,7 +167,7 @@ export default function WatchClient({ animeId: propAnimeId }: { animeId?: string
            const localServers = serverRes as unknown as LocalServerData;
            setServers(localServers);
            
-           // Category Fallback: Switch to Dub/Raw if Sub is empty
+           // Category Fallback
            const subList = localServers.sub || [];
            const dubList = localServers.dub || [];
            const rawList = localServers.raw || [];
@@ -189,14 +177,13 @@ export default function WatchClient({ animeId: propAnimeId }: { animeId?: string
               else if (rawList.length > 0) activeCategory = 'raw';
            }
 
-           // State Sync (Only if changed)
+           // State Sync
            if (activeCategory !== category) {
              setCategory(activeCategory);
-             // Return here to let useEffect re-run with new category
              return; 
            }
 
-           // Server Fallback: Ensure selected server exists in current category
+           // Server Fallback
            const currentList = localServers[activeCategory] || [];
            const serverExists = currentList.find(s => s.serverName === activeServer);
            
@@ -206,7 +193,10 @@ export default function WatchClient({ animeId: propAnimeId }: { animeId?: string
            }
         }
 
-        // B. Fetch Source
+        // DELAY: Tiny pause before source fetch to prevent rate limits
+        await new Promise(r => setTimeout(r, 200));
+
+        // B. Fetch Source (FROM V2 API)
         const sourceRes = await AnimeAPI_V2.getEpisodeSources(currentEpId, activeServer, activeCategory);
         if (!isMounted) return;
 
@@ -235,7 +225,9 @@ export default function WatchClient({ animeId: propAnimeId }: { animeId?: string
   }, [currentEpId, selectedServerName, category]);
 
   // --- HELPERS ---
-  const currentEpIndex = useMemo(() => episodes.findIndex(e => e.episodeId === currentEpId), [episodes, currentEpId]);
+  const episodes = info?.episodes || [];
+  
+  const currentEpIndex = useMemo(() => episodes.findIndex(e => e.id === currentEpId), [episodes, currentEpId]);
   const currentEpisode = episodes[currentEpIndex];
   const prevEpisode = currentEpIndex > 0 ? episodes[currentEpIndex - 1] : null;
   const nextEpisode = currentEpIndex < episodes.length - 1 ? episodes[currentEpIndex + 1] : null;
@@ -252,22 +244,21 @@ export default function WatchClient({ animeId: propAnimeId }: { animeId?: string
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
+  // V1 -> Card Format
   const mapToCard = (item: any) => ({
     id: item.id,
-    title: item.name,
-    image: item.poster,
+    title: item.title || item.name, // V1 uses title
+    image: item.image || item.poster, // V1 uses image
     type: item.type,
     duration: item.duration,
-    episodes: item.episodes?.sub,
-    sub: item.episodes?.sub,
-    dub: item.episodes?.dub,
+    episodes: item.episodes, // V1 sometimes returns number
   });
 
   // --- UI RENDER ---
 
   if (isLoadingInfo) return <FantasyLoader text="SUMMONING ANIME..." />;
 
-  if (infoError || !data) {
+  if (infoError || !info) {
     return (
       <div className="min-h-screen bg-[#050505] flex flex-col items-center justify-center text-center p-4">
         <AlertCircle className="w-16 h-16 text-red-600 mb-4" />
@@ -285,8 +276,6 @@ export default function WatchClient({ animeId: propAnimeId }: { animeId?: string
     );
   }
 
-  const { info: anime } = data.anime;
-
   return (
     <div className="min-h-screen bg-[#050505] text-gray-100 pb-20">
       
@@ -303,12 +292,11 @@ export default function WatchClient({ animeId: propAnimeId }: { animeId?: string
                    <h3 className="text-xl font-bold text-white">Stream Unavailable</h3>
                    <p className="text-gray-400 text-sm max-w-sm mx-auto">{streamError}</p>
                 </div>
-                
                 <div className="grid grid-cols-2 gap-3">
-                   <Button onClick={() => setSelectedServerName('vidstreaming')} variant="outline" className="border-white/10 hover:bg-red-600/20 hover:text-red-500 hover:border-red-500/50">
+                   <Button onClick={() => setSelectedServerName('vidstreaming')} variant="outline" className="border-white/10 hover:bg-red-600/20 hover:text-red-500">
                       Switch to Vidstreaming
                    </Button>
-                   <Button onClick={() => setSelectedServerName('megacloud')} variant="outline" className="border-white/10 hover:bg-red-600/20 hover:text-red-500 hover:border-red-500/50">
+                   <Button onClick={() => setSelectedServerName('megacloud')} variant="outline" className="border-white/10 hover:bg-red-600/20 hover:text-red-500">
                       Switch to MegaCloud
                    </Button>
                 </div>
@@ -318,8 +306,8 @@ export default function WatchClient({ animeId: propAnimeId }: { animeId?: string
               url={streamUrl} 
               intro={intro}
               outro={outro}
-              onEnded={() => { if(autoPlay && nextEpisode) handleEpisodeClick(nextEpisode.episodeId); }}
-              onNext={nextEpisode ? () => handleEpisodeClick(nextEpisode.episodeId) : undefined}
+              onEnded={() => { if(autoPlay && nextEpisode) handleEpisodeClick(nextEpisode.id); }}
+              onNext={nextEpisode ? () => handleEpisodeClick(nextEpisode.id) : undefined}
             />
           ) : (
             <div className="w-full h-full flex flex-col items-center justify-center bg-zinc-900 gap-4">
@@ -351,30 +339,20 @@ export default function WatchClient({ animeId: propAnimeId }: { animeId?: string
 
           <div className="flex items-center gap-3">
              {prevEpisode && (
-               <Button 
-                  onClick={() => handleEpisodeClick(prevEpisode.episodeId)}
-                  variant="ghost"
-                  className="text-gray-400 hover:text-white border border-white/10 hover:bg-white/5"
-               >
+               <Button onClick={() => handleEpisodeClick(prevEpisode.id)} variant="ghost" className="text-gray-400 hover:text-white border border-white/10 hover:bg-white/5">
                   <SkipBack className="mr-2 h-4 w-4" /> Prev
                </Button>
              )}
              
              <div className="flex items-center gap-2 bg-white/5 rounded-full p-1 border border-white/5">
-                <Button 
-                   onClick={() => setAutoPlay(!autoPlay)}
-                   className={`rounded-full px-4 h-8 text-xs font-bold gap-2 ${autoPlay ? 'text-green-400 bg-green-900/20' : 'text-gray-400'}`}
-                >
+                <Button onClick={() => setAutoPlay(!autoPlay)} className={`rounded-full px-4 h-8 text-xs font-bold gap-2 ${autoPlay ? 'text-green-400 bg-green-900/20' : 'text-gray-400'}`}>
                    <div className={`w-2 h-2 rounded-full ${autoPlay ? 'bg-green-500 shadow-[0_0_5px_lime]' : 'bg-gray-600'}`} />
                    AUTOPLAY
                 </Button>
              </div>
 
              {nextEpisode && (
-               <Button 
-                  onClick={() => handleEpisodeClick(nextEpisode.episodeId)}
-                  className="bg-red-600 hover:bg-red-700 text-white font-bold shadow-lg shadow-red-900/20"
-               >
+               <Button onClick={() => handleEpisodeClick(nextEpisode.id)} className="bg-red-600 hover:bg-red-700 text-white font-bold shadow-lg shadow-red-900/20">
                   Next <SkipForward className="ml-2 h-4 w-4" />
                </Button>
              )}
@@ -388,9 +366,7 @@ export default function WatchClient({ animeId: propAnimeId }: { animeId?: string
                     onClick={() => setCategory(cat)}
                     disabled={!servers?.[cat]?.length}
                     className={`px-3 py-1 rounded-md text-[10px] font-bold uppercase transition-all ${
-                      category === cat 
-                        ? 'bg-red-600 text-white shadow-md' 
-                        : 'text-gray-500 hover:text-gray-300 disabled:opacity-30 disabled:cursor-not-allowed'
+                      category === cat ? 'bg-red-600 text-white shadow-md' : 'text-gray-500 hover:text-gray-300 disabled:opacity-30'
                     }`}
                   >
                     {cat}
@@ -458,11 +434,11 @@ export default function WatchClient({ animeId: propAnimeId }: { animeId?: string
               <ScrollArea className="flex-1 p-2">
                  <div className="grid grid-cols-4 sm:grid-cols-5 gap-2 p-2">
                     {episodeChunks[epChunkIndex]?.map((ep) => {
-                       const isCurrent = ep.episodeId === currentEpId;
+                       const isCurrent = ep.id === currentEpId;
                        return (
                           <button
-                             key={ep.episodeId}
-                             onClick={() => handleEpisodeClick(ep.episodeId)}
+                             key={ep.id}
+                             onClick={() => handleEpisodeClick(ep.id)}
                              className={`
                                 relative aspect-square rounded-lg flex flex-col items-center justify-center border transition-all group
                                 ${isCurrent 
@@ -483,70 +459,59 @@ export default function WatchClient({ animeId: propAnimeId }: { animeId?: string
            </div>
         </div>
 
-        {/* ANIME DETAILS */}
+        {/* DETAILS (Mapped from V1 Data) */}
         <div className="lg:col-span-8 space-y-8">
            <div className="relative rounded-3xl overflow-hidden bg-[#0a0a0a] border border-white/5 group p-6 md:p-8 flex flex-col md:flex-row gap-8 shadow-2xl">
               <div className="absolute inset-0 z-0">
-                 <img src={anime.poster} className="w-full h-full object-cover opacity-10 blur-3xl scale-110 grayscale" />
+                 <img src={info.image} className="w-full h-full object-cover opacity-10 blur-3xl scale-110 grayscale" />
                  <div className="absolute inset-0 bg-gradient-to-r from-[#0a0a0a] via-[#0a0a0a]/90 to-transparent" />
               </div>
 
               <div className="relative z-10 w-full md:w-[220px] flex-shrink-0">
-                 <img src={anime.poster} className="w-full rounded-xl shadow-2xl ring-1 ring-white/10 object-cover aspect-[2/3]" />
+                 <img src={info.image} className="w-full rounded-xl shadow-2xl ring-1 ring-white/10 object-cover aspect-[2/3]" />
                  <Button className="w-full mt-4 bg-red-600 hover:bg-red-700 font-bold rounded-xl shadow-lg shadow-red-900/20 transition-all hover:scale-105">
                     <Heart className="mr-2 h-4 w-4" /> Add to List
                  </Button>
               </div>
 
               <div className="relative z-10 flex-1">
-                 <h1 className="text-3xl md:text-5xl font-black text-white mb-4 font-[Cinzel] tracking-tight">{anime.name}</h1>
+                 <h1 className="text-3xl md:text-5xl font-black text-white mb-4 font-[Cinzel] tracking-tight">{info.title}</h1>
                  
                  <div className="flex flex-wrap gap-3 mb-6">
-                    <Badge className="bg-white/10 text-gray-200 border-none px-3 py-1">{anime.stats.rating}</Badge>
-                    <Badge className="bg-white/10 text-gray-200 border-none px-3 py-1">{anime.stats.quality}</Badge>
-                    <Badge className="border border-red-500/30 text-red-400 bg-transparent px-3 py-1">{anime.stats.type}</Badge>
+                    {/* V1 specific stats */}
+                    <Badge className="bg-white/10 text-gray-200 border-none px-3 py-1 uppercase">{info.type || 'TV'}</Badge>
+                    <Badge className="bg-white/10 text-gray-200 border-none px-3 py-1 uppercase">{info.status}</Badge>
+                    <Badge className="border border-red-500/30 text-red-400 bg-transparent px-3 py-1 uppercase">{info.subOrDub}</Badge>
                     <div className="flex items-center gap-2 text-xs text-gray-400 border border-white/10 px-3 py-1 rounded-full">
-                       <Clock size={12} /> {anime.stats.duration}
+                       <Clock size={12} /> {info.duration || '?'}
                     </div>
                  </div>
 
+                 <div className="flex flex-wrap gap-2 mb-4">
+                    {info.genres?.map(g => (
+                       <Badge key={g} variant="outline" className="text-[10px] text-zinc-400 border-zinc-700">{g}</Badge>
+                    ))}
+                 </div>
+
                  <div className={`relative overflow-hidden transition-all duration-500 ${isDescExpanded ? 'max-h-[500px]' : 'max-h-[80px]'}`}>
-                    <p className="text-gray-300 text-sm leading-relaxed font-light">{anime.description}</p>
+                    <p className="text-gray-300 text-sm leading-relaxed font-light">{info.description}</p>
                     {!isDescExpanded && <div className="absolute bottom-0 left-0 right-0 h-10 bg-gradient-to-t from-[#0a0a0a] to-transparent" />}
                  </div>
-                 <button 
-                    onClick={() => setIsDescExpanded(!isDescExpanded)} 
-                    className="text-xs text-red-500 font-bold mt-2 uppercase hover:text-red-400 transition-colors"
-                 >
+                 <button onClick={() => setIsDescExpanded(!isDescExpanded)} className="text-xs text-red-500 font-bold mt-2 uppercase hover:text-red-400 transition-colors">
                     {isDescExpanded ? 'Show Less' : 'Read More'}
                  </button>
               </div>
            </div>
 
-           {/* RELATED ANIME */}
-           {data.relatedAnimes && data.relatedAnimes.length > 0 && (
-              <div>
-                 <h3 className="text-xl font-bold text-white mb-6 flex items-center gap-3">
-                    <div className="w-1 h-6 bg-red-600 rounded-full" />
-                    Related Anime
-                 </h3>
-                 <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
-                    {data.relatedAnimes.map((rel: any) => (
-                       <AnimeCard key={rel.id} anime={mapToCard(rel) as any} variant="compact" />
-                    ))}
-                 </div>
-              </div>
-           )}
-
-           {/* RECOMMENDED ANIME */}
-           {data.recommendedAnimes && data.recommendedAnimes.length > 0 && (
+           {/* RECOMMENDATIONS (From V1) */}
+           {info.recommendations && info.recommendations.length > 0 && (
               <div>
                  <h3 className="text-xl font-bold text-white mb-6 flex items-center gap-3">
                     <div className="w-1 h-6 bg-purple-600 rounded-full" />
                     Recommended For You
                  </h3>
                  <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
-                    {data.recommendedAnimes.map((rec: any) => (
+                    {info.recommendations.map((rec: any) => (
                        <AnimeCard key={rec.id} anime={mapToCard(rec) as any} />
                     ))}
                  </div>
