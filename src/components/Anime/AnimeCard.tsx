@@ -3,10 +3,10 @@ import { Star, Plus, Check, Play, Calendar } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent } from '@/components/ui/card';
-import { AniwatchAnime } from '@/lib/api';
+import { ConsumetAnime } from '@/lib/api'; // Updated import
 
 interface AnimeCardProps {
-  anime: AniwatchAnime;
+  anime: ConsumetAnime; // Use the new interface
   onWatch?: () => void;
   onAddToWatchlist?: (status: string) => void;
   isInWatchlist?: boolean;
@@ -40,49 +40,48 @@ export default function AnimeCard({
 
   return (
     <Card
-      className={`${cardClasses[variant]} bg-gray-900/50 border-gray-700 overflow-hidden transition-all duration-300 hover:scale-105 hover:shadow-2xl hover:shadow-red-500/20 backdrop-blur-sm`}
+      className={`${cardClasses[variant]} bg-gray-900/50 border-gray-700 overflow-hidden transition-all duration-300 hover:scale-105 hover:shadow-2xl hover:shadow-red-500/20 backdrop-blur-sm group`}
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
     >
       <div className="relative">
-        {/* Anime Poster */}
+        {/* Anime Poster - Updated to anime.image */}
         <div className={`relative ${imageClasses[variant]} overflow-hidden`}>
           <img
-            src={anime.poster}
-            alt={anime.name}
-            className="w-full h-full object-cover transition-transform duration-300 hover:scale-110"
+            src={anime.image}
+            alt={anime.title}
+            className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
+            loading="lazy"
+            onError={(e) => {
+              (e.target as HTMLImageElement).src = 'https://placehold.co/400x600/000000/FFFFFF?text=Shadow+Garden';
+            }}
           />
           
           {/* Overlay */}
-          <div className={`absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent transition-opacity duration-300 ${
+          <div className={`absolute inset-0 bg-gradient-to-t from-black/90 via-transparent to-transparent transition-opacity duration-300 ${
             isHovered ? 'opacity-100' : 'opacity-60'
           }`} />
 
-          {/* Rating Badge */}
-          {anime.rating && (
-            <Badge className="absolute top-2 right-2 bg-yellow-600 text-white">
-              <Star className="w-3 h-3 mr-1" />
-              {anime.rating}
+          {/* Rank Badge (New for Spotlight) */}
+          {anime.rank && (
+            <Badge className="absolute top-2 right-2 bg-red-600 text-white">
+              #{anime.rank}
             </Badge>
           )}
 
-          {/* Type Badge */}
-          <Badge 
-            className={`absolute top-2 left-2 ${
-              anime.type === 'TV' ? 'bg-green-600' : 
-              anime.type === 'Movie' ? 'bg-blue-600' : 
-              anime.type === 'OVA' ? 'bg-purple-600' : 'bg-gray-600'
-            } text-white`}
-          >
-            {anime.type}
-          </Badge>
+          {/* Sub/Dub Badge - Updated for Consumet schema */}
+          {anime.subOrDub && (
+            <Badge className="absolute top-2 left-2 bg-black/80 text-white border-none uppercase text-[10px]">
+              {anime.subOrDub}
+            </Badge>
+          )}
 
-          {/* Progress Bar */}
+          {/* Progress Bar logic */}
           {showProgress && progress > 0 && (
             <div className="absolute bottom-0 left-0 right-0 h-1 bg-gray-700">
               <div 
-                className="h-full bg-red-500 transition-all duration-300"
-                style={{ width: `${(progress / (anime.episodes?.sub || 1)) * 100}%` }}
+                className="h-full bg-red-600 transition-all duration-300"
+                style={{ width: `${progress}%` }} 
               />
             </div>
           )}
@@ -93,63 +92,55 @@ export default function AnimeCard({
           }`}>
             <div className="flex space-x-2">
               <Button
-                onClick={onWatch}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onWatch?.();
+                }}
                 size="sm"
-                className="bg-red-600 hover:bg-red-700 text-white"
+                className="bg-red-600 hover:bg-red-700 text-white rounded-full h-10 w-10 p-0"
               >
-                <Play className="w-4 h-4 mr-1" />
-                Watch
+                <Play className="w-5 h-5 fill-current" />
               </Button>
               <Button
-                onClick={() => onAddToWatchlist?.('plan_to_watch')}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onAddToWatchlist?.('plan_to_watch');
+                }}
                 size="sm"
                 variant="outline"
-                className={`border-gray-600 ${
-                  isInWatchlist ? 'bg-green-600 text-white' : 'bg-gray-800/80 text-white hover:bg-gray-700'
+                className={`rounded-full h-10 w-10 p-0 border-white/20 ${
+                  isInWatchlist ? 'bg-green-600 text-white border-none' : 'bg-gray-800/80 text-white'
                 }`}
               >
-                {isInWatchlist ? <Check className="w-4 h-4" /> : <Plus className="w-4 h-4" />}
+                {isInWatchlist ? <Check className="w-5 h-5" /> : <Plus className="w-5 h-5" />}
               </Button>
             </div>
           </div>
         </div>
 
-        <CardContent className="p-4">
-          {/* Title */}
-          <h3 className="text-white font-semibold text-sm mb-2 line-clamp-2 leading-tight">
-            {anime.name}
+        <CardContent className="p-3">
+          {/* Title - Updated to anime.title */}
+          <h3 className="text-white font-semibold text-sm mb-1 line-clamp-1 group-hover:text-red-500 transition-colors">
+            {anime.title}
           </h3>
 
-          {/* Info */}
-          <div className="flex items-center justify-between text-xs text-gray-400 mb-2">
+          {/* Info - Simplified for Consumet lists */}
+          <div className="flex items-center justify-between text-[11px] text-gray-400">
             <span className="flex items-center">
               <Calendar className="w-3 h-3 mr-1" />
-              {anime.type}
+              {anime.releaseDate || 'TV'}
             </span>
-            {anime.episodes && (
-              <span>
-                {anime.episodes.sub > 0 ? `${anime.episodes.sub} Sub` : ''}
-                {anime.episodes.sub > 0 && anime.episodes.dub > 0 ? ' • ' : ''}
-                {anime.episodes.dub > 0 ? `${anime.episodes.dub} Dub` : ''}
+            {/* Displaying Episode count if available from Info API */}
+            {anime.subOrDub && (
+              <span className="text-red-500 font-medium">
+                {anime.subOrDub.toUpperCase()}
               </span>
             )}
           </div>
 
-          {/* Duration and Rating */}
-          <div className="flex items-center justify-between text-xs text-gray-400">
-            {anime.duration && (
-              <span>{anime.duration}</span>
-            )}
-            {anime.rating && (
-              <Badge variant="secondary" className="text-xs bg-gray-800 text-gray-300">
-                {anime.rating}
-              </Badge>
-            )}
-          </div>
-
-          {/* Description Preview */}
+          {/* Large variant Description - Updated to anime.description */}
           {variant === 'large' && anime.description && (
-            <p className="text-gray-400 text-xs mt-2 line-clamp-3">
+            <p className="text-gray-400 text-xs mt-2 line-clamp-2 italic">
               {anime.description}
             </p>
           )}
