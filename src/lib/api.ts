@@ -1,9 +1,12 @@
 import { createClient } from '@supabase/supabase-js';
 
-// Base URL for your specific Consumet HiAnime instance
+// 1. ORIGINAL API (For Info, Search, Spotlight)
 const BASE_URL = 'https://shadow-garden-wqkq.vercel.app/anime/hianime';
 
-// --- CONSUMET HIANIME TYPES ---
+// 2. NEW V2 STREAMING API (For Servers, Sources, Schedules)
+const BASE_URL_V2 = 'https://hianime-api-mu.vercel.app/api/v2/hianime';
+
+// --- TYPES ---
 
 export interface ConsumetAnime {
   id: string;
@@ -23,52 +26,71 @@ export interface ConsumetSearchResult {
   results: ConsumetAnime[];
 }
 
+export interface ConsumetEpisode {
+  id: string;
+  number: number;
+  title: string;
+  url: string;
+  isFiller?: boolean;
+  isSubbed?: boolean;
+  isDubbed?: boolean;
+}
+
 export interface ConsumetAnimeInfo extends ConsumetAnime {
   genres: string[];
   type: string;
   status: string;
   otherName?: string;
   totalEpisodes: number;
-  episodes: Array<{
-    id: string;
-    number: number;
-    title: string;
-    url: string;
-  }>;
+  episodes: ConsumetEpisode[];
+  recommendations?: ConsumetAnime[]; // Added for recommendations
+  relatedAnime?: ConsumetAnime[];    // Added for related seasons
+  japaneseTitle?: string;
 }
 
-export interface ConsumetStreamingLinks {
+// --- NEW V2 TYPES ---
+
+export interface EpisodeServer {
+  serverId: number;
+  serverName: string;
+}
+
+export interface ServerData {
+  episodeId: string;
+  episodeNo: number;
+  sub: EpisodeServer[];
+  dub: EpisodeServer[];
+  raw: EpisodeServer[];
+}
+
+export interface StreamSource {
+  url: string;
+  isM3U8: boolean;
+  quality?: string;
+}
+
+export interface V2SourceResponse {
   headers: {
     Referer: string;
     'User-Agent': string;
   };
-  sources: Array<{
-    url: string;
-    quality: string;
-    isM3U8: boolean;
-  }>;
-  download: string;
+  sources: StreamSource[];
+  subtitles: Array<{ lang: string; url: string }>;
+  intro?: { start: number; end: number };
+  outro?: { start: number; end: number };
 }
 
-// --- APP TYPES ---
-
-export interface WatchlistItem {
-  anime_id: string;
-  status: 'watching' | 'completed' | 'on_hold' | 'dropped' | 'plan_to_watch';
-  progress: number;
-  updated_at: string;
-}
-
-export interface AppUser {
-  id: string;
-  email: string;
-  user_metadata: { username: string };
+export interface NextEpSchedule {
+  airingISOTimestamp: string | null;
+  airingTimestamp: number | null;
+  secondsUntilAiring: number | null;
 }
 
 // --- SUPABASE CONFIG ---
 
-const supabaseUrl = import.meta.env?.VITE_SUPABASE_URL || '';
-const supabaseKey = import.meta.env?.VITE_SUPABASE_ANON_KEY || '';
+// Use process.env for Next.js compatibility (Vite env vars might not work if you switched to Next.js)
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
+const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '';
 
 export const supabase = supabaseUrl && supabaseKey 
   ? createClient(supabaseUrl, supabaseKey) 
@@ -77,10 +99,16 @@ export const supabase = supabaseUrl && supabaseKey
 // --- API IMPLEMENTATION ---
 
 export class AnimeAPI {
-  private static async request(endpoint: string, params: Record<string, any> = {}) {
+  
+  // Generic Request Handler
+  private static async request(baseUrl: string, endpoint: string, params: Record<string, any> = {}) {
     try {
-      const url = new URL(`${BASE_URL}${endpoint}`);
-      Object.keys(params).forEach(key => url.searchParams.append(key, params[key]));
+      const url = new URL(`${baseUrl}${endpoint}`);
+      Object.keys(params).forEach(key => {
+        if (params[key] !== undefined && params[key] !== null) {
+          url.searchParams.append(key, params[key]);
+        }
+      });
       
       const response = await fetch(url.toString());
       if (!response.ok) throw new Error(`Network error: ${response.statusText}`);
@@ -91,50 +119,74 @@ export class AnimeAPI {
     }
   }
 
-  // Spotlight (Hero Slider)
-  static async getSpotlight(): Promise<{ spotlightAnimes: ConsumetAnime[] }> {
-    return this.request('/spotlight');
+  // ==========================================
+  //  SECTION 1: INFO & DISCOVERY (OLD API)
+  // ==========================================
+
+  static async getSpotlight(): Promise<{ results: ConsumetAnime[] } | null> {
+    // Note: Your spotlight result key is 'results' based on previous logs, adjusted type if needed
+    return this.request(BASE_URL, '/spotlight');
   }
 
-  // Search (Path: /{query})
   static async searchAnime(query: string, page = 1): Promise<ConsumetSearchResult | null> {
-    return this.request(`/${encodeURIComponent(query)}`, { page });
+    return this.request(BASE_URL, `/${encodeURIComponent(query)}`, { page });
   }
 
-  // Info (Query: ?id={id})
   static async getAnimeInfo(id: string): Promise<ConsumetAnimeInfo | null> {
-    return this.request('/info', { id });
+    return this.request(BASE_URL, '/info', { id });
   }
 
-  // Streaming (Path: /watch/{episodeId})
-  static async getEpisodeSources(
-    episodeId: string, 
-    server = 'vidstreaming', 
-    category = 'sub'
-  ): Promise<ConsumetStreamingLinks | null> {
-    return this.request(`/watch/${episodeId}`, { server, category });
-  }
-
-  // Homepage Collections
   static async getTopAiring(page = 1): Promise<ConsumetSearchResult | null> {
-    return this.request('/top-airing', { page });
+    return this.request(BASE_URL, '/top-airing', { page });
   }
 
   static async getMostPopular(page = 1): Promise<ConsumetSearchResult | null> {
-    return this.request('/most-popular', { page });
+    return this.request(BASE_URL, '/most-popular', { page });
   }
 
   static async getRecentlyUpdated(page = 1): Promise<ConsumetSearchResult | null> {
-    return this.request('/recently-updated', { page });
+    return this.request(BASE_URL, '/recently-updated', { page });
   }
 
-  // Schedule (date format: YYYY-MM-DD)
-  static async getSchedule(date: string): Promise<{ scheduledAnimes: ConsumetAnime[] }> {
-    return this.request('/schedule', { date });
+  // ==========================================
+  //  SECTION 2: STREAMING V2 (NEW API)
+  // ==========================================
+
+  // 1. Get Servers for an Episode
+  // Endpoint: /api/v2/hianime/episode/servers?animeEpisodeId={id}
+  static async getEpisodeServers(animeEpisodeId: string): Promise<{ data: ServerData } | null> {
+    return this.request(BASE_URL_V2, '/episode/servers', { animeEpisodeId });
+  }
+
+  // 2. Get Streaming Links (Sources)
+  // Endpoint: /api/v2/hianime/episode/sources?animeEpisodeId={id}&server={server}&category={cat}
+  static async getEpisodeSourcesV2(
+    animeEpisodeId: string, 
+    server: string = 'hd-1', 
+    category: 'sub' | 'dub' | 'raw' = 'sub'
+  ): Promise<{ data: V2SourceResponse } | null> {
+    return this.request(BASE_URL_V2, '/episode/sources', { 
+      animeEpisodeId, 
+      server, 
+      category 
+    });
+  }
+
+  // 3. Get Next Episode Schedule
+  // Endpoint: /api/v2/hianime/anime/{animeId}/next-episode-schedule
+  static async getNextEpisodeSchedule(animeId: string): Promise<{ data: NextEpSchedule } | null> {
+    return this.request(BASE_URL_V2, `/anime/${animeId}/next-episode-schedule`);
   }
 }
 
 // --- WATCHLIST & USER PERSISTENCE ---
+
+export interface WatchlistItem {
+  anime_id: string;
+  status: 'watching' | 'completed' | 'on_hold' | 'dropped' | 'plan_to_watch';
+  progress: number; // Episode number
+  updated_at: string;
+}
 
 export class WatchlistAPI {
   static async getUserWatchlist(userId: string): Promise<WatchlistItem[]> {
@@ -142,30 +194,33 @@ export class WatchlistAPI {
       const { data } = await supabase.from('watchlist').select('*').eq('user_id', userId);
       return data || [];
     }
-    const local = localStorage.getItem(`watchlist_${userId}`);
-    return local ? JSON.parse(local) : [];
+    // Fallback to local storage
+    if (typeof window !== 'undefined') {
+        const local = localStorage.getItem(`watchlist_${userId}`);
+        return local ? JSON.parse(local) : [];
+    }
+    return [];
   }
 
-  static async addToWatchlist(userId: string, animeId: string, status: WatchlistItem['status']): Promise<boolean> {
-    const item = { anime_id: animeId, status, progress: 0, updated_at: new Date().toISOString() };
+  static async addToWatchlist(userId: string, animeId: string, status: WatchlistItem['status'], progress: number = 0): Promise<boolean> {
+    const item = { anime_id: animeId, status, progress, updated_at: new Date().toISOString() };
+    
     if (supabase) {
-      const { error } = await supabase.from('watchlist').upsert({ user_id: userId, ...item });
+      // Upsert: Insert or Update if exists
+      const { error } = await supabase.from('watchlist').upsert({ user_id: userId, ...item }, { onConflict: 'user_id, anime_id' });
       return !error;
     }
-    const list = await this.getUserWatchlist(userId);
-    const updated = [...list.filter(i => i.anime_id !== animeId), item];
-    localStorage.setItem(`watchlist_${userId}`, JSON.stringify(updated));
+    
+    // Local Storage Fallback
+    if (typeof window !== 'undefined') {
+        const list = await this.getUserWatchlist(userId);
+        const updated = [...list.filter(i => i.anime_id !== animeId), item];
+        localStorage.setItem(`watchlist_${userId}`, JSON.stringify(updated));
+    }
     return true;
   }
-}
-
-export class UserAPI {
-  static async getCurrentUser(): Promise<AppUser | null> {
-    if (supabase) {
-      const { data: { user } } = await supabase.auth.getUser();
-      return user as AppUser | null;
-    }
-    const user = localStorage.getItem('current_user');
-    return user ? JSON.parse(user) : null;
+  
+  static async updateProgress(userId: string, animeId: string, episodeNumber: number) {
+      return this.addToWatchlist(userId, animeId, 'watching', episodeNumber);
   }
 }
