@@ -1,11 +1,11 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { 
-  Play, SkipForward, SkipBack, Server as ServerIcon, 
-  Layers, Heart, Clock, Loader2, AlertCircle, RefreshCw, Home
+  SkipForward, SkipBack, Server as ServerIcon, 
+  Layers, Heart, Clock, Loader2, AlertCircle, RefreshCw, Home,
+  Tv, Film
 } from 'lucide-react';
 import { motion } from 'framer-motion';
-// We import the API class. Note: We will cast types locally to avoid export errors.
 import { AnimeV2API, UserAPI } from '@/lib/api'; 
 import AnimePlayer from '@/components/Player/AnimePlayer'; 
 import AnimeCard from '@/components/Anime/AnimeCard';
@@ -14,7 +14,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
 import { useSettings } from '@/hooks/useSettings';
 
-// --- LOCAL INTERFACES (Safety net) ---
+// --- SAFETY TYPES ---
 interface LocalEpisode {
   number: number;
   title: string;
@@ -22,20 +22,13 @@ interface LocalEpisode {
   isFiller: boolean;
 }
 
-interface LocalServer {
-  serverId: number;
-  serverName: string;
-}
-
 interface LocalServerData {
-  episodeId: string;
-  episodeNo: number;
-  sub: LocalServer[];
-  dub: LocalServer[];
-  raw: LocalServer[];
+  sub: Array<{ serverId: number; serverName: string }>;
+  dub: Array<{ serverId: number; serverName: string }>;
+  raw: Array<{ serverId: number; serverName: string }>;
 }
 
-// --- MAGICAL LOADER COMPONENT ---
+// --- FANTASY LOADER ---
 const FantasyLoader = ({ text = "SUMMONING..." }) => (
   <div className="w-full h-full min-h-[500px] flex flex-col items-center justify-center relative overflow-hidden bg-[#050505]">
     <div className="absolute inset-0 bg-gradient-to-tr from-red-900/10 to-purple-900/10 animate-pulse" />
@@ -67,13 +60,12 @@ export default function WatchClient({ animeId }: { animeId: string }) {
   const [searchParams, setSearchParams] = useSearchParams();
   const { settings } = useSettings();
 
-  // --- DATA STATE ---
+  // --- STATE ---
   const [data, setData] = useState<any | null>(null);
   const [episodes, setEpisodes] = useState<LocalEpisode[]>([]);
   const [isLoadingInfo, setIsLoadingInfo] = useState(true);
   const [infoError, setInfoError] = useState<string | null>(null);
 
-  // --- PLAYBACK STATE ---
   const [currentEpId, setCurrentEpId] = useState<string | null>(null);
   const [streamUrl, setStreamUrl] = useState<string | null>(null);
   const [isStreamLoading, setIsStreamLoading] = useState(false);
@@ -84,67 +76,90 @@ export default function WatchClient({ animeId }: { animeId: string }) {
   const [servers, setServers] = useState<LocalServerData | null>(null);
   
   const [category, setCategory] = useState<'sub' | 'dub' | 'raw'>('sub');
-  const [selectedServerName, setSelectedServerName] = useState<string>(settings.defaultServer || 'hd-1'); 
+  const [selectedServerName, setSelectedServerName] = useState<string>('hd-1'); 
   const [autoPlay, setAutoPlay] = useState(settings.autoPlay); 
   const [epChunkIndex, setEpChunkIndex] = useState(0);
   const [isDescExpanded, setIsDescExpanded] = useState(false);
 
   // --- 1. INITIAL LOAD ---
   useEffect(() => {
+    let isMounted = true;
     const init = async () => {
+      console.log(`[Watch] Initializing for ID: ${animeId}`);
       setIsLoadingInfo(true);
       setInfoError(null);
       try {
         if (!animeId) throw new Error("No Anime ID provided");
 
-        // Fetch Info
+        // Info
         const infoData = await AnimeV2API.getAnimeInfo(animeId);
-        if (!infoData) throw new Error("Anime info not found. The scrolls are incomplete.");
+        if (!isMounted) return;
+        if (!infoData) throw new Error("Anime info not found. ID might be invalid.");
         setData(infoData);
 
-        // Fetch Episodes
+        // Episodes
         const epData = await AnimeV2API.getEpisodes(animeId);
+        if (!isMounted) return;
+
         if (epData?.episodes && epData.episodes.length > 0) {
+          console.log(`[Watch] Found ${epData.episodes.length} episodes`);
           setEpisodes(epData.episodes as unknown as LocalEpisode[]);
           
-          // Determine starting episode
           const urlEp = searchParams.get('ep');
           const foundEp = epData.episodes.find((e: any) => e.episodeId === urlEp);
           
           if (foundEp) {
             setCurrentEpId(foundEp.episodeId);
           } else {
+            console.log(`[Watch] Defaulting to first episode: ${epData.episodes[0].episodeId}`);
             setCurrentEpId(epData.episodes[0].episodeId);
           }
         } else {
-          console.warn("No episodes found for this anime.");
+          console.warn("[Watch] No episodes found");
+          setInfoError("No episodes found for this anime.");
         }
       } catch (err: any) {
-        console.error("Failed to summon:", err);
-        setInfoError(err.message || "Failed to load anime info.");
+        console.error("[Watch] Init Failed:", err);
+        if (isMounted) setInfoError(err.message || "Failed to load anime info.");
       } finally {
-        setIsLoadingInfo(false);
+        if (isMounted) setIsLoadingInfo(false);
       }
     };
     init();
+    return () => { isMounted = false; };
   }, [animeId]);
 
   // --- 2. FETCH STREAM ---
   useEffect(() => {
     if (!currentEpId) return;
 
-    // Update URL quietly
+    console.log(`[Watch] Fetching Stream for EP: ${currentEpId} | Server: ${selectedServerName} | Cat: ${category}`);
+    
+    // Update URL
     setSearchParams(prev => { prev.set('ep', currentEpId); return prev; }, { replace: true });
     
-    // Reset Stream State
+    // Reset Stream
     setStreamUrl(null);
     setStreamError(null);
     setIsStreamLoading(true);
 
+    let isMounted = true;
+    
+    // Timeout Safety
+    const timeout = setTimeout(() => {
+      if (isMounted && isStreamLoading) {
+        setIsStreamLoading(false);
+        setStreamError("Server timed out. Try switching servers.");
+      }
+    }, 20000); // 20s timeout
+
     const loadStream = async () => {
       try {
-        // 1. Get Servers
+        // 1. Get Servers (Only if we haven't loaded them for this EP yet, or forcing refresh)
+        // Note: We refetch servers on every ep change to be safe
         const serverRes = await AnimeV2API.getEpisodeServers(currentEpId);
+        if (!isMounted) return;
+
         if (serverRes) {
            const localServers = serverRes as unknown as LocalServerData;
            setServers(localServers);
@@ -152,34 +167,43 @@ export default function WatchClient({ animeId }: { animeId: string }) {
            // Auto-switch to Dub if Sub is empty
            const subList = localServers.sub || [];
            const dubList = localServers.dub || [];
+           
+           console.log("[Watch] Servers loaded:", { sub: subList.length, dub: dubList.length });
+
            if (category === 'sub' && subList.length === 0 && dubList.length > 0) {
+             console.log("[Watch] Auto-switching to DUB");
              setCategory('dub');
-             // Return here to let the effect re-run with 'dub' category
-             // preventing a race condition fetch
-             return; 
+             return; // Let effect re-run with new category
            }
         }
 
         // 2. Get Source
         const sourceRes = await AnimeV2API.getEpisodeSources(currentEpId, selectedServerName, category);
-        
+        if (!isMounted) return;
+
+        console.log("[Watch] Source response:", sourceRes);
+
         if (sourceRes?.sources && sourceRes.sources.length > 0) {
           const bestSource = sourceRes.sources.find((s: any) => s.quality === 'auto') || sourceRes.sources[0];
           setStreamUrl(bestSource.url);
           setIntro((sourceRes as any).intro);
           setOutro((sourceRes as any).outro);
         } else {
-          throw new Error("No video sources found for this server.");
+          throw new Error("No video sources found.");
         }
       } catch (error: any) {
-        console.error("Stream failed:", error);
-        setStreamError("Failed to extract magic from source. Try changing servers.");
+        console.error("[Watch] Stream Failed:", error);
+        if (isMounted) setStreamError("Stream unavailable. Try changing the server.");
       } finally {
-        setIsStreamLoading(false);
+        if (isMounted) {
+          setIsStreamLoading(false);
+          clearTimeout(timeout);
+        }
       }
     };
 
     loadStream();
+    return () => { isMounted = false; clearTimeout(timeout); };
   }, [currentEpId, selectedServerName, category]);
 
   // --- HELPERS ---
@@ -211,52 +235,53 @@ export default function WatchClient({ animeId }: { animeId: string }) {
     dub: item.episodes?.dub,
   });
 
-  // --- RENDER: LOADING & ERROR STATES ---
+  // --- UI ---
 
   if (isLoadingInfo) return <FantasyLoader text="SUMMONING ANIME..." />;
 
-  if (infoError) {
+  if (infoError || !data) {
     return (
       <div className="min-h-screen bg-[#050505] flex flex-col items-center justify-center text-center p-4">
         <AlertCircle className="w-16 h-16 text-red-600 mb-4" />
         <h2 className="text-2xl font-bold text-white mb-2">Summoning Failed</h2>
-        <p className="text-gray-400 mb-6 max-w-md">{infoError}</p>
+        <p className="text-gray-400 mb-6 max-w-md font-mono text-sm">{infoError}</p>
         <div className="flex gap-4">
-          <Button onClick={() => window.location.reload()} variant="outline" className="border-white/10 text-white">
-            <RefreshCw className="mr-2 h-4 w-4" /> Retry
+          <Button onClick={() => navigate('/')} className="bg-white/10 hover:bg-white/20">
+            <Home className="mr-2 h-4 w-4" /> Home
           </Button>
-          <Button onClick={() => navigate('/')} className="bg-red-600 hover:bg-red-700">
-            <Home className="mr-2 h-4 w-4" /> Go Home
+          <Button onClick={() => window.location.reload()} className="bg-red-600 hover:bg-red-700">
+            <RefreshCw className="mr-2 h-4 w-4" /> Retry
           </Button>
         </div>
       </div>
     );
   }
 
-  if (!data) return null; // Should not happen due to error check above
-
   const { info: anime } = data.anime;
 
   return (
     <div className="min-h-screen bg-[#050505] text-gray-100 pb-20">
       
-      {/* 1. PLAYER AREA */}
+      {/* PLAYER */}
       <div className="w-full bg-black relative shadow-2xl shadow-red-900/10">
         <div className="max-w-[1600px] mx-auto aspect-video md:aspect-[21/9] lg:aspect-[16/9] max-h-[85vh] relative z-10 bg-black">
           
           {isStreamLoading ? (
              <FantasyLoader text="FETCHING STREAM..." />
           ) : streamError ? (
-             <div className="w-full h-full flex flex-col items-center justify-center bg-zinc-900 text-center p-6">
-                <AlertCircle className="w-12 h-12 text-red-500 mb-4" />
-                <h3 className="text-xl font-bold text-white mb-2">Stream Unavailable</h3>
-                <p className="text-gray-400 text-sm mb-6">{streamError}</p>
-                <div className="flex gap-4">
-                   <Button onClick={() => setSelectedServerName('vidstreaming')} variant="secondary" size="sm">
-                      Try Vidstreaming
+             <div className="w-full h-full flex flex-col items-center justify-center bg-zinc-900 text-center p-6 gap-6">
+                <div className="space-y-2">
+                   <AlertCircle className="w-12 h-12 text-red-500 mx-auto" />
+                   <h3 className="text-xl font-bold text-white">Stream Unavailable</h3>
+                   <p className="text-gray-400 text-sm max-w-sm mx-auto">{streamError}</p>
+                </div>
+                
+                <div className="grid grid-cols-2 gap-3">
+                   <Button onClick={() => setSelectedServerName('vidstreaming')} variant="outline" className="border-white/10 hover:bg-red-600/20 hover:text-red-500 hover:border-red-500/50">
+                      Switch to Vidstreaming
                    </Button>
-                   <Button onClick={() => setSelectedServerName('megacloud')} variant="secondary" size="sm">
-                      Try MegaCloud
+                   <Button onClick={() => setSelectedServerName('megacloud')} variant="outline" className="border-white/10 hover:bg-red-600/20 hover:text-red-500 hover:border-red-500/50">
+                      Switch to MegaCloud
                    </Button>
                 </div>
              </div>
@@ -269,14 +294,15 @@ export default function WatchClient({ animeId }: { animeId: string }) {
               onNext={nextEpisode ? () => handleEpisodeClick(nextEpisode.episodeId) : undefined}
             />
           ) : (
-            <div className="w-full h-full flex items-center justify-center bg-zinc-900">
-               <p className="text-gray-500 font-mono">SELECT AN EPISODE</p>
+            <div className="w-full h-full flex flex-col items-center justify-center bg-zinc-900 gap-4">
+               <Tv className="w-16 h-16 text-gray-700" />
+               <p className="text-gray-500 font-mono tracking-widest">SELECT AN EPISODE TO BEGIN</p>
             </div>
           )}
         </div>
       </div>
 
-      {/* 2. NAVIGATION BAR */}
+      {/* CONTROLS */}
       <div className="bg-[#0a0a0a] border-b border-white/5 sticky top-[56px] z-30 shadow-lg backdrop-blur-md bg-opacity-90">
         <div className="max-w-7xl mx-auto px-4 py-3 flex flex-col md:flex-row gap-4 justify-between items-center">
           
@@ -289,13 +315,12 @@ export default function WatchClient({ animeId }: { animeId: string }) {
                 <div className="flex flex-col">
                    <span className="text-[10px] text-red-500 font-bold uppercase tracking-wider">Now Playing</span>
                    <span className="text-sm text-gray-300 truncate max-w-[200px]">
-                     {currentEpisode?.title || `Episode ${currentEpisode?.number || '...'}`}
+                     {currentEpisode?.title || `Episode ${currentEpisode?.number || ''}`}
                    </span>
                 </div>
              </div>
           </div>
 
-          {/* Nav Buttons */}
           <div className="flex items-center gap-3">
              {prevEpisode && (
                <Button 
@@ -327,7 +352,6 @@ export default function WatchClient({ animeId }: { animeId: string }) {
              )}
           </div>
 
-          {/* Controls: Server & Category */}
           <div className="flex items-center gap-3">
              <div className="flex bg-black/40 rounded-lg p-1 border border-white/10">
                 {(['sub', 'dub', 'raw'] as const).map((cat) => (
@@ -343,32 +367,34 @@ export default function WatchClient({ animeId }: { animeId: string }) {
                 ))}
              </div>
              
-             <div className="flex items-center gap-2 bg-black/40 border border-white/10 rounded-lg px-3 py-1.5 hover:border-red-500/50 transition-colors">
-                <ServerIcon size={14} className="text-red-500" />
-                <select 
-                   className="bg-transparent text-xs font-bold text-gray-200 outline-none appearance-none cursor-pointer min-w-[80px]"
-                   value={selectedServerName}
-                   onChange={(e) => setSelectedServerName(e.target.value)}
-                >
-                   {Array.isArray(servers?.[category as keyof LocalServerData]) ? (
-                     (servers![category as keyof LocalServerData] as any[]).map((s) => (
-                       <option key={s.serverId} value={s.serverName} className="bg-zinc-900 text-gray-300">
-                          {s.serverName}
-                       </option>
-                     ))
-                   ) : (
-                     <option>Loading...</option>
-                   )}
-                </select>
+             <div className="relative group">
+                <div className="flex items-center gap-2 bg-black/40 border border-white/10 rounded-lg px-3 py-1.5 hover:border-red-500/50 transition-colors cursor-pointer">
+                   <ServerIcon size={14} className="text-red-500" />
+                   <select 
+                      className="bg-transparent text-xs font-bold text-gray-200 outline-none appearance-none cursor-pointer min-w-[80px]"
+                      value={selectedServerName}
+                      onChange={(e) => setSelectedServerName(e.target.value)}
+                   >
+                      {/* Safety Check: Only map if servers exist */}
+                      {servers?.[category as keyof LocalServerData]?.length ? (
+                        (servers[category as keyof LocalServerData] as any[]).map((s) => (
+                          <option key={s.serverId} value={s.serverName} className="bg-zinc-900 text-gray-300">
+                             {s.serverName}
+                          </option>
+                        ))
+                      ) : (
+                        <option value="hd-1">Loading...</option>
+                      )}
+                   </select>
+                </div>
              </div>
           </div>
         </div>
       </div>
 
-      {/* 3. INFO & LISTS */}
+      {/* LISTS */}
       <div className="max-w-7xl mx-auto px-4 mt-8 grid grid-cols-1 lg:grid-cols-12 gap-8">
         
-        {/* LEFT: EPISODE SELECTOR */}
         <div className="lg:col-span-4 space-y-4">
            <div className="bg-[#0a0a0a] rounded-xl border border-white/5 overflow-hidden flex flex-col h-[600px] shadow-xl">
               <div className="p-4 bg-white/5 border-b border-white/5 flex justify-between items-center">
@@ -426,7 +452,6 @@ export default function WatchClient({ animeId }: { animeId: string }) {
            </div>
         </div>
 
-        {/* RIGHT: DETAILS */}
         <div className="lg:col-span-8 space-y-8">
            <div className="relative rounded-3xl overflow-hidden bg-[#0a0a0a] border border-white/5 group p-6 md:p-8 flex flex-col md:flex-row gap-8 shadow-2xl">
               <div className="absolute inset-0 z-0">
@@ -463,13 +488,6 @@ export default function WatchClient({ animeId }: { animeId: string }) {
                  >
                     {isDescExpanded ? 'Show Less' : 'Read More'}
                  </button>
-                 
-                 <div className="grid grid-cols-2 gap-4 text-xs text-gray-400 bg-white/5 p-4 rounded-xl border border-white/5 mt-6">
-                    <div><span className="text-gray-500 block mb-1 font-bold uppercase tracking-wider">Studios</span> {data.anime.moreInfo.studios}</div>
-                    <div><span className="text-gray-500 block mb-1 font-bold uppercase tracking-wider">Aired</span> {data.anime.moreInfo.aired}</div>
-                    <div><span className="text-gray-500 block mb-1 font-bold uppercase tracking-wider">Status</span> {data.anime.moreInfo.status}</div>
-                    <div><span className="text-gray-500 block mb-1 font-bold uppercase tracking-wider">Genres</span> {data.anime.moreInfo.genres.join(", ")}</div>
-                 </div>
               </div>
            </div>
 

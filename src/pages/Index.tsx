@@ -6,7 +6,7 @@ import { toast } from 'sonner';
 
 import AnimeCard from '@/components/Anime/AnimeCard';
 import SpotlightSlider from '@/components/Anime/SpotlightSlider';
-import { AnimeAPI, WatchlistAPI, UserAPI, ConsumetAnime, AppUser } from '@/lib/api';
+import { AnimeAPI, WatchlistAPI, UserAPI, ConsumetAnime, AppUser, ConsumetAnimeInfo } from '@/lib/api';
 import { Loader2 } from 'lucide-react';
 
 // Interface for the local state

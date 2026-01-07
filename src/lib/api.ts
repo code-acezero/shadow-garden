@@ -57,7 +57,7 @@ export interface ConsumetEpisode {
   isDubbed?: boolean;
 }
 
-export interface ConsumetAnimeInfo extends ConsumetAnime {
+export interface ConsumetAnimeInfo extends Omit<ConsumetAnime, 'episodes'> {
   genres: string[];
   status: string;
   totalEpisodes: number;
