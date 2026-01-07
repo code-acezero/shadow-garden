@@ -4,7 +4,7 @@ import {
   SkipForward, SkipBack, Server as ServerIcon, 
   Layers, Heart, Clock, AlertCircle, RefreshCw, Home,
   Tv, Play, Share2, Star, Calendar, Mic, User, 
-  Grid, List, AlignJustify, Timer
+  Grid, List, AlignJustify, Timer, ArrowRight
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
@@ -20,7 +20,7 @@ import {
 import AnimePlayer from '@/components/Player/AnimePlayer'; 
 import AnimeCard from '@/components/Anime/AnimeCard';
 import { Button } from '@/components/ui/button';
-import { ScrollArea } from '@/components/ui/scroll-area';
+import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
 import { useSettings } from '@/hooks/useSettings';
 import { Separator } from '@/components/ui/separator';
@@ -34,7 +34,7 @@ interface LocalServerData {
 
 type EpisodeViewMode = 'tile' | 'list' | 'detail';
 
-// --- NEXT EPISODE COUNTDOWN COMPONENT ---
+// --- NEXT EPISODE COUNTDOWN ---
 const NextEpisodeTimer = ({ schedule }: { schedule: V2EpisodeSchedule | null }) => {
   if (!schedule?.airingTimestamp) return null;
 
@@ -44,19 +44,12 @@ const NextEpisodeTimer = ({ schedule }: { schedule: V2EpisodeSchedule | null }) 
     const updateTimer = () => {
       const now = Date.now() / 1000;
       const diff = schedule.airingTimestamp! - now;
-      
-      if (diff <= 0) {
-        setTimeLeft("Airing Now");
-        return;
-      }
-
+      if (diff <= 0) { setTimeLeft("Airing Now"); return; }
       const days = Math.floor(diff / 86400);
       const hours = Math.floor((diff % 86400) / 3600);
       const minutes = Math.floor((diff % 3600) / 60);
-      
       setTimeLeft(`${days}d ${hours}h ${minutes}m`);
     };
-
     updateTimer();
     const interval = setInterval(updateTimer, 60000); 
     return () => clearInterval(interval);
@@ -81,11 +74,9 @@ const FantasyLoader = ({ text = "SUMMONING..." }) => (
           transition={{ duration: 3, repeat: Infinity, ease: "linear" }}
           className="absolute inset-0 border-4 border-red-600 blur-md rounded-full"
         />
-        <motion.div 
-          animate={{ rotate: -360, scale: [1, 0.9, 1] }} 
-          transition={{ duration: 4, repeat: Infinity, ease: "linear" }}
-          className="absolute inset-2 border-4 border-purple-600 blur-sm rounded-full"
-        />
+        <div className="absolute inset-0 flex items-center justify-center">
+           <div className="w-2 h-2 bg-white rounded-full animate-ping" />
+        </div>
       </div>
       <h2 className="text-xl md:text-2xl font-[Cinzel] font-bold text-transparent bg-clip-text bg-gradient-to-r from-red-500 to-purple-500 tracking-[0.2em] animate-pulse">
         {text}
@@ -137,7 +128,6 @@ export default function WatchClient({ animeId: propAnimeId }: { animeId?: string
       try {
         if (!animeId) throw new Error("No Anime ID provided");
 
-        // PARALLEL FETCH
         const [v2InfoData, baseData, scheduleData] = await Promise.all([
           AnimeAPI_V2.getAnimeInfo(animeId),
           AnimeAPI.getAnimeInfo(animeId), 
@@ -150,16 +140,12 @@ export default function WatchClient({ animeId: propAnimeId }: { animeId?: string
         setInfo(v2InfoData);
         setNextEpSchedule(scheduleData);
 
-        // Episode List Strategy
         if (baseData?.episodes && baseData.episodes.length > 0) {
            setBaseEpisodes(baseData.episodes);
-           
            const urlEp = searchParams.get('ep');
            const foundEp = baseData.episodes.find((e) => e.id === urlEp);
-           
            if (foundEp) setCurrentEpId(foundEp.id);
            else setCurrentEpId(baseData.episodes[0].id);
-
         } else {
            const v2EpData = await AnimeAPI_V2.getEpisodes(animeId);
            if (v2EpData?.episodes) {
@@ -174,7 +160,6 @@ export default function WatchClient({ animeId: propAnimeId }: { animeId?: string
               setInfoError("No episodes found.");
            }
         }
-
       } catch (err: any) {
         console.error("[Watch] Init Failed:", err);
         if (isMounted) setInfoError(err.message || "Failed to load anime info.");
@@ -189,9 +174,7 @@ export default function WatchClient({ animeId: propAnimeId }: { animeId?: string
   // --- 2. FETCH STREAM ---
   useEffect(() => {
     if (!currentEpId) return;
-
     setSearchParams(prev => { prev.set('ep', currentEpId); return prev; }, { replace: true });
-    
     setStreamUrl(null);
     setStreamError(null);
     setIsStreamLoading(true);
@@ -207,7 +190,6 @@ export default function WatchClient({ animeId: propAnimeId }: { animeId?: string
     const loadStream = async () => {
       try {
         await new Promise(r => setTimeout(r, 100));
-
         const serverRes = await AnimeAPI_V2.getEpisodeServers(currentEpId);
         if (!isMounted) return;
 
@@ -217,7 +199,6 @@ export default function WatchClient({ animeId: propAnimeId }: { animeId?: string
         if (serverRes) {
            const localServers = serverRes as unknown as LocalServerData;
            setServers(localServers);
-           
            const subList = localServers.sub || [];
            const dubList = localServers.dub || [];
            const rawList = localServers.raw || [];
@@ -226,15 +207,12 @@ export default function WatchClient({ animeId: propAnimeId }: { animeId?: string
               if (dubList.length > 0) activeCategory = 'dub';
               else if (rawList.length > 0) activeCategory = 'raw';
            }
-
            if (activeCategory !== category) {
              setCategory(activeCategory);
              return; 
            }
-
            const currentList = localServers[activeCategory] || [];
            const serverExists = currentList.find(s => s.serverName === activeServer);
-           
            if (!serverExists && currentList.length > 0) {
              activeServer = currentList[0].serverName;
              setSelectedServerName(activeServer);
@@ -242,7 +220,6 @@ export default function WatchClient({ animeId: propAnimeId }: { animeId?: string
         }
 
         await new Promise(r => setTimeout(r, 200));
-
         const sourceRes = await AnimeAPI_V2.getEpisodeSources(currentEpId, activeServer, activeCategory);
         if (!isMounted) return;
 
@@ -254,7 +231,6 @@ export default function WatchClient({ animeId: propAnimeId }: { animeId?: string
         } else {
           throw new Error("No video sources found.");
         }
-
       } catch (error: any) {
         console.error("[Watch] Stream Failed:", error);
         if (isMounted) setStreamError("Stream unavailable.");
@@ -265,7 +241,6 @@ export default function WatchClient({ animeId: propAnimeId }: { animeId?: string
         }
       }
     };
-
     loadStream();
     return () => { isMounted = false; clearTimeout(timeout); };
   }, [currentEpId, selectedServerName, category]);
@@ -313,7 +288,6 @@ export default function WatchClient({ animeId: propAnimeId }: { animeId?: string
     );
   }
 
-  // DESTRUCTURING
   const { info: details, moreInfo } = info.anime;
 
   return (
@@ -351,8 +325,8 @@ export default function WatchClient({ animeId: propAnimeId }: { animeId?: string
       </div>
 
       {/* === CONTROLS BAR === */}
-      <div className="bg-[#0a0a0a] border-b border-white/5 sticky top-[56px] z-30 shadow-lg backdrop-blur-md bg-opacity-90">
-        <div className="max-w-7xl mx-auto px-4 py-3 flex flex-col md:flex-row gap-4 justify-between items-center">
+      <div className="bg-[#0a0a0a] border-b border-white/5">
+        <div className="max-w-[1600px] mx-auto px-6 py-3 flex flex-col md:flex-row gap-4 justify-between items-center">
           
           <div className="flex-1 min-w-0">
              <div className="flex items-center gap-3">
@@ -399,51 +373,10 @@ export default function WatchClient({ animeId: propAnimeId }: { animeId?: string
         </div>
       </div>
 
-      {/* === MAIN CONTENT GRID === */}
-      <div className="max-w-[1800px] mx-auto px-4 mt-8 grid grid-cols-1 xl:grid-cols-12 gap-8">
+      {/* === TOP ROW: EPISODES (LEFT) & DETAILS (RIGHT) === */}
+      <div className="max-w-[1600px] mx-auto px-6 mt-8 grid grid-cols-1 xl:grid-cols-12 gap-8">
         
-        {/* === DETAILS PANE === */}
-        <div className="xl:col-span-8 h-[600px] bg-[#0a0a0a] rounded-xl border border-white/5 overflow-hidden flex flex-col shadow-xl">
-           <div className="relative h-48 flex-shrink-0">
-              <div className="absolute inset-0">
-                 <img src={details.poster} className="w-full h-full object-cover opacity-30 blur-xl" />
-                 <div className="absolute inset-0 bg-gradient-to-t from-[#0a0a0a] via-[#0a0a0a]/50 to-transparent" />
-              </div>
-              <div className="absolute bottom-4 left-6 right-6 flex gap-6 items-end">
-                 <img src={details.poster} className="w-32 h-48 rounded-lg shadow-2xl border border-white/10 object-cover hidden sm:block translate-y-12" />
-                 <div className="flex-1 pb-2">
-                    <h1 className="text-3xl font-black text-white font-[Cinzel] leading-none line-clamp-1">{details.name}</h1>
-                    <div className="flex flex-wrap gap-2 mt-2">
-                       <Badge className="bg-red-600 hover:bg-red-700">{details.stats.quality}</Badge>
-                       <Badge variant="outline" className="text-zinc-400 border-zinc-700">{details.stats.type}</Badge>
-                       <div className="flex items-center gap-1 text-xs text-zinc-400 ml-2">
-                          <Clock className="w-3 h-3"/> {details.stats.duration}
-                       </div>
-                    </div>
-                 </div>
-              </div>
-           </div>
-
-           <ScrollArea className="flex-1 p-6 pt-16 sm:pt-6 sm:pl-[170px]">
-              <div className="space-y-6">
-                 <p className="text-gray-300 text-sm leading-relaxed">{details.description}</p>
-                 <Separator className="bg-white/5" />
-                 <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-xs">
-                    <div><span className="text-red-500 font-bold block mb-1">Studios</span><span className="text-zinc-300">{moreInfo.studios}</span></div>
-                    <div><span className="text-red-500 font-bold block mb-1">Aired</span><span className="text-zinc-300">{moreInfo.aired}</span></div>
-                    <div><span className="text-red-500 font-bold block mb-1">Status</span><span className="text-zinc-300 uppercase">{moreInfo.status}</span></div>
-                    <div>
-                       <span className="text-red-500 font-bold block mb-1">Genres</span>
-                       <div className="flex flex-wrap gap-1">
-                          {moreInfo.genres.map(g => <span key={g} className="text-zinc-400">{g},</span>)}
-                       </div>
-                    </div>
-                 </div>
-              </div>
-           </ScrollArea>
-        </div>
-
-        {/* === EPISODES PANE === */}
+        {/* === LEFT: EPISODES (Fixed Height 600px) === */}
         <div className="xl:col-span-4 h-[600px] bg-[#0a0a0a] rounded-xl border border-white/5 overflow-hidden flex flex-col shadow-xl">
            <div className="p-3 bg-white/5 border-b border-white/5 flex justify-between items-center flex-shrink-0">
               <h3 className="font-bold text-gray-100 flex items-center gap-2">
@@ -457,20 +390,24 @@ export default function WatchClient({ animeId: propAnimeId }: { animeId?: string
               </div>
            </div>
 
+           {/* 1. SCROLLABLE EPISODE CHUNK ROW */}
            {episodeChunks.length > 1 && (
-              <ScrollArea className="w-full whitespace-nowrap border-b border-white/5 bg-black/20 flex-shrink-0 h-10">
-                 <div className="flex p-2 gap-2">
-                    {episodeChunks.map((_, idx) => (
-                       <button
-                          key={idx}
-                          onClick={() => setEpChunkIndex(idx)}
-                          className={`px-3 py-0.5 text-[10px] font-bold rounded transition-all ${epChunkIndex === idx ? 'bg-red-600 text-white' : 'bg-white/5 text-zinc-500'}`}
-                        >
-                           {(idx * (epViewMode === 'detail' ? 50 : 100)) + 1} - {Math.min((idx + 1) * (epViewMode === 'detail' ? 50 : 100), baseEpisodes.length)}
-                        </button>
-                    ))}
-                 </div>
-              </ScrollArea>
+              <div className="w-full border-b border-white/5 bg-black/20 flex-shrink-0 h-10 overflow-hidden">
+                 <ScrollArea className="w-full h-full whitespace-nowrap">
+                    <div className="flex items-center p-2 gap-2 w-max">
+                        {episodeChunks.map((_, idx) => (
+                           <button
+                              key={idx}
+                              onClick={() => setEpChunkIndex(idx)}
+                              className={`px-3 py-0.5 text-[10px] font-bold rounded transition-all whitespace-nowrap ${epChunkIndex === idx ? 'bg-red-600 text-white' : 'bg-white/5 text-zinc-500'}`}
+                            >
+                               {(idx * (epViewMode === 'detail' ? 50 : 100)) + 1} - {Math.min((idx + 1) * (epViewMode === 'detail' ? 50 : 100), baseEpisodes.length)}
+                            </button>
+                        ))}
+                    </div>
+                    <ScrollBar orientation="horizontal" />
+                 </ScrollArea>
+              </div>
            )}
 
            <ScrollArea className="flex-1 p-2">
@@ -509,61 +446,141 @@ export default function WatchClient({ animeId: propAnimeId }: { animeId?: string
               </div>
            </ScrollArea>
         </div>
+
+        {/* === RIGHT: DETAILS PANE (Fixed Height 600px) === */}
+        <div className="xl:col-span-8 h-[600px] bg-[#0a0a0a] rounded-xl border border-white/5 overflow-hidden flex flex-col shadow-xl">
+           <div className="relative h-48 flex-shrink-0">
+              <div className="absolute inset-0">
+                 <img src={details.poster} className="w-full h-full object-cover opacity-30 blur-xl" />
+                 <div className="absolute inset-0 bg-gradient-to-t from-[#0a0a0a] via-[#0a0a0a]/50 to-transparent" />
+              </div>
+              <div className="absolute bottom-4 left-6 right-6 flex gap-6 items-end">
+                 <img src={details.poster} className="w-32 h-48 rounded-lg shadow-2xl border border-white/10 object-cover hidden sm:block translate-y-12" />
+                 <div className="flex-1 pb-2">
+                    <h1 className="text-3xl font-black text-white font-[Cinzel] leading-none line-clamp-1">{details.name}</h1>
+                    <div className="flex flex-wrap gap-2 mt-2">
+                       <Badge className="bg-red-600 hover:bg-red-700">{details.stats.quality}</Badge>
+                       <Badge variant="outline" className="text-zinc-400 border-zinc-700">{details.stats.type}</Badge>
+                       <Badge variant="outline" className="text-zinc-400 border-zinc-700">{details.stats.rating}</Badge>
+                       <div className="flex items-center gap-1 text-xs text-zinc-400 ml-2">
+                          <Clock className="w-3 h-3"/> {details.stats.duration}
+                       </div>
+                    </div>
+                 </div>
+              </div>
+           </div>
+
+           <ScrollArea className="flex-1 p-6 pt-16 sm:pt-6 sm:pl-[170px]">
+              <div className="space-y-6">
+                 <p className="text-gray-300 text-sm leading-relaxed">{details.description}</p>
+                 <Separator className="bg-white/5" />
+                 <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-xs">
+                    <div><span className="text-red-500 font-bold block mb-1">Studios</span><span className="text-zinc-300">{moreInfo.studios}</span></div>
+                    <div><span className="text-red-500 font-bold block mb-1">Aired</span><span className="text-zinc-300">{moreInfo.aired}</span></div>
+                    <div><span className="text-red-500 font-bold block mb-1">Status</span><span className="text-zinc-300 uppercase">{moreInfo.status}</span></div>
+                    <div>
+                       <span className="text-red-500 font-bold block mb-1">Genres</span>
+                       <div className="flex flex-wrap gap-1">
+                          {moreInfo.genres.map(g => <span key={g} className="text-zinc-400 hover:text-white cursor-pointer">{g},</span>)}
+                       </div>
+                    </div>
+                 </div>
+              </div>
+           </ScrollArea>
+        </div>
+
       </div>
 
-      {/* === SECONDARY ROW === */}
-      <div className="max-w-[1800px] mx-auto px-4 mt-8 grid grid-cols-1 xl:grid-cols-12 gap-8">
+      {/* === 2. MIDDLE SECTION: SEASONS & RELATED (LIQUID GLASS CAPSULE) === */}
+      {(info.seasons.length > 0 || info.relatedAnimes.length > 0) && (
+         <div className="flex justify-center mt-8 px-6">
+            <div className="w-full max-w-[1600px]">
+               <div className="bg-white/5 backdrop-blur-md border border-white/10 shadow-2xl rounded-2xl p-4 overflow-hidden">
+                  
+                  {/* SEASONS ROW */}
+                  {info.seasons.length > 0 && (
+                     <div className="mb-4">
+                        <h4 className="text-[10px] text-red-500 font-bold uppercase mb-2 ml-2 tracking-widest">Seasons</h4>
+                        <ScrollArea className="w-full whitespace-nowrap">
+                           <div className="flex gap-3 pb-2 w-max">
+                              {info.seasons.map((season) => (
+                                 <div 
+                                    key={season.id} 
+                                    onClick={() => navigate(`/watch/${season.id}`)}
+                                    className={`
+                                       group flex items-center gap-3 p-1 pr-4 rounded-full border cursor-pointer transition-all duration-300
+                                       ${season.isCurrent 
+                                          ? 'bg-red-600/20 border-red-500/50 hover:bg-red-600/30' 
+                                          : 'bg-black/40 border-white/10 hover:bg-white/10 hover:border-white/30'
+                                       }
+                                    `}
+                                 >
+                                    <img src={season.poster} className="w-8 h-8 rounded-full object-cover border border-white/10" />
+                                    <div className="flex flex-col">
+                                       <span className={`text-xs font-bold ${season.isCurrent ? 'text-white' : 'text-zinc-400 group-hover:text-white'}`}>
+                                          {season.title || season.name}
+                                       </span>
+                                    </div>
+                                 </div>
+                              ))}
+                           </div>
+                           <ScrollBar orientation="horizontal" className="bg-white/5 h-1.5" />
+                        </ScrollArea>
+                     </div>
+                  )}
+
+                  {/* RELATED ANIMES ROW (Using same liquid style) */}
+                  {info.relatedAnimes.length > 0 && (
+                     <div>
+                        <h4 className="text-[10px] text-purple-500 font-bold uppercase mb-2 ml-2 tracking-widest">Related</h4>
+                        <ScrollArea className="w-full whitespace-nowrap">
+                           <div className="flex gap-3 pb-2 w-max">
+                              {info.relatedAnimes.map((rel) => (
+                                 <div 
+                                    key={rel.id} 
+                                    onClick={() => navigate(`/watch/${rel.id}`)}
+                                    className="group flex items-center gap-3 p-1 pr-4 rounded-full bg-black/40 border border-white/10 hover:bg-white/10 hover:border-white/30 cursor-pointer transition-all duration-300"
+                                 >
+                                    <img src={rel.poster} className="w-8 h-8 rounded-full object-cover border border-white/10" />
+                                    <div className="flex flex-col">
+                                       <span className="text-xs font-bold text-zinc-400 group-hover:text-white">
+                                          {rel.name}
+                                       </span>
+                                       <span className="text-[9px] text-zinc-600 uppercase">{rel.type}</span>
+                                    </div>
+                                 </div>
+                              ))}
+                           </div>
+                           <ScrollBar orientation="horizontal" className="bg-white/5 h-1.5" />
+                        </ScrollArea>
+                     </div>
+                  )}
+
+               </div>
+            </div>
+         </div>
+      )}
+
+      {/* === BOTTOM ROW: RECOMMENDED & CAST (Fixed Height 600px) === */}
+      <div className="max-w-[1600px] mx-auto px-6 mt-8 grid grid-cols-1 xl:grid-cols-12 gap-8">
          
-         {/* RECOMMENDED (Left, Smaller) */}
-         <div className="xl:col-span-4 space-y-4">
+         {/* 7. RECOMMENDED (Left, Smaller) */}
+         <div className="xl:col-span-4 h-[600px] flex flex-col">
             <div className="flex items-center gap-2 mb-2">
                <div className="w-1 h-5 bg-purple-600 rounded-full" />
                <h3 className="font-bold text-white">Recommended</h3>
             </div>
-            <ScrollArea className="h-[500px] pr-4">
-               <div className="space-y-3">
-                  {info.recommendedAnimes.map((rec) => (
-                     <div key={rec.id} onClick={() => navigate(`/watch/${rec.id}`)} className="flex gap-3 p-2 rounded-lg hover:bg-white/5 cursor-pointer group transition-colors">
-                        <img src={rec.poster} className="w-16 h-24 object-cover rounded shadow-lg" />
-                        <div className="flex-1 py-1">
-                           <h4 className="text-sm font-bold text-gray-200 group-hover:text-purple-400 line-clamp-2 leading-tight">{rec.name}</h4>
-                           <div className="flex items-center gap-2 mt-2 text-[10px] text-zinc-500">
-                              <span className="bg-white/10 px-1.5 py-0.5 rounded text-zinc-300">{rec.type}</span>
-                              <span>{rec.episodes?.sub} Eps</span>
-                           </div>
-                        </div>
-                     </div>
-                  ))}
-               </div>
-            </ScrollArea>
-         </div>
-
-         {/* CHARACTERS (Right, Side-by-Side) */}
-         <div className="xl:col-span-8">
-            <div className="bg-[#0a0a0a] rounded-xl border border-white/5 h-[500px] flex flex-col overflow-hidden">
-               <div className="p-4 bg-white/5 border-b border-white/5">
-                  <h3 className="font-bold text-white flex items-center gap-2">
-                     <User size={16} className="text-blue-500"/> Characters & Voice Actors
-                  </h3>
-               </div>
-               <ScrollArea className="flex-1 p-4">
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                     {/* FIX: Using details.characterVoiceActor */}
-                     {details.characterVoiceActor?.map((cva, i) => (
-                        <div key={i} className="flex items-center justify-between bg-white/5 p-2 rounded-lg border border-white/5 hover:border-white/10 transition-colors">
-                           <div className="flex items-center gap-3">
-                              <img src={cva.character.poster} className="w-12 h-12 rounded-full object-cover border border-zinc-700" />
-                              <div className="text-left">
-                                 <div className="text-xs font-bold text-zinc-200">{cva.character.name}</div>
-                                 <div className="text-[10px] text-zinc-500">{cva.character.cast}</div>
-                              </div>
-                           </div>
-                           <div className="h-8 w-[1px] bg-white/10 mx-2" />
-                           <div className="flex items-center gap-3 flex-row-reverse text-right">
-                              <img src={cva.voiceActor.poster} className="w-12 h-12 rounded-full object-cover border border-zinc-700" />
-                              <div>
-                                 <div className="text-xs font-bold text-zinc-200">{cva.voiceActor.name}</div>
-                                 <div className="text-[10px] text-zinc-500">{cva.voiceActor.cast}</div>
+            <div className="bg-[#0a0a0a] rounded-xl border border-white/5 flex-1 overflow-hidden shadow-xl p-2">
+               <ScrollArea className="h-full pr-2">
+                  <div className="space-y-2">
+                     {info.recommendedAnimes.map((rec) => (
+                        <div key={rec.id} onClick={() => navigate(`/watch/${rec.id}`)} className="flex gap-3 p-2 rounded-lg hover:bg-white/5 cursor-pointer group transition-colors">
+                           <img src={rec.poster} className="w-16 h-20 object-cover rounded shadow-lg" />
+                           <div className="flex-1 py-1">
+                              <h4 className="text-xs font-bold text-gray-200 group-hover:text-purple-400 line-clamp-2 leading-tight">{rec.name}</h4>
+                              <div className="flex items-center gap-2 mt-2 text-[10px] text-zinc-500">
+                                 <span className="bg-white/10 px-1.5 py-0.5 rounded text-zinc-300 border border-white/5">{rec.type}</span>
+                                 <span>{rec.episodes?.sub} Eps</span>
                               </div>
                            </div>
                         </div>
@@ -571,6 +588,38 @@ export default function WatchClient({ animeId: propAnimeId }: { animeId?: string
                   </div>
                </ScrollArea>
             </div>
+         </div>
+
+         {/* 6. CHARACTERS & VOICE ACTORS (Right, Side-by-Side) */}
+         <div className="xl:col-span-8 h-[600px] bg-[#0a0a0a] rounded-xl border border-white/5 overflow-hidden flex flex-col shadow-xl">
+            <div className="p-4 bg-white/5 border-b border-white/5">
+               <h3 className="font-bold text-white flex items-center gap-2">
+                  <User size={16} className="text-blue-500"/> Characters & Voice Actors
+               </h3>
+            </div>
+            <ScrollArea className="flex-1 p-4">
+               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {details.characterVoiceActor?.map((cva, i) => (
+                     <div key={i} className="flex items-center justify-between bg-white/5 p-2 rounded-lg border border-white/5 hover:border-white/10 transition-colors">
+                        <div className="flex items-center gap-3">
+                           <img src={cva.character.poster} className="w-12 h-12 rounded-full object-cover border border-zinc-700" />
+                           <div className="text-left">
+                              <div className="text-xs font-bold text-zinc-200">{cva.character.name}</div>
+                              <div className="text-[10px] text-zinc-500">{cva.character.cast}</div>
+                           </div>
+                        </div>
+                        <div className="h-8 w-[1px] bg-white/10 mx-2" />
+                        <div className="flex items-center gap-3 flex-row-reverse text-right">
+                           <img src={cva.voiceActor.poster} className="w-12 h-12 rounded-full object-cover border border-zinc-700" />
+                           <div>
+                              <div className="text-xs font-bold text-zinc-200">{cva.voiceActor.name}</div>
+                              <div className="text-[10px] text-zinc-500">{cva.voiceActor.cast}</div>
+                           </div>
+                        </div>
+                     </div>
+                  ))}
+               </div>
+            </ScrollArea>
          </div>
 
       </div>
