@@ -1,19 +1,23 @@
 import { createClient } from '@supabase/supabase-js';
 
 // ==========================================
-//  EXISTING V1 API LOGIC
+//  1. CONFIGURATION
 // ==========================================
 
-const BASE_URL = 'https://shadow-garden-wqkq.vercel.app/anime/hianime';
+const BASE_URL_V1 = 'https://shadow-garden-wqkq.vercel.app/anime/hianime';
+const BASE_URL_V2 = 'https://hianime-api-mu.vercel.app/api/v2/hianime';
 
-const supabaseUrl = import.meta.env?.VITE_SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL || '';
-const supabaseKey = import.meta.env?.VITE_SUPABASE_ANON_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '';
+const supabaseUrl = import.meta.env?.VITE_SUPABASE_URL || '';
+const supabaseKey = import.meta.env?.VITE_SUPABASE_ANON_KEY || '';
 
 export const supabase = supabaseUrl && supabaseKey 
   ? createClient(supabaseUrl, supabaseKey) 
   : null;
 
-// TYPES (V1)
+// ==========================================
+//  2. SHARED / V1 TYPES
+// ==========================================
+
 export interface AppUser {
   id: string;
   email?: string;
@@ -35,8 +39,12 @@ export interface ConsumetAnime {
   rank?: number;
   type?: string;
   duration?: string;
+  // Optional props for UI flexibility
   banner?: string; 
   japaneseTitle?: string;
+  sub?: number;
+  dub?: number;
+  episodes?: number;
 }
 
 export interface ConsumetEpisode {
@@ -66,107 +74,56 @@ export interface WatchlistItem {
   updated_at: string;
 }
 
-// API CLASS (V1)
+// ==========================================
+//  3. V1 API CLASS (Legacy/Home Support)
+// ==========================================
+
 export class AnimeAPI {
-  private static async request(baseUrl: string, endpoint: string, params: Record<string, any> = {}) {
+  private static async request(endpoint: string, params: Record<string, any> = {}) {
     try {
-      const url = new URL(`${baseUrl}${endpoint}`);
+      const url = new URL(`${BASE_URL_V1}${endpoint}`);
       Object.keys(params).forEach(key => {
         if (params[key] !== undefined && params[key] !== null) {
           url.searchParams.append(key, params[key]);
         }
       });
-      
       const response = await fetch(url.toString());
-      if (!response.ok) throw new Error(`Network error: ${response.statusText}`);
+      if (!response.ok) throw new Error(`V1 Error: ${response.statusText}`);
       return await response.json();
     } catch (error) {
-      console.error(`API Error [${endpoint}]:`, error);
+      console.error(`V1 Fetch failed [${endpoint}]:`, error);
       return null;
     }
   }
 
   static async getSpotlight(): Promise<{ results: ConsumetAnime[] } | null> {
-    return this.request(BASE_URL, '/spotlight');
+    return this.request('/spotlight');
   }
 
   static async getAnimeInfo(id: string): Promise<ConsumetAnimeInfo | null> {
-    return this.request(BASE_URL, '/info', { id });
+    return this.request('/info', { id });
   }
 
   static async getTopAiring(page = 1): Promise<{ results: ConsumetAnime[] } | null> {
-    return this.request(BASE_URL, '/top-airing', { page });
+    return this.request('/top-airing', { page });
   }
 
   static async getMostPopular(page = 1): Promise<{ results: ConsumetAnime[] } | null> {
-    return this.request(BASE_URL, '/most-popular', { page });
+    return this.request('/most-popular', { page });
   }
 
   static async getRecentlyUpdated(page = 1): Promise<{ results: ConsumetAnime[] } | null> {
-    return this.request(BASE_URL, '/recently-updated', { page });
+    return this.request('/recently-updated', { page });
   }
 
   static async getSchedule(date: string): Promise<{ scheduledAnimes: ConsumetAnime[] } | null> {
-    return this.request(BASE_URL, '/schedule', { date });
+    return this.request('/schedule', { date });
   }
 }
-
-export class WatchlistAPI {
-  static async getUserWatchlist(userId: string): Promise<WatchlistItem[]> {
-    if (supabase && userId !== 'guest') {
-      const { data } = await supabase.from('watchlist').select('*').eq('user_id', userId);
-      return data || [];
-    }
-    if (typeof window !== 'undefined') {
-        const local = localStorage.getItem(`watchlist_${userId}`);
-        return local ? JSON.parse(local) : [];
-    }
-    return [];
-  }
-
-  static async addToWatchlist(userId: string, animeId: string, status: WatchlistItem['status'], progress: number = 0): Promise<boolean> {
-    const item = { anime_id: animeId, status, progress, updated_at: new Date().toISOString() };
-    if (supabase && userId !== 'guest') {
-      const { error } = await supabase.from('watchlist').upsert({ user_id: userId, ...item }, { onConflict: 'user_id, anime_id' });
-      return !error;
-    }
-    if (typeof window !== 'undefined') {
-        const list = await this.getUserWatchlist(userId);
-        const updated = [...list.filter(i => i.anime_id !== animeId), item];
-        localStorage.setItem(`watchlist_${userId}`, JSON.stringify(updated));
-    }
-    return true;
-  }
-  
-  static async updateProgress(userId: string, animeId: string, episodeNumber: number) {
-      return this.addToWatchlist(userId, animeId, 'watching', episodeNumber);
-  }
-}
-
-export class UserAPI {
-  static async getCurrentUser(): Promise<AppUser | null> {
-    if (supabase) {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (user) {
-        return {
-          id: user.id,
-          email: user.email,
-          user_metadata: user.user_metadata
-        };
-      }
-    }
-    return null;
-  }
-}
-
 
 // ==========================================
-//  NEW V2 API IMPLEMENTATION
+//  4. V2 TYPES (Future Proofing)
 // ==========================================
-
-const BASE_URL_V2 = 'https://hianime-api-mu.vercel.app/api/v2/hianime';
-
-// --- V2 INTERFACES ---
 
 export interface V2BaseAnime {
   id: string;
@@ -258,8 +215,9 @@ export interface V2EpisodeServers {
   raw: V2Server[];
 }
 
-// FIX: Export alias for Watch.tsx compatibility
-export type ServerData = V2EpisodeServers;
+// *** COMPATIBILITY ALIAS FOR WATCH.TSX ***
+// This ensures 'import { ServerData } from ...' works
+export type ServerData = V2EpisodeServers; 
 
 export interface V2Source {
   url: string;
@@ -277,7 +235,7 @@ export interface V2StreamingLinks {
   malID: number | null;
 }
 
-// FIX: Export alias for Watch.tsx compatibility
+// *** COMPATIBILITY ALIAS FOR WATCH.TSX ***
 export type V2SourceResponse = V2StreamingLinks;
 
 export interface V2SearchResult {
@@ -337,7 +295,9 @@ export interface V2ScheduleAnime {
   secondsUntilAiring: number;
 }
 
-// --- V2 API CLASS ---
+// ==========================================
+//  5. V2 API CLASS (New Implementation)
+// ==========================================
 
 export class AnimeV2API {
   
@@ -425,5 +385,57 @@ export class AnimeV2API {
   // 7. SCHEDULE
   static async getSchedule(date: string): Promise<{ scheduledAnimes: V2ScheduleAnime[] } | null> {
     return this.request<{ scheduledAnimes: V2ScheduleAnime[] }>('/schedule', { date });
+  }
+}
+
+// ==========================================
+//  6. USER & WATCHLIST SERVICES
+// ==========================================
+
+export class WatchlistAPI {
+  static async getUserWatchlist(userId: string): Promise<WatchlistItem[]> {
+    if (supabase && userId !== 'guest') {
+      const { data } = await supabase.from('watchlist').select('*').eq('user_id', userId);
+      return data || [];
+    }
+    if (typeof window !== 'undefined') {
+        const local = localStorage.getItem(`watchlist_${userId}`);
+        return local ? JSON.parse(local) : [];
+    }
+    return [];
+  }
+
+  static async addToWatchlist(userId: string, animeId: string, status: WatchlistItem['status'], progress: number = 0): Promise<boolean> {
+    const item = { anime_id: animeId, status, progress, updated_at: new Date().toISOString() };
+    if (supabase && userId !== 'guest') {
+      const { error } = await supabase.from('watchlist').upsert({ user_id: userId, ...item }, { onConflict: 'user_id, anime_id' });
+      return !error;
+    }
+    if (typeof window !== 'undefined') {
+        const list = await this.getUserWatchlist(userId);
+        const updated = [...list.filter(i => i.anime_id !== animeId), item];
+        localStorage.setItem(`watchlist_${userId}`, JSON.stringify(updated));
+    }
+    return true;
+  }
+  
+  static async updateProgress(userId: string, animeId: string, episodeNumber: number) {
+      return this.addToWatchlist(userId, animeId, 'watching', episodeNumber);
+  }
+}
+
+export class UserAPI {
+  static async getCurrentUser(): Promise<AppUser | null> {
+    if (supabase) {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        return {
+          id: user.id,
+          email: user.email,
+          user_metadata: user.user_metadata
+        };
+      }
+    }
+    return null;
   }
 }
