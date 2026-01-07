@@ -2,7 +2,8 @@ import React, { useState } from 'react';
 import { Routes, Route, useLocation } from 'react-router-dom';
 import Navigation from './components/Layout/Navigation';
 import Index from './pages/Index';
-import WatchPage from './app/watch/[id]/page'; 
+// FIX: Import from the new clean location
+import WatchPage from './pages/Watch'; 
 import AuthModal from './components/Auth/AuthModal';
 import OtakuVerse from './components/Social/OtakuVerse';
 import ImageSearch from './components/AI/ImageSearch';
@@ -15,50 +16,19 @@ function App() {
 
   return (
     <div className="min-h-screen bg-[#050505] text-white">
-      
-      {/* NAVIGATION:
-         Contains the Sticky Top Header and the Floating Bottom Dock.
-         It persists across all pages.
-      */}
       <Navigation />
-
-      {/* MAIN CONTENT AREA:
-         This is where pages switch based on the URL.
-      */}
       <main className="pb-24"> 
         <Routes location={location} key={location.pathname}>
           
-          {/* HOME PAGE */}
-          <Route 
-            path="/" 
-            element={
-              <Index setIsAuthModalOpen={setIsAuthModalOpen} />
-            } 
-          />
+          <Route path="/" element={<Index setIsAuthModalOpen={setIsAuthModalOpen} />} />
+          
+          {/* Watch Route */}
+          <Route path="/watch/:id" element={<WatchPage />} />
 
-          {/* WATCH PAGE (Dynamic Route) */}
-          {/* Matches /watch/one-piece-100, /watch/naruto-2, etc. */}
-          <Route 
-            path="/watch/:id" 
-            element={<WatchPage />} 
-          />
-
-          {/* SEARCH PAGE */}
-          <Route 
-            path="/search" 
-            element={<ImageSearch />} 
-          />
-
-          {/* SOCIAL PAGE */}
-          <Route 
-            path="/social" 
-            element={<OtakuVerse />} 
-          />
-
-          {/* WATCHLIST PAGE */}
-          <Route 
-            path="/watchlist" 
-            element={
+          <Route path="/search" element={<ImageSearch />} />
+          <Route path="/social" element={<OtakuVerse />} />
+          
+          <Route path="/watchlist" element={
               <div className="flex items-center justify-center min-h-[60vh]">
                 <div className="text-center">
                   <h2 className="text-2xl font-bold text-red-600 mb-4">Your Watchlist</h2>
@@ -67,19 +37,13 @@ function App() {
               </div>
             } 
           />
-
-          {/* PROFILE PAGE */}
-          <Route 
-            path="/profile" 
-            element={
+          
+          <Route path="/profile" element={
               <div className="flex items-center justify-center min-h-[60vh]">
                 <div className="text-center">
                   <h2 className="text-2xl font-bold text-red-600 mb-4">Profile</h2>
                   <p className="text-gray-400">User profile coming soon.</p>
-                  <button 
-                    onClick={() => setIsAuthModalOpen(true)}
-                    className="mt-4 px-6 py-2 bg-white/10 hover:bg-white/20 rounded-full"
-                  >
+                  <button onClick={() => setIsAuthModalOpen(true)} className="mt-4 px-6 py-2 bg-white/10 hover:bg-white/20 rounded-full">
                     Open Login
                   </button>
                 </div>
@@ -89,13 +53,7 @@ function App() {
 
         </Routes>
       </main>
-
-      {/* GLOBAL MODALS */}
-      <AuthModal 
-        isOpen={isAuthModalOpen} 
-        onClose={() => setIsAuthModalOpen(false)} 
-      />
-
+      <AuthModal isOpen={isAuthModalOpen} onClose={() => setIsAuthModalOpen(false)} />
       <Toaster />
     </div>
   );
