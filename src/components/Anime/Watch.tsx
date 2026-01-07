@@ -13,17 +13,15 @@ import AnimePlayer from '@/components/Player/AnimePlayer';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
+import { useSettings } from '@/hooks/useSettings'; // Import Settings Hook
 
-import { useSettings } from '@/hooks/useSettings';
-
-
-  
 // Constants
 const CHUNK_SIZE = 100;
 
 export default function WatchClient({ animeId }: { animeId: string }) {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
+  const { settings } = useSettings(); // Use the hook
 
   // --- DATA STATE ---
   const [info, setInfo] = useState<ConsumetAnimeInfo | null>(null);
@@ -35,44 +33,35 @@ export default function WatchClient({ animeId }: { animeId: string }) {
   const [streamUrl, setStreamUrl] = useState<string | null>(null);
   const [servers, setServers] = useState<ServerData | null>(null);
   
-  // Preferences
+  // Preferences (Initialized from Settings)
   const [category, setCategory] = useState<'sub' | 'dub' | 'raw'>('sub');
-  const [selectedServerName, setSelectedServerName] = useState<string>('hd-1'); 
-  const [autoPlay, setAutoPlay] = useState(true);
+  
+  // Use Settings for Defaults
+  const [selectedServerName, setSelectedServerName] = useState<string>(settings.defaultServer || 'hd-1'); 
+  const [autoPlay, setAutoPlay] = useState(settings.autoPlay); 
   
   // UI State
   const [epChunkIndex, setEpChunkIndex] = useState(0);
   const [watchedEpisodes, setWatchedEpisodes] = useState<Set<number>>(new Set());
   const [isDescriptionExpanded, setIsDescriptionExpanded] = useState(false);
 
-
-  const { settings } = useSettings();
-  
-  // Initialize state with settings
-  const [autoPlay, setAutoPlay] = useState(settings.autoPlay);
-
-
   // --- 1. INITIAL LOAD (Info & User) ---
   useEffect(() => {
     const init = async () => {
       setLoading(true);
       try {
-        // Fetch User
         const user = await UserAPI.getCurrentUser();
         if (user) setUserId(user.id);
 
-        // Fetch Anime Info
         const data = await AnimeAPI.getAnimeInfo(animeId);
         setInfo(data);
 
-        // Load Watch History
         const watchlist = await WatchlistAPI.getUserWatchlist(user ? user.id : 'guest');
         const currentItem = watchlist.find(i => i.anime_id === animeId);
         if (currentItem && currentItem.progress) {
              setWatchedEpisodes(new Set([currentItem.progress]));
         }
 
-        // Set Initial Episode from URL or Default
         const urlEp = searchParams.get('ep');
         if (urlEp) {
           setCurrentEpId(urlEp);
@@ -93,7 +82,6 @@ export default function WatchClient({ animeId }: { animeId: string }) {
   useEffect(() => {
     if (!currentEpId) return;
 
-    // Update URL query parameter without full reload
     setSearchParams(prev => {
         prev.set('ep', currentEpId);
         return prev;
@@ -103,14 +91,12 @@ export default function WatchClient({ animeId }: { animeId: string }) {
       setStreamUrl(null); 
       
       try {
-        // A. Get Servers (only if ID changed)
         const serverRes = await AnimeAPI.getEpisodeServers(currentEpId);
         if (serverRes?.data) {
            setServers(serverRes.data);
            if (category === 'sub' && !serverRes.data.sub.length && serverRes.data.dub.length) setCategory('dub');
         }
 
-        // B. Get Stream Source
         const sourceRes = await AnimeAPI.getEpisodeSourcesV2(
             currentEpId, 
             selectedServerName, 
@@ -122,7 +108,6 @@ export default function WatchClient({ animeId }: { animeId: string }) {
           setStreamUrl(bestSource?.url);
         }
 
-        // C. Update Progress
         if (info) {
             const epNum = info.episodes.find(e => e.id === currentEpId)?.number || 0;
             if (epNum > 0) {
@@ -188,6 +173,7 @@ export default function WatchClient({ animeId }: { animeId: string }) {
             <AnimePlayer 
               url={streamUrl} 
               onEnded={() => {
+                // Use the local state initialized from settings
                 if(autoPlay && nextEpisode) handleEpisodeClick(nextEpisode.id);
               }}
             />
@@ -203,11 +189,10 @@ export default function WatchClient({ animeId }: { animeId: string }) {
         </div>
       </div>
 
-      {/* 2. CONTROL BAR (Server & Nav) */}
+      {/* 2. CONTROL BAR */}
       <div className="bg-[#0a0a0a] border-b border-white/5 sticky top-[56px] z-30 shadow-lg">
         <div className="max-w-7xl mx-auto px-4 py-3 flex flex-col md:flex-row gap-4 justify-between items-center">
           
-          {/* Info Left */}
           <div className="flex-1 min-w-0">
              <div className="flex items-center gap-2 text-red-500 font-bold text-xs uppercase tracking-wider mb-1">
                 <Play size={12} className="fill-current" /> Now Playing
@@ -220,7 +205,6 @@ export default function WatchClient({ animeId }: { animeId: string }) {
              </div>
           </div>
 
-          {/* Controls Center */}
           <div className="flex items-center gap-2 bg-white/5 rounded-full p-1 border border-white/5 backdrop-blur-sm">
              <Button 
                 variant="ghost" 
@@ -243,7 +227,6 @@ export default function WatchClient({ animeId }: { animeId: string }) {
              </Button>
           </div>
 
-          {/* Server Selector Right */}
           <div className="flex items-center gap-3">
              <div className="flex bg-black/40 rounded-lg p-1 border border-white/10">
                 {(['sub', 'dub', 'raw'] as const).map((cat) => (
@@ -371,7 +354,6 @@ export default function WatchClient({ animeId }: { animeId: string }) {
               </div>
            )}
 
-           {/* INFO CARD */}
            <div className="relative rounded-3xl overflow-hidden bg-[#0a0a0a] border border-white/5 group">
               <div className="absolute inset-0 z-0">
                  <img src={info.image} className="w-full h-full object-cover opacity-20 blur-3xl scale-110" />
@@ -427,7 +409,6 @@ export default function WatchClient({ animeId }: { animeId: string }) {
               </div>
            </div>
 
-           {/* RECOMMENDATIONS */}
            {info.recommendations && info.recommendations.length > 0 && (
              <div>
                 <h3 className="text-xl font-bold text-white mb-6 flex items-center gap-3">

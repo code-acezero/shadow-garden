@@ -6,20 +6,8 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card } from '@/components/ui/card';
 import { ConsumetAnime } from '@/lib/api';
+import { useSettings } from '@/hooks/useSettings'; // Import Settings Hook
 
-import { useSettings } from '@/hooks/useSettings'; // Import the hook
-
-export default function AnimeCard({ ... }) {
-  const { settings } = useSettings(); // Get global settings
-  
-  // Use the setting!
-  const displayTitle = settings.useJapaneseTitle 
-    ? (data.japaneseTitle || data.title) 
-    : data.title;
-
-
-
-// --- INTERFACE UPDATE ---
 interface ExtendedAnime extends ConsumetAnime {
   episodeId?: string;
   episodeNumber?: number;
@@ -38,29 +26,27 @@ interface AnimeCardProps {
   progress?: number;
   variant?: 'default' | 'compact';
   onAdd?: (id: string) => void;
-  useJapaneseTitle?: boolean; 
 }
 
 export default function AnimeCard({ 
   anime, 
   isInWatchlist = false, 
   progress = 0, 
-  variant = 'default',
   onAdd,
-  useJapaneseTitle = false 
 }: AnimeCardProps) {
   const navigate = useNavigate();
   const [isHovered, setIsHovered] = useState(false);
+  const { settings } = useSettings(); // Use the hook
   
   const data = anime as ExtendedAnime;
 
-  // Switch Title Language
-  const displayTitle = useJapaneseTitle 
+  // Use the setting!
+  const displayTitle = settings.useJapaneseTitle 
     ? (data.japaneseTitle || data.title) 
     : data.title;
 
   const handleQuickPlay = (e: React.MouseEvent) => {
-    e.preventDefault(); // Prevent Link navigation
+    e.preventDefault(); 
     e.stopPropagation();
     if (data.episodeId) {
       navigate(`/watch/${data.id}?ep=${data.episodeId}`);
@@ -88,7 +74,6 @@ export default function AnimeCard({
             aspect-[2/3] rounded-xl
           `}
         >
-          {/* --- IMAGE --- */}
           <div className="absolute inset-0 overflow-hidden">
             <img
               src={data.image}
@@ -101,10 +86,8 @@ export default function AnimeCard({
             />
           </div>
 
-          {/* Gradient Overlay */}
           <div className="absolute inset-0 bg-gradient-to-t from-[#050505] via-transparent to-black/20 opacity-90" />
 
-          {/* --- TOP BADGES --- */}
           <div className="absolute top-2 left-2 flex flex-col gap-1.5 z-20">
             {data.rank && (
               <Badge className="bg-red-600 text-white font-bold px-1.5 py-0 text-[10px] rounded-md shadow-lg border-none">
@@ -113,7 +96,6 @@ export default function AnimeCard({
             )}
           </div>
 
-          {/* --- NSFW & STATUS TAGS (Top Right) --- */}
           <div className="absolute top-2 right-2 flex gap-1 z-20">
             {data.nsfw === true && (
               <Badge className="bg-red-600 text-white font-extrabold px-1.5 py-0 text-[10px] border border-red-400 rounded-sm">
@@ -127,7 +109,6 @@ export default function AnimeCard({
             )}
           </div>
 
-          {/* --- HOVER PLAY BUTTON --- */}
           <AnimatePresence>
             {isHovered && (
               <motion.div
@@ -147,18 +128,12 @@ export default function AnimeCard({
             )}
           </AnimatePresence>
 
-          {/* --- BOTTOM INFO AREA --- */}
           <div className="absolute bottom-0 left-0 right-0 p-3 z-20 flex flex-col gap-2">
-            
-            {/* Title */}
             <h3 className="text-sm font-bold text-gray-100 line-clamp-1 leading-tight drop-shadow-md group-hover:text-red-500 transition-colors">
               {displayTitle}
             </h3>
 
-            {/* --- GLOSSY DOCK STATS --- */}
             <div className="flex items-center justify-between bg-white/5 backdrop-blur-md border border-white/5 rounded-lg p-1.5">
-              
-              {/* Left: Episodes & Duration */}
               <div className="flex items-center gap-2 text-[10px] text-gray-300 font-medium">
                 <span className="flex items-center gap-1">
                   <Layers className="w-3 h-3 text-red-500" />
@@ -172,7 +147,6 @@ export default function AnimeCard({
                 )}
               </div>
 
-              {/* Right: Sub/Dub Counts */}
               <div className="flex items-center gap-2 text-[10px] font-bold">
                 <div className="flex items-center gap-1 text-green-400 bg-green-400/10 px-1 rounded">
                   <Captions className="w-3 h-3" />
@@ -183,11 +157,9 @@ export default function AnimeCard({
                   <span>{data.dub || 0}</span>
                 </div>
               </div>
-
             </div>
           </div>
 
-          {/* Progress Bar */}
           {progress > 0 && (
             <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-gray-800 z-30">
               <div style={{ width: `${progress}%` }} className="h-full bg-red-600 shadow-[0_0_8px_red]" />
