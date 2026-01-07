@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card } from '@/components/ui/card';
 import { ConsumetAnime } from '@/lib/api';
-import { useSettings } from '@/hooks/useSettings'; // Import Settings Hook
+import { useSettings } from '@/hooks/useSettings';
 
 interface ExtendedAnime extends ConsumetAnime {
   episodeId?: string;
@@ -36,11 +36,10 @@ export default function AnimeCard({
 }: AnimeCardProps) {
   const navigate = useNavigate();
   const [isHovered, setIsHovered] = useState(false);
-  const { settings } = useSettings(); // Use the hook
+  const { settings } = useSettings();
   
   const data = anime as ExtendedAnime;
 
-  // Use the setting!
   const displayTitle = settings.useJapaneseTitle 
     ? (data.japaneseTitle || data.title) 
     : data.title;
@@ -117,10 +116,10 @@ export default function AnimeCard({
                 exit={{ opacity: 0, scale: 0.5 }}
                 className="absolute inset-0 flex items-center justify-center z-30"
               >
+                {/* FIX: Removed size="icon" since className handles the dimensions */}
                 <Button
                   onClick={handleQuickPlay}
-                  size="icon"
-                  className="w-12 h-12 rounded-full bg-red-600 hover:bg-red-700 hover:scale-110 shadow-[0_0_15px_rgba(220,38,38,0.5)] border border-white/20 transition-all"
+                  className="w-12 h-12 rounded-full bg-red-600 hover:bg-red-700 hover:scale-110 shadow-[0_0_15px_rgba(220,38,38,0.5)] border border-white/20 transition-all p-0 flex items-center justify-center"
                 >
                   <Play className="w-5 h-5 fill-white ml-0.5" />
                 </Button>

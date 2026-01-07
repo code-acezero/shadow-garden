@@ -13,39 +13,32 @@ import AnimePlayer from '@/components/Player/AnimePlayer';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
-import { useSettings } from '@/hooks/useSettings'; // Import Settings Hook
+import { useSettings } from '@/hooks/useSettings';
 
-// Constants
 const CHUNK_SIZE = 100;
 
 export default function WatchClient({ animeId }: { animeId: string }) {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
-  const { settings } = useSettings(); // Use the hook
+  const { settings } = useSettings();
 
-  // --- DATA STATE ---
   const [info, setInfo] = useState<ConsumetAnimeInfo | null>(null);
   const [loading, setLoading] = useState(true);
   const [userId, setUserId] = useState<string>('guest'); 
 
-  // --- PLAYBACK STATE ---
   const [currentEpId, setCurrentEpId] = useState<string | null>(null);
   const [streamUrl, setStreamUrl] = useState<string | null>(null);
   const [servers, setServers] = useState<ServerData | null>(null);
   
-  // Preferences (Initialized from Settings)
   const [category, setCategory] = useState<'sub' | 'dub' | 'raw'>('sub');
-  
-  // Use Settings for Defaults
   const [selectedServerName, setSelectedServerName] = useState<string>(settings.defaultServer || 'hd-1'); 
   const [autoPlay, setAutoPlay] = useState(settings.autoPlay); 
   
-  // UI State
   const [epChunkIndex, setEpChunkIndex] = useState(0);
   const [watchedEpisodes, setWatchedEpisodes] = useState<Set<number>>(new Set());
   const [isDescriptionExpanded, setIsDescriptionExpanded] = useState(false);
 
-  // --- 1. INITIAL LOAD (Info & User) ---
+  // --- 1. INITIAL LOAD ---
   useEffect(() => {
     const init = async () => {
       setLoading(true);
@@ -78,10 +71,11 @@ export default function WatchClient({ animeId }: { animeId: string }) {
     init();
   }, [animeId]);
 
-  // --- 2. FETCH STREAM (When Episode/Server/Category Changes) ---
+  // --- 2. FETCH STREAM & SERVERS ---
   useEffect(() => {
     if (!currentEpId) return;
 
+    // Update URL
     setSearchParams(prev => {
         prev.set('ep', currentEpId);
         return prev;
@@ -91,12 +85,23 @@ export default function WatchClient({ animeId }: { animeId: string }) {
       setStreamUrl(null); 
       
       try {
+        // 1. Fetch Servers
         const serverRes = await AnimeAPI.getEpisodeServers(currentEpId);
+        
         if (serverRes?.data) {
            setServers(serverRes.data);
-           if (category === 'sub' && !serverRes.data.sub.length && serverRes.data.dub.length) setCategory('dub');
+           
+           // FIX: Safe check. We force cast to array to avoid the TypeScript 'length' error
+           const subList = Array.isArray(serverRes.data.sub) ? serverRes.data.sub : [];
+           const dubList = Array.isArray(serverRes.data.dub) ? serverRes.data.dub : [];
+           
+           // Auto-switch to Dub if Sub is empty but Dub exists
+           if (category === 'sub' && subList.length === 0 && dubList.length > 0) {
+             setCategory('dub');
+           }
         }
 
+        // 2. Fetch Stream Source
         const sourceRes = await AnimeAPI.getEpisodeSourcesV2(
             currentEpId, 
             selectedServerName, 
@@ -108,6 +113,7 @@ export default function WatchClient({ animeId }: { animeId: string }) {
           setStreamUrl(bestSource?.url);
         }
 
+        // 3. Update Progress
         if (info) {
             const epNum = info.episodes.find(e => e.id === currentEpId)?.number || 0;
             if (epNum > 0) {
@@ -125,7 +131,6 @@ export default function WatchClient({ animeId }: { animeId: string }) {
   }, [currentEpId, selectedServerName, category, animeId]);
 
   // --- HELPERS ---
-
   const currentEpObj = useMemo(() => 
     info?.episodes.find(e => e.id === currentEpId), 
   [info, currentEpId]);
@@ -151,7 +156,6 @@ export default function WatchClient({ animeId }: { animeId: string }) {
   };
 
   // --- RENDER ---
-
   if (loading) {
     return (
       <div className="min-h-screen bg-[#050505] flex flex-col items-center justify-center gap-4">
@@ -166,14 +170,13 @@ export default function WatchClient({ animeId }: { animeId: string }) {
   return (
     <div className="min-h-screen bg-[#050505] text-gray-100 pb-20">
       
-      {/* 1. PLAYER SECTION */}
+      {/* PLAYER */}
       <div className="w-full bg-black relative shadow-2xl shadow-red-900/10">
         <div className="max-w-[1600px] mx-auto aspect-video md:aspect-[21/9] lg:aspect-[16/9] max-h-[85vh] relative z-10">
           {streamUrl ? (
             <AnimePlayer 
               url={streamUrl} 
               onEnded={() => {
-                // Use the local state initialized from settings
                 if(autoPlay && nextEpisode) handleEpisodeClick(nextEpisode.id);
               }}
             />
@@ -189,10 +192,9 @@ export default function WatchClient({ animeId }: { animeId: string }) {
         </div>
       </div>
 
-      {/* 2. CONTROL BAR */}
+      {/* CONTROLS */}
       <div className="bg-[#0a0a0a] border-b border-white/5 sticky top-[56px] z-30 shadow-lg">
         <div className="max-w-7xl mx-auto px-4 py-3 flex flex-col md:flex-row gap-4 justify-between items-center">
-          
           <div className="flex-1 min-w-0">
              <div className="flex items-center gap-2 text-red-500 font-bold text-xs uppercase tracking-wider mb-1">
                 <Play size={12} className="fill-current" /> Now Playing
@@ -207,8 +209,6 @@ export default function WatchClient({ animeId }: { animeId: string }) {
 
           <div className="flex items-center gap-2 bg-white/5 rounded-full p-1 border border-white/5 backdrop-blur-sm">
              <Button 
-                variant="ghost" 
-                size="sm"
                 onClick={() => setAutoPlay(!autoPlay)}
                 className={`rounded-full px-4 h-8 text-xs font-bold gap-2 ${autoPlay ? 'text-green-400 bg-green-900/20' : 'text-gray-400'}`}
              >
@@ -217,8 +217,6 @@ export default function WatchClient({ animeId }: { animeId: string }) {
              </Button>
              <div className="w-[1px] h-4 bg-white/10" />
              <Button 
-                variant="ghost" 
-                size="sm"
                 disabled={!nextEpisode}
                 onClick={() => nextEpisode && handleEpisodeClick(nextEpisode.id)}
                 className="rounded-full px-4 h-8 text-xs font-bold text-white hover:bg-white/10 gap-2"
@@ -252,8 +250,9 @@ export default function WatchClient({ animeId }: { animeId: string }) {
                       value={selectedServerName}
                       onChange={(e) => setSelectedServerName(e.target.value)}
                    >
-                      {servers?.[category as keyof ServerData]?.length ? (
-                        (servers[category as keyof ServerData] as any[]).map((s) => (
+                      {/* Safe Array Mapping to avoid crashes if servers are null */}
+                      {Array.isArray(servers?.[category as keyof ServerData]) ? (
+                        (servers![category as keyof ServerData] as any[]).map((s) => (
                           <option key={s.serverId} value={s.serverName} className="bg-zinc-900 text-gray-300">
                              {s.serverName}
                           </option>
@@ -268,17 +267,14 @@ export default function WatchClient({ animeId }: { animeId: string }) {
         </div>
       </div>
 
-      {/* 3. MAIN CONTENT GRID */}
       <div className="max-w-7xl mx-auto px-4 mt-8 grid grid-cols-1 lg:grid-cols-12 gap-8">
-        
-        {/* LEFT: EPISODE LIST */}
         <div className="lg:col-span-4 space-y-4">
            <div className="bg-[#0f0f0f] rounded-xl border border-white/5 overflow-hidden flex flex-col h-[600px]">
               <div className="p-4 bg-white/5 border-b border-white/5 flex justify-between items-center">
                  <h3 className="font-bold text-gray-100 flex items-center gap-2">
                     <Layers size={18} className="text-red-500"/> Episodes
                  </h3>
-                 <Badge variant="outline" className="border-white/10 text-gray-400 text-[10px]">
+                 <Badge className="border border-white/10 text-gray-400 text-[10px] bg-transparent">
                     {info.episodes.length} EPS
                  </Badge>
               </div>
@@ -327,8 +323,6 @@ export default function WatchClient({ animeId }: { animeId: string }) {
                              {isCurrent && (
                                 <div className="absolute bottom-1.5 flex gap-0.5 items-end h-2">
                                    <motion.div animate={{ height: [4, 8, 4] }} transition={{ repeat: Infinity, duration: 0.8 }} className="w-0.5 bg-red-500 rounded-full" />
-                                   <motion.div animate={{ height: [6, 12, 6] }} transition={{ repeat: Infinity, duration: 0.8, delay: 0.1 }} className="w-0.5 bg-red-500 rounded-full" />
-                                   <motion.div animate={{ height: [4, 8, 4] }} transition={{ repeat: Infinity, duration: 0.8, delay: 0.2 }} className="w-0.5 bg-red-500 rounded-full" />
                                 </div>
                              )}
                           </button>
@@ -339,9 +333,7 @@ export default function WatchClient({ animeId }: { animeId: string }) {
            </div>
         </div>
 
-        {/* RIGHT: INFO & RECS */}
         <div className="lg:col-span-8 space-y-8">
-           
            {info.relatedAnime && info.relatedAnime.length > 0 && (
               <div className="flex flex-wrap gap-3 items-center p-4 bg-white/5 rounded-2xl border border-white/5">
                  <span className="text-xs font-bold text-gray-400 uppercase tracking-wider mr-2">Related:</span>
@@ -375,29 +367,21 @@ export default function WatchClient({ animeId }: { animeId: string }) {
                     <p className="text-red-400 font-medium mb-6 text-sm">{info.japaneseTitle || info.title}</p>
 
                     <div className="flex flex-wrap gap-3 mb-6">
-                       <Badge className="bg-white/10 hover:bg-white/20 text-gray-200 border-none px-3 py-1">
+                       <Badge className="bg-white/10 text-gray-200 border-none px-3 py-1">
                           {info.type}
                        </Badge>
-                       <Badge className="bg-white/10 hover:bg-white/20 text-gray-200 border-none px-3 py-1">
+                       <Badge className="bg-white/10 text-gray-200 border-none px-3 py-1">
                           {info.status}
                        </Badge>
-                       <Badge variant="outline" className="border-red-500/30 text-red-400 px-3 py-1">
+                       <Badge className="border border-red-500/30 text-red-400 px-3 py-1 bg-transparent">
                           {info.subOrDub?.toUpperCase()}
                        </Badge>
-                       {info.releaseDate && (
-                          <Badge variant="outline" className="border-white/10 text-gray-400 px-3 py-1">
-                             {info.releaseDate}
-                          </Badge>
-                       )}
                     </div>
 
                     <div className={`relative overflow-hidden transition-all duration-500 ${isDescriptionExpanded ? 'max-h-[500px]' : 'max-h-[100px]'}`}>
                        <p className="text-gray-300 text-sm leading-relaxed font-light">
                           {info.description}
                        </p>
-                       {!isDescriptionExpanded && (
-                          <div className="absolute bottom-0 left-0 right-0 h-12 bg-gradient-to-t from-[#0a0a0a] to-transparent" />
-                       )}
                     </div>
                     <button 
                        onClick={() => setIsDescriptionExpanded(!isDescriptionExpanded)}
@@ -408,42 +392,7 @@ export default function WatchClient({ animeId }: { animeId: string }) {
                  </div>
               </div>
            </div>
-
-           {info.recommendations && info.recommendations.length > 0 && (
-             <div>
-                <h3 className="text-xl font-bold text-white mb-6 flex items-center gap-3">
-                   <div className="w-1 h-6 bg-red-600 rounded-full" />
-                   Recommended For You
-                </h3>
-                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
-                   {info.recommendations.slice(0, 8).map((rec) => (
-                      <div 
-                         key={rec.id} 
-                         onClick={() => navigate(`/watch/${rec.id}`)}
-                         className="group cursor-pointer relative aspect-[2/3] rounded-xl overflow-hidden bg-zinc-900 border border-white/5"
-                      >
-                         <img 
-                            src={rec.image} 
-                            className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110" 
-                         />
-                         <div className="absolute inset-0 bg-gradient-to-t from-black via-transparent to-transparent opacity-60 group-hover:opacity-80 transition-opacity" />
-                         
-                         <div className="absolute bottom-0 p-3 w-full">
-                            <h4 className="text-white font-bold text-sm line-clamp-1 group-hover:text-red-500 transition-colors">
-                               {rec.title}
-                            </h4>
-                            <div className="flex items-center justify-between mt-1 text-[10px] text-gray-400">
-                               <span>{rec.type || 'TV'}</span>
-                            </div>
-                         </div>
-                      </div>
-                   ))}
-                </div>
-             </div>
-           )}
-
         </div>
-
       </div>
     </div>
   );
