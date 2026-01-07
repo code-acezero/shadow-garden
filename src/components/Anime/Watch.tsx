@@ -1,12 +1,12 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { useNavigate, useSearchParams } from 'react-router-dom';
+import { useNavigate, useSearchParams, useParams } from 'react-router-dom';
 import { 
   Play, SkipForward, SkipBack, Server as ServerIcon, 
-  Layers, Heart, Clock, Loader2, FastForward
+  Layers, Heart, Clock, Loader2, AlertCircle, Home
 } from 'lucide-react';
-import { motion, AnimatePresence } from 'framer-motion';
-// FIX: Import both API classes. If AnimeV2API is missing in your auto-complete, ensure it's exported in api.ts
-import { AnimeAPI, AnimeV2API, WatchlistAPI, UserAPI } from '@/lib/api'; 
+import { motion } from 'framer-motion';
+// Ensure you are importing the correct API class based on your api.ts file
+import { AnimeV2API, UserAPI } from '@/lib/api'; 
 import AnimePlayer from '@/components/Player/AnimePlayer'; 
 import AnimeCard from '@/components/Anime/AnimeCard';
 import { Button } from '@/components/ui/button';
@@ -14,14 +14,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
 import { useSettings } from '@/hooks/useSettings';
 
-// --- LOCAL INTERFACES (To fix "Module has no exported member" errors) ---
-interface LocalV2Episode {
-  number: number;
-  title: string;
-  episodeId: string;
-  isFiller: boolean;
-}
-
+// --- INTERFACES ---
 interface LocalServerData {
   episodeId: string;
   episodeNo: number;
@@ -30,36 +23,9 @@ interface LocalServerData {
   raw: Array<{ serverId: number; serverName: string }>;
 }
 
-interface LocalV2AnimeInfo {
-  anime: {
-    info: {
-      id: string;
-      name: string;
-      poster: string;
-      description: string;
-      stats: {
-        rating: string;
-        quality: string;
-        episodes: { sub: number; dub: number };
-        type: string;
-        duration: string;
-      };
-    };
-    moreInfo: {
-      aired: string;
-      genres: string[];
-      status: string;
-      studios: string;
-    };
-  };
-  mostPopularAnimes: any[];
-  recommendedAnimes: any[];
-  relatedAnimes: any[];
-}
-
 // --- MAGICAL LOADER ---
-const FantasyLoader = () => (
-  <div className="w-full h-full bg-[#050505] flex flex-col items-center justify-center relative overflow-hidden min-h-[500px]">
+const FantasyLoader = ({ text = "SUMMONING THE EPISODE" }) => (
+  <div className="min-h-screen w-full bg-[#050505] flex flex-col items-center justify-center relative overflow-hidden">
     <div className="absolute inset-0 bg-gradient-to-tr from-red-900/20 to-purple-900/10 animate-pulse" />
     <div className="relative z-10 flex flex-col items-center justify-center">
       <div className="relative w-32 h-32 mb-8 filter blur-sm contrast-200">
@@ -72,9 +38,33 @@ const FantasyLoader = () => (
            <div className="w-2 h-2 bg-white rounded-full animate-ping shadow-[0_0_20px_white]" />
         </div>
       </div>
-      <h2 className="text-2xl md:text-3xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-red-200 via-white to-red-200 tracking-[0.2em] animate-pulse drop-shadow-[0_0_10px_rgba(220,38,38,0.5)]">
-        SUMMONING EPISODE
+      <h2 className="text-2xl md:text-3xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-red-200 via-white to-red-200 tracking-[0.2em] animate-pulse">
+        {text}
       </h2>
+      <p className="text-xs text-red-400/80 font-mono mt-3 tracking-[0.3em] uppercase">
+        Establishing Soul Link...
+      </p>
+    </div>
+  </div>
+);
+
+// --- ERROR COMPONENT ---
+const ErrorState = ({ message, onRetry }: { message: string, onRetry: () => void }) => (
+  <div className="min-h-screen w-full bg-[#050505] flex flex-col items-center justify-center gap-6 z-50 relative">
+    <div className="p-6 rounded-full bg-red-900/20 border border-red-500/30">
+      <AlertCircle className="w-12 h-12 text-red-500" />
+    </div>
+    <div className="text-center space-y-2">
+      <h2 className="text-2xl font-bold text-white">Summoning Failed</h2>
+      <p className="text-gray-400 max-w-md">{message}</p>
+    </div>
+    <div className="flex gap-4">
+      <Button onClick={() => window.location.href = '/'} variant="outline" className="border-white/10 hover:bg-white/5">
+        <Home className="mr-2 w-4 h-4" /> Go Home
+      </Button>
+      <Button onClick={onRetry} className="bg-red-600 hover:bg-red-700">
+        Try Again
+      </Button>
     </div>
   </div>
 );
@@ -84,50 +74,56 @@ export default function WatchClient({ animeId }: { animeId: string }) {
   const [searchParams, setSearchParams] = useSearchParams();
   const { settings } = useSettings();
 
-  // --- STATE ---
-  const [data, setData] = useState<LocalV2AnimeInfo | null>(null);
-  const [episodes, setEpisodes] = useState<LocalV2Episode[]>([]);
+  // --- DATA STATE ---
+  const [data, setData] = useState<any | null>(null);
+  const [episodes, setEpisodes] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
-  const [userId, setUserId] = useState<string>('guest');
-
-  // Playback
+  const [error, setError] = useState<string | null>(null);
+  
+  // --- PLAYBACK STATE ---
   const [currentEpId, setCurrentEpId] = useState<string | null>(null);
   const [streamUrl, setStreamUrl] = useState<string | null>(null);
   const [intro, setIntro] = useState<{ start: number; end: number } | undefined>();
   const [outro, setOutro] = useState<{ start: number; end: number } | undefined>();
   const [servers, setServers] = useState<LocalServerData | null>(null);
-  
   const [category, setCategory] = useState<'sub' | 'dub' | 'raw'>('sub');
   const [selectedServerName, setSelectedServerName] = useState<string>(settings.defaultServer || 'hd-1'); 
   const [autoPlay, setAutoPlay] = useState(settings.autoPlay); 
   const [epChunkIndex, setEpChunkIndex] = useState(0);
   const [isDescExpanded, setIsDescExpanded] = useState(false);
 
-  // --- 1. FETCH INFO (Using V2 API Class) ---
+  // --- 1. INITIAL LOAD ---
   useEffect(() => {
     const init = async () => {
       setLoading(true);
+      setError(null);
       try {
-        const user = await UserAPI.getCurrentUser();
-        if (user) setUserId(user.id);
+        if (!animeId) throw new Error("Invalid Anime ID");
 
-        // FIX: Using AnimeV2API methods
+        // Fetch Anime Info
         const infoData = await AnimeV2API.getAnimeInfo(animeId);
-        setData(infoData as unknown as LocalV2AnimeInfo);
+        if (!infoData) throw new Error("Anime info not found");
+        setData(infoData);
 
+        // Fetch Episodes
         const epData = await AnimeV2API.getEpisodes(animeId);
         if (epData?.episodes) {
           setEpisodes(epData.episodes);
           
+          // Determine Initial Episode
           const urlEp = searchParams.get('ep');
           if (urlEp) {
             setCurrentEpId(urlEp);
           } else if (epData.episodes.length > 0) {
             setCurrentEpId(epData.episodes[0].episodeId);
           }
+        } else {
+          // Fallback if episodes not found
+          console.warn("No episodes found");
         }
-      } catch (err) {
+      } catch (err: any) {
         console.error("Failed to summon:", err);
+        setError(err.message || "Failed to load anime data.");
       } finally {
         setLoading(false);
       }
@@ -135,31 +131,29 @@ export default function WatchClient({ animeId }: { animeId: string }) {
     init();
   }, [animeId]);
 
-  // --- 2. FETCH STREAM (Using V2 API Class) ---
+  // --- 2. FETCH STREAM ---
   useEffect(() => {
     if (!currentEpId) return;
 
+    // Update URL without reloading
     setSearchParams(prev => { prev.set('ep', currentEpId); return prev; }, { replace: true });
-    setStreamUrl(null); 
+    setStreamUrl(null); // Clear stream to show loader in player
 
     const loadStream = async () => {
       try {
-        // FIX: Using AnimeV2API for servers
         const serverRes = await AnimeV2API.getEpisodeServers(currentEpId);
         if (serverRes) {
            setServers(serverRes as unknown as LocalServerData);
+           // Auto-switch to Dub if Sub unavailable
            const subList = serverRes.sub || [];
            const dubList = serverRes.dub || [];
            if (category === 'sub' && subList.length === 0 && dubList.length > 0) setCategory('dub');
         }
 
-        // FIX: Using AnimeV2API for sources
         const sourceRes = await AnimeV2API.getEpisodeSources(currentEpId, selectedServerName, category);
         if (sourceRes?.sources) {
           const bestSource = sourceRes.sources.find(s => s.quality === 'auto') || sourceRes.sources[0];
           setStreamUrl(bestSource?.url);
-          // Only set intro/outro if they exist in response (V2 sometimes includes them)
-          // Note: You might need to cast if TS complains about missing properties in the response type
           setIntro((sourceRes as any).intro);
           setOutro((sourceRes as any).outro);
         }
@@ -199,7 +193,13 @@ export default function WatchClient({ animeId }: { animeId: string }) {
     dub: item.episodes?.dub,
   });
 
-  if (loading || !data) return <FantasyLoader />;
+  // --- RENDER STATES ---
+  
+  if (loading) return <FantasyLoader />;
+  
+  if (error) return <ErrorState message={error} onRetry={() => window.location.reload()} />;
+  
+  if (!data) return <ErrorState message="Anime data is missing." onRetry={() => window.location.reload()} />;
 
   const { info: anime } = data.anime;
 
@@ -218,7 +218,11 @@ export default function WatchClient({ animeId }: { animeId: string }) {
               onNext={nextEpisode ? () => handleEpisodeClick(nextEpisode.episodeId) : undefined}
             />
           ) : (
-            <FantasyLoader />
+            // Small loader inside player when switching episodes
+            <div className="w-full h-full flex flex-col items-center justify-center bg-zinc-900">
+               <Loader2 className="w-10 h-10 text-red-600 animate-spin mb-4" />
+               <p className="text-xs font-mono text-gray-500 uppercase tracking-widest">Fetching Stream...</p>
+            </div>
           )}
         </div>
       </div>
@@ -229,13 +233,13 @@ export default function WatchClient({ animeId }: { animeId: string }) {
           
           <div className="flex-1 min-w-0">
              <div className="flex items-center gap-3">
-                <span className="text-3xl font-black text-transparent bg-clip-text bg-gradient-to-r from-white to-gray-400 leading-none">
-                  EP {currentEpisode?.number}
+                <span className="text-3xl font-black text-transparent bg-clip-text bg-gradient-to-r from-white to-gray-400 leading-none font-[Cinzel]">
+                  EP {currentEpisode?.number || '?'}
                 </span>
                 <div className="h-8 w-[1px] bg-white/10" />
                 <div className="flex flex-col">
                    <span className="text-[10px] text-red-500 font-bold uppercase tracking-wider">Now Playing</span>
-                   <span className="text-sm text-gray-300 truncate max-w-[200px]">{currentEpisode?.title || `Episode ${currentEpisode?.number}`}</span>
+                   <span className="text-sm text-gray-300 truncate max-w-[200px]">{currentEpisode?.title || `Episode ${currentEpisode?.number || '...'}`}</span>
                 </div>
              </div>
           </div>
@@ -308,10 +312,10 @@ export default function WatchClient({ animeId }: { animeId: string }) {
         </div>
       </div>
 
-      {/* 3. INFO & LISTS */}
+      {/* 3. GRID LAYOUT */}
       <div className="max-w-7xl mx-auto px-4 mt-8 grid grid-cols-1 lg:grid-cols-12 gap-8">
         
-        {/* EPISODE LIST */}
+        {/* LEFT: EPISODE LIST */}
         <div className="lg:col-span-4 space-y-4">
            <div className="bg-[#0a0a0a] rounded-xl border border-white/5 overflow-hidden flex flex-col h-[600px] shadow-xl">
               <div className="p-4 bg-white/5 border-b border-white/5 flex justify-between items-center">
@@ -369,7 +373,7 @@ export default function WatchClient({ animeId }: { animeId: string }) {
            </div>
         </div>
 
-        {/* DETAILS */}
+        {/* RIGHT: INFO & LISTS */}
         <div className="lg:col-span-8 space-y-8">
            
            <div className="relative rounded-3xl overflow-hidden bg-[#0a0a0a] border border-white/5 group p-6 md:p-8 flex flex-col md:flex-row gap-8 shadow-2xl">
