@@ -1,10 +1,11 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { useNavigate, useSearchParams, useParams } from 'react-router-dom';
 import { 
   SkipForward, SkipBack, Server as ServerIcon, 
   Layers, Heart, Clock, AlertCircle, RefreshCw, Home,
   Tv, Play, Share2, Star, Calendar, Mic, User, 
-  Grid, List, AlignJustify, Timer, ArrowRight
+  Grid, List, AlignJustify, Timer, ArrowRight,
+  Bug, X, Terminal, FastForward, Eye
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
@@ -24,6 +25,7 @@ import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
 import { useSettings } from '@/hooks/useSettings';
 import { Separator } from '@/components/ui/separator';
+import { Switch } from '@/components/ui/switch'; // Assuming you have a switch component or use basic input
 
 // --- TYPES ---
 interface LocalServerData {
@@ -32,15 +34,26 @@ interface LocalServerData {
   raw: Array<{ serverId: number; serverName: string }>;
 }
 
+interface ApiLog {
+  id: number;
+  type: 'success' | 'error' | 'info';
+  message: string;
+  data?: string;
+  timestamp: string;
+}
+
 type EpisodeViewMode = 'tile' | 'list' | 'detail';
 
 // --- NEXT EPISODE COUNTDOWN ---
 const NextEpisodeTimer = ({ schedule }: { schedule: V2EpisodeSchedule | null }) => {
-  if (!schedule?.airingTimestamp) return null;
-
-  const [timeLeft, setTimeLeft] = useState<string>("");
+  const [timeLeft, setTimeLeft] = useState<string>("Unknown");
 
   useEffect(() => {
+    if (!schedule?.airingTimestamp) {
+        setTimeLeft("Unknown");
+        return;
+    }
+
     const updateTimer = () => {
       const now = Date.now() / 1000;
       const diff = schedule.airingTimestamp! - now;
@@ -111,29 +124,53 @@ export default function WatchClient({ animeId: propAnimeId }: { animeId?: string
   
   const [category, setCategory] = useState<'sub' | 'dub' | 'raw'>('sub');
   const [selectedServerName, setSelectedServerName] = useState<string>('hd-1'); 
-  const [autoPlay, setAutoPlay] = useState(settings.autoPlay); 
-  const [epChunkIndex, setEpChunkIndex] = useState(0);
-  const [isDescExpanded, setIsDescExpanded] = useState(false);
   
+  // Settings
+  const [autoPlay, setAutoPlay] = useState(settings.autoPlay); 
+  const [autoSkip, setAutoSkip] = useState(true); // New Auto Skip
+  
+  const [epChunkIndex, setEpChunkIndex] = useState(0);
   const [epViewMode, setEpViewMode] = useState<EpisodeViewMode>('tile');
+  
+  // Debug Logs
+  const [logs, setLogs] = useState<ApiLog[]>([]);
+  const [showLogs, setShowLogs] = useState(false);
 
-  // --- 1. INITIAL LOAD (Hybrid) ---
+  const addLog = (type: ApiLog['type'], message: string, data?: any) => {
+    setLogs(prev => [{
+      id: Date.now(),
+      type,
+      message,
+      data: data ? JSON.stringify(data).slice(0, 50) + (JSON.stringify(data).length > 50 ? '...' : '') : undefined,
+      timestamp: new Date().toLocaleTimeString()
+    }, ...prev.slice(0, 19)]); // Keep last 20
+  };
+
+  // --- 1. INITIAL LOAD ---
   useEffect(() => {
     let isMounted = true;
     const init = async () => {
-      console.log(`[Watch] Initializing Hybrid Data for ID: ${animeId}`);
+      addLog('info', `Initializing ID: ${animeId}`);
       setIsLoadingInfo(true);
       setInfoError(null);
       
       try {
-        if (!animeId) throw new Error("No Anime ID provided");
+        if (!animeId) throw new Error("No Anime ID");
 
-        const [v2InfoData, baseData, scheduleData] = await Promise.all([
-          AnimeAPI_V2.getAnimeInfo(animeId),
-          AnimeAPI.getAnimeInfo(animeId), 
-          AnimeAPI_V2.getNextEpisodeSchedule(animeId)
-        ]);
-        
+        // V2 Info
+        const v2InfoData = await AnimeAPI_V2.getAnimeInfo(animeId);
+        if (v2InfoData) addLog('success', 'Fetched V2 Info', v2InfoData.anime.info.name);
+        else addLog('error', 'Failed V2 Info');
+
+        // Base V1 Episodes
+        const baseData = await AnimeAPI.getAnimeInfo(animeId);
+        if (baseData) addLog('success', 'Fetched V1 Base Data', `${baseData.episodes?.length} eps`);
+        else addLog('error', 'Failed V1 Base Data');
+
+        // Schedule
+        const scheduleData = await AnimeAPI_V2.getNextEpisodeSchedule(animeId);
+        if(scheduleData) addLog('success', 'Fetched Schedule');
+
         if (!isMounted) return;
         if (!v2InfoData) throw new Error("Anime info not found.");
         
@@ -142,11 +179,13 @@ export default function WatchClient({ animeId: propAnimeId }: { animeId?: string
 
         if (baseData?.episodes && baseData.episodes.length > 0) {
            setBaseEpisodes(baseData.episodes);
+           
            const urlEp = searchParams.get('ep');
            const foundEp = baseData.episodes.find((e) => e.id === urlEp);
            if (foundEp) setCurrentEpId(foundEp.id);
            else setCurrentEpId(baseData.episodes[0].id);
         } else {
+           // Fallback to V2 Episodes
            const v2EpData = await AnimeAPI_V2.getEpisodes(animeId);
            if (v2EpData?.episodes) {
               setBaseEpisodes(v2EpData.episodes.map(e => ({
@@ -156,13 +195,15 @@ export default function WatchClient({ animeId: propAnimeId }: { animeId?: string
                  isFiller: e.isFiller
               })));
               if (v2EpData.episodes.length > 0) setCurrentEpId(v2EpData.episodes[0].episodeId);
+              addLog('info', 'Used V2 Episode Fallback');
            } else {
               setInfoError("No episodes found.");
+              addLog('error', 'No episodes found in V1 or V2');
            }
         }
       } catch (err: any) {
-        console.error("[Watch] Init Failed:", err);
-        if (isMounted) setInfoError(err.message || "Failed to load anime info.");
+        addLog('error', 'Init Failed', err.message);
+        if (isMounted) setInfoError(err.message);
       } finally {
         if (isMounted) setIsLoadingInfo(false);
       }
@@ -184,21 +225,27 @@ export default function WatchClient({ animeId: propAnimeId }: { animeId?: string
       if (isMounted && isStreamLoading) {
         setIsStreamLoading(false);
         setStreamError("Server timed out.");
+        addLog('error', 'Stream Timeout');
       }
     }, 20000);
 
     const loadStream = async () => {
       try {
         await new Promise(r => setTimeout(r, 100));
+        
+        // Servers
+        addLog('info', `Fetching Servers for ${currentEpId}`);
         const serverRes = await AnimeAPI_V2.getEpisodeServers(currentEpId);
+        
         if (!isMounted) return;
-
         let activeServer = selectedServerName;
         let activeCategory = category;
 
         if (serverRes) {
+           addLog('success', 'Servers Found', serverRes);
            const localServers = serverRes as unknown as LocalServerData;
            setServers(localServers);
+           
            const subList = localServers.sub || [];
            const dubList = localServers.dub || [];
            const rawList = localServers.raw || [];
@@ -206,6 +253,7 @@ export default function WatchClient({ animeId: propAnimeId }: { animeId?: string
            if (activeCategory === 'sub' && subList.length === 0) {
               if (dubList.length > 0) activeCategory = 'dub';
               else if (rawList.length > 0) activeCategory = 'raw';
+              addLog('info', `Auto-switched to ${activeCategory}`);
            }
            if (activeCategory !== category) {
              setCategory(activeCategory);
@@ -220,10 +268,14 @@ export default function WatchClient({ animeId: propAnimeId }: { animeId?: string
         }
 
         await new Promise(r => setTimeout(r, 200));
+
+        // Source
+        addLog('info', `Fetching Source: ${activeServer} [${activeCategory}]`);
         const sourceRes = await AnimeAPI_V2.getEpisodeSources(currentEpId, activeServer, activeCategory);
         if (!isMounted) return;
 
         if (sourceRes?.sources && sourceRes.sources.length > 0) {
+          addLog('success', 'Stream Acquired');
           const bestSource = sourceRes.sources.find((s) => s.type === 'hls') || sourceRes.sources[0];
           setStreamUrl(bestSource.url);
           setIntro(sourceRes.intro);
@@ -232,7 +284,7 @@ export default function WatchClient({ animeId: propAnimeId }: { animeId?: string
           throw new Error("No video sources found.");
         }
       } catch (error: any) {
-        console.error("[Watch] Stream Failed:", error);
+        addLog('error', 'Stream Failed', error.message);
         if (isMounted) setStreamError("Stream unavailable.");
       } finally {
         if (isMounted) {
@@ -275,26 +327,42 @@ export default function WatchClient({ animeId: propAnimeId }: { animeId?: string
 
   if (isLoadingInfo) return <FantasyLoader text="SUMMONING ANIME..." />;
 
-  if (infoError || !info) {
-    return (
-      <div className="min-h-screen bg-[#050505] flex flex-col items-center justify-center text-center p-4">
-        <AlertCircle className="w-16 h-16 text-red-600 mb-4" />
-        <h2 className="text-2xl font-bold text-white mb-2">Summoning Failed</h2>
-        <p className="text-gray-400 mb-6 max-w-md font-mono text-sm">{infoError}</p>
-        <Button onClick={() => window.location.reload()} className="bg-red-600 hover:bg-red-700">
-          <RefreshCw className="mr-2 h-4 w-4" /> Retry
-        </Button>
-      </div>
-    );
-  }
+  if (infoError || !info) return <div>Error: {infoError}</div>;
 
   const { info: details, moreInfo } = info.anime;
 
   return (
-    <div className="min-h-screen bg-[#050505] text-gray-100 pb-20">
+    <div className="min-h-screen bg-[#050505] text-gray-100 pb-20 relative">
       
-      {/* === PLAYER SECTION === */}
-      {/* SHRUNK PAGE LAYOUT: Added padding and constrained width */}
+      {/* === DEBUG POPUP === */}
+      <div className="fixed bottom-4 right-4 z-50 flex flex-col items-end pointer-events-none">
+         <div className={`
+            bg-black/90 border border-white/10 rounded-xl p-3 w-[300px] max-h-[300px] overflow-y-auto mb-2 pointer-events-auto transition-all duration-300
+            ${showLogs ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-10 hidden'}
+         `}>
+            <div className="flex justify-between items-center mb-2 border-b border-white/10 pb-1">
+               <span className="text-[10px] font-bold text-zinc-400 flex items-center gap-1"><Terminal size={10}/> SYSTEM LOGS</span>
+               <button onClick={() => setShowLogs(false)}><X size={12} className="text-zinc-500 hover:text-white"/></button>
+            </div>
+            <div className="space-y-1">
+               {logs.map(log => (
+                  <div key={log.id} className="text-[9px] font-mono border-b border-white/5 pb-1 last:border-0">
+                     <span className={`font-bold ${log.type === 'success' ? 'text-green-500' : log.type === 'error' ? 'text-red-500' : 'text-blue-500'}`}>
+                        [{log.type.toUpperCase()}]
+                     </span>
+                     <span className="text-zinc-500 ml-1">{log.timestamp}</span>
+                     <div className="text-zinc-300">{log.message}</div>
+                     {log.data && <div className="text-zinc-600 truncate">{log.data}</div>}
+                  </div>
+               ))}
+            </div>
+         </div>
+         <button onClick={() => setShowLogs(!showLogs)} className="pointer-events-auto bg-zinc-900 border border-white/10 p-2 rounded-full hover:bg-white/10 text-white shadow-lg">
+            <Bug size={16} />
+         </button>
+      </div>
+
+      {/* === PLAYER SECTION (Aligned Max Width 1400px) === */}
       <div className="w-full bg-black relative shadow-2xl shadow-red-900/10">
         <div className="max-w-[1400px] mx-auto px-4 md:px-8 aspect-video md:aspect-[21/9] lg:aspect-[16/9] max-h-[85vh] relative z-10 bg-black my-6 rounded-xl overflow-hidden border border-white/5">
           {isStreamLoading ? (
@@ -313,6 +381,7 @@ export default function WatchClient({ animeId: propAnimeId }: { animeId?: string
               url={streamUrl} 
               intro={intro}
               outro={outro}
+              autoSkip={autoSkip} // Pass Auto Skip Prop
               onEnded={() => { if(autoPlay && nextEpisode) handleEpisodeClick(nextEpisode.id); }}
               onNext={nextEpisode ? () => handleEpisodeClick(nextEpisode.id) : undefined}
             />
@@ -325,7 +394,7 @@ export default function WatchClient({ animeId: propAnimeId }: { animeId?: string
         </div>
       </div>
 
-      {/* === CONTROLS BAR (Not Sticky) === */}
+      {/* === CONTROLS BAR (Not Sticky, Aligned) === */}
       <div className="bg-[#0a0a0a] border-b border-white/5">
         <div className="max-w-[1400px] mx-auto px-4 md:px-8 py-3 flex flex-col md:flex-row gap-4 justify-between items-center">
           
@@ -343,13 +412,26 @@ export default function WatchClient({ animeId: propAnimeId }: { animeId?: string
              </div>
           </div>
 
-          <div className="flex items-center gap-3">
-             <div className="flex items-center gap-2 bg-white/5 rounded-full p-1 border border-white/5">
-                <Button onClick={() => setAutoPlay(!autoPlay)} className={`rounded-full px-4 h-8 text-xs font-bold gap-2 ${autoPlay ? 'text-green-400 bg-green-900/20' : 'text-gray-400'}`}>
-                   <div className={`w-2 h-2 rounded-full ${autoPlay ? 'bg-green-500 shadow-[0_0_5px_lime]' : 'bg-gray-600'}`} />
-                   AUTOPLAY
-                </Button>
+          <div className="flex items-center gap-4">
+             {/* Prev Button (Hide on Ep 1) */}
+             {currentEpisode?.number > 1 && prevEpisode && (
+               <Button onClick={() => handleEpisodeClick(prevEpisode.id)} variant="ghost" className="text-gray-400 hover:text-white border border-white/10 hover:bg-white/5">
+                  <SkipBack className="mr-2 h-4 w-4" /> Prev
+               </Button>
+             )}
+             
+             {/* Auto Play Toggle */}
+             <div className="flex items-center gap-2 bg-white/5 rounded-full px-3 py-1.5 border border-white/5 cursor-pointer" onClick={() => setAutoPlay(!autoPlay)}>
+                <div className={`w-2 h-2 rounded-full ${autoPlay ? 'bg-green-500 shadow-[0_0_5px_lime]' : 'bg-gray-600'}`} />
+                <span className={`text-[10px] font-bold ${autoPlay ? 'text-white' : 'text-zinc-500'}`}>AUTOPLAY</span>
              </div>
+
+             {/* Auto Skip Toggle */}
+             <div className="flex items-center gap-2 bg-white/5 rounded-full px-3 py-1.5 border border-white/5 cursor-pointer" onClick={() => setAutoSkip(!autoSkip)}>
+                <FastForward size={12} className={autoSkip ? 'text-blue-400' : 'text-zinc-600'} />
+                <span className={`text-[10px] font-bold ${autoSkip ? 'text-white' : 'text-zinc-500'}`}>AUTO SKIP</span>
+             </div>
+
              {nextEpisode && (
                <Button onClick={() => handleEpisodeClick(nextEpisode.id)} className="bg-red-600 hover:bg-red-700 text-white font-bold">
                   Next <SkipForward className="ml-2 h-4 w-4" />
@@ -358,7 +440,7 @@ export default function WatchClient({ animeId: propAnimeId }: { animeId?: string
           </div>
 
           <div className="flex items-center gap-3">
-             <div className="flex bg-black/40 rounded-lg p-1 border border-white/10">
+             <div className="flex bg-black/40 rounded-lg p-1 border border-white/10 scale-90 origin-right">
                 {(['sub', 'dub', 'raw'] as const).map((cat) => (
                   <button
                     key={cat}
@@ -377,7 +459,7 @@ export default function WatchClient({ animeId: propAnimeId }: { animeId?: string
       {/* === TOP ROW: EPISODES (LEFT) & DETAILS (RIGHT) === */}
       <div className="max-w-[1400px] mx-auto px-4 md:px-8 mt-8 grid grid-cols-1 xl:grid-cols-12 gap-8">
         
-        {/* === LEFT: EPISODES (Fixed Height) === */}
+        {/* === LEFT: EPISODES (Fixed Height 600px) === */}
         <div className="xl:col-span-4 h-[600px] bg-[#0a0a0a] rounded-xl border border-white/5 overflow-hidden flex flex-col shadow-xl">
            <div className="p-3 bg-white/5 border-b border-white/5 flex justify-between items-center flex-shrink-0">
               <h3 className="font-bold text-gray-100 flex items-center gap-2">
@@ -449,71 +531,75 @@ export default function WatchClient({ animeId: propAnimeId }: { animeId?: string
            </ScrollArea>
         </div>
 
-        {/* === RIGHT: DETAILS PANE (Fixed Height, Refactored Layout) === */}
-        <div className="xl:col-span-8 h-[600px] bg-[#0a0a0a] rounded-xl border border-white/5 overflow-hidden flex flex-col shadow-xl relative">
-           {/* Background Banner */}
-           <div className="absolute top-0 left-0 right-0 h-48 z-0">
-              <img src={details.poster} className="w-full h-full object-cover opacity-20 blur-xl" />
-              <div className="absolute inset-0 bg-gradient-to-b from-transparent via-[#0a0a0a]/60 to-[#0a0a0a]" />
-           </div>
-
-           {/* Scrollable Content */}
-           <ScrollArea className="flex-1 z-10 p-6">
-              {/* Header: Poster + Title Inline */}
-              <div className="flex flex-col sm:flex-row gap-6 mt-12 mb-6">
-                 {/* Floating Poster */}
-                 <img 
-                    src={details.poster} 
-                    className="w-32 h-48 rounded-lg shadow-2xl border border-white/10 object-cover flex-shrink-0 mx-auto sm:mx-0 z-20 sm:-mt-8" 
-                 />
+        {/* === RIGHT: DETAILS PANE (Fixed Height) === */}
+        <div className="xl:col-span-8 h-[600px] bg-[#0a0a0a] rounded-xl border border-white/5 overflow-hidden flex flex-col shadow-xl">
+           
+           {/* HEADER: Title, Stats, Poster (Fixed) */}
+           <div className="flex-shrink-0 relative p-6 pt-10 flex flex-col sm:flex-row gap-6 bg-gradient-to-b from-white/5 to-transparent">
+              <img 
+                 src={details.poster} 
+                 className="w-32 h-48 rounded-lg shadow-2xl border border-white/10 object-cover flex-shrink-0 mx-auto sm:mx-0 z-20 -mt-2" 
+              />
+              <div className="flex-1 pt-2 text-center sm:text-left z-10">
+                 <h1 className="text-2xl md:text-3xl font-black text-white font-[Cinzel] leading-tight">{details.name}</h1>
                  
-                 <div className="flex-1 pt-2 text-center sm:text-left">
-                    <h1 className="text-3xl md:text-4xl font-black text-white font-[Cinzel] leading-tight">{details.name}</h1>
-                    
-                    <div className="flex flex-wrap gap-2 mt-3 justify-center sm:justify-start">
-                       <Badge className="bg-red-600 hover:bg-red-700">{details.stats.quality}</Badge>
-                       <Badge variant="outline" className="text-zinc-300 border-zinc-700 bg-black/40">{details.stats.type}</Badge>
-                       <Badge variant="outline" className="text-zinc-300 border-zinc-700 bg-black/40">{details.stats.rating}</Badge>
-                       <div className="flex items-center gap-1 text-xs text-zinc-400 ml-2 bg-black/40 px-2 py-0.5 rounded-full border border-white/5">
-                          <Clock className="w-3 h-3"/> {details.stats.duration}
-                       </div>
+                 <div className="flex flex-wrap gap-2 mt-3 justify-center sm:justify-start">
+                    <Badge className="bg-red-600 hover:bg-red-700">{details.stats.quality}</Badge>
+                    <Badge variant="outline" className="text-zinc-300 border-zinc-700 bg-black/40">{details.stats.type}</Badge>
+                    <Badge variant="outline" className="text-zinc-300 border-zinc-700 bg-black/40">{details.stats.rating}</Badge>
+                    <div className="flex items-center gap-1 text-xs text-zinc-400 ml-2 bg-black/40 px-2 py-0.5 rounded-full border border-white/5">
+                       <Clock className="w-3 h-3"/> {details.stats.duration}
                     </div>
-
-                    <div className="flex flex-wrap gap-1 mt-3 justify-center sm:justify-start">
-                       {moreInfo.genres.map(g => (
-                          <span key={g} className="text-[10px] px-2 py-0.5 bg-white/5 rounded text-zinc-400 border border-white/5">{g}</span>
-                       ))}
+                    {/* 10. PREVIEW DATA CAPSULE */}
+                    {moreInfo.status === 'Not yet aired' && (
+                       <Badge className="bg-yellow-500/20 text-yellow-500 border-yellow-500/50">Preview</Badge>
+                    )}
+                    {/* 4. MAL SCORE ADDED */}
+                    <div className="flex items-center gap-1 text-xs text-green-400 ml-2 bg-green-900/20 px-2 py-0.5 rounded-full border border-green-900/30 font-bold">
+                       MAL: {details.stats.rating || 'N/A'}
                     </div>
                  </div>
+
+                 <div className="flex flex-wrap gap-1 mt-3 justify-center sm:justify-start">
+                    {moreInfo.genres.map(g => (
+                       <span key={g} className="text-[10px] px-2 py-0.5 bg-white/5 rounded text-zinc-400 border border-white/5 hover:text-white transition-colors">{g}</span>
+                    ))}
+                 </div>
               </div>
+           </div>
 
-              {/* Description */}
-              <div className="bg-white/5 p-4 rounded-xl border border-white/5">
-                 <p className="text-gray-300 text-sm leading-relaxed">{details.description}</p>
-              </div>
+           {/* DESCRIPTION (Scrollable) */}
+           <div className="flex-1 min-h-0 relative">
+              <ScrollArea className="h-full px-6">
+                 <p className="text-gray-300 text-sm leading-relaxed pb-4">{details.description}</p>
+              </ScrollArea>
+           </div>
 
-              <Separator className="my-6 bg-white/5" />
-
-              {/* Info Grid */}
+           {/* FOOTER INFO GRID (Fixed) */}
+           <div className="flex-shrink-0 p-4 border-t border-white/5 bg-[#0a0a0a]">
               <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-xs">
                  <div className="bg-white/5 p-3 rounded-lg border border-white/5">
                     <span className="text-red-500 font-bold block mb-1">Studios</span>
-                    <span className="text-zinc-300">{moreInfo.studios}</span>
+                    <span className="text-zinc-300 truncate block">{moreInfo.studios}</span>
                  </div>
                  <div className="bg-white/5 p-3 rounded-lg border border-white/5">
                     <span className="text-red-500 font-bold block mb-1">Aired</span>
-                    <span className="text-zinc-300">{moreInfo.aired}</span>
+                    <span className="text-zinc-300 truncate block">{moreInfo.aired}</span>
                  </div>
                  <div className="bg-white/5 p-3 rounded-lg border border-white/5">
                     <span className="text-red-500 font-bold block mb-1">Status</span>
                     <span className="text-zinc-300 uppercase">{moreInfo.status}</span>
                  </div>
                  <div className="bg-white/5 p-3 rounded-lg border border-white/5">
-                    <span className="text-red-500 font-bold block mb-1">Score</span>
-                    <span className="text-zinc-300">{details.stats.rating || 'N/A'}</span>
+                    {/* 3. REPLACED SCORE WITH PRODUCERS (Showing first few) */}
+                    <span className="text-red-500 font-bold block mb-1">Producers</span>
+                    <span className="text-zinc-300 truncate block" title={moreInfo.studios}>
+                       {/* V2 info usually combines studios/producers in studios field or generic */}
+                       {moreInfo.studios?.split(',')[0] || 'Unknown'}
+                    </span>
                  </div>
               </div>
-           </ScrollArea>
+           </div>
         </div>
 
       </div>
