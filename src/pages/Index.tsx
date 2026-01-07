@@ -1,19 +1,29 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { TrendingUp, Star, Clock, ArrowRight } from 'lucide-react';
+import { TrendingUp, Star, Clock, ArrowRight, Loader2 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { toast } from 'sonner';
 
 import AnimeCard from '@/components/Anime/AnimeCard';
 import SpotlightSlider from '@/components/Anime/SpotlightSlider';
-import { AnimeAPI, WatchlistAPI, UserAPI, ConsumetAnime, AppUser, ConsumetAnimeInfo } from '@/lib/api';
-import { Loader2 } from 'lucide-react';
+import { 
+  AnimeAPI, 
+  WatchlistAPI, 
+  UserAPI, 
+  ConsumetAnime, 
+  AppUser, 
+  ConsumetAnimeInfo 
+} from '@/lib/api';
 
 // Interface for the local state
-interface ContinueWatchingItem {
-  anime: ConsumetAnime;
+// Updated to accept both the Base Anime type and the Detailed Info type
+export interface ContinueWatchingItem {
+  anime: ConsumetAnime | ConsumetAnimeInfo;
   progress: number;
   totalDuration: number;
+  episodeId: string;
+  episodeNumber: number;
+  timestamp: number;
 }
 
 interface IndexProps {
@@ -51,15 +61,20 @@ export default function Index({ setIsAuthModalOpen }: IndexProps) {
            // Limit to 5 to prevent massive API spam on load
            for (const item of watching.slice(0, 5)) {
              try {
+               // Uses V1 API (Base URL)
                const animeInfo = await AnimeAPI.getAnimeInfo(item.anime_id);
+               
                if (animeInfo) {
                  // Mock total duration calculation or use data if available
                  const estimatedTotal = animeInfo.duration ? parseInt(animeInfo.duration) * 60 : 1440; 
                  
                  historyItems.push({
                    anime: animeInfo,
-                   progress: item.progress, // This is episode number in your API logic currently
-                   totalDuration: animeInfo.totalEpisodes || 12 
+                   progress: item.progress, 
+                   totalDuration: animeInfo.totalEpisodes || 12,
+                   episodeId: item.episode_id || '', 
+                   episodeNumber: item.progress,
+                   timestamp: Date.now() 
                  });
                }
              } catch (e) { console.error("Failed to load history item", e); }
@@ -68,7 +83,7 @@ export default function Index({ setIsAuthModalOpen }: IndexProps) {
         }
       }
 
-      // 2. Fetch Public Content
+      // 2. Fetch Public Content (V1 API)
       const [spotData, latestData, trendingData] = await Promise.all([
         AnimeAPI.getSpotlight(),
         AnimeAPI.getRecentlyUpdated(),
@@ -88,8 +103,6 @@ export default function Index({ setIsAuthModalOpen }: IndexProps) {
   };
 
   const handleWatchTransition = (animeId: string, episodeId?: string) => {
-    // Navigate logic handled by Link in AnimeCard usually, 
-    // but this helper is useful for the Spotlight slider
     const path = episodeId ? `/watch/${animeId}?ep=${episodeId}` : `/watch/${animeId}`;
     navigate(path);
   };
