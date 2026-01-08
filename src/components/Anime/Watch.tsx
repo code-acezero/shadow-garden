@@ -244,7 +244,6 @@ export default function WatchClient({ animeId: propAnimeId }: { animeId?: string
            setEpisodes(v2EpData.episodes);
            addLog('success', 'V2 Episodes Loaded', `${v2EpData.episodes.length} eps`);
            
-           // Determine current episode
            const urlEp = searchParams.get('ep');
            const foundEp = v2EpData.episodes.find((e) => e.episodeId === urlEp);
            
@@ -265,7 +264,7 @@ export default function WatchClient({ animeId: propAnimeId }: { animeId?: string
     return () => { isMounted = false; };
   }, [animeId]);
 
-  // --- STREAM FETCH LOGIC (Auto-Retry) ---
+  // --- STREAM FETCH LOGIC ---
   useEffect(() => {
     if (!currentEpId) return;
     setSearchParams(prev => { prev.set('ep', currentEpId); return prev; }, { replace: true });
@@ -345,7 +344,7 @@ export default function WatchClient({ animeId: propAnimeId }: { animeId?: string
 
     loadStream();
     return () => { isMounted = false; };
-  }, [currentEpId, category]); // Removed selectedServerName from deps
+  }, [currentEpId, category]); 
 
   // --- HELPERS ---
   const currentEpIndex = useMemo(() => episodes.findIndex(e => e.episodeId === currentEpId), [episodes, currentEpId]);
@@ -401,9 +400,11 @@ export default function WatchClient({ animeId: propAnimeId }: { animeId?: string
       )}
 
       {/* === PLAYER SECTION === */}
+      {/* FIX: Ensure container is w-full so video stays wide */}
       <div className="w-full relative z-50 flex justify-center bg-[#050505]">
         <div className="w-full max-w-[1400px] px-4 md:px-8 mt-6">
-            <div className="aspect-video w-full bg-black rounded-xl overflow-hidden border border-white/5 shadow-2xl relative">
+            {/* FIX: Use w-full and aspect-video */}
+            <div className="w-full aspect-video bg-black rounded-xl overflow-hidden border border-white/5 shadow-2xl relative">
                 {isStreamLoading ? (
                     <FantasyLoader text="CONNECTING..." />
                 ) : streamError ? (
@@ -434,8 +435,7 @@ export default function WatchClient({ animeId: propAnimeId }: { animeId?: string
           
           <div className="flex-1 min-w-0">
              <div className="flex items-center gap-3">
-                <span className="text-3xl font-black text-white font-[Cinzel]">EP {currentEpisode?.number || '?'}</span>
-                <div className="h-8 w-[1px] bg-white/10" />
+                {/* REMOVED THE "EP 1" TEXT FROM HERE AS REQUESTED */}
                 <div className="flex flex-col">
                    <span className="text-[10px] text-red-500 font-bold uppercase">Now Playing</span>
                    <span className="text-sm text-gray-300 truncate max-w-[200px]">
@@ -448,9 +448,10 @@ export default function WatchClient({ animeId: propAnimeId }: { animeId?: string
 
           <div className="flex items-center gap-4">
              {currentEpisode?.number > 1 && prevEpisode && (
-                <Button onClick={() => handleEpisodeClick(prevEpisode.episodeId)} className="rounded-full px-4 h-8 text-xs font-bold bg-white/5 text-zinc-400 hover:bg-red-600 hover:text-white transition-all duration-300 group">
-                    <SkipBack size={12} className="mr-2 group-hover:fill-white" /> Prev
-                </Button>
+                <div onClick={() => handleEpisodeClick(prevEpisode.episodeId)} className="flex items-center gap-2 bg-white/5 rounded-full px-4 h-8 border border-white/5 cursor-pointer hover:bg-white/10 hover:text-red-500 transition-colors">
+                    <SkipBack size={12} />
+                    <span className="text-[10px] font-bold">PREV</span>
+                </div>
              )}
 
              <Button onClick={() => setLightMode(!lightMode)} variant="ghost" size="icon" className="rounded-full w-8 h-8 hover:bg-white/10 text-yellow-500">
@@ -470,9 +471,10 @@ export default function WatchClient({ animeId: propAnimeId }: { animeId?: string
              </div>
 
              {nextEpisode && (
-                <Button onClick={() => handleEpisodeClick(nextEpisode.episodeId)} className="rounded-full px-5 h-8 text-xs font-bold bg-white/5 text-zinc-200 hover:bg-red-600 hover:shadow-[0_0_15px_rgba(220,38,38,0.5)] transition-all duration-300 group">
-                    Next <SkipForward size={12} className="ml-2 group-hover:fill-white" />
-                </Button>
+                <div onClick={() => handleEpisodeClick(nextEpisode.episodeId)} className="flex items-center gap-2 bg-white/5 rounded-full px-4 h-8 border border-white/5 cursor-pointer hover:bg-red-600 hover:border-red-500 transition-all duration-300 group">
+                    <span className="text-[10px] font-bold text-white group-hover:text-white">NEXT</span>
+                    <SkipForward size={12} className="text-zinc-400 group-hover:text-white" />
+                </div>
              )}
 
              <div className="flex bg-black/40 rounded-full p-1 border border-white/10 ml-2">
@@ -777,7 +779,8 @@ export default function WatchClient({ animeId: propAnimeId }: { animeId?: string
               </div>
               <ScrollArea className="flex-1 p-4">
                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    {details.characterVoiceActor?.map((cva, i) => (
+                    {/* FIX: Corrected plural key to match JSON/API */}
+                    {details.charactersVoiceActors?.map((cva, i) => (
                        <div key={i} className="flex items-center justify-between bg-white/5 p-2 rounded-lg border border-white/5 hover:border-white/10 transition-colors">
                           <div className="flex items-center gap-3">
                              <img src={cva.character.poster} className="w-12 h-12 rounded-full object-cover border border-zinc-700" />

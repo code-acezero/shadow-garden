@@ -256,6 +256,7 @@ export interface V2QTipInfo {
   };
 }
 
+// FIX: Corrected plural "charactersVoiceActors" to match JSON
 export interface V2AnimeInfo {
   anime: {
     info: {
@@ -276,7 +277,8 @@ export interface V2AnimeInfo {
         source: string;
         thumbnail: string;
       }[];
-      characterVoiceActor: {
+      // CORRECTED FIELD NAME HERE
+      charactersVoiceActors: {
         character: { id: string; poster: string; name: string; cast: string };
         voiceActor: { id: string; poster: string; name: string; cast: string };
       }[];
@@ -409,7 +411,7 @@ export type ServerData = V2EpisodeServers;
 export type V2SourceResponse = V2StreamingLinks;
 
 // ==========================================
-//  6. V2 API CLASS (Uses BASE_URL_V2 + PROXY)
+//  6. V2 API CLASS
 // ==========================================
 
 export class AnimeAPI_V2 {
