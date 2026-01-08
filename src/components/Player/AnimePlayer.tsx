@@ -48,23 +48,27 @@ export default function AnimePlayer({ url, intro, outro, autoSkip = false, heade
         hlsRef.current = null;
       }
 
-      // PROXY STRATEGY:
-      // If the API provided headers (like Referer), we MUST use a proxy because 
-      // browsers block setting 'Referer' manually in JS.
-      // We wrap the m3u8 URL in a CORS proxy to bypass this restriction.
-      let playUrl = url;
-      if (headers && headers.Referer) {
-         playUrl = `https://corsproxy.io/?${encodeURIComponent(url)}`;
-      }
+      // CORS PROXY: Used to bypass Referer checks on segments
+      const PROXY_URL = 'https://corsproxy.io/?';
 
       if (Hls.isSupported()) {
         const hls = new Hls({ 
           enableWorker: true, 
           lowLatencyMode: true,
-          backBufferLength: 90
+          backBufferLength: 90,
+          // CRITICAL FIX: Intercept ALL requests (Manifest, Levels, Segments)
+          // and route them through the proxy to ensure Referer checks pass
+          xhrSetup: (xhr, reqUrl) => {
+             // If the URL is not already proxied, proxy it
+             if (!reqUrl.includes(PROXY_URL)) {
+                const proxiedUrl = PROXY_URL + encodeURIComponent(reqUrl);
+                xhr.open('GET', proxiedUrl, true);
+             }
+          }
         });
         
-        hls.loadSource(playUrl);
+        // Load the initial URL through the proxy
+        hls.loadSource(PROXY_URL + encodeURIComponent(url));
         hls.attachMedia(video);
         
         hls.on(Hls.Events.MANIFEST_PARSED, () => {
@@ -80,15 +84,11 @@ export default function AnimePlayer({ url, intro, outro, autoSkip = false, heade
            if (data.fatal) {
              switch (data.type) {
                case Hls.ErrorTypes.NETWORK_ERROR:
-                 // If the proxy failed or we didn't use one, try forcing the proxy now
-                 if (!playUrl.includes('corsproxy.io')) {
-                    console.log("Network error, switching to proxy...");
-                    hls.loadSource(`https://corsproxy.io/?${encodeURIComponent(url)}`);
-                 } else {
-                    hls.startLoad();
-                 }
+                 console.warn("Network error, trying to recover...");
+                 hls.startLoad();
                  break;
                case Hls.ErrorTypes.MEDIA_ERROR:
+                 console.warn("Media error, trying to recover...");
                  hls.recoverMediaError();
                  break;
                default:
@@ -100,8 +100,8 @@ export default function AnimePlayer({ url, intro, outro, autoSkip = false, heade
 
         hlsRef.current = hls;
       } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
-        // For Safari (Native HLS), we also try the proxy if needed
-        video.src = playUrl;
+        // For Safari, we also try to proxy the main URL
+        video.src = PROXY_URL + encodeURIComponent(url);
         video.addEventListener('loadedmetadata', () => {
            setIsBuffering(false);
            video.play().catch(() => setIsPlaying(false));
@@ -114,7 +114,7 @@ export default function AnimePlayer({ url, intro, outro, autoSkip = false, heade
     return () => {
       if (hlsRef.current) hlsRef.current.destroy();
     };
-  }, [url, headers]);
+  }, [url]); 
 
   // --- TIME & CONTROLS ---
   const handleTimeUpdate = () => {
@@ -123,6 +123,7 @@ export default function AnimePlayer({ url, intro, outro, autoSkip = false, heade
     setCurrentTime(curr);
     setDuration(videoRef.current.duration || 0);
 
+    // Skip Logic
     if (intro && curr >= intro.start && curr < intro.end) {
       if (autoSkip) videoRef.current.currentTime = intro.end;
       else setShowSkipIntro(true);
@@ -192,7 +193,7 @@ export default function AnimePlayer({ url, intro, outro, autoSkip = false, heade
     return `${minutes}:${seconds.toString().padStart(2, '0')}`;
   };
 
-  // Keyboard
+  // Keyboard Shortcuts
   useEffect(() => {
      const handleKeyDown = (e: KeyboardEvent) => {
         if (!showControls) setShowControls(true);
