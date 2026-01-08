@@ -13,12 +13,11 @@ interface AnimePlayerProps {
   intro?: { start: number; end: number };
   outro?: { start: number; end: number };
   autoSkip?: boolean;
-  headers?: Record<string, string>;
   onEnded?: () => void;
   onNext?: () => void;
 }
 
-export default function AnimePlayer({ url, intro, outro, autoSkip = false, headers, onEnded, onNext }: AnimePlayerProps) {
+export default function AnimePlayer({ url, intro, outro, autoSkip = false, onEnded, onNext }: AnimePlayerProps) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const hlsRef = useRef<Hls | null>(null);
@@ -53,13 +52,7 @@ export default function AnimePlayer({ url, intro, outro, autoSkip = false, heade
         const hls = new Hls({ 
           enableWorker: true, 
           lowLatencyMode: true,
-          backBufferLength: 90,
-          xhrSetup: (xhr, u) => {
-             if (headers?.Referer) {
-                // Try to set headers if possible (browser security dependent)
-                // xhr.setRequestHeader('Referer', headers.Referer); 
-             }
-          }
+          backBufferLength: 90
         });
         
         hls.loadSource(url);
@@ -105,7 +98,7 @@ export default function AnimePlayer({ url, intro, outro, autoSkip = false, heade
     return () => {
       if (hlsRef.current) hlsRef.current.destroy();
     };
-  }, [url, headers]);
+  }, [url]);
 
   // --- TIME & CONTROLS ---
   const handleTimeUpdate = () => {
