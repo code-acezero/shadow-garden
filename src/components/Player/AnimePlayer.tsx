@@ -40,6 +40,9 @@ export default function AnimePlayer({ url, intro, outro, autoSkip = false, heade
     if (!videoRef.current || !url) return;
     const video = videoRef.current;
 
+    // Define the proxy URL
+    const PROXY = 'https://corsproxy.io/?';
+
     const initPlayer = () => {
       setIsBuffering(true);
 
@@ -48,27 +51,29 @@ export default function AnimePlayer({ url, intro, outro, autoSkip = false, heade
         hlsRef.current = null;
       }
 
-      // CORS PROXY: Used to bypass Referer checks on segments
-      const PROXY_URL = 'https://corsproxy.io/?';
-
       if (Hls.isSupported()) {
         const hls = new Hls({ 
-          enableWorker: true, 
+          enableWorker: false, // Disable worker to prevent some CORS issues
           lowLatencyMode: true,
           backBufferLength: 90,
-          // CRITICAL FIX: Intercept ALL requests (Manifest, Levels, Segments)
-          // and route them through the proxy to ensure Referer checks pass
+          // CRITICAL: Intercept every single network request (manifest, levels, segments)
+          // and wrap it in the proxy if it isn't already.
           xhrSetup: (xhr, reqUrl) => {
-             // If the URL is not already proxied, proxy it
-             if (!reqUrl.includes(PROXY_URL)) {
-                const proxiedUrl = PROXY_URL + encodeURIComponent(reqUrl);
-                xhr.open('GET', proxiedUrl, true);
+             if (reqUrl && !reqUrl.startsWith(PROXY)) {
+                // Check if it's a relative path or absolute
+                // If it's absolute, wrap it. 
+                // If it's relative, hls.js usually resolves it against the base URL (which is already proxied), 
+                // but sometimes we need to be explicit.
+                const target = PROXY + encodeURIComponent(reqUrl);
+                xhr.open('GET', target, true);
              }
           }
         });
         
-        // Load the initial URL through the proxy
-        hls.loadSource(PROXY_URL + encodeURIComponent(url));
+        // Wrap the initial URL
+        const masterUrl = url.startsWith('http') ? (PROXY + encodeURIComponent(url)) : url;
+        
+        hls.loadSource(masterUrl);
         hls.attachMedia(video);
         
         hls.on(Hls.Events.MANIFEST_PARSED, () => {
@@ -84,11 +89,11 @@ export default function AnimePlayer({ url, intro, outro, autoSkip = false, heade
            if (data.fatal) {
              switch (data.type) {
                case Hls.ErrorTypes.NETWORK_ERROR:
-                 console.warn("Network error, trying to recover...");
+                 console.warn("Network error, retrying...");
                  hls.startLoad();
                  break;
                case Hls.ErrorTypes.MEDIA_ERROR:
-                 console.warn("Media error, trying to recover...");
+                 console.warn("Media error, recovering...");
                  hls.recoverMediaError();
                  break;
                default:
@@ -100,8 +105,9 @@ export default function AnimePlayer({ url, intro, outro, autoSkip = false, heade
 
         hlsRef.current = hls;
       } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
-        // For Safari, we also try to proxy the main URL
-        video.src = PROXY_URL + encodeURIComponent(url);
+        // Safari native HLS also needs the proxy
+        const masterUrl = url.startsWith('http') ? (PROXY + encodeURIComponent(url)) : url;
+        video.src = masterUrl;
         video.addEventListener('loadedmetadata', () => {
            setIsBuffering(false);
            video.play().catch(() => setIsPlaying(false));
@@ -123,7 +129,6 @@ export default function AnimePlayer({ url, intro, outro, autoSkip = false, heade
     setCurrentTime(curr);
     setDuration(videoRef.current.duration || 0);
 
-    // Skip Logic
     if (intro && curr >= intro.start && curr < intro.end) {
       if (autoSkip) videoRef.current.currentTime = intro.end;
       else setShowSkipIntro(true);
@@ -193,7 +198,6 @@ export default function AnimePlayer({ url, intro, outro, autoSkip = false, heade
     return `${minutes}:${seconds.toString().padStart(2, '0')}`;
   };
 
-  // Keyboard Shortcuts
   useEffect(() => {
      const handleKeyDown = (e: KeyboardEvent) => {
         if (!showControls) setShowControls(true);
