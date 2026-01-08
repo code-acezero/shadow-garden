@@ -2,11 +2,12 @@ import React, { useState, useRef, useEffect, useCallback } from 'react';
 import Hls from 'hls.js';
 import { 
   Play, Pause, Volume2, VolumeX, Maximize, Minimize,
-  SkipForward, FastForward, Loader2, Sparkles
+  SkipForward, FastForward, Loader2, Sparkles, Bug, Copy, AlertTriangle, X
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Slider } from '@/components/ui/slider';
 import { motion, AnimatePresence } from 'framer-motion';
+import { ScrollArea } from '@/components/ui/scroll-area';
 
 interface AnimePlayerProps {
   url: string;
@@ -18,11 +19,12 @@ interface AnimePlayerProps {
   onNext?: () => void;
 }
 
-export default function AnimePlayer({ url, intro, outro, autoSkip = false, onEnded, onNext }: AnimePlayerProps) {
+export default function AnimePlayer({ url, intro, outro, autoSkip = false, headers, onEnded, onNext }: AnimePlayerProps) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const hlsRef = useRef<Hls | null>(null);
 
+  // Player State
   const [isPlaying, setIsPlaying] = useState(false);
   const [isBuffering, setIsBuffering] = useState(true);
   const [currentTime, setCurrentTime] = useState(0);
@@ -34,64 +36,102 @@ export default function AnimePlayer({ url, intro, outro, autoSkip = false, onEnd
   const [showSkipIntro, setShowSkipIntro] = useState(false);
   const [showSkipOutro, setShowSkipOutro] = useState(false);
   
+  // Debug State
+  const [showDebug, setShowDebug] = useState(false);
+  const [debugLogs, setDebugLogs] = useState<string[]>([]);
+  const loadingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const controlsTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
+  // Helper: Add Log
+  const log = useCallback((msg: string, data?: any) => {
+    const time = new Date().toLocaleTimeString();
+    const dataStr = data ? ` | ${JSON.stringify(data)}` : '';
+    setDebugLogs(prev => [`[${time}] ${msg}${dataStr}`, ...prev]);
+    console.log(`[PLAYER] ${msg}`, data || '');
+  }, []);
+
+  // --- HLS SETUP ---
   useEffect(() => {
     if (!videoRef.current || !url) return;
     const video = videoRef.current;
 
-    // Use a reliable CORS proxy
+    log("Initializing Player", { url });
+    setIsBuffering(true);
+    setDebugLogs([]); // Clear logs on new URL
+
+    // PROXY
     const PROXY_BASE = 'https://corsproxy.io/?';
 
-    const initPlayer = () => {
-      setIsBuffering(true);
+    // Timeout Logic: If still buffering after 15s, show debug
+    if (loadingTimeoutRef.current) clearTimeout(loadingTimeoutRef.current);
+    loadingTimeoutRef.current = setTimeout(() => {
+        if (video.readyState < 3) {
+            log("TIMEOUT: Video failed to load within 15s.");
+            setShowDebug(true);
+        }
+    }, 15000);
 
+    const initPlayer = () => {
       if (hlsRef.current) {
         hlsRef.current.destroy();
         hlsRef.current = null;
       }
 
       if (Hls.isSupported()) {
+        log("HLS Supported. Config: LowLatency, NoWorker");
         const hls = new Hls({ 
-          enableWorker: false, // Disable worker to prevent CORS isolation issues
+          enableWorker: false,
           lowLatencyMode: true,
           backBufferLength: 90,
-          // CRITICAL FIX: Intercept every network request
+          debug: false, 
           xhrSetup: (xhr, reqUrl) => {
-             // If the URL isn't already using the proxy, force it to use the proxy
+             // LOG REQUESTS
+             if (reqUrl.includes('.m3u8')) log("Fetching Playlist", reqUrl);
+             
+             // PROXY INTERCEPT
              if (!reqUrl.includes('corsproxy.io')) {
-                const proxiedUrl = PROXY_BASE + encodeURIComponent(reqUrl);
-                xhr.open('GET', proxiedUrl, true);
+                const target = PROXY_BASE + encodeURIComponent(reqUrl);
+                // log("Proxying Request", { original: reqUrl, target }); // Commented out to reduce noise
+                xhr.open('GET', target, true);
              }
           }
         });
         
-        // Wrap the initial URL with the proxy
+        // Initial Load
         const masterUrl = url.includes('corsproxy.io') ? url : PROXY_BASE + encodeURIComponent(url);
+        log("Loading Source", masterUrl);
         
         hls.loadSource(masterUrl);
         hls.attachMedia(video);
         
-        hls.on(Hls.Events.MANIFEST_PARSED, () => {
+        hls.on(Hls.Events.MANIFEST_PARSED, (event, data) => {
+          log("Manifest Parsed", { levels: data.levels.length });
           setIsBuffering(false);
-          video.play().catch(() => {
-             setIsPlaying(false);
-             setIsMuted(true);
-             video.play().catch(() => {});
-          });
+          video.play().catch(e => log("Autoplay Blocked", e.message));
+        });
+
+        hls.on(Hls.Events.LEVEL_LOADED, (event, data) => {
+           if (data.level === 0) log("Level 0 Loaded (Video Metadata Ready)");
         });
 
         hls.on(Hls.Events.ERROR, (event, data) => {
-           if (data.fatal) {
+           const errorType = data.type;
+           const isFatal = data.fatal;
+
+           log("HLS ERROR", { type: errorType, fatal: isFatal });
+
+           if (isFatal) {
              switch (data.type) {
                case Hls.ErrorTypes.NETWORK_ERROR:
-                 // Retry loading
+                 log("Fatal Network Error. Trying to recover...");
                  hls.startLoad();
                  break;
                case Hls.ErrorTypes.MEDIA_ERROR:
+                 log("Fatal Media Error. Recovering...");
                  hls.recoverMediaError();
                  break;
                default:
+                 log("Unrecoverable Error. Destroying player.");
                  hls.destroy();
                  break;
              }
@@ -100,12 +140,16 @@ export default function AnimePlayer({ url, intro, outro, autoSkip = false, onEnd
 
         hlsRef.current = hls;
       } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
-        // Safari needs the proxy too
+        log("Native HLS (Safari)");
         const masterUrl = url.includes('corsproxy.io') ? url : PROXY_BASE + encodeURIComponent(url);
         video.src = masterUrl;
         video.addEventListener('loadedmetadata', () => {
+           log("Native Metadata Loaded");
            setIsBuffering(false);
-           video.play().catch(() => setIsPlaying(false));
+           video.play();
+        });
+        video.addEventListener('error', (e) => {
+            log("Native Video Error", video.error);
         });
       }
     };
@@ -114,8 +158,9 @@ export default function AnimePlayer({ url, intro, outro, autoSkip = false, onEnd
 
     return () => {
       if (hlsRef.current) hlsRef.current.destroy();
+      if (loadingTimeoutRef.current) clearTimeout(loadingTimeoutRef.current);
     };
-  }, [url]);
+  }, [url]); 
 
   // --- TIME & CONTROLS ---
   const handleTimeUpdate = () => {
@@ -123,22 +168,20 @@ export default function AnimePlayer({ url, intro, outro, autoSkip = false, onEnd
     const curr = videoRef.current.currentTime;
     setCurrentTime(curr);
     setDuration(videoRef.current.duration || 0);
-
+    // Intro Skip
     if (intro && curr >= intro.start && curr < intro.end) {
-      if (autoSkip) videoRef.current.currentTime = intro.end;
-      else setShowSkipIntro(true);
-    } else {
-      setShowSkipIntro(false);
-    }
-
+        if(autoSkip) videoRef.current.currentTime = intro.end;
+        else setShowSkipIntro(true);
+    } else setShowSkipIntro(false);
+    
+    // Outro Skip
     if (outro && curr >= outro.start && curr < outro.end) {
-       if (autoSkip) videoRef.current.currentTime = outro.end;
-       else setShowSkipOutro(true);
-    } else {
-       setShowSkipOutro(false);
-    }
+        if(autoSkip) videoRef.current.currentTime = outro.end;
+        else setShowSkipOutro(true);
+    } else setShowSkipOutro(false);
   };
 
+  // FIX: Added skipTo function back
   const skipTo = (time: number) => {
     if (videoRef.current) {
       videoRef.current.currentTime = time;
@@ -155,13 +198,8 @@ export default function AnimePlayer({ url, intro, outro, autoSkip = false, onEnd
 
   const toggleFullscreen = useCallback(() => {
     if (!containerRef.current) return;
-    if (!document.fullscreenElement) {
-       containerRef.current.requestFullscreen();
-       setIsFullscreen(true);
-    } else {
-       document.exitFullscreen();
-       setIsFullscreen(false);
-    }
+    document.fullscreenElement ? document.exitFullscreen() : containerRef.current.requestFullscreen();
+    setIsFullscreen(!document.fullscreenElement);
   }, []);
 
   const handleMouseMove = () => {
@@ -188,11 +226,12 @@ export default function AnimePlayer({ url, intro, outro, autoSkip = false, onEnd
 
   const formatTime = (time: number) => {
     if (isNaN(time)) return "00:00";
-    const minutes = Math.floor(time / 60);
-    const seconds = Math.floor(time % 60);
-    return `${minutes}:${seconds.toString().padStart(2, '0')}`;
+    const m = Math.floor(time / 60);
+    const s = Math.floor(time % 60);
+    return `${m}:${s.toString().padStart(2, '0')}`;
   };
 
+  // Keyboard Shortcuts
   useEffect(() => {
      const handleKeyDown = (e: KeyboardEvent) => {
         if (!showControls) setShowControls(true);
@@ -228,6 +267,35 @@ export default function AnimePlayer({ url, intro, outro, autoSkip = false, onEnd
         crossOrigin="anonymous"
       />
 
+      {/* DEBUG BUTTON */}
+      <div className="absolute top-4 right-4 z-50">
+         <Button variant="outline" size="icon" onClick={(e) => { e.stopPropagation(); setShowDebug(!showDebug); }} className="bg-black/50 hover:bg-red-500/50 border-white/10 text-white rounded-full w-8 h-8">
+            <Bug size={14} />
+         </Button>
+      </div>
+
+      {/* DEBUG OVERLAY */}
+      {showDebug && (
+         <div className="absolute inset-4 z-50 bg-black/90 border border-red-500/50 rounded-xl p-4 flex flex-col font-mono text-xs text-zinc-300 overflow-hidden" onClick={(e) => e.stopPropagation()}>
+            <div className="flex justify-between items-center mb-2 border-b border-white/10 pb-2">
+                <span className="text-red-500 font-bold flex items-center gap-2"><AlertTriangle size={14}/> PLAYER DIAGNOSTICS</span>
+                <div className="flex gap-2">
+                    <Button size="sm" variant="ghost" onClick={() => navigator.clipboard.writeText(JSON.stringify(debugLogs, null, 2))} className="h-6 text-[10px] gap-1 hover:bg-white/10"><Copy size={10}/> COPY LOGS</Button>
+                    <Button size="sm" variant="ghost" onClick={() => setShowDebug(false)} className="h-6 w-6 p-0 hover:bg-white/10"><X size={14}/></Button>
+                </div>
+            </div>
+            <ScrollArea className="flex-1">
+                {debugLogs.map((l, i) => (
+                    <div key={i} className="mb-1 break-all border-b border-white/5 pb-0.5 last:border-0">
+                        {l.includes('ERROR') ? <span className="text-red-400 font-bold">{l}</span> : 
+                         l.includes('Proxying') ? <span className="text-blue-400">{l}</span> : 
+                         <span className="text-zinc-400">{l}</span>}
+                    </div>
+                ))}
+            </ScrollArea>
+         </div>
+      )}
+
       {isBuffering && (
         <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-20">
            <div className="relative">
@@ -255,7 +323,7 @@ export default function AnimePlayer({ url, intro, outro, autoSkip = false, onEnd
       </AnimatePresence>
 
       <AnimatePresence>
-        {showControls && (
+        {showControls && !showDebug && (
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="absolute inset-0 bg-gradient-to-t from-black/90 via-transparent to-black/40 flex flex-col justify-end z-30" onClick={(e) => e.stopPropagation()}>
             {!isPlaying && !isBuffering && (
                <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
@@ -271,10 +339,6 @@ export default function AnimePlayer({ url, intro, outro, autoSkip = false, onEnd
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-4 text-white">
                   <button onClick={togglePlay} className="hover:text-red-500 transition-colors">{isPlaying ? <Pause size={24} className="fill-current"/> : <Play size={24} className="fill-current"/>}</button>
-                  <div className="flex items-center gap-2 group/vol">
-                    <button onClick={toggleMute} className="hover:text-red-500 transition-colors">{isMuted || volume[0] === 0 ? <VolumeX size={24} /> : <Volume2 size={24} />}</button>
-                    <div className="w-0 overflow-hidden group-hover/vol:w-24 transition-all duration-300"><Slider value={volume} max={1} step={0.01} onValueChange={handleVolumeChange} /></div>
-                  </div>
                   <span className="text-sm font-medium font-mono tracking-wide">{formatTime(currentTime)} <span className="text-white/40">/</span> {formatTime(duration)}</span>
                 </div>
                 <div className="flex items-center gap-4 text-white">
