@@ -272,7 +272,6 @@ export interface V2QTipInfo {
   };
 }
 
-// UPDATED: Include both singular and plural keys for safety
 export interface V2AnimeInfo {
   anime: {
     info: {
@@ -293,7 +292,6 @@ export interface V2AnimeInfo {
         source: string;
         thumbnail: string;
       }[];
-      // Some endpoints return 'charactersVoiceActors', others 'characterVoiceActor'
       charactersVoiceActors?: {
         character: { id: string; poster: string; name: string; cast: string };
         voiceActor: { id: string; poster: string; name: string; cast: string };
@@ -431,7 +429,7 @@ export type ServerData = V2EpisodeServers;
 export type V2SourceResponse = V2StreamingLinks;
 
 // ==========================================
-//  6. V2 API CLASS (FIXED URL CONSTRUCTION)
+//  6. V2 API CLASS (FIXED: Direct Fetch First)
 // ==========================================
 
 export class AnimeAPI_V2 {
@@ -440,15 +438,13 @@ export class AnimeAPI_V2 {
     try {
       let targetUrl = `${BASE_URL_V2}${endpoint}`;
       
-      // FIX: Manually build query string to avoid double-encoding '?' in IDs
+      // Build Query String
       const queryString = Object.keys(params)
         .filter(key => params[key] !== undefined && params[key] !== null)
         .map(key => {
             const value = String(params[key]);
-            // If the value itself contains '?', it's likely a raw ID that shouldn't be re-encoded
-            if (value.includes('?')) {
-                return `${key}=${value}`;
-            }
+            // Raw IDs sometimes contain '?', don't double encode
+            if (value.includes('?')) return `${key}=${value}`;
             return `${key}=${encodeURIComponent(value)}`;
         })
         .join('&');
@@ -457,8 +453,22 @@ export class AnimeAPI_V2 {
         targetUrl += `?${queryString}`;
       }
 
-      // Encode the WHOLE final URL for the proxy
-      const proxyUrl = `https://corsproxy.io/?${encodeURIComponent(targetUrl)}`;
+      // STRATEGY 1: DIRECT FETCH
+      // We try this first because the API likely supports CORS.
+      // Wrapping it in a proxy first was causing the failure.
+      try {
+          const response = await fetch(targetUrl);
+          if (response.ok) {
+              const json = await response.json();
+              if (json.status === 200 || json.success === true) return json.data;
+          }
+      } catch (directError) {
+          console.warn(`Direct fetch failed for ${endpoint}, switching to proxy...`);
+      }
+
+      // STRATEGY 2: PROXY FALLBACK
+      // Only if direct fails, we use a reliable proxy (CodeTabs)
+      const proxyUrl = `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(targetUrl)}`;
       
       const response = await fetch(proxyUrl);
       if (!response.ok) throw new Error(`V2 API Error: ${response.statusText}`);
