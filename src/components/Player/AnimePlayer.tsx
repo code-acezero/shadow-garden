@@ -14,18 +14,10 @@ interface AnimePlayerProps {
   intro?: { start: number; end: number };
   outro?: { start: number; end: number };
   autoSkip?: boolean;
-  headers?: Record<string, string>;
+  headers?: Record<string, string>; // Extra headers if needed
   onEnded?: () => void;
   onNext?: () => void;
 }
-
-// UPDATE: Added CodeTabs (often allows non-standard ports like 2228)
-const PROXY_LIST = [
-  'https://api.codetabs.com/v1/proxy?quest=', // Often best for ports
-  'https://corsproxy.io/?',
-  'https://thingproxy.freeboard.io/fetch/',
-  '' // Direct fallback
-];
 
 export default function AnimePlayer({ url, intro, outro, autoSkip = false, headers, onEnded, onNext }: AnimePlayerProps) {
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -43,12 +35,12 @@ export default function AnimePlayer({ url, intro, outro, autoSkip = false, heade
   const [showControls, setShowControls] = useState(true);
   const [showSkipIntro, setShowSkipIntro] = useState(false);
   const [showSkipOutro, setShowSkipOutro] = useState(false);
-  const [hasError, setHasError] = useState(false); // New Error State
+  const [hasError, setHasError] = useState(false);
   
-  // Debug & Recovery State
+  // Debug State
   const [showDebug, setShowDebug] = useState(false);
   const [debugLogs, setDebugLogs] = useState<string[]>([]);
-  const [proxyIndex, setProxyIndex] = useState(0);
+  
   const loadingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const controlsTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
@@ -59,24 +51,28 @@ export default function AnimePlayer({ url, intro, outro, autoSkip = false, heade
     console.log(`[PLAYER] ${msg}`, data || '');
   }, []);
 
-  // --- HLS SETUP ---
   useEffect(() => {
     if (!videoRef.current || !url) return;
     const video = videoRef.current;
 
-    log(`Init Player (Proxy #${proxyIndex})`, { proxy: PROXY_LIST[proxyIndex] || 'DIRECT', url });
+    // USE YOUR OWN BACKEND PROXY
+    // In local dev this is http://localhost:3000/api/proxy?url=
+    // In production (Vercel) this is /api/proxy?url=
+    const PROXY_BASE = '/api/proxy?url='; 
+
+    log("Initializing Player (Server-Side Proxy Mode)", { url });
     setIsBuffering(true);
     setHasError(false);
 
-    // Timeout: If loading takes > 20s, assume failure
+    // Timeout Check
     if (loadingTimeoutRef.current) clearTimeout(loadingTimeoutRef.current);
     loadingTimeoutRef.current = setTimeout(() => {
         if (video.readyState < 3) {
-            log("TIMEOUT: Video stuck. Try switching server.");
+            log("TIMEOUT: Video stuck. Proxy might be timing out.");
             setHasError(true);
             setShowDebug(true);
         }
-    }, 20000);
+    }, 25000);
 
     const initPlayer = () => {
       if (hlsRef.current) {
@@ -89,33 +85,36 @@ export default function AnimePlayer({ url, intro, outro, autoSkip = false, heade
           enableWorker: false,
           lowLatencyMode: true,
           backBufferLength: 90,
-          manifestLoadingTimeOut: 15000,
-          levelLoadingTimeOut: 15000,
-          fragLoadingTimeOut: 15000,
+          manifestLoadingTimeOut: 20000,
+          fragLoadingTimeOut: 20000,
+          // Intercept ALL requests and route them through YOUR proxy
           xhrSetup: (xhr, reqUrl) => {
-             const currentProxy = PROXY_LIST[proxyIndex];
-             // Only proxy if not already proxied
-             if (currentProxy && !reqUrl.startsWith(currentProxy)) {
-                // If it's a relative path (doesn't start with http), HLS.js usually handles it,
-                // but if it's absolute, we wrap it.
-                if (reqUrl.startsWith('http')) {
-                    const targetUrl = currentProxy + encodeURIComponent(reqUrl);
-                    xhr.open('GET', targetUrl, true);
+             // If the URL is already pointing to our proxy, leave it alone.
+             // If it's an external URL (m3u8 or ts), wrap it.
+             if (!reqUrl.includes('/api/proxy')) {
+                const targetUrl = PROXY_BASE + encodeURIComponent(reqUrl);
+                // Pass custom headers if we have them (serialized in query)
+                if (headers) {
+                   // You could pass headers as a query param if your proxy supports it
+                   // const jsonHeaders = encodeURIComponent(JSON.stringify(headers));
+                   // xhr.open('GET', `${targetUrl}&headers=${jsonHeaders}`, true);
+                   xhr.open('GET', targetUrl, true);
+                } else {
+                   xhr.open('GET', targetUrl, true);
                 }
              }
           }
         });
         
-        // Initial URL Construction
-        const currentProxy = PROXY_LIST[proxyIndex];
-        const masterUrl = currentProxy ? (currentProxy + encodeURIComponent(url)) : url;
+        // Wrap the Master URL
+        const masterUrl = PROXY_BASE + encodeURIComponent(url);
         
-        log("Loading Manifest", masterUrl);
+        log("Loading Master Manifest via Proxy", masterUrl);
         hls.loadSource(masterUrl);
         hls.attachMedia(video);
         
         hls.on(Hls.Events.MANIFEST_PARSED, () => {
-          log("Manifest Loaded. Starting...");
+          log("Manifest Loaded. Attempting play...");
           setIsBuffering(false);
           video.play().catch(e => log("Autoplay prevented", e.message));
         });
@@ -124,15 +123,8 @@ export default function AnimePlayer({ url, intro, outro, autoSkip = false, heade
            if (data.fatal) {
              log("Fatal Error", data.type);
              if (data.type === Hls.ErrorTypes.NETWORK_ERROR) {
-                 // Retry with next proxy
-                 if (proxyIndex < PROXY_LIST.length - 1) {
-                     log(`Network Fail. Trying Proxy #${proxyIndex + 1}...`);
-                     setProxyIndex(prev => prev + 1);
-                 } else {
-                     log("All proxies failed.");
-                     setHasError(true);
-                     hls.destroy();
-                 }
+                 log("Network Error. Retrying...");
+                 hls.startLoad();
              } else {
                  hls.destroy();
                  setHasError(true);
@@ -142,18 +134,16 @@ export default function AnimePlayer({ url, intro, outro, autoSkip = false, heade
 
         hlsRef.current = hls;
       } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
-        // Native HLS
-        const currentProxy = PROXY_LIST[proxyIndex];
-        const masterUrl = currentProxy ? (currentProxy + encodeURIComponent(url)) : url;
+        // Native HLS (Safari) - Also route through proxy
+        const masterUrl = PROXY_BASE + encodeURIComponent(url);
         video.src = masterUrl;
         video.addEventListener('loadedmetadata', () => {
            setIsBuffering(false);
            video.play();
         });
         video.addEventListener('error', () => {
-            log("Native Error. Retrying...");
-            if (proxyIndex < PROXY_LIST.length - 1) setProxyIndex(prev => prev + 1);
-            else setHasError(true);
+            log("Native Error", video.error);
+            setHasError(true);
         });
       }
     };
@@ -164,20 +154,21 @@ export default function AnimePlayer({ url, intro, outro, autoSkip = false, heade
       if (hlsRef.current) hlsRef.current.destroy();
       if (loadingTimeoutRef.current) clearTimeout(loadingTimeoutRef.current);
     };
-  }, [url, proxyIndex]); 
+  }, [url]); 
 
   // --- TIME & CONTROLS ---
   const handleTimeUpdate = () => {
     if (!videoRef.current) return;
-    setCurrentTime(videoRef.current.currentTime);
+    const curr = videoRef.current.currentTime;
+    setCurrentTime(curr);
     setDuration(videoRef.current.duration || 0);
 
-    if (intro && videoRef.current.currentTime >= intro.start && videoRef.current.currentTime < intro.end) {
+    if (intro && curr >= intro.start && curr < intro.end) {
       if (autoSkip) videoRef.current.currentTime = intro.end;
       else setShowSkipIntro(true);
     } else setShowSkipIntro(false);
 
-    if (outro && videoRef.current.currentTime >= outro.start && videoRef.current.currentTime < outro.end) {
+    if (outro && curr >= outro.start && curr < outro.end) {
        if (autoSkip) videoRef.current.currentTime = outro.end;
        else setShowSkipOutro(true);
     } else setShowSkipOutro(false);
@@ -273,15 +264,11 @@ export default function AnimePlayer({ url, intro, outro, autoSkip = false, heade
             <AlertTriangle className="w-12 h-12 text-red-500 mb-2" />
             <h3 className="text-lg font-bold text-white mb-1">Playback Failed</h3>
             <p className="text-xs text-zinc-400 mb-4 max-w-xs">
-               The current server might be blocked by browser security (CORS) or the proxy.
+               Server side proxy failed. Please try a different server (Vidstreaming).
             </p>
             <div className="flex gap-2">
                <Button onClick={() => window.location.reload()} variant="secondary" size="sm">
                   <RefreshCw size={14} className="mr-2"/> Retry
-               </Button>
-               {/* This tells the user what to do */}
-               <Button variant="destructive" size="sm" onClick={() => alert("Please click 'Vidstreaming' or 'StreamSB' in the server menu below.")}>
-                  Try Different Server
                </Button>
             </div>
         </div>
@@ -298,7 +285,7 @@ export default function AnimePlayer({ url, intro, outro, autoSkip = false, heade
       {showDebug && (
          <div className="absolute inset-4 z-50 bg-black/90 border border-red-500/50 rounded-xl p-4 flex flex-col font-mono text-xs text-zinc-300 overflow-hidden" onClick={(e) => e.stopPropagation()}>
             <div className="flex justify-between items-center mb-2 border-b border-white/10 pb-2">
-                <span className="text-red-500 font-bold flex items-center gap-2"><AlertTriangle size={14}/> PLAYER DIAGNOSTICS</span>
+                <span className="text-red-500 font-bold flex items-center gap-2"><AlertTriangle size={14}/> SERVER PROXY LOGS</span>
                 <div className="flex gap-2">
                     <Button size="sm" variant="ghost" onClick={() => navigator.clipboard.writeText(JSON.stringify(debugLogs, null, 2))} className="h-6 text-[10px] gap-1 hover:bg-white/10"><Copy size={10}/> COPY LOGS</Button>
                     <Button size="sm" variant="ghost" onClick={() => setShowDebug(false)} className="h-6 w-6 p-0 hover:bg-white/10"><X size={14}/></Button>
@@ -307,9 +294,7 @@ export default function AnimePlayer({ url, intro, outro, autoSkip = false, heade
             <ScrollArea className="flex-1">
                 {debugLogs.map((l, i) => (
                     <div key={i} className="mb-1 break-all border-b border-white/5 pb-0.5 last:border-0">
-                        {l.includes('ERROR') || l.includes('TIMEOUT') || l.includes('Fatal') ? <span className="text-red-400 font-bold">{l}</span> : 
-                         l.includes('Proxy') ? <span className="text-blue-400">{l}</span> : 
-                         <span className="text-zinc-400">{l}</span>}
+                        <span className="text-zinc-400">{l}</span>
                     </div>
                 ))}
             </ScrollArea>
@@ -325,6 +310,7 @@ export default function AnimePlayer({ url, intro, outro, autoSkip = false, heade
         </div>
       )}
 
+      {/* CONTROLS (Standard UI) */}
       <AnimatePresence>
         {!autoSkip && showSkipIntro && intro && (
           <motion.div initial={{ opacity: 0, x: -50 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -50 }} className="absolute bottom-24 left-6 z-40 pointer-events-auto">
