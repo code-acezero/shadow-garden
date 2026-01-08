@@ -4,21 +4,35 @@ const axios = require('axios');
 module.exports = async (req, res) => {
   const { url } = req.query;
 
+  // Log incoming request
+  console.log('=== PROXY REQUEST ===');
+  console.log('Target URL:', url);
+
   if (!url) {
-    return res.status(400).send('Missing URL');
+    console.log('ERROR: Missing URL');
+    return res.status(400).json({ error: 'Missing URL parameter' });
   }
 
   try {
     const targetUrl = decodeURIComponent(url);
+    console.log('Decoded URL:', targetUrl);
     
-    // Setup Headers to mimic a real browser
+    // Setup headers
     const proxyHeaders = {
       'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-      'Referer': 'https://megacloud.blog/',
-      'Origin': 'https://megacloud.blog',
       'Accept': '*/*',
-      'Accept-Encoding': 'identity', // Important: prevent compression issues
+      'Accept-Language': 'en-US,en;q=0.9',
+      'Accept-Encoding': 'identity',
+      'Connection': 'keep-alive',
     };
+
+    // Add origin/referer only for the main domain
+    if (targetUrl.includes('netmagcdn.com') || targetUrl.includes('megacloud')) {
+      proxyHeaders['Referer'] = 'https://megacloud.blog/';
+      proxyHeaders['Origin'] = 'https://megacloud.blog';
+    }
+
+    console.log('Request headers:', Object.keys(proxyHeaders));
 
     // Fetch the resource
     const response = await axios.get(targetUrl, {
@@ -26,57 +40,111 @@ module.exports = async (req, res) => {
       responseType: 'arraybuffer',
       validateStatus: () => true,
       maxRedirects: 5,
+      timeout: 30000,
     });
+
+    console.log('Response status:', response.status);
+    console.log('Response content-type:', response.headers['content-type']);
+    console.log('Response size:', response.data.length, 'bytes');
+
+    // If error status, log and return
+    if (response.status >= 400) {
+      console.log('ERROR: Upstream returned', response.status);
+      return res.status(response.status).send(response.data);
+    }
 
     // Set CORS headers
     res.setHeader('Access-Control-Allow-Origin', '*');
     res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS');
     res.setHeader('Access-Control-Allow-Headers', '*');
+    res.setHeader('Access-Control-Expose-Headers', '*');
     
-    // Forward the content type
+    // Forward content type
     const contentType = response.headers['content-type'] || 'application/octet-stream';
     res.setHeader('Content-Type', contentType);
 
-    // Handle M3U8 manifest rewriting
+    // Check if this is an M3U8 manifest
     const isManifest = targetUrl.includes('.m3u8') || 
                        contentType.includes('mpegurl') || 
-                       contentType.includes('x-mpegURL');
+                       contentType.includes('x-mpegURL') ||
+                       contentType.includes('vnd.apple.mpegurl');
 
     if (isManifest) {
+      console.log('*** MANIFEST DETECTED ***');
       let manifest = response.data.toString('utf8');
+      console.log('Original manifest preview:', manifest.substring(0, 300));
+      
       const baseUrl = targetUrl.substring(0, targetUrl.lastIndexOf('/') + 1);
+      console.log('Base URL:', baseUrl);
 
-      // Rewrite URLs in the manifest
-      manifest = manifest.split('\n').map(line => {
-        // Skip comments and empty lines
-        if (line.startsWith('#') || line.trim() === '') {
+      const lines = manifest.split('\n');
+      const rewrittenLines = lines.map((line, index) => {
+        const trimmed = line.trim();
+        
+        // Skip empty lines
+        if (trimmed === '') return line;
+        
+        // Skip comments that don't have URIs
+        if (trimmed.startsWith('#')) {
+          // Handle #EXT-X-KEY with URI
+          if (trimmed.includes('URI=')) {
+            const rewritten = trimmed.replace(/URI="([^"]+)"/g, (match, uri) => {
+              let absoluteUrl = uri;
+              if (!uri.startsWith('http')) {
+                absoluteUrl = new URL(uri, baseUrl).toString();
+              }
+              const proxied = `/api/proxy?url=${encodeURIComponent(absoluteUrl)}`;
+              console.log(`  [Line ${index}] Rewriting KEY URI: ${uri} -> ${proxied}`);
+              return `URI="${proxied}"`;
+            });
+            return rewritten;
+          }
           return line;
         }
 
-        // Handle URIs in #EXT-X-KEY (encryption keys)
-        if (line.includes('URI=')) {
-          return line.replace(/URI="([^"]+)"/g, (match, uri) => {
-            const absoluteUrl = uri.startsWith('http') ? uri : new URL(uri, baseUrl).toString();
-            return `URI="/api/proxy?url=${encodeURIComponent(absoluteUrl)}"`;
-          });
+        // Handle segment/playlist URLs
+        let absoluteUrl = trimmed;
+        if (!trimmed.startsWith('http')) {
+          try {
+            absoluteUrl = new URL(trimmed, baseUrl).toString();
+          } catch (e) {
+            console.log(`  [Line ${index}] Failed to parse URL: ${trimmed}`);
+            return line;
+          }
         }
+        const proxied = `/api/proxy?url=${encodeURIComponent(absoluteUrl)}`;
+        console.log(`  [Line ${index}] Rewriting: ${trimmed.substring(0, 50)}... -> ${proxied.substring(0, 80)}...`);
+        return proxied;
+      });
 
-        // Handle regular URLs (segments, sub-manifests)
-        let absoluteUrl = line.trim();
-        if (!absoluteUrl.startsWith('http')) {
-          absoluteUrl = new URL(absoluteUrl, baseUrl).toString();
-        }
-        return `/api/proxy?url=${encodeURIComponent(absoluteUrl)}`;
-      }).join('\n');
-
+      manifest = rewrittenLines.join('\n');
+      console.log('Rewritten manifest preview:', manifest.substring(0, 300));
+      console.log('=== END PROXY REQUEST ===\n');
+      
       return res.send(manifest);
     }
 
-    // For video chunks (.ts) or other binary data
+    // For video segments
+    console.log('Sending binary data (video segment)');
+    console.log('=== END PROXY REQUEST ===\n');
     return res.send(response.data);
 
   } catch (error) {
-    console.error(`Proxy Error for ${url}:`, error.message);
-    res.status(error.response?.status || 500).send(`Proxy Error: ${error.message}`);
+    console.error('=== PROXY ERROR ===');
+    console.error('URL:', url);
+    console.error('Error:', error.message);
+    console.error('Stack:', error.stack);
+    
+    if (error.response) {
+      console.error('Response status:', error.response.status);
+      console.error('Response data:', error.response.data?.toString().substring(0, 200));
+    }
+    console.error('=== END PROXY ERROR ===\n');
+    
+    return res.status(500).json({
+      error: 'Proxy error',
+      message: error.message,
+      url: url
+    });
   }
 };
