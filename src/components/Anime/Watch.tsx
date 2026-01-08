@@ -326,8 +326,8 @@ export default function WatchClient({ animeId: propAnimeId }: { animeId?: string
                  foundSource = true;
                  break;
               }
-           } catch (e) {
-              addLog('error', `Failed ${server.serverName}`, e);
+           } catch (e: any) {
+              addLog('error', `Failed ${server.serverName}`, e.message || 'Unknown error');
            }
         }
 
@@ -345,7 +345,7 @@ export default function WatchClient({ animeId: propAnimeId }: { animeId?: string
 
     loadStream();
     return () => { isMounted = false; };
-  }, [currentEpId, category]);
+  }, [currentEpId, category]); // Removed selectedServerName from deps
 
   // --- HELPERS ---
   const currentEpIndex = useMemo(() => episodes.findIndex(e => e.episodeId === currentEpId), [episodes, currentEpId]);
@@ -619,8 +619,8 @@ export default function WatchClient({ animeId: propAnimeId }: { animeId?: string
                  <ScrollArea className="h-full px-6">
                     <p className="text-gray-300 text-sm leading-relaxed pb-4">{details.description}</p>
                     
-                    {/* ADDED PROMOTIONAL VIDEOS SECTION */}
-                    {details.promotionalVideos.length > 0 && (
+                    {/* PROMOTIONAL VIDEOS */}
+                    {details.promotionalVideos && details.promotionalVideos.length > 0 && (
                         <div className="mt-6 mb-4">
                             <h3 className="text-sm font-bold text-white mb-3 flex items-center gap-2">
                                 <Video size={14} className="text-red-500" /> Promotional Videos

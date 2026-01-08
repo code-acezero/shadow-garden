@@ -4,11 +4,7 @@ import { createClient } from '@supabase/supabase-js';
 //  1. CONFIGURATION
 // ==========================================
 
-// V1: Home Page (Shadow Garden / Consumet)
 const BASE_URL = 'https://shadow-garden-wqkq.vercel.app/anime/hianime';
-
-// V2: Watch Page (HiAnime Direct)
-// We keep the original URL but will wrap it with a proxy in the class below
 const BASE_URL_V2 = 'https://hianime-api-mu.vercel.app/api/v2/hianime';
 
 const supabaseUrl = import.meta.env?.VITE_SUPABASE_URL || '';
@@ -98,27 +94,14 @@ export interface ConsumetAdvancedSearchParams {
   score?: number;
   season?: 'spring' | 'summer' | 'fall' | 'winter';
   language?: 'sub' | 'dub';
-  startDate?: string; // YYYY-MM-DD
-  endDate?: string;   // YYYY-MM-DD
+  startDate?: string;
+  endDate?: string;
   sort?: 'recently-added' | 'most-popular';
-  genres?: string;    // comma separated
-}
-
-export interface ConsumetStreamingLinks {
-  headers: {
-    Referer: string;
-    "User-Agent": string;
-  };
-  sources: {
-    url: string;
-    quality: string;
-    isM3U8: boolean;
-  }[];
-  download?: string;
+  genres?: string;
 }
 
 // ==========================================
-//  4. API CLASS (Uses BASE_URL - V1)
+//  4. API CLASS (V1 BASE)
 // ==========================================
 
 export class AnimeAPI {
@@ -139,116 +122,79 @@ export class AnimeAPI {
     }
   }
 
-  // --- Search & Info ---
-  
   static async search(query: string, page = 1): Promise<ConsumetSearchResult | null> {
     return this.request(`/${encodeURIComponent(query)}`, { page });
   }
-
   static async advancedSearch(params: ConsumetAdvancedSearchParams): Promise<ConsumetSearchResult | null> {
     return this.request('/advanced-search', params as Record<string, any>);
   }
-
   static async searchSuggestions(query: string): Promise<{ suggestions: ConsumetAnime[] } | null> {
     return this.request(`/search-suggestions/${encodeURIComponent(query)}`);
   }
-
   static async getAnimeInfo(id: string): Promise<ConsumetAnimeInfo | null> {
     return this.request('/info', { id });
   }
-
-  // --- Lists & Categories ---
-
   static async getSpotlight(): Promise<{ spotlightAnimes: ConsumetAnime[] } | null> {
     return this.request('/spotlight');
   }
-
   static async getTopAiring(page = 1): Promise<ConsumetSearchResult | null> {
     return this.request('/top-airing', { page });
   }
-
   static async getMostPopular(page = 1): Promise<ConsumetSearchResult | null> {
     return this.request('/most-popular', { page });
   }
-
   static async getMostFavorite(page = 1): Promise<ConsumetSearchResult | null> {
     return this.request('/most-favorite', { page });
   }
-
   static async getLatestCompleted(page = 1): Promise<ConsumetSearchResult | null> {
     return this.request('/latest-completed', { page });
   }
-
   static async getRecentlyUpdated(page = 1): Promise<ConsumetSearchResult | null> {
     return this.request('/recently-updated', { page });
   }
-
   static async getRecentlyAdded(page = 1): Promise<ConsumetSearchResult | null> {
     return this.request('/recently-added', { page });
   }
-
   static async getTopUpcoming(page = 1): Promise<ConsumetSearchResult | null> {
     return this.request('/top-upcoming', { page });
   }
-
-  // --- Specific Types ---
-
   static async getSubbedAnime(page = 1): Promise<ConsumetSearchResult | null> {
     return this.request('/subbed-anime', { page });
   }
-
   static async getDubbedAnime(page = 1): Promise<ConsumetSearchResult | null> {
     return this.request('/dubbed-anime', { page });
   }
-
   static async getMovie(page = 1): Promise<ConsumetSearchResult | null> {
     return this.request('/movie', { page });
   }
-
   static async getTV(page = 1): Promise<ConsumetSearchResult | null> {
     return this.request('/tv', { page });
   }
-
   static async getOVA(page = 1): Promise<ConsumetSearchResult | null> {
     return this.request('/ova', { page });
   }
-
   static async getONA(page = 1): Promise<ConsumetSearchResult | null> {
     return this.request('/ona', { page });
   }
-
   static async getSpecial(page = 1): Promise<ConsumetSearchResult | null> {
     return this.request('/special', { page });
   }
-
-  // --- Metadata Filters ---
-
   static async getGenres(): Promise<{ id: string; name: string }[] | null> {
     return this.request('/genres');
   }
-
   static async getGenre(genre: string, page = 1): Promise<ConsumetSearchResult | null> {
     return this.request(`/genre/${genre}`, { page });
   }
-
   static async getStudio(studio: string, page = 1): Promise<ConsumetSearchResult | null> {
     return this.request(`/studio/${studio}`, { page });
   }
-
-  // --- Misc ---
-
   static async getSchedule(date: string): Promise<{ scheduledAnimes: ConsumetAnime[] } | null> {
-    // date format: YYYY-MM-DD
     return this.request('/schedule', { date });
-  }
-
-  static async getEpisodeStreamingLinks(episodeId: string, server?: string, category?: 'sub' | 'dub'): Promise<ConsumetStreamingLinks | null> {
-    return this.request(`/watch/${episodeId}`, { server, category });
   }
 }
 
 // ==========================================
-//  5. V2 TYPES (UPDATED WITH JNAME & PRODUCERS)
+//  5. V2 TYPES
 // ==========================================
 
 export interface V2BaseAnime {
@@ -315,7 +261,7 @@ export interface V2AnimeInfo {
     info: {
       id: string;
       name: string;
-      jname?: string; // Correctly typed now
+      jname?: string;
       poster: string;
       description: string;
       stats: {
@@ -341,7 +287,7 @@ export interface V2AnimeInfo {
       status: string;
       studios: string;
       duration: string;
-      producers?: string[]; // Correctly typed now
+      producers?: string[];
     };
   };
   mostPopularAnimes: V2BaseAnime[];
@@ -380,8 +326,8 @@ export interface V2GenericListResult {
   category?: string;
   animes: V2BaseAnime[];
   genres?: string[];
-  top10Animes?: { today: V2BaseAnime[]; month: V2BaseAnime[]; week: V2BaseAnime[] };
-  topAiringAnimes?: V2BaseAnime[];
+  top10Animes?: any;
+  topAiringAnimes?: any;
   currentPage: number;
   totalPages: number;
   hasNextPage: boolean;
@@ -470,10 +416,8 @@ export class AnimeAPI_V2 {
   
   private static async request<T>(endpoint: string, params: Record<string, any> = {}): Promise<T | null> {
     try {
-      // 1. Construct the target URL manually
       let targetUrl = `${BASE_URL_V2}${endpoint}`;
       
-      // 2. Add query parameters
       const queryString = Object.keys(params)
         .filter(key => params[key] !== undefined && params[key] !== null)
         .map(key => `${encodeURIComponent(key)}=${encodeURIComponent(params[key])}`)
@@ -483,7 +427,6 @@ export class AnimeAPI_V2 {
         targetUrl += `?${queryString}`;
       }
 
-      // 3. Wrap with CORS Proxy to bypass browser restrictions
       const proxyUrl = `https://corsproxy.io/?${encodeURIComponent(targetUrl)}`;
       
       const response = await fetch(proxyUrl);
@@ -491,7 +434,6 @@ export class AnimeAPI_V2 {
       
       const json = await response.json();
       
-      // Check both 'status: 200' (New V2) and 'success: true' (Old V2/Consumet)
       if (json.status === 200 || json.success === true) {
         return json.data;
       }
@@ -503,66 +445,20 @@ export class AnimeAPI_V2 {
     }
   }
 
-  // 1. HOME
-  static async getHomePage(): Promise<V2HomePageData | null> {
-    return this.request<V2HomePageData>('/home');
-  }
-
-  // 2. A-Z LIST
-  static async getAZList(sortOption: string = 'all', page = 1): Promise<V2AZListResult | null> {
-    return this.request<V2AZListResult>(`/azlist/${sortOption}`, { page });
-  }
-
-  // 3. QTIP INFO
-  static async getQtipInfo(animeId: string): Promise<V2QTipInfo | null> {
-    return this.request<V2QTipInfo>(`/qtip/${animeId}`);
-  }
-
-  // 4. ANIME ABOUT INFO
-  static async getAnimeInfo(animeId: string): Promise<V2AnimeInfo | null> {
-    return this.request<V2AnimeInfo>(`/anime/${animeId}`);
-  }
-
-  // 5. SEARCH
-  static async search(query: string, page = 1, filters: Record<string, string> = {}): Promise<V2SearchResult | null> {
-    return this.request<V2SearchResult>('/search', { q: query, page, ...filters });
-  }
-
-  static async getSearchSuggestions(query: string): Promise<{ suggestions: V2SearchSuggestion[] } | null> {
-    return this.request<{ suggestions: V2SearchSuggestion[] }>('/search/suggestion', { q: query });
-  }
-
-  // 6. CATEGORIES / PRODUCERS / GENRES
-  static async getProducerAnimes(name: string, page = 1): Promise<V2GenericListResult | null> {
-    return this.request<V2GenericListResult>(`/producer/${name}`, { page });
-  }
-
-  static async getGenreAnimes(name: string, page = 1): Promise<V2GenericListResult | null> {
-    return this.request<V2GenericListResult>(`/genre/${name}`, { page });
-  }
-
-  static async getCategoryAnimes(category: string, page = 1): Promise<V2GenericListResult | null> {
-    return this.request<V2GenericListResult>(`/category/${category}`, { page });
-  }
-
-  // 7. SCHEDULE
-  static async getSchedule(date: string): Promise<V2ScheduleResult | null> {
-    return this.request<V2ScheduleResult>('/schedule', { date });
-  }
-
-  // 8. EPISODES & STREAMING
-  static async getEpisodes(animeId: string): Promise<V2EpisodeList | null> {
-    return this.request<V2EpisodeList>(`/anime/${animeId}/episodes`);
-  }
-
-  static async getNextEpisodeSchedule(animeId: string): Promise<V2EpisodeSchedule | null> {
-    return this.request<V2EpisodeSchedule>(`/anime/${animeId}/next-episode-schedule`);
-  }
-
-  static async getEpisodeServers(animeEpisodeId: string): Promise<V2EpisodeServers | null> {
-    return this.request<V2EpisodeServers>('/episode/servers', { animeEpisodeId });
-  }
-
+  static async getHomePage(): Promise<V2HomePageData | null> { return this.request<V2HomePageData>('/home'); }
+  static async getAZList(sortOption = 'all', page = 1): Promise<V2AZListResult | null> { return this.request<V2AZListResult>(`/azlist/${sortOption}`, { page }); }
+  static async getQtipInfo(animeId: string): Promise<V2QTipInfo | null> { return this.request<V2QTipInfo>(`/qtip/${animeId}`); }
+  static async getAnimeInfo(animeId: string): Promise<V2AnimeInfo | null> { return this.request<V2AnimeInfo>(`/anime/${animeId}`); }
+  static async search(query: string, page = 1, filters = {}): Promise<V2SearchResult | null> { return this.request<V2SearchResult>('/search', { q: query, page, ...filters }); }
+  static async getSearchSuggestions(query: string): Promise<{ suggestions: V2SearchSuggestion[] } | null> { return this.request<{ suggestions: V2SearchSuggestion[] }>('/search/suggestion', { q: query }); }
+  static async getProducerAnimes(name: string, page = 1): Promise<V2GenericListResult | null> { return this.request<V2GenericListResult>(`/producer/${name}`, { page }); }
+  static async getGenreAnimes(name: string, page = 1): Promise<V2GenericListResult | null> { return this.request<V2GenericListResult>(`/genre/${name}`, { page }); }
+  static async getCategoryAnimes(category: string, page = 1): Promise<V2GenericListResult | null> { return this.request<V2GenericListResult>(`/category/${category}`, { page }); }
+  static async getSchedule(date: string): Promise<V2ScheduleResult | null> { return this.request<V2ScheduleResult>('/schedule', { date }); }
+  static async getEpisodes(animeId: string): Promise<V2EpisodeList | null> { return this.request<V2EpisodeList>(`/anime/${animeId}/episodes`); }
+  static async getNextEpisodeSchedule(animeId: string): Promise<V2EpisodeSchedule | null> { return this.request<V2EpisodeSchedule>(`/anime/${animeId}/next-episode-schedule`); }
+  static async getEpisodeServers(animeEpisodeId: string): Promise<V2EpisodeServers | null> { return this.request<V2EpisodeServers>('/episode/servers', { animeEpisodeId }); }
+  
   static async getEpisodeSources(
     animeEpisodeId: string, 
     server: string = 'hd-1', 
@@ -588,11 +484,9 @@ export class WatchlistAPI {
     }
     return [];
   }
-
   static async addToWatchlist(userId: string, animeId: string, status: WatchlistItem['status'], progress: number = 0, episodeId?: string): Promise<boolean> {
     const item: any = { anime_id: animeId, status, progress, updated_at: new Date().toISOString() };
     if (episodeId) item.episode_id = episodeId;
-
     if (supabase && userId !== 'guest') {
       const { error } = await supabase.from('watchlist').upsert({ user_id: userId, ...item }, { onConflict: 'user_id, anime_id' });
       return !error;
@@ -604,7 +498,6 @@ export class WatchlistAPI {
     }
     return true;
   }
-  
   static async updateProgress(userId: string, animeId: string, episodeNumber: number, episodeId?: string) {
       return this.addToWatchlist(userId, animeId, 'watching', episodeNumber, episodeId);
   }
@@ -614,13 +507,7 @@ export class UserAPI {
   static async getCurrentUser(): Promise<AppUser | null> {
     if (supabase) {
       const { data: { user } } = await supabase.auth.getUser();
-      if (user) {
-        return {
-          id: user.id,
-          email: user.email,
-          user_metadata: user.user_metadata
-        };
-      }
+      if (user) return { id: user.id, email: user.email, user_metadata: user.user_metadata };
     }
     return null;
   }
