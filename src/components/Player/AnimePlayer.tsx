@@ -2,7 +2,7 @@ import React, { useState, useRef, useEffect, useCallback } from 'react';
 import Hls from 'hls.js';
 import { 
   Play, Pause, Volume2, VolumeX, Maximize, Minimize,
-  SkipForward, FastForward, Loader2, Sparkles, Settings
+  SkipForward, FastForward, Loader2, Sparkles
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Slider } from '@/components/ui/slider';
@@ -18,7 +18,7 @@ interface AnimePlayerProps {
   onNext?: () => void;
 }
 
-export default function AnimePlayer({ url, intro, outro, autoSkip = false, headers, onEnded, onNext }: AnimePlayerProps) {
+export default function AnimePlayer({ url, intro, outro, autoSkip = false, onEnded, onNext }: AnimePlayerProps) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const hlsRef = useRef<Hls | null>(null);
@@ -40,8 +40,8 @@ export default function AnimePlayer({ url, intro, outro, autoSkip = false, heade
     if (!videoRef.current || !url) return;
     const video = videoRef.current;
 
-    // Define the proxy URL
-    const PROXY = 'https://corsproxy.io/?';
+    // Use a reliable CORS proxy
+    const PROXY_BASE = 'https://corsproxy.io/?';
 
     const initPlayer = () => {
       setIsBuffering(true);
@@ -53,25 +53,21 @@ export default function AnimePlayer({ url, intro, outro, autoSkip = false, heade
 
       if (Hls.isSupported()) {
         const hls = new Hls({ 
-          enableWorker: false, // Disable worker to prevent some CORS issues
+          enableWorker: false, // Disable worker to prevent CORS isolation issues
           lowLatencyMode: true,
           backBufferLength: 90,
-          // CRITICAL: Intercept every single network request (manifest, levels, segments)
-          // and wrap it in the proxy if it isn't already.
+          // CRITICAL FIX: Intercept every network request
           xhrSetup: (xhr, reqUrl) => {
-             if (reqUrl && !reqUrl.startsWith(PROXY)) {
-                // Check if it's a relative path or absolute
-                // If it's absolute, wrap it. 
-                // If it's relative, hls.js usually resolves it against the base URL (which is already proxied), 
-                // but sometimes we need to be explicit.
-                const target = PROXY + encodeURIComponent(reqUrl);
-                xhr.open('GET', target, true);
+             // If the URL isn't already using the proxy, force it to use the proxy
+             if (!reqUrl.includes('corsproxy.io')) {
+                const proxiedUrl = PROXY_BASE + encodeURIComponent(reqUrl);
+                xhr.open('GET', proxiedUrl, true);
              }
           }
         });
         
-        // Wrap the initial URL
-        const masterUrl = url.startsWith('http') ? (PROXY + encodeURIComponent(url)) : url;
+        // Wrap the initial URL with the proxy
+        const masterUrl = url.includes('corsproxy.io') ? url : PROXY_BASE + encodeURIComponent(url);
         
         hls.loadSource(masterUrl);
         hls.attachMedia(video);
@@ -89,11 +85,10 @@ export default function AnimePlayer({ url, intro, outro, autoSkip = false, heade
            if (data.fatal) {
              switch (data.type) {
                case Hls.ErrorTypes.NETWORK_ERROR:
-                 console.warn("Network error, retrying...");
+                 // Retry loading
                  hls.startLoad();
                  break;
                case Hls.ErrorTypes.MEDIA_ERROR:
-                 console.warn("Media error, recovering...");
                  hls.recoverMediaError();
                  break;
                default:
@@ -105,8 +100,8 @@ export default function AnimePlayer({ url, intro, outro, autoSkip = false, heade
 
         hlsRef.current = hls;
       } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
-        // Safari native HLS also needs the proxy
-        const masterUrl = url.startsWith('http') ? (PROXY + encodeURIComponent(url)) : url;
+        // Safari needs the proxy too
+        const masterUrl = url.includes('corsproxy.io') ? url : PROXY_BASE + encodeURIComponent(url);
         video.src = masterUrl;
         video.addEventListener('loadedmetadata', () => {
            setIsBuffering(false);
@@ -120,7 +115,7 @@ export default function AnimePlayer({ url, intro, outro, autoSkip = false, heade
     return () => {
       if (hlsRef.current) hlsRef.current.destroy();
     };
-  }, [url]); 
+  }, [url]);
 
   // --- TIME & CONTROLS ---
   const handleTimeUpdate = () => {
