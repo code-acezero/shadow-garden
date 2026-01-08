@@ -8,6 +8,7 @@ import { createClient } from '@supabase/supabase-js';
 const BASE_URL = 'https://shadow-garden-wqkq.vercel.app/anime/hianime';
 
 // V2: Watch Page (HiAnime Direct)
+// We keep the original URL but will wrap it with a proxy in the class below
 const BASE_URL_V2 = 'https://hianime-api-mu.vercel.app/api/v2/hianime';
 
 const supabaseUrl = import.meta.env?.VITE_SUPABASE_URL || '';
@@ -247,7 +248,7 @@ export class AnimeAPI {
 }
 
 // ==========================================
-//  5. V2 TYPES (UPDATED TO MATCH NEW JSON)
+//  5. V2 TYPES
 // ==========================================
 
 export interface V2BaseAnime {
@@ -284,33 +285,12 @@ export interface V2HomePageData {
   latestCompletedAnimes: V2BaseAnime[];
 }
 
-// FIX: Ensure this is exported and strictly typed
 export interface V2AZListResult {
   sortOption: string;
   animes: V2BaseAnime[];
   totalPages: number;
   currentPage: number;
   hasNextPage: boolean;
-}
-
-// Updated based on your Search Results JSON
-export interface V2SearchResult {
-  animes: V2BaseAnime[];
-  mostPopularAnimes: V2BaseAnime[];
-  currentPage: number;
-  totalPages: number;
-  hasNextPage: boolean;
-  searchQuery: string;
-  searchFilters: Record<string, string[]>;
-}
-
-// Updated based on your Search Suggestions JSON
-export interface V2SearchSuggestion {
-  id: string;
-  name: string;
-  jname: string;
-  poster: string;
-  moreInfo: string[];
 }
 
 export interface V2QTipInfo {
@@ -330,11 +310,13 @@ export interface V2QTipInfo {
   };
 }
 
+// FIX: Added `jname`, `producers` and Typed Characters/Voice Actors
 export interface V2AnimeInfo {
   anime: {
     info: {
       id: string;
       name: string;
+      jname?: string; // Missing in previous version
       poster: string;
       description: string;
       stats: {
@@ -344,8 +326,15 @@ export interface V2AnimeInfo {
         type: string;
         duration: string;
       };
-      promotionalVideos: any[];
-      characterVoiceActor: any[];
+      promotionalVideos: {
+        title?: string;
+        source?: string;
+        thumbnail?: string;
+      }[];
+      characterVoiceActor: {
+        character: { id: string; poster: string; name: string; cast: string };
+        voiceActor: { id: string; poster: string; name: string; cast: string };
+      }[];
     };
     moreInfo: {
       aired: string;
@@ -353,12 +342,37 @@ export interface V2AnimeInfo {
       status: string;
       studios: string;
       duration: string;
+      producers?: string[]; // Missing in previous version
     };
   };
   mostPopularAnimes: V2BaseAnime[];
   recommendedAnimes: V2BaseAnime[];
   relatedAnimes: V2BaseAnime[];
-  seasons: any[];
+  seasons: {
+    id: string;
+    name: string;
+    title: string;
+    poster: string;
+    isCurrent: boolean;
+  }[];
+}
+
+export interface V2SearchResult {
+  animes: V2BaseAnime[];
+  mostPopularAnimes: V2BaseAnime[];
+  currentPage: number;
+  totalPages: number;
+  hasNextPage: boolean;
+  searchQuery: string;
+  searchFilters: Record<string, string[]>;
+}
+
+export interface V2SearchSuggestion {
+  id: string;
+  name: string;
+  jname: string; // Added jname
+  poster: string;
+  moreInfo: string[];
 }
 
 export interface V2GenericListResult {
@@ -367,8 +381,8 @@ export interface V2GenericListResult {
   category?: string;
   animes: V2BaseAnime[];
   genres?: string[];
-  top10Animes?: any;
-  topAiringAnimes?: any;
+  top10Animes?: { today: V2BaseAnime[]; month: V2BaseAnime[]; week: V2BaseAnime[] };
+  topAiringAnimes?: V2BaseAnime[];
   currentPage: number;
   totalPages: number;
   hasNextPage: boolean;
@@ -403,42 +417,34 @@ export interface V2EpisodeSchedule {
   secondsUntilAiring: number | null;
 }
 
-// Updated Episode Servers based on new JSON
 export interface V2Server {
   serverId: number;
   serverName: string;
 }
 
 export interface V2EpisodeServers {
+  episodeId: string;
+  episodeNo: number;
   sub: V2Server[];
   dub: V2Server[];
   raw: V2Server[];
-  episodeId: string;
-  episodeNo: number;
 }
 
-// Updated Streaming Links based on new JSON
+export interface V2Source {
+  url: string;
+  isM3U8: boolean;
+  quality?: string;
+  type?: string;
+}
+
 export interface V2StreamingLinks {
   headers?: {
     Referer: string;
   };
-  tracks?: {
-    url: string;
-    lang: string;
-  }[];
-  intro?: {
-    start: number;
-    end: number;
-  };
-  outro?: {
-    start: number;
-    end: number;
-  };
-  sources: {
-    url: string;
-    isM3U8: boolean;
-    type: string;
-  }[];
+  tracks?: { url: string; lang: string; }[];
+  intro?: { start: number; end: number };
+  outro?: { start: number; end: number };
+  sources: V2Source[];
   anilistID?: number;
   malID?: number;
 }
@@ -468,6 +474,7 @@ export class AnimeAPI_V2 {
       }
 
       // 3. Wrap with CORS Proxy to bypass browser restrictions
+      // Using corsproxy.io as primary, but you can swap if needed
       const proxyUrl = `https://corsproxy.io/?${encodeURIComponent(targetUrl)}`;
       
       const response = await fetch(proxyUrl);
@@ -475,7 +482,7 @@ export class AnimeAPI_V2 {
       
       const json = await response.json();
       
-      // Updated Check: Supports new V2 format (status: 200) AND old format (success: true)
+      // Check both 'status: 200' (New V2) and 'success: true' (Old V2/Consumet)
       if (json.status === 200 || json.success === true) {
         return json.data;
       }
