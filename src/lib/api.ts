@@ -256,7 +256,6 @@ export interface V2QTipInfo {
   };
 }
 
-// FIX: Corrected plural "charactersVoiceActors" to match JSON
 export interface V2AnimeInfo {
   anime: {
     info: {
@@ -277,7 +276,7 @@ export interface V2AnimeInfo {
         source: string;
         thumbnail: string;
       }[];
-      // CORRECTED FIELD NAME HERE
+      // CORRECT KEY HERE (Plural)
       charactersVoiceActors: {
         character: { id: string; poster: string; name: string; cast: string };
         voiceActor: { id: string; poster: string; name: string; cast: string };
@@ -407,9 +406,6 @@ export interface V2StreamingLinks {
   malID?: number;
 }
 
-export type ServerData = V2EpisodeServers; 
-export type V2SourceResponse = V2StreamingLinks;
-
 // ==========================================
 //  6. V2 API CLASS
 // ==========================================
@@ -419,7 +415,6 @@ export class AnimeAPI_V2 {
   private static async request<T>(endpoint: string, params: Record<string, any> = {}): Promise<T | null> {
     try {
       let targetUrl = `${BASE_URL_V2}${endpoint}`;
-      
       const queryString = Object.keys(params)
         .filter(key => params[key] !== undefined && params[key] !== null)
         .map(key => `${encodeURIComponent(key)}=${encodeURIComponent(params[key])}`)
@@ -429,6 +424,7 @@ export class AnimeAPI_V2 {
         targetUrl += `?${queryString}`;
       }
 
+      // Using CORS Proxy
       const proxyUrl = `https://corsproxy.io/?${encodeURIComponent(targetUrl)}`;
       
       const response = await fetch(proxyUrl);
@@ -436,6 +432,7 @@ export class AnimeAPI_V2 {
       
       const json = await response.json();
       
+      // Strict check for your JSON format
       if (json.status === 200 || json.success === true) {
         return json.data;
       }
