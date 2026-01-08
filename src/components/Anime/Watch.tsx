@@ -186,7 +186,6 @@ export default function WatchClient({ animeId: propAnimeId }: { animeId?: string
 
   const [currentEpId, setCurrentEpId] = useState<string | null>(null);
   const [streamUrl, setStreamUrl] = useState<string | null>(null);
-  const [streamHeaders, setStreamHeaders] = useState<Record<string, string> | undefined>();
   const [isStreamLoading, setIsStreamLoading] = useState(false);
   const [streamError, setStreamError] = useState<string | null>(null);
   
@@ -270,7 +269,6 @@ export default function WatchClient({ animeId: propAnimeId }: { animeId?: string
     if (!currentEpId) return;
     setSearchParams(prev => { prev.set('ep', currentEpId); return prev; }, { replace: true });
     setStreamUrl(null);
-    setStreamHeaders(undefined);
     setIsStreamLoading(true);
     setStreamError(null);
 
@@ -303,9 +301,8 @@ export default function WatchClient({ animeId: propAnimeId }: { animeId?: string
            if (localServers.sub.length > 0) activeCategory = 'sub';
            else if (localServers.dub.length > 0) activeCategory = 'dub';
            else if (localServers.raw.length > 0) activeCategory = 'raw';
-           else throw new Error("No servers available for any category");
+           else throw new Error("No servers available");
            
-           addLog('info', `Switched category to ${activeCategory}`);
            setCategory(activeCategory);
         }
 
@@ -317,11 +314,10 @@ export default function WatchClient({ animeId: propAnimeId }: { animeId?: string
               const sourceRes = await fetchSource(server.serverName, activeCategory);
               
               if (sourceRes?.sources?.length > 0) {
-                 addLog('success', 'Stream Acquired', { server: server.serverName, url: sourceRes.sources[0].url });
+                 addLog('success', 'Stream Acquired', { server: server.serverName });
                  
                  const bestSource = sourceRes.sources.find((s) => s.type === 'hls') || sourceRes.sources[0];
                  setStreamUrl(bestSource.url);
-                 setStreamHeaders(sourceRes.headers); // Headers passed to player
                  setIntro(sourceRes.intro);
                  setOutro(sourceRes.outro);
                  setSelectedServerName(server.serverName);
@@ -329,17 +325,15 @@ export default function WatchClient({ animeId: propAnimeId }: { animeId?: string
                  break;
               }
            } catch (e: any) {
-              addLog('error', `Failed ${server.serverName}`, e.message || 'Unknown error');
+              addLog('error', `Failed ${server.serverName}`, e.message || 'Unknown');
            }
         }
 
-        if (!foundSource) {
-           throw new Error("All servers failed to return a stream.");
-        }
+        if (!foundSource) throw new Error("All servers failed.");
 
       } catch (error: any) {
         addLog('error', 'Stream Error', error.message);
-        if (isMounted) setStreamError("Stream unavailable. Try another server manually.");
+        if (isMounted) setStreamError("Stream unavailable.");
       } finally {
         if (isMounted) setIsStreamLoading(false);
       }
@@ -417,7 +411,6 @@ export default function WatchClient({ animeId: propAnimeId }: { animeId?: string
                 ) : streamUrl ? (
                     <AnimePlayer 
                         url={streamUrl} 
-                        headers={streamHeaders} 
                         intro={intro} 
                         outro={outro} 
                         autoSkip={autoSkip} 
