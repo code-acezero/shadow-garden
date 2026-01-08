@@ -1,6 +1,6 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import Hls from 'hls.js';
-// @ts-ignore - Supress "no default export" error (Plyr works fine at runtime)
+// @ts-ignore
 import Plyr from 'plyr';
 import 'plyr/dist/plyr.css';
 
@@ -19,14 +19,14 @@ export default function AnimePlayer({ url, intro, outro, autoSkip = false, onEnd
   const playerRef = useRef<Plyr | null>(null);
   const hlsRef = useRef<Hls | null>(null);
 
-  // --- PROXY STRATEGY ---
+  // Use CodeTabs Proxy
   const PROXY = 'https://api.codetabs.com/v1/proxy?quest=';
 
   useEffect(() => {
     if (!url || !videoRef.current) return;
     const video = videoRef.current;
 
-    // 1. Cleanup old instances
+    // 1. CLEANUP
     if (hlsRef.current) {
         hlsRef.current.destroy();
         hlsRef.current = null;
@@ -36,47 +36,45 @@ export default function AnimePlayer({ url, intro, outro, autoSkip = false, onEnd
         playerRef.current = null;
     }
 
-    // 2. Prepare Proxy URL
+    // 2. INITIALIZE PLYR UI IMMEDIATELY
+    // This ensures you see the controls even if the video is buffering
+    const player = new Plyr(video, {
+        controls: [
+            'play-large', 'play', 'rewind', 'fast-forward', 'progress',
+            'current-time', 'duration', 'mute', 'volume', 'settings', 'pip', 'fullscreen'
+        ],
+        settings: ['quality', 'speed'],
+        seekTime: 10,
+        keyboard: { focused: true, global: true },
+        tooltips: { controls: true, seek: true }
+    });
+    
+    // Auto-Skip Logic
+    player.on('timeupdate', () => {
+        const ct = player.currentTime;
+        if (intro && autoSkip && ct > intro.start && ct < intro.end) {
+            player.currentTime = intro.end;
+        }
+        if (outro && autoSkip && ct > outro.start && ct < outro.end) {
+            if (onNext) onNext();
+        }
+    });
+
+    player.on('ended', () => {
+         if (onEnded) onEnded();
+    });
+
+    playerRef.current = player;
+
+    // 3. LOAD VIDEO STREAM (HLS)
     const finalUrl = url.startsWith('http') && !url.includes('cors') 
         ? PROXY + encodeURIComponent(url) 
         : url;
-
-    // Helper to setup Plyr UI
-    const initPlyr = () => {
-        const player = new Plyr(video, {
-            controls: [
-                'play-large', 'play', 'rewind', 'fast-forward', 'progress',
-                'current-time', 'duration', 'mute', 'volume', 'settings', 'pip', 'fullscreen'
-            ],
-            settings: ['quality', 'speed'],
-            seekTime: 10,
-            keyboard: { focused: true, global: true },
-        });
-
-        // Auto-Skip Logic
-        player.on('timeupdate', () => {
-            const ct = player.currentTime;
-            if (intro && autoSkip && ct > intro.start && ct < intro.end) {
-                player.currentTime = intro.end;
-            }
-            if (outro && autoSkip && ct > outro.start && ct < outro.end) {
-                if (onNext) onNext();
-            }
-        });
-
-        player.on('ended', () => {
-             if (onEnded) onEnded();
-        });
-
-        playerRef.current = player;
-    };
-
-    // 3. Initialize HLS
+        
     if (Hls.isSupported() && url.includes('.m3u8')) {
         const hls = new Hls({
             enableWorker: false,
             lowLatencyMode: true,
-            // CRITICAL: Force every request through the proxy
             xhrSetup: (xhr, reqUrl) => {
                 if (reqUrl && !reqUrl.includes('codetabs')) {
                     const target = PROXY + encodeURIComponent(reqUrl);
@@ -89,39 +87,49 @@ export default function AnimePlayer({ url, intro, outro, autoSkip = false, onEnd
         hls.attachMedia(video);
 
         hls.on(Hls.Events.MANIFEST_PARSED, () => {
-            // Setup Quality Selector for Plyr
+            // Update Quality Settings in Player
             const availableQualities = hls.levels.map((l) => l.height);
-            availableQualities.unshift(0); // Add 'Auto'
+            availableQualities.unshift(0); // Auto
 
-            initPlyr();
-
-            // Hook quality selector
-            if (playerRef.current) {
-                const player = playerRef.current;
-                // @ts-ignore - Allow dynamic config update
-                player.config.quality = {
-                    default: 0,
-                    options: availableQualities,
-                    forced: true,
-                    onChange: (newQuality: number) => {
-                        hls.levels.forEach((level, levelIndex) => {
-                            if (level.height === newQuality) {
-                                hls.currentLevel = levelIndex;
-                            }
-                        });
-                    },
-                };
-            }
+            // @ts-ignore
+            player.config.quality = {
+                default: 0,
+                options: availableQualities,
+                forced: true,
+                onChange: (newQuality: number) => {
+                    hls.levels.forEach((level, levelIndex) => {
+                        if (level.height === newQuality) {
+                            hls.currentLevel = levelIndex;
+                        }
+                    });
+                },
+            };
             
+            // Start Playing
             video.play().catch(() => {});
+        });
+
+        hls.on(Hls.Events.ERROR, (event, data) => {
+            if (data.fatal) {
+                switch(data.type) {
+                    case Hls.ErrorTypes.NETWORK_ERROR:
+                        hls.startLoad();
+                        break;
+                    case Hls.ErrorTypes.MEDIA_ERROR:
+                        hls.recoverMediaError();
+                        break;
+                    default:
+                        hls.destroy();
+                        break;
+                }
+            }
         });
 
         hlsRef.current = hls;
 
     } else {
-        // Native HLS or MP4
+        // Native HLS (Safari)
         video.src = finalUrl;
-        initPlyr();
     }
 
     return () => {
@@ -134,7 +142,7 @@ export default function AnimePlayer({ url, intro, outro, autoSkip = false, onEnd
     <div className="w-full h-full rounded-xl overflow-hidden shadow-2xl bg-black border border-white/10 aspect-video anime-plyr-wrapper">
         <video 
             ref={videoRef} 
-            className="plyr-video w-full h-full" 
+            className="plyr-video w-full h-full object-contain" 
             crossOrigin="anonymous" 
             playsInline
         />
@@ -144,6 +152,15 @@ export default function AnimePlayer({ url, intro, outro, autoSkip = false, onEnd
                 height: 100%;
                 width: 100%;
                 --plyr-color-main: #dc2626; /* Red Theme */
+                --plyr-video-background: #000;
+            }
+            .plyr__video-wrapper {
+                height: 100%;
+            }
+            /* Fix invisible controls */
+            .plyr--video .plyr__controls {
+                background: linear-gradient(rgba(0,0,0,0), rgba(0,0,0,0.8));
+                padding-bottom: 20px;
             }
         `}</style>
     </div>
