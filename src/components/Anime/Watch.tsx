@@ -186,6 +186,7 @@ export default function WatchClient({ animeId: propAnimeId }: { animeId?: string
 
   const [currentEpId, setCurrentEpId] = useState<string | null>(null);
   const [streamUrl, setStreamUrl] = useState<string | null>(null);
+  const [streamHeaders, setStreamHeaders] = useState<Record<string, string> | undefined>();
   const [isStreamLoading, setIsStreamLoading] = useState(false);
   const [streamError, setStreamError] = useState<string | null>(null);
   
@@ -269,6 +270,7 @@ export default function WatchClient({ animeId: propAnimeId }: { animeId?: string
     if (!currentEpId) return;
     setSearchParams(prev => { prev.set('ep', currentEpId); return prev; }, { replace: true });
     setStreamUrl(null);
+    setStreamHeaders(undefined);
     setIsStreamLoading(true);
     setStreamError(null);
 
@@ -318,6 +320,7 @@ export default function WatchClient({ animeId: propAnimeId }: { animeId?: string
                  
                  const bestSource = sourceRes.sources.find((s) => s.type === 'hls') || sourceRes.sources[0];
                  setStreamUrl(bestSource.url);
+                 setStreamHeaders(sourceRes.headers); 
                  setIntro(sourceRes.intro);
                  setOutro(sourceRes.outro);
                  setSelectedServerName(server.serverName);
@@ -369,10 +372,12 @@ export default function WatchClient({ animeId: propAnimeId }: { animeId?: string
   const producersList = moreInfo.producers || moreInfo.studios?.split(',').map(s => s.trim()) || ["Unknown"];
   const studiosList = moreInfo.studios?.split(',').map(s => s.trim()) || ["Unknown"];
 
+  // Character Data Fallback
+  const characters = details.charactersVoiceActors || details.characterVoiceActor || [];
+
   return (
     <div className="min-h-screen bg-[#050505] text-gray-100 pb-20 relative font-sans">
       
-      {/* LIGHTS OFF OVERLAY */}
       <div className={`fixed inset-0 bg-black z-40 transition-opacity duration-500 pointer-events-none ${lightMode ? 'opacity-0' : 'opacity-95'}`} />
 
       {/* DEBUG POPUP */}
@@ -396,7 +401,7 @@ export default function WatchClient({ animeId: propAnimeId }: { animeId?: string
         </div>
       )}
 
-      {/* === PLAYER SECTION === */}
+      {/* PLAYER SECTION */}
       <div className="w-full relative z-50 flex justify-center bg-[#050505]">
         <div className="w-full max-w-[1400px] px-4 md:px-8 mt-6">
             <div className="w-full aspect-video bg-black rounded-xl overflow-hidden border border-white/5 shadow-2xl relative">
@@ -411,6 +416,7 @@ export default function WatchClient({ animeId: propAnimeId }: { animeId?: string
                 ) : streamUrl ? (
                     <AnimePlayer 
                         url={streamUrl} 
+                        headers={streamHeaders} 
                         intro={intro} 
                         outro={outro} 
                         autoSkip={autoSkip} 
@@ -424,10 +430,9 @@ export default function WatchClient({ animeId: propAnimeId }: { animeId?: string
         </div>
       </div>
 
-      {/* === CONTROLS BAR === */}
+      {/* CONTROLS */}
       <div className="w-full flex justify-center bg-[#0a0a0a] border-b border-white/5 relative z-50">
         <div className="w-full max-w-[1400px] px-4 md:px-8 py-3 flex flex-col lg:flex-row gap-4 justify-between items-center">
-          
           <div className="flex-1 min-w-0">
              <div className="flex items-center gap-3">
                 <div className="flex flex-col">
@@ -439,7 +444,6 @@ export default function WatchClient({ animeId: propAnimeId }: { animeId?: string
                 <NextEpisodeTimer schedule={nextEpSchedule} />
              </div>
           </div>
-
           <div className="flex items-center gap-4">
              {currentEpisode?.number > 1 && prevEpisode && (
                 <div onClick={() => handleEpisodeClick(prevEpisode.episodeId)} className="flex items-center gap-2 bg-white/5 rounded-full px-4 h-8 border border-white/5 cursor-pointer hover:bg-white/10 hover:text-red-500 transition-colors">
@@ -447,30 +451,24 @@ export default function WatchClient({ animeId: propAnimeId }: { animeId?: string
                     <span className="text-[10px] font-bold">PREV</span>
                 </div>
              )}
-
              <Button onClick={() => setLightMode(!lightMode)} variant="ghost" size="icon" className="rounded-full w-8 h-8 hover:bg-white/10 text-yellow-500">
                 {lightMode ? <Lightbulb size={16} /> : <LightbulbOff size={16} />}
              </Button>
-
              <WatchPartyButton />
-
              <div onClick={() => setAutoSkip(!autoSkip)} className="flex items-center gap-2 bg-white/5 rounded-full px-3 h-8 border border-white/5 cursor-pointer hover:bg-white/10 transition-colors">
                 <FastForward size={12} className={autoSkip ? 'text-blue-400' : 'text-zinc-600'} />
                 <span className={`text-[10px] font-bold ${autoSkip ? 'text-white' : 'text-zinc-500'}`}>SKIP</span>
              </div>
-
              <div onClick={() => setAutoPlay(!autoPlay)} className="flex items-center gap-2 bg-white/5 rounded-full px-3 h-8 border border-white/5 cursor-pointer hover:bg-white/10 transition-colors">
                 <div className={`w-2 h-2 rounded-full ${autoPlay ? 'bg-green-500 shadow-[0_0_5px_lime]' : 'bg-gray-600'}`} />
                 <span className={`text-[10px] font-bold ${autoPlay ? 'text-white' : 'text-zinc-500'}`}>AUTO</span>
              </div>
-
              {nextEpisode && (
                 <div onClick={() => handleEpisodeClick(nextEpisode.episodeId)} className="flex items-center gap-2 bg-white/5 rounded-full px-4 h-8 border border-white/5 cursor-pointer hover:bg-red-600 hover:border-red-500 transition-all duration-300 group">
                     <span className="text-[10px] font-bold text-white group-hover:text-white">NEXT</span>
                     <SkipForward size={12} className="text-zinc-400 group-hover:text-white" />
                 </div>
              )}
-
              <div className="flex bg-black/40 rounded-full p-1 border border-white/10 ml-2">
                 {(['sub', 'dub', 'raw'] as const).map((cat) => (
                    <button key={cat} onClick={() => setCategory(cat)} className={`px-3 py-0.5 rounded-full text-[10px] font-bold uppercase ${category === cat ? 'bg-red-600 text-white' : 'text-zinc-500'}`}>
@@ -478,7 +476,6 @@ export default function WatchClient({ animeId: propAnimeId }: { animeId?: string
                    </button>
                 ))}
              </div>
-             
              <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                    <Button variant="ghost" className="h-8 gap-2 text-xs font-bold text-zinc-400 hover:text-white">
@@ -487,22 +484,17 @@ export default function WatchClient({ animeId: propAnimeId }: { animeId?: string
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end" className="bg-[#1a1a1a] border-white/10 text-zinc-300">
                    {servers?.[category]?.map((srv, idx) => (
-                      <DropdownMenuItem 
-                        key={srv.serverId} 
-                        onClick={() => setSelectedServerName(srv.serverName)}
-                        className={`text-xs cursor-pointer ${selectedServerName === srv.serverName ? 'text-red-500 bg-white/5' : ''}`}
-                      >
+                      <DropdownMenuItem key={srv.serverId} onClick={() => setSelectedServerName(srv.serverName)} className={`text-xs cursor-pointer ${selectedServerName === srv.serverName ? 'text-red-500 bg-white/5' : ''}`}>
                          Portal-{idx + 1} ({srv.serverName})
                       </DropdownMenuItem>
                    ))}
                 </DropdownMenuContent>
              </DropdownMenu>
-
           </div>
         </div>
       </div>
 
-      {/* === TOP GRID === */}
+      {/* GRID */}
       <div className="w-full flex justify-center mt-8">
         <div className="w-full max-w-[1400px] px-4 md:px-8 grid grid-cols-1 xl:grid-cols-12 gap-8">
            
@@ -519,7 +511,6 @@ export default function WatchClient({ animeId: propAnimeId }: { animeId?: string
                     <button onClick={() => setEpViewMode('detail')} className={`p-1.5 rounded ${epViewMode === 'detail' ? 'bg-white/10 text-white' : 'text-zinc-500'}`}><AlignJustify size={14}/></button>
                  </div>
               </div>
-
               {episodeChunks.length > 1 && (
                  <div className="w-full border-b border-white/5 bg-black/20 flex-shrink-0 h-10 overflow-hidden">
                     <ScrollArea className="w-full h-full whitespace-nowrap">
@@ -534,42 +525,19 @@ export default function WatchClient({ animeId: propAnimeId }: { animeId?: string
                     </ScrollArea>
                  </div>
               )}
-
               <ScrollArea className="flex-1 p-2">
                  <div className={`${epViewMode === 'tile' ? 'grid grid-cols-5 gap-2' : 'flex flex-col gap-1'}`}>
                     {episodeChunks[epChunkIndex]?.map((ep) => {
                        const isCurrent = ep.episodeId === currentEpId;
-                       
-                       if (epViewMode === 'tile') {
-                          return (
-                             <button key={ep.episodeId} onClick={() => handleEpisodeClick(ep.episodeId)} className={`aspect-square rounded flex flex-col items-center justify-center border transition-all relative ${isCurrent ? 'bg-red-600/20 border-red-500 text-red-500' : 'bg-zinc-900 border-zinc-800 text-zinc-400 hover:bg-zinc-800'}`}>
-                                <span className="text-xs font-bold">{ep.number}</span>
-                                {ep.isFiller && <span className="absolute top-1 right-1 w-1.5 h-1.5 bg-orange-500 rounded-full"/>}
-                             </button>
-                          );
-                       }
-                       
-                       if (epViewMode === 'list') {
-                          return (
-                             <button key={ep.episodeId} onClick={() => handleEpisodeClick(ep.episodeId)} className={`flex items-center justify-between px-3 py-2 rounded text-xs font-medium transition-all ${isCurrent ? 'bg-red-600 text-white' : 'bg-white/5 text-zinc-400 hover:bg-white/10'}`}>
-                                <span>Episode {ep.number}</span>
-                                {ep.isFiller && <span className="text-[8px] bg-orange-500/20 text-orange-500 px-1 rounded">FILLER</span>}
-                             </button>
-                          );
-                       }
-
-                       if (epViewMode === 'detail') {
-                          return (
-                             <button key={ep.episodeId} onClick={() => handleEpisodeClick(ep.episodeId)} className={`flex items-center gap-3 px-3 py-3 rounded text-left transition-all border border-transparent ${isCurrent ? 'bg-red-600/10 border-red-600/30' : 'bg-white/5 hover:bg-white/10'}`}>
-                                <div className={`w-8 h-8 rounded flex items-center justify-center text-xs font-bold ${isCurrent ? 'bg-red-600 text-white' : 'bg-black/40 text-zinc-500'}`}>{ep.number}</div>
-                                <div className="flex-1 min-w-0">
-                                   <div className={`text-xs font-bold truncate ${isCurrent ? 'text-red-400' : 'text-zinc-300'}`}>{ep.title || `Episode ${ep.number}`}</div>
-                                   <div className="text-[10px] text-zinc-600">{ep.isFiller ? 'Filler Episode' : 'Canon'}</div>
-                                </div>
-                                <Play size={12} className={isCurrent ? 'text-red-500' : 'text-zinc-700'} />
-                             </button>
-                          );
-                       }
+                       if (epViewMode === 'tile') return (
+                          <button key={ep.episodeId} onClick={() => handleEpisodeClick(ep.episodeId)} className={`aspect-square rounded flex flex-col items-center justify-center border transition-all relative ${isCurrent ? 'bg-red-600/20 border-red-500 text-red-500' : 'bg-zinc-900 border-zinc-800 text-zinc-400 hover:bg-zinc-800'}`}><span className="text-xs font-bold">{ep.number}</span>{ep.isFiller && <span className="absolute top-1 right-1 w-1.5 h-1.5 bg-orange-500 rounded-full"/>}</button>
+                       );
+                       if (epViewMode === 'list') return (
+                          <button key={ep.episodeId} onClick={() => handleEpisodeClick(ep.episodeId)} className={`flex items-center justify-between px-3 py-2 rounded text-xs font-medium transition-all ${isCurrent ? 'bg-red-600 text-white' : 'bg-white/5 text-zinc-400 hover:bg-white/10'}`}><span>Episode {ep.number}</span>{ep.isFiller && <span className="text-[8px] bg-orange-500/20 text-orange-500 px-1 rounded">FILLER</span>}</button>
+                       );
+                       return (
+                          <button key={ep.episodeId} onClick={() => handleEpisodeClick(ep.episodeId)} className={`flex items-center gap-3 px-3 py-3 rounded text-left transition-all border border-transparent ${isCurrent ? 'bg-red-600/10 border-red-600/30' : 'bg-white/5 hover:bg-white/10'}`}><div className={`w-8 h-8 rounded flex items-center justify-center text-xs font-bold ${isCurrent ? 'bg-red-600 text-white' : 'bg-black/40 text-zinc-500'}`}>{ep.number}</div><div className="flex-1 min-w-0"><div className={`text-xs font-bold truncate ${isCurrent ? 'text-red-400' : 'text-zinc-300'}`}>{ep.title || `Episode ${ep.number}`}</div><div className="text-[10px] text-zinc-600">{ep.isFiller ? 'Filler Episode' : 'Canon'}</div></div><Play size={12} className={isCurrent ? 'text-red-500' : 'text-zinc-700'} /></button>
+                       );
                     })}
                  </div>
               </ScrollArea>
@@ -582,54 +550,30 @@ export default function WatchClient({ animeId: propAnimeId }: { animeId?: string
                  <div className="flex-1 pt-2 text-center sm:text-left z-10">
                     <h1 className="text-2xl md:text-3xl font-black text-white font-[Cinzel] leading-tight">{details.name}</h1>
                     {details.jname && <p className="text-xs text-zinc-500 mt-1 italic line-clamp-1">{details.jname}</p>}
-                    
                     <div className="flex flex-wrap gap-2 mt-3 justify-center sm:justify-start items-center">
                        <Badge className="bg-red-600 hover:bg-red-700">{details.stats.quality}</Badge>
                        <Badge variant="outline" className="text-zinc-300 border-zinc-700 bg-black/40">{details.stats.type}</Badge>
                        <Badge variant="outline" className="text-zinc-300 border-zinc-700 bg-black/40">{details.stats.rating}</Badge>
-                       <div className="flex items-center gap-1 text-xs text-zinc-400 ml-2 bg-black/40 px-2 py-0.5 rounded-full border border-white/5">
-                          <Clock className="w-3 h-3"/> {details.stats.duration}
-                       </div>
-                       <div className="flex items-center gap-1 text-[10px] text-zinc-500 border-l border-zinc-700 pl-2 ml-1">
-                          Premiered: {moreInfo.aired?.split('to')[0]}
-                       </div>
-                       <div className="flex items-center gap-1 text-xs text-green-400 ml-2 bg-green-900/20 px-2 py-0.5 rounded-full border border-green-900/30 font-bold">
-                          MAL: {info.anime.info.stats.rating || 'N/A'}
-                       </div>
+                       <div className="flex items-center gap-1 text-xs text-zinc-400 ml-2 bg-black/40 px-2 py-0.5 rounded-full border border-white/5"><Clock className="w-3 h-3"/> {details.stats.duration}</div>
+                       <div className="flex items-center gap-1 text-[10px] text-zinc-500 border-l border-zinc-700 pl-2 ml-1">Premiered: {moreInfo.aired?.split('to')[0]}</div>
+                       <div className="flex items-center gap-1 text-xs text-green-400 ml-2 bg-green-900/20 px-2 py-0.5 rounded-full border border-green-900/30 font-bold">MAL: {info.anime.info.stats.rating || 'N/A'}</div>
                     </div>
-
-                    <div className="flex flex-wrap gap-1 mt-3 justify-center sm:justify-start">
-                       {moreInfo.genres.map(g => (
-                          <span key={g} className="text-[10px] px-2 py-0.5 bg-white/5 rounded text-zinc-400 border border-white/5 hover:text-white transition-colors">{g}</span>
-                       ))}
-                    </div>
-                    
+                    <div className="flex flex-wrap gap-1 mt-3 justify-center sm:justify-start">{moreInfo.genres.map(g => (<span key={g} className="text-[10px] px-2 py-0.5 bg-white/5 rounded text-zinc-400 border border-white/5 hover:text-white transition-colors">{g}</span>))}</div>
                     <MagicStoneRating />
                  </div>
               </div>
-
               <div className="flex-1 min-h-0 relative">
                  <ScrollArea className="h-full px-6">
                     <p className="text-gray-300 text-sm leading-relaxed pb-4">{details.description}</p>
-                    
-                    {/* PROMOTIONAL VIDEOS */}
                     {details.promotionalVideos && details.promotionalVideos.length > 0 && (
                         <div className="mt-6 mb-4">
-                            <h3 className="text-sm font-bold text-white mb-3 flex items-center gap-2">
-                                <Video size={14} className="text-red-500" /> Promotional Videos
-                            </h3>
+                            <h3 className="text-sm font-bold text-white mb-3 flex items-center gap-2"><Video size={14} className="text-red-500" /> Promotional Videos</h3>
                             <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
                                 {details.promotionalVideos.map((pv, idx) => (
                                     <a key={idx} href={pv.source} target="_blank" rel="noopener noreferrer" className="block relative aspect-video rounded-lg overflow-hidden border border-white/10 group">
                                         <img src={pv.thumbnail} alt={pv.title} className="w-full h-full object-cover opacity-80 group-hover:opacity-100 transition-opacity" />
-                                        <div className="absolute inset-0 flex items-center justify-center">
-                                            <div className="bg-black/50 p-2 rounded-full border border-white/20 group-hover:scale-110 transition-transform">
-                                                <Play size={16} className="text-white fill-white" />
-                                            </div>
-                                        </div>
-                                        <div className="absolute bottom-0 left-0 right-0 bg-black/80 px-2 py-1 text-[10px] truncate">
-                                            {pv.title}
-                                        </div>
+                                        <div className="absolute inset-0 flex items-center justify-center"><div className="bg-black/50 p-2 rounded-full border border-white/20 group-hover:scale-110 transition-transform"><Play size={16} className="text-white fill-white" /></div></div>
+                                        <div className="absolute bottom-0 left-0 right-0 bg-black/80 px-2 py-1 text-[10px] truncate">{pv.title}</div>
                                     </a>
                                 ))}
                             </div>
@@ -637,96 +581,34 @@ export default function WatchClient({ animeId: propAnimeId }: { animeId?: string
                     )}
                  </ScrollArea>
               </div>
-
               <div className="flex-shrink-0 p-4 border-t border-white/5 bg-[#0a0a0a]">
                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-xs">
-                    <div className="bg-white/5 p-3 rounded-lg border border-white/5">
-                       <span className="text-red-500 font-bold block mb-1">Studios</span>
-                       {studiosList.length > 1 ? (
-                           <DropdownMenu>
-                               <DropdownMenuTrigger className="flex items-center gap-1 text-zinc-300 hover:text-white">
-                                   {studiosList[0]} <ChevronDown size={10}/>
-                               </DropdownMenuTrigger>
-                               <DropdownMenuContent className="bg-black border-white/10">
-                                   {studiosList.map(s => <DropdownMenuItem key={s}>{s}</DropdownMenuItem>)}
-                               </DropdownMenuContent>
-                           </DropdownMenu>
-                       ) : <span className="text-zinc-300 truncate block">{studiosList[0]}</span>}
-                    </div>
-                    <div className="bg-white/5 p-3 rounded-lg border border-white/5">
-                       <span className="text-red-500 font-bold block mb-1">Aired</span>
-                       <span className="text-zinc-300 truncate block">{moreInfo.aired}</span>
-                    </div>
-                    <div className="bg-white/5 p-3 rounded-lg border border-white/5">
-                       <span className="text-red-500 font-bold block mb-1">Status</span>
-                       <span className="text-zinc-300 uppercase">{moreInfo.status}</span>
-                    </div>
-                    <div className="bg-white/5 p-3 rounded-lg border border-white/5">
-                       <span className="text-red-500 font-bold block mb-1">Producers</span>
-                       {producersList.length > 1 ? (
-                           <DropdownMenu>
-                               <DropdownMenuTrigger className="flex items-center gap-1 text-zinc-300 hover:text-white">
-                                   {producersList[0]} <ChevronDown size={10}/>
-                               </DropdownMenuTrigger>
-                               <DropdownMenuContent className="bg-black border-white/10">
-                                   {producersList.map(p => <DropdownMenuItem key={p}>{p}</DropdownMenuItem>)}
-                               </DropdownMenuContent>
-                           </DropdownMenu>
-                       ) : <span className="text-zinc-300 truncate block">{producersList[0]}</span>}
-                    </div>
+                    <div className="bg-white/5 p-3 rounded-lg border border-white/5"><span className="text-red-500 font-bold block mb-1">Studios</span>{studiosList.length > 1 ? (<DropdownMenu><DropdownMenuTrigger className="flex items-center gap-1 text-zinc-300 hover:text-white">{studiosList[0]} <ChevronDown size={10}/></DropdownMenuTrigger><DropdownMenuContent className="bg-black border-white/10">{studiosList.map(s => <DropdownMenuItem key={s}>{s}</DropdownMenuItem>)}</DropdownMenuContent></DropdownMenu>) : <span className="text-zinc-300 truncate block">{studiosList[0]}</span>}</div>
+                    <div className="bg-white/5 p-3 rounded-lg border border-white/5"><span className="text-red-500 font-bold block mb-1">Aired</span><span className="text-zinc-300 truncate block">{moreInfo.aired}</span></div>
+                    <div className="bg-white/5 p-3 rounded-lg border border-white/5"><span className="text-red-500 font-bold block mb-1">Status</span><span className="text-zinc-300 uppercase">{moreInfo.status}</span></div>
+                    <div className="bg-white/5 p-3 rounded-lg border border-white/5"><span className="text-red-500 font-bold block mb-1">Producers</span>{producersList.length > 1 ? (<DropdownMenu><DropdownMenuTrigger className="flex items-center gap-1 text-zinc-300 hover:text-white">{producersList[0]} <ChevronDown size={10}/></DropdownMenuTrigger><DropdownMenuContent className="bg-black border-white/10">{producersList.map(p => <DropdownMenuItem key={p}>{p}</DropdownMenuItem>)}</DropdownMenuContent></DropdownMenu>) : <span className="text-zinc-300 truncate block">{producersList[0]}</span>}</div>
                  </div>
               </div>
            </div>
         </div>
       </div>
 
-      {/* === MIDDLE SECTION === */}
+      {/* MIDDLE */}
       {(info.seasons.length > 0 || (info.relatedAnimes.length > 0 && info.relatedAnimes[0].id !== info.mostPopularAnimes?.[0]?.id)) && (
          <div className="flex items-center justify-center my-12 px-4 md:px-8 min-h-[150px]">
             <div className="w-full max-w-[1400px]">
                <div className="bg-white/5 backdrop-blur-md border border-white/10 shadow-2xl rounded-2xl p-6 overflow-hidden relative">
                   <div className="absolute top-0 left-0 w-1 h-full bg-gradient-to-b from-red-500 to-purple-600" />
-                  
                   {info.seasons.length > 0 && (
                      <div className="mb-6">
-                        <div className="flex items-center gap-2 mb-3">
-                           <span className="w-2 h-2 bg-red-500 rounded-full animate-pulse" />
-                           <h4 className="text-xs text-zinc-300 font-bold uppercase tracking-widest">Seasons</h4>
-                        </div>
-                        <ScrollArea className="w-full whitespace-nowrap pb-2">
-                           <div className="flex gap-4 w-max">
-                              {info.seasons.map((season) => (
-                                 <div key={season.id} onClick={() => navigate(`/watch/${season.id}`)} className={`group flex items-center gap-3 p-1.5 pr-6 rounded-full border cursor-pointer transition-all duration-300 ${season.isCurrent ? 'bg-red-600/10 border-red-500/50' : 'bg-black/40 border-white/10'}`}>
-                                    <img src={season.poster} className="w-10 h-10 rounded-full object-cover" />
-                                    <span className="text-xs font-bold text-zinc-300 group-hover:text-white">{season.title || season.name}</span>
-                                 </div>
-                              ))}
-                           </div>
-                           <ScrollBar orientation="horizontal"/>
-                        </ScrollArea>
+                        <div className="flex items-center gap-2 mb-3"><span className="w-2 h-2 bg-red-500 rounded-full animate-pulse" /><h4 className="text-xs text-zinc-300 font-bold uppercase tracking-widest">Seasons</h4></div>
+                        <ScrollArea className="w-full whitespace-nowrap pb-2"><div className="flex gap-4 w-max">{info.seasons.map((season) => (<div key={season.id} onClick={() => navigate(`/watch/${season.id}`)} className={`group flex items-center gap-3 p-1.5 pr-6 rounded-full border cursor-pointer transition-all duration-300 ${season.isCurrent ? 'bg-red-600/10 border-red-500/50' : 'bg-black/40 border-white/10'}`}><img src={season.poster} className="w-10 h-10 rounded-full object-cover" /><span className="text-xs font-bold text-zinc-300 group-hover:text-white">{season.title || season.name}</span></div>))}</div><ScrollBar orientation="horizontal"/></ScrollArea>
                      </div>
                   )}
-
                   {info.relatedAnimes.length > 0 && (
                      <div>
-                        <div className="flex items-center gap-2 mb-3">
-                           <span className="w-2 h-2 bg-purple-500 rounded-full animate-pulse" />
-                           <h4 className="text-xs text-zinc-300 font-bold uppercase tracking-widest">Related</h4>
-                        </div>
-                        <ScrollArea className="w-full whitespace-nowrap pb-2">
-                           <div className="flex gap-4 w-max">
-                              {info.relatedAnimes.map((rel) => (
-                                 <div key={rel.id} onClick={() => navigate(`/watch/${rel.id}`)} className="group flex items-center gap-3 p-1.5 pr-6 rounded-full bg-black/40 border border-white/10 hover:border-white/30 cursor-pointer transition-all duration-300">
-                                    <img src={rel.poster} className="w-10 h-10 rounded-full object-cover" />
-                                    <div className="flex flex-col">
-                                       <span className="text-xs font-bold text-zinc-400 group-hover:text-white">{rel.name}</span>
-                                       <span className="text-[9px] text-zinc-600 uppercase">{rel.type}</span>
-                                    </div>
-                                 </div>
-                              ))}
-                           </div>
-                           <ScrollBar orientation="horizontal"/>
-                        </ScrollArea>
+                        <div className="flex items-center gap-2 mb-3"><span className="w-2 h-2 bg-purple-500 rounded-full animate-pulse" /><h4 className="text-xs text-zinc-300 font-bold uppercase tracking-widest">Related</h4></div>
+                        <ScrollArea className="w-full whitespace-nowrap pb-2"><div className="flex gap-4 w-max">{info.relatedAnimes.map((rel) => (<div key={rel.id} onClick={() => navigate(`/watch/${rel.id}`)} className="group flex items-center gap-3 p-1.5 pr-6 rounded-full bg-black/40 border border-white/10 hover:border-white/30 cursor-pointer transition-all duration-300"><img src={rel.poster} className="w-10 h-10 rounded-full object-cover" /><div className="flex flex-col"><span className="text-xs font-bold text-zinc-400 group-hover:text-white">{rel.name}</span><span className="text-[9px] text-zinc-600 uppercase">{rel.type}</span></div></div>))}</div><ScrollBar orientation="horizontal"/></ScrollArea>
                      </div>
                   )}
                </div>
@@ -734,60 +616,30 @@ export default function WatchClient({ animeId: propAnimeId }: { animeId?: string
          </div>
       )}
 
-      {/* === BOTTOM ROW === */}
+      {/* BOTTOM */}
       <div className="w-full flex justify-center mt-8">
         <div className="w-full max-w-[1400px] px-4 md:px-8 grid grid-cols-1 xl:grid-cols-12 gap-8">
            <div className="xl:col-span-4 h-[600px] flex flex-col">
-              <div className="flex items-center gap-2 mb-2">
-                 <div className="w-1 h-5 bg-purple-600 rounded-full" />
-                 <h3 className="font-bold text-white">Recommended</h3>
-              </div>
+              <div className="flex items-center gap-2 mb-2"><div className="w-1 h-5 bg-purple-600 rounded-full" /><h3 className="font-bold text-white">Recommended</h3></div>
               <div className="bg-[#0a0a0a] rounded-xl border border-white/5 flex-1 overflow-hidden shadow-xl p-2">
                  <ScrollArea className="h-full pr-2">
                     <div className="space-y-2">
                        {info.recommendedAnimes.map((rec) => (
-                          <div key={rec.id} onClick={() => navigate(`/watch/${rec.id}`)} className="flex gap-3 p-2 rounded-lg hover:bg-white/5 cursor-pointer group transition-colors">
-                             <img src={rec.poster} className="w-16 h-20 object-cover rounded shadow-lg" />
-                             <div className="flex-1 py-1">
-                                <h4 className="text-xs font-bold text-gray-200 group-hover:text-purple-400 line-clamp-2">{rec.name}</h4>
-                                <div className="flex items-center gap-2 mt-2 text-[10px] text-zinc-500">
-                                   <span className="bg-white/10 px-1.5 py-0.5 rounded text-zinc-300 border border-white/5">{rec.type}</span>
-                                   <span>{rec.episodes?.sub} Eps</span>
-                                </div>
-                             </div>
-                          </div>
+                          <div key={rec.id} onClick={() => navigate(`/watch/${rec.id}`)} className="flex gap-3 p-2 rounded-lg hover:bg-white/5 cursor-pointer group transition-colors"><img src={rec.poster} className="w-16 h-20 object-cover rounded shadow-lg" /><div className="flex-1 py-1"><h4 className="text-xs font-bold text-gray-200 group-hover:text-purple-400 line-clamp-2">{rec.name}</h4><div className="flex items-center gap-2 mt-2 text-[10px] text-zinc-500"><span className="bg-white/10 px-1.5 py-0.5 rounded text-zinc-300 border border-white/5">{rec.type}</span><span>{rec.episodes?.sub} Eps</span></div></div></div>
                        ))}
                     </div>
                  </ScrollArea>
               </div>
            </div>
-
            <div className="xl:col-span-8 h-[600px] bg-[#0a0a0a] rounded-xl border border-white/5 overflow-hidden flex flex-col shadow-xl">
-              <div className="p-4 bg-white/5 border-b border-white/5">
-                 <h3 className="font-bold text-white flex items-center gap-2">
-                    <User size={16} className="text-blue-500"/> Characters & Voice Actors
-                 </h3>
-              </div>
+              <div className="p-4 bg-white/5 border-b border-white/5"><h3 className="font-bold text-white flex items-center gap-2"><User size={16} className="text-blue-500"/> Characters & Voice Actors</h3></div>
               <ScrollArea className="flex-1 p-4">
                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    {/* CORRECT KEY USED HERE: charactersVoiceActors */}
-                    {details.charactersVoiceActors?.map((cva, i) => (
+                    {characters.map((cva, i) => (
                        <div key={i} className="flex items-center justify-between bg-white/5 p-2 rounded-lg border border-white/5 hover:border-white/10 transition-colors">
-                          <div className="flex items-center gap-3">
-                             <img src={cva.character.poster} className="w-12 h-12 rounded-full object-cover border border-zinc-700" />
-                             <div className="text-left">
-                                <div className="text-xs font-bold text-zinc-200">{cva.character.name}</div>
-                                <div className="text-[10px] text-zinc-500">{cva.character.cast}</div>
-                             </div>
-                          </div>
+                          <div className="flex items-center gap-3"><img src={cva.character.poster} className="w-12 h-12 rounded-full object-cover border border-zinc-700" /><div className="text-left"><div className="text-xs font-bold text-zinc-200">{cva.character.name}</div><div className="text-[10px] text-zinc-500">{cva.character.cast}</div></div></div>
                           <div className="h-8 w-[1px] bg-white/10 mx-2" />
-                          <div className="flex items-center gap-3 flex-row-reverse text-right">
-                             <img src={cva.voiceActor.poster} className="w-12 h-12 rounded-full object-cover border border-zinc-700" />
-                             <div>
-                                <div className="text-xs font-bold text-zinc-200">{cva.voiceActor.name}</div>
-                                <div className="text-[10px] text-zinc-500">{cva.voiceActor.cast}</div>
-                             </div>
-                          </div>
+                          <div className="flex items-center gap-3 flex-row-reverse text-right"><img src={cva.voiceActor.poster} className="w-12 h-12 rounded-full object-cover border border-zinc-700" /><div><div className="text-xs font-bold text-zinc-200">{cva.voiceActor.name}</div><div className="text-[10px] text-zinc-500">{cva.voiceActor.cast}</div></div></div>
                        </div>
                     ))}
                  </div>
@@ -795,7 +647,6 @@ export default function WatchClient({ animeId: propAnimeId }: { animeId?: string
            </div>
         </div>
       </div>
-
     </div>
   );
 }

@@ -13,11 +13,12 @@ interface AnimePlayerProps {
   intro?: { start: number; end: number };
   outro?: { start: number; end: number };
   autoSkip?: boolean;
+  headers?: Record<string, string>;
   onEnded?: () => void;
   onNext?: () => void;
 }
 
-export default function AnimePlayer({ url, intro, outro, autoSkip = false, onEnded, onNext }: AnimePlayerProps) {
+export default function AnimePlayer({ url, intro, outro, autoSkip = false, headers, onEnded, onNext }: AnimePlayerProps) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const hlsRef = useRef<Hls | null>(null);
@@ -35,7 +36,6 @@ export default function AnimePlayer({ url, intro, outro, autoSkip = false, onEnd
   
   const controlsTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
-  // --- HLS SETUP ---
   useEffect(() => {
     if (!videoRef.current || !url) return;
     const video = videoRef.current;
@@ -55,6 +55,7 @@ export default function AnimePlayer({ url, intro, outro, autoSkip = false, onEnd
           backBufferLength: 90
         });
         
+        // Attempt direct load first
         hls.loadSource(url);
         hls.attachMedia(video);
         
@@ -67,11 +68,19 @@ export default function AnimePlayer({ url, intro, outro, autoSkip = false, onEnd
           });
         });
 
+        // Error Recovery & Proxy Fallback
         hls.on(Hls.Events.ERROR, (event, data) => {
            if (data.fatal) {
              switch (data.type) {
                case Hls.ErrorTypes.NETWORK_ERROR:
-                 hls.startLoad();
+                 console.warn("Network error, attempting proxy fallback...");
+                 // If direct fails, try via proxy
+                 if (!url.includes('corsproxy.io')) {
+                    const proxyUrl = `https://corsproxy.io/?${encodeURIComponent(url)}`;
+                    hls.loadSource(proxyUrl);
+                 } else {
+                    hls.startLoad(); 
+                 }
                  break;
                case Hls.ErrorTypes.MEDIA_ERROR:
                  hls.recoverMediaError();
@@ -98,9 +107,9 @@ export default function AnimePlayer({ url, intro, outro, autoSkip = false, onEnd
     return () => {
       if (hlsRef.current) hlsRef.current.destroy();
     };
-  }, [url]);
+  }, [url]); // Headers removed from dep array as we handle them via proxy logic if needed
 
-  // --- TIME & CONTROLS ---
+  // ... (Time Update Logic same as before) ...
   const handleTimeUpdate = () => {
     if (!videoRef.current) return;
     const curr = videoRef.current.currentTime;
@@ -176,7 +185,6 @@ export default function AnimePlayer({ url, intro, outro, autoSkip = false, onEnd
     return `${minutes}:${seconds.toString().padStart(2, '0')}`;
   };
 
-  // Keyboard
   useEffect(() => {
      const handleKeyDown = (e: KeyboardEvent) => {
         if (!showControls) setShowControls(true);
@@ -195,7 +203,7 @@ export default function AnimePlayer({ url, intro, outro, autoSkip = false, onEnd
   return (
     <div 
       ref={containerRef}
-      className="relative w-full h-full bg-black group select-none overflow-hidden font-sans rounded-xl"
+      className="relative w-full h-full bg-black group select-none overflow-hidden font-sans rounded-xl aspect-video" // Ensure aspect ratio here too
       onMouseMove={handleMouseMove}
       onMouseLeave={() => setShowControls(false)}
       onClick={togglePlay} 
