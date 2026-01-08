@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo, useRef } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useNavigate, useSearchParams, useParams } from 'react-router-dom';
 import { 
   SkipForward, SkipBack, Server as ServerIcon, 
@@ -6,7 +6,7 @@ import {
   Tv, Play, Share2, Star, Calendar, Mic, User, 
   Grid, List, AlignJustify, Timer, ArrowRight,
   Lightbulb, LightbulbOff, ChevronDown, Gem, Bug, X, Terminal,
-  FastForward, Users, Copy, Check
+  FastForward, Users, Copy, Check, Video
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
@@ -43,10 +43,15 @@ import {
 import { Input } from '@/components/ui/input';
 
 // --- TYPES ---
+interface LocalServer {
+  serverId: number;
+  serverName: string;
+}
+
 interface LocalServerData {
-  sub: Array<{ serverId: number; serverName: string }>;
-  dub: Array<{ serverId: number; serverName: string }>;
-  raw: Array<{ serverId: number; serverName: string }>;
+  sub: LocalServer[];
+  dub: LocalServer[];
+  raw: LocalServer[];
 }
 
 interface ApiLog {
@@ -220,7 +225,7 @@ export default function WatchClient({ animeId: propAnimeId }: { animeId?: string
       try {
         if (!animeId) throw new Error("No Anime ID provided");
 
-        // 1. Fetch Info (V2) & Schedule (V2) & Episodes (V2 for Streaming ID compatibility)
+        // 1. Fetch Info (V2) & Schedule (V2) & Episodes (V2)
         const [v2InfoData, v2EpData, scheduleData] = await Promise.all([
           AnimeAPI_V2.getAnimeInfo(animeId),
           AnimeAPI_V2.getEpisodes(animeId),
@@ -234,7 +239,7 @@ export default function WatchClient({ animeId: propAnimeId }: { animeId?: string
         setNextEpSchedule(scheduleData);
         addLog('success', 'Info Loaded', v2InfoData.anime.info.name);
 
-        // 2. Set Episodes (Prioritize V2)
+        // 2. Set Episodes
         if (v2EpData?.episodes && v2EpData.episodes.length > 0) {
            setEpisodes(v2EpData.episodes);
            addLog('success', 'V2 Episodes Loaded', `${v2EpData.episodes.length} eps`);
@@ -246,22 +251,7 @@ export default function WatchClient({ animeId: propAnimeId }: { animeId?: string
            if (foundEp) setCurrentEpId(foundEp.episodeId);
            else setCurrentEpId(v2EpData.episodes[0].episodeId);
         } else {
-           // If V2 Episodes empty, try V1 (Base) as absolute fallback, but streaming might fail
-           const baseData = await AnimeAPI.getAnimeInfo(animeId);
-           if (baseData?.episodes && baseData.episodes.length > 0) {
-              // Convert V1 episodes to V2 shape loosely
-              const mappedEps = baseData.episodes.map(e => ({
-                 episodeId: e.id,
-                 number: e.number,
-                 title: e.title,
-                 isFiller: e.isFiller || false
-              }));
-              setEpisodes(mappedEps);
-              setCurrentEpId(mappedEps[0].episodeId);
-              addLog('info', 'Using Base API Episodes (Warning: Streaming may fail)');
-           } else {
-              throw new Error("No episodes found.");
-           }
+           throw new Error("No episodes found.");
         }
       } catch (err: any) {
         addLog('error', 'Init Failed', err.message);
@@ -275,77 +265,87 @@ export default function WatchClient({ animeId: propAnimeId }: { animeId?: string
     return () => { isMounted = false; };
   }, [animeId]);
 
-  // --- STREAM FETCH ---
+  // --- STREAM FETCH LOGIC (Auto-Retry) ---
   useEffect(() => {
     if (!currentEpId) return;
     setSearchParams(prev => { prev.set('ep', currentEpId); return prev; }, { replace: true });
     setStreamUrl(null);
     setIsStreamLoading(true);
-    addLog('info', 'Fetching Stream', { currentEpId, category });
+    setStreamError(null);
 
     let isMounted = true;
+
+    const fetchSource = async (serverName: string, categoryName: string) => {
+       addLog('info', `Trying server: ${serverName} (${categoryName})`);
+       const res = await AnimeAPI_V2.getEpisodeSources(currentEpId, serverName, categoryName as any);
+       return res;
+    };
+
     const loadStream = async () => {
       try {
         await new Promise(r => setTimeout(r, 200));
         
-        // 1. Get Servers
         const serverRes = await AnimeAPI_V2.getEpisodeServers(currentEpId);
         if (!isMounted) return;
 
-        let activeServer = selectedServerName;
+        if (!serverRes) throw new Error("Failed to load server list");
+
+        addLog('success', 'Servers Found', { sub: serverRes.sub.length, dub: serverRes.dub.length });
+        
+        const localServers = serverRes as unknown as LocalServerData;
+        setServers(localServers);
+
         let activeCategory = category;
+        const currentList = localServers[activeCategory] || [];
+        
+        if (currentList.length === 0) {
+           if (localServers.sub.length > 0) activeCategory = 'sub';
+           else if (localServers.dub.length > 0) activeCategory = 'dub';
+           else if (localServers.raw.length > 0) activeCategory = 'raw';
+           else throw new Error("No servers available for any category");
+           
+           addLog('info', `Switched category to ${activeCategory}`);
+           setCategory(activeCategory);
+        }
 
-        if (serverRes) {
-           addLog('success', 'Servers Found', { sub: serverRes.sub.length, dub: serverRes.dub.length });
-           const localServers = serverRes as unknown as LocalServerData;
-           setServers(localServers);
-           
-           const subList = localServers.sub || [];
-           const dubList = localServers.dub || [];
-           const rawList = localServers.raw || [];
+        const targetList = localServers[activeCategory];
+        let foundSource = false;
 
-           if (activeCategory === 'sub' && subList.length === 0) {
-              if (dubList.length > 0) activeCategory = 'dub';
-              else if (rawList.length > 0) activeCategory = 'raw';
-              addLog('info', `Auto-switched category to ${activeCategory}`);
-           }
-           
-           if (activeCategory !== category) {
-             setCategory(activeCategory);
-             return; 
-           }
-           
-           // Ensure server exists
-           const currentList = localServers[activeCategory] || [];
-           if (!currentList.find(s => s.serverName === activeServer) && currentList.length > 0) {
-             activeServer = currentList[0].serverName;
-             setSelectedServerName(activeServer);
+        for (const server of targetList) {
+           try {
+              const sourceRes = await fetchSource(server.serverName, activeCategory);
+              
+              if (sourceRes?.sources?.length > 0) {
+                 addLog('success', 'Stream Acquired', { server: server.serverName, url: sourceRes.sources[0].url });
+                 
+                 const bestSource = sourceRes.sources.find((s) => s.type === 'hls') || sourceRes.sources[0];
+                 setStreamUrl(bestSource.url);
+                 setIntro(sourceRes.intro);
+                 setOutro(sourceRes.outro);
+                 setSelectedServerName(server.serverName);
+                 foundSource = true;
+                 break;
+              }
+           } catch (e) {
+              addLog('error', `Failed ${server.serverName}`, e);
            }
         }
 
-        // 2. Get Source
-        const sourceRes = await AnimeAPI_V2.getEpisodeSources(currentEpId, activeServer, activeCategory);
-        if (!isMounted) return;
-
-        if (sourceRes?.sources?.length > 0) {
-          addLog('success', 'Stream Acquired', sourceRes.sources[0].url);
-          const bestSource = sourceRes.sources.find((s) => s.type === 'hls') || sourceRes.sources[0];
-          setStreamUrl(bestSource.url);
-          setIntro(sourceRes.intro);
-          setOutro(sourceRes.outro);
-        } else {
-          throw new Error("No sources available");
+        if (!foundSource) {
+           throw new Error("All servers failed to return a stream.");
         }
+
       } catch (error: any) {
         addLog('error', 'Stream Error', error.message);
-        if (isMounted) setStreamError("Stream unavailable.");
+        if (isMounted) setStreamError("Stream unavailable. Try another server manually.");
       } finally {
         if (isMounted) setIsStreamLoading(false);
       }
     };
+
     loadStream();
     return () => { isMounted = false; };
-  }, [currentEpId, selectedServerName, category]);
+  }, [currentEpId, category]);
 
   // --- HELPERS ---
   const currentEpIndex = useMemo(() => episodes.findIndex(e => e.episodeId === currentEpId), [episodes, currentEpId]);
@@ -370,18 +370,16 @@ export default function WatchClient({ animeId: propAnimeId }: { animeId?: string
   if (infoError || !info) return <div>Error: {infoError}</div>;
 
   const { info: details, moreInfo } = info.anime;
-  
-  // Safe Metadata
   const producersList = moreInfo.producers || moreInfo.studios?.split(',').map(s => s.trim()) || ["Unknown"];
   const studiosList = moreInfo.studios?.split(',').map(s => s.trim()) || ["Unknown"];
 
   return (
     <div className="min-h-screen bg-[#050505] text-gray-100 pb-20 relative font-sans">
       
-      {/* Req #7: LIGHTS OFF OVERLAY */}
+      {/* LIGHTS OFF OVERLAY */}
       <div className={`fixed inset-0 bg-black z-40 transition-opacity duration-500 pointer-events-none ${lightMode ? 'opacity-0' : 'opacity-95'}`} />
 
-      {/* Req #16: DEBUG POPUP */}
+      {/* DEBUG POPUP */}
       {showLogs && (
         <div className="fixed top-20 right-4 z-[100] w-96 bg-black/95 border border-red-500/30 rounded-lg p-4 font-mono text-[10px] shadow-2xl animate-in slide-in-from-right">
             <div className="flex justify-between items-center mb-2 border-b border-white/10 pb-2">
@@ -402,7 +400,7 @@ export default function WatchClient({ animeId: propAnimeId }: { animeId?: string
         </div>
       )}
 
-      {/* === 1. PLAYER SECTION === */}
+      {/* === PLAYER SECTION === */}
       <div className="w-full relative z-50 flex justify-center bg-[#050505]">
         <div className="w-full max-w-[1400px] px-4 md:px-8 mt-6">
             <div className="aspect-video w-full bg-black rounded-xl overflow-hidden border border-white/5 shadow-2xl relative">
@@ -412,6 +410,7 @@ export default function WatchClient({ animeId: propAnimeId }: { animeId?: string
                     <div className="w-full h-full flex flex-col items-center justify-center bg-zinc-900 gap-4">
                         <AlertCircle className="text-red-500 w-12 h-12" />
                         <span>Stream Unavailable</span>
+                        <Button variant="outline" onClick={() => window.location.reload()}>Retry Connection</Button>
                     </div>
                 ) : streamUrl ? (
                     <AnimePlayer 
@@ -433,25 +432,23 @@ export default function WatchClient({ animeId: propAnimeId }: { animeId?: string
       <div className="w-full flex justify-center bg-[#0a0a0a] border-b border-white/5 relative z-50">
         <div className="w-full max-w-[1400px] px-4 md:px-8 py-3 flex flex-col lg:flex-row gap-4 justify-between items-center">
           
-          {/* LEFT: INFO */}
-          <div className="flex-1 flex flex-wrap items-center gap-3">
-             <div className="flex items-center gap-2 bg-white/5 rounded-full px-4 py-1 border border-white/5">
-                <span className="text-[10px] text-red-500 font-bold uppercase tracking-wider">Now Playing</span>
-                <span className="text-xs text-zinc-300 font-bold truncate max-w-[150px]">
-                    {currentEpisode?.number ? `Episode ${currentEpisode.number}` : 'Select Episode'}
-                </span>
+          <div className="flex-1 min-w-0">
+             <div className="flex items-center gap-3">
+                <span className="text-3xl font-black text-white font-[Cinzel]">EP {currentEpisode?.number || '?'}</span>
+                <div className="h-8 w-[1px] bg-white/10" />
+                <div className="flex flex-col">
+                   <span className="text-[10px] text-red-500 font-bold uppercase">Now Playing</span>
+                   <span className="text-sm text-gray-300 truncate max-w-[200px]">
+                     {currentEpisode?.title || `Episode ${currentEpisode?.number || ''}`}
+                   </span>
+                </div>
+                <NextEpisodeTimer schedule={nextEpSchedule} />
              </div>
-             <NextEpisodeTimer schedule={nextEpSchedule} />
           </div>
 
-          {/* RIGHT: CONTROLS */}
-          <div className="flex flex-wrap items-center gap-3">
-             
+          <div className="flex items-center gap-4">
              {currentEpisode?.number > 1 && prevEpisode && (
-                <Button 
-                    onClick={() => handleEpisodeClick(prevEpisode.episodeId)} 
-                    className="rounded-full px-4 h-8 text-xs font-bold bg-white/5 text-zinc-400 hover:bg-red-600 hover:text-white transition-all duration-300 group"
-                >
+                <Button onClick={() => handleEpisodeClick(prevEpisode.episodeId)} className="rounded-full px-4 h-8 text-xs font-bold bg-white/5 text-zinc-400 hover:bg-red-600 hover:text-white transition-all duration-300 group">
                     <SkipBack size={12} className="mr-2 group-hover:fill-white" /> Prev
                 </Button>
              )}
@@ -473,10 +470,7 @@ export default function WatchClient({ animeId: propAnimeId }: { animeId?: string
              </div>
 
              {nextEpisode && (
-                <Button 
-                    onClick={() => handleEpisodeClick(nextEpisode.episodeId)} 
-                    className="rounded-full px-5 h-8 text-xs font-bold bg-white/5 text-zinc-200 hover:bg-red-600 hover:shadow-[0_0_15px_rgba(220,38,38,0.5)] transition-all duration-300 group"
-                >
+                <Button onClick={() => handleEpisodeClick(nextEpisode.episodeId)} className="rounded-full px-5 h-8 text-xs font-bold bg-white/5 text-zinc-200 hover:bg-red-600 hover:shadow-[0_0_15px_rgba(220,38,38,0.5)] transition-all duration-300 group">
                     Next <SkipForward size={12} className="ml-2 group-hover:fill-white" />
                 </Button>
              )}
@@ -526,6 +520,7 @@ export default function WatchClient({ animeId: propAnimeId }: { animeId?: string
                  <div className="flex bg-black/40 rounded-lg p-0.5 border border-white/10">
                     <button onClick={() => setEpViewMode('tile')} className={`p-1.5 rounded ${epViewMode === 'tile' ? 'bg-white/10 text-white' : 'text-zinc-500'}`}><Grid size={14}/></button>
                     <button onClick={() => setEpViewMode('list')} className={`p-1.5 rounded ${epViewMode === 'list' ? 'bg-white/10 text-white' : 'text-zinc-500'}`}><List size={14}/></button>
+                    <button onClick={() => setEpViewMode('detail')} className={`p-1.5 rounded ${epViewMode === 'detail' ? 'bg-white/10 text-white' : 'text-zinc-500'}`}><AlignJustify size={14}/></button>
                  </div>
               </div>
 
@@ -548,6 +543,8 @@ export default function WatchClient({ animeId: propAnimeId }: { animeId?: string
                  <div className={`${epViewMode === 'tile' ? 'grid grid-cols-5 gap-2' : 'flex flex-col gap-1'}`}>
                     {episodeChunks[epChunkIndex]?.map((ep) => {
                        const isCurrent = ep.episodeId === currentEpId;
+                       
+                       // 1. TILE VIEW
                        if (epViewMode === 'tile') {
                           return (
                              <button key={ep.episodeId} onClick={() => handleEpisodeClick(ep.episodeId)} className={`aspect-square rounded flex flex-col items-center justify-center border transition-all relative ${isCurrent ? 'bg-red-600/20 border-red-500 text-red-500' : 'bg-zinc-900 border-zinc-800 text-zinc-400 hover:bg-zinc-800'}`}>
@@ -556,12 +553,30 @@ export default function WatchClient({ animeId: propAnimeId }: { animeId?: string
                              </button>
                           );
                        }
-                       return (
-                          <button key={ep.episodeId} onClick={() => handleEpisodeClick(ep.episodeId)} className={`flex items-center justify-between px-3 py-2 rounded text-xs font-medium transition-all ${isCurrent ? 'bg-red-600 text-white' : 'bg-white/5 text-zinc-400 hover:bg-white/10'}`}>
-                             <span>Episode {ep.number}</span>
-                             {ep.isFiller && <span className="text-[8px] bg-orange-500/20 text-orange-500 px-1 rounded">FILLER</span>}
-                          </button>
-                       );
+                       
+                       // 2. COMPACT LIST VIEW
+                       if (epViewMode === 'list') {
+                          return (
+                             <button key={ep.episodeId} onClick={() => handleEpisodeClick(ep.episodeId)} className={`flex items-center justify-between px-3 py-2 rounded text-xs font-medium transition-all ${isCurrent ? 'bg-red-600 text-white' : 'bg-white/5 text-zinc-400 hover:bg-white/10'}`}>
+                                <span>Episode {ep.number}</span>
+                                {ep.isFiller && <span className="text-[8px] bg-orange-500/20 text-orange-500 px-1 rounded">FILLER</span>}
+                             </button>
+                          );
+                       }
+
+                       // 3. DETAILED LIST VIEW (Added Back)
+                       if (epViewMode === 'detail') {
+                          return (
+                             <button key={ep.episodeId} onClick={() => handleEpisodeClick(ep.episodeId)} className={`flex items-center gap-3 px-3 py-3 rounded text-left transition-all border border-transparent ${isCurrent ? 'bg-red-600/10 border-red-600/30' : 'bg-white/5 hover:bg-white/10'}`}>
+                                <div className={`w-8 h-8 rounded flex items-center justify-center text-xs font-bold ${isCurrent ? 'bg-red-600 text-white' : 'bg-black/40 text-zinc-500'}`}>{ep.number}</div>
+                                <div className="flex-1 min-w-0">
+                                   <div className={`text-xs font-bold truncate ${isCurrent ? 'text-red-400' : 'text-zinc-300'}`}>{ep.title || `Episode ${ep.number}`}</div>
+                                   <div className="text-[10px] text-zinc-600">{ep.isFiller ? 'Filler Episode' : 'Canon'}</div>
+                                </div>
+                                <Play size={12} className={isCurrent ? 'text-red-500' : 'text-zinc-700'} />
+                             </button>
+                          );
+                       }
                     })}
                  </div>
               </ScrollArea>
@@ -603,6 +618,30 @@ export default function WatchClient({ animeId: propAnimeId }: { animeId?: string
               <div className="flex-1 min-h-0 relative">
                  <ScrollArea className="h-full px-6">
                     <p className="text-gray-300 text-sm leading-relaxed pb-4">{details.description}</p>
+                    
+                    {/* ADDED PROMOTIONAL VIDEOS SECTION */}
+                    {details.promotionalVideos.length > 0 && (
+                        <div className="mt-6 mb-4">
+                            <h3 className="text-sm font-bold text-white mb-3 flex items-center gap-2">
+                                <Video size={14} className="text-red-500" /> Promotional Videos
+                            </h3>
+                            <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                                {details.promotionalVideos.map((pv, idx) => (
+                                    <a key={idx} href={pv.source} target="_blank" rel="noopener noreferrer" className="block relative aspect-video rounded-lg overflow-hidden border border-white/10 group">
+                                        <img src={pv.thumbnail} alt={pv.title} className="w-full h-full object-cover opacity-80 group-hover:opacity-100 transition-opacity" />
+                                        <div className="absolute inset-0 flex items-center justify-center">
+                                            <div className="bg-black/50 p-2 rounded-full border border-white/20 group-hover:scale-110 transition-transform">
+                                                <Play size={16} className="text-white fill-white" />
+                                            </div>
+                                        </div>
+                                        <div className="absolute bottom-0 left-0 right-0 bg-black/80 px-2 py-1 text-[10px] truncate">
+                                            {pv.title}
+                                        </div>
+                                    </a>
+                                ))}
+                            </div>
+                        </div>
+                    )}
                  </ScrollArea>
               </div>
 

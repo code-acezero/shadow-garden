@@ -248,7 +248,7 @@ export class AnimeAPI {
 }
 
 // ==========================================
-//  5. V2 TYPES
+//  5. V2 TYPES (UPDATED WITH JNAME & PRODUCERS)
 // ==========================================
 
 export interface V2BaseAnime {
@@ -310,13 +310,12 @@ export interface V2QTipInfo {
   };
 }
 
-// FIX: Added `jname`, `producers` and Typed Characters/Voice Actors
 export interface V2AnimeInfo {
   anime: {
     info: {
       id: string;
       name: string;
-      jname?: string; // Missing in previous version
+      jname?: string; // Correctly typed now
       poster: string;
       description: string;
       stats: {
@@ -327,9 +326,9 @@ export interface V2AnimeInfo {
         duration: string;
       };
       promotionalVideos: {
-        title?: string;
-        source?: string;
-        thumbnail?: string;
+        title: string;
+        source: string;
+        thumbnail: string;
       }[];
       characterVoiceActor: {
         character: { id: string; poster: string; name: string; cast: string };
@@ -342,7 +341,7 @@ export interface V2AnimeInfo {
       status: string;
       studios: string;
       duration: string;
-      producers?: string[]; // Missing in previous version
+      producers?: string[]; // Correctly typed now
     };
   };
   mostPopularAnimes: V2BaseAnime[];
@@ -370,7 +369,7 @@ export interface V2SearchResult {
 export interface V2SearchSuggestion {
   id: string;
   name: string;
-  jname: string; // Added jname
+  jname: string;
   poster: string;
   moreInfo: string[];
 }
@@ -441,9 +440,20 @@ export interface V2StreamingLinks {
   headers?: {
     Referer: string;
   };
-  tracks?: { url: string; lang: string; }[];
-  intro?: { start: number; end: number };
-  outro?: { start: number; end: number };
+  tracks?: { 
+    url: string; 
+    lang: string; 
+    label?: string;
+    kind?: string; 
+  }[];
+  intro?: {
+    start: number;
+    end: number;
+  };
+  outro?: {
+    start: number;
+    end: number;
+  };
   sources: V2Source[];
   anilistID?: number;
   malID?: number;
@@ -474,7 +484,6 @@ export class AnimeAPI_V2 {
       }
 
       // 3. Wrap with CORS Proxy to bypass browser restrictions
-      // Using corsproxy.io as primary, but you can swap if needed
       const proxyUrl = `https://corsproxy.io/?${encodeURIComponent(targetUrl)}`;
       
       const response = await fetch(proxyUrl);
