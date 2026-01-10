@@ -1,18 +1,26 @@
 "use client";
 
-import React, { useState, useRef } from 'react';
-import { Upload, Search, Camera, X, Loader2, Eye, Download, Share2, Star, Sparkles } from 'lucide-react';
+import React, { useState, useRef, useEffect } from 'react';
+import { useRouter } from 'next/navigation'; // Added for navigation
+import { 
+  Upload, Search, Camera, X, Loader2, Eye, 
+  Download, Share2, Star, Sparkles 
+} from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { 
+  Dialog, DialogContent, DialogHeader, 
+  DialogTitle, DialogTrigger 
+} from '@/components/ui/dialog';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Input } from '@/components/ui/input';
-import { ConsumetAnime } from '@/lib/api'; // FIXED: Changed from Anime to ConsumetAnime
+import { ConsumetAnime } from '@/lib/api'; 
 import { motion, AnimatePresence } from 'framer-motion';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 
+// --- TYPES ---
 interface ImageSearchResult {
   anime: ConsumetAnime;
   similarity: number;
@@ -31,6 +39,8 @@ interface WaifuResult {
 }
 
 export default function ImageSearch() {
+  const router = useRouter(); // Initialized router to fix build error
+  
   const [uploadedImage, setUploadedImage] = useState<string | null>(null);
   const [isSearching, setIsSearching] = useState(false);
   const [searchResults, setSearchResults] = useState<ImageSearchResult[]>([]);
@@ -42,6 +52,7 @@ export default function ImageSearch() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const cameraInputRef = useRef<HTMLInputElement>(null);
 
+  // --- HANDLERS ---
   const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (file) {
@@ -62,12 +73,10 @@ export default function ImageSearch() {
 
   const handleImageSearch = async (imageData: string) => {
     setIsSearching(true);
-    
     try {
       // Simulate Shadow Garden AI Analysis
       await new Promise(resolve => setTimeout(resolve, 2500));
       
-      // Updated Mock Data to match ConsumetAnime interface
       const mockResults: ImageSearchResult[] = [
         {
           anime: {
@@ -175,19 +184,19 @@ export default function ImageSearch() {
 
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
           <TabsList className="grid w-full grid-cols-3 bg-black/40 border border-white/5 p-1 h-12 rounded-full">
-            <TabsTrigger value="upload" className="rounded-full data-[state=active]:bg-red-600 data-[state=active]:text-white transition-all text-xs font-bold uppercase tracking-widest">
+            <TabsTrigger value="upload" className="rounded-full data-[state=active]:bg-red-600 data-[state=active]:text-white transition-all text-xs font-bold uppercase tracking-widest outline-none">
               Image Trace
             </TabsTrigger>
-            <TabsTrigger value="waifu" className="rounded-full data-[state=active]:bg-red-600 data-[state=active]:text-white transition-all text-xs font-bold uppercase tracking-widest">
+            <TabsTrigger value="waifu" className="rounded-full data-[state=active]:bg-red-600 data-[state=active]:text-white transition-all text-xs font-bold uppercase tracking-widest outline-none">
               Entity Search
             </TabsTrigger>
-            <TabsTrigger value="history" className="rounded-full data-[state=active]:bg-red-600 data-[state=active]:text-white transition-all text-xs font-bold uppercase tracking-widest">
+            <TabsTrigger value="history" className="rounded-full data-[state=active]:bg-red-600 data-[state=active]:text-white transition-all text-xs font-bold uppercase tracking-widest outline-none">
               Archives
             </TabsTrigger>
           </TabsList>
 
+          {/* TAB 1: UPLOAD SEARCH */}
           <TabsContent value="upload" className="space-y-6 mt-6 outline-none">
-            {/* Upload Area */}
             <Card className="bg-[#0a0a0a] border-white/5 shadow-2xl overflow-hidden relative group">
               <div className="absolute inset-0 bg-gradient-to-br from-red-600/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
               <CardContent className="p-10 relative z-10">
@@ -222,7 +231,7 @@ export default function ImageSearch() {
                       {isSearching && (
                         <div className="flex flex-col items-center gap-4">
                           <div className="w-16 h-16 border-4 border-red-600 border-t-transparent rounded-full animate-spin" />
-                          <span className="text-red-500 font-[Cinzel] animate-pulse tracking-widest">ANALYZING SOUL...</span>
+                          <span className="text-red-500 font-[Cinzel] animate-pulse tracking-widest uppercase text-xs font-bold">Analyzing Soul...</span>
                         </div>
                       )}
                     </div>
@@ -250,7 +259,6 @@ export default function ImageSearch() {
                     </div>
                   )}
                 </div>
-
                 <input ref={fileInputRef} type="file" accept="image/*" onChange={handleFileUpload} className="hidden" />
                 <input ref={cameraInputRef} type="file" accept="image/*" capture="environment" onChange={handleFileUpload} className="hidden" />
               </CardContent>
@@ -262,7 +270,7 @@ export default function ImageSearch() {
                 <h2 className="text-xl font-bold text-white flex items-center gap-3 font-[Cinzel]">
                   <Sparkles className="text-red-600 w-5 h-5" /> RECOGNIZED ENTITIES
                 </h2>
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 gap-6">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   {searchResults.map((result, index) => (
                     <motion.div
                       key={index}
@@ -292,13 +300,13 @@ export default function ImageSearch() {
                               </h3>
                               <div className="space-y-1.5 mb-4">
                                 {result.character && (
-                                  <div className="flex items-center gap-2 text-[10px] text-zinc-400">
-                                    <span className="text-red-500 font-bold uppercase">Character:</span> {result.character}
+                                  <div className="flex items-center gap-2 text-[10px] text-zinc-400 uppercase tracking-tighter">
+                                    <span className="text-red-500 font-bold">Character:</span> {result.character}
                                   </div>
                                 )}
                                 {result.episode && (
-                                  <div className="flex items-center gap-2 text-[10px] text-zinc-400">
-                                    <span className="text-red-500 font-bold uppercase">Scene:</span> Ep {result.episode} @ {result.timestamp}
+                                  <div className="flex items-center gap-2 text-[10px] text-zinc-400 uppercase tracking-tighter">
+                                    <span className="text-red-500 font-bold">Scene:</span> Ep {result.episode} @ {result.timestamp}
                                   </div>
                                 )}
                               </div>
@@ -320,7 +328,7 @@ export default function ImageSearch() {
                                     </div>
                                   </div>
                                   <div className="p-8 pt-0 space-y-4">
-                                    <p className="text-zinc-400 text-sm leading-relaxed">{selectedResult?.anime.description}</p>
+                                    <p className="text-zinc-400 text-sm leading-relaxed line-clamp-4">{selectedResult?.anime.description}</p>
                                     <div className="flex flex-wrap gap-4 py-4 border-y border-white/5">
                                       <div className="flex flex-col">
                                         <span className="text-[10px] text-red-500 font-bold">TYPE</span>
@@ -335,7 +343,10 @@ export default function ImageSearch() {
                                         <span className="text-sm font-bold">{selectedResult?.anime.episodes}</span>
                                       </div>
                                     </div>
-                                    <Button className="w-full bg-red-600 hover:bg-red-700 font-bold" onClick={() => router.push(`/watch/${selectedResult?.anime.id}`)}>
+                                    <Button 
+                                      className="w-full bg-red-600 hover:bg-red-700 font-bold" 
+                                      onClick={() => router.push(`/watch/${selectedResult?.anime.id}`)}
+                                    >
                                       WATCH NOW
                                     </Button>
                                   </div>
@@ -355,7 +366,8 @@ export default function ImageSearch() {
             )}
           </TabsContent>
 
-          <TabsContent value="waifu" className="space-y-6 mt-6">
+          {/* TAB 2: WAIFU SEARCH */}
+          <TabsContent value="waifu" className="space-y-6 mt-6 outline-none">
             <Card className="bg-[#0a0a0a] border-white/5 p-6 rounded-3xl">
               <CardContent className="p-0 space-y-6">
                 <div className="flex gap-3 bg-white/5 p-1.5 rounded-full border border-white/5">
@@ -370,10 +382,9 @@ export default function ImageSearch() {
                     {isSearching ? <Loader2 className="animate-spin" /> : <Search />}
                   </Button>
                 </div>
-
                 <div className="flex flex-wrap gap-2 justify-center">
                   {['Tsundere', 'Yandere', 'Magical Girl', 'Strong', 'Kuudere'].map((tag) => (
-                    <button key={tag} onClick={() => { setWaifuQuery(tag); handleWaifuSearch(); }} className="px-4 py-1.5 rounded-full bg-white/5 text-zinc-500 text-[10px] font-bold uppercase hover:text-white hover:bg-red-600/20 border border-white/5 transition-all">
+                    <button key={tag} onClick={() => { setWaifuQuery(tag); handleWaifuSearch(); }} className="px-4 py-1.5 rounded-full bg-white/5 text-zinc-500 text-[10px] font-bold uppercase hover:text-white hover:bg-red-600/20 border border-white/5 transition-all outline-none">
                       {tag}
                     </button>
                   ))}
@@ -381,7 +392,6 @@ export default function ImageSearch() {
               </CardContent>
             </Card>
 
-            {/* Waifu Grid */}
             <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
               {waifuResults.map((waifu) => (
                 <motion.div key={waifu.id} initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }}>
@@ -394,7 +404,7 @@ export default function ImageSearch() {
                       </div>
                       <h4 className="text-white font-bold leading-tight font-[Cinzel]">{waifu.name}</h4>
                       <p className="text-zinc-500 text-[10px] uppercase tracking-tighter mb-4">{waifu.anime}</p>
-                      <Button size="sm" className="w-full rounded-full bg-white/10 hover:bg-red-600 text-[10px] font-bold h-8">VIEW SOUL</Button>
+                      <Button size="sm" className="w-full rounded-full bg-white/10 hover:bg-red-600 text-[10px] font-bold h-8 transition-colors">VIEW SOUL</Button>
                     </div>
                   </div>
                 </motion.div>
@@ -402,7 +412,8 @@ export default function ImageSearch() {
             </div>
           </TabsContent>
 
-          <TabsContent value="history" className="text-center py-32">
+          {/* TAB 3: HISTORY */}
+          <TabsContent value="history" className="text-center py-32 outline-none">
             <div className="max-w-xs mx-auto space-y-4 opacity-20 grayscale">
                <div className="flex justify-center"><Search size={48} className="text-zinc-500" /></div>
                <h3 className="text-xl font-bold font-[Cinzel]">Archives Empty</h3>
