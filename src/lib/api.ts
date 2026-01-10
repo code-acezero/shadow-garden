@@ -7,8 +7,8 @@ import { createClient } from '@supabase/supabase-js';
 const BASE_URL = 'https://shadow-garden-wqkq.vercel.app/anime/hianime';
 const BASE_URL_V2 = 'https://hianime-api-mu.vercel.app/api/v2/hianime';
 
-const supabaseUrl = import.meta.env?.VITE_SUPABASE_URL || '';
-const supabaseKey = import.meta.env?.VITE_SUPABASE_ANON_KEY || '';
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
+const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '';
 
 export const supabase = supabaseUrl && supabaseKey 
   ? createClient(supabaseUrl, supabaseKey) 
@@ -114,103 +114,7 @@ export interface ConsumetStreamingLinks {
 }
 
 // ==========================================
-//  4. API CLASS (V1 BASE)
-// ==========================================
-
-export class AnimeAPI {
-  private static async request(endpoint: string, params: Record<string, any> = {}) {
-    try {
-      const url = new URL(`${BASE_URL}${endpoint}`);
-      Object.keys(params).forEach(key => {
-        if (params[key] !== undefined && params[key] !== null) {
-          url.searchParams.append(key, params[key]);
-        }
-      });
-      const response = await fetch(url.toString());
-      if (!response.ok) throw new Error(`API Error: ${response.statusText}`);
-      return await response.json();
-    } catch (error) {
-      console.error(`Fetch failed [${endpoint}]:`, error);
-      return null;
-    }
-  }
-
-  static async search(query: string, page = 1): Promise<ConsumetSearchResult | null> {
-    return this.request(`/${encodeURIComponent(query)}`, { page });
-  }
-  static async advancedSearch(params: ConsumetAdvancedSearchParams): Promise<ConsumetSearchResult | null> {
-    return this.request('/advanced-search', params as Record<string, any>);
-  }
-  static async searchSuggestions(query: string): Promise<{ suggestions: ConsumetAnime[] } | null> {
-    return this.request(`/search-suggestions/${encodeURIComponent(query)}`);
-  }
-  static async getAnimeInfo(id: string): Promise<ConsumetAnimeInfo | null> {
-    return this.request('/info', { id });
-  }
-  static async getSpotlight(): Promise<{ spotlightAnimes: ConsumetAnime[] } | null> {
-    return this.request('/spotlight');
-  }
-  static async getTopAiring(page = 1): Promise<ConsumetSearchResult | null> {
-    return this.request('/top-airing', { page });
-  }
-  static async getMostPopular(page = 1): Promise<ConsumetSearchResult | null> {
-    return this.request('/most-popular', { page });
-  }
-  static async getMostFavorite(page = 1): Promise<ConsumetSearchResult | null> {
-    return this.request('/most-favorite', { page });
-  }
-  static async getLatestCompleted(page = 1): Promise<ConsumetSearchResult | null> {
-    return this.request('/latest-completed', { page });
-  }
-  static async getRecentlyUpdated(page = 1): Promise<ConsumetSearchResult | null> {
-    return this.request('/recently-updated', { page });
-  }
-  static async getRecentlyAdded(page = 1): Promise<ConsumetSearchResult | null> {
-    return this.request('/recently-added', { page });
-  }
-  static async getTopUpcoming(page = 1): Promise<ConsumetSearchResult | null> {
-    return this.request('/top-upcoming', { page });
-  }
-  static async getSubbedAnime(page = 1): Promise<ConsumetSearchResult | null> {
-    return this.request('/subbed-anime', { page });
-  }
-  static async getDubbedAnime(page = 1): Promise<ConsumetSearchResult | null> {
-    return this.request('/dubbed-anime', { page });
-  }
-  static async getMovie(page = 1): Promise<ConsumetSearchResult | null> {
-    return this.request('/movie', { page });
-  }
-  static async getTV(page = 1): Promise<ConsumetSearchResult | null> {
-    return this.request('/tv', { page });
-  }
-  static async getOVA(page = 1): Promise<ConsumetSearchResult | null> {
-    return this.request('/ova', { page });
-  }
-  static async getONA(page = 1): Promise<ConsumetSearchResult | null> {
-    return this.request('/ona', { page });
-  }
-  static async getSpecial(page = 1): Promise<ConsumetSearchResult | null> {
-    return this.request('/special', { page });
-  }
-  static async getGenres(): Promise<{ id: string; name: string }[] | null> {
-    return this.request('/genres');
-  }
-  static async getGenre(genre: string, page = 1): Promise<ConsumetSearchResult | null> {
-    return this.request(`/genre/${genre}`, { page });
-  }
-  static async getStudio(studio: string, page = 1): Promise<ConsumetSearchResult | null> {
-    return this.request(`/studio/${studio}`, { page });
-  }
-  static async getSchedule(date: string): Promise<{ scheduledAnimes: ConsumetAnime[] } | null> {
-    return this.request('/schedule', { date });
-  }
-  static async getEpisodeStreamingLinks(episodeId: string, server?: string, category?: 'sub' | 'dub'): Promise<ConsumetStreamingLinks | null> {
-    return this.request(`/watch/${episodeId}`, { server, category });
-  }
-}
-
-// ==========================================
-//  5. V2 TYPES
+//  4. V2 TYPES & EXPORTS
 // ==========================================
 
 export interface V2BaseAnime {
@@ -332,13 +236,16 @@ export interface V2SearchResult {
   searchFilters: Record<string, string[]>;
 }
 
-export interface V2SearchSuggestion {
+// Ensure SearchBar works by exporting this
+export interface SearchSuggestion {
   id: string;
   name: string;
   jname: string;
   poster: string;
   moreInfo: string[];
 }
+
+export interface V2SearchSuggestion extends SearchSuggestion {}
 
 export interface V2GenericListResult {
   producerName?: string;
@@ -425,11 +332,129 @@ export interface V2StreamingLinks {
   malID?: number;
 }
 
-export type ServerData = V2EpisodeServers; 
+// Export this so WatchPage doesn't break
+export type LocalServerData = V2EpisodeServers; 
 export type V2SourceResponse = V2StreamingLinks;
 
 // ==========================================
-//  6. V2 API CLASS (FIXED: Direct Fetch First)
+//  5. API CLASS (V1 BASE)
+// ==========================================
+
+export class AnimeAPI {
+  private static async request(endpoint: string, params: Record<string, any> = {}) {
+    try {
+      const url = new URL(`${BASE_URL}${endpoint}`);
+      Object.keys(params).forEach(key => {
+        if (params[key] !== undefined && params[key] !== null) {
+          url.searchParams.append(key, params[key]);
+        }
+      });
+      // Use local proxy for V1 requests too if in browser
+      const finalUrl = typeof window !== 'undefined' 
+        ? `/api/proxy?url=${encodeURIComponent(url.toString())}` 
+        : url.toString();
+
+      const response = await fetch(finalUrl);
+      if (!response.ok) throw new Error(`API Error: ${response.statusText}`);
+      return await response.json();
+    } catch (error) {
+      console.error(`Fetch failed [${endpoint}]:`, error);
+      return null;
+    }
+  }
+
+  // SearchBar V2 Method
+  static async getSearchSuggestionsV2(query: string): Promise<SearchSuggestion[]> {
+    try {
+        const url = `${BASE_URL_V2}/search/suggestion?q=${encodeURIComponent(query)}`;
+        const proxyUrl = typeof window !== 'undefined' 
+            ? `/api/proxy?url=${encodeURIComponent(url)}` 
+            : url;
+        
+        const res = await fetch(proxyUrl);
+        const json = await res.json();
+        return json?.data?.suggestions || [];
+    } catch (e) {
+        return [];
+    }
+  }
+
+  static async search(query: string, page = 1): Promise<ConsumetSearchResult | null> {
+    return this.request(`/${encodeURIComponent(query)}`, { page });
+  }
+  static async advancedSearch(params: ConsumetAdvancedSearchParams): Promise<ConsumetSearchResult | null> {
+    return this.request('/advanced-search', params as Record<string, any>);
+  }
+  static async searchSuggestions(query: string): Promise<{ suggestions: ConsumetAnime[] } | null> {
+    return this.request(`/search-suggestions/${encodeURIComponent(query)}`);
+  }
+  static async getAnimeInfo(id: string): Promise<ConsumetAnimeInfo | null> {
+    return this.request('/info', { id });
+  }
+  static async getSpotlight(): Promise<{ spotlightAnimes: ConsumetAnime[] } | null> {
+    return this.request('/spotlight');
+  }
+  static async getTopAiring(page = 1): Promise<ConsumetSearchResult | null> {
+    return this.request('/top-airing', { page });
+  }
+  static async getMostPopular(page = 1): Promise<ConsumetSearchResult | null> {
+    return this.request('/most-popular', { page });
+  }
+  static async getMostFavorite(page = 1): Promise<ConsumetSearchResult | null> {
+    return this.request('/most-favorite', { page });
+  }
+  static async getLatestCompleted(page = 1): Promise<ConsumetSearchResult | null> {
+    return this.request('/latest-completed', { page });
+  }
+  static async getRecentlyUpdated(page = 1): Promise<ConsumetSearchResult | null> {
+    return this.request('/recently-updated', { page });
+  }
+  static async getRecentlyAdded(page = 1): Promise<ConsumetSearchResult | null> {
+    return this.request('/recently-added', { page });
+  }
+  static async getTopUpcoming(page = 1): Promise<ConsumetSearchResult | null> {
+    return this.request('/top-upcoming', { page });
+  }
+  static async getSubbedAnime(page = 1): Promise<ConsumetSearchResult | null> {
+    return this.request('/subbed-anime', { page });
+  }
+  static async getDubbedAnime(page = 1): Promise<ConsumetSearchResult | null> {
+    return this.request('/dubbed-anime', { page });
+  }
+  static async getMovie(page = 1): Promise<ConsumetSearchResult | null> {
+    return this.request('/movie', { page });
+  }
+  static async getTV(page = 1): Promise<ConsumetSearchResult | null> {
+    return this.request('/tv', { page });
+  }
+  static async getOVA(page = 1): Promise<ConsumetSearchResult | null> {
+    return this.request('/ova', { page });
+  }
+  static async getONA(page = 1): Promise<ConsumetSearchResult | null> {
+    return this.request('/ona', { page });
+  }
+  static async getSpecial(page = 1): Promise<ConsumetSearchResult | null> {
+    return this.request('/special', { page });
+  }
+  static async getGenres(): Promise<{ id: string; name: string }[] | null> {
+    return this.request('/genres');
+  }
+  static async getGenre(genre: string, page = 1): Promise<ConsumetSearchResult | null> {
+    return this.request(`/genre/${genre}`, { page });
+  }
+  static async getStudio(studio: string, page = 1): Promise<ConsumetSearchResult | null> {
+    return this.request(`/studio/${studio}`, { page });
+  }
+  static async getSchedule(date: string): Promise<{ scheduledAnimes: ConsumetAnime[] } | null> {
+    return this.request('/schedule', { date });
+  }
+  static async getEpisodeStreamingLinks(episodeId: string, server?: string, category?: 'sub' | 'dub'): Promise<ConsumetStreamingLinks | null> {
+    return this.request(`/watch/${episodeId}`, { server, category });
+  }
+}
+
+// ==========================================
+//  6. V2 API CLASS
 // ==========================================
 
 export class AnimeAPI_V2 {
@@ -438,13 +463,11 @@ export class AnimeAPI_V2 {
     try {
       let targetUrl = `${BASE_URL_V2}${endpoint}`;
       
-      // Build Query String
       const queryString = Object.keys(params)
         .filter(key => params[key] !== undefined && params[key] !== null)
         .map(key => {
             const value = String(params[key]);
-            // Raw IDs sometimes contain '?', don't double encode
-            if (value.includes('?')) return `${key}=${value}`;
+            // FIX: Always encode values to prevent URL breakage
             return `${key}=${encodeURIComponent(value)}`;
         })
         .join('&');
@@ -453,22 +476,11 @@ export class AnimeAPI_V2 {
         targetUrl += `?${queryString}`;
       }
 
-      // STRATEGY 1: DIRECT FETCH
-      // We try this first because the API likely supports CORS.
-      // Wrapping it in a proxy first was causing the failure.
-      try {
-          const response = await fetch(targetUrl);
-          if (response.ok) {
-              const json = await response.json();
-              if (json.status === 200 || json.success === true) return json.data;
-          }
-      } catch (directError) {
-          console.warn(`Direct fetch failed for ${endpoint}, switching to proxy...`);
-      }
-
-      // STRATEGY 2: PROXY FALLBACK
-      // Only if direct fails, we use a reliable proxy (CodeTabs)
-      const proxyUrl = `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(targetUrl)}`;
+      // USE LOCAL NEXT.JS PROXY
+      // This solves CORS and allows the API to see the request as coming from your backend
+      const proxyUrl = typeof window !== 'undefined' 
+        ? `/api/proxy?url=${encodeURIComponent(targetUrl)}` 
+        : targetUrl;
       
       const response = await fetch(proxyUrl);
       if (!response.ok) throw new Error(`V2 API Error: ${response.statusText}`);

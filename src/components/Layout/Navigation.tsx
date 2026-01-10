@@ -1,16 +1,20 @@
+"use client"; // Required for hooks like usePathname
+
 import React, { useState, useEffect } from 'react';
-import { useLocation, useNavigate, Link } from 'react-router-dom';
+import { usePathname, useRouter } from 'next/navigation'; // Next.js Hooks
+import Link from 'next/link'; // Next.js Link
 import { 
   Home, User, Heart, MessageCircle, 
   ArrowLeft, Bot 
 } from 'lucide-react';
 
+// Ensure these components exist or comment them out until fixed
 import SearchBar from '@/components/Anime/SearchBar';
 import Notifications from '@/components/Anime/Notifications';
 
 export default function Navigation() {
-  const location = useLocation();
-  const navigate = useNavigate();
+  const pathname = usePathname(); // Replaces useLocation
+  const router = useRouter();     // Replaces useNavigate
   const [scrolled, setScrolled] = useState(false);
 
   // Handle scroll effect for the glass transparency
@@ -22,7 +26,7 @@ export default function Navigation() {
 
   // Handle Back Navigation
   const handleBack = () => {
-    navigate(-1); // React Router way to go back
+    router.back(); // Next.js way to go back
   };
 
   // Define Navigation Items with real Routes
@@ -33,7 +37,6 @@ export default function Navigation() {
     { id: 'profile', icon: User, label: 'Profile', path: '/profile' },
   ];
 
-  const pathname = location.pathname;
   const isHomePage = pathname === '/';
 
   return (
@@ -64,7 +67,7 @@ export default function Navigation() {
             )}
 
             {/* Logo */}
-            <Link to="/" className="flex flex-col cursor-pointer group">
+            <Link href="/" className="flex flex-col cursor-pointer group">
               <h1 className="text-xl font-black tracking-widest text-transparent bg-clip-text bg-gradient-to-r from-red-500 via-red-600 to-red-800 font-[Cinzel] group-hover:scale-105 transition-transform">
                 SHADOW GARDEN
               </h1>
@@ -113,7 +116,7 @@ export default function Navigation() {
               return (
                 <Link
                   key={item.id}
-                  to={item.path}
+                  href={item.path}
                   className="relative group flex flex-col items-center justify-center w-12"
                 >
                   {/* Icon */}
@@ -125,7 +128,7 @@ export default function Navigation() {
                     <Icon size={24} />
                   </div>
 
-                  {/* Dot Indicator (Replaces text for cleaner cinematic look) */}
+                  {/* Dot Indicator */}
                   <span className={`absolute -bottom-2 w-1 h-1 bg-red-500 rounded-full shadow-[0_0_5px_red] transition-all duration-300 ${
                     isActive ? 'opacity-100 scale-100' : 'opacity-0 scale-0'
                   }`} />

@@ -1,57 +1,66 @@
-import React, { useState, useEffect } from 'react';
-import { useSearchParams, useParams, useNavigate } from 'react-router-dom';
-import AnimeCard from '@/components/AnimeCard'; // Import the updated card
-import { Loader2, ChevronLeft, ChevronRight } from 'lucide-react';
+"use client";
 
-export default function ViewAllPage() {
-  const [searchParams, setSearchParams] = useSearchParams();
-  const navigate = useNavigate();
-  const { category } = useParams(); // e.g., 'recently-updated'
+import React, { useState, useEffect, Suspense } from 'react';
+import { useSearchParams, useParams, useRouter } from 'next/navigation';
+import AnimeCard from '@/components/Anime/AnimeCard'; 
+import { Loader2, ChevronLeft, ChevronRight } from 'lucide-react';
+// import { AnimeAPI } from '@/lib/api'; // Use this if you have a library function
+
+function ViewAllContent() {
+  const searchParams = useSearchParams();
+  const params = useParams();
+  const router = useRouter();
   
-  // State for data
+  // Extract category from the URL (e.g. /view/trending -> category = "trending")
+  const category = params.category as string;
+  
   const [data, setData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
 
   // Get current page from URL or default to 1
   const currentPage = parseInt(searchParams.get('page') || '1');
 
-  // Fetch Logic
   useEffect(() => {
     const fetchData = async () => {
+      if (!category) return;
+      
       setLoading(true);
       try {
-        // Replace with your actual API endpoint
-        // Example: https://shadow-garden-api.vercel.app/anime/hianime/${category}?page=${currentPage}
-        const response = await fetch(`YOUR_API_BASE_URL/anime/hianime/${category}?page=${currentPage}`);
+        // REPLACE THIS URL with your actual API endpoint or use AnimeAPI helper
+        // Example: Using the proxy we created earlier
+        const apiUrl = `https://shadow-garden-api.vercel.app/anime/hianime/${category}?page=${currentPage}`;
+        
+        // If you are using the proxy from earlier steps:
+        // const proxyUrl = `/api/proxy?url=${encodeURIComponent(apiUrl)}`;
+        
+        const response = await fetch(apiUrl);
         const result = await response.json();
         setData(result);
       } catch (error) {
         console.error("Failed to fetch page data", error);
       } finally {
         setLoading(false);
-        // Scroll to top on page change
         window.scrollTo({ top: 0, behavior: 'smooth' });
       }
     };
 
-    if (category) fetchData();
+    fetchData();
   }, [category, currentPage]);
 
-  // Pagination Handlers
+  const updatePage = (newPage: number) => {
+    router.push(`/view/${category}?page=${newPage}`);
+  };
+
   const handleNext = () => {
-    if (data?.hasNextPage) {
-      setSearchParams({ page: (currentPage + 1).toString() });
-    }
+    if (data?.hasNextPage) updatePage(currentPage + 1);
   };
 
   const handlePrev = () => {
-    if (currentPage > 1) {
-      setSearchParams({ page: (currentPage - 1).toString() });
-    }
+    if (currentPage > 1) updatePage(currentPage - 1);
   };
 
-  // Format Category Title (e.g., "recently-updated" -> "Recently Updated")
-  const pageTitle = category?.replace(/-/g, ' ').toUpperCase();
+  // Format Category Title
+  const pageTitle = category?.replace(/-/g, ' ').toUpperCase() || "ANIME LIST";
 
   return (
     <div className="min-h-screen bg-[#050505] text-white px-4 py-24">
@@ -63,7 +72,7 @@ export default function ViewAllPage() {
             {pageTitle}
           </h1>
           <p className="text-gray-400 text-sm mt-1">
-            Page {currentPage} of {data?.totalPages || '...'}
+            Page {currentPage} {data?.totalPages ? `of ${data.totalPages}` : ''}
           </p>
         </div>
       </div>
@@ -79,8 +88,6 @@ export default function ViewAllPage() {
             <AnimeCard 
               key={anime.id} 
               anime={anime} 
-              // Pass your settings state here if available
-              // useJapaneseTitle={settings.useJapanese} 
             />
           ))}
         </div>
@@ -122,5 +129,14 @@ export default function ViewAllPage() {
         </div>
       )}
     </div>
+  );
+}
+
+// We wrap the content in Suspense because useSearchParams causes client-side de-opt
+export default function ViewAllPage() {
+  return (
+    <Suspense fallback={<div className="h-screen bg-[#050505]" />}>
+      <ViewAllContent />
+    </Suspense>
   );
 }
