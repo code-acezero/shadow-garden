@@ -6,7 +6,7 @@ import Link from 'next/link';
 import { useAuth } from '@/context/AuthContext';
 import { 
   Home, User, Heart, MessageCircle, 
-  ArrowLeft, Bot, LogIn, LogOut, LayoutGrid, Sparkles 
+  ArrowLeft, Bot, LogIn, LogOut, LayoutGrid, Sparkles, Settings 
 } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import {
@@ -138,6 +138,12 @@ export default function Navigation() {
                     {profile?.is_guest ? (
                         <>
                             {/* GUEST ACTIONS */}
+                            <DropdownMenuItem asChild className="cursor-pointer focus:bg-white/10 font-medium h-9 rounded-lg transition-all mb-1">
+                                <Link href="/settings">
+                                    <Settings size={14} className="mr-2" /> Settings
+                                </Link>
+                            </DropdownMenuItem>
+                            <DropdownMenuSeparator className="bg-white/10 my-1" />
                             <DropdownMenuItem onClick={() => setShowAuthModal(true)} className="cursor-pointer bg-red-600/10 text-red-500 focus:bg-red-600 focus:text-white font-bold h-10 rounded-lg mb-1 transition-all gap-2">
                                 <LogIn size={14} /> Login / Register
                             </DropdownMenuItem>
@@ -151,6 +157,14 @@ export default function Navigation() {
                             <DropdownMenuItem asChild className="cursor-pointer focus:bg-white/10 font-medium h-9 rounded-lg transition-all">
                                 <Link href="/watchlist"><LayoutGrid size={14} className="mr-2" /> My Library</Link>
                             </DropdownMenuItem>
+                            
+                            {/* SETTINGS ADDED HERE */}
+                            <DropdownMenuItem asChild className="cursor-pointer focus:bg-white/10 font-medium h-9 rounded-lg transition-all">
+                                <Link href="/settings">
+                                    <Settings size={14} className="mr-2" /> Settings
+                                </Link>
+                            </DropdownMenuItem>
+
                             <DropdownMenuSeparator className="bg-white/10 my-1" />
                             <DropdownMenuItem onClick={() => signOut()} className="cursor-pointer focus:bg-red-900/20 text-red-500 focus:text-red-400 font-medium h-9 rounded-lg transition-all">
                                 <LogOut size={14} className="mr-2" /> Logout
