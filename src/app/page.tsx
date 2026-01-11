@@ -3,6 +3,9 @@ import { consumetClient } from '@/lib/consumet'; // Direct Engine Access
 import SpotlightSlider from '@/components/Anime/SpotlightSlider';
 import AnimeCard from '@/components/Anime/AnimeCard';
 import { Flame, Clock, Calendar, Star, TrendingUp } from 'lucide-react';
+import MobileContainer from "@/components/Layout/MobileContainer";
+
+
 
 // Helper for Section Headers
 const SectionHeader = ({ title, icon: Icon }: { title: string; icon: any }) => (
@@ -15,6 +18,17 @@ const SectionHeader = ({ title, icon: Icon }: { title: string; icon: any }) => (
 // This is now an ASYNC Server Component
 // No 'use client', no 'useEffect', no Loading Spinners!
 export default async function Home() {
+  return (
+    <MobileContainer hasBottomNav={true}>
+      
+      {/* Example: A Card that fits perfectly on mobile */}
+      <div className="w-full bg-zinc-900 rounded-2xl p-4 mb-4 border border-white/10 shadow-sm">
+        <h2 className="text-lg font-bold text-white mb-2">Continue Watching</h2>
+        <div className="aspect-video bg-zinc-800 rounded-lg"></div>
+      </div>
+
+    </MobileContainer>
+  );
   
   // 1. Fetch Data directly from the Shadow Garden Engine
   // This runs on the server, bypassing API latency

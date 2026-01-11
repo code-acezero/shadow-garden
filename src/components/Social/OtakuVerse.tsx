@@ -1,38 +1,43 @@
-import React, { useState, useEffect } from 'react';
-import { Heart, MessageCircle, Share2, MoreHorizontal, Image, Video, Smile, Send, Bookmark, Flag, UserPlus } from 'lucide-react';
+"use client";
+
+import React, { useState, useEffect, useRef, useCallback } from 'react';
+import { 
+  Heart, MessageCircle, Share2, MoreHorizontal, Image as ImageIcon, 
+  Video, Smile, Send, Bookmark, Flag, UserPlus, Loader2, Trash2, X 
+} from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
-import { AppUser, Anime } from '@/lib/api';
+import { 
+  DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger 
+} from '@/components/ui/dropdown-menu';
+import { 
+  Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger 
+} from '@/components/ui/dialog';
+import { AppUser, supabase } from '@/lib/api';
 import { motion, AnimatePresence } from 'framer-motion';
 import { toast } from 'sonner';
+import { formatDistanceToNow } from 'date-fns';
 
-interface Post {
+// --- TYPES ---
+interface SocialPost {
   id: string;
-  user: {
-    id: string;
-    username: string;
-    avatar?: string;
-    isFollowing?: boolean;
-  };
   content: string;
-  images?: string[];
-  anime?: {
-    id: number;
-    title: string;
-    image: string;
+  images: string[];
+  created_at: string;
+  user_id: string;
+  user: {
+    username: string;
+    avatar_url: string;
+    role?: string;
   };
-  likes: number;
-  comments: number;
-  shares: number;
-  isLiked: boolean;
-  isBookmarked: boolean;
-  createdAt: string;
+  likes_count: number;
+  comments_count: number;
+  is_liked_by_user: boolean;
+  is_bookmarked: boolean;
   tags: string[];
 }
 
@@ -41,186 +46,261 @@ interface OtakuVerseProps {
   onAuthRequired: () => void;
 }
 
+// --- IMGBB UPLOAD HELPER ---
+const uploadToImgBB = async (file: File): Promise<string> => {
+  const formData = new FormData();
+  formData.append('image', file);
+  const API_KEY = '1DL4pRCKKmg238fsCU6i7ZYEStP9fL9o4q'; 
+
+  try {
+    const response = await fetch(`https://api.imgbb.com/1/upload?key=${API_KEY}`, {
+      method: 'POST',
+      body: formData,
+    });
+    const data = await response.json();
+    if (!data.success) throw new Error(data.error?.message || 'Image upload failed');
+    return data.data.url;
+  } catch (error) {
+    console.error('ImgBB Upload Error:', error);
+    throw error;
+  }
+};
+
 export default function OtakuVerse({ user, onAuthRequired }: OtakuVerseProps) {
-  const [posts, setPosts] = useState<Post[]>([]);
+  const [posts, setPosts] = useState<SocialPost[]>([]);
   const [newPost, setNewPost] = useState('');
   const [selectedImages, setSelectedImages] = useState<File[]>([]);
+  const [isUploading, setIsUploading] = useState(false);
   const [activeTab, setActiveTab] = useState('feed');
-  const [isLoading, setIsLoading] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
   const [showCreatePost, setShowCreatePost] = useState(false);
+  
+  // Refs for managing connections
+  const channelRef = useRef<any>(null);
+  const isVisibleRef = useRef(true);
 
-  // Mock data for demonstration
-  useEffect(() => {
-    const mockPosts: Post[] = [
-      {
-        id: '1',
-        user: {
-          id: 'user1',
-          username: 'AnimeOtaku2024',
-          avatar: '',
-          isFollowing: false
-        },
-        content: 'Just finished watching Attack on Titan final season! What an incredible journey. The animation quality was absolutely stunning! 🔥 #AttackOnTitan #Anime',
-        images: ['/api/placeholder/600/400'],
-        anime: {
-          id: 16498,
-          title: 'Attack on Titan',
-          image: '/api/placeholder/150/200'
-        },
-        likes: 234,
-        comments: 45,
-        shares: 12,
-        isLiked: false,
-        isBookmarked: false,
-        createdAt: '2024-01-15T10:30:00Z',
-        tags: ['AttackOnTitan', 'Anime', 'Finale']
-      },
-      {
-        id: '2',
-        user: {
-          id: 'user2',
-          username: 'WaifuHunter',
-          avatar: '',
-          isFollowing: true
-        },
-        content: 'My top 10 anime waifus of 2024! What do you think of my list? Drop your favorites in the comments! 💕',
-        images: ['/api/placeholder/600/800'],
-        likes: 567,
-        comments: 89,
-        shares: 23,
-        isLiked: true,
-        isBookmarked: true,
-        createdAt: '2024-01-14T15:45:00Z',
-        tags: ['Waifu', 'Top10', 'Anime2024']
-      },
-      {
-        id: '3',
-        user: {
-          id: 'user3',
-          username: 'MangaReader99',
-          avatar: '',
-          isFollowing: false
-        },
-        content: 'Currently reading Chainsaw Man and I can\'t put it down! The art style is so unique and the story is absolutely wild. Anyone else reading it?',
-        anime: {
-          id: 44511,
-          title: 'Chainsaw Man',
-          image: '/api/placeholder/150/200'
-        },
-        likes: 123,
-        comments: 34,
-        shares: 8,
-        isLiked: false,
-        isBookmarked: false,
-        createdAt: '2024-01-13T09:20:00Z',
-        tags: ['ChainsawMan', 'Manga', 'Reading']
+  // --- 1. FETCH LOGIC ---
+  const fetchPosts = useCallback(async (showLoading = false) => {
+    if (!supabase) return; // Guard clause
+
+    if (showLoading) setIsLoading(true);
+    try {
+     let query = supabase
+        .from('social_posts')
+        .select(`
+          *,
+          user:profiles(username, avatar_url, role),
+          likes:social_likes(count),
+          comments:social_comments(count)
+        `)
+        .order('created_at', { ascending: false });
+
+      if (activeTab === 'following' && user) {
+        const { data: following } = await supabase.from('follows').select('following_id').eq('follower_id', user.id);
+        const ids = following?.map(f => f.following_id) || [];
+        query = query.in('user_id', ids);
+      } 
+
+      const { data, error } = await query;
+      if (error) throw error;
+
+      const postsWithMetadata = await Promise.all(data.map(async (post: any) => {
+        let isLiked = false;
+        let isBookmarked = false;
+
+        if (user && supabase) {
+          const { data: likeData } = await supabase.from('social_likes').select('user_id').eq('post_id', post.id).eq('user_id', user.id).maybeSingle();
+          if (likeData) isLiked = true;
+          
+          const { data: bookmarkData } = await supabase.from('social_bookmarks').select('user_id').eq('post_id', post.id).eq('user_id', user.id).maybeSingle();
+          if (bookmarkData) isBookmarked = true;
+        }
+
+        return {
+          ...post,
+         // ... inside the map function ...
+          likes_count: post.likes?.[0]?.count || 0,
+          comments_count: post.comments?.[0]?.count || 0, // This will now work because of the alias or table change
+          
+          is_liked_by_user: isLiked,
+          is_bookmarked: isBookmarked,
+          user: post.user
+        };
+      }));
+
+      if (activeTab === 'trending') {
+        postsWithMetadata.sort((a, b) => b.likes_count - a.likes_count);
       }
-    ];
-    setPosts(mockPosts);
-  }, []);
 
-  const handleCreatePost = () => {
-    if (!user) {
-      onAuthRequired();
-      return;
+      setPosts(postsWithMetadata);
+    } catch (err) {
+      console.error("Fetch Error", err);
+    } finally {
+      if (showLoading) setIsLoading(false);
     }
+  }, [activeTab, user]);
 
-    if (!newPost.trim()) {
-      toast.error('Please write something before posting!');
-      return;
-    }
+  // --- 2. CONNECTION MANAGER ---
+  useEffect(() => {
+    if (!supabase) return; // Guard clause for effect
 
-    const post: Post = {
-      id: Date.now().toString(),
-      user: {
-        id: user.id,
-        username: user.user_metadata.username,
-        avatar: '',
-        isFollowing: false
-      },
-      content: newPost,
-      images: selectedImages.map(file => URL.createObjectURL(file)),
-      likes: 0,
-      comments: 0,
-      shares: 0,
-      isLiked: false,
-      isBookmarked: false,
-      createdAt: new Date().toISOString(),
-      tags: extractTags(newPost)
+    // A. Initial Load
+    fetchPosts(true);
+
+    const subscribe = () => {
+      if (channelRef.current || !supabase) return; 
+
+      const channel = supabase.channel('otaku-verse-live')
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'social_posts' }, (payload) => {
+          if (payload.eventType === 'INSERT') {
+             fetchPosts(); 
+             toast("New signal detected.", { description: "Feed updated." });
+          } else if (payload.eventType === 'DELETE') {
+             setPosts(current => current.filter(p => p.id !== payload.old.id));
+          }
+        })
+        .subscribe((status) => {
+           if (status === 'SUBSCRIBED') console.log("Realtime: Connected");
+        });
+
+      channelRef.current = channel;
     };
 
-    setPosts([post, ...posts]);
-    setNewPost('');
-    setSelectedImages([]);
-    setShowCreatePost(false);
-    toast.success('Post created successfully!');
+    const unsubscribe = () => {
+      if (channelRef.current) {
+        supabase?.removeChannel(channelRef.current);
+        channelRef.current = null;
+        console.log("Realtime: Disconnected");
+      }
+    };
+
+    // B. Visibility Handler
+    const handleVisibilityChange = () => {
+      if (document.hidden) {
+        isVisibleRef.current = false;
+        unsubscribe();
+      } else {
+        isVisibleRef.current = true;
+        fetchPosts(); 
+        subscribe(); 
+      }
+    };
+
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+    
+    if (!document.hidden) subscribe();
+
+    const pollingInterval = setInterval(() => {
+      if (isVisibleRef.current) {
+        fetchPosts();
+      }
+    }, 30000); 
+
+    // Cleanup
+    return () => {
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
+      clearInterval(pollingInterval);
+      unsubscribe();
+    };
+  }, [fetchPosts]);
+
+  // --- 3. ACTIONS ---
+  const handleCreatePost = async () => {
+    if (!user) return onAuthRequired();
+    if (!supabase) return;
+    if (!newPost.trim() && selectedImages.length === 0) return toast.error("Transmission is empty.");
+
+    setIsUploading(true);
+    const imageUrls: string[] = [];
+
+    try {
+      for (const file of selectedImages) {
+        const publicUrl = await uploadToImgBB(file);
+        imageUrls.push(publicUrl);
+      }
+
+      const { error } = await supabase.from('social_posts').insert({
+        user_id: user.id,
+        content: newPost,
+        images: imageUrls,
+        tags: extractTags(newPost)
+      });
+
+      if (error) throw error;
+
+      setNewPost('');
+      setSelectedImages([]);
+      setShowCreatePost(false);
+      toast.success("Broadcast sent successfully.");
+      
+      fetchPosts();
+
+    } catch (error: any) {
+      toast.error(error.message || "Failed to post.");
+    } finally {
+      setIsUploading(false);
+    }
   };
 
+  const handleLike = async (post: SocialPost) => {
+    if (!user) return onAuthRequired();
+    if (!supabase) return;
+
+    const previousPosts = [...posts];
+    setPosts(posts.map(p => p.id === post.id 
+      ? { ...p, is_liked_by_user: !p.is_liked_by_user, likes_count: p.is_liked_by_user ? p.likes_count - 1 : p.likes_count + 1 } 
+      : p
+    ));
+
+    try {
+      if (post.is_liked_by_user) {
+        await supabase.from('social_likes').delete().eq('post_id', post.id).eq('user_id', user.id);
+      } else {
+        await supabase.from('social_likes').insert({ post_id: post.id, user_id: user.id });
+      }
+    } catch (err) {
+      setPosts(previousPosts);
+      toast.error("Connection failed.");
+    }
+  };
+
+  const handleBookmark = async (post: SocialPost) => {
+    if (!user) return onAuthRequired();
+    if (!supabase) return;
+
+    setPosts(posts.map(p => p.id === post.id ? { ...p, is_bookmarked: !p.is_bookmarked } : p));
+
+    try {
+      if (post.is_bookmarked) {
+        await supabase.from('social_bookmarks').delete().eq('post_id', post.id).eq('user_id', user.id);
+        toast.success("Removed from bookmarks.");
+      } else {
+        await supabase.from('social_bookmarks').insert({ post_id: post.id, user_id: user.id });
+        toast.success("Saved to memory.");
+      }
+    } catch (err) {
+      toast.error("Action failed.");
+    }
+  };
+
+  const handleDeletePost = async (postId: string) => {
+    if (!user || !supabase) return;
+    if (!confirm("Delete this transmission?")) return;
+
+    try {
+      const { error } = await supabase.from('social_posts').delete().eq('id', postId);
+      if (error) throw error;
+      toast.success("Transmission erased.");
+    } catch (err) {
+      toast.error("Could not delete.");
+    }
+  };
+
+  // --- UTILS ---
   const extractTags = (content: string): string[] => {
     const tagRegex = /#(\w+)/g;
     const matches = content.match(tagRegex);
     return matches ? matches.map(tag => tag.slice(1)) : [];
-  };
-
-  const handleLike = (postId: string) => {
-    if (!user) {
-      onAuthRequired();
-      return;
-    }
-
-    setPosts(posts.map(post => {
-      if (post.id === postId) {
-        return {
-          ...post,
-          isLiked: !post.isLiked,
-          likes: post.isLiked ? post.likes - 1 : post.likes + 1
-        };
-      }
-      return post;
-    }));
-  };
-
-  const handleBookmark = (postId: string) => {
-    if (!user) {
-      onAuthRequired();
-      return;
-    }
-
-    setPosts(posts.map(post => {
-      if (post.id === postId) {
-        return {
-          ...post,
-          isBookmarked: !post.isBookmarked
-        };
-      }
-      return post;
-    }));
-
-    const post = posts.find(p => p.id === postId);
-    toast.success(post?.isBookmarked ? 'Removed from bookmarks' : 'Added to bookmarks');
-  };
-
-  const handleFollow = (userId: string) => {
-    if (!user) {
-      onAuthRequired();
-      return;
-    }
-
-    setPosts(posts.map(post => {
-      if (post.user.id === userId) {
-        return {
-          ...post,
-          user: {
-            ...post.user,
-            isFollowing: !post.user.isFollowing
-          }
-        };
-      }
-      return post;
-    }));
-
-    const post = posts.find(p => p.user.id === userId);
-    toast.success(post?.user.isFollowing ? 'Unfollowed user' : 'Following user');
   };
 
   const handleImageUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -232,343 +312,208 @@ export default function OtakuVerse({ user, onAuthRequired }: OtakuVerseProps) {
     setSelectedImages([...selectedImages, ...files]);
   };
 
-  const removeImage = (index: number) => {
-    setSelectedImages(selectedImages.filter((_, i) => i !== index));
-  };
-
-  const formatTimeAgo = (dateString: string) => {
-    const date = new Date(dateString);
-    const now = new Date();
-    const diffInHours = Math.floor((now.getTime() - date.getTime()) / (1000 * 60 * 60));
-    
-    if (diffInHours < 1) return 'Just now';
-    if (diffInHours < 24) return `${diffInHours}h ago`;
-    return `${Math.floor(diffInHours / 24)}d ago`;
-  };
-
   return (
-    <div className="container mx-auto px-4 py-6 max-w-4xl">
+    <div className="container mx-auto px-4 py-6 max-w-4xl min-h-screen">
       <div className="space-y-6">
+        
         {/* Header */}
-        <div className="text-center">
-          <h1 className="text-3xl font-bold text-white mb-2">OtakuVerse</h1>
-          <p className="text-gray-400">Connect with fellow anime enthusiasts</p>
+        <div className="text-center mb-8">
+          <h1 className="text-4xl font-black text-white mb-2 font-[Cinzel] tracking-widest">
+            OTAKU<span className="text-red-600">VERSE</span>
+          </h1>
+          <p className="text-zinc-500 uppercase text-xs tracking-[0.3em] font-bold">The Global Neural Network</p>
         </div>
 
         {/* Tabs */}
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-          <TabsList className="grid w-full grid-cols-4 bg-gray-800">
-            <TabsTrigger value="feed" className="data-[state=active]:bg-red-600">
-              Feed
-            </TabsTrigger>
-            <TabsTrigger value="trending" className="data-[state=active]:bg-red-600">
-              Trending
-            </TabsTrigger>
-            <TabsTrigger value="following" className="data-[state=active]:bg-red-600">
-              Following
-            </TabsTrigger>
-            <TabsTrigger value="discover" className="data-[state=active]:bg-red-600">
-              Discover
-            </TabsTrigger>
+          <TabsList className="grid w-full grid-cols-4 bg-[#0a0a0a] border border-white/10 p-1 rounded-xl">
+            {['feed', 'trending', 'following', 'discover'].map((tab) => (
+              <TabsTrigger 
+                key={tab} 
+                value={tab} 
+                className="capitalize data-[state=active]:bg-red-600 data-[state=active]:text-white font-bold rounded-lg text-xs tracking-wider"
+              >
+                {tab}
+              </TabsTrigger>
+            ))}
           </TabsList>
 
-          <TabsContent value="feed" className="space-y-6">
-            {/* Create Post */}
-            <Card className="bg-gray-900/50 border-gray-700">
-              <CardContent className="p-4">
-                <div className="flex space-x-3">
-                  <Avatar className="w-10 h-10">
-                    <AvatarFallback className="bg-red-600 text-white">
-                      {user ? user.user_metadata.username.charAt(0).toUpperCase() : 'G'}
-                    </AvatarFallback>
-                  </Avatar>
-                  <div className="flex-1">
-                    <Dialog open={showCreatePost} onOpenChange={setShowCreatePost}>
-                      <DialogTrigger asChild>
-                        <Button
-                          variant="outline"
-                          className="w-full justify-start bg-gray-800 border-gray-600 text-gray-400 hover:bg-gray-700"
-                        >
-                          What's on your mind, otaku?
-                        </Button>
-                      </DialogTrigger>
-                      <DialogContent className="bg-gray-900 border-gray-700 text-white max-w-2xl">
-                        <DialogHeader>
-                          <DialogTitle>Create Post</DialogTitle>
-                        </DialogHeader>
-                        <div className="space-y-4">
-                          <div className="flex items-center space-x-3">
-                            <Avatar className="w-10 h-10">
-                              <AvatarFallback className="bg-red-600 text-white">
-                                {user ? user.user_metadata.username.charAt(0).toUpperCase() : 'G'}
-                              </AvatarFallback>
-                            </Avatar>
-                            <div>
-                              <p className="font-medium">{user?.user_metadata.username || 'Guest'}</p>
-                              <p className="text-sm text-gray-400">Public post</p>
-                            </div>
-                          </div>
-
-                          <Textarea
-                            placeholder="Share your thoughts about anime, manga, or anything otaku-related..."
-                            value={newPost}
-                            onChange={(e) => setNewPost(e.target.value)}
-                            className="min-h-32 bg-gray-800 border-gray-600 text-white resize-none"
-                          />
-
-                          {/* Image Preview */}
-                          {selectedImages.length > 0 && (
-                            <div className="grid grid-cols-2 gap-2">
-                              {selectedImages.map((image, index) => (
-                                <div key={index} className="relative">
-                                  <img
-                                    src={URL.createObjectURL(image)}
-                                    alt={`Upload ${index + 1}`}
-                                    className="w-full h-32 object-cover rounded"
-                                  />
-                                  <Button
-                                    onClick={() => removeImage(index)}
-                                    variant="destructive"
-                                    size="sm"
-                                    className="absolute top-2 right-2 w-6 h-6 p-0"
-                                  >
-                                    ×
-                                  </Button>
-                                </div>
-                              ))}
-                            </div>
-                          )}
-
-                          <div className="flex items-center justify-between">
-                            <div className="flex space-x-2">
-                              <Button variant="ghost" size="sm" className="text-gray-400 hover:text-white">
-                                <label htmlFor="image-upload" className="flex items-center cursor-pointer">
-                                  <Image className="w-4 h-4 mr-1" />
-                                  Photo
-                                </label>
-                                <input
-                                  id="image-upload"
-                                  type="file"
-                                  accept="image/*"
-                                  multiple
-                                  onChange={handleImageUpload}
-                                  className="hidden"
-                                />
-                              </Button>
-                              <Button variant="ghost" size="sm" className="text-gray-400 hover:text-white">
-                                <Video className="w-4 h-4 mr-1" />
-                                Video
-                              </Button>
-                              <Button variant="ghost" size="sm" className="text-gray-400 hover:text-white">
-                                <Smile className="w-4 h-4 mr-1" />
-                                Emoji
-                              </Button>
-                            </div>
-
-                            <Button
-                              onClick={handleCreatePost}
-                              className="bg-red-600 hover:bg-red-700"
-                              disabled={!newPost.trim()}
-                            >
-                              <Send className="w-4 h-4 mr-1" />
-                              Post
-                            </Button>
-                          </div>
-                        </div>
-                      </DialogContent>
-                    </Dialog>
-                  </div>
+          <TabsContent value={activeTab} className="space-y-6 mt-6">
+            
+            {/* Create Post Bar */}
+            <Card className="bg-[#0a0a0a] border-white/10 hover:border-red-500/30 transition-all cursor-pointer group">
+              <CardContent className="p-4 flex gap-4 items-center" onClick={() => user ? setShowCreatePost(true) : onAuthRequired()}>
+                <Avatar className="w-10 h-10 border border-white/10 group-hover:border-red-500 transition-colors">
+                  <AvatarImage src={user?.user_metadata?.avatar_url} />
+                  <AvatarFallback className="bg-zinc-800 text-zinc-500 font-bold">{user?.user_metadata?.username?.[0] || '?'}</AvatarFallback>
+                </Avatar>
+                <div className="flex-1 bg-white/5 h-10 rounded-full flex items-center px-4 text-zinc-500 text-sm font-medium group-hover:bg-white/10 transition-colors">
+                  Start a transmission...
                 </div>
+                <Button size="icon" variant="ghost" className="text-zinc-400 hover:text-red-500"><ImageIcon size={20} /></Button>
               </CardContent>
             </Card>
 
-            {/* Posts Feed */}
-            <div className="space-y-6">
-              <AnimatePresence>
-                {posts.map((post) => (
-                  <motion.div
-                    key={post.id}
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    exit={{ opacity: 0, y: -20 }}
-                  >
-                    <Card className="bg-gray-900/50 border-gray-700 hover:border-gray-600 transition-colors">
-                      <CardHeader className="pb-3">
-                        <div className="flex items-center justify-between">
-                          <div className="flex items-center space-x-3">
-                            <Avatar className="w-10 h-10">
-                              <AvatarImage src={post.user.avatar} />
-                              <AvatarFallback className="bg-red-600 text-white">
-                                {post.user.username.charAt(0).toUpperCase()}
-                              </AvatarFallback>
-                            </Avatar>
-                            <div>
-                              <div className="flex items-center space-x-2">
-                                <p className="font-medium text-white">{post.user.username}</p>
-                                {!post.user.isFollowing && post.user.id !== user?.id && (
-                                  <Button
-                                    onClick={() => handleFollow(post.user.id)}
-                                    variant="outline"
-                                    size="sm"
-                                    className="h-6 px-2 text-xs border-red-600 text-red-400 hover:bg-red-600 hover:text-white"
-                                  >
-                                    <UserPlus className="w-3 h-3 mr-1" />
-                                    Follow
-                                  </Button>
-                                )}
-                              </div>
-                              <p className="text-sm text-gray-400">{formatTimeAgo(post.createdAt)}</p>
-                            </div>
-                          </div>
+            {/* Create Post Dialog */}
+            <Dialog open={showCreatePost} onOpenChange={setShowCreatePost}>
+              <DialogContent className="bg-[#0a0a0a] border-white/10 text-white max-w-2xl">
+                <DialogHeader>
+                  <DialogTitle className="font-[Cinzel] tracking-widest uppercase">New Transmission</DialogTitle>
+                </DialogHeader>
+                <div className="space-y-4 mt-4">
+                  <div className="flex gap-3">
+                    <Avatar>
+                        <AvatarImage src={user?.user_metadata?.avatar_url} />
+                        <AvatarFallback>U</AvatarFallback>
+                    </Avatar>
+                    <div className="flex-1">
+                        <p className="font-bold text-sm text-white">{user?.user_metadata?.username}</p>
+                        <Badge variant="outline" className="text-[10px] h-5 border-red-500/30 text-red-400">Public Channel</Badge>
+                    </div>
+                  </div>
 
-                          <DropdownMenu>
-                            <DropdownMenuTrigger asChild>
-                              <Button variant="ghost" size="sm" className="text-gray-400 hover:text-white">
-                                <MoreHorizontal className="w-4 h-4" />
-                              </Button>
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent className="bg-gray-800 border-gray-700">
-                              <DropdownMenuItem className="text-gray-300 hover:bg-gray-700">
-                                <Bookmark className="w-4 h-4 mr-2" />
-                                Save Post
-                              </DropdownMenuItem>
-                              <DropdownMenuItem className="text-gray-300 hover:bg-gray-700">
-                                <Flag className="w-4 h-4 mr-2" />
-                                Report
-                              </DropdownMenuItem>
-                            </DropdownMenuContent>
-                          </DropdownMenu>
-                        </div>
-                      </CardHeader>
+                  <Textarea
+                    placeholder="What are you watching? #Anime #Manga"
+                    value={newPost}
+                    onChange={(e) => setNewPost(e.target.value)}
+                    className="min-h-[150px] bg-white/5 border-none text-zinc-200 placeholder:text-zinc-600 resize-none focus-visible:ring-0 text-base"
+                  />
 
-                      <CardContent className="space-y-4">
-                        {/* Post Content */}
-                        <p className="text-white leading-relaxed">{post.content}</p>
-
-                        {/* Tags */}
-                        {post.tags.length > 0 && (
-                          <div className="flex flex-wrap gap-2">
-                            {post.tags.map((tag) => (
-                              <Badge
-                                key={tag}
-                                variant="secondary"
-                                className="bg-red-600/20 text-red-400 hover:bg-red-600/30 cursor-pointer"
-                              >
-                                #{tag}
-                              </Badge>
-                            ))}
-                          </div>
-                        )}
-
-                        {/* Anime Reference */}
-                        {post.anime && (
-                          <Card className="bg-gray-800 border-gray-600">
-                            <CardContent className="p-3">
-                              <div className="flex items-center space-x-3">
-                                <img
-                                  src={post.anime.image}
-                                  alt={post.anime.title}
-                                  className="w-12 h-16 object-cover rounded"
-                                />
-                                <div>
-                                  <p className="text-white font-medium">{post.anime.title}</p>
-                                  <p className="text-gray-400 text-sm">Anime</p>
-                                </div>
-                              </div>
-                            </CardContent>
-                          </Card>
-                        )}
-
-                        {/* Images */}
-                        {post.images && post.images.length > 0 && (
-                          <div className={`grid gap-2 ${
-                            post.images.length === 1 ? 'grid-cols-1' :
-                            post.images.length === 2 ? 'grid-cols-2' :
-                            'grid-cols-2'
-                          }`}>
-                            {post.images.slice(0, 4).map((image, index) => (
-                              <div
-                                key={index}
-                                className={`relative overflow-hidden rounded-lg ${
-                                  post.images!.length === 3 && index === 0 ? 'col-span-2' : ''
-                                }`}
-                              >
-                                <img
-                                  src={image}
-                                  alt={`Post image ${index + 1}`}
-                                  className="w-full h-64 object-cover hover:scale-105 transition-transform cursor-pointer"
-                                />
-                                {post.images!.length > 4 && index === 3 && (
-                                  <div className="absolute inset-0 bg-black/60 flex items-center justify-center">
-                                    <span className="text-white font-bold text-xl">
-                                      +{post.images!.length - 4}
-                                    </span>
-                                  </div>
-                                )}
-                              </div>
-                            ))}
-                          </div>
-                        )}
-
-                        {/* Actions */}
-                        <div className="flex items-center justify-between pt-2 border-t border-gray-700">
-                          <div className="flex space-x-4">
-                            <Button
-                              onClick={() => handleLike(post.id)}
-                              variant="ghost"
-                              size="sm"
-                              className={`text-gray-400 hover:text-red-400 ${
-                                post.isLiked ? 'text-red-400' : ''
-                              }`}
-                            >
-                              <Heart className={`w-4 h-4 mr-1 ${post.isLiked ? 'fill-current' : ''}`} />
-                              {post.likes}
-                            </Button>
-
-                            <Button variant="ghost" size="sm" className="text-gray-400 hover:text-blue-400">
-                              <MessageCircle className="w-4 h-4 mr-1" />
-                              {post.comments}
-                            </Button>
-
-                            <Button variant="ghost" size="sm" className="text-gray-400 hover:text-green-400">
-                              <Share2 className="w-4 h-4 mr-1" />
-                              {post.shares}
-                            </Button>
-                          </div>
-
-                          <Button
-                            onClick={() => handleBookmark(post.id)}
-                            variant="ghost"
-                            size="sm"
-                            className={`text-gray-400 hover:text-yellow-400 ${
-                              post.isBookmarked ? 'text-yellow-400' : ''
-                            }`}
+                  {/* Image Previews */}
+                  {selectedImages.length > 0 && (
+                    <div className="grid grid-cols-2 gap-2">
+                      {selectedImages.map((image, index) => (
+                        <div key={index} className="relative group rounded-lg overflow-hidden border border-white/10">
+                          <img src={URL.createObjectURL(image)} className="w-full h-32 object-cover" />
+                          <button 
+                            onClick={() => setSelectedImages(prev => prev.filter((_, i) => i !== index))}
+                            className="absolute top-1 right-1 bg-black/60 p-1 rounded-full text-white hover:bg-red-600 transition-colors"
                           >
-                            <Bookmark className={`w-4 h-4 ${post.isBookmarked ? 'fill-current' : ''}`} />
-                          </Button>
+                            <X size={14} />
+                          </button>
                         </div>
-                      </CardContent>
-                    </Card>
-                  </motion.div>
-                ))}
-              </AnimatePresence>
+                      ))}
+                    </div>
+                  )}
+
+                  <div className="flex items-center justify-between pt-4 border-t border-white/10">
+                    <div className="flex gap-2">
+                        <Button type="button" size="icon" variant="ghost" className="text-zinc-400 hover:text-white" onClick={() => document.getElementById('img-upload')?.click()}>
+                            <ImageIcon size={20} />
+                            <input id="img-upload" type="file" hidden multiple accept="image/*" onChange={handleImageUpload} />
+                        </Button>
+                        <Button size="icon" variant="ghost" className="text-zinc-400 hover:text-white"><Smile size={20} /></Button>
+                    </div>
+                    <Button 
+                        onClick={handleCreatePost} 
+                        disabled={isUploading || (!newPost && selectedImages.length === 0)}
+                        className="bg-red-600 hover:bg-red-700 text-white font-bold px-8 rounded-full"
+                    >
+                        {isUploading ? <Loader2 className="animate-spin" /> : <><Send size={16} className="mr-2"/> Broadcast</>}
+                    </Button>
+                  </div>
+                </div>
+              </DialogContent>
+            </Dialog>
+
+            {/* FEED */}
+            <div className="space-y-6">
+                {isLoading ? (
+                    <div className="text-center py-20 text-zinc-500 animate-pulse font-bold tracking-widest">CONNECTING TO NEURAL NETWORK...</div>
+                ) : posts.length === 0 ? (
+                    <div className="text-center py-20 text-zinc-600">
+                        <p className="mb-4">Signal lost. No transmissions found.</p>
+                        {activeTab === 'following' && <p className="text-xs">Try following more agents.</p>}
+                    </div>
+                ) : (
+                    <AnimatePresence>
+                        {posts.map((post) => (
+                            <motion.div
+                                key={post.id}
+                                initial={{ opacity: 0, y: 20 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                exit={{ opacity: 0 }}
+                                layout
+                            >
+                                <Card className="bg-[#0a0a0a] border-white/5 hover:border-white/10 transition-colors overflow-hidden">
+                                    <CardHeader className="flex flex-row items-start justify-between pb-2">
+                                        <div className="flex gap-3">
+                                            <Avatar className="cursor-pointer border border-white/10">
+                                                <AvatarImage src={post.user?.avatar_url} />
+                                                <AvatarFallback className="bg-zinc-900 text-zinc-500">{post.user?.username?.[0]}</AvatarFallback>
+                                            </Avatar>
+                                            <div>
+                                                <p className="text-sm font-bold text-white hover:text-red-500 cursor-pointer transition-colors">{post.user?.username || "Unknown Agent"}</p>
+                                                <p className="text-[10px] text-zinc-500 font-medium">{formatDistanceToNow(new Date(post.created_at))} ago</p>
+                                            </div>
+                                        </div>
+                                        
+                                        {/* Post Options */}
+                                        <DropdownMenu>
+                                            <DropdownMenuTrigger asChild>
+                                                <Button variant="ghost" size="sm" className="h-8 w-8 p-0 text-zinc-500 hover:text-white">
+                                                    <MoreHorizontal size={16} />
+                                                </Button>
+                                            </DropdownMenuTrigger>
+                                            <DropdownMenuContent align="end" className="bg-black border-white/10 text-zinc-300">
+                                                <DropdownMenuItem className="focus:bg-white/10 cursor-pointer"><Flag size={14} className="mr-2"/> Report</DropdownMenuItem>
+                                                {user?.id === post.user_id && (
+                                                    <DropdownMenuItem onClick={() => handleDeletePost(post.id)} className="focus:bg-red-900/20 text-red-500 focus:text-red-400 cursor-pointer">
+                                                        <Trash2 size={14} className="mr-2"/> Delete
+                                                    </DropdownMenuItem>
+                                                )}
+                                            </DropdownMenuContent>
+                                        </DropdownMenu>
+                                    </CardHeader>
+
+                                    <CardContent className="space-y-4">
+                                        <p className="text-zinc-200 text-sm leading-relaxed whitespace-pre-wrap">{post.content}</p>
+                                        
+                                        {/* Image Grid */}
+                                        {post.images && post.images.length > 0 && (
+                                            <div className={`grid gap-1 rounded-xl overflow-hidden ${
+                                                post.images.length === 1 ? 'grid-cols-1' : 'grid-cols-2'
+                                            }`}>
+                                                {post.images.map((img, i) => (
+                                                    <img key={i} src={img} className="w-full h-auto object-cover max-h-[400px] hover:scale-105 transition-transform duration-500 cursor-zoom-in bg-zinc-900" />
+                                                ))}
+                                            </div>
+                                        )}
+
+                                        {/* Tags */}
+                                        {post.tags && post.tags.length > 0 && (
+                                            <div className="flex flex-wrap gap-2">
+                                                {post.tags.map(tag => (
+                                                    <span key={tag} className="text-xs text-red-400 hover:text-red-300 cursor-pointer">#{tag}</span>
+                                                ))}
+                                            </div>
+                                        )}
+
+                                        {/* Interaction Bar */}
+                                        <div className="flex items-center justify-between pt-4 border-t border-white/5">
+                                            <div className="flex gap-6">
+                                                <button onClick={() => handleLike(post)} className={`flex items-center gap-2 text-xs font-bold transition-colors ${post.is_liked_by_user ? 'text-red-500' : 'text-zinc-500 hover:text-red-500'}`}>
+                                                    <Heart size={18} className={post.is_liked_by_user ? "fill-current" : ""} /> {post.likes_count}
+                                                </button>
+                                                <button className="flex items-center gap-2 text-xs font-bold text-zinc-500 hover:text-blue-400 transition-colors">
+                                                    <MessageCircle size={18} /> {post.comments_count}
+                                                </button>
+                                                <button className="flex items-center gap-2 text-xs font-bold text-zinc-500 hover:text-green-400 transition-colors">
+                                                    <Share2 size={18} /> Share
+                                                </button>
+                                            </div>
+                                            <button onClick={() => handleBookmark(post)} className={`text-zinc-500 hover:text-yellow-400 transition-colors ${post.is_bookmarked ? 'text-yellow-400' : ''}`}>
+                                                <Bookmark size={18} className={post.is_bookmarked ? "fill-current" : ""} />
+                                            </button>
+                                        </div>
+                                    </CardContent>
+                                </Card>
+                            </motion.div>
+                        ))}
+                    </AnimatePresence>
+                )}
             </div>
-          </TabsContent>
 
-          {/* Other tabs content */}
-          <TabsContent value="trending" className="text-center py-20">
-            <h3 className="text-2xl font-bold text-white mb-4">Trending Posts</h3>
-            <p className="text-gray-400">Discover what's hot in the anime community</p>
-          </TabsContent>
-
-          <TabsContent value="following" className="text-center py-20">
-            <h3 className="text-2xl font-bold text-white mb-4">Following</h3>
-            <p className="text-gray-400">Posts from people you follow</p>
-          </TabsContent>
-
-          <TabsContent value="discover" className="text-center py-20">
-            <h3 className="text-2xl font-bold text-white mb-4">Discover</h3>
-            <p className="text-gray-400">Find new anime fans to connect with</p>
           </TabsContent>
         </Tabs>
       </div>

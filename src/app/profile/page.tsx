@@ -193,8 +193,8 @@ export default function ProfilePage() {
                                                 <SelectValue placeholder="Gender" />
                                             </SelectTrigger>
                                             <SelectContent className="bg-[#111] border-white/10 text-white">
-                                                <SelectItem value="male">Male Shadow</SelectItem>
-                                                <SelectItem value="female">Female Shadow</SelectItem>
+                                                <SelectItem value="male">Male</SelectItem>
+                                                <SelectItem value="female">Female</SelectItem>
                                             </SelectContent>
                                         </Select>
                                     </div>

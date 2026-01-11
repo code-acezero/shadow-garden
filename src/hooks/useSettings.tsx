@@ -1,4 +1,6 @@
-import { useState, useEffect } from 'react';
+"use client";
+
+import React, { createContext, useContext, useState, useEffect } from 'react';
 
 // --- FULL SETTINGS INTERFACE ---
 export interface AppSettings {
@@ -47,6 +49,7 @@ export interface AppSettings {
   newEpAlerts: boolean;
   communityAlerts: boolean;
   systemAlerts: boolean;
+  enableWhisper: boolean;
 
   // 6. DATA
   autoBackup: boolean;
@@ -100,40 +103,65 @@ const DEFAULT_SETTINGS: AppSettings = {
   newEpAlerts: true,
   communityAlerts: true,
   systemAlerts: true,
+  enableWhisper: true,
 
   // Data
   autoBackup: false,
   bandwidthSaver: false,
 };
 
-export function useSettings() {
-  // Initialize state from localStorage or defaults
-  const [settings, setSettingsState] = useState<AppSettings>(() => {
-    if (typeof window === 'undefined') return DEFAULT_SETTINGS;
-    try {
-      const saved = localStorage.getItem('shadow_settings');
-      // Merge saved settings with defaults to ensure new keys are present
-      return saved ? { ...DEFAULT_SETTINGS, ...JSON.parse(saved) } : DEFAULT_SETTINGS;
-    } catch (e) {
-      console.error("Failed to load settings", e);
-      return DEFAULT_SETTINGS;
-    }
-  });
+// --- CONTEXT SETUP ---
+interface SettingsContextType {
+  settings: AppSettings;
+  updateSetting: <K extends keyof AppSettings>(key: K, value: AppSettings[K]) => void;
+  resetSettings: () => void;
+  isLoaded: boolean;
+}
 
-  // Save to localStorage whenever settings change
+const SettingsContext = createContext<SettingsContextType | null>(null);
+
+// --- PROVIDER COMPONENT ---
+export function SettingsProvider({ children }: { children: React.ReactNode }) {
+  const [settings, setSettingsState] = useState<AppSettings>(DEFAULT_SETTINGS);
+  const [isLoaded, setIsLoaded] = useState(false);
+
+  // 1. Load from LocalStorage on Mount
   useEffect(() => {
-    localStorage.setItem('shadow_settings', JSON.stringify(settings));
-    
-    // Apply dynamic styles to root
-    const root = document.documentElement;
-    root.style.setProperty('--primary-color', `var(--color-${settings.accentColor}-600)`);
-    
-    // Apply font family
-    if (settings.fontFamily === 'cinzel') root.style.setProperty('--font-primary', 'Cinzel');
-    if (settings.fontFamily === 'inter') root.style.setProperty('--font-primary', 'Inter');
-    if (settings.fontFamily === 'mono') root.style.setProperty('--font-primary', 'monospace');
+    if (typeof window !== 'undefined') {
+      try {
+        const saved = localStorage.getItem('shadow_settings');
+        if (saved) {
+          setSettingsState({ ...DEFAULT_SETTINGS, ...JSON.parse(saved) });
+        }
+      } catch (e) {
+        console.error("Failed to load settings", e);
+      }
+      setIsLoaded(true);
+    }
+  }, []);
 
-  }, [settings]);
+  // 2. Save to LocalStorage & Apply Styles on Change
+  useEffect(() => {
+    if (!isLoaded) return; 
+
+    localStorage.setItem('shadow_settings', JSON.stringify(settings));
+
+    const root = document.documentElement;
+    
+    // Accent Colors
+    const colors: Record<string, string> = {
+        red: '#dc2626', purple: '#9333ea', blue: '#2563eb', gold: '#ca8a04',
+        green: '#16a34a', pink: '#db2777', mono: '#52525b', neon: '#22d3ee'
+    };
+    root.style.setProperty('--primary-color', colors[settings.accentColor] || '#dc2626');
+
+    // Fonts
+    if (settings.fontFamily === 'cinzel') root.style.setProperty('--font-primary', 'Cinzel');
+    else if (settings.fontFamily === 'inter') root.style.setProperty('--font-primary', 'Inter');
+    else if (settings.fontFamily === 'mono') root.style.setProperty('--font-primary', 'monospace');
+    else root.style.setProperty('--font-primary', 'Roboto');
+
+  }, [settings, isLoaded]);
 
   const updateSetting = <K extends keyof AppSettings>(key: K, value: AppSettings[K]) => {
     setSettingsState(prev => ({ ...prev, [key]: value }));
@@ -141,8 +169,20 @@ export function useSettings() {
 
   const resetSettings = () => {
     setSettingsState(DEFAULT_SETTINGS);
-    localStorage.removeItem('shadow_settings');
   };
 
-  return { settings, updateSetting, resetSettings };
+  return (
+    <SettingsContext.Provider value={{ settings, updateSetting, resetSettings, isLoaded }}>
+      {children}
+    </SettingsContext.Provider>
+  );
+}
+
+// --- HOOK ---
+export function useSettings() {
+  const context = useContext(SettingsContext);
+  if (!context) {
+    throw new Error("useSettings must be used within a SettingsProvider");
+  }
+  return context;
 }
