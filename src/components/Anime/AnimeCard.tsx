@@ -3,251 +3,297 @@
 import React, { useState, useEffect, useRef } from 'react';
 import Link from 'next/link'; 
 import { useRouter } from 'next/navigation'; 
-import { Play, Clock, Mic, Captions, Layers, Star } from 'lucide-react';
+import { 
+  Play, Clock, Star, Calendar, 
+  MonitorPlay, Mic, Captions, Info 
+} from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card } from '@/components/ui/card';
-import { consumetClient, ShadowAnime } from '@/lib/consumet';
+import { Button } from '@/components/ui/button';
+import { Separator } from '@/components/ui/separator';
+
+// ✅ Import Safe API
+import { AnimeAPI_V2 } from '@/lib/api';
 
 // --- INTERFACES ---
+interface BaseAnimeData {
+  id: string;
+  title: string;
+  image: string; 
+  poster?: string;
+  type?: string;
+  totalEpisodes?: number;
+  sub?: number;
+  dub?: number;
+  episodes?: { sub: number; dub: number } | number;
+  releaseDate?: string;
+  status?: string;
+}
+
+interface QTipData {
+  jname?: string;
+  rating?: string;
+  quality?: string;
+  description?: string;
+  genres?: string[];
+  studios?: string;
+  duration?: string;
+  synonyms?: string;
+}
+
 interface AnimeCardProps {
-  anime: ShadowAnime; // Using the new Shadow Engine Type
+  anime: BaseAnimeData | any; 
   progress?: number;
 }
 
-export default function AnimeCard({ 
-  anime, 
-  progress = 0, 
-}: AnimeCardProps) {
+export default function AnimeCard({ anime, progress = 0 }: AnimeCardProps) {
   const router = useRouter(); 
-  const [isHovered, setIsHovered] = useState(false);
   
-  // QTip (Quick Tip) State
-  const [qtipData, setQtipData] = useState<ShadowAnime | null>(null);
-  const [loadingQtip, setLoadingQtip] = useState(false);
+  // State for Hover & Position Calculation
+  const [isHovered, setIsHovered] = useState(false);
+  const [popupPosition, setPopupPosition] = useState<'left' | 'right'>('right');
+  const cardRef = useRef<HTMLDivElement>(null); // Ref to measure position
+
+  // QTip Data State
+  const [qtip, setQtip] = useState<QTipData | null>(null);
+  const [loading, setLoading] = useState(false);
   const hoverTimeout = useRef<NodeJS.Timeout | null>(null);
 
-  // Safety check for title
-  const displayTitle = anime.title || "Unknown Title"; 
+  // Normalize Data
+  const displayImage = anime.poster || anime.image;
+  const displayTitle = anime.title || anime.name || "Unknown";
+  const displayType = anime.type || "TV";
+  const subCount = typeof anime.episodes === 'object' ? anime.episodes?.sub : anime.sub || anime.totalEpisodes || null;
+  const dubCount = typeof anime.episodes === 'object' ? anime.episodes?.dub : anime.dub || null;
+  const hasDub = dubCount && dubCount > 0;
 
-  // --- SMART HOVER FETCH ---
+  // --- 1. SMART POSITION CHECK ---
+  const handleMouseEnter = () => {
+    if (cardRef.current) {
+      const rect = cardRef.current.getBoundingClientRect();
+      const screenWidth = window.innerWidth;
+      const spaceOnRight = screenWidth - rect.right;
+      
+      // If less than 350px space on right, flip to left
+      if (spaceOnRight < 350) {
+        setPopupPosition('left');
+      } else {
+        setPopupPosition('right');
+      }
+    }
+    setIsHovered(true);
+  };
+
+  // --- 2. FETCH DATA (V2 API) ---
   useEffect(() => {
-    // Only fetch if hovered, data missing, and not already loading
-    if (isHovered && !qtipData && !loadingQtip) {
-      // 400ms delay to prevent spamming API while scrolling
+    if (isHovered && !qtip && !loading) {
       hoverTimeout.current = setTimeout(async () => {
-        setLoadingQtip(true);
+        setLoading(true);
         try {
-          // Ask Shadow Engine for full details
-          const { info } = await consumetClient.getInfo(anime.id);
-          setQtipData(info);
-        } catch (error) {
-          console.error("Shadow Garden Intel failed:", error);
+          const data = await AnimeAPI_V2.getAnimeInfo(anime.id);
+          if (data?.anime) {
+            setQtip({
+              jname: data.anime.info.jname,
+              rating: data.anime.info.stats.rating,
+              quality: data.anime.info.stats.quality,
+              description: data.anime.info.description,
+              genres: data.anime.moreInfo.genres,
+              studios: data.anime.moreInfo.studios,
+              duration: data.anime.info.stats.duration,
+              synonyms: data.anime.moreInfo.synonyms
+            });
+          }
+        } catch (err) {
+          console.error("QTip Fetch Error:", err);
         } finally {
-          setLoadingQtip(false);
+          setLoading(false);
         }
-      }, 400);
-    } 
-    
-    // Cleanup if mouse leaves before timeout
-    return () => {
-      if (hoverTimeout.current) clearTimeout(hoverTimeout.current);
-    };
-  }, [isHovered, anime.id, qtipData, loadingQtip]);
+      }, 400); 
+    }
+    return () => { if (hoverTimeout.current) clearTimeout(hoverTimeout.current); };
+  }, [isHovered, anime.id, qtip, loading]);
 
-  const handleQuickPlay = (e: React.MouseEvent) => {
-    e.preventDefault(); 
-    e.stopPropagation();
+  const handlePlay = (e: React.MouseEvent) => {
+    e.preventDefault(); e.stopPropagation();
     router.push(`/watch/${anime.id}`);
   };
 
-  // --- ANIMATION VARIANTS ---
-  const popupVariants = {
+  // --- ANIMATIONS ---
+  // Dynamic variants based on calculated position
+  const qtipVariants = {
     hidden: { 
-      opacity: 0, scale: 0.8, x: 20, filter: "blur(10px)",
-      borderRadius: "40px"
+      opacity: 0, 
+      x: popupPosition === 'right' ? -20 : 20, // Slide from correct side
+      scale: 0.95, 
+      filter: "blur(4px)" 
     },
     visible: { 
-      opacity: 1, scale: 1, x: 0, filter: "blur(0px)",
-      borderRadius: "12px",
-      transition: { 
-        type: "spring" as const, // <--- Added 'as const' here to fix the error
-        stiffness: 400, 
-        damping: 25, 
-        mass: 0.8 
-      }
+      opacity: 1, 
+      x: 0, 
+      scale: 1, 
+      filter: "blur(0px)",
+      transition: { type: "spring", stiffness: 400, damping: 25 }
     },
-    exit: { 
-      opacity: 0, scale: 0.9, filter: "blur(10px)",
-      transition: { duration: 0.2 } 
-    }
+    exit: { opacity: 0, scale: 0.95, transition: { duration: 0.15 } }
   };
 
   return (
     <motion.div
-      layout
-      initial={{ opacity: 0, scale: 0.95 }}
-      animate={{ opacity: 1, scale: 1 }}
-      whileHover={{ y: -8, transition: { duration: 0.3 } }}
-      onMouseEnter={() => setIsHovered(true)}
+      ref={cardRef} // Attach Ref here
+      initial="rest"
+      whileHover="hover"
+      animate="rest"
+      onMouseEnter={handleMouseEnter} // Use new handler
       onMouseLeave={() => setIsHovered(false)}
-      className={`relative w-full h-full group perspective-1000 ${isHovered ? 'z-50' : 'z-0'}`}
+      className="relative w-full h-full group perspective-1000 z-0 hover:z-50"
     >
       <Link href={`/watch/${anime.id}`} className="block h-full">
-        <Card
-          className={`
-            relative overflow-hidden cursor-pointer bg-[#0a0a0a] border-white/5 
-            transition-all duration-300 h-full
-            ${isHovered ? 'ring-1 ring-red-600/50 shadow-[0_0_25px_rgba(220,38,38,0.2)]' : 'shadow-lg'}
-            aspect-[2/3] rounded-xl
-          `}
-        >
-          {/* --- Image Layer --- */}
-          <div className="absolute inset-0 overflow-hidden">
-            <img
-              src={anime.image}
-              alt={displayTitle}
-              referrerPolicy="no-referrer"
-              className={`
-                w-full h-full object-cover transition-transform duration-700 ease-out
-                ${isHovered ? 'scale-110 blur-[2px] brightness-[0.4]' : 'scale-100'}
-              `}
-              loading="lazy"
-            />
-          </div>
+        <motion.div variants={{ hover: { y: -8, transition: { type: "spring", stiffness: 300 } } }} className="h-full">
+          <Card className="relative overflow-hidden h-full bg-[#0a0a0a] border-white/5 rounded-xl transition-all duration-300 group-hover:shadow-[0_0_30px_rgba(220,38,38,0.25)] group-hover:ring-1 group-hover:ring-red-500/50">
+            
+            {/* POSTER */}
+            <div className="aspect-[2/3] w-full relative overflow-hidden">
+              <img
+                src={displayImage}
+                alt={displayTitle}
+                loading="lazy"
+                className="w-full h-full object-cover transition-transform duration-700 ease-out group-hover:scale-110 group-hover:brightness-50"
+              />
+              
+              <div className="absolute top-2 right-2 z-20">
+                <Badge className="bg-black/60 backdrop-blur-md border border-white/10 text-white font-bold text-[10px] px-2">
+                  {displayType}
+                </Badge>
+              </div>
 
-          <div className="absolute inset-0 bg-gradient-to-t from-[#050505] via-transparent to-black/20 opacity-90" />
+              <div className="absolute top-2 left-2 z-20 flex flex-col gap-1">
+                 {subCount && (
+                   <Badge className="bg-green-500/90 text-black font-extrabold text-[10px] px-1.5 flex gap-1 items-center">
+                     <Captions className="w-3 h-3" /> {subCount}
+                   </Badge>
+                 )}
+                 {hasDub && (
+                   <Badge className="bg-purple-500/90 text-white font-extrabold text-[10px] px-1.5 flex gap-1 items-center">
+                     <Mic className="w-3 h-3" /> {dubCount}
+                   </Badge>
+                 )}
+              </div>
 
-          {/* --- Badges --- */}
-          <div className="absolute top-2 left-2 flex flex-col gap-1.5 z-20">
-             {/* Add rank badge here if available in ShadowAnime */}
-          </div>
-
-          <div className="absolute top-2 right-2 flex gap-1 z-20">
-             <Badge className="bg-red-600 text-white font-extrabold px-1.5 py-0 text-[10px] border border-red-400 rounded-sm">
-                {anime.type || "TV"}
-             </Badge>
-          </div>
-
-          {/* Play Button Overlay */}
-          <AnimatePresence>
-            {isHovered && (
-              <motion.div
-                initial={{ opacity: 0, scale: 0.5 }}
-                animate={{ opacity: 1, scale: 1 }}
-                exit={{ opacity: 0, scale: 0.5 }}
-                className="absolute inset-0 flex items-center justify-center z-30"
-              >
-                <Button
-                  onClick={handleQuickPlay}
-                  className="w-12 h-12 rounded-full bg-red-600 hover:bg-red-700 hover:scale-110 shadow-[0_0_15px_rgba(220,38,38,0.5)] border border-white/20 transition-all p-0 flex items-center justify-center"
-                >
-                  <Play className="w-5 h-5 fill-white ml-0.5" />
+              <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-300 z-30">
+                <Button onClick={handlePlay} size="icon" className="w-14 h-14 rounded-full bg-red-600 hover:bg-red-700 text-white shadow-[0_0_20px_rgba(220,38,38,0.6)] border-2 border-white/20">
+                  <Play className="w-6 h-6 fill-white ml-1" />
                 </Button>
-              </motion.div>
-            )}
-          </AnimatePresence>
+              </div>
 
-          {/* Bottom Info */}
-          <div className="absolute bottom-0 left-0 right-0 p-3 z-20 flex flex-col gap-2">
-            <h3 className="text-sm font-bold text-gray-100 line-clamp-1 leading-tight drop-shadow-md group-hover:text-red-500 transition-colors">
-              {displayTitle}
-            </h3>
+              {progress > 0 && (
+                <div className="absolute bottom-0 left-0 right-0 h-1 bg-gray-800 z-30">
+                  <div style={{ width: `${progress}%` }} className="h-full bg-red-600 shadow-[0_0_10px_red]" />
+                </div>
+              )}
+            </div>
 
-            <div className="flex items-center justify-between bg-white/5 backdrop-blur-md border border-white/5 rounded-lg p-1.5">
-              <div className="flex items-center gap-2 text-[10px] text-gray-300 font-medium">
+            {/* INFO */}
+            <div className="p-3 bg-[#0a0a0a] border-t border-white/5 relative z-20 h-full">
+              <h3 className="font-bold text-sm text-gray-100 line-clamp-1 group-hover:text-red-500 transition-colors">
+                {displayTitle}
+              </h3>
+              <div className="flex items-center gap-3 mt-1 text-xs text-gray-400">
                 <span className="flex items-center gap-1">
-                  <Layers className="w-3 h-3 text-red-500" />
-                  {anime.totalEpisodes || "?"}
+                  <Calendar className="w-3 h-3 text-gray-500" />
+                  {anime.releaseDate?.split('-')[0] || "N/A"}
                 </span>
-                {anime.releaseDate && (
-                  <span className="flex items-center gap-1 border-l border-white/10 pl-2">
-                    <Clock className="w-3 h-3 text-blue-400" />
-                    {anime.releaseDate.split('-')[0]}
-                  </span>
-                )}
+                <span className="w-1 h-1 rounded-full bg-gray-600" />
+                <span className="uppercase text-[10px] font-medium tracking-wider text-gray-500">
+                   {anime.status || "Anime"}
+                </span>
               </div>
             </div>
-          </div>
 
-          {progress > 0 && (
-            <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-gray-800 z-30">
-              <div style={{ width: `${progress}%` }} className="h-full bg-red-600 shadow-[0_0_8px_red]" />
-            </div>
-          )}
-        </Card>
+          </Card>
+        </motion.div>
       </Link>
 
-      {/* --- POPUP (QTIP) --- */}
+      {/* --- SMART POSITIONING QTIP --- */}
       <AnimatePresence>
-        {isHovered && (qtipData || anime) && (
+        {isHovered && (
           <motion.div
-            variants={popupVariants}
+            variants={qtipVariants}
             initial="hidden"
             animate="visible"
             exit="exit"
-            // Hidden on mobile, visible on large screens
-            className="absolute top-0 bottom-0 left-[105%] w-[280px] z-50 pointer-events-none hidden lg:block"
+            className={`
+              hidden lg:block absolute top-0 w-[320px] z-50 pointer-events-none
+              ${popupPosition === 'right' ? 'left-[102%]' : 'right-[102%]'} 
+            `}
           >
-            <div className="relative h-full overflow-hidden rounded-xl border border-white/10 bg-black/60 backdrop-blur-xl shadow-2xl p-4 flex flex-col gap-3">
+            <div className="bg-[#0f0f0f]/95 backdrop-blur-xl border border-white/10 rounded-xl shadow-[0_20px_60px_rgba(0,0,0,0.8)] p-5 text-left overflow-hidden relative">
               
-              {/* Header */}
-              <div className="flex justify-between items-start">
-                <h4 className="text-white font-bold text-lg leading-tight line-clamp-2">
-                    {qtipData?.title || anime.title}
+              <div className="mb-3">
+                <h4 className="text-white font-black text-lg leading-tight mb-1 line-clamp-2">
+                  {displayTitle}
                 </h4>
-                <div className="bg-white/10 px-2 py-0.5 rounded text-[10px] font-mono text-white/80 whitespace-nowrap">
-                    {qtipData?.type || anime.type || 'TV'}
+                <p className="text-red-400 text-xs font-medium italic line-clamp-1">
+                  {qtip?.jname || qtip?.synonyms || "..."}
+                </p>
+              </div>
+
+              <div className="flex items-center gap-3 mb-4 text-xs font-bold text-gray-300">
+                <Badge variant="outline" className="border-yellow-500/50 text-yellow-500 bg-yellow-500/10 px-1.5 py-0 gap-1 rounded-sm">
+                  <Star className="w-3 h-3 fill-yellow-500" /> {qtip?.rating || "?"}
+                </Badge>
+                
+                {qtip?.quality && (
+                  <Badge variant="outline" className="border-green-500/50 text-green-400 bg-green-500/10 px-1.5 py-0 rounded-sm">
+                    {qtip.quality}
+                  </Badge>
+                )}
+
+                <div className="flex items-center gap-1 ml-auto text-gray-500 font-medium">
+                  <Clock className="w-3 h-3" />
+                  {qtip?.duration || "24m"}
                 </div>
               </div>
 
-              {/* Stats */}
-              <div className="flex flex-wrap gap-2 text-xs font-medium text-white/80">
-                 <span className="flex items-center gap-1 text-yellow-400">
-                    <Star className="w-3 h-3 fill-yellow-400" /> {qtipData?.rating || anime.rating || "?"}
-                 </span>
-                 <span className="flex items-center gap-1 text-blue-300">
-                    <Clock className="w-3 h-3" /> {qtipData?.totalEpisodes || anime.totalEpisodes || "?"} Eps
-                 </span>
+              <div className="mb-4 relative">
+                 {loading && !qtip ? (
+                   <div className="space-y-2 animate-pulse">
+                     <div className="h-3 bg-white/10 rounded w-full"/>
+                     <div className="h-3 bg-white/10 rounded w-5/6"/>
+                     <div className="h-3 bg-white/10 rounded w-4/6"/>
+                   </div>
+                 ) : (
+                   <p className="text-xs text-gray-400 leading-relaxed line-clamp-5">
+                     {qtip?.description || "Loading intel from Shadow Garden..."}
+                   </p>
+                 )}
               </div>
 
-              {/* Description (Only available after fetch) */}
-              <div className="flex-1 overflow-hidden relative">
-                {loadingQtip ? (
-                    <div className="space-y-2 mt-2 animate-pulse">
-                        <div className="h-2 bg-white/10 rounded w-full"></div>
-                        <div className="h-2 bg-white/10 rounded w-5/6"></div>
-                        <div className="h-2 bg-white/10 rounded w-4/6"></div>
-                    </div>
-                ) : (
-                    <p className="text-xs text-gray-300 leading-relaxed line-clamp-6">
-                      {qtipData?.description || "Summoning intel..."}
-                    </p>
-                )}
-                <div className="absolute bottom-0 left-0 right-0 h-6 bg-gradient-to-t from-black/60 to-transparent" />
-              </div>
+              <Separator className="bg-white/10 mb-3" />
 
-              {/* Genres */}
-              <div className="space-y-2 mt-auto pt-3 border-t border-white/5">
-                {qtipData?.genres && (
-                  <div className="flex flex-wrap gap-1.5">
-                    {qtipData.genres.slice(0, 3).map((g: string) => (
-                      <span key={g} className="text-[10px] px-1.5 py-0.5 rounded-full bg-white/5 text-white/60 border border-white/5">
-                        {g}
-                      </span>
-                    ))}
+              <div className="space-y-2">
+                <div className="flex flex-wrap gap-1.5">
+                   {(qtip?.genres || []).slice(0, 3).map((g) => (
+                     <span key={g} className="text-[10px] px-2 py-0.5 rounded-full bg-white/5 border border-white/10 text-gray-300">
+                       {g}
+                     </span>
+                   ))}
+                </div>
+                
+                <div className="flex items-center justify-between mt-2 pt-1">
+                  <div className="text-[10px] text-gray-500 flex items-center gap-1">
+                    <MonitorPlay className="w-3 h-3" />
+                    {qtip?.studios || "Studio Unknown"}
                   </div>
-                )}
-                <div className="flex justify-between items-center text-[10px] text-gray-500">
-                   <span>{qtipData?.releaseDate || anime.releaseDate || 'Unknown'}</span>
-                   <span className="uppercase tracking-wider">{qtipData?.status || 'Unknown'}</span>
+                  
+                  <div className="text-[10px] font-mono text-gray-600">
+                     V2.DATA
+                  </div>
                 </div>
               </div>
 
-              {/* Decorative Glows */}
-              <div className="absolute -top-10 -right-10 w-24 h-24 bg-red-600/20 blur-[50px] rounded-full" />
-              <div className="absolute -bottom-10 -left-10 w-32 h-32 bg-blue-600/10 blur-[50px] rounded-full" />
+              <div className="absolute -top-10 -right-10 w-32 h-32 bg-red-600/10 blur-[60px] rounded-full pointer-events-none" />
+
             </div>
           </motion.div>
         )}
