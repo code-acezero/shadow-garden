@@ -2,7 +2,8 @@
 
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { supabase } from '@/lib/api';
-import { Session, User } from '@supabase/supabase-js';
+// ADDED: AuthChangeEvent (This fixes the 'event' type error safely)
+import { Session, User, AuthChangeEvent } from '@supabase/supabase-js';
 
 // --- TYPES ---
 export interface Profile {
@@ -73,14 +74,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (!supabase) return;
       try {
           const { data, error } = await supabase.from('profiles').select('*').eq('id', userId).single();
+          
+          // FIX: Explicitly check if data exists and cast it to 'any' or 'Profile' before spreading
           if (!error && data) {
-              setProfile({ ...data, is_guest: false });
+              const userProfile = data as unknown as Profile; // Type casting fixes the "Spread types" error
+              setProfile({ ...userProfile, is_guest: false });
           }
       } catch (err) {
           console.error("Fetch Profile Error (Ignored)", err);
       }
   };
-
   // --- INITIALIZATION EFFECT ---
   useEffect(() => {
     let mounted = true;
@@ -124,7 +127,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     init();
 
     if (supabase) {
-        const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+        // FIXED: Added types here to satisfy TypeScript.
+        // This does NOT change the runtime logic or cause crashes.
+        const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event: AuthChangeEvent, session: Session | null) => {
             if (!mounted) return;
             
             // This listener is robust and recovers even if getSession was aborted
@@ -148,7 +153,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         
         return () => {
             mounted = false;
-            subscription.unsubscribe();
+            // Defensive check
+            if (subscription && typeof subscription.unsubscribe === 'function') {
+                subscription.unsubscribe();
+            }
         };
     }
   }, []);

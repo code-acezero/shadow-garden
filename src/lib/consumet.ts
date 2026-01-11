@@ -1,33 +1,19 @@
-import { ANIME, IAnimeResult, ISource } from "@consumet/extensions";
-import hianime from "@consumet/extensions/dist/providers/anime/hianime";
-import { createClient, SupabaseClient } from "@supabase/supabase-js";
-
-// ==========================================
-//  1. CONFIGURATION & CLIENTS
-// ==========================================
-
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-
-export const supabase: SupabaseClient | null = (supabaseUrl && supabaseKey)
-  ? createClient(supabaseUrl, supabaseKey)
-  : null;
-
-if (!supabase && typeof window !== 'undefined') {
-  console.warn("⚠️ Supabase keys missing. Some persistence features may be disabled.");
-}
+import { ANIME, IAnimeResult } from "@consumet/extensions";
+// We only import the type for Supabase here, not the client itself
+import type { SupabaseClient } from "@supabase/supabase-js";
+import { supabase } from "@/lib/supabase"; // Import from the SAFE file
 
 // -- PROVIDERS (Server-Side Only) --
-// We instantiate these only on the server to avoid CORS/Browser issues with Consumet
 const isServer = typeof window === 'undefined';
 
 const PROVIDERS = {
-  METADATA: isServer ? new ANIME.Hianime() : null, // Primary Source
-  BACKUP: isServer ? new ANIME.AnimePahe() : null, // Backup Source
+  // Use Hianime if available
+  METADATA: isServer ? new ANIME.Hianime() : null, 
+  BACKUP: isServer ? new ANIME.AnimePahe() : null,
 };
 
 // ==========================================
-//  2. SHARED TYPES (The "Shadow" Schema)
+//  SHARED TYPES (The "Shadow" Schema)
 // ==========================================
 
 export interface ShadowAnime {
@@ -36,7 +22,7 @@ export interface ShadowAnime {
   image: string;
   cover?: string;
   description?: string;
-  rating?: number | string; // Normalized to 1-10 or "8.5"
+  rating?: number | string;
   malScore?: string;
   totalEpisodes?: number;
   type?: string;
@@ -60,7 +46,7 @@ export interface ShadowAnime {
 export interface Character {
   name: string;
   image: string;
-  role: string; // 'Main' | 'Supporting'
+  role: string;
   voiceActor?: {
     name: string;
     image: string;
@@ -69,8 +55,8 @@ export interface Character {
 }
 
 export interface Trailer {
-  id: string; // YouTube ID usually
-  site: string; // 'youtube'
+  id: string;
+  site: string;
   thumbnail: string;
   url?: string;
 }
@@ -82,13 +68,13 @@ export interface ShadowEpisode {
   isFiller: boolean;
   isSubbed?: boolean;
   isDubbed?: boolean;
-  url?: string; // Direct link (internal use)
+  url?: string;
   provider: string;
 }
 
 export interface ShadowSource {
   url: string;
-  quality: string; // '1080p', '720p', 'default', 'backup'
+  quality: string;
   isM3U8: boolean;
   subtitles?: { url: string; lang: string }[];
   intro?: { start: number; end: number };
@@ -97,14 +83,13 @@ export interface ShadowSource {
 }
 
 // ==========================================
-//  3. CONSUMET SERVICE
+//  CONSUMET SERVICE
 // ==========================================
 
 class ConsumetService {
   
   /**
-   * Fetches data for the Home Page (Spotlight, Trending, etc.)
-   * Only runs on the server.
+   * Fetches data for the Home Page
    */
   async getHomePageData() {
     if (!isServer || !PROVIDERS.METADATA) {
@@ -115,41 +100,40 @@ class ConsumetService {
       console.time("Shadow:HomeData");
       const hianime = PROVIDERS.METADATA;
 
-      // Parallel Fetching for speed
+      // Parallel Fetching
       const [spotlight, topAiring, recent, popular, upcoming] = await Promise.all([
-        hianime.fetchSpotlight(),
-        hianime.fetchTopAiring(),       
-        hianime.fetchRecentlyUpdated(), 
-        hianime.fetchMostPopular(),     
-        hianime.fetchTopUpcoming()      
+        hianime.fetchSpotlight().catch(() => ({ results: [] })),
+        hianime.fetchTopAiring().catch(() => ({ results: [] })),       
+        hianime.fetchRecentlyUpdated().catch(() => ({ results: [] })), 
+        hianime.fetchMostPopular().catch(() => ({ results: [] })),     
+        hianime.fetchTopUpcoming().catch(() => ({ results: [] }))      
       ]);
       console.timeEnd("Shadow:HomeData");
 
-      // Helper to map basic result to ShadowAnime
+      // Helper to map basic result
       const mapBasic = (item: IAnimeResult) => ({
         id: item.id,
-        title: item.title.toString(),
+        title: typeof item.title === 'string' ? item.title : String(item.title),
         image: item.image || '',
         type: item.type,
-        // Safely access duration if it exists on the type
         duration: (item as any).duration, 
         totalEpisodes: (item as any).totalEpisodes,
         provider: 'hianime' as const
       });
 
       return {
-        spotlight: spotlight.results.map((item: any) => ({
+        spotlight: (spotlight.results || []).map((item: any) => ({
             ...mapBasic(item),
             cover: item.banner || item.cover || item.image,
             description: item.description,
             rank: item.rank,
             quality: item.quality
         })),
-        trending: topAiring.results.map(mapBasic), 
-        topAiring: topAiring.results.map(mapBasic), 
-        recent: recent.results.map(mapBasic),
-        popular: popular.results.map(mapBasic),
-        upcoming: upcoming.results.map(mapBasic),
+        trending: (topAiring.results || []).map(mapBasic), 
+        topAiring: (topAiring.results || []).map(mapBasic), 
+        recent: (recent.results || []).map(mapBasic),
+        popular: (popular.results || []).map(mapBasic),
+        upcoming: (upcoming.results || []).map(mapBasic),
       };
 
     } catch (error) {
@@ -159,26 +143,22 @@ class ConsumetService {
   }
 
   /**
-   * Search for anime.
-   * If client-side, calls the internal API proxy.
+   * Search for anime
    */
   async search(query: string, page: number = 1): Promise<ShadowAnime[]> {
     if (!isServer) {
-        // Client-side: Fetch from our own API route
         return fetch(`/api/anime?action=search&q=${encodeURIComponent(query)}&page=${page}`).then(r => r.json());
     }
 
     try {
-      console.log(`🔍 Searching HiAnime: "${query}" (Page ${page})`);
       const res = await PROVIDERS.METADATA!.search(query, page);
-      
       return res.results.map((item: any) => ({
         id: item.id,
         title: item.title.toString(),
         image: item.image,
         releaseDate: item.releaseDate,
         type: item.type,
-        status: item.status, // Often undefined in search results
+        status: item.status,
         provider: 'hianime'
       }));
     } catch (e) {
@@ -188,8 +168,7 @@ class ConsumetService {
   }
 
   /**
-   * Get detailed Anime Info + Episodes.
-   * Handles rich data mapping (Characters, Relations, etc.)
+   * Get detailed Anime Info + Episodes
    */
   async getInfo(id: string): Promise<{ info: ShadowAnime; episodes: ShadowEpisode[] }> {
     if (!isServer) {
@@ -197,11 +176,8 @@ class ConsumetService {
     }
 
     try {
-      console.log(`📖 Fetching Info: ${id}`);
       const data = await PROVIDERS.METADATA!.fetchAnimeInfo(id);
       
-      // -- Map Characters --
-      // HiAnime Consumet structure for characters is often nested
       const characters: Character[] = (data.characters || []).map((c: any) => ({
         name: c.name?.full || c.name || "Unknown",
         image: c.image || c.image?.large || '/placeholder.png',
@@ -212,10 +188,9 @@ class ConsumetService {
         } : undefined
       }));
 
-      // -- Map Recommendations --
       const recommendations: ShadowAnime[] = (data.recommendations || []).map((r: any) => ({
         id: r.id,
-        title: r.title,
+        title: r.title?.romaji || r.title?.english || r.title?.native || r.title?.userPreferred || r.title,
         image: r.image,
         type: r.type,
         duration: r.duration,
@@ -224,68 +199,54 @@ class ConsumetService {
         provider: 'hianime'
       }));
 
-      // -- Map Related Anime --
       const related: ShadowAnime[] = (data.relatedAnime || []).map((r: any) => ({
         id: r.id,
-        title: r.title,
+        title: r.title?.romaji || r.title?.english || r.title?.native || r.title?.userPreferred || r.title,
         image: r.image,
         type: r.type,
         totalEpisodes: r.episodes, 
         provider: 'hianime'
       }));
 
-      // -- Normalize Main Info --
       const anime: ShadowAnime = {
         id: data.id,
         title: data.title.toString(),
         image: data.image as string,
         cover: data.cover || data.image,
         description: data.description as string,
-        
-        // Stats
         rating: data.rating,
-        malScore: data.malScore || (data as any).malID?.toString(), // Fallback
+        malScore: data.malScore || (data as any).malID?.toString(),
         totalEpisodes: data.totalEpisodes,
         status: data.status as string,
         duration: (data as any).duration,
-        
-        // Metadata
         genres: data.genres,
         releaseDate: data.releaseDate || (data as any).startDate,
         season: (data as any).season,
         studios: (data as any).studios,
         producers: (data as any).producers,
         type: data.type,
-        
-        // Relations
         recommendations,
         related,
         characters,
-        
-        // Trailers (Promotional Videos)
-        // HiAnime extension often returns them as 'promotionalVideos'
         trailers: (data as any).promotionalVideos?.map((pv: any) => ({
-            id: pv.source?.split('/').pop() || '', // Extract ID from youtube url if needed
+            id: pv.source?.split('/').pop() || '',
             site: 'youtube',
             thumbnail: pv.thumbnail,
             url: pv.source
         })) || [],
-
         provider: 'hianime'
       };
 
-      // -- Map Episodes --
       const episodes: ShadowEpisode[] = data.episodes?.map((ep: any) => ({
         id: ep.id,
         number: ep.number,
         title: ep.title || `Episode ${ep.number}`,
         isFiller: ep.isFiller || false,
-        isSubbed: (ep as any).isSubbed, // Some providers explicitly state this
+        isSubbed: (ep as any).isSubbed,
         isDubbed: (ep as any).isDubbed,
         provider: 'hianime'
       })) || [];
 
-      // Optional: Save mapping to Supabase for future reference
       if (supabase && data.title) {
           this.saveMapping(data.title.toString(), 'hianime', id);
       }
@@ -294,14 +255,12 @@ class ConsumetService {
 
     } catch (e) {
       console.error(`❌ [getInfo] Failed for ID: ${id}`, e);
-      // Return a partial object so UI doesn't crash completely
       throw new Error(`Failed to load anime info: ${(e as Error).message}`);
     }
   }
 
   /**
-   * Get Streaming Links.
-   * Includes logic to PROXY M3U8 links to bypass CORS/Referer checks.
+   * Get Streaming Links
    */
   async getSources(
     episodeId: string, 
@@ -313,22 +272,19 @@ class ConsumetService {
         return fetch(`/api/anime?action=sources&id=${episodeId}&server=${server}&cat=${category}`).then(res => res.json());
     }
 
-try {
-    console.log(`🎬 [getSources] Fetching: ${episodeId} [${server}]`);
-    const data = await PROVIDERS.METADATA!.fetchEpisodeSources(episodeId, server as any, category as any);
+    try {
+        const data = await PROVIDERS.METADATA!.fetchEpisodeSources(episodeId, server as any, category as any);
         
         if (!data || !data.sources) {
             console.warn("No sources returned from primary provider.");
             return [];
         }
 
-        // Normalize and wrap in Proxy
         return data.sources.map((s: any) => {
             let finalUrl = s.url;
             const referer = data.headers?.Referer;
 
             // --- PROXY LOGIC ---
-            // If it's an M3U8 or has a Referer, we route it through our Next.js API proxy
             if (finalUrl.includes('.m3u8') || referer) {
                 const proxyBase = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
                 finalUrl = `${proxyBase}/api/proxy?url=${encodeURIComponent(s.url)}`;
@@ -354,7 +310,7 @@ try {
   }
 
   // ==========================================
-  //  4. PRIVATE HELPERS
+  //  PRIVATE HELPERS
   // ==========================================
 
   private normalize(title: string): string {
@@ -365,8 +321,6 @@ try {
     if (!supabase) return;
     const slug = this.normalize(title);
     
-    // We try to upsert this into a mapping table. 
-    // This allows us to map IDs between different providers later if needed.
     const update = { 
         slug, 
         title, 
@@ -374,12 +328,10 @@ try {
         [`${provider}_id`]: id 
     };
     
-    // Fire and forget - don't await this to keep UI fast
     supabase.from('anime_mappings').upsert(update, { onConflict: 'slug' }).then(({ error }) => {
         if (error) console.error("Mapping Save Error:", error.message);
     });
   }
 }
 
-// Export a singleton instance
 export const consumetClient = new ConsumetService();

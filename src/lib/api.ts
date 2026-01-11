@@ -1,5 +1,29 @@
 import { createClient } from '@supabase/supabase-js';
 
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+
+if (!supabaseUrl || !supabaseAnonKey) {
+  throw new Error('Missing Supabase Environment Variables');
+}
+
+// --- SINGLETON CLEANUP (Keeps the app from crashing) ---
+const globalForSupabase = global as unknown as { supabase: ReturnType<typeof createClient> };
+
+// THE FIX: The word 'export' is added here so AuthContext can read it.
+// We still use 'globalForSupabase' to prevent the crash.
+export const supabase = globalForSupabase.supabase || createClient(supabaseUrl, supabaseAnonKey, {
+    auth: {
+        persistSession: true,
+        autoRefreshToken: true,
+        detectSessionInUrl: true
+    }
+});
+
+if (process.env.NODE_ENV !== 'production') {
+    globalForSupabase.supabase = supabase;
+}
+
 // ==========================================
 //  1. CONFIGURATION
 // ==========================================
@@ -7,12 +31,8 @@ import { createClient } from '@supabase/supabase-js';
 const BASE_URL = 'https://shadow-garden-wqkq.vercel.app/anime/hianime';
 const BASE_URL_V2 = 'https://hianime-api-mu.vercel.app/api/v2/hianime';
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
-const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '';
-
-export const supabase = supabaseUrl && supabaseKey 
-  ? createClient(supabaseUrl, supabaseKey) 
-  : null;
+// ❌ REMOVED: Duplicate Supabase initialization
+// The 'supabase' export is now handled by the import above.
 
 // ==========================================
 //  2. SHARED TYPES
