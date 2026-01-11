@@ -32,7 +32,7 @@ export default function AuthModal({ isOpen, onClose, onAuthSuccess }: AuthModalP
     setFormData(prev => ({ ...prev, [field]: value }));
   };
 
-  // --- 1. SIGN IN LOGIC ---
+  // --- 1. SIGN IN LOGIC (FIXED) ---
   const handleSignIn = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!supabase) return toast.error("Shadow Database connection not found.");
@@ -57,13 +57,19 @@ export default function AuthModal({ isOpen, onClose, onAuthSuccess }: AuthModalP
         onClose();
       }
     } catch (error: any) {
+      // FIX: Ignore AbortError / Signal Aborted
+      if (error.name === 'AbortError' || error.message?.includes('aborted') || error.message?.includes('signal')) {
+        console.log('Login aborted safely.');
+        return;
+      }
+      
       toast.error(error.message || 'Authentication failed.');
     } finally {
       setIsLoading(false);
     }
   };
 
-  // --- 2. SIGN UP LOGIC ---
+  // --- 2. SIGN UP LOGIC (FIXED) ---
   const handleSignUp = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!supabase) return toast.error("Shadow Database connection not found.");
@@ -94,13 +100,17 @@ export default function AuthModal({ isOpen, onClose, onAuthSuccess }: AuthModalP
         onClose();
       }
     } catch (error: any) {
+      // FIX: Ignore AbortError
+      if (error.name === 'AbortError' || error.message?.includes('aborted') || error.message?.includes('signal')) {
+        return;
+      }
       toast.error(error.message || 'Failed to seal the contract.');
     } finally {
       setIsLoading(false);
     }
   };
 
-  // --- 3. SOCIAL LOGIN LOGIC ---
+  // --- 3. SOCIAL LOGIN LOGIC (FIXED) ---
   const handleSocialLogin = async (provider: 'google' | 'github') => {
     if (!supabase) return toast.error("Shadow Database connection not found.");
 
@@ -113,6 +123,10 @@ export default function AuthModal({ isOpen, onClose, onAuthSuccess }: AuthModalP
       });
       if (error) throw error;
     } catch (error: any) {
+      // FIX: Ignore AbortError
+      if (error.name === 'AbortError' || error.message?.includes('aborted') || error.message?.includes('signal')) {
+        return;
+      }
       toast.error(`Social link failed: ${error.message}`);
     }
   };

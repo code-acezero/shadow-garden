@@ -230,18 +230,25 @@ export default function AnimePlayer({
         crossOrigin="anonymous"
         playsInline
       />
+{/* --- MAGIC LOADING SCREEN (Chibi Witch) --- */}
+{isLoading && (
+  <div className="absolute inset-0 z-50 flex flex-col items-center justify-center bg-black/60 backdrop-blur-md">
+    <div className="relative w-32 h-32 flex items-center justify-center">
+      <div className="absolute inset-0 border-4 border-dashed border-red-500/40 rounded-full animate-[spin_8s_linear_infinite]" />
+      <div className="absolute inset-2 border-2 border-double border-red-600/60 rounded-full animate-[spin_4s_linear_infinite_reverse]" />
+      {/* GIF slightly bigger */}
+      <img
+        src="/run-happy.gif"
+        alt="Running Witch"
+        className="w-20 h-20 relative z-10 object-contain animate-bounce"
+      />
+    </div>
+    <p className="mt-6 font-[Cinzel] text-red-500 animate-pulse tracking-[0.3em] text-[10px] font-bold uppercase">
+      Summoning Content...
+    </p>
+  </div>
+)}
 
-      {/* --- MAGIC LOADING SCREEN (Chibi Witch) --- */}
-      {isLoading && (
-        <div className="absolute inset-0 z-50 flex flex-col items-center justify-center bg-black/60 backdrop-blur-md">
-          <div className="relative w-32 h-32 flex items-center justify-center">
-            <div className="absolute inset-0 border-4 border-dashed border-red-500/40 rounded-full animate-[spin_8s_linear_infinite]" />
-            <div className="absolute inset-2 border-2 border-double border-red-600/60 rounded-full animate-[spin_4s_linear_infinite_reverse]" />
-            <span className="text-6xl animate-bounce relative z-10">🧙‍♀️</span>
-          </div>
-          <p className="mt-6 font-[Cinzel] text-red-500 animate-pulse tracking-[0.3em] text-[10px] font-bold uppercase">Summoning Content...</p>
-        </div>
-      )}
 
       {/* --- DYNAMIC ISLAND HEADER --- */}
       <div className={cn(
