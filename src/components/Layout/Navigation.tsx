@@ -38,14 +38,22 @@ export default function Navigation() {
   const handleBack = () => router.back();
 
   // Navigation Items
+  // ✅ FIX: 'Home' now points to '/home' (Dashboard), not '/' (Landing)
   const navItems = [
-    { id: 'home', icon: Home, label: 'Home', path: '/' },
+    { id: 'home', icon: Home, label: 'Home', path: '/home' },
     { id: 'social', icon: MessageCircle, label: 'Otakuverse', path: '/social' },
     { id: 'watchlist', icon: Heart, label: 'Watchlist', path: '/watchlist' },
     { id: 'profile', icon: User, label: 'Profile', path: '/profile' },
   ];
 
-  const isHomePage = pathname === '/';
+  // ✅ LOGIC: Hide Nav on Landing Page ('/')
+  const isLandingPage = pathname === '/';
+  
+  // ✅ LOGIC: Hide Back Button on Main Tab Pages + Landing Page
+  const mainPaths = ['/home', '/social', '/watchlist', '/profile', '/'];
+  const showBackButton = !mainPaths.includes(pathname);
+
+  if (isLandingPage) return <AuthModal isOpen={showAuthModal} onClose={() => setShowAuthModal(false)} onAuthSuccess={() => router.push('/home')} />;
 
   return (
     <>
@@ -63,16 +71,17 @@ export default function Navigation() {
           
           {/* LEFT: Back Button & Logo */}
           <div className="flex items-center gap-3 shrink-0">
-            {!isHomePage && (
+            {showBackButton && (
               <button 
                 onClick={handleBack} 
-                className="p-2 rounded-full bg-white/5 hover:bg-red-600/20 text-gray-300 hover:text-red-500 transition-colors border border-white/5 hover:border-red-500/30 group"
+                className="group relative p-2 rounded-full overflow-hidden bg-black/40 border border-white/10 hover:border-red-500/50 transition-all active:scale-95"
               >
-                <ArrowLeft size={20} className="group-hover:-translate-x-0.5 transition-transform" />
+                <div className="absolute inset-0 bg-red-600/10 opacity-0 group-hover:opacity-100 transition-opacity" />
+                <ArrowLeft size={20} className="text-gray-300 group-hover:text-red-500 group-hover:-translate-x-0.5 transition-all duration-300" />
               </button>
             )}
 
-            <Link href="/" className="flex flex-col cursor-pointer group">
+            <Link href="/home" className="flex flex-col cursor-pointer group">
               <h1 className="text-xl font-black tracking-widest text-transparent bg-clip-text bg-gradient-to-r from-red-500 via-red-600 to-red-800 font-[Cinzel] group-hover:scale-105 transition-transform flex items-center gap-2">
                 SHADOW <span className="text-white text-[10px] bg-red-600 px-1 rounded transform -rotate-3">GARDEN</span>
               </h1>
@@ -190,7 +199,8 @@ export default function Navigation() {
           <div className="flex justify-between items-center">
             {navItems.map((item) => {
               const Icon = item.icon;
-              const isActive = pathname === item.path || (item.id === 'home' && pathname === '/');
+              // ✅ FIX: Check if we are on the exact path
+              const isActive = pathname === item.path; 
               
               return (
                 <Link

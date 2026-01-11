@@ -9,9 +9,10 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useRouter } from 'next/navigation';
-import { ShadowAnime } from '@/lib/consumet';
 
-// --- STYLES FOR SMOKE & SLIME ---
+// ✅ SAFE: Only import Types, not the heavy scraper
+import type { IAnimeResult } from "@consumet/extensions";
+
 const smokeStyle = `
   @keyframes smoke {
     0% { transform: translateX(0) scale(1); opacity: 0.3; }
@@ -30,7 +31,8 @@ const slimeStyle = `
 `;
 
 interface SpotlightProps {
-  animes: ShadowAnime[];
+  // Accepts data passed from the Server
+  animes: IAnimeResult[];
 }
 
 export default function SpotlightSlider({ animes }: SpotlightProps) {
@@ -38,13 +40,15 @@ export default function SpotlightSlider({ animes }: SpotlightProps) {
   const [direction, setDirection] = useState(0); 
   const router = useRouter(); 
 
-  // Auto-play
   useEffect(() => {
-    const interval = setInterval(() => {
-      handleNext();
-    }, 8000);
-    return () => clearInterval(interval);
-  }, [activeIndex]);
+    // Only set interval if we actually have animes
+    if (animes.length > 0) {
+      const interval = setInterval(() => {
+        handleNext();
+      }, 8000);
+      return () => clearInterval(interval);
+    }
+  }, [activeIndex, animes.length]);
 
   const handleNext = () => {
     setDirection(1);
@@ -60,11 +64,13 @@ export default function SpotlightSlider({ animes }: SpotlightProps) {
     router.push(`/watch/${animeId}`);
   };
 
+  // Guard clause: If no data, show nothing (or a skeleton)
   if (!animes || animes.length === 0) return null;
 
   const currentAnime = animes[activeIndex];
-  // Consumet sometimes puts the big image in 'cover' or 'image'
-  const displayImage = currentAnime.cover || currentAnime.image;
+  const displayImage = currentAnime.image || currentAnime.cover;
+  const displayTitle = typeof currentAnime.title === 'string' ? currentAnime.title : (currentAnime.title as any).english || (currentAnime.title as any).romaji || "Unknown";
+  const displayDesc = currentAnime.description || "Enter the shadow world and discover the secrets hidden within this anime.";
 
   const slideVariants = {
     enter: (direction: number) => ({
@@ -88,14 +94,13 @@ export default function SpotlightSlider({ animes }: SpotlightProps) {
 
   return (
     <section className="relative w-full h-[600px] md:h-[650px] mb-12 group perspective-1000">
-      {/* Inject Styles */}
       <style>{smokeStyle + slimeStyle}</style>
 
       <div className="relative w-full h-full rounded-[2rem] overflow-hidden shadow-[0_20px_50px_rgba(0,0,0,0.7)] border border-white/10 ring-1 ring-white/5 bg-[#050505]">
         
         <AnimatePresence initial={false} custom={direction} mode="popLayout">
           <motion.div
-            key={activeIndex}
+            key={currentAnime.id} // Changed to ID for better key tracking
             custom={direction}
             variants={slideVariants}
             initial="enter"
@@ -107,31 +112,26 @@ export default function SpotlightSlider({ animes }: SpotlightProps) {
             }}
             className="absolute inset-0 w-full h-full bg-[#050505]"
           >
-            {/* Background Image */}
             <motion.img 
               src={displayImage} 
-              alt={currentAnime.title}
+              alt={displayTitle}
               className="w-full h-full object-cover opacity-60"
             />
 
-            {/* --- SMOKY FOG LAYERS --- */}
+            {/* Fog Layers */}
             <div className="absolute inset-0 z-10 opacity-30 pointer-events-none mix-blend-screen">
                 <div className="absolute inset-0 bg-gradient-to-r from-purple-900/20 via-transparent to-blue-900/20 animate-smoke filter blur-3xl" />
-                <div className="absolute -bottom-20 -left-20 w-1/2 h-1/2 bg-red-900/10 rounded-full blur-[100px] animate-pulse" />
             </div>
 
-            {/* Gradients */}
             <div className="absolute inset-0 bg-gradient-to-t from-[#050505] via-[#050505]/40 to-transparent z-10" />
             <div className="absolute inset-0 bg-gradient-to-r from-[#050505] via-[#050505]/80 to-transparent z-10" />
             
-            {/* --- SLIMY ECTOPLASM ORB --- */}
             <div className="absolute top-[-10%] right-[-10%] w-[600px] h-[600px] bg-purple-600/10 z-0 blur-[80px] animate-slime pointer-events-none" />
 
-            {/* CONTENT */}
+            {/* Content */}
             <div className="absolute inset-0 flex flex-col justify-end p-8 md:p-16 z-20">
               <div className="max-w-3xl relative">
                 
-                {/* Spotlight Badge */}
                 <motion.div 
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
@@ -149,18 +149,16 @@ export default function SpotlightSlider({ animes }: SpotlightProps) {
                   </Badge>
                 </motion.div>
 
-                {/* Title */}
                 <motion.div
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: 0.3 }}
                 >
                   <h1 className="text-4xl md:text-6xl lg:text-7xl font-black text-white mb-6 leading-[0.9] tracking-tighter drop-shadow-[0_0_15px_rgba(255,255,255,0.3)] line-clamp-2">
-                    {currentAnime.title}
+                    {displayTitle}
                   </h1>
                 </motion.div>
 
-                {/* Metadata */}
                 <motion.div 
                   initial={{ opacity: 0, x: -20 }}
                   animate={{ opacity: 1, x: 0 }}
@@ -173,12 +171,6 @@ export default function SpotlightSlider({ animes }: SpotlightProps) {
                       <span>{currentAnime.releaseDate}</span>
                     </div>
                   )}
-                  {/* Note: Consumet lists don't always have Duration/Dub info in the listing object */}
-                  <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-white/5 border border-white/10 backdrop-blur-md">
-                      <Clock className="w-4 h-4 text-blue-400" />
-                      <span>24m</span>
-                  </div>
-                  
                   <div className="flex items-center gap-3 px-3 py-1.5 rounded-lg bg-white/5 border border-white/10 backdrop-blur-md">
                     <div className="flex items-center gap-1.5">
                       <Captions className="w-4 h-4 text-green-400" />
@@ -187,17 +179,14 @@ export default function SpotlightSlider({ animes }: SpotlightProps) {
                   </div>
                 </motion.div>
 
-                {/* Description */}
                 <motion.p 
                   initial={{ opacity: 0 }}
                   animate={{ opacity: 1 }}
                   transition={{ delay: 0.5 }}
                   className="text-gray-300/90 mb-8 line-clamp-3 text-base md:text-lg font-light leading-relaxed max-w-2xl drop-shadow-md"
-                >
-                  {currentAnime.description || "Enter the shadow world and discover the secrets hidden within this anime."}
-                </motion.p>
+                  dangerouslySetInnerHTML={{ __html: displayDesc }} // Handles HTML in description
+                />
 
-                {/* Buttons */}
                 <motion.div 
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
@@ -227,7 +216,7 @@ export default function SpotlightSlider({ animes }: SpotlightProps) {
           </motion.div>
         </AnimatePresence>
 
-        {/* --- NAVIGATION DOTS & ARROWS --- */}
+        {/* Navigation Dots */}
         <div className="absolute bottom-12 right-8 md:right-16 z-30 flex items-center gap-4">
           <div className="flex gap-2 mr-4">
             {animes.map((_, idx) => (
