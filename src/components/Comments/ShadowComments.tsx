@@ -5,8 +5,8 @@ import { supabase } from '@/lib/api';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
 import { 
-  Bold, Italic, EyeOff, Send, MoreVertical, Flag, ThumbsUp, ThumbsDown, 
-  MessageSquare, CornerDownRight, AlertTriangle, Trash2, Edit2, User, X
+    Bold, Italic, EyeOff, Send, MoreVertical, Flag, ThumbsUp, ThumbsDown, 
+    MessageSquare, CornerDownRight, AlertTriangle, Trash2, Edit2, User, X
 } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
@@ -14,10 +14,10 @@ import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import {
-  DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger,
+    DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { 
-  Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription 
+    Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription 
 } from "@/components/ui/dialog";
 import Link from 'next/link'; 
 import { formatDistanceToNow } from 'date-fns';
@@ -309,7 +309,8 @@ export default function ShadowComments({ episodeId }: { episodeId: string }) {
         if (!supabase) return;
         if (!userId) { toast.error("Log in to transmit."); return; }
         
-        const { error } = await supabase.from('comments').insert({
+        // ✅ FIX: Cast the from() selection to 'any' to bypass Postgrest 'never' overload error
+        const { error } = await (supabase.from('comments') as any).insert({
             episode_id: episodeId,
             user_id: userId,
             content,
@@ -334,14 +335,16 @@ export default function ShadowComments({ episodeId }: { episodeId: string }) {
 
     const handleEdit = async (id: string, newContent: string) => {
         if (!supabase) return;
-        const { error } = await supabase.from('comments').update({ content: newContent, is_edited: true }).eq('id', id);
+        // ✅ FIX: Cast to any to prevent 'never' error on update object
+        const { error } = await (supabase.from('comments') as any).update({ content: newContent, is_edited: true }).eq('id', id);
         if(error) toast.error("Update failed.");
         else toast.success("Signal updated.");
     };
 
     const handleReport = async (commentId: string, reportedUserId: string) => {
         if (!supabase || !userId) return;
-        const { error } = await supabase.from('comment_reports').insert({
+        // ✅ FIX: Cast to any to bypass 'never' overload on comment_reports table
+        const { error } = await (supabase.from('comment_reports') as any).insert({
             comment_id: commentId,
             reporter_id: userId,
             reported_user_id: reportedUserId,

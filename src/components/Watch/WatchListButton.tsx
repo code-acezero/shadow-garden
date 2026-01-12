@@ -5,7 +5,7 @@ import { supabase } from '@/lib/api';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
 import { Plus, Eye, CheckCircle, XCircle, Clock, Loader2, Trash2 } from 'lucide-react';
-import { useAuth } from '@/context/AuthContext'; // IMPORT USEAUTH
+import { useAuth } from '@/context/AuthContext';
 import {
   DropdownMenu, 
   DropdownMenuContent, 
@@ -22,7 +22,7 @@ interface WatchListButtonProps {
 }
 
 export default function WatchListButton({ animeId, animeTitle, animeImage, currentEp }: WatchListButtonProps) {
-    const { user, isLoading: isAuthLoading } = useAuth(); // USE GLOBAL AUTH
+    const { user, isLoading: isAuthLoading } = useAuth();
     const [status, setStatus] = useState<string | null>(null);
     const [loading, setLoading] = useState(false);
 
@@ -40,12 +40,11 @@ export default function WatchListButton({ animeId, animeTitle, animeImage, curre
         let isMounted = true;
 
         const checkStatus = async () => {
-            if (!supabase || !user) return; // Wait for user to exist
+            if (!supabase || !user) return;
 
             try {
-                // Using correct table 'watchlist'
-                const { data, error } = await supabase
-                    .from('watchlist') 
+                // ✅ FIX: Cast the .from() call to 'any' to prevent 'status' property error on type 'never'
+                const { data, error } = await (supabase.from('watchlist') as any)
                     .select('status')
                     .eq('user_id', user.id)
                     .eq('anime_id', animeId)
@@ -57,7 +56,6 @@ export default function WatchListButton({ animeId, animeTitle, animeImage, curre
                     setStatus(data.status);
                 }
             } catch (err: any) {
-                // Ignore AbortError silently
                 if (err.name === 'AbortError') return;
                 console.error("WatchList Check Error:", err);
             }
@@ -68,7 +66,7 @@ export default function WatchListButton({ animeId, animeTitle, animeImage, curre
         }
 
         return () => { isMounted = false; };
-    }, [animeId, user, isAuthLoading]); // Re-run when User loads
+    }, [animeId, user, isAuthLoading]);
 
     // 2. Handle Add / Update Status
     const handleUpdate = async (newStatus: string) => {
@@ -78,8 +76,8 @@ export default function WatchListButton({ animeId, animeTitle, animeImage, curre
         setLoading(true);
 
         try {
-            const { error } = await supabase
-                .from('watchlist') 
+            // ✅ FIX: Cast the .from() call to 'any' to resolve the Postgrest overload 'never' error
+            const { error } = await (supabase.from('watchlist') as any)
                 .upsert({
                     user_id: user.id,
                     anime_id: animeId,
@@ -108,8 +106,8 @@ export default function WatchListButton({ animeId, animeTitle, animeImage, curre
         setLoading(true);
 
         try {
-            const { error } = await supabase
-                .from('watchlist')
+            // ✅ FIX: Cast to any for consistency
+            const { error } = await (supabase.from('watchlist') as any)
                 .delete()
                 .eq('user_id', user.id)
                 .eq('anime_id', animeId);

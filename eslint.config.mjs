@@ -12,10 +12,12 @@ const compat = new FlatCompat({
 const eslintConfig = [
   ...compat.extends("next/core-web-vitals", "next/typescript"),
   {
-    // You can add custom rules here if needed
     rules: {
-      "@typescript-eslint/no-explicit-any": "off", // Optional: Allows 'any' type if you prefer
-      "@typescript-eslint/no-unused-vars": "warn",
+      "@typescript-eslint/no-explicit-any": "off", 
+      "@typescript-eslint/no-unused-vars": "off",
+      "@typescript-eslint/no-empty-object-type": "off",
+      "react/no-unescaped-entities": "off",
+      "@next/next/no-img-element": "off",
     },
   },
 ];

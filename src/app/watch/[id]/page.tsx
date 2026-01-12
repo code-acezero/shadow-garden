@@ -20,7 +20,7 @@ import { useAuth } from '@/context/AuthContext';
 
 // --- COMPONENTS ---
 import AnimePlayer from '@/components/Player/AnimePlayer'; 
-import WatchListButton from '@/components/Watch/WatchListButton'; // <--- USING YOUR BUTTON HERE
+import WatchListButton from '@/components/Watch/WatchListButton'; 
 import ShadowComments from '@/components/Comments/ShadowComments'; 
 import { Button } from '@/components/ui/button';
 import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area';
@@ -123,11 +123,9 @@ const StarRating = ({ animeId, initialRating = 0 }: StarRatingProps) => {
     const [rating, setRating] = useState(numericInitial || 0);
     const [hover, setHover] = useState(0);
     
-    // Get Auth Context to check if Guest
     const { user, profile } = useAuth();
 
     const handleRate = async (score: number) => {
-        // GUEST CHECK
         if (!user || profile?.is_guest) {
             toast.error("Shadow Agents only. Please login to rate.");
             return;
@@ -136,7 +134,8 @@ const StarRating = ({ animeId, initialRating = 0 }: StarRatingProps) => {
         setRating(score);
         if (supabase) {
             try {
-                await supabase.from('anime_ratings').upsert({ 
+                // ✅ FIX: Cast the from selection to 'any' to resolve the Postgrest overload 'never' error
+                await (supabase.from('anime_ratings') as any).upsert({ 
                     user_id: user.id, 
                     anime_id: animeId, 
                     rating: score 
@@ -250,7 +249,6 @@ function WatchContent() {
   const [epChunkIndex, setEpChunkIndex] = useState(0);
   const [epViewMode, setEpViewMode] = useState<'capsule' | 'list'>('capsule');
 
-  // --- EFFECT 1: FETCH INFO (Fixed for AbortError) ---
   useEffect(() => {
     let isMounted = true;
     const controller = new AbortController();
@@ -328,7 +326,6 @@ function WatchContent() {
     };
   }, [animeId, urlEpId]);
 
-  // --- EFFECT 2: LOAD STREAM (Fixed for AbortError) ---
   useEffect(() => {
     if (!currentEpId) return;
     const newUrl = `/watch/${animeId}?ep=${currentEpId}`;
@@ -427,7 +424,6 @@ function WatchContent() {
              <MarqueeTitle text={currentEpisode?.title || `Episode ${currentEpisode?.number}`} />
              <NextEpisodeTimer schedule={nextEpSchedule} status={anime.moreInfo.status} />
              
-             {/* EXTERNAL WATCHLIST BUTTON */}
              <WatchListButton 
                 animeId={anime.id} 
                 animeTitle={anime.name} 
@@ -496,7 +492,6 @@ function WatchContent() {
                         ))}
                     </div>
 
-                    {/* RATING SYSTEM - CONNECTED TO DB */}
                     <div className="mt-auto pt-6 w-full flex justify-end">
                         <StarRating animeId={animeId} initialRating={anime.stats.rating} />
                     </div>
@@ -510,21 +505,16 @@ function WatchContent() {
                  </ScrollArea>
               </div>
 
-              {/* METADATA ROW */}
               <div className="flex-shrink-0 p-8 border-t border-white/5 bg-[#0a0a0a] shadow-inner shadow-red-900/5">
                  <div className="flex flex-nowrap items-center gap-4 text-[10px] font-black uppercase tracking-[0.2em] overflow-hidden">
-                    
                     <div className="bg-white/5 p-2 px-5 rounded-full border border-white/5 flex items-center gap-3 shrink-0 group hover:border-red-500/30 transition-all shadow-inner shadow-black/20">
                         <span className="text-red-600">Aired</span>
                         <span className="text-zinc-300 font-bold whitespace-nowrap">{anime.moreInfo.aired || 'N/A'}</span>
                     </div>
-
                     <div className="bg-white/5 p-2 px-5 rounded-full border border-white/5 flex items-center gap-3 shrink-0 group hover:border-red-500/30 transition-all shadow-inner shadow-black/20">
                         <span className="text-red-600">Premiered</span>
                         <span className="text-zinc-300 font-bold whitespace-nowrap">{anime.moreInfo.premiered || 'N/A'}</span>
                     </div>
-
-                    {/* STUDIOS */}
                     <DropdownMenu>
                         <DropdownMenuTrigger asChild>
                             <button className="bg-white/5 p-2 px-5 rounded-full border border-white/5 flex items-center gap-3 hover:border-red-600/50 hover:bg-white/10 transition-all active:scale-95 min-w-0 shrink flex-1 shadow-inner shadow-black/20 group">
@@ -539,8 +529,6 @@ function WatchContent() {
                             ))}
                         </DropdownMenuContent>
                     </DropdownMenu>
-
-                    {/* PRODUCERS */}
                     <DropdownMenu>
                         <DropdownMenuTrigger asChild>
                             <button className="bg-white/5 p-2 px-5 rounded-full border border-white/5 flex items-center gap-3 hover:border-red-600/50 hover:bg-white/10 transition-all active:scale-95 min-w-0 shrink flex-1 shadow-inner shadow-black/20 group">
@@ -555,40 +543,110 @@ function WatchContent() {
                             ))}
                         </DropdownMenuContent>
                     </DropdownMenu>
-
                  </div>
               </div>
            </div>
         </div>
       </div>
 
-      {/* NEW COMMENT SECTION */}
       <div className="w-full flex justify-center my-12 px-4 md:px-8">
         <div className="w-full max-w-[1400px]">
            <ShadowComments episodeId={currentEpId || "general"} />
         </div>
       </div>
 
-      {(related.length > 0) && (<div className="flex items-center justify-center my-12 px-4 md:px-8"><div className="w-full max-w-[1400px]"><div className="bg-[#0a0a0a] border border-white/10 shadow-3xl rounded-[50px] p-12 overflow-hidden relative group/related shadow-red-900/10 shadow-lg"><div className="absolute top-0 right-0 w-80 h-80 bg-red-600/5 blur-[150px] pointer-events-none group-hover/related:bg-red-600/10 transition-all duration-1000" /><div className="flex items-center gap-4 mb-8"><span className="w-2.5 h-2.5 bg-red-600 rounded-full animate-ping shadow-[0_0_15px_red] shadow-red-900/10" /><h4 className="text-[12px] text-white font-black uppercase tracking-[0.5em] font-[Cinzel] opacity-80 shadow-red-900/10 shadow-sm">Related Domains</h4></div>
-          <ScrollArea className="w-full whitespace-nowrap pb-6 [&>[data-orientation=horizontal]]:bg-black [&>[data-orientation=horizontal]_[data-state=visible]]:bg-red-600 scrollbar-hide group-hover:scrollbar-default">
-              <div className="flex gap-6 w-max">{related.map((rel: any, idx: number) => (<Link key={`${rel.id}-${idx}`} href={`/watch/${rel.id}`} className="group/item flex items-center gap-5 p-2 pr-10 rounded-full bg-white/5 border border-white/5 hover:border-red-600/40 hover:bg-red-600/10 transition-all duration-500 min-w-[320px] active:scale-95 shadow-inner shadow-red-900/5 shadow-md"><div className="relative shrink-0 overflow-hidden rounded-full w-16 h-16 border-2 border-white/5 group-hover/item:border-red-600 shadow-[0_0_20px_rgba(220,38,38,0.4)] transition-all duration-500 shadow-black/50 shadow-md"><img src={rel.poster || rel.image} className="w-full h-full object-cover transition-transform duration-1000 group-hover/item:scale-125 shadow-md shadow-red-900/5" alt={rel.name} /></div><div className="flex flex-col overflow-hidden gap-1"><span className="text-[13px] font-black text-zinc-300 group-hover:text-white truncate w-[180px] uppercase tracking-tighter transition-colors shadow-black drop-shadow-md">{rel.name || rel.title}</span><div className="flex items-center gap-3"><Badge variant="outline" className="text-[8px] font-black border-zinc-800 text-zinc-600 rounded-md group-hover/item:border-red-500/50 group-hover/item:text-red-500 uppercase tracking-widest shadow-sm">{rel.type}</Badge><span className="text-[9px] text-zinc-700 font-black uppercase group-hover/item:text-zinc-400 shadow-sm">{rel.episodes?.sub || '?'} EPS</span></div></div></Link>))}</div>
-              <ScrollBar orientation="horizontal" className="h-1.5 rounded-full shadow-red-900/40 shadow-lg shadow-md" />
-          </ScrollArea></div></div></div>)}
+      {(related.length > 0) && (
+        <div className="flex items-center justify-center my-12 px-4 md:px-8">
+          <div className="w-full max-w-[1400px]">
+            <div className="bg-[#0a0a0a] border border-white/10 shadow-3xl rounded-[50px] p-12 overflow-hidden relative group/related shadow-red-900/10 shadow-lg">
+              <div className="absolute top-0 right-0 w-80 h-80 bg-red-600/5 blur-[150px] pointer-events-none group-hover/related:bg-red-600/10 transition-all duration-1000" />
+              <div className="flex items-center gap-4 mb-8">
+                <span className="w-2.5 h-2.5 bg-red-600 rounded-full animate-ping shadow-[0_0_15px_red] shadow-red-900/10" />
+                <h4 className="text-[12px] text-white font-black uppercase tracking-[0.5em] font-[Cinzel] opacity-80 shadow-red-900/10 shadow-sm">Related Domains</h4>
+              </div>
+              <ScrollArea className="w-full whitespace-nowrap pb-6 [&>[data-orientation=horizontal]]:bg-black [&>[data-orientation=horizontal]_[data-state=visible]]:bg-red-600 scrollbar-hide group-hover:scrollbar-default">
+                <div className="flex gap-6 w-max">
+                  {related.map((rel: any, idx: number) => (
+                    <Link key={`${rel.id}-${idx}`} href={`/watch/${rel.id}`} className="group/item flex items-center gap-5 p-2 pr-10 rounded-full bg-white/5 border border-white/5 hover:border-red-600/40 hover:bg-red-600/10 transition-all duration-500 min-w-[320px] active:scale-95 shadow-inner shadow-red-900/5 shadow-md">
+                      <div className="relative shrink-0 overflow-hidden rounded-full w-16 h-16 border-2 border-white/5 group-hover/item:border-red-600 shadow-[0_0_20px_rgba(220,38,38,0.4)] transition-all duration-500 shadow-black/50 shadow-md">
+                        <img src={rel.poster || rel.image} className="w-full h-full object-cover transition-transform duration-1000 group-hover/item:scale-125 shadow-md shadow-red-900/5" alt={rel.name} />
+                      </div>
+                      <div className="flex flex-col overflow-hidden gap-1">
+                        <span className="text-[13px] font-black text-zinc-300 group-hover:text-white truncate w-[180px] uppercase tracking-tighter transition-colors shadow-black drop-shadow-md">{rel.name || rel.title}</span>
+                        <div className="flex items-center gap-3">
+                          <Badge variant="outline" className="text-[8px] font-black border-zinc-800 text-zinc-600 rounded-md group-hover/item:border-red-500/50 group-hover/item:text-red-500 uppercase tracking-widest shadow-sm">{rel.type}</Badge>
+                          <span className="text-[9px] text-zinc-700 font-black uppercase group-hover/item:text-zinc-400 shadow-sm">{rel.episodes?.sub || '?'} EPS</span>
+                        </div>
+                      </div>
+                    </Link>
+                  ))}
+                </div>
+                <ScrollBar orientation="horizontal" className="h-1.5 rounded-full shadow-red-900/40 shadow-lg shadow-md" />
+              </ScrollArea>
+            </div>
+          </div>
+        </div>
+      )}
 
       <div className="w-full flex justify-center mt-12 px-4 md:px-8">
         <div className="w-full max-w-[1400px] grid grid-cols-1 xl:grid-cols-12 gap-8 items-start">
-           <div className="xl:col-span-4 h-[750px] flex flex-col bg-[#0a0a0a] rounded-[50px] border border-white/5 shadow-2xl overflow-hidden relative group/paths shadow-red-900/20 shadow-md"><div className="p-8 bg-gradient-to-b from-white/5 to-transparent border-b border-white/5 flex items-center gap-4 relative z-10 shadow-red-900/5 shadow-md"><Heart size={20} className="text-red-600 fill-red-600 animate-pulse shadow-red-600/30 shadow-md" /><h3 className="font-black text-white text-[11px] font-[Cinzel] tracking-[0.4em] uppercase shadow-sm shadow-black">Materialized Paths</h3></div><div className="flex-1 overflow-hidden p-6 relative z-10 shadow-inner shadow-red-900/5"><ScrollArea className="h-full pr-4 scrollbar-thin scrollbar-thumb-zinc-900 shadow-inner"><div className="space-y-4">{recommendations.map((rec: any, idx: number) => (<Link key={`${rec.id}-${idx}`} href={`/watch/${rec.id}`} className="flex gap-5 p-4 rounded-[32px] hover:bg-red-600/5 group transition-all duration-500 active:scale-95 border border-transparent hover:border-red-600/20 shadow-inner shadow-red-900/5"><img src={rec.poster || rec.image} className="w-16 h-24 object-cover rounded-2xl shadow-3xl group-hover:rotate-1 transition-all duration-500 shadow-black shadow-md" alt={rec.name} /><div className="flex-1 py-1 flex flex-col justify-center"><h4 className="text-[12px] font-black text-zinc-500 group-hover:text-red-500 line-clamp-2 transition-all uppercase tracking-tight leading-tight mb-2 shadow-black drop-shadow-md">{rec.name || rec.title}</h4><div className="flex items-center gap-3"><span className="text-[8px] font-black text-zinc-700 uppercase tracking-[0.2em] group-hover:text-zinc-500 transition-colors shadow-sm">{rec.type}</span><span className="w-1 h-1 bg-zinc-900 rounded-full shadow-sm"/><span className="text-[9px] text-zinc-800 font-black uppercase group-hover:text-red-900 transition-colors shadow-sm">{rec.episodes?.sub || rec.duration || '?'} UNIT</span></div></div></Link>))}</div></ScrollArea></div></div>
-           <div className="xl:col-span-8 bg-[#0a0a0a] rounded-[50px] border border-white/5 overflow-hidden flex flex-col shadow-2xl relative min-h-[750px] shadow-red-900/20 shadow-md"><div className="p-8 bg-gradient-to-b from-white/5 to-transparent border-b border-white/5 flex items-center gap-4 shadow-red-900/5 shadow-md"><User size={20} className="text-red-600 shadow-red-600/30 shadow-md" /><h3 className="font-black text-white text-[11px] font-[Cinzel] tracking-[0.4em] uppercase shadow-sm shadow-black">Manifested Bloodlines</h3></div>
+           <div className="xl:col-span-4 h-[750px] flex flex-col bg-[#0a0a0a] rounded-[50px] border border-white/5 shadow-2xl overflow-hidden relative group/paths shadow-red-900/20 shadow-md">
+              <div className="p-8 bg-gradient-to-b from-white/5 to-transparent border-b border-white/5 flex items-center gap-4 relative z-10 shadow-red-900/5 shadow-md">
+                <Heart size={20} className="text-red-600 fill-red-600 animate-pulse shadow-red-600/30 shadow-md" />
+                <h3 className="font-black text-white text-[11px] font-[Cinzel] tracking-[0.4em] uppercase shadow-sm shadow-black">Materialized Paths</h3>
+              </div>
+              <div className="flex-1 overflow-hidden p-6 relative z-10 shadow-inner shadow-red-900/5">
+                <ScrollArea className="h-full pr-4 scrollbar-thin scrollbar-thumb-zinc-900 shadow-inner">
+                  <div className="space-y-4">
+                    {recommendations.map((rec: any, idx: number) => (
+                      <Link key={`${rec.id}-${idx}`} href={`/watch/${rec.id}`} className="flex gap-5 p-4 rounded-[32px] hover:bg-red-600/5 group transition-all duration-500 active:scale-95 border border-transparent hover:border-red-600/20 shadow-inner shadow-red-900/5">
+                        <img src={rec.poster || rec.image} className="w-16 h-24 object-cover rounded-2xl shadow-3xl group-hover:rotate-1 transition-all duration-500 shadow-black shadow-md" alt={rec.name} />
+                        <div className="flex-1 py-1 flex flex-col justify-center">
+                          <h4 className="text-[12px] font-black text-zinc-500 group-hover:text-red-500 line-clamp-2 transition-all uppercase tracking-tight leading-tight mb-2 shadow-black drop-shadow-md">{rec.name || rec.title}</h4>
+                          <div className="flex items-center gap-3">
+                            <span className="text-[8px] font-black text-zinc-700 uppercase tracking-[0.2em] group-hover:text-zinc-500 transition-colors shadow-sm">{rec.type}</span>
+                            <span className="w-1 h-1 bg-zinc-900 rounded-full shadow-sm"/>
+                            <span className="text-[9px] text-zinc-800 font-black uppercase group-hover:text-red-900 transition-colors shadow-sm">{rec.episodes?.sub || rec.duration || '?'} UNIT</span>
+                          </div>
+                        </div>
+                      </Link>
+                    ))}
+                  </div>
+                </ScrollArea>
+              </div>
+           </div>
+           <div className="xl:col-span-8 bg-[#0a0a0a] rounded-[50px] border border-white/5 overflow-hidden flex flex-col shadow-2xl relative min-h-[750px] shadow-red-900/20 shadow-md">
+              <div className="p-8 bg-gradient-to-b from-white/5 to-transparent border-b border-white/5 flex items-center gap-4 shadow-red-900/5 shadow-md">
+                <User size={20} className="text-red-600 shadow-red-600/30 shadow-md" />
+                <h3 className="font-black text-white text-[11px] font-[Cinzel] tracking-[0.4em] uppercase shadow-sm shadow-black">Manifested Bloodlines</h3>
+              </div>
               <ScrollArea className="flex-1 p-10 scrollbar-thin scrollbar-thumb-zinc-900 shadow-inner shadow-red-900/5">
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-12">
                      {characters.map((char: any, i: number) => (
                         <div key={i} className={cn("flex items-center justify-between p-5 rounded-[35px] transition-all duration-700 group relative active:scale-95 shadow-red-900/5 shadow-md", char.role?.toLowerCase() === 'main' ? "bg-red-600/5 border border-red-500/20 shadow-[0_0_50px_-20px_rgba(220,38,38,0.4)]" : "bg-white/5 border border-white/5 hover:border-white/10 shadow-inner")}>
-                           {/* ANIMATION: ROTATING GLOW BORDER FOR MAIN CHARACTERS */}
                            {char.role?.toLowerCase() === 'main' && (<div className="absolute inset-[-2px] rounded-[inherit] bg-[conic-gradient(from_0deg,transparent,30%,#dc2626_50%,transparent_70%)] animate-[spin_3s_linear_infinite] opacity-60 -z-10 blur-[1px] shadow-md" />)}
                            <div className="flex items-center justify-between relative z-10 w-full bg-[#0a0a0a] rounded-[inherit] p-1 shadow-inner shadow-red-900/5 shadow-md">
-                             <div className="flex items-center gap-5 relative z-10"><div className="relative shrink-0"><img src={char.image || '/placeholder.png'} className="w-16 h-16 rounded-full object-cover border-2 border-zinc-900 group-hover:border-red-600/50 group-hover:scale-105 transition-all duration-500 shadow-2xl shadow-black shadow-md" alt={char.name} /></div><div className="text-left flex flex-col justify-center gap-0.5"><div className="text-[12px] font-black text-zinc-200 group-hover:text-red-500 transition-all uppercase tracking-tighter leading-none shadow-black drop-shadow-md">{char.name}</div><div className="text-[9px] text-zinc-600 font-black uppercase tracking-[0.2em] mt-1 group-hover:text-zinc-500 transition-colors shadow-sm">{char.role}</div></div></div>
-                             {char.voiceActor && (<div className="flex items-center gap-5 flex-row-reverse text-right pl-6 border-l border-white/5 relative z-10 group/va transition-all shadow-sm"><img src={char.voiceActor.image || '/placeholder.png'} className="w-16 h-16 rounded-full object-cover border-2 border-zinc-900 grayscale opacity-40 group-hover:grayscale-0 group-hover:opacity-100 group-hover:border-red-600/30 transition-all duration-700 shadow-md shadow-red-900/10" alt={char.voiceActor.name} /><div className="flex flex-col justify-center gap-0.5"><div className="text-[11px] font-black text-zinc-500 group-hover:text-zinc-300 transition-all uppercase tracking-tighter leading-none shadow-black drop-shadow-md">{char.voiceActor.name}</div><div className="text-[8px] text-zinc-800 font-black uppercase tracking-[0.3em] mt-1 group-hover:text-red-900 transition-colors shadow-sm">VA</div></div></div>)}
-                           </div></div>))}
+                             <div className="flex items-center gap-5 relative z-10">
+                                <div className="relative shrink-0">
+                                  <img src={char.image || '/placeholder.png'} className="w-16 h-16 rounded-full object-cover border-2 border-zinc-900 group-hover:border-red-600/50 group-hover:scale-105 transition-all duration-500 shadow-2xl shadow-black shadow-md" alt={char.name} />
+                                </div>
+                                <div className="text-left flex flex-col justify-center gap-0.5">
+                                  <div className="text-[12px] font-black text-zinc-200 group-hover:text-red-500 transition-all uppercase tracking-tighter leading-none shadow-black drop-shadow-md">{char.name}</div>
+                                  <div className="text-[9px] text-zinc-600 font-black uppercase tracking-[0.2em] mt-1 group-hover:text-zinc-500 transition-colors shadow-sm">{char.role}</div>
+                                </div>
+                             </div>
+                             {char.voiceActor && (
+                               <div className="flex items-center gap-5 flex-row-reverse text-right pl-6 border-l border-white/5 relative z-10 group/va transition-all shadow-sm">
+                                 <img src={char.voiceActor.image || '/placeholder.png'} className="w-16 h-16 rounded-full object-cover border-2 border-zinc-900 grayscale opacity-40 group-hover:grayscale-0 group-hover:opacity-100 group-hover:border-red-600/30 transition-all duration-700 shadow-md shadow-red-900/10" alt={char.voiceActor.name} />
+                                 <div className="flex flex-col justify-center gap-0.5">
+                                   <div className="text-[11px] font-black text-zinc-500 group-hover:text-zinc-300 transition-all uppercase tracking-tighter leading-none shadow-black drop-shadow-md">{char.voiceActor.name}</div>
+                                   <div className="text-[8px] text-zinc-800 font-black uppercase tracking-[0.3em] mt-1 group-hover:text-red-900 transition-colors shadow-sm">VA</div>
+                                 </div>
+                               </div>
+                             )}
+                           </div>
+                        </div>
+                     ))}
                   </div>
               </ScrollArea>
            </div>

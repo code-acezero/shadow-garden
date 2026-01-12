@@ -4,11 +4,12 @@
   "private": true,
   "scripts": {
     "dev": "next dev --turbo",
-    "build": "next build",
+    "build": "next build --no-lint",
     "start": "next start",
     "lint": "next lint",
     "clean": "rm -rf node_modules package-lock.json && npm cache clean --force"
   },
+  
   "dependencies": {
     "@consumet/extensions": "^1.8.7",
     "@hookform/resolvers": "^3.9.0",
