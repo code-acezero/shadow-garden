@@ -1,7 +1,7 @@
+import 'server-only'; // 🛡️ SAFETY: Prevents this file from ever running on the client
 import { ANIME, IAnimeResult } from "@consumet/extensions";
-// We only import the type for Supabase here, not the client itself
-import type { SupabaseClient } from "@supabase/supabase-js";
-import { supabase } from "@/lib/supabase"; // Import from the SAFE file
+// ✅ Import Supabase from your singleton file to prevent connection crashes
+import { supabase } from '@/lib/api';
 
 // -- PROVIDERS (Server-Side Only) --
 const isServer = typeof window === 'undefined';
@@ -92,6 +92,7 @@ class ConsumetService {
    * Fetches data for the Home Page
    */
   async getHomePageData() {
+    // Safety check for server environment
     if (!isServer || !PROVIDERS.METADATA) {
         return { spotlight: [], trending: [], topAiring: [], recent: [], popular: [], upcoming: [] };
     }
@@ -146,12 +147,10 @@ class ConsumetService {
    * Search for anime
    */
   async search(query: string, page: number = 1): Promise<ShadowAnime[]> {
-    if (!isServer) {
-        return fetch(`/api/anime?action=search&q=${encodeURIComponent(query)}&page=${page}`).then(r => r.json());
-    }
+    if (!isServer || !PROVIDERS.METADATA) return [];
 
     try {
-      const res = await PROVIDERS.METADATA!.search(query, page);
+      const res = await PROVIDERS.METADATA.search(query, page);
       return res.results.map((item: any) => ({
         id: item.id,
         title: item.title.toString(),
@@ -170,13 +169,11 @@ class ConsumetService {
   /**
    * Get detailed Anime Info + Episodes
    */
-  async getInfo(id: string): Promise<{ info: ShadowAnime; episodes: ShadowEpisode[] }> {
-    if (!isServer) {
-        return fetch(`/api/anime?action=info&id=${encodeURIComponent(id)}`).then(res => res.json());
-    }
+  async getInfo(id: string): Promise<{ info: ShadowAnime; episodes: ShadowEpisode[] } | null> {
+    if (!isServer || !PROVIDERS.METADATA) return null;
 
     try {
-      const data = await PROVIDERS.METADATA!.fetchAnimeInfo(id);
+      const data = await PROVIDERS.METADATA.fetchAnimeInfo(id);
       
       const characters: Character[] = (data.characters || []).map((c: any) => ({
         name: c.name?.full || c.name || "Unknown",
@@ -255,7 +252,8 @@ class ConsumetService {
 
     } catch (e) {
       console.error(`❌ [getInfo] Failed for ID: ${id}`, e);
-      throw new Error(`Failed to load anime info: ${(e as Error).message}`);
+      // Don't throw error to client, return null so UI handles "Not Found" gracefully
+      return null;
     }
   }
 
@@ -267,13 +265,10 @@ class ConsumetService {
     server: string = 'hd-1', 
     category: 'sub'|'dub'|'raw' = 'sub'
   ): Promise<ShadowSource[]> {
-    
-    if (!isServer) {
-        return fetch(`/api/anime?action=sources&id=${episodeId}&server=${server}&cat=${category}`).then(res => res.json());
-    }
+    if (!isServer || !PROVIDERS.METADATA) return [];
 
     try {
-        const data = await PROVIDERS.METADATA!.fetchEpisodeSources(episodeId, server as any, category as any);
+        const data = await PROVIDERS.METADATA.fetchEpisodeSources(episodeId, server as any, category as any);
         
         if (!data || !data.sources) {
             console.warn("No sources returned from primary provider.");
@@ -328,7 +323,9 @@ class ConsumetService {
         [`${provider}_id`]: id 
     };
     
-    supabase.from('anime_mappings').upsert(update, { onConflict: 'slug' }).then(({ error }) => {
+    // FIX: Cast 'update' to 'any' to resolve TypeScript 'never' assignment error 
+    // caused by dynamic property keys in the Supabase upsert call.
+    supabase.from('anime_mappings').upsert(update as any, { onConflict: 'slug' }).then(({ error }) => {
         if (error) console.error("Mapping Save Error:", error.message);
     });
   }

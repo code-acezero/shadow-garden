@@ -17,7 +17,7 @@ import {
 import { 
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger 
 } from '@/components/ui/dialog';
-import { AppUser, supabase } from '@/lib/api';
+import { AppUser, supabase, ImageAPI } from '@/lib/api';
 import { motion, AnimatePresence } from 'framer-motion';
 import { toast } from 'sonner';
 import { formatDistanceToNow } from 'date-fns';
@@ -46,26 +46,6 @@ interface OtakuVerseProps {
   onAuthRequired: () => void;
 }
 
-// --- IMGBB UPLOAD HELPER ---
-const uploadToImgBB = async (file: File): Promise<string> => {
-  const formData = new FormData();
-  formData.append('image', file);
-  const API_KEY = '1DL4pRCKKmg238fsCU6i7ZYEStP9fL9o4q'; 
-
-  try {
-    const response = await fetch(`https://api.imgbb.com/1/upload?key=${API_KEY}`, {
-      method: 'POST',
-      body: formData,
-    });
-    const data = await response.json();
-    if (!data.success) throw new Error(data.error?.message || 'Image upload failed');
-    return data.data.url;
-  } catch (error) {
-    console.error('ImgBB Upload Error:', error);
-    throw error;
-  }
-};
-
 export default function OtakuVerse({ user, onAuthRequired }: OtakuVerseProps) {
   const [posts, setPosts] = useState<SocialPost[]>([]);
   const [newPost, setNewPost] = useState('');
@@ -75,13 +55,12 @@ export default function OtakuVerse({ user, onAuthRequired }: OtakuVerseProps) {
   const [isLoading, setIsLoading] = useState(true);
   const [showCreatePost, setShowCreatePost] = useState(false);
   
-  // Refs for managing connections
   const channelRef = useRef<any>(null);
   const isVisibleRef = useRef(true);
 
   // --- 1. FETCH LOGIC ---
   const fetchPosts = useCallback(async (showLoading = false) => {
-    if (!supabase) return; // Guard clause
+    if (!supabase) return;
 
     if (showLoading) setIsLoading(true);
     try {
@@ -97,7 +76,7 @@ export default function OtakuVerse({ user, onAuthRequired }: OtakuVerseProps) {
 
       if (activeTab === 'following' && user) {
         const { data: following } = await supabase.from('follows').select('following_id').eq('follower_id', user.id);
-        const ids = following?.map(f => f.following_id) || [];
+        const ids = (following as any)?.map((f: any) => f.following_id) || [];
         query = query.in('user_id', ids);
       } 
 
@@ -118,10 +97,8 @@ export default function OtakuVerse({ user, onAuthRequired }: OtakuVerseProps) {
 
         return {
           ...post,
-         // ... inside the map function ...
-          likes_count: post.likes?.[0]?.count || 0,
-          comments_count: post.comments?.[0]?.count || 0, // This will now work because of the alias or table change
-          
+          likes_count: (post as any).likes?.[0]?.count || 0,
+          comments_count: (post as any).comments?.[0]?.count || 0,
           is_liked_by_user: isLiked,
           is_bookmarked: isBookmarked,
           user: post.user
@@ -129,7 +106,7 @@ export default function OtakuVerse({ user, onAuthRequired }: OtakuVerseProps) {
       }));
 
       if (activeTab === 'trending') {
-        postsWithMetadata.sort((a, b) => b.likes_count - a.likes_count);
+        postsWithMetadata.sort((a, b) => (b.likes_count || 0) - (a.likes_count || 0));
       }
 
       setPosts(postsWithMetadata);
@@ -142,16 +119,15 @@ export default function OtakuVerse({ user, onAuthRequired }: OtakuVerseProps) {
 
   // --- 2. CONNECTION MANAGER ---
   useEffect(() => {
-    if (!supabase) return; // Guard clause for effect
+    if (!supabase) return;
 
-    // A. Initial Load
     fetchPosts(true);
 
     const subscribe = () => {
       if (channelRef.current || !supabase) return; 
 
       const channel = supabase.channel('otaku-verse-live')
-        .on('postgres_changes', { event: '*', schema: 'public', table: 'social_posts' }, (payload) => {
+        .on('postgres_changes' as any, { event: '*', schema: 'public', table: 'social_posts' }, (payload: any) => {
           if (payload.eventType === 'INSERT') {
              fetchPosts(); 
              toast("New signal detected.", { description: "Feed updated." });
@@ -159,9 +135,7 @@ export default function OtakuVerse({ user, onAuthRequired }: OtakuVerseProps) {
              setPosts(current => current.filter(p => p.id !== payload.old.id));
           }
         })
-        .subscribe((status) => {
-           if (status === 'SUBSCRIBED') console.log("Realtime: Connected");
-        });
+        .subscribe();
 
       channelRef.current = channel;
     };
@@ -170,11 +144,9 @@ export default function OtakuVerse({ user, onAuthRequired }: OtakuVerseProps) {
       if (channelRef.current) {
         supabase?.removeChannel(channelRef.current);
         channelRef.current = null;
-        console.log("Realtime: Disconnected");
       }
     };
 
-    // B. Visibility Handler
     const handleVisibilityChange = () => {
       if (document.hidden) {
         isVisibleRef.current = false;
@@ -187,16 +159,12 @@ export default function OtakuVerse({ user, onAuthRequired }: OtakuVerseProps) {
     };
 
     document.addEventListener("visibilitychange", handleVisibilityChange);
-    
     if (!document.hidden) subscribe();
 
     const pollingInterval = setInterval(() => {
-      if (isVisibleRef.current) {
-        fetchPosts();
-      }
-    }, 30000); 
+      if (isVisibleRef.current) fetchPosts();
+    }, 45000); 
 
-    // Cleanup
     return () => {
       document.removeEventListener("visibilitychange", handleVisibilityChange);
       clearInterval(pollingInterval);
@@ -214,8 +182,10 @@ export default function OtakuVerse({ user, onAuthRequired }: OtakuVerseProps) {
     const imageUrls: string[] = [];
 
     try {
-      for (const file of selectedImages) {
-        const publicUrl = await uploadToImgBB(file);
+      // Sequential upload with toast updates
+      for (let i = 0; i < selectedImages.length; i++) {
+        toast.info(`Uploading image ${i + 1} of ${selectedImages.length}...`);
+        const publicUrl = await ImageAPI.uploadImage(selectedImages[i]);
         imageUrls.push(publicUrl);
       }
 
@@ -224,7 +194,7 @@ export default function OtakuVerse({ user, onAuthRequired }: OtakuVerseProps) {
         content: newPost,
         images: imageUrls,
         tags: extractTags(newPost)
-      });
+      } as any);
 
       if (error) throw error;
 
@@ -232,10 +202,10 @@ export default function OtakuVerse({ user, onAuthRequired }: OtakuVerseProps) {
       setSelectedImages([]);
       setShowCreatePost(false);
       toast.success("Broadcast sent successfully.");
-      
       fetchPosts();
 
     } catch (error: any) {
+      console.error("Post Creation Error:", error);
       toast.error(error.message || "Failed to post.");
     } finally {
       setIsUploading(false);
@@ -248,7 +218,7 @@ export default function OtakuVerse({ user, onAuthRequired }: OtakuVerseProps) {
 
     const previousPosts = [...posts];
     setPosts(posts.map(p => p.id === post.id 
-      ? { ...p, is_liked_by_user: !p.is_liked_by_user, likes_count: p.is_liked_by_user ? p.likes_count - 1 : p.likes_count + 1 } 
+      ? { ...p, is_liked_by_user: !p.is_liked_by_user, likes_count: p.is_liked_by_user ? (p.likes_count - 1) : (p.likes_count + 1) } 
       : p
     ));
 
@@ -256,7 +226,7 @@ export default function OtakuVerse({ user, onAuthRequired }: OtakuVerseProps) {
       if (post.is_liked_by_user) {
         await supabase.from('social_likes').delete().eq('post_id', post.id).eq('user_id', user.id);
       } else {
-        await supabase.from('social_likes').insert({ post_id: post.id, user_id: user.id });
+        await supabase.from('social_likes').insert({ post_id: post.id, user_id: user.id } as any);
       }
     } catch (err) {
       setPosts(previousPosts);
@@ -275,7 +245,7 @@ export default function OtakuVerse({ user, onAuthRequired }: OtakuVerseProps) {
         await supabase.from('social_bookmarks').delete().eq('post_id', post.id).eq('user_id', user.id);
         toast.success("Removed from bookmarks.");
       } else {
-        await supabase.from('social_bookmarks').insert({ post_id: post.id, user_id: user.id });
+        await supabase.from('social_bookmarks').insert({ post_id: post.id, user_id: user.id } as any);
         toast.success("Saved to memory.");
       }
     } catch (err) {
@@ -291,6 +261,7 @@ export default function OtakuVerse({ user, onAuthRequired }: OtakuVerseProps) {
       const { error } = await supabase.from('social_posts').delete().eq('id', postId);
       if (error) throw error;
       toast.success("Transmission erased.");
+      setPosts(current => current.filter(p => p.id !== postId));
     } catch (err) {
       toast.error("Could not delete.");
     }
@@ -316,7 +287,6 @@ export default function OtakuVerse({ user, onAuthRequired }: OtakuVerseProps) {
     <div className="container mx-auto px-4 py-6 max-w-4xl min-h-screen">
       <div className="space-y-6">
         
-        {/* Header */}
         <div className="text-center mb-8">
           <h1 className="text-4xl font-black text-white mb-2 font-[Cinzel] tracking-widest">
             OTAKU<span className="text-red-600">VERSE</span>
@@ -324,7 +294,6 @@ export default function OtakuVerse({ user, onAuthRequired }: OtakuVerseProps) {
           <p className="text-zinc-500 uppercase text-xs tracking-[0.3em] font-bold">The Global Neural Network</p>
         </div>
 
-        {/* Tabs */}
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
           <TabsList className="grid w-full grid-cols-4 bg-[#0a0a0a] border border-white/10 p-1 rounded-xl">
             {['feed', 'trending', 'following', 'discover'].map((tab) => (
@@ -340,7 +309,6 @@ export default function OtakuVerse({ user, onAuthRequired }: OtakuVerseProps) {
 
           <TabsContent value={activeTab} className="space-y-6 mt-6">
             
-            {/* Create Post Bar */}
             <Card className="bg-[#0a0a0a] border-white/10 hover:border-red-500/30 transition-all cursor-pointer group">
               <CardContent className="p-4 flex gap-4 items-center" onClick={() => user ? setShowCreatePost(true) : onAuthRequired()}>
                 <Avatar className="w-10 h-10 border border-white/10 group-hover:border-red-500 transition-colors">
@@ -354,7 +322,6 @@ export default function OtakuVerse({ user, onAuthRequired }: OtakuVerseProps) {
               </CardContent>
             </Card>
 
-            {/* Create Post Dialog */}
             <Dialog open={showCreatePost} onOpenChange={setShowCreatePost}>
               <DialogContent className="bg-[#0a0a0a] border-white/10 text-white max-w-2xl">
                 <DialogHeader>
@@ -379,14 +346,16 @@ export default function OtakuVerse({ user, onAuthRequired }: OtakuVerseProps) {
                     className="min-h-[150px] bg-white/5 border-none text-zinc-200 placeholder:text-zinc-600 resize-none focus-visible:ring-0 text-base"
                   />
 
-                  {/* Image Previews */}
                   {selectedImages.length > 0 && (
                     <div className="grid grid-cols-2 gap-2">
                       {selectedImages.map((image, index) => (
                         <div key={index} className="relative group rounded-lg overflow-hidden border border-white/10">
-                          <img src={URL.createObjectURL(image)} className="w-full h-32 object-cover" />
+                          <img src={URL.createObjectURL(image)} className="w-full h-32 object-cover" alt="Preview" />
                           <button 
-                            onClick={() => setSelectedImages(prev => prev.filter((_, i) => i !== index))}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setSelectedImages(prev => prev.filter((_, i) => i !== index));
+                            }}
                             className="absolute top-1 right-1 bg-black/60 p-1 rounded-full text-white hover:bg-red-600 transition-colors"
                           >
                             <X size={14} />
@@ -416,7 +385,6 @@ export default function OtakuVerse({ user, onAuthRequired }: OtakuVerseProps) {
               </DialogContent>
             </Dialog>
 
-            {/* FEED */}
             <div className="space-y-6">
                 {isLoading ? (
                     <div className="text-center py-20 text-zinc-500 animate-pulse font-bold tracking-widest">CONNECTING TO NEURAL NETWORK...</div>
@@ -448,7 +416,6 @@ export default function OtakuVerse({ user, onAuthRequired }: OtakuVerseProps) {
                                             </div>
                                         </div>
                                         
-                                        {/* Post Options */}
                                         <DropdownMenu>
                                             <DropdownMenuTrigger asChild>
                                                 <Button variant="ghost" size="sm" className="h-8 w-8 p-0 text-zinc-500 hover:text-white">
@@ -469,18 +436,16 @@ export default function OtakuVerse({ user, onAuthRequired }: OtakuVerseProps) {
                                     <CardContent className="space-y-4">
                                         <p className="text-zinc-200 text-sm leading-relaxed whitespace-pre-wrap">{post.content}</p>
                                         
-                                        {/* Image Grid */}
                                         {post.images && post.images.length > 0 && (
                                             <div className={`grid gap-1 rounded-xl overflow-hidden ${
                                                 post.images.length === 1 ? 'grid-cols-1' : 'grid-cols-2'
                                             }`}>
                                                 {post.images.map((img, i) => (
-                                                    <img key={i} src={img} className="w-full h-auto object-cover max-h-[400px] hover:scale-105 transition-transform duration-500 cursor-zoom-in bg-zinc-900" />
+                                                    <img key={i} src={img} className="w-full h-auto object-cover max-h-[400px] hover:scale-105 transition-transform duration-500 cursor-zoom-in bg-zinc-900" alt="Post" />
                                                 ))}
                                             </div>
                                         )}
 
-                                        {/* Tags */}
                                         {post.tags && post.tags.length > 0 && (
                                             <div className="flex flex-wrap gap-2">
                                                 {post.tags.map(tag => (
@@ -489,7 +454,6 @@ export default function OtakuVerse({ user, onAuthRequired }: OtakuVerseProps) {
                                             </div>
                                         )}
 
-                                        {/* Interaction Bar */}
                                         <div className="flex items-center justify-between pt-4 border-t border-white/5">
                                             <div className="flex gap-6">
                                                 <button onClick={() => handleLike(post)} className={`flex items-center gap-2 text-xs font-bold transition-colors ${post.is_liked_by_user ? 'text-red-500' : 'text-zinc-500 hover:text-red-500'}`}>
@@ -513,7 +477,6 @@ export default function OtakuVerse({ user, onAuthRequired }: OtakuVerseProps) {
                     </AnimatePresence>
                 )}
             </div>
-
           </TabsContent>
         </Tabs>
       </div>

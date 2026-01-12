@@ -534,3 +534,49 @@ export class UserAPI {
       if (supabase) await supabase.auth.signOut();
   }
 }
+
+
+
+// ==========================================
+//  8. IMAGE UPLOAD SERVICE (ImgBB)
+// ==========================================
+
+export class ImageAPI {
+  /**
+   * Uploads a file to ImgBB and returns the public URL
+   */
+  static async uploadImage(file: File): Promise<string> {
+    // Robust environment variable retrieval
+    const API_KEY = process.env.NEXT_PUBLIC_IMGBB_API_KEY || '1DL4pRCKKmg238fsCU6i7ZYEStP9fL9o4q'; 
+
+    if (!API_KEY || API_KEY === 'undefined') {
+      throw new Error('ImgBB API Key is missing. Ensure NEXT_PUBLIC_IMGBB_API_KEY is in .env.local');
+    }
+
+    const formData = new FormData();
+    formData.append('image', file);
+
+    try {
+      // We pass the key as a URL parameter as required by ImgBB API v1 documentation
+      const response = await fetch(`https://api.imgbb.com/1/upload?key=${API_KEY}`, {
+        method: 'POST',
+        body: formData,
+      });
+
+      const data = await response.json();
+
+      if (!data.success) {
+        // If the API returns a key error, we catch it here
+        if (data.status_code === 400 && data.error?.message?.includes('key')) {
+            throw new Error('Invalid ImgBB API Key. Check your dashboard at api.imgbb.com');
+        }
+        throw new Error(data.error?.message || 'Image upload failed');
+      }
+
+      return data.data.url;
+    } catch (error: any) {
+      console.error('ImgBB Service Error:', error);
+      throw error;
+    }
+  }
+}

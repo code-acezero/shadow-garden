@@ -1,6 +1,7 @@
 "use client";
 
 import React, { createContext, useContext, useEffect, useState } from 'react';
+// Ensure this line is correct:
 import { supabase } from '@/lib/api';
 // ADDED: AuthChangeEvent (This fixes the 'event' type error safely)
 import { Session, User, AuthChangeEvent } from '@supabase/supabase-js';

@@ -5,8 +5,15 @@ import { Search, X, Loader2, PlayCircle, Clock, Image as ImageIcon, Sparkles } f
 import { useRouter } from 'next/navigation'; 
 import { motion, AnimatePresence } from 'framer-motion';
 
-// --- SHADOW ENGINE IMPORT ---
-import { consumetClient, ShadowAnime } from '@/lib/consumet';
+// --- TYPES ---
+// We define the interface locally or import from a safe types file to avoid importing the scraper
+interface SearchResult {
+  id: string;
+  title: string;
+  image: string;
+  releaseDate?: string;
+  type?: string;
+}
 
 // --- CONFIGURATION ---
 const PLACEHOLDERS = [
@@ -20,7 +27,7 @@ const PLACEHOLDERS = [
 
 export default function SearchBar() {
   const [query, setQuery] = useState('');
-  const [suggestions, setSuggestions] = useState<ShadowAnime[]>([]); // Updated Type
+  const [suggestions, setSuggestions] = useState<SearchResult[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [showResults, setShowResults] = useState(false);
   
@@ -38,16 +45,22 @@ export default function SearchBar() {
     return () => clearInterval(interval);
   }, []);
 
-  // --- SEARCH DEBOUNCE (Updated for Shadow Engine) ---
+  // --- SEARCH DEBOUNCE (REPAIRED FOR VERCEL) ---
   useEffect(() => {
     const delayDebounceFn = setTimeout(async () => {
       if (query.trim().length > 1) {
         setIsLoading(true);
         setShowResults(true);
         try {
-          // Direct call to the Shadow Engine
-          const results = await consumetClient.search(query);
-          setSuggestions(results.slice(0, 5));
+          // ✅ FIX: Instead of calling consumetClient directly, we fetch from your API route
+          // This keeps the Node.js scraper code on the server and prevents build errors.
+          const response = await fetch(`/api/anime?action=search&q=${encodeURIComponent(query)}`);
+          
+          if (!response.ok) throw new Error("Search failed");
+          
+          const data = await response.json();
+          // Adjusting mapping based on your ShadowAnime schema
+          setSuggestions(data.slice(0, 5)); 
         } catch (error) {
           console.error("Shadow Search error:", error);
         } finally {
@@ -206,10 +219,10 @@ export default function SearchBar() {
                     </h4>
                     <div className="flex flex-wrap gap-1.5 mt-1">
                         <span className="text-[9px] px-1.5 py-px rounded border border-white/10 text-gray-400 flex items-center gap-1 bg-black/20">
-                           <Clock size={8}/> {item.releaseDate || 'Unknown'}
+                            <Clock size={8}/> {item.releaseDate || 'Unknown'}
                         </span>
                         <span className="text-[9px] px-1.5 py-px rounded border border-white/10 text-gray-400 flex items-center gap-1 bg-black/20">
-                           {item.type || 'TV'}
+                            {item.type || 'TV'}
                         </span>
                     </div>
                   </div>
