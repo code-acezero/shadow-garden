@@ -4,8 +4,9 @@ import "./globals.css";
 import Navigation from "@/components/Layout/Navigation"; 
 import { Toaster } from 'sonner'; 
 import { AuthProvider } from '@/context/AuthContext';
-import WhisperIsland from "@/components/UIx/WhisperIsland";
-import { SettingsProvider } from "@/hooks/useSettings"; // <--- IMPORT THIS
+import { SettingsProvider } from "@/hooks/useSettings";
+// Import the new wrapper instead of using next/dynamic here
+import WhisperIslandWrapper from "@/components/UIx/WhisperIslandWrapper";
 
 const inter = Inter({ subsets: ["latin"] });
 
@@ -20,22 +21,17 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-  <html lang="en" className="dark" suppressHydrationWarning={true}>
-        <body className={`${inter.className} bg-background text-foreground`}>
+    <html lang="en" className="dark" suppressHydrationWarning>
+      <body className={`${inter.className} bg-background text-foreground`} suppressHydrationWarning>
         
-        {/* 1. SETTINGS PROVIDER MUST BE AT THE TOP */}
         <SettingsProvider>
-            
-            {/* 2. AUTH PROVIDER WRAPS CONTENT */}
             <AuthProvider>
             
-                {/* 3. WHISPER ISLAND (Needs access to both Settings and Auth) */}
-                <WhisperIsland />
+                {/* Use the wrapper here */}
+                <WhisperIslandWrapper />
                 
-                {/* GLOBAL MENU */}
                 <Navigation /> 
                 
-                {/* PAGE CONTENT */}
                 <main className="min-h-screen">
                     {children}
                 </main>

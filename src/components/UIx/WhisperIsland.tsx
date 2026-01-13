@@ -14,13 +14,19 @@ export default function WhisperIsland() {
   const { settings } = useSettings(); 
   const router = useRouter();
   
+  // HYDRATION FIX: Prevent SSR mismatch by tracking mount state
+  const [hasMounted, setHasMounted] = useState(false);
   const [queue, setQueue] = useState<any[]>([]);
   const [activeNotif, setActiveNotif] = useState<any>(null);
   const [isHovered, setIsHovered] = useState(false);
 
-  // 1. Listen for "Whispers"
   useEffect(() => {
-    if (!user || !supabase) return;
+    setHasMounted(true);
+  }, []);
+
+  // 1. Listen for "Whispers" (Realtime Notifications)
+  useEffect(() => {
+    if (!user || !supabase || !hasMounted) return;
 
     const channel = supabase.channel('whisper-channel')
       .on('postgres_changes', { 
@@ -44,9 +50,9 @@ export default function WhisperIsland() {
       .subscribe();
 
     return () => { supabase?.removeChannel(channel); };
-  }, [user]);
+  }, [user, hasMounted]);
 
-  // 2. Queue Processor
+  // 2. Queue Processor: Handle flow of incoming notifications
   useEffect(() => {
     if (!activeNotif && queue.length > 0) {
       const next = queue[0];
@@ -55,7 +61,7 @@ export default function WhisperIsland() {
     }
   }, [queue, activeNotif]);
 
-  // 3. Auto-Dismiss
+  // 3. Auto-Dismiss Logic
   useEffect(() => {
     if (activeNotif && !isHovered) {
       const timer = setTimeout(() => {
@@ -65,7 +71,7 @@ export default function WhisperIsland() {
     }
   }, [activeNotif, isHovered]);
 
-  // Glow Color Logic
+  // Glow Color Logic based on notification type
   const getGlowColor = (type: string) => {
     switch (type) {
         case 'like': return 'shadow-red-500/50 border-red-500/30';
@@ -75,7 +81,8 @@ export default function WhisperIsland() {
     }
   };
 
-  if (settings?.enableWhisper === false) return null; 
+  // Guard against server-side rendering and disabled settings
+  if (!hasMounted || settings?.enableWhisper === false) return null; 
 
   return (
     <div className="fixed top-4 left-0 right-0 z-[200] flex justify-center pointer-events-none">
@@ -84,7 +91,7 @@ export default function WhisperIsland() {
           <motion.div
             key={activeNotif.id}
             layout
-            // --- THE FLUID "DYNAMIC ISLAND" ANIMATION ---
+            // --- DYNAMIC ISLAND MORPH ANIMATION ---
             initial={{ 
                 width: 10, 
                 height: 10, 
@@ -129,34 +136,34 @@ export default function WhisperIsland() {
             `}
             style={{ minWidth: 40, minHeight: 40 }}
           >
-            {/* Heartbeat Pulse (Edge Glow) */}
+            {/* Heartbeat Pulse (Animated Edge Glow) */}
             <motion.div
                 animate={{ opacity: [0.3, 0.6, 0.3] }}
                 transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
                 className={`absolute inset-0 rounded-[30px] shadow-[inset_0_0_20px_rgba(255,255,255,0.1)]`}
             />
 
-            {/* Inner Content Container */}
+            {/* Content Manifestation */}
             <motion.div 
                 initial={{ opacity: 0, scale: 0.9 }}
                 animate={{ opacity: 1, scale: 1, transition: { delay: 0.1 } }}
                 exit={{ opacity: 0, scale: 0.9, transition: { duration: 0.1 } }}
                 className="flex items-center gap-3 p-2 pr-5 w-full whitespace-nowrap"
             >
-                {/* Icon Section */}
+                {/* Visual Avatar / Poster Section */}
                 <div className="relative shrink-0">
                     {activeNotif.image_url ? (
-                        <img src={activeNotif.image_url} className="w-10 h-10 rounded-full object-cover border border-white/10" />
+                        <img src={activeNotif.image_url} alt="Notification Poster" className="w-10 h-10 rounded-full object-cover border border-white/10" />
                     ) : (
                         <Avatar className="w-10 h-10 border border-white/10">
                             <AvatarImage src={activeNotif.actor?.avatar_url} />
                             <AvatarFallback className="bg-zinc-800 text-[10px] text-zinc-400">
-                                {activeNotif.type === 'system' ? <Tv size={16}/> : activeNotif.actor?.username?.[0]}
+                                {activeNotif.type === 'system' ? <Tv size={16}/> : activeNotif.actor?.username?.[0] || '?'}
                             </AvatarFallback>
                         </Avatar>
                     )}
                     
-                    {/* Badge */}
+                    {/* Action Category Badge */}
                     <div className="absolute -bottom-0.5 -right-0.5 w-4 h-4 rounded-full border-2 border-black flex items-center justify-center bg-zinc-900">
                         {activeNotif.type === 'like' && <Heart size={8} className="text-red-500 fill-current"/>}
                         {activeNotif.type === 'comment' && <MessageCircle size={8} className="text-blue-500 fill-current"/>}
@@ -165,20 +172,20 @@ export default function WhisperIsland() {
                     </div>
                 </div>
 
-                {/* Text Content */}
+                {/* Intelligence Feed Section */}
                 <div className="flex flex-col justify-center min-w-[180px] max-w-[250px]">
                     <div className="flex items-center gap-2">
-                        <h4 className="text-white text-xs font-bold truncate">
-                            {activeNotif.actor?.username || "SYSTEM"}
+                        <h4 className="text-white text-xs font-black truncate uppercase tracking-tighter">
+                            {activeNotif.actor?.username || "SHADOW_COMMAND"}
                         </h4>
-                        <span className="text-[9px] text-zinc-500 uppercase font-bold opacity-60">NOW</span>
+                        <span className="text-[8px] text-zinc-600 font-bold opacity-60">SIGNAL_RECVD</span>
                     </div>
-                    <p className="text-zinc-400 text-[11px] truncate">{activeNotif.content}</p>
+                    <p className="text-zinc-400 text-[10px] truncate tracking-tight">{activeNotif.content}</p>
                 </div>
 
-                {/* Go Button */}
-                <div className="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center hover:bg-white/20 transition-colors shrink-0">
-                    <span className="text-[9px] font-black text-white">GO</span>
+                {/* Tactical Navigation Button */}
+                <div className="w-8 h-8 rounded-full bg-white/5 border border-white/10 flex items-center justify-center hover:bg-red-600/20 hover:border-red-500/50 transition-all shrink-0">
+                    <span className="text-[8px] font-black text-white">INTERCEPT</span>
                 </div>
             </motion.div>
 
