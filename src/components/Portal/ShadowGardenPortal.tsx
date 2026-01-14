@@ -4,11 +4,9 @@
  * SHADOW GARDEN: ETERNAL ENGINE (VER 71.0 - PORTAL ENHANCED)
  * =============================================================================
  * * [FIXES]
- * - Fixed TS2747: Removed comment inside EffectComposer causing text node error.
- * - Fixed TS2322: Cleaned up conditional rendering for DepthOfField.
- * - Updated Skip Logic: "Skip" now unmounts the 3D engine immediately to show
- * the Landing Page (page.tsx) without redirecting to Home.
- * - Optimized for low-end laptops.
+ * - Fixed TS Error: Added missing 'radialModulation' and 'modulationOffset' props 
+ * to ChromaticAberration for compatibility with older postprocessing versions.
+ * - Previous Fixes: Skip logic, EffectComposer children types.
  */
 
 import React, { useRef, useState, useMemo, useEffect, Suspense } from 'react';
@@ -19,23 +17,23 @@ import {
     PerspectiveCamera, 
     Stars, 
     Sparkles, 
-    CameraShake,
-    Cylinder,
-    shaderMaterial,
-    Sky,
-    Billboard,
-    Instance,
-    Instances,
-    Float,
-    Cone,
-    Capsule
+    CameraShake, 
+    Cylinder, 
+    shaderMaterial, 
+    Sky, 
+    Billboard, 
+    Instance, 
+    Instances, 
+    Float, 
+    Cone, 
+    Capsule 
 } from '@react-three/drei';
 import { 
     EffectComposer, 
     Bloom, 
     ChromaticAberration, 
-    ToneMapping,
-    DepthOfField
+    ToneMapping, 
+    DepthOfField 
 } from '@react-three/postprocessing';
 import { ToneMappingMode } from 'postprocessing';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -837,12 +835,17 @@ const SceneContent = ({
                     intensity={isOpen ? 4.0 : 1.8} 
                     radius={0.5} 
                 />
+                
+                {/* FIX: Added radialModulation and modulationOffset to satisfy strict types */}
                 <ChromaticAberration 
                     offset={new THREE.Vector2(
                         isWarp ? 0.05 : 0.001, 
                         isWarp ? 0.05 : 0.001
                     )} 
+                    radialModulation={false}
+                    modulationOffset={0}
                 />
+
                 {quality !== 'low' ? (
                     <DepthOfField 
                         focusDistance={isAction ? 0.02 : 0.05} 
@@ -851,6 +854,7 @@ const SceneContent = ({
                         height={480} 
                     />
                 ) : <></>} 
+                
                 <ToneMapping mode={ToneMappingMode.ACES_FILMIC} />
             </EffectComposer>
         </>
