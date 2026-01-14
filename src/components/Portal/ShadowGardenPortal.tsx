@@ -826,17 +826,20 @@ const SceneContent = ({
             
             <WarpTunnel active={isWarp} quality={quality} />
             <FloatingIsland position={[-25, 5, 20]} scale={1.5} />
+ // ... inside SceneContent return statement ...
+
             <FloatingIsland position={[30, 8, 10]} scale={2} />
             
-            <EffectComposer enableNormalPass={false} multisampling={0}>
+            {/* CRITICAL: EFFECTS DISABLED FOR REACT 19 COMPATIBILITY
+                Uncomment this block only when @react-three/postprocessing updates to v3.0+
+            */}
+            {/* <EffectComposer enableNormalPass={false} multisampling={0}>
                 <Bloom 
                     luminanceThreshold={0.2} 
                     mipmapBlur 
                     intensity={isOpen ? 4.0 : 1.8} 
                     radius={0.5} 
                 />
-                
-                {/* FIX: Added radialModulation and modulationOffset to satisfy strict types */}
                 <ChromaticAberration 
                     offset={new THREE.Vector2(
                         isWarp ? 0.05 : 0.001, 
@@ -845,7 +848,6 @@ const SceneContent = ({
                     radialModulation={false}
                     modulationOffset={0}
                 />
-
                 {quality !== 'low' ? (
                     <DepthOfField 
                         focusDistance={isAction ? 0.02 : 0.05} 
@@ -854,9 +856,9 @@ const SceneContent = ({
                         height={480} 
                     />
                 ) : <></>} 
-                
                 <ToneMapping mode={ToneMappingMode.ACES_FILMIC} />
-            </EffectComposer>
+            </EffectComposer> 
+            */}
         </>
     );
 };
