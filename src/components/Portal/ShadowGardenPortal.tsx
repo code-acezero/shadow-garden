@@ -1,13 +1,13 @@
 "use client";
 
 /**
- * SHADOW GARDEN: ETERNAL ENGINE (VER 74.2 - RESTORED & FIXED)
+ * SHADOW GARDEN: ETERNAL ENGINE (VER 74.3 - LIGHTING RESTORED)
  * =============================================================================
  * [FIXES]
- * - Fixed JSX.IntrinsicElements TypeScript definition (The main error)
- * - Fixed Hydration Mismatch for Performance Tier (Prevents world changes/flickering)
- * - RESTORED exact shader parameters and visual fidelity
- * - Optimized for React 19 compatibility
+ * - CRITICAL: Restored Ambient, Directional, and Sky lights (Fixes "Pitch Black" issue)
+ * - CRITICAL: Restored PlayerRig to the scene
+ * - Retained TypeScript fixes for Shaders
+ * - Retained Hydration safety for Next.js
  */
 
 import React, { useRef, useState, useMemo, useEffect, Suspense } from 'react';
@@ -48,8 +48,6 @@ import PortalLoadingScreen from './PortalLoadingScreen';
 // TYPES (FIXED)
 // =============================================================================
 
-// Fix: IntrinsicElements must describe PROPS, not the Element itself.
-// We extend from Three.js Material props and add our custom shader uniforms.
 interface CustomShaderMaterialProps {
     ref?: React.Ref<any>;
     uColor?: THREE.Color;
@@ -63,7 +61,6 @@ interface CustomShaderMaterialProps {
     side?: THREE.Side;
     blending?: THREE.Blending;
     depthWrite?: boolean;
-    // Allow any other prop to pass through to avoid strict TS blocking visual tweaks
     [key: string]: any; 
 }
 
@@ -99,7 +96,6 @@ interface Props {
 // =============================================================================
 
 const detectPerformanceTier = (): PerformanceTier => {
-    // Default to 'high' on server to prevent "downgrade" look during hydration
     if (typeof window === 'undefined') return 'high';
     
     const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
@@ -762,7 +758,7 @@ const FloatingIsland = ({
 };
 
 // =============================================================================
-// SCENE CONTENT
+// SCENE CONTENT (RESTORED)
 // =============================================================================
 
 const SceneContent = ({ 
@@ -774,28 +770,99 @@ const SceneContent = ({
     quality: PerformanceTier; 
     whiteoutProgress: number;
 }) => {
+    const isOpen = stage === 'push' || stage === 'suction';
+    const isWarp = stage === 'suction';
+    const starCount = quality === 'low' ? 3000 : quality === 'medium' ? 5000 : 8000;
+
     return (
         <>
             <CameraDirector stage={stage} />
-            <PortalCoreLight stage={stage} />
-            <PortalVortex stage={stage} />
-            <WarpTunnel active={stage === 'suction'} quality={quality} />
-            <ConstructedGate isOpen={stage === 'push' || stage === 'suction'} quality={quality} />
-            <CobblestoneRoad quality={quality} whiteout={whiteoutProgress} />
-            <Fireflies quality={quality} />
-            <GuardianLamps whiteout={whiteoutProgress} />
+            <PlayerRig stage={stage} />
+            
+            {/* LIGHTING & ATMOSPHERE - RESTORED HERE */}
+            <fog attach="fog" args={['#1a0505', 20, 120]} /> 
+            <Sky 
+                sunPosition={[-5, -0.02, -10]} 
+                inclination={0.6} 
+                azimuth={0.25} 
+                turbidity={10} 
+                rayleigh={3.0} 
+                mieCoefficient={0.005} 
+            />
+            <Stars radius={100} count={starCount} fade factor={4} />
             <EveningStar quality={quality} />
             <VolumetricClouds quality={quality} whiteout={whiteoutProgress} />
-            <FloatingIsland position={[25, 15, -30]} scale={1.2} whiteout={whiteoutProgress} />
-            <FloatingIsland position={[-20, 10, -40]} scale={0.8} whiteout={whiteoutProgress} />
-            <PlayerRig stage={stage} />
-            <Stars radius={200} depth={50} count={quality === 'low' ? 500 : quality === 'medium' ? 1000 : 2000} />
-            <EffectComposer>
-                <Bloom intensity={1.2} luminanceThreshold={0.1} luminanceSmoothing={0.9} />
-                <ChromaticAberration offset={[0.001, 0.001]} />
+            <Fireflies quality={quality} />
+            
+            <ambientLight intensity={0.1 + whiteoutProgress * 2} color="#2a1a1a" />
+            <directionalLight 
+                position={[0, 10, -50]} 
+                intensity={3 + whiteoutProgress * 10} 
+                color="#ff3300" 
+            /> 
+            <directionalLight 
+                position={[-20, 40, 20]} 
+                intensity={0.5 + whiteoutProgress * 5} 
+                color="#4444ff" 
+                castShadow 
+                shadow-mapSize={[1024, 1024]}
+            /> 
+            <directionalLight 
+                position={[5, 3, 10]} 
+                intensity={1.5 + whiteoutProgress * 10} 
+                color="#88ccff" 
+            />
+            <pointLight 
+                position={[0, 9, -5]} 
+                intensity={isOpen ? 300 + whiteoutProgress * 500 : 5} 
+                color="#ff0000" 
+                distance={60} 
+                decay={2} 
+            />
+            
+            <group position={[0, -2, 0]}>
+                <ConstructedGate isOpen={isOpen} quality={quality} />
+                <CobblestoneRoad quality={quality} whiteout={whiteoutProgress} />
+                <GuardianLamps whiteout={whiteoutProgress} />
+                <PortalCoreLight stage={stage} />
+                <PortalVortex stage={stage} />
+            </group>
+            
+            <WarpTunnel active={isWarp} quality={quality} />
+            <FloatingIsland position={[-25, 5, 20]} scale={1.5} whiteout={whiteoutProgress} />
+            <FloatingIsland position={[30, 8, 10]} scale={2} whiteout={whiteoutProgress} />
+            
+            <EffectComposer enableNormalPass={false} multisampling={quality === 'high' ? 4 : 0}>
+                <Bloom 
+                    luminanceThreshold={0.2} 
+                    mipmapBlur 
+                    intensity={isOpen ? 4.5 + whiteoutProgress * 5 : 2.0} 
+                    radius={0.6} 
+                    levels={quality === 'high' ? 9 : 7}
+                />
+                <ChromaticAberration 
+                    offset={new THREE.Vector2(
+                        isWarp ? 0.05 : 0.001, 
+                        isWarp ? 0.05 : 0.001
+                    )} 
+                    radialModulation={false}
+                    modulationOffset={0}
+                />
+                {quality !== 'low' ? (
+                    <DepthOfField 
+                        focusDistance={0.02} 
+                        focalLength={0.5} 
+                        bokehScale={2} 
+                        height={480} 
+                    />
+                ) : <></>}
+                <Vignette 
+                    offset={0.3 - whiteoutProgress * 0.3} 
+                    darkness={0.5 - whiteoutProgress * 0.5} 
+                    eskil={false}
+                    blendFunction={BlendFunction.NORMAL}
+                />
                 <ToneMapping mode={ToneMappingMode.ACES_FILMIC} />
-                <DepthOfField focusDistance={0} focalLength={0.02} bokehScale={2} />
-                <Vignette darkness={0.5} />
             </EffectComposer>
         </>
     );
