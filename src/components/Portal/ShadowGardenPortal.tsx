@@ -1,17 +1,16 @@
 "use client";
 
 /**
- * SHADOW GARDEN: ETERNAL ENGINE (VER 74.3 - LIGHTING RESTORED)
+ * SHADOW GARDEN: ETERNAL ENGINE (VER 75.1 - SKIP LOGIC FIXED)
  * =============================================================================
- * [FIXES]
- * - CRITICAL: Restored Ambient, Directional, and Sky lights (Fixes "Pitch Black" issue)
- * - CRITICAL: Restored PlayerRig to the scene
- * - Retained TypeScript fixes for Shaders
- * - Retained Hydration safety for Next.js
+ * [UPDATES]
+ * - CRITICAL FIX: "Skip" now triggers onSceneReady() instead of onComplete().
+ * This ensures the Landing Page content shows up instead of navigating away.
+ * - LOGIC: Added handlers to support "Enter" button click even when 3D is hidden.
  */
 
 import React, { useRef, useState, useMemo, useEffect, Suspense } from 'react';
-import { Canvas, useFrame, extend, useThree, ReactThreeFiber } from '@react-three/fiber';
+import { Canvas, useFrame, extend, useThree } from '@react-three/fiber';
 import * as THREE from 'three';
 import { 
     PerspectiveCamera, 
@@ -38,14 +37,14 @@ import {
 } from '@react-three/postprocessing';
 import { ToneMappingMode, BlendFunction } from 'postprocessing';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Scroll, Fingerprint, X, Sword, Wand2, Info } from 'lucide-react';
+import { Scroll, Fingerprint, X, Sword, Wand2, Info, Power, FastForward, PlayCircle, Clock } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import PortalLoadingScreen from './PortalLoadingScreen';
 
 // =============================================================================
-// TYPES (FIXED)
+// TYPES
 // =============================================================================
 
 interface CustomShaderMaterialProps {
@@ -1019,6 +1018,7 @@ const GenderSelection = ({ onSelect }: { onSelect: (g: Gender) => void }) => (
     </div>
 );
 
+// NEW ANIMATION PREFERENCE POPUP (GRIMOIRE / SYSTEM STYLE)
 const AnimationPreferencePopup = ({ 
     onChoice 
 }: { 
@@ -1028,56 +1028,95 @@ const AnimationPreferencePopup = ({
     const [never, setNever] = useState(false);
     
     return (
-        <div className="fixed inset-0 z-[999] bg-black/80 flex items-center justify-center p-4">
+        <div className="fixed inset-0 z-[999] bg-black/95 flex items-center justify-center p-6">
+            {/* Background ambient glow */}
+            <div className="absolute inset-0 bg-gradient-to-t from-red-900/10 via-black to-black pointer-events-none" />
+            
             <motion.div 
-                initial={{ opacity: 0, y: 20 }} 
-                animate={{ opacity: 1, y: 0 }} 
-                className="max-w-md w-full bg-[#0a0505] border border-red-900/50 p-8 rounded-2xl"
+                initial={{ opacity: 0, scale: 0.95, y: 10 }} 
+                animate={{ opacity: 1, scale: 1, y: 0 }} 
+                transition={{ duration: 0.4, ease: "circOut" }}
+                className="relative max-w-lg w-full bg-[#080505] border border-red-900/30 p-1 rounded-sm shadow-[0_0_50px_-10px_rgba(220,38,38,0.2)] overflow-hidden"
             >
-                <h3 className="text-2xl text-white font-bold mb-4 tracking-widest">
-                    PLAY SEQUENCE?
-                </h3>
-                <div className="flex gap-4 mb-6">
-                    <Button 
-                        onClick={() => onChoice(true, never ? 9999 : (pause7 ? 7 : 0))} 
-                        className="flex-1 bg-red-700 hover:bg-red-600"
-                    >
-                        YES, SHOW
-                    </Button>
-                    <Button 
-                        onClick={() => onChoice(false, never ? 9999 : (pause7 ? 7 : 0))} 
-                        variant="outline" 
-                        className="flex-1"
-                    >
-                        NO, SKIP
-                    </Button>
-                </div>
-                <div className="space-y-2">
-                    <div className="flex items-center space-x-2">
-                        <Checkbox 
-                            id="pause" 
-                            checked={pause7} 
-                            onCheckedChange={(c) => { 
-                                setPause7(!!c); 
-                                if(c) setNever(false); 
-                            }} 
-                        />
-                        <label htmlFor="pause" className="text-xs text-gray-400">
-                            Pause for 7 days
-                        </label>
+                {/* Decorative Tech Lines */}
+                <div className="absolute top-0 left-0 w-2 h-2 border-t border-l border-red-500" />
+                <div className="absolute top-0 right-0 w-2 h-2 border-t border-r border-red-500" />
+                <div className="absolute bottom-0 left-0 w-2 h-2 border-b border-l border-red-500" />
+                <div className="absolute bottom-0 right-0 w-2 h-2 border-b border-r border-red-500" />
+
+                <div className="p-8 relative z-10">
+                    <div className="flex items-center gap-3 mb-6 border-b border-red-900/20 pb-4">
+                        <div className="p-2 bg-red-950/30 rounded border border-red-900/50">
+                            <Power className="w-5 h-5 text-red-500 animate-pulse" />
+                        </div>
+                        <div>
+                            <h3 className="text-lg text-white font-bold tracking-[0.2em] font-mono">
+                                SYSTEM DETECTED
+                            </h3>
+                            <p className="text-[10px] text-red-400/60 uppercase tracking-widest">
+                                Dimensional Gate Protocol
+                            </p>
+                        </div>
                     </div>
-                    <div className="flex items-center space-x-2">
-                        <Checkbox 
-                            id="never" 
-                            checked={never} 
-                            onCheckedChange={(c) => { 
-                                setNever(!!c); 
-                                if(c) setPause7(false); 
-                            }} 
-                        />
-                        <label htmlFor="never" className="text-xs text-gray-400">
-                            Never ask again
-                        </label>
+
+                    <p className="text-gray-400 text-sm mb-8 leading-relaxed font-mono">
+                        A returning signal has been identified. The dimensional gate is ready for synchronization. <br/><br/>
+                        <span className="text-red-400">Query:</span> Initiate full immersion sequence?
+                    </p>
+
+                    <div className="grid grid-cols-1 gap-3 mb-8">
+                        <Button 
+                            onClick={() => onChoice(true, never ? 9999 : (pause7 ? 7 : 0))} 
+                            className="group relative overflow-hidden bg-red-950/20 hover:bg-red-900/40 border border-red-900/50 hover:border-red-500 transition-all duration-300 h-14"
+                        >
+                            <div className="absolute inset-0 bg-gradient-to-r from-transparent via-red-500/10 to-transparent translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-700" />
+                            <div className="flex items-center justify-center gap-3">
+                                <PlayCircle className="w-5 h-5 text-red-500" />
+                                <span className="text-white font-bold tracking-widest text-xs">INITIATE SEQUENCE</span>
+                            </div>
+                        </Button>
+                        
+                        <Button 
+                            onClick={() => onChoice(false, never ? 9999 : (pause7 ? 7 : 0))} 
+                            variant="outline" 
+                            className="bg-transparent border-white/5 hover:bg-white/5 hover:border-white/20 h-12"
+                        >
+                            <div className="flex items-center justify-center gap-3">
+                                <FastForward className="w-4 h-4 text-gray-500" />
+                                <span className="text-gray-400 group-hover:text-white transition-colors tracking-widest text-xs">BYPASS PROTOCOL (SKIP)</span>
+                            </div>
+                        </Button>
+                    </div>
+
+                    <div className="bg-black/40 rounded p-4 border border-white/5 space-y-3">
+                        <div className="flex items-center space-x-3">
+                            <Checkbox 
+                                id="pause" 
+                                checked={pause7} 
+                                className="border-red-900/50 data-[state=checked]:bg-red-900 data-[state=checked]:text-white"
+                                onCheckedChange={(c) => { 
+                                    setPause7(!!c); 
+                                    if(c) setNever(false); 
+                                }} 
+                            />
+                            <label htmlFor="pause" className="text-xs text-gray-500 font-mono cursor-pointer hover:text-red-400 transition-colors flex items-center gap-2">
+                                <Clock className="w-3 h-3" /> Auto-bypass for 7 cycles (days)
+                            </label>
+                        </div>
+                        <div className="flex items-center space-x-3">
+                            <Checkbox 
+                                id="never" 
+                                checked={never} 
+                                className="border-red-900/50 data-[state=checked]:bg-red-900 data-[state=checked]:text-white"
+                                onCheckedChange={(c) => { 
+                                    setNever(!!c); 
+                                    if(c) setPause7(false); 
+                                }} 
+                            />
+                            <label htmlFor="never" className="text-xs text-gray-500 font-mono cursor-pointer hover:text-red-400 transition-colors">
+                                Permanently disable gate sequence
+                            </label>
+                        </div>
                     </div>
                 </div>
             </motion.div>
@@ -1147,20 +1186,14 @@ export default function ShadowGardenPortal({
     const [whiteoutProgress, setWhiteoutProgress] = useState(0);
     const [shake, setShake] = useState(0);
     const [showCookie, setShowCookie] = useState(false);
+    
+    // Tracks if we have completely skipped the 3D world
     const [skipped, setSkipped] = useState(false);
     
-    // SAFE HYDRATION FIX: 
-    // Initialize with 'medium' or 'high' for SSR consistency, then upgrade on client.
-    // This prevents the screen from rendering 'low' quality first if user is on high-end PC.
     const [quality, setQuality] = useState<PerformanceTier>(() => {
         if (typeof window !== 'undefined') return detectPerformanceTier();
-        return 'high'; // Assume high for server render to preserve star/cloud counts
+        return 'high'; 
     });
-    
-    // Re-check on mount to be sure
-    useEffect(() => {
-        setQuality(detectPerformanceTier());
-    }, []);
     
     const onSceneReadyRef = useRef(onSceneReady);
     useEffect(() => { 
@@ -1168,29 +1201,61 @@ export default function ShadowGardenPortal({
     }, [onSceneReady]);
 
     useEffect(() => {
+        setQuality(detectPerformanceTier());
+    }, []);
+
+    // Helper to perform the skip
+    const triggerSkip = () => {
+        sfx.stopAll();
+        setSkipped(true);
+        // CRITICAL FIX: Trigger scene ready to show landing page content,
+        // do NOT trigger onComplete (which exits the page).
+        onSceneReadyRef.current?.(); 
+    };
+
+    // LOGIC UPDATE: Determine initial state based on saved preferences
+    useEffect(() => {
         const savedGender = localStorage.getItem('guest_gender') as Gender;
+        const neverAsk = localStorage.getItem('anim_never_ask');
+        const pauseUntil = localStorage.getItem('anim_pause_until');
+        const now = new Date().getTime();
+
+        const isSkipActive = neverAsk === 'true' || (pauseUntil && parseInt(pauseUntil) > now);
+
         if (!localStorage.getItem('SG_GUILD_CONTRACT')) {
             setTimeout(() => setShowCookie(true), 1500);
         }
 
         if (!savedGender) {
             setAppState('gender_select');
+        } else if (isSkipActive) {
+            // Returning visitor WITH skip pref: Immediately show Landing Page content
+            triggerSkip(); 
         } else {
             setGender(savedGender);
             setAppState('anim_choice');
         }
-    }, []);
+    }, []); // Run once on mount
+
+    // LOGIC UPDATE: If skipped, watch for startTransition (User clicked Enter)
+    // to navigate to the actual Home Page.
+    useEffect(() => {
+        if (skipped && startTransition) {
+            onComplete();
+        }
+    }, [skipped, startTransition, onComplete]);
 
     const handleGenderSelect = (g: Gender) => {
         setGender(g); 
         localStorage.setItem('guest_gender', g); 
         sfx.unlock(); 
-        setAppState('anim_choice');
+        setAppState('loading');
     };
 
     const handleAnimChoice = (play: boolean, days: number) => {
         sfx.unlock(); 
         localStorage.setItem('anim_preference', play ? 'play' : 'skip');
+        
         if (days > 0) { 
             if (days === 9999) {
                 localStorage.setItem('anim_never_ask', 'true'); 
@@ -1201,11 +1266,12 @@ export default function ShadowGardenPortal({
                 ); 
             }
         }
+        
         if (play) {
             setAppState('loading'); 
         } else {
-            sfx.stopAll();
-            setSkipped(true);
+            // LOGIC UPDATE: Skip animation and show landing page content
+            triggerSkip();
         }
     };
 
@@ -1295,6 +1361,9 @@ export default function ShadowGardenPortal({
         }, 14500);
     };
 
+    // LOGIC UPDATE: If skipped, return null to avoid rendering Canvas, 
+    // effectively showing the parent's landing page content immediately.
+    // The useEffect above handles the "Exit" transition when user clicks enter.
     if (skipped) return null;
 
     if (appState === 'gender_select') {
