@@ -23,19 +23,19 @@ const horrorshow = localFont({ src: '../../public/fonts/Horrorshow-dp1E.ttf', va
 
 // --- ASSETS (Using regular img tags for better compatibility) ---
 const WAIFU_BG_LIST = [
-  "/images/photo1768465701.jpg", "/images/photo1768465700.jpg", "/images/photo1768465702.jpg",
-  "/images/photo1768465702.jpg", "/images/photo1768465700.jpg", "/images/photo1768465702.jpg",
-  "/images/photo1768465701.jpg", "/images/photo1768465702.jpg", "/images/photo1768465699.jpg", "/images/photo1768465699.jpg"
+  "/images/index/bg-1.jpg", "/images/index/bg-2.jpg", "/images/index/bg-3.jpg",
+  "/images/index/bg-4.jpg", "/images/index/bg-5.jpg", "/images/index/bg-6.png",
+  "/images/index/bg-7.png", "/images/index/bg-8.png", "/images/index/bg-9.png", "/images/index/bg-10.png"
 ];
 
 const HERO_GIF = "/images/photo1768465703.jpg"; 
-const FEATURE_GIF = "/images/photo1768465701.jpg";
-const FOOTER_GIF = "/images/photo1768465701.jpg";
+const FEATURE_GIF = "/images/index/feature-main.gif";
+const FOOTER_GIF = "/images/footer.gif";
 
 const FLOATING_STICKERS = [
-  { src: "/images/photo1768465701.jpg", x: "85%", y: "15%", delay: 1 },
-  { src: "/images/photo1768465700.jpg", x: "5%", y: "60%", delay: 2 },
-  { src: "/images/photo1768465700.jpg", x: "80%", y: "70%", delay: 3 },
+  { src: "/images/index/sticker-1.gif", x: "85%", y: "15%", delay: 1 },
+  { src: "/images/index/sticker-2.gif", x: "5%", y: "60%", delay: 2 },
+  { src: "/images/index/sticker-3.gif", x: "80%", y: "70%", delay: 3 },
 ];
 
 // --- OPTIMIZED COMPONENT: LIVE STATS ---
@@ -290,10 +290,11 @@ export default function LandingPage() {
                      {/* Badge positioned above title */}
                      <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-red-900/30 border border-red-500/30 backdrop-blur-md mb-4 animate-pulse">
                         <span className="w-1.5 h-1.5 rounded-full bg-red-500 shadow-[0_0_8px_red]" />
-                        <span className="text-red-200 text-[10px] font-bold tracking-widest uppercase font-mono">Guild System Online • v3.0</span>
+                        <span className="text-red-200 text-[10px] font-bold tracking-widest uppercase font-mono">Guild System Online • v0.1 (beta)</span>
                      </div>
                      
-                     <h1 className="text-5xl md:text-8xl font-normal tracking-wide font-demoness text-red-600 drop-shadow-[0_0_30px_rgba(220,38,38,0.6)] relative z-10">
+                     <h1 className="text-5xl md:text-8xl font-normal tracking-wide font-demoness text-red-600 drop-shadow-[0_0_30px_rgba(220,38,38,0.6)] relative z-10"                 style={{ fontFamily: 'var(--font-demoness), serif' }}
+>
                         SHADOW GARDEN
                      </h1>
                      {/* Hero Effect - Preserved with GPU acceleration */}
@@ -319,10 +320,10 @@ export default function LandingPage() {
                    {/* CTAs */}
                    <div className="flex flex-col sm:flex-row gap-5 justify-center items-center relative z-20">
                       <Button onClick={() => setShowAuth(true)} className="h-14 px-8 rounded-full bg-red-800 hover:bg-red-700 text-white font-bold text-lg shadow-[0_0_35px_rgba(220,38,38,0.4)] border border-red-500/50 backdrop-blur-md font-horrorshow tracking-wider">
-                        <Crown className="mr-3 h-5 w-5" /> Join The Order
+                        <Crown className="mr-3 h-5 w-5" /> Join The Guild
                       </Button>
                       <Button onClick={handleEnterClick} variant="ghost" className="h-14 px-8 rounded-full text-white/70 hover:text-white hover:bg-white/10 border border-white/10 text-lg hover:border-red-500/50 backdrop-blur-md transition-all font-horrorshow tracking-wider">
-                        Enter as Guest <ArrowRight className="ml-3 w-5 h-5" />
+                        Enter as Visitor <ArrowRight className="ml-3 w-5 h-5" />
                       </Button>
                    </div>
 
@@ -385,7 +386,7 @@ export default function LandingPage() {
                <section className="py-20 relative overflow-hidden">
                   <div className="max-w-6xl mx-auto px-6 flex flex-col md:flex-row items-center gap-12 relative z-10">
                      <div className="flex-1 space-y-8">
-                        <h3 className="text-4xl font-normal text-red-600 font-demoness border-l-4 border-red-600 pl-6">THE FORBIDDEN LIBRARY</h3>
+                        <h3 className="text-4xl font-normal text-red-600 font-demoness border-l-4 border-red-600 pl-6" style={{ fontFamily: 'var(--font-nyctophobia), serif' }}>THE FORBIDDEN LIBRARY</h3>
                         <p className="text-gray-400 text-lg leading-relaxed font-nyctophobia tracking-wide">
                            Shadow Garden isn't just a website; it's a repository of otaku culture. 
                            We index over 15,000 series, automatically sync with MyAnimeList and AniList.
@@ -419,7 +420,7 @@ export default function LandingPage() {
                <section className="px-6 relative z-10">
                  <div className="max-w-7xl mx-auto">
                    <div className="text-center mb-16">
-                      <h2 className="text-4xl md:text-5xl font-normal text-white mb-4 font-demoness text-red-600">GUILD PERKS</h2>
+                      <h2 className="text-4xl md:text-5xl font-normal text-white mb-4 font-demoness text-red-600" style={{ fontFamily: 'var(--font-nyctophobia), serif' }}>GUILD PERKS</h2>
                       <div className="w-24 h-1.5 bg-red-600 mx-auto rounded-full shadow-[0_0_15px_red]" />
                    </div>
 
@@ -439,18 +440,40 @@ export default function LandingPage() {
                   <div className="relative rounded-3xl overflow-hidden border border-red-900/30 bg-gradient-to-br from-red-950/20 to-black p-12 text-center md:text-left flex flex-col md:flex-row items-center gap-12 group">
                      <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-20 mix-blend-overlay" />
                      <div className="flex-1 relative z-10">
-                        <h3 className="text-3xl font-normal text-white mb-4 font-demoness text-red-500">EXPAND THE GARDEN</h3>
+                        <h3 className="text-3xl font-normal text-white mb-4 font-demoness text-red-500" style={{ fontFamily: 'var(--font-nyctophobia), serif' }}>VISIT THE GARDEN LOBBY</h3>
                         <p className="text-gray-400 mb-8 leading-relaxed font-nyctophobia">
                            Connect with thousands of other agents. Discuss theories, get recommendation, and participate in weekly watch parties.
                         </p>
-                        <div className="flex flex-wrap gap-4 justify-center md:justify-start">
-                           <Button className="bg-[#5865F2] hover:bg-[#4752C4] text-white border-0 h-12 px-6 shadow-lg shadow-indigo-500/20">
-                              <MessageCircle className="mr-2 w-5 h-5" /> Join Discord
-                           </Button>
-                           <Button variant="outline" className="border-white/10 text-white hover:bg-white/10 h-12 px-6">
-                              <Terminal className="mr-2 w-5 h-5" /> View Changelog
-                           </Button>
-                        </div>
+
+<div className="flex flex-wrap gap-4 justify-center md:justify-start">
+  {/* Discord */}
+  <a
+    href="https://discord.gg/YOUR_INVITE_CODE"
+    target="_blank"
+    rel="noopener noreferrer"
+  >
+    <Button className="bg-[#5865F2] hover:bg-[#4752C4] text-white border-0 h-12 px-6 shadow-lg shadow-indigo-500/20">
+      <MessageCircle className="mr-2 w-5 h-5" />
+      Join Discord
+    </Button>
+  </a>
+
+  {/* GitHub */}
+  <a
+    href="https://github.com/code-acezero/shadow-garden"
+    target="_blank"
+    rel="noopener noreferrer"
+  >
+    <Button
+      variant="outline"
+      className="border-white/10 text-white hover:bg-white/10 h-12 px-6"
+    >
+      <Terminal className="mr-2 w-5 h-5" />
+      View Changelog
+    </Button>
+  </a>
+</div>
+
                      </div>
                      <div className="relative w-48 h-48 md:w-64 md:h-64 flex-shrink-0 animate-float hidden md:block">
                         <div className="absolute inset-0 bg-red-600/20 blur-[50px] rounded-full group-hover:bg-red-600/30 transition-all duration-500" />
@@ -462,8 +485,8 @@ export default function LandingPage() {
                {/* --- FOOTER --- */}
                <footer className="py-12 border-t border-white/5 text-center relative overflow-hidden bg-black">
                   <div className="relative z-20">
-                     <h4 className="text-2xl font-demoness text-red-600 font-normal mb-3">SHADOW GARDEN</h4>
-                     <p className="text-gray-600 text-xs uppercase tracking-widest mb-8">Created by Ace Zero • Est. 2025</p>
+                     <h4 className="text-2xl font-demoness text-red-600 font-normal mb-3" style={{ fontFamily: 'var(--font-demoness), serif' }}>SHADOW GARDEN</h4>
+                     <p className="text-gray-600 text-xs uppercase tracking-widest mb-8">Created by Ace Zero • Est. 2026</p>
                      <div className="flex justify-center gap-8 text-xs text-gray-500 font-medium uppercase tracking-wider">
                         <Link href="#" className="hover:text-red-500 transition-colors">Terms of Service</Link>
                         <Link href="#" className="hover:text-red-500 transition-colors">Privacy Policy</Link>
