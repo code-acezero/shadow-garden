@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { motion, AnimatePresence, useScroll, useTransform } from 'framer-motion';
@@ -10,7 +10,7 @@ import {
   Star, MessageCircle, Flame, Users, Scroll as ScrollIcon, Activity
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { UserAPI, AnimeAPI, ConsumetAnime, supabase } from '@/lib/api'; // Using supabase from your api.ts
+import { UserAPI, AnimeAPI, ConsumetAnime, supabase } from '@/lib/api';
 import AuthModal from '@/components/Auth/AuthModal';
 import SearchBar from '@/components/Anime/SearchBar';
 import ShadowGardenPortal from '@/components/Portal/ShadowGardenPortal';
@@ -23,40 +23,37 @@ const horrorshow = localFont({ src: '../../public/fonts/Horrorshow-dp1E.ttf', va
 
 // --- ASSETS ---
 const WAIFU_BG_LIST = [
-  "/images/index/bg-1.jpg", "/images/index/bg-2.jpg", "/images/index/bg-3.jpg",
-  "/images/index/bg-4.jpg", "/images/index/bg-5.png", "/images/index/bg-6.png",
-  "/images/index/bg-7.png", "/images/index/bg-8.png", "/images/index/bg-9.png", "/images/index/bg-10.png"
+  "/images/photo1768464483.jpg", "/images/photo1768464484.jpg", "/images/photo1768464483.jpg",
+  "/images/photo1768464483.jpg", "/images/photo1768464483.jpg", "/images/photo1768464482.jpg",
+  "/images/Waifu.jpg", "/images/photo1768464483.jpg", "/images/photo1768464483.jpg", "/images/photo1768464484.jpg"
 ];
 
-// Add your new Hero GIF here
-const HERO_GIF = "/images/index/hero-effect.gif"; 
-const FEATURE_GIF = "/images/index/feature-main.gif";
-const FOOTER_GIF = "/images/index/footer.gif";
+const HERO_GIF = "/images/photo1768464482.jpg"; 
+const FEATURE_GIF = "/images/photo1768464484.jpg";
+const FOOTER_GIF = "/images/photo1768464483.jpg";
 
 const FLOATING_STICKERS = [
-  { src: "/images/index/sticker-1.gif", x: "85%", y: "15%", delay: 1 },
-  { src: "/images/index/sticker-2.gif", x: "5%", y: "60%", delay: 2 },
-  { src: "/images/index/sticker-3.gif", x: "80%", y: "70%", delay: 3 },
+  { src: "/images/photo1768464483.jpg", x: "85%", y: "15%", delay: 1 },
+  { src: "/images/photo1768464483.jpg", x: "5%", y: "60%", delay: 2 },
+  { src: "/images/photo1768464483.jpg", x: "80%", y: "70%", delay: 3 },
 ];
 
-// --- COMPONENT: LIVE STATS ---
-const GuildStats = () => {
+// --- OPTIMIZED COMPONENT: LIVE STATS (Memoized to prevent unnecessary re-renders) ---
+const GuildStats = React.memo(() => {
   const [stats, setStats] = useState({ users: 0, posts: 0 });
   const [liveUsers, setLiveUsers] = useState(1);
 
   useEffect(() => {
-    // 1. Fetch Real DB Counts
     const fetchStats = async () => {
       try {
         const { count: userCount } = await supabase.from('profiles').select('*', { count: 'exact', head: true });
         const { count: postCount } = await supabase.from('social_posts').select('*', { count: 'exact', head: true });
         
         setStats({ 
-          users: userCount || 15420, // Fallback number if DB empty
+          users: userCount || 15420,
           posts: postCount || 8540 
         });
         
-        // Initialize fake live count based on real user base (approx 5-10% online)
         setLiveUsers(Math.floor((userCount || 1000) * 0.08));
       } catch (e) {
         console.error("Guild Stats Error", e);
@@ -64,10 +61,9 @@ const GuildStats = () => {
     };
     fetchStats();
 
-    // 2. Simulate "Live" fluctuation
     const interval = setInterval(() => {
       setLiveUsers(prev => {
-        const change = Math.floor(Math.random() * 5) - 2; // -2 to +2 variation
+        const change = Math.floor(Math.random() * 5) - 2;
         return Math.max(1, prev + change);
       });
     }, 3000);
@@ -98,9 +94,11 @@ const GuildStats = () => {
       />
     </div>
   );
-};
+});
 
-const StatCard = ({ icon: Icon, label, value, sub, isLive }: any) => (
+GuildStats.displayName = 'GuildStats';
+
+const StatCard = React.memo(({ icon: Icon, label, value, sub, isLive }: any) => (
   <div className="bg-black/40 backdrop-blur-md border border-white/10 p-4 rounded-xl flex items-center gap-4 hover:bg-red-950/20 hover:border-red-500/30 transition-all group">
     <div className={`p-3 rounded-lg ${isLive ? 'bg-green-900/20' : 'bg-red-900/20'} border ${isLive ? 'border-green-500/30' : 'border-red-500/30'}`}>
       <Icon className={`w-6 h-6 ${isLive ? 'text-green-500' : 'text-red-500'}`} />
@@ -113,16 +111,23 @@ const StatCard = ({ icon: Icon, label, value, sub, isLive }: any) => (
       <div className="text-xs text-gray-400 font-medium uppercase tracking-wider">{label}</div>
     </div>
   </div>
-);
+));
 
-const FloatingParticles = () => {
+StatCard.displayName = 'StatCard';
+
+// --- OPTIMIZED PARTICLES (Using transform3d for GPU acceleration) ---
+const FloatingParticles = React.memo(() => {
   return (
     <div className="absolute inset-0 overflow-hidden pointer-events-none z-20">
       {[...Array(20)].map((_, i) => (
         <motion.div
           key={i}
           className="absolute w-1 h-1 bg-red-500/40 rounded-full blur-[1px]"
-          style={{ left: `${Math.random() * 100}%`, top: `${Math.random() * 100}%` }}
+          style={{ 
+            left: `${Math.random() * 100}%`, 
+            top: `${Math.random() * 100}%`,
+            willChange: 'transform, opacity'
+          }}
           animate={{
             y: [-20, -50, -20],
             x: [0, Math.random() * 20 - 10, 0],
@@ -139,7 +144,9 @@ const FloatingParticles = () => {
       ))}
     </div>
   );
-};
+});
+
+FloatingParticles.displayName = 'FloatingParticles';
 
 export default function LandingPage() {
   const router = useRouter();
@@ -182,18 +189,18 @@ export default function LandingPage() {
     init();
   }, [router]);
 
-  const handleSceneReady = () => {
+  const handleSceneReady = useCallback(() => {
     setShowLandingUI(true);
-  };
+  }, []);
 
-  const handleEnterClick = () => {
+  const handleEnterClick = useCallback(() => {
     setShowLandingUI(false); 
     setTriggerEntry(true);   
-  };
+  }, []);
 
-  const handlePortalComplete = () => {
+  const handlePortalComplete = useCallback(() => {
     router.push('/home');
-  };
+  }, [router]);
 
   if (isCheckingAuth) return <div className="min-h-screen bg-[#050505]" />;
 
@@ -210,7 +217,7 @@ export default function LandingPage() {
       </div>
 
       {/* 2. OVERLAY */}
-      <AnimatePresence>
+      <AnimatePresence mode="wait">
         {showLandingUI && (
           <motion.div 
             className="absolute inset-0 z-10 overflow-y-auto overflow-x-hidden"
@@ -224,15 +231,21 @@ export default function LandingPage() {
                 ::-webkit-scrollbar { display: none; }
             `}</style>
 
-            {/* Static Background Layer (Fades out on scroll) */}
+            {/* Static Background Layer - Optimized with GPU acceleration */}
             <motion.div 
-              style={{ opacity: heroOpacity, scale: heroScale }} 
+              style={{ 
+                opacity: heroOpacity, 
+                scale: heroScale,
+                willChange: 'transform, opacity'
+              }} 
               className="absolute inset-0 z-0 pointer-events-none h-screen fixed"
             >
                <img 
                  src={bgImage} 
                  alt="Background" 
+                 loading="eager"
                  className="absolute inset-0 w-full h-full object-cover opacity-20 mix-blend-overlay"
+                 style={{ willChange: 'transform' }}
                />
                <div className="absolute inset-0 bg-gradient-to-b from-black/60 via-[#050505]/90 to-[#050505]" />
                <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-10 mix-blend-overlay" />
@@ -242,35 +255,48 @@ export default function LandingPage() {
 
             {/* HERO SECTION */}
             <section className="relative min-h-screen flex flex-col items-center justify-center p-4 py-20">
+               {/* Floating Stickers - All preserved with GPU acceleration */}
                {FLOATING_STICKERS.map((s, i) => (
                  <motion.img 
                    key={i}
                    src={s.src} 
+                   loading="lazy"
                    className="absolute w-24 h-24 md:w-32 md:h-32 object-contain opacity-0 md:opacity-60 pointer-events-none drop-shadow-[0_0_15px_rgba(0,0,0,0.8)]"
-                   style={{ left: s.x, top: s.y }}
+                   style={{ 
+                     left: s.x, 
+                     top: s.y,
+                     willChange: 'transform, opacity'
+                   }}
                    initial={{ scale: 0, opacity: 0 }}
                    animate={{ scale: 1, opacity: 0.6, y: [0, -15, 0] }}
-                   transition={{ scale: { delay: s.delay, duration: 0.5 }, opacity: { delay: s.delay, duration: 0.5 }, y: { repeat: Infinity, duration: 3, ease: "easeInOut", delay: s.delay } }}
+                   transition={{ 
+                     scale: { delay: s.delay, duration: 0.5 }, 
+                     opacity: { delay: s.delay, duration: 0.5 }, 
+                     y: { repeat: Infinity, duration: 3, ease: "easeInOut", delay: s.delay } 
+                   }}
                  />
                ))}
 
                <div className="relative z-20 text-center px-4 max-w-6xl w-full">
-                 <motion.div initial={{ y: 30, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ duration: 1, delay: 0.5 }}>
+                 <motion.div 
+                   initial={{ y: 30, opacity: 0 }} 
+                   animate={{ y: 0, opacity: 1 }} 
+                   transition={{ duration: 1, delay: 0.5 }}
+                 >
                    
                    <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-red-900/30 border border-red-500/30 backdrop-blur-md mb-8 animate-pulse">
                       <span className="w-1.5 h-1.5 rounded-full bg-red-500 shadow-[0_0_8px_red]" />
                       <span className="text-red-200 text-[10px] font-bold tracking-widest uppercase font-mono">Guild System Online • v3.0</span>
                    </div>
                    
-                   {/* Main Title Group with GIF */}
+                   {/* Main Title Group with GIF - All effects preserved */}
                    <div className="relative inline-block mb-6">
                      <h1 className="text-5xl md:text-8xl font-normal tracking-wide font-demoness text-red-600 drop-shadow-[0_0_30px_rgba(220,38,38,0.6)] relative z-10">
                         SHADOW GARDEN
                      </h1>
-                     {/* Hero Effect GIF positioned behind/around title */}
+                     {/* Hero Effect - Preserved with GPU acceleration */}
                      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[120%] h-[120%] opacity-50 z-0 pointer-events-none mix-blend-screen">
-                        {/* Placeholder for Hero GIF if you upload one, currently falling back to effect */}
-                        <div className="w-full h-full bg-red-500/20 blur-[60px] rounded-full animate-pulse" />
+                        <div className="w-full h-full bg-red-500/20 blur-[60px] rounded-full animate-pulse" style={{ willChange: 'transform' }} />
                      </div>
                    </div>
                    
@@ -323,11 +349,17 @@ export default function LandingPage() {
                            ))
                         ) : (
                            trending.map((anime, i) => (
-                              <div key={anime.id} className="relative w-full aspect-[2/3] rounded-2xl overflow-hidden cursor-pointer group border border-white/10 hover:border-red-500/50 transition-all hover:scale-105 hover:shadow-[0_0_20px_rgba(220,38,38,0.3)]">
+                              <div 
+                                key={anime.id} 
+                                className="relative w-full aspect-[2/3] rounded-2xl overflow-hidden cursor-pointer group border border-white/10 hover:border-red-500/50 transition-all hover:scale-105 hover:shadow-[0_0_20px_rgba(220,38,38,0.3)]"
+                                style={{ willChange: 'transform' }}
+                              >
                                  <img 
                                     src={anime.image} 
                                     alt={anime.title} 
+                                    loading="lazy"
                                     className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110" 
+                                    style={{ willChange: 'transform' }}
                                  />
                                  <div className="absolute inset-0 bg-gradient-to-t from-black via-transparent to-transparent opacity-90" />
                                  
@@ -368,12 +400,14 @@ export default function LandingPage() {
                         <div className="absolute inset-0 bg-red-600/10 blur-[80px] rounded-full" />
                         <motion.img 
                           src={FEATURE_GIF} 
+                          loading="lazy"
                           initial={{ opacity: 0, x: 50 }}
                           whileInView={{ opacity: 1, x: 0 }}
                           viewport={{ once: true }}
                           transition={{ duration: 1 }}
                           className="relative rounded-2xl border border-red-500/20 shadow-2xl w-full max-w-sm object-cover hover:scale-105 transition-transform duration-500" 
-                          alt="Archive Feature" 
+                          alt="Archive Feature"
+                          style={{ willChange: 'transform' }}
                         />
                      </div>
                   </div>
@@ -401,7 +435,7 @@ export default function LandingPage() {
                {/* --- SECTION 5: COMMUNITY CTA --- */}
                <section className="max-w-5xl mx-auto px-6">
                   <div className="relative rounded-3xl overflow-hidden border border-red-900/30 bg-gradient-to-br from-red-950/20 to-black p-12 text-center md:text-left flex flex-col md:flex-row items-center gap-12 group">
-                     <div className="absolute inset-0 bg-[url('/images/noise.png')] opacity-20 mix-blend-overlay" />
+                     <div className="absolute inset-0 bg-[url('/images/photo1768464485.jpg')] opacity-20 mix-blend-overlay" />
                      <div className="flex-1 relative z-10">
                         <h3 className="text-3xl font-normal text-white mb-4 font-demoness text-red-500">EXPAND THE GARDEN</h3>
                         <p className="text-gray-400 mb-8 leading-relaxed font-nyctophobia">
@@ -434,9 +468,8 @@ export default function LandingPage() {
                         <Link href="#" className="hover:text-red-500 transition-colors">DMCA</Link>
                      </div>
                   </div>
-                  {/* Fixed Footer GIF Position (Behind text) */}
                   <div className="absolute bottom-0 left-1/2 -translate-x-1/2 w-96 h-32 opacity-10 pointer-events-none mix-blend-screen z-10">
-                     <img src={FOOTER_GIF} className="w-full h-full object-contain" alt="Footer Ambience" />
+                     <img src={FOOTER_GIF} loading="lazy" className="w-full h-full object-contain" alt="Footer Ambience" />
                   </div>
                </footer>
             </div>
@@ -449,9 +482,10 @@ export default function LandingPage() {
   );
 }
 
-function FeatureCard({ icon: Icon, title, desc }: { icon: any, title: string, desc: string }) {
+// Memoized FeatureCard component for better performance
+const FeatureCard = React.memo(({ icon: Icon, title, desc }: { icon: any, title: string, desc: string }) => {
   return (
-    <div className="p-8 rounded-xl bg-black/40 border border-white/5 hover:border-red-500/40 transition-all group backdrop-blur-md hover:bg-red-950/10 hover:-translate-y-1 duration-300">
+    <div className="p-8 rounded-xl bg-black/40 border border-white/5 hover:border-red-500/40 transition-all group backdrop-blur-md hover:bg-red-950/10 hover:-translate-y-1 duration-300" style={{ willChange: 'transform' }}>
       <div className="w-14 h-14 rounded-lg bg-black flex items-center justify-center mb-6 border border-white/10 group-hover:border-red-500/50 group-hover:shadow-[0_0_15px_rgba(220,38,38,0.3)] transition-all">
         <Icon className="w-7 h-7 text-red-700 group-hover:text-red-500 transition-colors" />
       </div>
@@ -459,4 +493,6 @@ function FeatureCard({ icon: Icon, title, desc }: { icon: any, title: string, de
       <p className="text-sm text-gray-400 font-light leading-relaxed">{desc}</p>
     </div>
   );
-}
+});
+
+FeatureCard.displayName = 'FeatureCard';
