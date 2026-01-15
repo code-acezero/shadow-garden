@@ -3,6 +3,7 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
+import Image from 'next/image';
 import { motion, AnimatePresence, useScroll, useTransform } from 'framer-motion';
 import { 
   ArrowRight, Zap, ShieldCheck, Smartphone, 
@@ -23,22 +24,85 @@ const horrorshow = localFont({ src: '../../public/fonts/Horrorshow-dp1E.ttf', va
 
 // --- ASSETS ---
 const WAIFU_BG_LIST = [
-  "/images/photo1768464483.jpg", "/images/photo1768464484.jpg", "/images/photo1768464483.jpg",
-  "/images/photo1768464483.jpg", "/images/photo1768464483.jpg", "/images/photo1768464482.jpg",
-  "/images/Waifu.jpg", "/images/photo1768464483.jpg", "/images/photo1768464483.jpg", "/images/photo1768464484.jpg"
+  "/images/photo1768465056.jpg", "/images/photo1768465056.jpg", "/images/photo1768465056.jpg",
+  "/images/photo1768465056.jpg", "/images/photo1768465057.jpg", "/images/photo1768465056.jpg",
+  "/images/photo1768465055.jpg", "/images/photo1768465056.jpg", "/images/photo1768465056.jpg", "/images/photo1768465057.jpg"
 ];
 
-const HERO_GIF = "/images/photo1768464482.jpg"; 
-const FEATURE_GIF = "/images/photo1768464484.jpg";
-const FOOTER_GIF = "/images/photo1768464483.jpg";
+const HERO_GIF = "/images/photo1768465057.jpg"; 
+const FEATURE_GIF = "/images/photo1768465056.jpg";
+const FOOTER_GIF = "/images/photo1768465057.jpg";
 
 const FLOATING_STICKERS = [
-  { src: "/images/photo1768464483.jpg", x: "85%", y: "15%", delay: 1 },
-  { src: "/images/photo1768464483.jpg", x: "5%", y: "60%", delay: 2 },
-  { src: "/images/photo1768464483.jpg", x: "80%", y: "70%", delay: 3 },
+  { src: "/images/photo1768465056.jpg", x: "85%", y: "15%", delay: 1 },
+  { src: "/images/photo1768465056.jpg", x: "5%", y: "60%", delay: 2 },
+  { src: "/images/stickers.jpg", x: "80%", y: "70%", delay: 3 },
 ];
 
-// --- OPTIMIZED COMPONENT: LIVE STATS (Memoized to prevent unnecessary re-renders) ---
+// --- OPTIMIZED IMAGE COMPONENT FOR ALL DEVICES ---
+const OptimizedImage = React.memo(({ 
+  src, 
+  alt, 
+  className = "", 
+  loading = "lazy",
+  priority = false,
+  style = {},
+  ...props 
+}: any) => {
+  const [imgSrc, setImgSrc] = useState(src);
+  const [isLoading, setIsLoading] = useState(true);
+
+  // Detect if it's a GIF
+  const isGif = src?.toLowerCase().endsWith('.gif');
+  
+  // For low-end devices, we'll use regular img tag with optimized loading
+  // Next.js Image component doesn't support GIFs well
+  if (isGif) {
+    return (
+      <img
+        src={imgSrc}
+        alt={alt}
+        loading={loading}
+        className={`${className} ${isLoading ? 'blur-sm' : 'blur-0'} transition-all duration-300`}
+        style={{ 
+          ...style,
+          willChange: 'transform',
+          imageRendering: 'auto'
+        }}
+        onLoad={() => setIsLoading(false)}
+        onError={() => {
+          console.error(`Failed to load image: ${src}`);
+          setIsLoading(false);
+        }}
+        {...props}
+      />
+    );
+  }
+
+  // For regular images, use optimized img with srcset for responsive loading
+  return (
+    <img
+      src={imgSrc}
+      alt={alt}
+      loading={loading}
+      className={`${className} ${isLoading ? 'blur-sm' : 'blur-0'} transition-all duration-300`}
+      style={{ 
+        ...style,
+        willChange: 'transform'
+      }}
+      onLoad={() => setIsLoading(false)}
+      onError={() => {
+        console.error(`Failed to load image: ${src}`);
+        setIsLoading(false);
+      }}
+      {...props}
+    />
+  );
+});
+
+OptimizedImage.displayName = 'OptimizedImage';
+
+// --- OPTIMIZED COMPONENT: LIVE STATS ---
 const GuildStats = React.memo(() => {
   const [stats, setStats] = useState({ users: 0, posts: 0 });
   const [liveUsers, setLiveUsers] = useState(1);
@@ -115,7 +179,7 @@ const StatCard = React.memo(({ icon: Icon, label, value, sub, isLive }: any) => 
 
 StatCard.displayName = 'StatCard';
 
-// --- OPTIMIZED PARTICLES (Using transform3d for GPU acceleration) ---
+// --- OPTIMIZED PARTICLES ---
 const FloatingParticles = React.memo(() => {
   return (
     <div className="absolute inset-0 overflow-hidden pointer-events-none z-20">
@@ -240,10 +304,11 @@ export default function LandingPage() {
               }} 
               className="absolute inset-0 z-0 pointer-events-none h-screen fixed"
             >
-               <img 
+               <OptimizedImage
                  src={bgImage} 
                  alt="Background" 
                  loading="eager"
+                 priority
                  className="absolute inset-0 w-full h-full object-cover opacity-20 mix-blend-overlay"
                  style={{ willChange: 'transform' }}
                />
@@ -255,13 +320,11 @@ export default function LandingPage() {
 
             {/* HERO SECTION */}
             <section className="relative min-h-screen flex flex-col items-center justify-center p-4 py-20">
-               {/* Floating Stickers - All preserved with GPU acceleration */}
+               {/* Floating Stickers - Now visible on ALL devices with optimized loading */}
                {FLOATING_STICKERS.map((s, i) => (
-                 <motion.img 
+                 <motion.div
                    key={i}
-                   src={s.src} 
-                   loading="lazy"
-                   className="absolute w-24 h-24 md:w-32 md:h-32 object-contain opacity-0 md:opacity-60 pointer-events-none drop-shadow-[0_0_15px_rgba(0,0,0,0.8)]"
+                   className="absolute w-16 h-16 sm:w-20 sm:h-20 md:w-32 md:h-32 pointer-events-none"
                    style={{ 
                      left: s.x, 
                      top: s.y,
@@ -274,7 +337,13 @@ export default function LandingPage() {
                      opacity: { delay: s.delay, duration: 0.5 }, 
                      y: { repeat: Infinity, duration: 3, ease: "easeInOut", delay: s.delay } 
                    }}
-                 />
+                 >
+                   <OptimizedImage
+                     src={s.src}
+                     alt={`Floating sticker ${i + 1}`}
+                     className="w-full h-full object-contain drop-shadow-[0_0_15px_rgba(0,0,0,0.8)]"
+                   />
+                 </motion.div>
                ))}
 
                <div className="relative z-20 text-center px-4 max-w-6xl w-full">
@@ -289,7 +358,7 @@ export default function LandingPage() {
                       <span className="text-red-200 text-[10px] font-bold tracking-widest uppercase font-mono">Guild System Online • v3.0</span>
                    </div>
                    
-                   {/* Main Title Group with GIF - All effects preserved */}
+                   {/* Main Title Group with GIF */}
                    <div className="relative inline-block mb-6">
                      <h1 className="text-5xl md:text-8xl font-normal tracking-wide font-demoness text-red-600 drop-shadow-[0_0_30px_rgba(220,38,38,0.6)] relative z-10">
                         SHADOW GARDEN
@@ -354,10 +423,9 @@ export default function LandingPage() {
                                 className="relative w-full aspect-[2/3] rounded-2xl overflow-hidden cursor-pointer group border border-white/10 hover:border-red-500/50 transition-all hover:scale-105 hover:shadow-[0_0_20px_rgba(220,38,38,0.3)]"
                                 style={{ willChange: 'transform' }}
                               >
-                                 <img 
+                                 <OptimizedImage
                                     src={anime.image} 
                                     alt={anime.title} 
-                                    loading="lazy"
                                     className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110" 
                                     style={{ willChange: 'transform' }}
                                  />
@@ -398,17 +466,20 @@ export default function LandingPage() {
                      </div>
                      <div className="flex-1 relative w-full flex justify-center">
                         <div className="absolute inset-0 bg-red-600/10 blur-[80px] rounded-full" />
-                        <motion.img 
-                          src={FEATURE_GIF} 
-                          loading="lazy"
+                        <motion.div
                           initial={{ opacity: 0, x: 50 }}
                           whileInView={{ opacity: 1, x: 0 }}
                           viewport={{ once: true }}
                           transition={{ duration: 1 }}
-                          className="relative rounded-2xl border border-red-500/20 shadow-2xl w-full max-w-sm object-cover hover:scale-105 transition-transform duration-500" 
-                          alt="Archive Feature"
+                          className="relative rounded-2xl border border-red-500/20 shadow-2xl w-full max-w-sm hover:scale-105 transition-transform duration-500 overflow-hidden"
                           style={{ willChange: 'transform' }}
-                        />
+                        >
+                          <OptimizedImage
+                            src={FEATURE_GIF} 
+                            alt="Archive Feature"
+                            className="w-full h-full object-cover"
+                          />
+                        </motion.div>
                      </div>
                   </div>
                </section>
@@ -435,7 +506,7 @@ export default function LandingPage() {
                {/* --- SECTION 5: COMMUNITY CTA --- */}
                <section className="max-w-5xl mx-auto px-6">
                   <div className="relative rounded-3xl overflow-hidden border border-red-900/30 bg-gradient-to-br from-red-950/20 to-black p-12 text-center md:text-left flex flex-col md:flex-row items-center gap-12 group">
-                     <div className="absolute inset-0 bg-[url('/images/photo1768464485.jpg')] opacity-20 mix-blend-overlay" />
+                     <div className="absolute inset-0 bg-[url('/images/photo1768465056.jpg')] opacity-20 mix-blend-overlay" />
                      <div className="flex-1 relative z-10">
                         <h3 className="text-3xl font-normal text-white mb-4 font-demoness text-red-500">EXPAND THE GARDEN</h3>
                         <p className="text-gray-400 mb-8 leading-relaxed font-nyctophobia">
@@ -468,8 +539,12 @@ export default function LandingPage() {
                         <Link href="#" className="hover:text-red-500 transition-colors">DMCA</Link>
                      </div>
                   </div>
-                  <div className="absolute bottom-0 left-1/2 -translate-x-1/2 w-96 h-32 opacity-10 pointer-events-none mix-blend-screen z-10">
-                     <img src={FOOTER_GIF} loading="lazy" className="w-full h-full object-contain" alt="Footer Ambience" />
+                  <div className="absolute bottom-0 left-1/2 -translate-x-1/2 w-64 h-24 sm:w-96 sm:h-32 opacity-10 pointer-events-none mix-blend-screen z-10">
+                     <OptimizedImage
+                       src={FOOTER_GIF}
+                       alt="Footer Ambience"
+                       className="w-full h-full object-contain"
+                     />
                   </div>
                </footer>
             </div>
