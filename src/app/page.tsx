@@ -3,7 +3,6 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import Image from 'next/image';
 import { motion, AnimatePresence, useScroll, useTransform } from 'framer-motion';
 import { 
   ArrowRight, Zap, ShieldCheck, Smartphone, 
@@ -22,85 +21,22 @@ const demoness = localFont({ src: '../../public/fonts/Demoness-1GlYj.ttf', varia
 const nyctophobia = localFont({ src: '../../public/fonts/Nyctophobia-RnMM.ttf', variable: '--font-nyctophobia' });
 const horrorshow = localFont({ src: '../../public/fonts/Horrorshow-dp1E.ttf', variable: '--font-horrorshow' });
 
-// --- ASSETS ---
+// --- ASSETS (Using regular img tags for better compatibility) ---
 const WAIFU_BG_LIST = [
-  "/images/photo1768465056.jpg", "/images/photo1768465056.jpg", "/images/photo1768465056.jpg",
-  "/images/photo1768465056.jpg", "/images/photo1768465057.jpg", "/images/photo1768465056.jpg",
-  "/images/photo1768465055.jpg", "/images/photo1768465056.jpg", "/images/photo1768465056.jpg", "/images/photo1768465057.jpg"
+  "/images/photo1768465701.jpg", "/images/photo1768465700.jpg", "/images/photo1768465702.jpg",
+  "/images/photo1768465702.jpg", "/images/photo1768465700.jpg", "/images/photo1768465702.jpg",
+  "/images/photo1768465701.jpg", "/images/photo1768465702.jpg", "/images/photo1768465699.jpg", "/images/photo1768465699.jpg"
 ];
 
-const HERO_GIF = "/images/photo1768465057.jpg"; 
-const FEATURE_GIF = "/images/photo1768465056.jpg";
-const FOOTER_GIF = "/images/photo1768465057.jpg";
+const HERO_GIF = "/images/photo1768465703.jpg"; 
+const FEATURE_GIF = "/images/photo1768465701.jpg";
+const FOOTER_GIF = "/images/photo1768465701.jpg";
 
 const FLOATING_STICKERS = [
-  { src: "/images/photo1768465056.jpg", x: "85%", y: "15%", delay: 1 },
-  { src: "/images/photo1768465056.jpg", x: "5%", y: "60%", delay: 2 },
-  { src: "/images/stickers.jpg", x: "80%", y: "70%", delay: 3 },
+  { src: "/images/photo1768465701.jpg", x: "85%", y: "15%", delay: 1 },
+  { src: "/images/photo1768465700.jpg", x: "5%", y: "60%", delay: 2 },
+  { src: "/images/photo1768465700.jpg", x: "80%", y: "70%", delay: 3 },
 ];
-
-// --- OPTIMIZED IMAGE COMPONENT FOR ALL DEVICES ---
-const OptimizedImage = React.memo(({ 
-  src, 
-  alt, 
-  className = "", 
-  loading = "lazy",
-  priority = false,
-  style = {},
-  ...props 
-}: any) => {
-  const [imgSrc, setImgSrc] = useState(src);
-  const [isLoading, setIsLoading] = useState(true);
-
-  // Detect if it's a GIF
-  const isGif = src?.toLowerCase().endsWith('.gif');
-  
-  // For low-end devices, we'll use regular img tag with optimized loading
-  // Next.js Image component doesn't support GIFs well
-  if (isGif) {
-    return (
-      <img
-        src={imgSrc}
-        alt={alt}
-        loading={loading}
-        className={`${className} ${isLoading ? 'blur-sm' : 'blur-0'} transition-all duration-300`}
-        style={{ 
-          ...style,
-          willChange: 'transform',
-          imageRendering: 'auto'
-        }}
-        onLoad={() => setIsLoading(false)}
-        onError={() => {
-          console.error(`Failed to load image: ${src}`);
-          setIsLoading(false);
-        }}
-        {...props}
-      />
-    );
-  }
-
-  // For regular images, use optimized img with srcset for responsive loading
-  return (
-    <img
-      src={imgSrc}
-      alt={alt}
-      loading={loading}
-      className={`${className} ${isLoading ? 'blur-sm' : 'blur-0'} transition-all duration-300`}
-      style={{ 
-        ...style,
-        willChange: 'transform'
-      }}
-      onLoad={() => setIsLoading(false)}
-      onError={() => {
-        console.error(`Failed to load image: ${src}`);
-        setIsLoading(false);
-      }}
-      {...props}
-    />
-  );
-});
-
-OptimizedImage.displayName = 'OptimizedImage';
 
 // --- OPTIMIZED COMPONENT: LIVE STATS ---
 const GuildStats = React.memo(() => {
@@ -242,7 +178,7 @@ export default function LandingPage() {
       try {
         const data = await AnimeAPI.getTopAiring(1);
         if (data && data.results) {
-          setTrending(data.results.slice(0, 5));
+          setTrending(data.results.slice(0, 6)); // Changed from 5 to 6
         }
       } catch (err) {
         console.error("Failed to load trending:", err);
@@ -304,11 +240,10 @@ export default function LandingPage() {
               }} 
               className="absolute inset-0 z-0 pointer-events-none h-screen fixed"
             >
-               <OptimizedImage
+               <img 
                  src={bgImage} 
                  alt="Background" 
                  loading="eager"
-                 priority
                  className="absolute inset-0 w-full h-full object-cover opacity-20 mix-blend-overlay"
                  style={{ willChange: 'transform' }}
                />
@@ -320,11 +255,14 @@ export default function LandingPage() {
 
             {/* HERO SECTION */}
             <section className="relative min-h-screen flex flex-col items-center justify-center p-4 py-20">
-               {/* Floating Stickers - Now visible on ALL devices with optimized loading */}
+               {/* Floating Stickers - Now visible on ALL devices */}
                {FLOATING_STICKERS.map((s, i) => (
-                 <motion.div
+                 <motion.img 
                    key={i}
-                   className="absolute w-16 h-16 sm:w-20 sm:h-20 md:w-32 md:h-32 pointer-events-none"
+                   src={s.src} 
+                   alt={`Floating sticker ${i + 1}`}
+                   loading="lazy"
+                   className="absolute w-16 h-16 sm:w-20 sm:h-20 md:w-32 md:h-32 object-contain pointer-events-none drop-shadow-[0_0_15px_rgba(0,0,0,0.8)]"
                    style={{ 
                      left: s.x, 
                      top: s.y,
@@ -337,13 +275,7 @@ export default function LandingPage() {
                      opacity: { delay: s.delay, duration: 0.5 }, 
                      y: { repeat: Infinity, duration: 3, ease: "easeInOut", delay: s.delay } 
                    }}
-                 >
-                   <OptimizedImage
-                     src={s.src}
-                     alt={`Floating sticker ${i + 1}`}
-                     className="w-full h-full object-contain drop-shadow-[0_0_15px_rgba(0,0,0,0.8)]"
-                   />
-                 </motion.div>
+                 />
                ))}
 
                <div className="relative z-20 text-center px-4 max-w-6xl w-full">
@@ -353,13 +285,14 @@ export default function LandingPage() {
                    transition={{ duration: 1, delay: 0.5 }}
                  >
                    
-                   <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-red-900/30 border border-red-500/30 backdrop-blur-md mb-8 animate-pulse">
-                      <span className="w-1.5 h-1.5 rounded-full bg-red-500 shadow-[0_0_8px_red]" />
-                      <span className="text-red-200 text-[10px] font-bold tracking-widest uppercase font-mono">Guild System Online • v3.0</span>
-                   </div>
-                   
-                   {/* Main Title Group with GIF */}
+                   {/* Main Title Group - FIXED: Badge now above title */}
                    <div className="relative inline-block mb-6">
+                     {/* Badge positioned above title */}
+                     <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-red-900/30 border border-red-500/30 backdrop-blur-md mb-4 animate-pulse">
+                        <span className="w-1.5 h-1.5 rounded-full bg-red-500 shadow-[0_0_8px_red]" />
+                        <span className="text-red-200 text-[10px] font-bold tracking-widest uppercase font-mono">Guild System Online • v3.0</span>
+                     </div>
+                     
                      <h1 className="text-5xl md:text-8xl font-normal tracking-wide font-demoness text-red-600 drop-shadow-[0_0_30px_rgba(220,38,38,0.6)] relative z-10">
                         SHADOW GARDEN
                      </h1>
@@ -403,7 +336,7 @@ export default function LandingPage() {
             {/* EXTENDED CONTENT */}
             <div className="relative bg-gradient-to-b from-transparent via-[#050505] to-[#050505] pt-12 pb-24 space-y-32 z-10">
                
-               {/* --- SECTION 2: TOP RANKING --- */}
+               {/* --- SECTION 2: TOP RANKING (6 cards, more rounded corners) --- */}
                <section className="w-full py-4">
                   <div className="max-w-7xl mx-auto px-6">
                      <div className="flex items-center gap-3 mb-8 border-b border-white/10 pb-4">
@@ -411,32 +344,33 @@ export default function LandingPage() {
                         <h3 className="text-3xl font-normal font-demoness text-white tracking-widest">TOP BOUNTIES</h3>
                      </div>
                      
-                     <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+                     <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-3">
                         {isLoadingTrending ? (
-                           [...Array(5)].map((_, i) => (
-                              <div key={i} className="w-full aspect-[2/3] rounded-2xl bg-white/5 animate-pulse border border-white/10" />
+                           [...Array(6)].map((_, i) => (
+                              <div key={i} className="w-full aspect-[2/3] rounded-3xl bg-white/5 animate-pulse border border-white/10" />
                            ))
                         ) : (
                            trending.map((anime, i) => (
                               <div 
                                 key={anime.id} 
-                                className="relative w-full aspect-[2/3] rounded-2xl overflow-hidden cursor-pointer group border border-white/10 hover:border-red-500/50 transition-all hover:scale-105 hover:shadow-[0_0_20px_rgba(220,38,38,0.3)]"
+                                className="relative w-full aspect-[2/3] rounded-3xl overflow-hidden cursor-pointer group border border-white/10 hover:border-red-500/50 transition-all hover:scale-105 hover:shadow-[0_0_20px_rgba(220,38,38,0.3)]"
                                 style={{ willChange: 'transform' }}
                               >
-                                 <OptimizedImage
+                                 <img 
                                     src={anime.image} 
-                                    alt={anime.title} 
+                                    alt={typeof anime.title === 'string' ? anime.title : (anime.title as any).userPreferred}
+                                    loading="lazy"
                                     className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110" 
                                     style={{ willChange: 'transform' }}
                                  />
                                  <div className="absolute inset-0 bg-gradient-to-t from-black via-transparent to-transparent opacity-90" />
                                  
-                                 <div className="absolute top-2 right-2 w-8 h-8 rounded-full bg-red-600/90 backdrop-blur-md flex items-center justify-center font-black text-sm border border-red-400 shadow-[0_0_10px_red] z-10">
+                                 <div className="absolute top-2 right-2 w-7 h-7 rounded-full bg-red-600/90 backdrop-blur-md flex items-center justify-center font-black text-xs border border-red-400 shadow-[0_0_10px_red] z-10">
                                     {i + 1}
                                  </div>
 
-                                 <div className="absolute bottom-0 w-full p-4 text-center">
-                                    <h4 className="text-sm font-bold text-white mb-1 leading-tight drop-shadow-md line-clamp-2 group-hover:text-red-400 transition-colors">
+                                 <div className="absolute bottom-0 w-full p-3 text-center">
+                                    <h4 className="text-xs font-bold text-white mb-1 leading-tight drop-shadow-md line-clamp-2 group-hover:text-red-400 transition-colors">
                                        {typeof anime.title === 'string' ? anime.title : (anime.title as any).userPreferred}
                                     </h4>
                                  </div>
@@ -466,20 +400,17 @@ export default function LandingPage() {
                      </div>
                      <div className="flex-1 relative w-full flex justify-center">
                         <div className="absolute inset-0 bg-red-600/10 blur-[80px] rounded-full" />
-                        <motion.div
+                        <motion.img 
+                          src={FEATURE_GIF} 
+                          alt="Archive Feature"
+                          loading="lazy"
                           initial={{ opacity: 0, x: 50 }}
                           whileInView={{ opacity: 1, x: 0 }}
                           viewport={{ once: true }}
                           transition={{ duration: 1 }}
-                          className="relative rounded-2xl border border-red-500/20 shadow-2xl w-full max-w-sm hover:scale-105 transition-transform duration-500 overflow-hidden"
+                          className="relative rounded-2xl border border-red-500/20 shadow-2xl w-full max-w-sm object-cover hover:scale-105 transition-transform duration-500" 
                           style={{ willChange: 'transform' }}
-                        >
-                          <OptimizedImage
-                            src={FEATURE_GIF} 
-                            alt="Archive Feature"
-                            className="w-full h-full object-cover"
-                          />
-                        </motion.div>
+                        />
                      </div>
                   </div>
                </section>
@@ -506,7 +437,7 @@ export default function LandingPage() {
                {/* --- SECTION 5: COMMUNITY CTA --- */}
                <section className="max-w-5xl mx-auto px-6">
                   <div className="relative rounded-3xl overflow-hidden border border-red-900/30 bg-gradient-to-br from-red-950/20 to-black p-12 text-center md:text-left flex flex-col md:flex-row items-center gap-12 group">
-                     <div className="absolute inset-0 bg-[url('/images/photo1768465056.jpg')] opacity-20 mix-blend-overlay" />
+                     <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-20 mix-blend-overlay" />
                      <div className="flex-1 relative z-10">
                         <h3 className="text-3xl font-normal text-white mb-4 font-demoness text-red-500">EXPAND THE GARDEN</h3>
                         <p className="text-gray-400 mb-8 leading-relaxed font-nyctophobia">
@@ -540,9 +471,10 @@ export default function LandingPage() {
                      </div>
                   </div>
                   <div className="absolute bottom-0 left-1/2 -translate-x-1/2 w-64 h-24 sm:w-96 sm:h-32 opacity-10 pointer-events-none mix-blend-screen z-10">
-                     <OptimizedImage
+                     <img 
                        src={FOOTER_GIF}
                        alt="Footer Ambience"
+                       loading="lazy"
                        className="w-full h-full object-contain"
                      />
                   </div>
