@@ -1,16 +1,19 @@
 "use client";
 
 /**
- * SHADOW GARDEN: WATCH TOWER (VER 90.2 - FINAL POLISH)
+ * SHADOW GARDEN: WATCH TOWER (VER 93.0 - STABLE BASE)
  * =============================================================================
- * * [LOGIC FIX: CONTINUOUS SAVE]
- * - Saves every 5 seconds (interval).
- * - Saves on Pause, Seek, Buffer, and Unload.
- * * [LOGIC FIX: LAST PLAYED]
- * - Resume logic now queries the DB for the *most recently updated* episode
- * for this anime ID. This allows tracking per-episode while knowing where to resume.
- * * [UI UPDATE]
- * - Watched Episodes: Now have a RED GLOWING BORDER + INNER SHADOW (No green check).
+ * * [FIX: RESUME & SWITCHING]
+ * - Fetches resume data specifically for the active episode ID every time it changes.
+ * - Sets 'initialTime' to force the player to seek.
+ * * [FIX: WATCHED HISTORY]
+ * - Upserts to 'user_watched_history' immediately when an episode loads.
+ * * [FIX: DATA SAVING]
+ * - Saves continuously every 5s + on Page Close (Beacon).
+ * - 10s Safety Lock prevents overwriting resume data on load.
+ * * [UI]
+ * - Immersive Mode (15s hide).
+ * - Red Glow on Main Characters.
  */
 
 import React, { useState, useEffect, useMemo, Suspense, useRef, useCallback } from 'react';
@@ -22,7 +25,7 @@ import {
   Grid, List, Timer, Lightbulb, 
   ChevronDown, Heart, CheckCircle, XCircle,
   FastForward, Star, Info, MessageSquare, User,
-  Loader2, Globe, Flame, Calendar, Copyright, Mic
+  Loader2, Globe, Flame, Calendar, Copyright, Check, Mic
 } from 'lucide-react';
 
 import { AnimeAPI_V2, supabase, WatchlistAPI } from '@/lib/api'; 
@@ -73,66 +76,80 @@ const MarqueeTitle = ({ text }: { text: string }) => { const containerRef = useR
 // ==========================================
 
 function WatchContent() {
-  const router = useRouter();
-  const params = useParams();
-  const searchParams = useSearchParams();
-  const animeId = params.id as string;
-  const urlEpId = searchParams.get('ep');
-  const { user } = useAuth(); 
-
-  const { settings, updateSetting } = useWatchSettings();
-  const [info, setInfo] = useState<any | null>(null);
-  const [episodes, setEpisodes] = useState<any[]>([]); 
-  const [nextEpSchedule, setNextEpSchedule] = useState<V2EpisodeSchedule | null>(null);
-  const [isLoadingInfo, setIsLoadingInfo] = useState(true);
-
-  const [currentEpId, setCurrentEpId] = useState<string | null>(null);
-  const [streamUrl, setStreamUrl] = useState<string | null>(null);
-  const [subtitles, setSubtitles] = useState<any[]>([]); 
-  const [isStreamLoading, setIsStreamLoading] = useState(false);
-  const [streamError, setStreamError] = useState<string | null>(null);
-  const [intro, setIntro] = useState<{start:number; end:number}>();
-  const [outro, setOutro] = useState<{start:number; end:number}>();
-  const [servers, setServers] = useState<any>(null);
-  const [selectedServerName, setSelectedServerName] = useState<string>('hd-1');
+  const router = useRouter(); const params = useParams(); const searchParams = useSearchParams(); const animeId = params.id as string; const urlEpId = searchParams.get('ep'); const { user } = useAuth(); 
+  const { settings, updateSetting } = useWatchSettings(); const [info, setInfo] = useState<any | null>(null); const [episodes, setEpisodes] = useState<any[]>([]); const [nextEpSchedule, setNextEpSchedule] = useState<V2EpisodeSchedule | null>(null); const [isLoadingInfo, setIsLoadingInfo] = useState(true);
+  const [currentEpId, setCurrentEpId] = useState<string | null>(null); const [streamUrl, setStreamUrl] = useState<string | null>(null); const [subtitles, setSubtitles] = useState<any[]>([]); const [isStreamLoading, setIsStreamLoading] = useState(false); const [streamError, setStreamError] = useState<string | null>(null); const [intro, setIntro] = useState<{start:number; end:number}>(); const [outro, setOutro] = useState<{start:number; end:number}>(); const [servers, setServers] = useState<any>(null); const [selectedServerName, setSelectedServerName] = useState<string>('hd-1');
+  const [epChunkIndex, setEpChunkIndex] = useState(0); const [epViewMode, setEpViewMode] = useState<'capsule' | 'list'>('capsule');
   
-  const [epChunkIndex, setEpChunkIndex] = useState(0);
-  const [epViewMode, setEpViewMode] = useState<'capsule' | 'list'>('capsule');
-
-  // Tracking
-  const [initialTime, setInitialTime] = useState(0);
+  // Tracking & Refs
+  const [initialTime, setInitialTime] = useState(0); 
   const [watchedEpNumbers, setWatchedEpNumbers] = useState<number[]>([]);
-  const progressRef = useRef(0);
+  const progressRef = useRef(0); 
   const lastSavedRef = useRef(0);
   const playerRef = useRef<AnimePlayerRef>(null); 
   const [hideInterface, setHideInterface] = useState(false);
+  const authTokenRef = useRef<string | null>(null);
+  const [canSave, setCanSave] = useState(false);
+  
+  // Manual Seek Debouncer
+  const seekSaveTimeout = useRef<NodeJS.Timeout | null>(null);
 
-  // --- PROGRESS SAVING ---
+  // 1. CAPTURE AUTH
+  useEffect(() => { if(supabase) supabase.auth.getSession().then(({ data }) => { if(data.session) authTokenRef.current = data.session.access_token; }); }, []);
+
+  // 2. BEACON FLUSH
+  const flushData = useCallback(() => {
+    if (!animeId || !authTokenRef.current) return;
+    const localData = JSON.parse(localStorage.getItem('shadow_continue_watching') || '{}');
+    const entry = localData[animeId];
+    if (!entry) return;
+
+    const payload = {
+        user_id: user?.id, anime_id: entry.animeId, episode_id: entry.episodeId,
+        episode_number: entry.episodeNumber, progress: entry.progress, last_updated: new Date().toISOString()
+    };
+
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+    const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+
+    if (supabaseUrl && supabaseKey && user) {
+        fetch(`${supabaseUrl}/rest/v1/user_continue_watching`, {
+            method: 'POST',
+            headers: { 'apikey': supabaseKey, 'Authorization': `Bearer ${authTokenRef.current}`, 'Content-Type': 'application/json', 'Prefer': 'resolution=merge-duplicates' },
+            body: JSON.stringify(payload), keepalive: true
+        }).catch(err => console.error("Beacon Failed", err));
+    }
+  }, [animeId, user]);
+
+  // 3. MAIN SAVE LOGIC
   const saveProgress = useCallback(async (force = false) => {
-      if (!currentEpId || !info) return;
+      // Guard: Data must be ready
+      if (!currentEpId || !info || !episodes.length) return;
 
+      // Logic: Get Time
       let currentSeconds = progressRef.current;
-      if (playerRef.current) {
-          const t = playerRef.current.getCurrentTime();
-          if (t > 0) currentSeconds = t;
-      }
+      if (playerRef.current) { const t = playerRef.current.getCurrentTime(); if (t > 0) currentSeconds = t; }
       const cleanSeconds = Math.floor(currentSeconds);
 
+      // SAFETY: 10s Grace Period + 0-Check
+      if (!canSave && !force && cleanSeconds < 10) return;
       if (cleanSeconds === 0 && !force) return;
-      // [FIX] Decreased save threshold to 2s for better responsiveness
       if (!force && Math.abs(cleanSeconds - lastSavedRef.current) < 2) return;
       
       const currentEpObj = episodes.find(e => e.episodeId === currentEpId);
-      const epNum = currentEpObj ? Number(currentEpObj.number) : 1;
+      let epNum = 0;
+      if (currentEpObj) {
+          if (typeof currentEpObj.number === 'number') epNum = currentEpObj.number;
+          else if (typeof currentEpObj.number === 'string') epNum = parseFloat(currentEpObj.number);
+      }
+      if (isNaN(epNum)) epNum = 0;
       const epImage = currentEpObj?.image || info.anime.poster; 
       
       lastSavedRef.current = cleanSeconds;
 
-      // LocalStorage
+      // Local Storage
       const localData = JSON.parse(localStorage.getItem('shadow_continue_watching') || '{}');
-      localData[animeId] = {
-          animeId, episodeId: currentEpId, episodeNumber: epNum, progress: cleanSeconds, lastUpdated: Date.now()
-      };
+      localData[animeId] = { animeId, episodeId: currentEpId, episodeNumber: epNum, progress: cleanSeconds, lastUpdated: Date.now() };
       localStorage.setItem('shadow_continue_watching', JSON.stringify(localData));
 
       // Supabase
@@ -145,52 +162,97 @@ function WatchContent() {
                  progress: cleanSeconds, last_updated: new Date().toISOString()
              });
 
+             // Completion Check > 80%
              let durationSec = 1440; 
-             if (playerRef.current) {
-                 const d = playerRef.current.getDuration();
-                 if (d > 0) durationSec = d;
-             } else if (info.anime.stats.duration) {
-                 const durationVal = parseInt(info.anime.stats.duration.replace(/\D/g, '')) || 24;
-                 durationSec = durationVal * 60;
-             }
+             if (playerRef.current) { const d = playerRef.current.getDuration(); if (d > 0) durationSec = d; }
+             else if (info.anime.stats.duration) { const durationVal = parseInt(info.anime.stats.duration.replace(/\D/g, '')) || 24; durationSec = durationVal * 60; }
 
              if (cleanSeconds > (durationSec * 0.80) || cleanSeconds > 1200) { 
                   await (supabase.from('user_watched_history') as any).upsert({
                       user_id: user.id, anime_id: animeId, episode_number: epNum
                   }, { onConflict: 'user_id, anime_id, episode_number' });
-                  
-                  if (!watchedEpNumbers.includes(epNum)) {
-                      setWatchedEpNumbers(prev => [...prev, epNum]);
-                  }
              }
-         } catch (err) { console.error("Save failed", err); }
+         } catch (err) {}
       }
-  }, [animeId, currentEpId, episodes, info, user, watchedEpNumbers]);
+  }, [animeId, currentEpId, episodes, info, user, canSave]);
 
-  // Interval Save (Every 5s for Continuous update)
+  // Manual Seek Handler (Debounce 1s)
+  const handleManualSeek = () => {
+      setCanSave(true); // Unlock save instantly on manual interaction
+      if (seekSaveTimeout.current) clearTimeout(seekSaveTimeout.current);
+      seekSaveTimeout.current = setTimeout(() => { saveProgress(true); }, 1000);
+  };
+
+  // --- LOGIC 1 & 5: EPISODE LOAD HANDLER ---
+  // Triggers whenever currentEpId changes
+  useEffect(() => {
+      if (!currentEpId || !animeId) return;
+
+      // A. Lock Saving (Prevent 0:00 overwrite)
+      setCanSave(false); 
+
+      // B. Load Resume Data for THIS EPISODE
+      const fetchResumeAndMark = async () => {
+          let resume = 0;
+          if (user) {
+             const { data } = await (supabase.from('user_continue_watching') as any)
+                .select('progress')
+                .eq('user_id', user.id).eq('anime_id', animeId).eq('episode_id', currentEpId)
+                .maybeSingle();
+             if (data && data.progress > 0) resume = data.progress;
+          } else {
+             const localData = JSON.parse(localStorage.getItem('shadow_continue_watching') || '{}');
+             if (localData[animeId] && localData[animeId].episodeId === currentEpId) resume = localData[animeId].progress;
+          }
+
+          // C. Trigger Seek
+          setInitialTime(resume);
+          progressRef.current = resume;
+
+          // D. Unlock Logic
+          // If resume is 0 (New Ep), unlock after 2s. If resuming deep (e.g. 15:00), wait 10s to ensure seek happens.
+          const unlockDelay = resume > 0 ? 10000 : 2000;
+          setTimeout(() => setCanSave(true), unlockDelay);
+
+          // E. [Logic 5] Mark as Watched Immediately
+          if (user && episodes.length > 0) {
+              const ep = episodes.find(e => e.episodeId === currentEpId);
+              if (ep) {
+                  let epNum = parseFloat(String(ep.number));
+                  if (!isNaN(epNum)) {
+                     try {
+                        await (supabase!.from('user_watched_history') as any).upsert({
+                            user_id: user.id, anime_id: animeId, episode_number: epNum
+                        }, { onConflict: 'user_id, anime_id, episode_number' });
+                        setWatchedEpNumbers(prev => prev.includes(epNum) ? prev : [...prev, epNum]);
+                     } catch(e){}
+                  }
+              }
+          }
+      };
+
+      fetchResumeAndMark();
+  }, [currentEpId, user, animeId, episodes]);
+
+  // Interval Save
   useEffect(() => {
       const interval = setInterval(() => saveProgress(), 5000); 
-      const handleUnload = () => saveProgress(true);
-      window.addEventListener('beforeunload', handleUnload);
-      return () => { clearInterval(interval); window.removeEventListener('beforeunload', handleUnload); saveProgress(true); };
-  }, [saveProgress]);
+      const handleUnload = () => flushData();
+      const handleVisibility = () => { if (document.hidden) { saveProgress(true); flushData(); } };
+      window.addEventListener('beforeunload', handleUnload); document.addEventListener('visibilitychange', handleVisibility);
+      return () => { clearInterval(interval); window.removeEventListener('beforeunload', handleUnload); document.removeEventListener('visibilitychange', handleVisibility); flushData(); };
+  }, [saveProgress, flushData]);
 
-  // --- LOAD DATA ---
+  // --- INITIAL DATA LOAD ---
   useEffect(() => {
-    let isMounted = true;
-    const controller = new AbortController();
-
+    let isMounted = true; const controller = new AbortController();
     const init = async () => {
       if (!info) setIsLoadingInfo(true);
       try {
         if (!animeId) throw new Error("No ID");
-        
         const [v2InfoRaw, v2EpData, scheduleData] = await Promise.all([
-             retryOperation(() => AnimeAPI_V2.getAnimeInfo(animeId)),
-             retryOperation(() => AnimeAPI_V2.getEpisodes(animeId)),
-             retryOperation(() => AnimeAPI_V2.getNextEpisodeSchedule(animeId))
+             retryOperation(() => AnimeAPI_V2.getAnimeInfo(animeId)), retryOperation(() => AnimeAPI_V2.getEpisodes(animeId)), retryOperation(() => AnimeAPI_V2.getNextEpisodeSchedule(animeId))
         ]);
-
         if (controller.signal.aborted || !isMounted) return;
 
         const v2Data = v2InfoRaw as any; 
@@ -202,54 +264,41 @@ function WatchContent() {
                 voiceActor: { name: item.voiceActor.name, image: item.voiceActor.poster, language: item.voiceActor.cast }
             }))
         };
-        // Normalize
+        // Array Normalize
         hybridInfo.anime.moreInfo.studios = Array.isArray(v2Data.anime.moreInfo.studios) ? v2Data.anime.moreInfo.studios : (v2Data.anime.moreInfo.studios ? [v2Data.anime.moreInfo.studios] : []);
         hybridInfo.anime.moreInfo.producers = Array.isArray(v2Data.anime.moreInfo.producers) ? v2Data.anime.moreInfo.producers : (v2Data.anime.moreInfo.producers ? [v2Data.anime.moreInfo.producers] : []);
         setInfo(hybridInfo); setNextEpSchedule(scheduleData); setEpisodes(v2EpData?.episodes || []);
         
+        // Find Target EP
         let targetEpId: string | null = urlEpId || (v2EpData?.episodes[0]?.episodeId) || null;
-        let resumeTime = 0;
-
-        // DB First
+        
         if (user) {
              const [progressData, historyData] = await Promise.all([
-                 // [FIX] ORDER BY last_updated desc to get the REAL last played episode
                  (supabase.from('user_continue_watching') as any).select('*').eq('user_id', user.id).eq('anime_id', animeId).order('last_updated', { ascending: false }).limit(1).maybeSingle(),
                  (supabase.from('user_watched_history') as any).select('episode_number').eq('user_id', user.id).eq('anime_id', animeId)
              ]);
-             
              if (historyData.data) setWatchedEpNumbers(historyData.data.map((r: any) => r.episode_number));
-             
-             if (progressData.data) {
-                 // If no specific EP URL requested, go to last played EP
-                 if (!urlEpId) targetEpId = progressData.data.episode_id;
-                 // If we are on the EP that has data, set resume time
-                 if (targetEpId === progressData.data.episode_id) resumeTime = progressData.data.progress;
-             }
+             // If no specific URL, default to Last Played
+             if (progressData.data && !urlEpId) targetEpId = progressData.data.episode_id;
         } else {
              const localData = JSON.parse(localStorage.getItem('shadow_continue_watching') || '{}');
-             if (localData[animeId] && !urlEpId) { targetEpId = localData[animeId].episodeId; resumeTime = localData[animeId].progress; }
+             if (localData[animeId] && !urlEpId) targetEpId = localData[animeId].episodeId;
         }
         
-        setInitialTime(resumeTime);
+        // Set ID (The useEffect above will handle resume time fetching)
         setCurrentEpId(targetEpId);
 
-      } catch (err: any) { if (err.name !== 'AbortError') console.error("Init Error:", err); } 
-      finally { if (isMounted) setIsLoadingInfo(false); }
+      } catch (err: any) { if (err.name !== 'AbortError') console.error("Init Error:", err); } finally { if (isMounted) setIsLoadingInfo(false); }
     };
-    init();
-    return () => { isMounted = false; controller.abort(); };
+    init(); return () => { isMounted = false; controller.abort(); };
   }, [animeId, urlEpId, user]);
 
   // Stream Load
   useEffect(() => {
     if (!currentEpId) return;
-    const newUrl = `/watch/${animeId}?ep=${currentEpId}`;
-    window.history.replaceState(null, '', newUrl);
-
+    const newUrl = `/watch/${animeId}?ep=${currentEpId}`; window.history.replaceState(null, '', newUrl);
     setStreamUrl(null); setSubtitles([]); setIsStreamLoading(true); setStreamError(null); progressRef.current = 0; 
     let isMounted = true; const controller = new AbortController();
-
     const loadStream = async () => {
       try {
         const serverRes = await retryOperation(() => AnimeAPI_V2.getEpisodeServers(currentEpId));
@@ -268,8 +317,7 @@ function WatchContent() {
         } else { setStreamError("No sources found"); }
       } catch (error: any) { if (isMounted) setStreamError("Portal Unstable"); } finally { if (isMounted) setIsStreamLoading(false); }
     };
-    loadStream();
-    return () => { isMounted = false; controller.abort(); };
+    loadStream(); return () => { isMounted = false; controller.abort(); };
   }, [currentEpId, settings.category, settings.server]); 
 
   // Handlers
@@ -280,7 +328,16 @@ function WatchContent() {
   const episodeChunks = useMemo(() => { const chunks = []; for (let i = 0; i < episodes.length; i += 50) chunks.push(episodes.slice(i, i + 50)); return chunks; }, [episodes]);
 
   const handleEpisodeClick = (id: string) => { saveProgress(true); if (id === currentEpId) return; setCurrentEpId(id); setInitialTime(0); };
-  const handlePlayerProgress = (state: any) => { const played = state.playedSeconds ?? state.target?.currentTime ?? state; if (typeof played === 'number') progressRef.current = played; };
+  
+  const handlePlayerProgress = (state: any) => { 
+      const played = state.playedSeconds ?? state.target?.currentTime ?? state; 
+      if (typeof played === 'number') {
+          progressRef.current = played;
+          // Local Buffer (Instant)
+          const localData = JSON.parse(localStorage.getItem('shadow_continue_watching') || '{}');
+          if (localData[animeId]) { localData[animeId].progress = Math.floor(played); localStorage.setItem('shadow_continue_watching', JSON.stringify(localData)); }
+      }
+  };
 
   if (isLoadingInfo) return <FantasyLoader text="MATERIALIZING..." />;
   if (!info) return <div className="p-20 text-center text-red-500 font-black uppercase">Connection Lost</div>;
@@ -306,35 +363,24 @@ function WatchContent() {
                 {isStreamLoading ? <FantasyLoader text="CHANNELING..." /> : 
                  streamError ? <div className="w-full h-full flex flex-col items-center justify-center bg-zinc-900 gap-4"><AlertCircle className="text-red-500 w-12 h-12 shadow-sm" /><span className="font-black text-[10px] uppercase tracking-[0.3em]">Portal Unstable</span><Button variant="outline" className="rounded-full border-red-500 text-red-500 hover:bg-red-500 hover:text-white" onClick={() => window.location.reload()}>Retry</Button></div> : 
                  streamUrl ? <AnimePlayer {...({
-                    ref: playerRef, 
-                    url: streamUrl,
-                    subtitles,
-                    title: currentEpisode?.title || anime.name,
-                    intro,
-                    outro,
-                    autoSkip: settings.autoSkip,
-                    startTime: initialTime, 
+                    ref: playerRef, url: streamUrl, subtitles, title: currentEpisode?.title || anime.name, intro, outro,
+                    autoSkip: settings.autoSkip, startTime: initialTime, 
                     controlsTimeout: 15000, 
                     onProgress: handlePlayerProgress, 
                     onEnded: () => { saveProgress(true); if (settings.autoPlay && nextEpisode) handleEpisodeClick(nextEpisode.episodeId); },
-                    onInteract: () => saveProgress(true),
+                    onInteract: handleManualSeek, // [LOGIC 2] Instant Save
                     onPause: () => saveProgress(true),
                     onBuffer: () => saveProgress(true),
                     onControlsChange: (visible: boolean) => setHideInterface(!visible),
                     onNext: nextEpisode ? () => handleEpisodeClick(nextEpisode.episodeId) : undefined,
-                    initialVolume: settings.volume,
-                    initialSpeed: settings.speed,
-                    onSettingsChange: (key: string, val: any) => updateSetting(key, val)
-                  } as any)} /> : 
-                 <div className="w-full h-full flex items-center justify-center"><Tv size={48} className="text-zinc-900 opacity-50"/></div>}
+                    initialVolume: settings.volume, initialSpeed: settings.speed, onSettingsChange: (key: string, val: any) => updateSetting(key, val)
+                  } as any)} /> : <div className="w-full h-full flex items-center justify-center"><Tv size={48} className="text-zinc-900 opacity-50"/></div>}
             </div>
         </div>
       </div>
 
       {/* CONTROLS */}
       <div className="w-full flex justify-center bg-[#0a0a0a] border-b border-white/5 relative z-40 shadow-red-900/10 shadow-lg">
-        {/* ... (Same Controls as 90.0) ... */}
-        {/* Skipping exact duplicate code for brevity, structure identical to prev version */}
         <div className="w-full max-w-[1400px] px-4 md:px-8 py-3 flex flex-col lg:flex-row gap-4 justify-between items-center">
              <div className="flex-1 min-w-0 flex items-center gap-4 w-full sm:w-auto overflow-hidden">
                   <MarqueeTitle text={currentEpisode?.title || `Episode ${currentEpisode?.number}`} />
@@ -356,7 +402,7 @@ function WatchContent() {
       <div className="w-full flex justify-center mt-8 px-4 md:px-8">
         <div className="w-full max-w-[1400px] grid grid-cols-1 xl:grid-cols-12 gap-8">
            
-           {/* EPISODES */}
+           {/* EPISODES & LEFT SIDEBAR */}
            <div className="xl:col-span-4 h-[650px] bg-[#0a0a0a] rounded-[40px] border border-white/5 overflow-hidden flex flex-col shadow-2xl shadow-red-900/20 order-2 xl:order-1">
               <div className="p-5 bg-white/5 border-b border-white/5 flex justify-between items-center flex-shrink-0"><h3 className="font-black text-white flex items-center gap-2 uppercase tracking-tight text-sm font-[Cinzel]"><Layers size={16} className="text-red-600 shadow-sm"/> Episodes <span className="text-[10px] bg-white text-black px-2 rounded-full font-black ml-1 shadow-md">{episodes.length}</span></h3><div className="flex bg-black/40 rounded-full p-1 border border-white/10 shadow-inner"><button onClick={() => setEpViewMode('capsule')} className={cn("p-1.5 rounded-full transition-all active:scale-75", epViewMode==='capsule'?'bg-white/10 text-white shadow-lg shadow-red-900/10':'text-zinc-600 shadow-none')}><Grid size={14}/></button><button onClick={() => setEpViewMode('list')} className={cn("p-1.5 rounded-full transition-all active:scale-75", epViewMode==='list'?'bg-white/10 text-white shadow-lg shadow-red-900/10':'text-zinc-600 shadow-none')}><List size={14}/></button></div></div>
               {episodeChunks.length > 1 && (<div className="w-full border-b border-white/5 bg-black/20 flex-shrink-0 h-10 overflow-hidden px-4 shadow-inner"><ScrollArea className="w-full h-full whitespace-nowrap"><div className="flex items-center py-2 gap-2 w-max">{episodeChunks.map((_, idx) => (<button key={idx} onClick={() => setEpChunkIndex(idx)} className={cn("px-4 py-1 text-[10px] font-black rounded-full transition-all active:scale-90 shadow-sm", epChunkIndex === idx ? 'bg-red-600 text-white shadow-red-900/40' : 'bg-white/5 text-zinc-500 hover:text-zinc-300')}>{(idx * 50) + 1}-{Math.min((idx + 1) * 50, episodes.length)}</button>))}</div></ScrollArea></div>)}
@@ -364,9 +410,19 @@ function WatchContent() {
                   <div className={cn(epViewMode === 'capsule' ? 'flex flex-wrap gap-2' : 'flex flex-col gap-1.5')}>
                     {episodeChunks[epChunkIndex]?.map((ep) => { 
                        const isCurrent = ep.episodeId === currentEpId;
-                       const isWatched = watchedEpNumbers.includes(ep.number);
-                       if (epViewMode === 'capsule') return (<button key={ep.episodeId} onClick={() => handleEpisodeClick(ep.episodeId)} className={cn("h-9 w-12 rounded-full flex items-center justify-center border transition-all text-[11px] font-black relative overflow-hidden active:scale-75 shadow-md group", isCurrent ? "bg-red-600 border-red-500 text-white shadow-[0_0_15px_rgba(220,38,38,0.5)] scale-110 z-10" : isWatched ? "border-red-500/60 shadow-[inset_0_0_10px_rgba(220,38,38,0.5)] text-red-100 bg-black" : "bg-zinc-900 border-zinc-800 text-zinc-600 hover:border-red-500/50 hover:text-white shadow-none")}>{ep.number}{ep.isFiller && <span className="absolute top-1 right-2 w-1 h-1 bg-orange-500 rounded-full shadow-[0_0_5px_orange] animate-pulse"/>}</button>);
-                       return (<button key={ep.episodeId} onClick={() => handleEpisodeClick(ep.episodeId)} className={cn("flex items-center justify-between px-4 py-3 rounded-2xl text-xs font-black uppercase transition-all group active:translate-x-1 shadow-sm", isCurrent ? 'bg-red-600 text-white shadow-red-900/30' : isWatched ? "border border-red-500/30 shadow-[inset_0_0_15px_rgba(220,38,38,0.2)] bg-black text-red-100" : 'bg-white/5 text-zinc-500 hover:bg-white/10 hover:text-zinc-300 shadow-none')}><span className="truncate flex-1 text-left mr-2 tracking-tighter flex items-center gap-2">{ep.number}. {ep.title}</span>{ep.isFiller && <span className="text-[8px] bg-orange-500/20 text-orange-500 px-2 rounded-full font-black uppercase tracking-widest">Filler</span>}</button>);
+                       const isWatched = watchedEpNumbers.includes(Number(ep.number));
+                       if (epViewMode === 'capsule') return (
+                            <button key={ep.episodeId} onClick={() => handleEpisodeClick(ep.episodeId)} className={cn("h-9 w-12 rounded-full flex items-center justify-center border transition-all text-[11px] font-black relative overflow-hidden active:scale-75 shadow-md group", isCurrent ? "bg-red-600 border-red-500 text-white shadow-[0_0_15px_rgba(220,38,38,0.5)] scale-110 z-10" : isWatched ? "border-red-500/60 shadow-[inset_0_0_10px_rgba(220,38,38,0.5)] text-red-100 bg-black" : "bg-zinc-900 border-zinc-800 text-zinc-600 hover:border-red-500/50 hover:text-white shadow-none")}>
+                               {ep.number}
+                               {ep.isFiller && <span className="absolute top-1 right-2 w-1 h-1 bg-orange-500 rounded-full shadow-[0_0_5px_orange] animate-pulse"/>}
+                            </button>
+                        );
+                       return (
+                           <button key={ep.episodeId} onClick={() => handleEpisodeClick(ep.episodeId)} className={cn("flex items-center justify-between px-4 py-3 rounded-2xl text-xs font-black uppercase transition-all group active:translate-x-1 shadow-sm", isCurrent ? 'bg-red-600 text-white shadow-red-900/30' : isWatched ? "border border-red-500/30 shadow-[inset_0_0_15px_rgba(220,38,38,0.2)] bg-black text-red-100" : 'bg-white/5 text-zinc-500 hover:bg-white/10 hover:text-zinc-300 shadow-none')}>
+                               <span className="truncate flex-1 text-left mr-2 tracking-tighter flex items-center gap-2">{ep.number}. {ep.title}</span>
+                               {ep.isFiller && <span className="text-[8px] bg-orange-500/20 text-orange-500 px-2 rounded-full font-black uppercase tracking-widest">Filler</span>}
+                           </button>
+                       );
                     })}
                  </div>
               </ScrollArea>
@@ -375,17 +431,11 @@ function WatchContent() {
            {/* INFO PANEL */}
            <div className="xl:col-span-8 h-auto xl:h-[650px] bg-[#0a0a0a] rounded-[40px] border border-white/5 overflow-hidden flex flex-col shadow-2xl relative shadow-red-900/20 order-1 xl:order-2">
               <div className="flex-shrink-0 relative p-8 pt-16 flex flex-col sm:flex-row gap-10 bg-gradient-to-b from-red-600/5 to-transparent">
-                 {/* ... (Header Same) ... */}
+                 {/* ... (Header) ... */}
                  <div className="relative shrink-0 mx-auto sm:mx-0 flex flex-col gap-6 w-full sm:w-auto"><div className="relative p-[3px] rounded-3xl overflow-hidden group/poster shadow-[0_0_40px_rgba(220,38,38,0.2)] mx-auto sm:mx-0 w-fit"><div className="absolute inset-[-150%] bg-[conic-gradient(from_0deg,transparent,30%,#dc2626_50%,transparent_70%)] animate-[spin_3s_linear_infinite] opacity-60 blur-[1px]" /><img src={anime.poster} className="w-44 h-60 rounded-3xl border border-white/10 object-cover relative z-10 shadow-2xl shadow-black" alt={anime.name} /></div><div className="flex justify-center w-full"><TrailerSection videos={anime.trailers} animeName={anime.name} /></div></div><div className="flex-1 pt-2 text-center sm:text-left z-10 flex flex-col h-full"><h1 className="text-3xl md:text-5xl font-black text-white font-[Cinzel] leading-none mb-2 tracking-tighter drop-shadow-2xl shadow-black">{anime.name}</h1>{anime.jname && <p className="text-[10px] text-zinc-600 font-black uppercase tracking-[0.4em] mb-6 opacity-60 drop-shadow-sm">{anime.jname}</p>}<div className="flex flex-wrap gap-4 mt-3 justify-center sm:justify-start items-center"><Badge className="bg-red-600 text-white rounded-full px-5 py-1.5 text-[10px] font-black uppercase shadow-lg shadow-red-900/50">{anime.stats.quality}</Badge><div className="flex items-center gap-4 text-[11px] text-zinc-400 font-black bg-white/5 border border-white/5 px-5 py-2 rounded-full uppercase tracking-widest shadow-inner shadow-black/20"><span className={cn(anime.moreInfo.status.includes('Airing') ? 'text-green-500 animate-pulse' : 'text-zinc-500')}>{anime.moreInfo.status}</span><span className="w-1.5 h-1.5 bg-zinc-800 rounded-full"/><div className="flex items-center gap-1.5"><Clock className="w-3.5 h-3.5 text-red-600 shadow-red-900/20"/> {anime.stats.duration}</div><span className="w-1.5 h-1.5 bg-zinc-800 rounded-full"/><div className="flex items-center gap-1.5 text-yellow-500 uppercase font-black drop-shadow-sm">MAL: {anime.stats.malScore}</div></div></div><div className="flex flex-wrap gap-2 mt-6 justify-center sm:justify-start">{anime.moreInfo.genres.map((g: string) => (<Link key={g} href={`/search?type=${g}`} className="text-[9px] px-4 py-1.5 bg-white/5 rounded-full text-zinc-500 border border-white/5 hover:text-white hover:bg-red-600 transition-all font-black uppercase tracking-widest active:scale-90 shadow-sm hover:shadow-red-900/20 shadow-red-900/10">{g}</Link>))}</div><div className="mt-auto pt-6 w-full flex justify-center sm:justify-end"><StarRating animeId={animeId} initialRating={anime.stats.rating} /></div></div>
               </div>
-              
-              <div className="flex-1 min-h-0 relative px-10 mt-4 overflow-hidden flex flex-col">
-                 <h4 className="text-[10px] font-black text-red-600 uppercase tracking-[0.5em] mb-3 flex items-center gap-2 shadow-sm shrink-0"><Info size={12} className="shadow-sm"/> Synopsis</h4>
-                 <ScrollArea className="flex-1 pr-4 scrollbar-hide shadow-inner shadow-red-900/5"><p className="text-zinc-400 text-sm leading-relaxed pb-8 antialiased font-medium opacity-90 drop-shadow-sm shadow-black">{anime.description}</p></ScrollArea>
-              </div>
-              
+              <div className="flex-1 min-h-0 relative px-10 mt-4 overflow-hidden flex flex-col"><h4 className="text-[10px] font-black text-red-600 uppercase tracking-[0.5em] mb-3 flex items-center gap-2 shadow-sm shrink-0"><Info size={12} className="shadow-sm"/> Synopsis</h4><ScrollArea className="flex-1 pr-4 scrollbar-hide shadow-inner shadow-red-900/5"><p className="text-zinc-400 text-sm leading-relaxed pb-8 antialiased font-medium opacity-90 drop-shadow-sm shadow-black">{anime.description}</p></ScrollArea></div>
               <div className="flex-shrink-0 p-6 border-t border-white/5 bg-[#0a0a0a] shadow-inner shadow-red-900/5">
-                   {/* ... (Footer Row) ... */}
                    <div className="flex w-full items-center gap-3">
                        <div className="bg-white/5 p-2 px-5 rounded-full border border-white/5 flex items-center gap-3 shrink-0 whitespace-nowrap group hover:border-red-500/30 transition-all shadow-inner shadow-black/20"><span className="text-[10px] font-black uppercase tracking-widest text-red-600">Aired</span><span className="text-[10px] font-bold text-zinc-300">{anime.moreInfo.aired || 'N/A'}</span></div>
                        <div className="bg-white/5 p-2 px-5 rounded-full border border-white/5 flex items-center gap-3 shrink-0 whitespace-nowrap group hover:border-red-500/30 transition-all shadow-inner shadow-black/20"><span className="text-[10px] font-black uppercase tracking-widest text-red-600">Premiered</span><span className="text-[10px] font-bold text-zinc-300">{anime.moreInfo.premiered || 'N/A'}</span></div>
