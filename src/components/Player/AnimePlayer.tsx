@@ -94,7 +94,7 @@ const AnimePlayer = forwardRef<AnimePlayerRef, AnimePlayerProps>(({
 
   // Playback State
   const [isPlaying, setIsPlaying] = useState(false);
-  const [isBuffering, setIsBuffering] = useState(true);
+  const [isBuffering, setIsBuffering] = useState(true); // [FIX] Starts true
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(0);
   const [volume, setVolume] = useState(initialVolume);
@@ -133,6 +133,14 @@ const AnimePlayer = forwardRef<AnimePlayerRef, AnimePlayerProps>(({
 
   const hasResumed = useRef(false);
   const [canSave, setCanSave] = useState(false); 
+
+  // Helper
+  const formatTime = (t: number) => {
+    const h = Math.floor(t / 3600);
+    const m = Math.floor((t % 3600) / 60);
+    const s = Math.floor(t % 60);
+    return h > 0 ? `${h}:${m < 10 ? '0' : ''}${m}:${s < 10 ? '0' : ''}${s}` : `${m}:${s < 10 ? '0' : ''}${s}`;
+  };
 
   useImperativeHandle(ref, () => ({
     getCurrentTime: () => videoRef.current?.currentTime || 0,
@@ -195,7 +203,9 @@ const AnimePlayer = forwardRef<AnimePlayerRef, AnimePlayerProps>(({
     const size = SUB_SIZES[subStyle.size as keyof typeof SUB_SIZES];
     const font = SUB_FONTS[subStyle.font as keyof typeof SUB_FONTS];
     const baseLift = SUB_LIFTS[subStyle.lift as keyof typeof SUB_LIFTS];
-    const uiOffset = showControls ? '-80px' : '0px';
+    
+    // [FIX] Responsive Lift Variables
+    const uiOffset = showControls ? 'var(--ui-lift)' : '0px';
 
     const isDarkText = subStyle.color === 'Black';
     const smartBgColor = isDarkText ? 'rgba(255,255,255,0.7)' : 'rgba(0,0,0,0.7)';
@@ -224,8 +234,40 @@ const AnimePlayer = forwardRef<AnimePlayerRef, AnimePlayerProps>(({
     styleTag.textContent = `
         @font-face { font-family: 'BadUnicorn'; src: '/fonts/BadUnicornDemoRegular.ttf' format('truetype'); }
         @font-face { font-family: 'Monas'; src: '/fonts/Monas.ttf' format('truetype'); }
-        video::-webkit-media-text-track-display { transform: translateY(calc(${baseLift} + ${uiOffset})); transition: transform 0.3s ease-in-out; }
-        video::cue { color: ${color} !important; font-size: ${size} !important; background-color: transparent !important; font-family: ${font} !important; ${bgRule} ${shadowRule} ${backdropRule} ${borderRule} padding: 4px 8px; }
+
+        /* [FIX] Responsive Variables for Mobile/Desktop */
+        :root {
+            --ui-lift: -30px; 
+        }
+        @media (min-width: 768px) {
+            :root {
+                --ui-lift: -80px;
+            }
+        }
+
+        video::-webkit-media-text-track-display { 
+             transform: translateY(calc(${baseLift} + ${uiOffset})); 
+             transition: transform 0.3s ease-in-out; 
+        }
+
+        video::cue { 
+            color: ${color} !important; 
+            font-size: ${size} !important; 
+            background-color: transparent !important; 
+            font-family: ${font} !important; 
+            ${bgRule} 
+            ${shadowRule} 
+            ${backdropRule} 
+            ${borderRule} 
+            padding: 4px 8px; 
+        }
+
+        /* [FIX] Mobile Font Scaling */
+        @media (max-width: 768px) {
+            video::cue {
+                font-size: calc(${size} * 0.75) !important;
+            }
+        }
     `;
   }, [subStyle, showControls]);
 
@@ -251,7 +293,7 @@ const AnimePlayer = forwardRef<AnimePlayerRef, AnimePlayerProps>(({
     const video = videoRef.current;
     if (!video || !url) return;
 
-    setIsBuffering(true);
+    setIsBuffering(true); // [FIX] Show loader immediately
     if (hlsRef.current) hlsRef.current.destroy();
 
     const finalUrl = url.startsWith('http') ? `/api/proxy?url=${encodeURIComponent(url)}` : url;
@@ -268,7 +310,7 @@ const AnimePlayer = forwardRef<AnimePlayerRef, AnimePlayerProps>(({
         const levels = data.levels.map((l, i) => ({ height: l.height, index: i })).sort((a, b) => b.height - a.height);
         setQualities(levels);
         if (startTime > 0) { video.currentTime = startTime; hasResumed.current = true; }
-        setIsBuffering(false);
+        // Note: We wait for ON_PLAYING or Level Loaded to clear buffer
         if (autoPlay) video.play().catch(() => setIsPlaying(false));
       });
       hls.on(Hls.Events.LEVEL_SWITCHED, (_, data) => {
@@ -280,7 +322,7 @@ const AnimePlayer = forwardRef<AnimePlayerRef, AnimePlayerProps>(({
       hlsRef.current = hls;
     } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
       video.src = finalUrl;
-      video.addEventListener('loadedmetadata', () => { if (startTime > 0) video.currentTime = startTime; setIsBuffering(false); if (autoPlay) video.play(); });
+      video.addEventListener('loadedmetadata', () => { if (startTime > 0) video.currentTime = startTime; if (autoPlay) video.play(); });
     }
 
     const handleKey = (e: KeyboardEvent) => {
@@ -373,28 +415,6 @@ const AnimePlayer = forwardRef<AnimePlayerRef, AnimePlayerProps>(({
       setCurrentSubtitle(index); setActiveMenu('none'); if(canSave) onInteract?.(); 
   };
 
-  const handleSeekStart = () => setIsScrubbing(true);
-  const handleSeekChange = (e: React.ChangeEvent<HTMLInputElement>) => setCurrentTime(parseFloat(e.target.value));
-  const handleSeekEnd = (e: React.MouseEvent<HTMLInputElement>) => {
-    const time = parseFloat(e.currentTarget.value);
-    if (videoRef.current) { videoRef.current.currentTime = time; setCurrentTime(time); }
-    setIsScrubbing(false); if(canSave) onInteract?.(); 
-  };
-  const handleSeekHover = (e: React.MouseEvent<HTMLDivElement>) => {
-    const rect = e.currentTarget.getBoundingClientRect();
-    const percent = (e.clientX - rect.left) / rect.width;
-    setHoverTime(percent * duration);
-    setHoverPos(percent * 100);
-  };
-  
-  // [FIX] Helper function defined BEFORE usage
-  const formatTime = (t: number) => {
-    const h = Math.floor(t / 3600);
-    const m = Math.floor((t % 3600) / 60);
-    const s = Math.floor(t % 60);
-    return h > 0 ? `${h}:${m < 10 ? '0' : ''}${m}:${s < 10 ? '0' : ''}${s}` : `${m}:${s < 10 ? '0' : ''}${s}`;
-  };
-
   // --- TOUCH & GESTURE LOGIC ---
   const handleTouchStart = (e: React.TouchEvent) => {
       if (!videoRef.current || !containerRef.current) return;
@@ -411,16 +431,19 @@ const AnimePlayer = forwardRef<AnimePlayerRef, AnimePlayerProps>(({
 
   const handleTouchMove = (e: React.TouchEvent) => {
       if (!touchStartRef.current || !containerRef.current || !videoRef.current) return;
-      const rect = containerRef.current.getBoundingClientRect();
-      const deltaX = e.touches[0].clientX - touchStartRef.current.x;
-      const deltaY = touchStartRef.current.y - e.touches[0].clientY; // Invert Y
       
-      // Determine Dominant Axis
+      const deltaX = e.touches[0].clientX - touchStartRef.current.x;
+      const deltaY = touchStartRef.current.y - e.touches[0].clientY; 
+      
+      // [FIX] Gesture Deadzone (Mistouch Protection)
+      if (Math.abs(deltaX) < 10 && Math.abs(deltaY) < 10) return;
+
+      const rect = containerRef.current.getBoundingClientRect();
       const isHorizontal = Math.abs(deltaX) > Math.abs(deltaY);
 
       if (isHorizontal) {
           if (horizontalGesture === 'seek') {
-              const seekTime = Math.max(0, Math.min(duration, touchStartRef.current.curTime + (deltaX / rect.width) * 90)); // Sensitivity
+              const seekTime = Math.max(0, Math.min(duration, touchStartRef.current.curTime + (deltaX / rect.width) * 90)); 
               videoRef.current.currentTime = seekTime;
               setCurrentTime(seekTime);
               setGestureOverlay({ icon: <MousePointer2 size={32}/>, text: formatTime(seekTime) });
@@ -431,9 +454,7 @@ const AnimePlayer = forwardRef<AnimePlayerRef, AnimePlayerProps>(({
               setGestureOverlay({ icon: <Volume2 size={32}/>, text: `${Math.round(newVol * 100)}%` });
           }
       } else {
-          // Vertical
           if (verticalGesture === 'vol_bright') {
-              // Right side = Volume, Left side = Brightness
               if (touchStartRef.current.x > rect.width / 2) {
                   const newVol = Math.max(0, Math.min(1, touchStartRef.current.val + (deltaY / 200)));
                   setVolume(newVol);
@@ -449,23 +470,21 @@ const AnimePlayer = forwardRef<AnimePlayerRef, AnimePlayerProps>(({
   };
 
   const handleTouchEnd = (e: React.TouchEvent) => {
-      setGestureOverlay(null); // Hide overlay
+      setGestureOverlay(null); 
       if (!touchStartRef.current) return;
       
       const deltaX = e.changedTouches[0].clientX - touchStartRef.current.x;
       const deltaY = touchStartRef.current.y - e.changedTouches[0].clientY;
       const timeDiff = Date.now() - touchStartRef.current.time;
 
-      // Handle Swipes (Fast gestures)
+      // Handle Swipes
       if (timeDiff < 300 && (Math.abs(deltaX) > 50 || Math.abs(deltaY) > 50)) {
           if (Math.abs(deltaX) > Math.abs(deltaY)) {
-              // Horizontal Swipe
               if (horizontalGesture === 'nav' && onNext) {
-                  if (deltaX < -50) onNext(); // Swipe Left -> Next
-                  if (deltaX > 50 && videoRef.current) videoRef.current.currentTime = 0; // Swipe Right -> Restart
+                  if (deltaX < -50) onNext(); 
+                  if (deltaX > 50 && videoRef.current) videoRef.current.currentTime = 0; 
               }
           } else {
-              // Vertical Swipe
               if (verticalGesture === 'fullscreen') toggleFullscreen();
           }
       }
@@ -501,10 +520,30 @@ const AnimePlayer = forwardRef<AnimePlayerRef, AnimePlayerProps>(({
     }
 
     lastTapTimeRef.current = now;
+    
+    // [FIX] Tap Toggle Logic: Show if hidden, Hide if shown
     clickTimerRef.current = setTimeout(() => { 
-        setShowControls(prev => !prev);
+        if (showControls) {
+            setShowControls(false); // Immediate Hide
+        } else {
+            showUI(); // Show with auto-hide timer
+        }
         clickTimerRef.current = null; 
     }, 250);
+  };
+
+  const handleSeekStart = () => setIsScrubbing(true);
+  const handleSeekChange = (e: React.ChangeEvent<HTMLInputElement>) => setCurrentTime(parseFloat(e.target.value));
+  const handleSeekEnd = (e: React.MouseEvent<HTMLInputElement>) => {
+    const time = parseFloat(e.currentTarget.value);
+    if (videoRef.current) { videoRef.current.currentTime = time; setCurrentTime(time); }
+    setIsScrubbing(false); if(canSave) onInteract?.(); 
+  };
+  const handleSeekHover = (e: React.MouseEvent<HTMLDivElement>) => {
+    const rect = e.currentTarget.getBoundingClientRect();
+    const percent = (e.clientX - rect.left) / rect.width;
+    setHoverTime(percent * duration);
+    setHoverPos(percent * 100);
   };
 
   const showUI = () => {
@@ -532,7 +571,9 @@ const AnimePlayer = forwardRef<AnimePlayerRef, AnimePlayerProps>(({
         onPlay={() => { setIsPlaying(true); setIsBuffering(false); showUI(); }}
         onPause={() => { setIsPlaying(false); onPause?.(); if(canSave) onInteract?.(); showUI(); }}
         onWaiting={() => { if(!seekOverlay) setIsBuffering(true); }}
+        // [FIX] Buffering stops on Playing or CanPlay
         onPlaying={() => setIsBuffering(false)}
+        onCanPlay={() => setIsBuffering(false)}
         onTimeUpdate={handleTimeUpdate}
         onLoadedMetadata={() => setDuration(videoRef.current?.duration || 0)}
         onEnded={() => { if(canSave) onInteract?.(); onEnded?.(); }}
@@ -544,15 +585,7 @@ const AnimePlayer = forwardRef<AnimePlayerRef, AnimePlayerProps>(({
       </video>
       
       {seekOverlay && (<div className="absolute inset-0 z-50 flex items-center justify-center pointer-events-none animate-in fade-in zoom-in-50 duration-200"><div className="bg-black/50 backdrop-blur-md px-8 py-4 rounded-full text-white font-black text-3xl tracking-widest border border-white/10 shadow-2xl">{seekOverlay}</div></div>)}
-      
-      {gestureOverlay && (
-          <div className="absolute inset-0 z-50 flex flex-col items-center justify-center pointer-events-none animate-in fade-in zoom-in-50 duration-200">
-              <div className="bg-black/60 backdrop-blur-md p-6 rounded-full text-white border border-white/10 shadow-2xl mb-4">
-                  {gestureOverlay.icon}
-              </div>
-              <span className="text-xl font-bold text-white text-shadow">{gestureOverlay.text}</span>
-          </div>
-      )}
+      {gestureOverlay && (<div className="absolute inset-0 z-50 flex flex-col items-center justify-center pointer-events-none animate-in fade-in zoom-in-50 duration-200"><div className="bg-black/60 backdrop-blur-md p-6 rounded-full text-white border border-white/10 shadow-2xl mb-4">{gestureOverlay.icon}</div><span className="text-xl font-bold text-white text-shadow">{gestureOverlay.text}</span></div>)}
 
       {isBuffering && !seekOverlay && !gestureOverlay && (<div className="absolute inset-0 z-50 flex flex-col items-center justify-center bg-black/60 backdrop-blur-sm"><div className="relative w-40 h-40 flex items-center justify-center"><img src="/run-happy.gif" alt="Loading..." className="w-32 h-32 object-contain relative z-10" /><div className="absolute bottom-4 w-full h-1 bg-gradient-to-r from-transparent via-red-600/50 to-transparent animate-slide-fast" /></div><p className="mt-4 font-[Cinzel] text-red-500 animate-pulse tracking-[0.4em] text-[10px] font-bold uppercase">Loading Reality...</p></div>)}
       
