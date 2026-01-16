@@ -7,11 +7,9 @@ if (!supabaseUrl || !supabaseAnonKey) {
   throw new Error('Missing Supabase Environment Variables');
 }
 
-// --- SINGLETON CLEANUP (Keeps the app from crashing) ---
+// --- SINGLETON CLEANUP ---
 const globalForSupabase = global as unknown as { supabase: ReturnType<typeof createClient> };
 
-// THE FIX: The word 'export' is added here so AuthContext can read it.
-// We still use 'globalForSupabase' to prevent the crash.
 export const supabase = globalForSupabase.supabase || createClient(supabaseUrl, supabaseAnonKey, {
     auth: {
         persistSession: true,
@@ -30,9 +28,6 @@ if (process.env.NODE_ENV !== 'production') {
 
 const BASE_URL = 'https://shadow-garden-wqkq.vercel.app/anime/hianime';
 const BASE_URL_V2 = 'https://hianime-api-mu.vercel.app/api/v2/hianime';
-
-// ❌ REMOVED: Duplicate Supabase initialization
-// The 'supabase' export is now handled by the import above.
 
 // ==========================================
 //  2. SHARED TYPES
@@ -330,11 +325,13 @@ export interface V2StreamingLinks {
   headers?: {
     Referer: string;
   };
+  // Normalized Track Interface
   tracks?: { 
-    url: string; 
-    lang: string; 
-    label?: string;
-    kind?: string; 
+    url: string;    // Required by player
+    lang: string;   // Required by player
+    label: string;  // Normalized
+    kind: string;   // Normalized
+    default?: boolean;
   }[];
   intro?: {
     start: number;
@@ -417,14 +414,11 @@ export class AnimeAPI_V2 {
   private static async request<T>(endpoint: string, params: Record<string, any> = {}): Promise<T | null> {
     try {
       let targetUrl = `${BASE_URL_V2}${endpoint}`;
-      
       const queryParts = Object.keys(params)
         .filter(key => params[key] !== undefined && params[key] !== null)
         .map(key => `${key}=${encodeURIComponent(String(params[key]))}`);
       
-      if (queryParts.length > 0) {
-        targetUrl += `?${queryParts.join('&')}`;
-      }
+      if (queryParts.length > 0) targetUrl += `?${queryParts.join('&')}`;
 
       const proxyUrl = typeof window !== 'undefined' 
         ? `/api/proxy?url=${encodeURIComponent(targetUrl)}` 
@@ -434,12 +428,8 @@ export class AnimeAPI_V2 {
       if (!response.ok) throw new Error(`V2 API Error: ${response.status}`);
       
       const json = await response.json();
-      
-      // V2 API often wraps data in a 'data' object
-      if (json.status === 200 || json.success === true) {
-        return json.data;
-      }
-      return json; // Fallback if data is at root
+      if (json.status === 200 || json.success === true) return json.data;
+      return json;
 
     } catch (error) {
       console.error(`V2 Fetch failed [${endpoint}]:`, error);
@@ -455,12 +445,31 @@ export class AnimeAPI_V2 {
   static async getNextEpisodeSchedule(animeId: string): Promise<V2EpisodeSchedule | null> { return this.request<V2EpisodeSchedule>(`/anime/${animeId}/next-episode-schedule`); }
   static async getEpisodeServers(animeEpisodeId: string): Promise<V2EpisodeServers | null> { return this.request<V2EpisodeServers>('/episode/servers', { animeEpisodeId }); }
   
+  // [CRITICAL FIX] Normalize Subtitles to match Interface
   static async getEpisodeSources(
     animeEpisodeId: string, 
     server: string = 'hd-1', 
     category: 'sub' | 'dub' | 'raw' = 'sub'
   ): Promise<V2StreamingLinks | null> {
-    return this.request<V2StreamingLinks>('/episode/sources', { animeEpisodeId, server, category });
+    const data = await this.request<V2StreamingLinks>('/episode/sources', { animeEpisodeId, server, category });
+    
+    if (data && data.tracks) {
+        data.tracks = data.tracks
+            .filter((t: any) => {
+                const isThumb = t.kind === 'thumbnails' || t.label?.toLowerCase().includes('thumbnail') || t.file?.includes('thumbnail');
+                return !isThumb; 
+            })
+            // [FIX] Map ensures 'url' and 'lang' are present as per interface
+            .map((t: any) => ({
+                url: t.file || t.url,
+                lang: t.lang || t.label || 'Unknown',
+                label: t.label || t.lang || 'Unknown',
+                kind: 'captions',
+                default: !!t.default
+            }));
+    }
+    
+    return data;
   }
 
   static async getGenreAnimes(name: string, page = 1): Promise<V2GenericListResult | null> { return this.request<V2GenericListResult>(`/genre/${name}`, { page }); }
@@ -535,18 +544,8 @@ export class UserAPI {
   }
 }
 
-
-
-// ==========================================
-//  8. IMAGE UPLOAD SERVICE (ImgBB)
-// ==========================================
-
 export class ImageAPI {
-  /**
-   * Uploads a file to ImgBB and returns the public URL
-   */
   static async uploadImage(file: File): Promise<string> {
-    // Robust environment variable retrieval
     const API_KEY = process.env.NEXT_PUBLIC_IMGBB_API_KEY || '1DL4pRCKKmg238fsCU6i7ZYEStP9fL9o4q'; 
 
     if (!API_KEY || API_KEY === 'undefined') {
@@ -557,7 +556,6 @@ export class ImageAPI {
     formData.append('image', file);
 
     try {
-      // We pass the key as a URL parameter as required by ImgBB API v1 documentation
       const response = await fetch(`https://api.imgbb.com/1/upload?key=${API_KEY}`, {
         method: 'POST',
         body: formData,
@@ -566,7 +564,6 @@ export class ImageAPI {
       const data = await response.json();
 
       if (!data.success) {
-        // If the API returns a key error, we catch it here
         if (data.status_code === 400 && data.error?.message?.includes('key')) {
             throw new Error('Invalid ImgBB API Key. Check your dashboard at api.imgbb.com');
         }
