@@ -1,24 +1,36 @@
 "use client";
 
-import React, { useState, useEffect, useMemo, Suspense, useRef } from 'react';
+/**
+ * SHADOW GARDEN: WATCH TOWER (VER 89.4 - DATA RICH PERSISTENCE)
+ * =============================================================================
+ * * [DATA INTEGRITY]
+ * - Now saves: Episode Number, Image, Total Count, Type, and Progress.
+ * - Logic: ALWAYS updates the single row for the anime_id (Upsert). 
+ * Go back to Ep 1? It updates to Ep 1.
+ * * [PLAYER SYNC]
+ * - Switched to robust 'onProgress' callback to capture time (Fixes "Not saving").
+ * * [UI]
+ * - Shadow Capsule Dropdowns preserved.
+ * - Background re-validation silent.
+ */
+
+import React, { useState, useEffect, useMemo, Suspense, useRef, useCallback } from 'react';
 import { useRouter, useSearchParams, useParams } from 'next/navigation';
 import Link from 'next/link';
 import { 
   SkipForward, SkipBack, Server as ServerIcon, 
   Layers, Clock, AlertCircle, Tv, Play, 
   Grid, List, Timer, Lightbulb, 
-  ChevronDown, Heart, Eye, CheckCircle, XCircle,
+  ChevronDown, Heart, CheckCircle, XCircle,
   FastForward, Star, Info, MessageSquare, User,
-  Loader2 
+  Loader2, Globe, Flame, Calendar, Copyright, Check
 } from 'lucide-react';
 
-// --- API & LIBS ---
-import { AnimeAPI_V2, supabase } from '@/lib/api'; 
+import { AnimeAPI_V2, supabase, WatchlistAPI } from '@/lib/api'; 
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
 import { useAuth } from '@/context/AuthContext'; 
 
-// --- COMPONENTS ---
 import AnimePlayer from '@/components/Player/AnimePlayer'; 
 import WatchListButton from '@/components/Watch/WatchListButton'; 
 import ShadowComments from '@/components/Comments/ShadowComments'; 
@@ -39,11 +51,23 @@ interface V2EpisodeSchedule {
     secondsUntilAiring: number | null;
 }
 
+// --- UTILS: CONNECTION RETRY ---
+async function retryOperation<T>(operation: () => Promise<T>, retries = 3, delay = 1000): Promise<T> {
+    try {
+        return await operation();
+    } catch (error) {
+        if (retries <= 0) throw error;
+        await new Promise(res => setTimeout(res, delay));
+        return retryOperation(operation, retries - 1, delay * 2);
+    }
+}
+
 // ==========================================
 //  HOOKS
 // ==========================================
 
 const useWatchSettings = () => {
+  const { user } = useAuth();
   const [settings, setSettings] = useState({
     autoPlay: true,
     autoSkip: true,
@@ -57,10 +81,34 @@ const useWatchSettings = () => {
     if (saved) setSettings(prev => ({ ...prev, ...JSON.parse(saved) }));
   }, []);
 
-  const updateSetting = (key: keyof typeof settings, value: any) => {
+  useEffect(() => {
+    if (!user || !supabase) return;
+    const fetchProfileSettings = async () => {
+        try {
+            const { data } = await (supabase.from('profiles') as any)
+                .select('player_settings')
+                .eq('id', user.id)
+                .single();
+            if (data?.player_settings) {
+                setSettings(prev => ({ ...prev, ...data.player_settings }));
+                localStorage.setItem('shadow_watch_settings', JSON.stringify(data.player_settings));
+            }
+        } catch (e) { console.error("Sync Settings Failed", e); }
+    };
+    fetchProfileSettings();
+  }, [user]);
+
+  const updateSetting = async (key: keyof typeof settings, value: any) => {
     setSettings(prev => {
       const newSettings = { ...prev, [key]: value };
       localStorage.setItem('shadow_watch_settings', JSON.stringify(newSettings));
+      if (user && supabase) {
+          (supabase.from('profiles') as any).update({
+              player_settings: newSettings
+          }).eq('id', user.id).then(({ error }: any) => {
+              if (error) console.error("Cloud Save Failed", error);
+          });
+      }
       return newSettings;
     });
   };
@@ -94,9 +142,7 @@ const NextEpisodeTimer = ({ schedule, status }: { schedule: V2EpisodeSchedule | 
       const now = new Date().getTime();
       const target = new Date(schedule.airingISOTimestamp!).getTime();
       const diff = target - now;
-      
       if (diff <= 0) { setDisplayText("Aired"); return; }
-      
       const days = Math.floor(diff / 86400000);
       const hours = Math.floor((diff % 86400000) / 3600000);
       const minutes = Math.floor((diff % 3600000) / 60000);
@@ -116,48 +162,76 @@ const NextEpisodeTimer = ({ schedule, status }: { schedule: V2EpisodeSchedule | 
   );
 };
 
-// --- REAL STAR RATING CONNECTED TO DB ---
-interface StarRatingProps { animeId: string; initialRating?: string | number; }
-const StarRating = ({ animeId, initialRating = 0 }: StarRatingProps) => {
-    const numericInitial = typeof initialRating === 'string' ? parseFloat(initialRating) : initialRating;
-    const [rating, setRating] = useState(numericInitial || 0);
+const StarRating = ({ animeId, initialRating = 0 }: { animeId: string; initialRating?: string | number }) => {
+    const [userRating, setUserRating] = useState(0); 
+    const [avgRating, setAvgRating] = useState(0);
     const [hover, setHover] = useState(0);
-    
-    const { user, profile } = useAuth();
+    const { user } = useAuth();
+
+    useEffect(() => {
+        const fetchRatings = async () => {
+            if (!supabase) return;
+            try {
+                const allRatings = await retryOperation(async () => {
+                   const { data, error } = await (supabase.from('anime_ratings') as any).select('rating').eq('anime_id', animeId);
+                   if (error) throw error;
+                   return data;
+                });
+
+                if (allRatings && allRatings.length > 0) {
+                    const ratings = allRatings as Array<{ rating: number }>;
+                    const sum = ratings.reduce((acc, curr) => acc + (curr.rating ?? 0), 0);
+                    setAvgRating(sum / ratings.length);
+                } else {
+                    setAvgRating(typeof initialRating === 'string' ? parseFloat(initialRating) : (typeof initialRating === 'number' ? initialRating : 0));
+                }
+
+                if (user) {
+                    const myRating = await retryOperation(async () => {
+                        const { data } = await (supabase.from('anime_ratings') as any).select('rating').eq('user_id', user.id).eq('anime_id', animeId).single();
+                        return data;
+                    });
+                    if (myRating && (myRating as any).rating != null) setUserRating((myRating as any).rating);
+                }
+            } catch (e) { console.error("Rating fetch failed", e); }
+        };
+        fetchRatings();
+    }, [user, animeId, initialRating]);
 
     const handleRate = async (score: number) => {
-        if (!user || profile?.is_guest) {
-            toast.error("Shadow Agents only. Please login to rate.");
-            return;
-        }
-
-        setRating(score);
+        if (!user) { toast.error("Shadow Agents only. Please login to rate."); return; }
+        setUserRating(score); 
         if (supabase) {
             try {
-                // ✅ FIX: Cast the from selection to 'any' to resolve the Postgrest overload 'never' error
-                await (supabase.from('anime_ratings') as any).upsert({ 
-                    user_id: user.id, 
-                    anime_id: animeId, 
-                    rating: score 
-                }, { onConflict: 'user_id, anime_id' });
+                const { error } = await (supabase.from('anime_ratings') as any).upsert({ user_id: user.id, anime_id: animeId, rating: score }, { onConflict: 'user_id, anime_id' });
+                if (error) throw error;
                 toast.success(`Rated ${score} stars!`);
-            } catch (err: any) {
-                if (err.name === 'AbortError' || err.message?.includes('aborted')) return;
-                console.error(err);
-            }
+                const { data: allRatings } = await (supabase.from('anime_ratings') as any).select('rating').eq('anime_id', animeId);
+                if (allRatings?.length) {
+                   const sum = allRatings.reduce((acc:any, curr:any) => acc + curr.rating, 0);
+                   setAvgRating(sum / allRatings.length);
+                }
+            } catch (err) { console.error("Rating Error:", err); }
         }
     };
 
     return (
         <div className="flex flex-col gap-1 items-end">
-            <span className="text-[8px] text-zinc-500 font-bold uppercase tracking-widest text-right">Rate This</span>
-            <div className="flex items-center gap-0.5">
-                {[1, 2, 3, 4, 5].map((star) => (
-                    <button key={star} onMouseEnter={() => setHover(star)} onMouseLeave={() => setHover(0)} onClick={() => handleRate(star)} className="focus:outline-none transition-transform hover:scale-110 active:scale-95">
-                        <Star size={14} className={cn("transition-all duration-300", star <= (hover || rating) ? "fill-red-600 text-red-600 shadow-red-500/50" : "text-zinc-700")} />
-                    </button>
-                ))}
-                <span className="text-[10px] text-zinc-300 ml-1.5 font-black">{Number(rating || 0).toFixed(1)}</span>
+            <div className="flex items-center gap-2">
+                 <span className="text-[8px] text-zinc-500 font-bold uppercase tracking-widest text-right">{userRating > 0 ? "Your Rating" : "Rate This"}</span>
+                 <span className="text-[9px] text-zinc-500 font-bold uppercase tracking-tighter">(AVG: {avgRating.toFixed(1)})</span>
+            </div>
+            <div className="flex items-center gap-2">
+                <div className="flex items-center gap-0.5">
+                    {[1, 2, 3, 4, 5].map((star) => (
+                        <button key={star} onMouseEnter={() => setHover(star)} onMouseLeave={() => setHover(0)} onClick={() => handleRate(star)} className="focus:outline-none transition-transform hover:scale-110 active:scale-95">
+                            <Star size={14} className={cn("transition-all duration-300", star <= (hover || userRating) ? "fill-red-600 text-red-600 shadow-red-500/50" : "text-zinc-700")} />
+                        </button>
+                    ))}
+                </div>
+                <div className="flex flex-col items-end leading-none">
+                    <span className="text-[12px] text-white font-black">{userRating > 0 ? userRating : "?"}<span className="text-zinc-500 text-[10px]">/5</span></span>
+                </div>
             </div>
         </div>
     );
@@ -209,12 +283,24 @@ const MarqueeTitle = ({ text }: { text: string }) => {
     const containerRef = useRef<HTMLDivElement>(null);
     const textRef = useRef<HTMLSpanElement>(null);
     const [isOverflowing, setIsOverflowing] = useState(false);
-    useEffect(() => { if (containerRef.current && textRef.current) setIsOverflowing(textRef.current.offsetWidth > containerRef.current.offsetWidth); }, [text]);
+    const [offset, setOffset] = useState(0);
+
+    useEffect(() => { 
+        if (containerRef.current && textRef.current) {
+            const containerWidth = containerRef.current.offsetWidth;
+            const textWidth = textRef.current.offsetWidth;
+            const checkOverflow = textWidth > containerWidth;
+            setIsOverflowing(checkOverflow);
+            if (checkOverflow) setOffset(containerWidth - textWidth);
+        } 
+    }, [text]);
+
     return (
         <div className="flex items-center bg-white/5 rounded-full px-4 h-8 border border-white/5 w-full sm:w-[280px] overflow-hidden relative transition-all hover:border-red-500/20 active:scale-95 group shadow-inner shadow-red-900/5">
              <span className="text-[11px] text-red-500 font-black uppercase mr-2 flex-shrink-0 group-hover:animate-pulse">NOW:</span>
              <div ref={containerRef} className="flex-1 overflow-hidden relative h-full flex items-center">
-                <span ref={textRef} className={cn("text-[11px] font-black uppercase tracking-tighter text-zinc-300 whitespace-nowrap", isOverflowing ? 'animate-marquee-slow' : '')}>{text}</span>
+                <span ref={textRef} className="text-[11px] font-black uppercase tracking-tighter text-zinc-300 whitespace-nowrap will-change-transform" style={isOverflowing ? { animation: `pingPong ${Math.abs(offset) / 20}s linear infinite alternate` } : {}}>{text}</span>
+                <style jsx>{` @keyframes pingPong { 0% { transform: translateX(0); } 100% { transform: translateX(${offset}px); } } `}</style>
              </div>
         </div>
     );
@@ -230,6 +316,7 @@ function WatchContent() {
   const searchParams = useSearchParams();
   const animeId = params.id as string;
   const urlEpId = searchParams.get('ep');
+  const { user } = useAuth(); 
 
   const { settings, updateSetting } = useWatchSettings();
   const [info, setInfo] = useState<any | null>(null);
@@ -239,6 +326,7 @@ function WatchContent() {
 
   const [currentEpId, setCurrentEpId] = useState<string | null>(null);
   const [streamUrl, setStreamUrl] = useState<string | null>(null);
+  const [subtitles, setSubtitles] = useState<any[]>([]); 
   const [isStreamLoading, setIsStreamLoading] = useState(false);
   const [streamError, setStreamError] = useState<string | null>(null);
   const [intro, setIntro] = useState<{start:number; end:number}>();
@@ -249,23 +337,107 @@ function WatchContent() {
   const [epChunkIndex, setEpChunkIndex] = useState(0);
   const [epViewMode, setEpViewMode] = useState<'capsule' | 'list'>('capsule');
 
+  // Tracking State
+  const [initialTime, setInitialTime] = useState(0);
+  const [watchedEpNumbers, setWatchedEpNumbers] = useState<number[]>([]);
+  const progressRef = useRef(0);
+  const lastSavedRef = useRef(0);
+
+  // --- PROGRESS SAVING LOGIC (HYBRID) ---
+  const saveProgress = useCallback(async (force = false) => {
+      if (!currentEpId || !info) return;
+      const currentSeconds = Math.floor(progressRef.current);
+      
+      // Don't save if progress is effectively 0 unless forced
+      if (currentSeconds === 0 && !force) return;
+      // Don't save if progress hasn't changed much
+      if (!force && Math.abs(currentSeconds - lastSavedRef.current) < 5) return;
+      
+      const currentEpObj = episodes.find(e => e.episodeId === currentEpId);
+      const epNum = currentEpObj ? Number(currentEpObj.number) : 1;
+      const epImage = currentEpObj?.image || info.anime.poster; // Fallback to poster
+      
+      lastSavedRef.current = currentSeconds;
+
+      // 1. GUEST: LocalStorage
+      const localData = JSON.parse(localStorage.getItem('shadow_continue_watching') || '{}');
+      localData[animeId] = {
+          animeId, episodeId: currentEpId, episodeNumber: epNum, progress: currentSeconds, lastUpdated: Date.now()
+      };
+      localStorage.setItem('shadow_continue_watching', JSON.stringify(localData));
+
+      // 2. USER: Supabase (Upsert)
+      if (user && supabase) {
+         try {
+             // Save "Continue Watching" (Resumes exactly where you left off)
+             // This OVERWRITES the previous entry for this anime_id
+             await (supabase.from('user_continue_watching') as any).upsert({
+                 user_id: user.id,
+                 anime_id: animeId,
+                 episode_id: currentEpId,
+                 episode_number: epNum,
+                 episode_image: epImage,
+                 total_episodes: episodes.length,
+                 type: info.anime.stats.type,
+                 progress: currentSeconds, 
+                 last_updated: new Date().toISOString()
+             });
+
+             // If > 80% watched, mark as completed (History Checkmark)
+             const rawDuration = info.anime.stats.duration || "24";
+             const durationVal = parseInt(rawDuration.replace(/\D/g, '')) || 24;
+             const durationSec = durationVal * 60;
+             
+             if (currentSeconds > (durationSec * 0.80) || currentSeconds > 1200) { 
+                  await (supabase.from('user_watched_history') as any).upsert({
+                      user_id: user.id,
+                      anime_id: animeId,
+                      episode_number: epNum
+                  }, { onConflict: 'user_id, anime_id, episode_number' });
+                  
+                  if (!watchedEpNumbers.includes(epNum)) {
+                      setWatchedEpNumbers(prev => [...prev, epNum]);
+                  }
+             }
+         } catch (err) { console.error("Save failed (silent)", err); }
+      }
+  }, [animeId, currentEpId, episodes, info, user, watchedEpNumbers]);
+
+  // Save on Interval, Unload, VisibilityChange
+  useEffect(() => {
+      const interval = setInterval(() => saveProgress(), 10000); 
+      const handleUnload = () => saveProgress(true);
+      const handleVisibility = () => { if (document.hidden) saveProgress(true); };
+
+      window.addEventListener('beforeunload', handleUnload);
+      document.addEventListener('visibilitychange', handleVisibility);
+      
+      return () => {
+          clearInterval(interval);
+          window.removeEventListener('beforeunload', handleUnload);
+          document.removeEventListener('visibilitychange', handleVisibility);
+          saveProgress(true); 
+      };
+  }, [saveProgress]);
+
+  // Load Data
   useEffect(() => {
     let isMounted = true;
     const controller = new AbortController();
 
     const init = async () => {
-      setIsLoadingInfo(true);
+      if (!info) setIsLoadingInfo(true);
+      
       try {
         if (!animeId) throw new Error("No ID");
         
         const [v2InfoRaw, v2EpData, scheduleData] = await Promise.all([
-             AnimeAPI_V2.getAnimeInfo(animeId),
-             AnimeAPI_V2.getEpisodes(animeId),
-             AnimeAPI_V2.getNextEpisodeSchedule(animeId)
+             retryOperation(() => AnimeAPI_V2.getAnimeInfo(animeId)),
+             retryOperation(() => AnimeAPI_V2.getEpisodes(animeId)),
+             retryOperation(() => AnimeAPI_V2.getNextEpisodeSchedule(animeId))
         ]);
 
-        if (controller.signal.aborted) return;
-        if (!isMounted) return;
+        if (controller.signal.aborted || !isMounted) return;
 
         const v2Data = v2InfoRaw as any; 
         const hybridInfo = {
@@ -294,56 +466,78 @@ function WatchContent() {
             },
             recommendations: v2Data.recommendedAnimes || [],
             related: v2Data.relatedAnimes || [],
+            seasons: v2Data.seasons || [], 
             characters: (v2Data.anime.info.charactersVoiceActors || v2Data.anime.info.characterVoiceActor || []).map((item: any) => ({
                 name: item.character.name,
                 image: item.character.poster,
                 role: item.character.cast, 
-                voiceActor: {
-                    name: item.voiceActor.name,
-                    image: item.voiceActor.poster,
-                    language: item.voiceActor.cast
-                }
+                voiceActor: { name: item.voiceActor.name, image: item.voiceActor.poster, language: item.voiceActor.cast }
             }))
         };
         setInfo(hybridInfo);
         setNextEpSchedule(scheduleData);
         setEpisodes(v2EpData?.episodes || []);
-        const foundEp = urlEpId ? v2EpData?.episodes.find((e: any) => e.episodeId === urlEpId) : null;
-        setCurrentEpId(foundEp ? foundEp.episodeId : (v2EpData?.episodes[0]?.episodeId || null));
+        
+        // --- RESUME LOGIC ---
+        let targetEpId: string | null = urlEpId || (v2EpData?.episodes[0]?.episodeId) || null;
+        let resumeTime = 0;
+
+        const localData = JSON.parse(localStorage.getItem('shadow_continue_watching') || '{}');
+        if (localData[animeId] && !urlEpId) {
+            targetEpId = localData[animeId].episodeId;
+            resumeTime = localData[animeId].progress;
+        }
+
+        if (user) {
+             const [progressData, historyData] = await Promise.all([
+                 (supabase.from('user_continue_watching') as any).select('*').eq('user_id', user.id).eq('anime_id', animeId).single(),
+                 (supabase.from('user_watched_history') as any).select('episode_number').eq('user_id', user.id).eq('anime_id', animeId)
+             ]);
+             
+             if (historyData.data) {
+                 setWatchedEpNumbers(historyData.data.map((r: any) => r.episode_number));
+             }
+
+             if (progressData.data && !urlEpId) {
+                 targetEpId = progressData.data.episode_id;
+                 resumeTime = progressData.data.progress;
+             }
+        }
+        
+        setInitialTime(resumeTime);
+        setCurrentEpId(targetEpId);
+
       } catch (err: any) { 
-        if (err.name === 'AbortError' || err.message?.includes('aborted')) return;
+        if (err.name === 'AbortError') return;
         console.error("Init Error:", err); 
       } finally { 
-        if (isMounted && !controller.signal.aborted) setIsLoadingInfo(false); 
+        if (isMounted) setIsLoadingInfo(false); 
       }
     };
 
     init();
+    return () => { isMounted = false; controller.abort(); };
+  }, [animeId, urlEpId, user]);
 
-    return () => { 
-        isMounted = false; 
-        controller.abort(); 
-    };
-  }, [animeId, urlEpId]);
-
+  // Load Stream
   useEffect(() => {
     if (!currentEpId) return;
     const newUrl = `/watch/${animeId}?ep=${currentEpId}`;
-    if (window.location.pathname + window.location.search !== newUrl) router.replace(newUrl, { scroll: false });
-    
+    window.history.replaceState(null, '', newUrl);
+
     setStreamUrl(null);
+    setSubtitles([]);
     setIsStreamLoading(true);
     setStreamError(null);
+    progressRef.current = 0; 
     
     let isMounted = true;
     const controller = new AbortController();
 
     const loadStream = async () => {
       try {
-        const serverRes = await AnimeAPI_V2.getEpisodeServers(currentEpId);
-        
-        if (controller.signal.aborted) return;
-        if (!isMounted || !serverRes) return;
+        const serverRes = await retryOperation(() => AnimeAPI_V2.getEpisodeServers(currentEpId));
+        if (controller.signal.aborted || !isMounted || !serverRes) return;
         
         setServers(serverRes);
         let activeCat = settings.category;
@@ -356,31 +550,30 @@ function WatchContent() {
         const targetServer = list.find((s:any) => s.serverName === settings.server) || list[0];
         if (!targetServer) throw new Error("Portal Shut");
         setSelectedServerName(targetServer.serverName);
-        const sourceRes = await AnimeAPI_V2.getEpisodeSources(currentEpId, targetServer.serverName, activeCat);
         
+        const sourceRes = await retryOperation(() => AnimeAPI_V2.getEpisodeSources(currentEpId, targetServer.serverName, activeCat));
         if (controller.signal.aborted) return;
 
         if (sourceRes?.sources?.length) {
             const src = sourceRes.sources.find((s: any) => s.type === 'hls') || sourceRes.sources[0];
             setStreamUrl(src.url);
+            if (sourceRes.tracks) setSubtitles(sourceRes.tracks.filter((t: any) => t.kind === 'captions'));
             if(sourceRes.intro) setIntro(sourceRes.intro);
             if(sourceRes.outro) setOutro(sourceRes.outro);
+        } else {
+             setStreamError("No sources found");
         }
       } catch (error: any) { 
-        if (error.name === 'AbortError' || error.message?.includes('aborted')) return;
+        if (error.name === 'AbortError') return;
         if (isMounted) setStreamError("Portal Unstable"); 
       } finally { 
-        if (isMounted && !controller.signal.aborted) setIsStreamLoading(false); 
+        if (isMounted) setIsStreamLoading(false); 
       }
     };
 
     loadStream();
-
-    return () => { 
-        isMounted = false; 
-        controller.abort(); 
-    };
-  }, [currentEpId, animeId, router, settings.category, settings.server]); 
+    return () => { isMounted = false; controller.abort(); };
+  }, [currentEpId, settings.category, settings.server]); 
 
   const currentEpIndex = useMemo(() => episodes.findIndex(e => e.episodeId === currentEpId), [episodes, currentEpId]);
   const currentEpisode = episodes[currentEpIndex];
@@ -388,21 +581,35 @@ function WatchContent() {
   const prevEpisode = currentEpIndex > 0 ? episodes[currentEpIndex - 1] : null;
 
   const episodeChunks = useMemo(() => {
-    const size = 50; 
     const chunks = [];
     for (let i = 0; i < episodes.length; i += 50) chunks.push(episodes.slice(i, i + 50));
     return chunks;
   }, [episodes]);
 
-  const handleEpisodeClick = (id: string) => { if (id === currentEpId) return; setCurrentEpId(id); window.scrollTo({ top: 0, behavior: 'smooth' }); };
+  const handleEpisodeClick = (id: string) => { 
+      saveProgress(true); // Save current before switching
+      if (id === currentEpId) return; 
+      setCurrentEpId(id); 
+      setInitialTime(0); 
+  };
+
+  // [FIX] Simple, Robust Progress Listener
+  const handlePlayerProgress = (state: any) => {
+      // Handles different player event structures
+      const played = state.playedSeconds ?? state.target?.currentTime ?? state;
+      if (typeof played === 'number') {
+          progressRef.current = played;
+      }
+  };
 
   if (isLoadingInfo) return <FantasyLoader text="MATERIALIZING..." />;
   if (!info) return <div className="p-20 text-center text-red-500 font-black uppercase">Connection Lost</div>;
 
-  const { anime, recommendations, related, characters } = info;
+  const { anime, recommendations, related, seasons, characters } = info;
   
   return (
-    <div className="min-h-screen bg-[#050505] text-gray-100 pb-20 relative font-sans overflow-x-hidden">
+    <div className="min-h-screen bg-[#050505] text-gray-100 pb-20 pt-24 relative font-sans overflow-x-hidden">
+      <style jsx global>{`::-webkit-scrollbar { display: none; } * { scrollbar-width: none; }`}</style>
       <div className={cn("fixed inset-0 bg-black/90 z-[39] transition-opacity duration-700 pointer-events-none", settings.dimMode ? 'opacity-100' : 'opacity-0')} />
 
       {/* PLAYER SECTION */}
@@ -411,66 +618,97 @@ function WatchContent() {
             <div className="w-full aspect-video bg-black rounded-3xl overflow-hidden border border-white/5 shadow-2xl relative shadow-red-900/10">
                 {isStreamLoading ? <FantasyLoader text="CHANNELING..." /> : 
                  streamError ? <div className="w-full h-full flex flex-col items-center justify-center bg-zinc-900 gap-4"><AlertCircle className="text-red-500 w-12 h-12 shadow-sm" /><span className="font-black text-[10px] uppercase tracking-[0.3em]">Portal Unstable</span><Button variant="outline" className="rounded-full border-red-500 text-red-500 hover:bg-red-500 hover:text-white" onClick={() => window.location.reload()}>Retry</Button></div> : 
-                 streamUrl ? <AnimePlayer url={streamUrl} title={currentEpisode?.title || anime.name} intro={intro} outro={outro} autoSkip={settings.autoSkip} onEnded={() => { if(settings.autoPlay && nextEpisode) handleEpisodeClick(nextEpisode.episodeId); }} onNext={nextEpisode ? () => handleEpisodeClick(nextEpisode.episodeId) : undefined} /> : 
+                 streamUrl ? <AnimePlayer {...({
+                    url: streamUrl,
+                    subtitles,
+                    title: currentEpisode?.title || anime.name,
+                    intro,
+                    outro,
+                    autoSkip: settings.autoSkip,
+                    startTime: initialTime, 
+                    // [FIX] Direct binding to handlePlayerProgress
+                    onProgress: handlePlayerProgress, 
+                    onEnded: () => { 
+                        saveProgress(true); 
+                        if (settings.autoPlay && nextEpisode) handleEpisodeClick(nextEpisode.episodeId); 
+                    },
+                    onPause: () => saveProgress(true),
+                    onBuffer: () => saveProgress(true),
+                    onNext: nextEpisode ? () => handleEpisodeClick(nextEpisode.episodeId) : undefined
+                  } as any)} /> : 
                  <div className="w-full h-full flex items-center justify-center"><Tv size={48} className="text-zinc-900 opacity-50"/></div>}
             </div>
         </div>
       </div>
 
-      {/* CONTROLS BAR */}
+      {/* CONTROLS */}
       <div className="w-full flex justify-center bg-[#0a0a0a] border-b border-white/5 relative z-40 shadow-red-900/10 shadow-lg">
         <div className="w-full max-w-[1400px] px-4 md:px-8 py-3 flex flex-col lg:flex-row gap-4 justify-between items-center">
-          <div className="flex-1 min-w-0 flex items-center gap-4 w-full sm:w-auto">
-             <MarqueeTitle text={currentEpisode?.title || `Episode ${currentEpisode?.number}`} />
-             <NextEpisodeTimer schedule={nextEpSchedule} status={anime.moreInfo.status} />
-             
-             <WatchListButton 
-                animeId={anime.id} 
-                animeTitle={anime.name} 
-                animeImage={anime.poster} 
-                currentEp={currentEpisode?.number} 
-             />
+          <div className="flex-1 min-w-0 flex items-center gap-4 w-full sm:w-auto overflow-hidden">
+              <MarqueeTitle text={currentEpisode?.title || `Episode ${currentEpisode?.number}`} />
+              <div className="hidden sm:block"><NextEpisodeTimer schedule={nextEpSchedule} status={anime.moreInfo.status} /></div>
+              <WatchListButton animeId={anime.id} animeTitle={anime.name} animeImage={anime.poster} currentEp={currentEpisode?.number} />
           </div>
-          <div className="flex items-center gap-3">
-             <button disabled={!prevEpisode} onClick={() => prevEpisode && handleEpisodeClick(prevEpisode.episodeId)} className={cn("flex items-center gap-2 px-4 h-8 rounded-full border text-[11px] font-black uppercase tracking-tighter transition-all duration-300 shadow-md shadow-black/40", prevEpisode ? "bg-white/5 border-white/10 text-zinc-300 hover:bg-red-600 hover:border-red-500 hover:text-white hover:scale-105 active:scale-90 shadow-red-900/10" : "opacity-10 border-white/5 text-zinc-600")}><SkipBack size={12}/> PREV</button>
-             <button onClick={() => updateSetting('autoSkip', !settings.autoSkip)} className="flex items-center gap-2 px-4 h-8 rounded-full border border-white/5 bg-white/5 text-[11px] font-black uppercase tracking-tighter transition-all duration-300 hover:scale-105 active:scale-90 group shadow-md shadow-red-900/5"><FastForward size={12} className={cn("transition-colors", settings.autoSkip ? "text-red-600 shadow-[0_0_10px_red]" : "text-zinc-500")}/><span className={cn("transition-all duration-300", settings.autoSkip ? "text-white" : "text-zinc-500")}>SKIP</span></button>
-             <button onClick={() => updateSetting('autoPlay', !settings.autoPlay)} className="flex items-center gap-2 px-4 h-8 rounded-full border border-white/5 bg-white/5 text-[11px] font-black uppercase tracking-tighter transition-all duration-300 hover:scale-105 active:scale-90 group shadow-md shadow-red-900/5"><Play size={12} className={cn("transition-colors", settings.autoPlay ? "text-red-600 shadow-[0_0_100_red]" : "text-zinc-500")}/><span className={cn("transition-all duration-300", settings.autoPlay ? "text-white" : "text-zinc-500")}>AUTO</span></button>
-             <Button onClick={() => updateSetting('dimMode', !settings.dimMode)} variant="ghost" size="icon" className={cn("rounded-full w-8 h-8 transition-all hover:scale-110 active:rotate-12 shadow-red-900/10", settings.dimMode ? "text-yellow-500 bg-yellow-500/10" : "text-zinc-600 hover:bg-white/5 shadow-none")}><Lightbulb size={16} /></Button>
-             <div className="flex bg-black/40 rounded-full p-1 border border-white/10 shadow-inner shadow-black/50">{(['sub', 'dub', 'raw'] as const).map((cat) => { const isAvailable = (servers?.[cat]?.length || 0) > 0; return (<button key={cat} disabled={!isAvailable} onClick={() => updateSetting('category', cat)} className={cn("px-3 py-0.5 rounded-full text-[10px] font-black uppercase transition-all relative active:scale-75 shadow-sm", settings.category === cat ? "bg-red-600 text-white shadow-lg" : "text-zinc-600 hover:text-zinc-300", !isAvailable && "opacity-10")}>{cat}{isAvailable && <span className="absolute -top-0.5 -right-0.5 w-1.5 h-1.5 bg-red-600 rounded-full animate-pulse shadow-[0_0_5px_red]" />}</button>);})}</div>
-             <DropdownMenu><DropdownMenuTrigger asChild><Button variant="ghost" className="h-8 gap-2 text-[10px] font-black text-zinc-500 hover:text-white uppercase transition-all hover:scale-105 active:scale-90 shadow-md shadow-red-900/5"><ServerIcon size={12}/> Portal <ChevronDown size={12}/></Button></DropdownMenuTrigger><DropdownMenuContent align="end" className="bg-[#050505] border-white/5 text-zinc-400 z-[100] rounded-xl font-bold uppercase text-[10px] shadow-2xl shadow-red-900/10"><ScrollArea className="h-48">{servers?.[settings.category]?.map((srv: any, idx: number) => (<DropdownMenuItem key={srv.serverId} onClick={() => updateSetting('server', srv.serverName)} className={cn("cursor-pointer focus:bg-red-600 focus:text-white px-4 transition-colors", selectedServerName === srv.serverName && "text-red-500")}>Portal {idx + 1}</DropdownMenuItem>))}</ScrollArea></DropdownMenuContent></DropdownMenu>
-             {nextEpisode ? (<button onClick={() => handleEpisodeClick(nextEpisode.episodeId)} className="flex items-center gap-2 bg-red-600 text-white rounded-full px-5 h-8 text-[11px] font-black uppercase tracking-widest transition-all duration-500 hover:scale-110 active:scale-90 shadow-lg shadow-red-900/40 group">NEXT <SkipForward size={12} className="group-hover:translate-x-1 transition-transform" /></button>) : (<button disabled className="flex items-center gap-2 bg-white/5 border border-white/5 text-zinc-600 rounded-full px-5 h-8 text-[11px] font-black uppercase tracking-widest cursor-not-allowed opacity-50 shadow-inner">NEXT <SkipForward size={12} /></button>)}
+          <div className="flex items-center gap-3 overflow-x-auto w-full sm:w-auto pb-1 sm:pb-0 scrollbar-hide no-scrollbar">
+              <button disabled={!prevEpisode} onClick={() => prevEpisode && handleEpisodeClick(prevEpisode.episodeId)} className={cn("flex items-center gap-2 px-4 h-8 rounded-full border text-[11px] font-black uppercase tracking-tighter transition-all duration-300 shadow-md shadow-black/40 whitespace-nowrap", prevEpisode ? "bg-white/5 border-white/10 text-zinc-300 hover:bg-red-600 hover:border-red-500 hover:text-white hover:scale-105 active:scale-90 shadow-red-900/10" : "opacity-10 border-white/5 text-zinc-600")}><SkipBack size={12}/> PREV</button>
+              <button onClick={() => updateSetting('autoSkip', !settings.autoSkip)} className="flex items-center gap-2 px-4 h-8 rounded-full border border-white/5 bg-white/5 text-[11px] font-black uppercase tracking-tighter transition-all duration-300 hover:scale-105 active:scale-90 group shadow-md shadow-red-900/5 whitespace-nowrap"><FastForward size={12} className={cn("transition-colors", settings.autoSkip ? "text-red-600 shadow-[0_0_10px_red]" : "text-zinc-500")}/><span className={cn("transition-all duration-300", settings.autoSkip ? "text-white" : "text-zinc-500")}>SKIP</span></button>
+              <button onClick={() => updateSetting('autoPlay', !settings.autoPlay)} className="flex items-center gap-2 px-4 h-8 rounded-full border border-white/5 bg-white/5 text-[11px] font-black uppercase tracking-tighter transition-all duration-300 hover:scale-105 active:scale-90 group shadow-md shadow-red-900/5 whitespace-nowrap"><Play size={12} className={cn("transition-colors", settings.autoPlay ? "text-red-600 shadow-[0_0_100_red]" : "text-zinc-500")}/><span className={cn("transition-all duration-300", settings.autoPlay ? "text-white" : "text-zinc-500")}>AUTO</span></button>
+              <Button onClick={() => updateSetting('dimMode', !settings.dimMode)} variant="ghost" size="icon" className={cn("rounded-full w-8 h-8 transition-all hover:scale-110 active:rotate-12 shadow-red-900/10 flex-shrink-0", settings.dimMode ? "text-yellow-500 bg-yellow-500/10" : "text-zinc-600 hover:bg-white/5 shadow-none")}><Lightbulb size={16} /></Button>
+              <div className="flex bg-black/40 rounded-full p-1 border border-white/10 shadow-inner flex-shrink-0">{(['sub', 'dub', 'raw'] as const).map((cat) => { const isAvailable = (servers?.[cat]?.length || 0) > 0; return (<button key={cat} disabled={!isAvailable} onClick={() => updateSetting('category', cat)} className={cn("px-3 py-0.5 rounded-full text-[10px] font-black uppercase transition-all relative active:scale-75 shadow-sm", settings.category === cat ? "bg-red-600 text-white shadow-lg" : "text-zinc-600 hover:text-zinc-300", !isAvailable && "opacity-10")}>{cat}{isAvailable && <span className="absolute -top-0.5 -right-0.5 w-1.5 h-1.5 bg-red-600 rounded-full animate-pulse shadow-[0_0_5px_red]" />}</button>);})}</div>
+              <DropdownMenu modal={false}><DropdownMenuTrigger asChild><Button variant="ghost" className="h-8 gap-2 text-[10px] font-black text-zinc-500 hover:text-white uppercase transition-all hover:scale-105 active:scale-90 shadow-md shadow-red-900/5 whitespace-nowrap"><ServerIcon size={12}/> Portal <ChevronDown size={12}/></Button></DropdownMenuTrigger><DropdownMenuContent align="end" className="bg-[#050505] border border-white/10 rounded-[24px] shadow-[0_0_25px_-5px_rgba(220,38,38,0.4)] z-[40] min-w-[140px] w-auto h-auto max-h-[200px] p-2"><ScrollArea className="h-auto max-h-[180px]"><div className="flex flex-col gap-1">{servers?.[settings.category]?.map((srv: any, idx: number) => (<DropdownMenuItem key={srv.serverId} onClick={() => updateSetting('server', srv.serverName)} className={cn("cursor-pointer focus:bg-red-600 focus:text-white px-3 py-1.5 rounded-full text-[9px] uppercase font-bold tracking-wider mb-1 transition-all", selectedServerName === srv.serverName ? "bg-red-600 text-white shadow-lg" : "text-zinc-400 hover:text-white hover:bg-white/5")}>Portal {idx + 1}</DropdownMenuItem>))}</div></ScrollArea></DropdownMenuContent></DropdownMenu>
+              {nextEpisode ? (<button onClick={() => handleEpisodeClick(nextEpisode.episodeId)} className="flex items-center gap-2 px-4 h-8 rounded-full border border-white/10 bg-white/5 text-zinc-300 text-[11px] font-black uppercase tracking-widest transition-all duration-300 hover:bg-red-600 hover:border-red-500 hover:text-white hover:scale-105 active:scale-90 shadow-md whitespace-nowrap group">NEXT <SkipForward size={12} className="group-hover:translate-x-1 transition-transform" /></button>) : (<button disabled className="flex items-center gap-2 bg-white/5 border border-white/5 text-zinc-600 rounded-full px-5 h-8 text-[11px] font-black uppercase tracking-widest cursor-not-allowed opacity-50 shadow-inner whitespace-nowrap">NEXT <SkipForward size={12} /></button>)}
           </div>
         </div>
       </div>
 
       <div className="w-full flex justify-center mt-8 px-4 md:px-8">
         <div className="w-full max-w-[1400px] grid grid-cols-1 xl:grid-cols-12 gap-8">
-           <div className="xl:col-span-4 h-[700px] bg-[#0a0a0a] rounded-[40px] border border-white/5 overflow-hidden flex flex-col shadow-2xl shadow-red-900/20">
+           
+           {/* EPISODES - LEFT SIDEBAR */}
+           <div className="xl:col-span-4 h-[650px] bg-[#0a0a0a] rounded-[40px] border border-white/5 overflow-hidden flex flex-col shadow-2xl shadow-red-900/20 order-2 xl:order-1">
               <div className="p-5 bg-white/5 border-b border-white/5 flex justify-between items-center flex-shrink-0"><h3 className="font-black text-white flex items-center gap-2 uppercase tracking-tight text-sm font-[Cinzel]"><Layers size={16} className="text-red-600 shadow-sm"/> Episodes <span className="text-[10px] bg-white text-black px-2 rounded-full font-black ml-1 shadow-md">{episodes.length}</span></h3>
                  <div className="flex bg-black/40 rounded-full p-1 border border-white/10 shadow-inner"><button onClick={() => setEpViewMode('capsule')} className={cn("p-1.5 rounded-full transition-all active:scale-75", epViewMode==='capsule'?'bg-white/10 text-white shadow-lg shadow-red-900/10':'text-zinc-600 shadow-none')}><Grid size={14}/></button><button onClick={() => setEpViewMode('list')} className={cn("p-1.5 rounded-full transition-all active:scale-75", epViewMode==='list'?'bg-white/10 text-white shadow-lg shadow-red-900/10':'text-zinc-600 shadow-none')}><List size={14}/></button></div>
               </div>
               {episodeChunks.length > 1 && (<div className="w-full border-b border-white/5 bg-black/20 flex-shrink-0 h-10 overflow-hidden px-4 shadow-inner"><ScrollArea className="w-full h-full whitespace-nowrap"><div className="flex items-center py-2 gap-2 w-max">{episodeChunks.map((_, idx) => (<button key={idx} onClick={() => setEpChunkIndex(idx)} className={cn("px-4 py-1 text-[10px] font-black rounded-full transition-all active:scale-90 shadow-sm", epChunkIndex === idx ? 'bg-red-600 text-white shadow-red-900/40' : 'bg-white/5 text-zinc-500 hover:text-zinc-300')}>{(idx * 50) + 1}-{Math.min((idx + 1) * 50, episodes.length)}</button>))}</div></ScrollArea></div>)}
-              <ScrollArea className="flex-1 p-5 scrollbar-thin scrollbar-thumb-red-600/50 shadow-inner"><div className={cn(epViewMode === 'capsule' ? 'flex flex-wrap gap-2' : 'flex flex-col gap-1.5')}>
-                    {episodeChunks[epChunkIndex]?.map((ep) => { const isCurrent = ep.episodeId === currentEpId;
-                       if (epViewMode === 'capsule') return (<button key={ep.episodeId} onClick={() => handleEpisodeClick(ep.episodeId)} className={cn("h-9 w-12 rounded-full flex items-center justify-center border transition-all text-[11px] font-black relative overflow-hidden active:scale-75 shadow-md", isCurrent ? "bg-red-600 border-red-500 text-white shadow-[0_0_15px_rgba(220,38,38,0.5)] scale-110 z-10" : "bg-zinc-900 border-zinc-800 text-zinc-600 hover:border-red-500/50 hover:text-white shadow-none")}>{ep.number}{ep.isFiller && <span className="absolute top-1 right-2 w-1 h-1 bg-orange-500 rounded-full shadow-[0_0_5px_orange] animate-pulse"/>}</button>);
-                       return (<button key={ep.episodeId} onClick={() => handleEpisodeClick(ep.episodeId)} className={cn("flex items-center justify-between px-4 py-3 rounded-2xl text-xs font-black uppercase transition-all group active:translate-x-1 shadow-sm", isCurrent ? 'bg-red-600 text-white shadow-red-900/30' : 'bg-white/5 text-zinc-500 hover:bg-white/10 hover:text-zinc-300 shadow-none')}><span className="truncate flex-1 text-left mr-2 tracking-tighter">{ep.number}. {ep.title}</span>{ep.isFiller && <span className="text-[8px] bg-orange-500/20 text-orange-500 px-2 rounded-full font-black uppercase tracking-widest">Filler</span>}</button>);})}
-                 </div></ScrollArea>
+              <ScrollArea className="flex-1 p-5 scrollbar-hide shadow-inner">
+                  <div className={cn(epViewMode === 'capsule' ? 'flex flex-wrap gap-2' : 'flex flex-col gap-1.5')}>
+                    {episodeChunks[epChunkIndex]?.map((ep) => { 
+                       const isCurrent = ep.episodeId === currentEpId;
+                       const isWatched = watchedEpNumbers.includes(ep.number);
+                       
+                       if (epViewMode === 'capsule') return (
+                           <button key={ep.episodeId} onClick={() => handleEpisodeClick(ep.episodeId)} className={cn("h-9 w-12 rounded-full flex items-center justify-center border transition-all text-[11px] font-black relative overflow-hidden active:scale-75 shadow-md group", isCurrent ? "bg-red-600 border-red-500 text-white shadow-[0_0_15px_rgba(220,38,38,0.5)] scale-110 z-10" : isWatched ? "bg-zinc-900 border-zinc-700 text-zinc-400" : "bg-zinc-900 border-zinc-800 text-zinc-600 hover:border-red-500/50 hover:text-white shadow-none")}>
+                               {ep.number}
+                               {ep.isFiller && <span className="absolute top-1 right-2 w-1 h-1 bg-orange-500 rounded-full shadow-[0_0_5px_orange] animate-pulse"/>}
+                               {isWatched && !isCurrent && <div className="absolute inset-0 bg-black/50 flex items-center justify-center"><Check size={10} className="text-emerald-500" /></div>}
+                           </button>
+                        );
+                       return (
+                           <button key={ep.episodeId} onClick={() => handleEpisodeClick(ep.episodeId)} className={cn("flex items-center justify-between px-4 py-3 rounded-2xl text-xs font-black uppercase transition-all group active:translate-x-1 shadow-sm", isCurrent ? 'bg-red-600 text-white shadow-red-900/30' : 'bg-white/5 text-zinc-500 hover:bg-white/10 hover:text-zinc-300 shadow-none')}>
+                               <span className="truncate flex-1 text-left mr-2 tracking-tighter flex items-center gap-2">
+                                   {isWatched && <CheckCircle size={12} className="text-emerald-500 shrink-0" />}
+                                   {ep.number}. {ep.title}
+                               </span>
+                               {ep.isFiller && <span className="text-[8px] bg-orange-500/20 text-orange-500 px-2 rounded-full font-black uppercase tracking-widest">Filler</span>}
+                           </button>
+                        );
+                    })}
+                 </div>
+              </ScrollArea>
            </div>
 
-           <div className="xl:col-span-8 h-[700px] bg-[#0a0a0a] rounded-[40px] border border-white/5 overflow-hidden flex flex-col shadow-2xl relative shadow-red-900/20">
+           {/* INFO PANEL - RIGHT MAIN */}
+           <div className="xl:col-span-8 h-auto xl:h-[650px] bg-[#0a0a0a] rounded-[40px] border border-white/5 overflow-hidden flex flex-col shadow-2xl relative shadow-red-900/20 order-1 xl:order-2">
               <div className="flex-shrink-0 relative p-8 pt-16 flex flex-col sm:flex-row gap-10 bg-gradient-to-b from-red-600/5 to-transparent">
+                 {/* ... (Poster & Trailer Section same) ... */}
                  <div className="relative shrink-0 mx-auto sm:mx-0 flex flex-col gap-6 w-full sm:w-auto">
-                    {/* POSTER */}
                     <div className="relative p-[3px] rounded-3xl overflow-hidden group/poster shadow-[0_0_40px_rgba(220,38,38,0.2)] mx-auto sm:mx-0 w-fit">
                         <div className="absolute inset-[-150%] bg-[conic-gradient(from_0deg,transparent,30%,#dc2626_50%,transparent_70%)] animate-[spin_3s_linear_infinite] opacity-60 blur-[1px]" />
                         <img src={anime.poster} className="w-44 h-60 rounded-3xl border border-white/10 object-cover relative z-10 shadow-2xl shadow-black" alt={anime.name} />
                     </div>
-                    {/* TRAILER BUTTON */}
-                    <div className="flex justify-center w-full">
-                        <TrailerSection videos={anime.trailers} animeName={anime.name} />
-                    </div>
+                    <div className="flex justify-center w-full"><TrailerSection videos={anime.trailers} animeName={anime.name} /></div>
                  </div>
-                 
+
                  <div className="flex-1 pt-2 text-center sm:text-left z-10 flex flex-col h-full">
                     <h1 className="text-3xl md:text-5xl font-black text-white font-[Cinzel] leading-none mb-2 tracking-tighter drop-shadow-2xl shadow-black">{anime.name}</h1>
                     {anime.jname && <p className="text-[10px] text-zinc-600 font-black uppercase tracking-[0.4em] mb-6 opacity-60 drop-shadow-sm">{anime.jname}</p>}
@@ -492,7 +730,7 @@ function WatchContent() {
                         ))}
                     </div>
 
-                    <div className="mt-auto pt-6 w-full flex justify-end">
+                    <div className="mt-auto pt-6 w-full flex justify-center sm:justify-end">
                         <StarRating animeId={animeId} initialRating={anime.stats.rating} />
                     </div>
                  </div>
@@ -500,157 +738,229 @@ function WatchContent() {
 
               <div className="flex-1 min-h-0 relative px-10 mt-4 overflow-hidden flex flex-col">
                  <h4 className="text-[10px] font-black text-red-600 uppercase tracking-[0.5em] mb-3 flex items-center gap-2 shadow-sm shrink-0"><Info size={12} className="shadow-sm"/> Synopsis</h4>
-                 <ScrollArea className="flex-1 pr-4 scrollbar-thin scrollbar-thumb-zinc-900 shadow-inner shadow-red-900/5">
+                 <ScrollArea className="flex-1 pr-4 scrollbar-hide shadow-inner shadow-red-900/5">
                     <p className="text-zinc-400 text-sm leading-relaxed pb-8 antialiased font-medium opacity-90 drop-shadow-sm shadow-black">{anime.description}</p>
                  </ScrollArea>
               </div>
+              
+              {/* [UPDATED] Fixed Row - Shadow Capsule UI */}
+              <div className="flex-shrink-0 p-6 border-t border-white/5 bg-[#0a0a0a] shadow-inner shadow-red-900/5">
+                   <div className="flex w-full items-center gap-3">
+                       
+                       {/* AIRED */}
+                       <div className="bg-white/5 p-2 px-5 rounded-full border border-white/5 flex items-center gap-3 shrink-0 whitespace-nowrap group hover:border-red-500/30 transition-all shadow-inner shadow-black/20">
+                           <span className="text-[10px] font-black uppercase tracking-widest text-red-600">Aired</span>
+                           <span className="text-[10px] font-bold text-zinc-300">{anime.moreInfo.aired || 'N/A'}</span>
+                       </div>
 
-              <div className="flex-shrink-0 p-8 border-t border-white/5 bg-[#0a0a0a] shadow-inner shadow-red-900/5">
-                 <div className="flex flex-nowrap items-center gap-4 text-[10px] font-black uppercase tracking-[0.2em] overflow-hidden">
-                    <div className="bg-white/5 p-2 px-5 rounded-full border border-white/5 flex items-center gap-3 shrink-0 group hover:border-red-500/30 transition-all shadow-inner shadow-black/20">
-                        <span className="text-red-600">Aired</span>
-                        <span className="text-zinc-300 font-bold whitespace-nowrap">{anime.moreInfo.aired || 'N/A'}</span>
-                    </div>
-                    <div className="bg-white/5 p-2 px-5 rounded-full border border-white/5 flex items-center gap-3 shrink-0 group hover:border-red-500/30 transition-all shadow-inner shadow-black/20">
-                        <span className="text-red-600">Premiered</span>
-                        <span className="text-zinc-300 font-bold whitespace-nowrap">{anime.moreInfo.premiered || 'N/A'}</span>
-                    </div>
-                    <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                            <button className="bg-white/5 p-2 px-5 rounded-full border border-white/5 flex items-center gap-3 hover:border-red-600/50 hover:bg-white/10 transition-all active:scale-95 min-w-0 shrink flex-1 shadow-inner shadow-black/20 group">
-                                <span className="text-red-600 shrink-0">Studios</span>
-                                <span className="text-zinc-300 truncate">{anime.moreInfo.studios[0] || 'N/A'}</span>
-                                <ChevronDown size={12} className="text-zinc-600 group-hover:text-red-600 transition-colors shadow-sm shrink-0" />
-                            </button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent className="bg-[#050505] border-white/10 rounded-2xl p-2 z-[100] shadow-2xl shadow-red-900/40">
-                            {anime.moreInfo.studios.map((s:string) => (
-                                <DropdownMenuItem key={s} className="text-[10px] font-black uppercase text-zinc-500 focus:bg-red-600 focus:text-white cursor-pointer px-5 py-2 rounded-xl transition-all"><Link href={`/search?studio=${s}`}>{s}</Link></DropdownMenuItem>
-                            ))}
-                        </DropdownMenuContent>
-                    </DropdownMenu>
-                    <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                            <button className="bg-white/5 p-2 px-5 rounded-full border border-white/5 flex items-center gap-3 hover:border-red-600/50 hover:bg-white/10 transition-all active:scale-95 min-w-0 shrink flex-1 shadow-inner shadow-black/20 group">
-                                <span className="text-red-600 shrink-0">Producers</span>
-                                <span className="text-zinc-300 truncate">{anime.moreInfo.producers[0] || 'N/A'}</span>
-                                <ChevronDown size={12} className="text-zinc-600 group-hover:text-red-600 transition-colors shadow-sm shrink-0" />
-                            </button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent className="bg-[#050505] border-white/10 rounded-2xl p-2 z-[100] shadow-2xl shadow-red-900/40">
-                            {anime.moreInfo.producers.map((p:string) => (
-                                <DropdownMenuItem key={p} className="text-[10px] font-black uppercase text-zinc-500 focus:bg-red-600 focus:text-white cursor-pointer px-5 py-2 rounded-xl transition-all shadow-sm">{p}</DropdownMenuItem>
-                            ))}
-                        </DropdownMenuContent>
-                    </DropdownMenu>
-                 </div>
+                       {/* PREMIERED */}
+                       <div className="bg-white/5 p-2 px-5 rounded-full border border-white/5 flex items-center gap-3 shrink-0 whitespace-nowrap group hover:border-red-500/30 transition-all shadow-inner shadow-black/20">
+                           <span className="text-[10px] font-black uppercase tracking-widest text-red-600">Premiered</span>
+                           <span className="text-[10px] font-bold text-zinc-300">{anime.moreInfo.premiered || 'N/A'}</span>
+                       </div>
+
+                       {/* STUDIOS (Shadow Capsule Dropdown - Adaptive Height) */}
+                       {anime.moreInfo.studios?.length > 0 && (
+                           <DropdownMenu modal={false}>
+                                <DropdownMenuTrigger asChild>
+                                   <div className="bg-white/5 p-2 px-5 rounded-full border border-white/5 flex items-center gap-3 flex-1 min-w-0 cursor-pointer group hover:border-red-600/50 hover:bg-white/10 transition-all active:scale-95 shadow-inner shadow-black/20 justify-between">
+                                       <div className="flex items-center gap-3 overflow-hidden">
+                                           <span className="text-[10px] font-black uppercase tracking-widest text-red-600 shrink-0">Studio</span>
+                                           <span className="text-[10px] font-bold text-zinc-300 truncate">{anime.moreInfo.studios[0]}</span>
+                                       </div>
+                                       <ChevronDown size={12} className="text-zinc-500 group-hover:text-white shrink-0"/>
+                                   </div>
+                                </DropdownMenuTrigger>
+                                <DropdownMenuContent align="start" className="bg-[#050505] border border-white/10 text-zinc-300 font-bold uppercase text-[9px] w-auto min-w-[160px] h-auto max-h-[200px] rounded-[24px] shadow-[0_0_25px_-5px_rgba(220,38,38,0.4)] p-2 z-[40]">
+                                    <ScrollArea className="h-auto max-h-[180px] pr-2">
+                                        <div className="flex flex-col gap-1">
+                                            {anime.moreInfo.studios.map((s: string) => (
+                                                <DropdownMenuItem key={s} asChild>
+                                                    <Link href={`/view/studios/${s}`} className="cursor-pointer flex items-center gap-2 px-3 py-1.5 rounded-full hover:bg-white/5 hover:text-white focus:bg-red-600 focus:text-white transition-all">
+                                                        <div className="w-1.5 h-1.5 bg-red-600 rounded-full shadow-[0_0_5px_red]" />
+                                                        {s}
+                                                    </Link>
+                                                </DropdownMenuItem>
+                                            ))}
+                                        </div>
+                                    </ScrollArea>
+                                </DropdownMenuContent>
+                           </DropdownMenu>
+                       )}
+
+                       {/* PRODUCERS (Shadow Capsule Dropdown - Adaptive Height) */}
+                       {anime.moreInfo.producers?.length > 0 && (
+                           <DropdownMenu modal={false}>
+                               <DropdownMenuTrigger asChild>
+                                   <div className="bg-white/5 p-2 px-5 rounded-full border border-white/5 flex items-center gap-3 flex-1 min-w-0 cursor-pointer group hover:border-red-500/30 transition-all active:scale-95 shadow-inner shadow-black/20 justify-between">
+                                        <div className="flex items-center gap-3 overflow-hidden">
+                                           <span className="text-[10px] font-black uppercase tracking-widest text-red-600 shrink-0">Producer</span>
+                                           <span className="text-[10px] font-bold text-zinc-300 truncate">{anime.moreInfo.producers[0]}</span>
+                                        </div>
+                                        <ChevronDown size={12} className="text-zinc-500 group-hover:text-white shrink-0"/>
+                                   </div>
+                                </DropdownMenuTrigger>
+                                <DropdownMenuContent align="start" className="bg-[#050505] border border-white/10 text-zinc-300 font-bold uppercase text-[9px] w-auto min-w-[160px] h-auto max-h-[200px] rounded-[24px] shadow-[0_0_25px_-5px_rgba(220,38,38,0.4)] p-2 z-[40]">
+                                    <ScrollArea className="h-auto max-h-[180px] pr-2">
+                                        <div className="flex flex-col gap-1">
+                                            {anime.moreInfo.producers.map((p: string) => (
+                                                <DropdownMenuItem key={p} asChild>
+                                                    <Link href={`/view/producers/${p}`} className="cursor-pointer flex items-center gap-2 px-3 py-1.5 rounded-full hover:bg-white/5 hover:text-white focus:bg-red-600 focus:text-white transition-all">
+                                                        <div className="w-1.5 h-1.5 bg-zinc-700 rounded-full group-hover:bg-red-500" />
+                                                        {p}
+                                                    </Link>
+                                                </DropdownMenuItem>
+                                            ))}
+                                        </div>
+                                    </ScrollArea>
+                                </DropdownMenuContent>
+                           </DropdownMenu>
+                       )}
+                   </div>
               </div>
            </div>
         </div>
       </div>
-
-      <div className="w-full flex justify-center my-12 px-4 md:px-8">
-        <div className="w-full max-w-[1400px]">
-           <ShadowComments episodeId={currentEpId || "general"} />
-        </div>
-      </div>
-
-      {(related.length > 0) && (
-        <div className="flex items-center justify-center my-12 px-4 md:px-8">
+      
+     {seasons.length > 0 && (
+        <div className="flex items-center justify-center mt-12 px-4 md:px-8">
           <div className="w-full max-w-[1400px]">
-            <div className="bg-[#0a0a0a] border border-white/10 shadow-3xl rounded-[50px] p-12 overflow-hidden relative group/related shadow-red-900/10 shadow-lg">
-              <div className="absolute top-0 right-0 w-80 h-80 bg-red-600/5 blur-[150px] pointer-events-none group-hover/related:bg-red-600/10 transition-all duration-1000" />
-              <div className="flex items-center gap-4 mb-8">
-                <span className="w-2.5 h-2.5 bg-red-600 rounded-full animate-ping shadow-[0_0_15px_red] shadow-red-900/10" />
-                <h4 className="text-[12px] text-white font-black uppercase tracking-[0.5em] font-[Cinzel] opacity-80 shadow-red-900/10 shadow-sm">Related Domains</h4>
-              </div>
-              <ScrollArea className="w-full whitespace-nowrap pb-6 [&>[data-orientation=horizontal]]:bg-black [&>[data-orientation=horizontal]_[data-state=visible]]:bg-red-600 scrollbar-hide group-hover:scrollbar-default">
-                <div className="flex gap-6 w-max">
-                  {related.map((rel: any, idx: number) => (
-                    <Link key={`${rel.id}-${idx}`} href={`/watch/${rel.id}`} className="group/item flex items-center gap-5 p-2 pr-10 rounded-full bg-white/5 border border-white/5 hover:border-red-600/40 hover:bg-red-600/10 transition-all duration-500 min-w-[320px] active:scale-95 shadow-inner shadow-red-900/5 shadow-md">
-                      <div className="relative shrink-0 overflow-hidden rounded-full w-16 h-16 border-2 border-white/5 group-hover/item:border-red-600 shadow-[0_0_20px_rgba(220,38,38,0.4)] transition-all duration-500 shadow-black/50 shadow-md">
-                        <img src={rel.poster || rel.image} className="w-full h-full object-cover transition-transform duration-1000 group-hover/item:scale-125 shadow-md shadow-red-900/5" alt={rel.name} />
-                      </div>
-                      <div className="flex flex-col overflow-hidden gap-1">
-                        <span className="text-[13px] font-black text-zinc-300 group-hover:text-white truncate w-[180px] uppercase tracking-tighter transition-colors shadow-black drop-shadow-md">{rel.name || rel.title}</span>
-                        <div className="flex items-center gap-3">
-                          <Badge variant="outline" className="text-[8px] font-black border-zinc-800 text-zinc-600 rounded-md group-hover/item:border-red-500/50 group-hover/item:text-red-500 uppercase tracking-widest shadow-sm">{rel.type}</Badge>
-                          <span className="text-[9px] text-zinc-700 font-black uppercase group-hover/item:text-zinc-400 shadow-sm">{rel.episodes?.sub || '?'} EPS</span>
-                        </div>
-                      </div>
-                    </Link>
-                  ))}
+            <div className="bg-[#0a0a0a] border border-white/10 shadow-3xl rounded-[50px] p-12 overflow-hidden relative group/seasons shadow-red-900/20 shadow-md">
+                <div className="absolute top-0 left-0 w-80 h-80 bg-red-600/5 blur-[150px] pointer-events-none group-hover/seasons:bg-red-600/10 transition-all duration-1000" />
+                <div className="flex items-center gap-4 mb-8">
+                    <span className="w-2.5 h-2.5 bg-red-600 rounded-full animate-ping shadow-[0_0_15px_red] shadow-red-900/10" />
+                    <h4 className="text-[12px] text-white font-black uppercase tracking-[0.5em] font-[Cinzel] opacity-80 shadow-red-900/10 shadow-sm">Seasons</h4>
                 </div>
-                <ScrollBar orientation="horizontal" className="h-1.5 rounded-full shadow-red-900/40 shadow-lg shadow-md" />
-              </ScrollArea>
+                <ScrollArea className="w-full whitespace-nowrap pb-6 scrollbar-hide">
+                    <div className="flex gap-6 w-max">
+                        {seasons.map((season: any) => (
+                            <Link key={season.id} href={`/watch/${season.id}`} className={cn("group/item flex items-center gap-5 p-2 pr-10 rounded-full border hover:border-red-600/40 hover:bg-red-600/10 transition-all duration-500 min-w-[280px] active:scale-95 shadow-inner shadow-red-900/5 shadow-md", season.isCurrent ? "bg-red-600/10 border-red-600" : "bg-white/5 border-white/5")}>
+                                <div className="relative shrink-0 overflow-hidden rounded-full w-14 h-14 border-2 border-white/5 group-hover/item:border-red-600 shadow-md shadow-black/50">
+                                    <img src={season.poster} className="w-full h-full object-cover transition-transform duration-1000 group-hover/item:scale-125" alt={season.title} />
+                                </div>
+                                <div className="flex flex-col overflow-hidden gap-1">
+                                    <span className="text-[11px] font-black text-zinc-300 group-hover:text-white truncate w-[160px] uppercase tracking-tighter transition-colors shadow-black drop-shadow-md">{season.title}</span>
+                                    <span className="text-[9px] text-zinc-600 font-black uppercase tracking-[0.2em]">{season.isCurrent ? 'NOW PLAYING' : 'VIEW ARCHIVE'}</span>
+                                </div>
+                            </Link>
+                        ))}
+                    </div>
+                    <ScrollBar orientation="horizontal" className="hidden" />
+                </ScrollArea>
             </div>
           </div>
         </div>
       )}
 
-      <div className="w-full flex justify-center mt-12 px-4 md:px-8">
-        <div className="w-full max-w-[1400px] grid grid-cols-1 xl:grid-cols-12 gap-8 items-start">
-           <div className="xl:col-span-4 h-[750px] flex flex-col bg-[#0a0a0a] rounded-[50px] border border-white/5 shadow-2xl overflow-hidden relative group/paths shadow-red-900/20 shadow-md">
-              <div className="p-8 bg-gradient-to-b from-white/5 to-transparent border-b border-white/5 flex items-center gap-4 relative z-10 shadow-red-900/5 shadow-md">
-                <Heart size={20} className="text-red-600 fill-red-600 animate-pulse shadow-red-600/30 shadow-md" />
-                <h3 className="font-black text-white text-[11px] font-[Cinzel] tracking-[0.4em] uppercase shadow-sm shadow-black">Materialized Paths</h3>
-              </div>
-              <div className="flex-1 overflow-hidden p-6 relative z-10 shadow-inner shadow-red-900/5">
-                <ScrollArea className="h-full pr-4 scrollbar-thin scrollbar-thumb-zinc-900 shadow-inner">
-                  <div className="space-y-4">
-                    {recommendations.map((rec: any, idx: number) => (
-                      <Link key={`${rec.id}-${idx}`} href={`/watch/${rec.id}`} className="flex gap-5 p-4 rounded-[32px] hover:bg-red-600/5 group transition-all duration-500 active:scale-95 border border-transparent hover:border-red-600/20 shadow-inner shadow-red-900/5">
-                        <img src={rec.poster || rec.image} className="w-16 h-24 object-cover rounded-2xl shadow-3xl group-hover:rotate-1 transition-all duration-500 shadow-black shadow-md" alt={rec.name} />
-                        <div className="flex-1 py-1 flex flex-col justify-center">
-                          <h4 className="text-[12px] font-black text-zinc-500 group-hover:text-red-500 line-clamp-2 transition-all uppercase tracking-tight leading-tight mb-2 shadow-black drop-shadow-md">{rec.name || rec.title}</h4>
-                          <div className="flex items-center gap-3">
-                            <span className="text-[8px] font-black text-zinc-700 uppercase tracking-[0.2em] group-hover:text-zinc-500 transition-colors shadow-sm">{rec.type}</span>
-                            <span className="w-1 h-1 bg-zinc-900 rounded-full shadow-sm"/>
-                            <span className="text-[9px] text-zinc-800 font-black uppercase group-hover:text-red-900 transition-colors shadow-sm">{rec.episodes?.sub || rec.duration || '?'} UNIT</span>
-                          </div>
-                        </div>
-                      </Link>
-                    ))}
-                  </div>
-                </ScrollArea>
-              </div>
-           </div>
-           <div className="xl:col-span-8 bg-[#0a0a0a] rounded-[50px] border border-white/5 overflow-hidden flex flex-col shadow-2xl relative min-h-[750px] shadow-red-900/20 shadow-md">
-              <div className="p-8 bg-gradient-to-b from-white/5 to-transparent border-b border-white/5 flex items-center gap-4 shadow-red-900/5 shadow-md">
-                <User size={20} className="text-red-600 shadow-red-600/30 shadow-md" />
-                <h3 className="font-black text-white text-[11px] font-[Cinzel] tracking-[0.4em] uppercase shadow-sm shadow-black">Manifested Bloodlines</h3>
-              </div>
-              <ScrollArea className="flex-1 p-10 scrollbar-thin scrollbar-thumb-zinc-900 shadow-inner shadow-red-900/5">
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-12">
-                     {characters.map((char: any, i: number) => (
-                        <div key={i} className={cn("flex items-center justify-between p-5 rounded-[35px] transition-all duration-700 group relative active:scale-95 shadow-red-900/5 shadow-md", char.role?.toLowerCase() === 'main' ? "bg-red-600/5 border border-red-500/20 shadow-[0_0_50px_-20px_rgba(220,38,38,0.4)]" : "bg-white/5 border border-white/5 hover:border-white/10 shadow-inner")}>
-                           {char.role?.toLowerCase() === 'main' && (<div className="absolute inset-[-2px] rounded-[inherit] bg-[conic-gradient(from_0deg,transparent,30%,#dc2626_50%,transparent_70%)] animate-[spin_3s_linear_infinite] opacity-60 -z-10 blur-[1px] shadow-md" />)}
-                           <div className="flex items-center justify-between relative z-10 w-full bg-[#0a0a0a] rounded-[inherit] p-1 shadow-inner shadow-red-900/5 shadow-md">
-                             <div className="flex items-center gap-5 relative z-10">
-                                <div className="relative shrink-0">
-                                  <img src={char.image || '/placeholder.png'} className="w-16 h-16 rounded-full object-cover border-2 border-zinc-900 group-hover:border-red-600/50 group-hover:scale-105 transition-all duration-500 shadow-2xl shadow-black shadow-md" alt={char.name} />
+      {/* [RESTORED] RELATED - FULL WIDTH ROW */}
+      {(related.length > 0) && (
+        <div className="flex items-center justify-center mt-12 px-4 md:px-8">
+          <div className="w-full max-w-[1400px]">
+            <div className="bg-[#0a0a0a] border border-white/10 shadow-3xl rounded-[50px] p-12 overflow-hidden relative group/related shadow-red-900/20 shadow-md">
+                <div className="absolute top-0 right-0 w-80 h-80 bg-red-600/5 blur-[150px] pointer-events-none group-hover/related:bg-red-600/10 transition-all duration-1000" />
+                <div className="flex items-center gap-4 mb-8">
+                    <span className="w-2.5 h-2.5 bg-red-600 rounded-full animate-ping shadow-[0_0_15px_red] shadow-red-900/10" />
+                    <h4 className="text-[12px] text-white font-black uppercase tracking-[0.5em] font-[Cinzel] opacity-80 shadow-red-900/10 shadow-sm">Related Domains</h4>
+                </div>
+                <ScrollArea className="w-full whitespace-nowrap pb-6 scrollbar-hide">
+                    <div className="flex gap-6 w-max">
+                        {related.map((rel: any, idx: number) => (
+                            <Link key={`${rel.id}-${idx}`} href={`/watch/${rel.id}`} className="group/item flex items-center gap-5 p-2 pr-10 rounded-full bg-white/5 border border-white/5 hover:border-red-600/40 hover:bg-red-600/10 transition-all duration-500 min-w-[320px] active:scale-95 shadow-inner shadow-red-900/5 shadow-md">
+                                <div className="relative shrink-0 overflow-hidden rounded-full w-16 h-16 border-2 border-white/5 group-hover/item:border-red-600 shadow-[0_0_20px_rgba(220,38,38,0.4)] transition-all duration-500 shadow-black/50 shadow-md">
+                                    <img src={rel.poster || rel.image} className="w-full h-full object-cover transition-transform duration-1000 group-hover/item:scale-125 shadow-md shadow-red-900/5" alt={rel.name} />
                                 </div>
-                                <div className="text-left flex flex-col justify-center gap-0.5">
-                                  <div className="text-[12px] font-black text-zinc-200 group-hover:text-red-500 transition-all uppercase tracking-tighter leading-none shadow-black drop-shadow-md">{char.name}</div>
-                                  <div className="text-[9px] text-zinc-600 font-black uppercase tracking-[0.2em] mt-1 group-hover:text-zinc-500 transition-colors shadow-sm">{char.role}</div>
+                                <div className="flex flex-col overflow-hidden gap-1">
+                                    <span className="text-[13px] font-black text-zinc-300 group-hover:text-white truncate w-[180px] uppercase tracking-tighter transition-colors shadow-black drop-shadow-md">{rel.name || rel.title}</span>
+                                    <div className="flex items-center gap-3">
+                                        <Badge variant="outline" className="text-[8px] font-black border-zinc-800 text-zinc-600 rounded-md group-hover/item:border-red-500/50 group-hover/item:text-red-500 uppercase tracking-widest shadow-sm">{rel.type}</Badge>
+                                        <span className="text-[9px] text-zinc-700 font-black uppercase group-hover/item:text-zinc-400 shadow-sm">{rel.episodes?.sub || '?'} EPS</span>
+                                    </div>
+                                </div>
+                            </Link>
+                        ))}
+                    </div>
+                    <ScrollBar orientation="horizontal" className="hidden" />
+                </ScrollArea>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* COMMENTS */}
+      <div className="w-full flex justify-center my-12 px-4 md:px-8">
+        <div className="w-full max-w-[1400px]" onKeyDown={(e) => e.stopPropagation()}>
+           <ShadowComments key={user?.id || 'guest'} episodeId={currentEpId || "general"} />
+        </div>
+      </div>
+
+      {/* [LAYOUT FIX] BOTTOM GRID: RECOMMENDED (LEFT) + CHARACTERS (RIGHT) */}
+      <div className="w-full flex justify-center mt-12 px-4 md:px-8 pb-12">
+        <div className="w-full max-w-[1400px] grid grid-cols-1 xl:grid-cols-12 gap-8 items-start">
+             
+             {/* RECOMMENDED (LEFT 4) */}
+             <div className="xl:col-span-4 h-[750px] flex flex-col bg-[#0a0a0a] rounded-[50px] border border-white/5 shadow-2xl overflow-hidden relative group/paths shadow-red-900/20 shadow-md">
+                 <div className="p-8 bg-gradient-to-b from-white/5 to-transparent border-b border-white/5 flex items-center gap-4 relative z-10 shadow-red-900/5 shadow-md">
+                    <Heart size={20} className="text-red-600 fill-red-600 animate-pulse shadow-red-600/30 shadow-md" />
+                    <h3 className="font-black text-white text-[11px] font-[Cinzel] tracking-[0.4em] uppercase shadow-sm shadow-black">Recommended</h3>
+                 </div>
+                 <div className="flex-1 overflow-hidden p-6 relative z-10 shadow-inner shadow-red-900/5">
+                    <ScrollArea className="h-full pr-4 scrollbar-hide">
+                        <div className="space-y-4">
+                            {recommendations.map((rec: any, idx: number) => (
+                                <Link key={`${rec.id}-${idx}`} href={`/watch/${rec.id}`} className="flex gap-5 p-4 rounded-[32px] hover:bg-red-600/5 group transition-all duration-500 active:scale-95 border border-transparent hover:border-red-600/20 shadow-inner shadow-red-900/5">
+                                    <img src={rec.poster || rec.image} className="w-16 h-24 object-cover rounded-2xl shadow-3xl group-hover:rotate-1 transition-all duration-500 shadow-black shadow-md" alt={rec.name} />
+                                    <div className="flex-1 py-1 flex flex-col justify-center">
+                                        <h4 className="text-[12px] font-black text-zinc-500 group-hover:text-red-500 line-clamp-2 transition-all uppercase tracking-tight leading-tight mb-2 shadow-black drop-shadow-md">{rec.name || rec.title}</h4>
+                                        <div className="flex items-center gap-3">
+                                            <span className="text-[8px] font-black text-zinc-700 uppercase tracking-[0.2em] group-hover:text-zinc-500 transition-colors shadow-sm">{rec.type}</span>
+                                            <span className="w-1 h-1 bg-zinc-900 rounded-full shadow-sm"/>
+                                            <span className="text-[9px] text-zinc-800 font-black uppercase group-hover:text-red-900 transition-colors shadow-sm">{rec.episodes?.sub || '?'} EPS</span>
+                                        </div>
+                                    </div>
+                                </Link>
+                            ))}
+                        </div>
+                    </ScrollArea>
+                 </div>
+             </div>
+
+             {/* CHARACTERS (RIGHT 8) */}
+             <div className="xl:col-span-8 h-[750px] bg-[#0a0a0a] rounded-[50px] border border-white/5 overflow-hidden flex flex-col shadow-2xl relative shadow-red-900/20 shadow-md">
+                 <div className="p-8 bg-gradient-to-b from-white/5 to-transparent border-b border-white/5 flex items-center gap-4 shadow-red-900/5 shadow-md">
+                    <User size={20} className="text-red-600 shadow-red-600/30 shadow-md" />
+                    <h3 className="font-black text-white text-[11px] font-[Cinzel] tracking-[0.4em] uppercase shadow-sm shadow-black">Manifested Bloodlines</h3>
+                  </div>
+                  <ScrollArea className="flex-1 p-10 scrollbar-hide shadow-inner shadow-red-900/5">
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-12">
+                          {characters.length > 0 ? characters.map((char: any, i: number) => (
+                             <div key={i} className={cn("flex items-center justify-between p-5 rounded-[35px] transition-all duration-700 group relative active:scale-95 shadow-red-900/5 shadow-md", char.role?.toLowerCase() === 'main' ? "bg-red-600/5 border border-red-500/20 shadow-[0_0_50px_-20px_rgba(220,38,38,0.4)]" : "bg-white/5 border border-white/5 hover:border-white/10 shadow-inner")}>
+                                <div className="flex items-center gap-5 relative z-10">
+                                    <div className="relative shrink-0">
+                                        {/* [FIX] Fallback Image */}
+                                        <img src={char.image || '/images/non-non.png'} className="w-16 h-16 rounded-full object-cover border-2 border-zinc-900 group-hover:border-red-600/50 group-hover:scale-105 transition-all duration-500 shadow-2xl shadow-black shadow-md" alt={char.name} onError={(e) => (e.currentTarget.src = '/images/non-non.png')} />
+                                    </div>
+                                    <div className="text-left flex flex-col justify-center gap-0.5">
+                                        <div className="text-[12px] font-black text-zinc-200 group-hover:text-red-500 transition-all uppercase tracking-tighter leading-none shadow-black drop-shadow-md">{char.name}</div>
+                                        <div className="text-[9px] text-zinc-600 font-black uppercase tracking-[0.2em] mt-1 group-hover:text-zinc-500 transition-colors shadow-sm">{char.role}</div>
+                                    </div>
                                 </div>
                              </div>
-                             {char.voiceActor && (
-                               <div className="flex items-center gap-5 flex-row-reverse text-right pl-6 border-l border-white/5 relative z-10 group/va transition-all shadow-sm">
-                                 <img src={char.voiceActor.image || '/placeholder.png'} className="w-16 h-16 rounded-full object-cover border-2 border-zinc-900 grayscale opacity-40 group-hover:grayscale-0 group-hover:opacity-100 group-hover:border-red-600/30 transition-all duration-700 shadow-md shadow-red-900/10" alt={char.voiceActor.name} />
-                                 <div className="flex flex-col justify-center gap-0.5">
-                                   <div className="text-[11px] font-black text-zinc-500 group-hover:text-zinc-300 transition-all uppercase tracking-tighter leading-none shadow-black drop-shadow-md">{char.voiceActor.name}</div>
-                                   <div className="text-[8px] text-zinc-800 font-black uppercase tracking-[0.3em] mt-1 group-hover:text-red-900 transition-colors shadow-sm">VA</div>
-                                 </div>
-                               </div>
-                             )}
-                           </div>
-                        </div>
-                     ))}
-                  </div>
-              </ScrollArea>
-           </div>
+                          )) : (
+                              // [FIX] No Data Fallback
+                              <div className="col-span-full flex flex-col items-center justify-center opacity-50 py-20 h-full">
+                                  <img src="/images/non-non.gif" className="w-72 h-32 opacity-80 mb-4 grayscale" alt="No Data" />
+                                  <p className="text-[10px] font-black uppercase tracking-[0.2em] text-zinc-500">No Bloodlines Detected</p>
+                              </div>
+                          )}
+                      </div>
+                  </ScrollArea>
+             </div>
         </div>
+      </div>
+        
+      {/* FOOTER PLACEHOLDER */}
+      <div className="w-full h-20 border-t border-white/5 mt-20 flex items-center justify-center text-zinc-600 text-xs font-black uppercase tracking-widest">
+         <div className="flex items-center gap-2"><div className="w-4 h-4 bg-zinc-800 rounded-full" /> Shadow Garden 2025</div>
       </div>
     </div>
   );
