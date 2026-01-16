@@ -6,7 +6,7 @@ import {
   Play, Pause, Volume2, VolumeX, 
   Settings, Maximize, Minimize, Subtitles, 
   Wand2, AudioWaveform, PictureInPicture, Gauge,
-  ChevronRight, ChevronLeft, MousePointer2, 
+  ChevronRight, ChevronLeft, MousePointerClick, // [FIX] New Icon
   ChevronsLeft, ChevronsRight, Sun, MoveHorizontal, MoveVertical
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -94,7 +94,7 @@ const AnimePlayer = forwardRef<AnimePlayerRef, AnimePlayerProps>(({
 
   // Playback State
   const [isPlaying, setIsPlaying] = useState(false);
-  const [isBuffering, setIsBuffering] = useState(true); // [FIX] Starts true
+  const [isBuffering, setIsBuffering] = useState(true);
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(0);
   const [volume, setVolume] = useState(initialVolume);
@@ -204,7 +204,7 @@ const AnimePlayer = forwardRef<AnimePlayerRef, AnimePlayerProps>(({
     const font = SUB_FONTS[subStyle.font as keyof typeof SUB_FONTS];
     const baseLift = SUB_LIFTS[subStyle.lift as keyof typeof SUB_LIFTS];
     
-    // [FIX] Responsive Lift Variables
+    // [FIX] Updated Mobile Lift to -45px
     const uiOffset = showControls ? 'var(--ui-lift)' : '0px';
 
     const isDarkText = subStyle.color === 'Black';
@@ -235,9 +235,8 @@ const AnimePlayer = forwardRef<AnimePlayerRef, AnimePlayerProps>(({
         @font-face { font-family: 'BadUnicorn'; src: '/fonts/BadUnicornDemoRegular.ttf' format('truetype'); }
         @font-face { font-family: 'Monas'; src: '/fonts/Monas.ttf' format('truetype'); }
 
-        /* [FIX] Responsive Variables for Mobile/Desktop */
         :root {
-            --ui-lift: -30px; 
+            --ui-lift: -45px; /* [FIX] Adjusted mobile lift */
         }
         @media (min-width: 768px) {
             :root {
@@ -262,7 +261,6 @@ const AnimePlayer = forwardRef<AnimePlayerRef, AnimePlayerProps>(({
             padding: 4px 8px; 
         }
 
-        /* [FIX] Mobile Font Scaling */
         @media (max-width: 768px) {
             video::cue {
                 font-size: calc(${size} * 0.75) !important;
@@ -293,7 +291,7 @@ const AnimePlayer = forwardRef<AnimePlayerRef, AnimePlayerProps>(({
     const video = videoRef.current;
     if (!video || !url) return;
 
-    setIsBuffering(true); // [FIX] Show loader immediately
+    setIsBuffering(true);
     if (hlsRef.current) hlsRef.current.destroy();
 
     const finalUrl = url.startsWith('http') ? `/api/proxy?url=${encodeURIComponent(url)}` : url;
@@ -310,7 +308,6 @@ const AnimePlayer = forwardRef<AnimePlayerRef, AnimePlayerProps>(({
         const levels = data.levels.map((l, i) => ({ height: l.height, index: i })).sort((a, b) => b.height - a.height);
         setQualities(levels);
         if (startTime > 0) { video.currentTime = startTime; hasResumed.current = true; }
-        // Note: We wait for ON_PLAYING or Level Loaded to clear buffer
         if (autoPlay) video.play().catch(() => setIsPlaying(false));
       });
       hls.on(Hls.Events.LEVEL_SWITCHED, (_, data) => {
@@ -322,7 +319,7 @@ const AnimePlayer = forwardRef<AnimePlayerRef, AnimePlayerProps>(({
       hlsRef.current = hls;
     } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
       video.src = finalUrl;
-      video.addEventListener('loadedmetadata', () => { if (startTime > 0) video.currentTime = startTime; if (autoPlay) video.play(); });
+      video.addEventListener('loadedmetadata', () => { if (startTime > 0) video.currentTime = startTime; setIsBuffering(false); if (autoPlay) video.play(); });
     }
 
     const handleKey = (e: KeyboardEvent) => {
@@ -435,7 +432,6 @@ const AnimePlayer = forwardRef<AnimePlayerRef, AnimePlayerProps>(({
       const deltaX = e.touches[0].clientX - touchStartRef.current.x;
       const deltaY = touchStartRef.current.y - e.touches[0].clientY; 
       
-      // [FIX] Gesture Deadzone (Mistouch Protection)
       if (Math.abs(deltaX) < 10 && Math.abs(deltaY) < 10) return;
 
       const rect = containerRef.current.getBoundingClientRect();
@@ -446,7 +442,9 @@ const AnimePlayer = forwardRef<AnimePlayerRef, AnimePlayerProps>(({
               const seekTime = Math.max(0, Math.min(duration, touchStartRef.current.curTime + (deltaX / rect.width) * 90)); 
               videoRef.current.currentTime = seekTime;
               setCurrentTime(seekTime);
-              setGestureOverlay({ icon: <MousePointer2 size={32}/>, text: formatTime(seekTime) });
+              // [FIX] Directional Seeking Icons
+              const seekIcon = deltaX > 0 ? <ChevronsRight size={32}/> : <ChevronsLeft size={32}/>;
+              setGestureOverlay({ icon: seekIcon, text: formatTime(seekTime) });
           } else if (horizontalGesture === 'volume') {
               const newVol = Math.max(0, Math.min(1, touchStartRef.current.val + (deltaX / 200)));
               setVolume(newVol);
@@ -477,7 +475,6 @@ const AnimePlayer = forwardRef<AnimePlayerRef, AnimePlayerProps>(({
       const deltaY = touchStartRef.current.y - e.changedTouches[0].clientY;
       const timeDiff = Date.now() - touchStartRef.current.time;
 
-      // Handle Swipes
       if (timeDiff < 300 && (Math.abs(deltaX) > 50 || Math.abs(deltaY) > 50)) {
           if (Math.abs(deltaX) > Math.abs(deltaY)) {
               if (horizontalGesture === 'nav' && onNext) {
@@ -498,36 +495,33 @@ const AnimePlayer = forwardRef<AnimePlayerRef, AnimePlayerProps>(({
     const now = Date.now();
     const timeDiff = now - lastTapTimeRef.current;
     
-    // Double Tap
-    if (timeDiff < 300) {
+    if (doubleTapMode === 'seek' && timeDiff < 300) {
         if (clickTimerRef.current) clearTimeout(clickTimerRef.current);
         const rect = containerRef.current?.getBoundingClientRect();
         if (!rect) return;
         const x = e.clientX - rect.left;
+        const delta = x > rect.width * 0.5 ? 10 : -10;
         
-        if (doubleTapMode === 'seek') {
-            const delta = x > rect.width * 0.5 ? 10 : -10;
-            seekAccumulatorRef.current += delta;
-            setSeekOverlay(`${seekAccumulatorRef.current > 0 ? '+' : ''}${seekAccumulatorRef.current}s`);
-            seek(delta);
-            if (seekOverlayTimerRef.current) clearTimeout(seekOverlayTimerRef.current);
-            seekOverlayTimerRef.current = setTimeout(() => { setSeekOverlay(null); seekAccumulatorRef.current = 0; }, 800);
-        } else if (doubleTapMode === 'playpause') togglePlay();
-        else if (doubleTapMode === 'fullscreen') toggleFullscreen();
-        
+        seekAccumulatorRef.current += delta;
+        setSeekOverlay(`${seekAccumulatorRef.current > 0 ? '+' : ''}${seekAccumulatorRef.current}s`);
+        seek(delta);
+        if (seekOverlayTimerRef.current) clearTimeout(seekOverlayTimerRef.current);
+        seekOverlayTimerRef.current = setTimeout(() => { setSeekOverlay(null); seekAccumulatorRef.current = 0; }, 800);
+        lastTapTimeRef.current = now;
+        return;
+    } 
+    
+    if (timeDiff < 300) {
+        if (clickTimerRef.current) clearTimeout(clickTimerRef.current);
+        if (doubleTapMode === 'playpause') togglePlay();
+        if (doubleTapMode === 'fullscreen') toggleFullscreen();
         lastTapTimeRef.current = now;
         return;
     }
 
     lastTapTimeRef.current = now;
-    
-    // [FIX] Tap Toggle Logic: Show if hidden, Hide if shown
     clickTimerRef.current = setTimeout(() => { 
-        if (showControls) {
-            setShowControls(false); // Immediate Hide
-        } else {
-            showUI(); // Show with auto-hide timer
-        }
+        if (showControls) { setShowControls(false); } else { showUI(); }
         clickTimerRef.current = null; 
     }, 250);
   };
@@ -571,7 +565,6 @@ const AnimePlayer = forwardRef<AnimePlayerRef, AnimePlayerProps>(({
         onPlay={() => { setIsPlaying(true); setIsBuffering(false); showUI(); }}
         onPause={() => { setIsPlaying(false); onPause?.(); if(canSave) onInteract?.(); showUI(); }}
         onWaiting={() => { if(!seekOverlay) setIsBuffering(true); }}
-        // [FIX] Buffering stops on Playing or CanPlay
         onPlaying={() => setIsBuffering(false)}
         onCanPlay={() => setIsBuffering(false)}
         onTimeUpdate={handleTimeUpdate}
@@ -625,8 +618,9 @@ const AnimePlayer = forwardRef<AnimePlayerRef, AnimePlayerProps>(({
                      <div className="absolute bottom-10 right-0 bg-black/60 backdrop-blur-md border border-white/10 rounded-2xl p-2 w-48 md:w-56 max-h-[35vh] md:max-h-[60vh] overflow-y-auto scrollbar-hide shadow-2xl z-50 flex flex-col gap-1 animate-in slide-in-from-bottom-2">
                         <button onClick={(e)=>{e.stopPropagation(); setActiveMenu('quality')}} className="flex items-center justify-between w-full px-3 py-2 rounded-xl hover:bg-white/10 text-left text-[10px] font-bold transition-all"><div className="flex items-center gap-2"><Settings size={12}/> Quality</div><span className="text-zinc-400">{autoResolutionText}</span></button>
                         <button onClick={(e)=>{e.stopPropagation(); setActiveMenu('speed')}} className="flex items-center justify-between w-full px-3 py-2 rounded-xl hover:bg-white/10 text-left text-[10px] font-bold transition-all"><div className="flex items-center gap-2"><Gauge size={12}/> Speed</div><span className="text-zinc-400">{speed}x</span></button>
-                        <button onClick={(e)=>{e.stopPropagation(); setActiveMenu('gestures')}} className="flex items-center justify-between w-full px-3 py-2 rounded-xl hover:bg-white/10 text-left text-[10px] font-bold transition-all"><div className="flex items-center gap-2"><MousePointer2 size={12}/> Gestures</div><span className="text-zinc-400 uppercase">{doubleTapMode}</span></button>
-                        <div className="md:hidden border-t border-white/10 mt-1 pt-1">
+                        <button onClick={(e)=>{e.stopPropagation(); setActiveMenu('gestures')}} className="flex items-center justify-between w-full px-3 py-2 rounded-xl hover:bg-white/10 text-left text-[10px] font-bold transition-all"><div className="flex items-center gap-2"><MousePointerClick size={12}/> Gestures</div><span className="text-zinc-400 uppercase">{doubleTapMode}</span></button>
+                        {/* [FIX] lg:hidden ensures visibility on phones in landscape */}
+                        <div className="lg:hidden border-t border-white/10 mt-1 pt-1">
                             <button onClick={(e)=>{e.stopPropagation(); setActiveMenu('vGesture')}} className="flex items-center justify-between w-full px-3 py-2 rounded-xl hover:bg-white/10 text-left text-[10px] font-bold transition-all"><div className="flex items-center gap-2"><MoveVertical size={12}/> Vertical Swipe</div><span className="text-zinc-400 text-[8px] uppercase">{verticalGesture === 'vol_bright' ? 'Vol/Bri' : verticalGesture}</span></button>
                             <button onClick={(e)=>{e.stopPropagation(); setActiveMenu('hGesture')}} className="flex items-center justify-between w-full px-3 py-2 rounded-xl hover:bg-white/10 text-left text-[10px] font-bold transition-all"><div className="flex items-center gap-2"><MoveHorizontal size={12}/> Horizontal Swipe</div><span className="text-zinc-400 text-[8px] uppercase">{horizontalGesture}</span></button>
                         </div>
