@@ -15,6 +15,8 @@ import AuthModal from '@/components/Auth/AuthModal';
 import SearchBar from '@/components/Anime/SearchBar';
 import ShadowGardenPortal from '@/components/Portal/ShadowGardenPortal';
 import localFont from 'next/font/local';
+// Vercel import for analytics
+import { Analytics } from "@vercel/analytics/next"
 
 // --- FONT CONFIGURATION ---
 const demoness = localFont({ src: '../../public/fonts/Demoness-1GlYj.ttf', variable: '--font-demoness' });

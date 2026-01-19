@@ -4,6 +4,8 @@ import SpotlightSlider from '@/components/Anime/SpotlightSlider';
 import AnimeCard from '@/components/Anime/AnimeCard';
 import { Flame, Clock, Calendar, Star, TrendingUp } from 'lucide-react';
 import MobileContainer from "@/components/Layout/MobileContainer";
+// Vercel import for analytics
+import { Analytics } from "@vercel/analytics/next"
 
 // --- CONFIGURATION ---
 // Revalidate this page every 1 hour (3600s) to keep data fresh but minimize scraping
