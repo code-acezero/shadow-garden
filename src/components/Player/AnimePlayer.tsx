@@ -53,6 +53,8 @@ interface AnimePlayerProps {
   startTime?: number; 
   onEnded?: () => void;
   onNext?: () => void;
+  onPlay?: () => void;
+  onSkipIntro?: () => void;
   onProgress?: (state: { playedSeconds: number; loadedSeconds: number }) => void;
   onInteract?: () => void; 
   onPause?: () => void;
@@ -556,6 +558,7 @@ const AnimePlayer = forwardRef<AnimePlayerRef, AnimePlayerProps>(({
       onTouchStart={handleTouchStart}
       onTouchMove={handleTouchMove}
       onTouchEnd={handleTouchEnd}
+      
     >
       <video
         ref={videoRef}
