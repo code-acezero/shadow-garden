@@ -11,7 +11,7 @@ import {
   ChevronDown, Heart, CheckCircle, XCircle,
   FastForward, Star, Info, MessageSquare, User,
   Loader2, Globe, Flame, Calendar, Copyright, Check, Mic, X,
-  ChevronLeft, ChevronRight, Pause
+  ChevronLeft, ChevronRight, Pause, ArrowLeft, ArrowRight
 } from 'lucide-react';
 
 import { AnimeService, AnimeAPI_V2, AnimeAPI_V3, supabase, UniversalAnime } from '@/lib/api'; 
@@ -123,9 +123,8 @@ async function retryOperation<T>(operation: () => Promise<T>, retries = 3, delay
     }
 }
 
-// FORMAT RATING HELPER (Strict: No Defaults)
 const formatRating = (rating?: string) => {
-    if (!rating) return null; // No display if empty
+    if (!rating) return null;
     const r = rating.toString().toUpperCase();
     if (r.includes('R') || r.includes('RX') || r.includes('18+') || r.includes('17+')) return '18+';
     return rating;
@@ -162,10 +161,52 @@ const NextEpisodeTimer = ({ schedule, status }: { schedule: any, status: string 
 
 const TrailerSection = ({ videos }: { videos: any[] }) => { 
     const [activeVideo, setActiveVideo] = useState(videos?.[0]?.source); if (!videos || videos.length === 0) return null; const getYoutubeId = (url: string) => url?.split('v=')[1]?.split('&')[0] || url?.split('/').pop(); 
-    return (<Dialog><DialogTrigger asChild><div className="inline-flex items-center gap-2 bg-red-600/10 border border-red-500/20 rounded-full px-6 py-2 cursor-pointer hover:bg-red-600 hover:border-red-500 transition-all group active:scale-95 shadow-lg shadow-red-900/10 w-full md:w-auto justify-center"><span className="flex items-center justify-center w-4 h-4 bg-red-600 rounded-full text-white shadow-lg group-hover:scale-110 transition-transform"><Play size={8} fill="currentColor" /></span><span className="text-[9px] font-black text-red-100 group-hover:text-white uppercase tracking-wider">Trailers ({videos.length})</span></div></DialogTrigger><DialogContent className="bg-black/95 border-red-500/40 max-w-4xl w-[90vw] lg:max-w-2xl p-0 overflow-hidden rounded-3xl shadow-[0_0_100px_-20px_rgba(220,38,38,0.5)] animate-in zoom-in-95 duration-300"><DialogTitle className="sr-only">Trailers</DialogTitle><div className="flex flex-col h-full"><div className="aspect-video w-full bg-zinc-900"><iframe src={`https://www.youtube.com/embed/${getYoutubeId(activeVideo)}?autoplay=1`} className="w-full h-full" allow="autoplay; encrypted-media" allowFullScreen /></div><div className="p-4 md:p-6 bg-[#0a0a0a]"><ScrollArea className="w-full whitespace-nowrap pb-4"><div className="flex gap-4 px-2">{videos.map((v: any, i: number) => (v && v.source ? <button key={i} onClick={() => setActiveVideo(v.source)} className={cn("flex flex-col gap-1 p-2 rounded-2xl border transition-all shrink-0 w-28 md:w-36 hover:scale-105 active:scale-95 group/pv", activeVideo === v.source ? "bg-red-600/10 border-red-600" : "bg-white/5 border-transparent hover:border-white/10")}><div className="aspect-video w-full bg-zinc-800 rounded-lg overflow-hidden relative shadow-lg"><img src={v.thumbnail || '/images/no-thumb.png'} className="w-full h-full object-cover opacity-60" alt="" /><div className="absolute inset-0 flex items-center justify-center bg-red-600/20 opacity-0 group-hover/pv:opacity-100 transition-opacity"><Play size={16} fill="white" className="text-white" /></div></div><span className="text-[9px] font-black text-center truncate w-full uppercase text-zinc-400 group-hover/pv:text-white">{v.title || `Promo ${i+1}`}</span></button> : null))}</div><ScrollBar orientation="horizontal" className="h-1 bg-white/5" /></ScrollArea></div></div></DialogContent></Dialog>); 
+    return (<Dialog><DialogTrigger asChild><div className="inline-flex items-center gap-2 bg-red-600/10 border border-red-500/20 rounded-full px-6 py-2 cursor-pointer hover:bg-red-600 hover:border-red-500 transition-all group active:scale-95 shadow-lg shadow-red-900/10 w-full md:w-auto justify-center"><span className="flex items-center justify-center w-4 h-4 bg-red-600 rounded-full text-white shadow-lg group-hover:scale-110 transition-transform"><Play size={8} fill="currentColor" /></span><span className="text-[9px] font-black text-red-100 group-hover:text-white uppercase tracking-wider">Trailers ({videos.length})</span></div></DialogTrigger><DialogContent className="bg-black/95 border-red-500/40 max-w-4xl w-[90vw] lg:max-w-2xl max-h-[70vh] p-0 overflow-hidden rounded-3xl shadow-[0_0_100px_-20px_rgba(220,38,38,0.5)] animate-in zoom-in-95 duration-300 flex flex-col"><DialogTitle className="sr-only">Trailers</DialogTitle><div className="flex-1 flex flex-col min-h-0"><div className="aspect-video w-full bg-zinc-900 shrink-0"><iframe src={`https://www.youtube.com/embed/${getYoutubeId(activeVideo)}?autoplay=1`} className="w-full h-full" allow="autoplay; encrypted-media" allowFullScreen /></div><div className="p-4 md:p-6 bg-[#0a0a0a] flex-1 overflow-hidden flex flex-col"><ScrollArea className="w-full whitespace-nowrap pb-4 h-full"><div className="flex gap-4 px-2">{videos.map((v: any, i: number) => (v && v.source ? <button key={i} onClick={() => setActiveVideo(v.source)} className={cn("flex flex-col gap-1 p-2 rounded-2xl border transition-all shrink-0 w-28 md:w-36 hover:scale-105 active:scale-95 group/pv", activeVideo === v.source ? "bg-red-600/10 border-red-600" : "bg-white/5 border-transparent hover:border-white/10")}><div className="aspect-video w-full bg-zinc-800 rounded-lg overflow-hidden relative shadow-lg"><img src={v.thumbnail || '/images/no-thumb.png'} className="w-full h-full object-cover opacity-60" alt="" /><div className="absolute inset-0 flex items-center justify-center bg-red-600/20 opacity-0 group-hover/pv:opacity-100 transition-opacity"><Play size={16} fill="white" className="text-white" /></div></div><span className="text-[9px] font-black text-center truncate w-full uppercase text-zinc-400 group-hover/pv:text-white">{v.title || `Promo ${i+1}`}</span></button> : null))}</div><ScrollBar orientation="horizontal" className="h-1 bg-white/5" /></ScrollArea></div></div></DialogContent></Dialog>); 
 };
 
-// PING PONG MARQUEE
+// --- IMPROVED PING PONG SCROLL (Pause -> Scroll -> Pause -> Return) ---
+const PingPongScroll = ({ text, className }: { text: string, className?: string }) => {
+    const containerRef = useRef<HTMLDivElement>(null);
+    const textRef = useRef<HTMLSpanElement>(null);
+    const [shouldAnimate, setShouldAnimate] = useState(false);
+
+    useEffect(() => {
+        if (containerRef.current && textRef.current) {
+            setShouldAnimate(textRef.current.scrollWidth > containerRef.current.clientWidth);
+        }
+    }, [text]);
+
+    return (
+        <div ref={containerRef} className="w-full overflow-hidden relative group/pp">
+            <span 
+                ref={textRef} 
+                className={cn(
+                    "whitespace-nowrap inline-block", 
+                    className,
+                    shouldAnimate && "animate-pingpong-scroll"
+                )}
+            >
+                {text}
+            </span>
+            <style jsx>{`
+                @keyframes pingpong-scroll {
+                    0% { transform: translateX(0); }
+                    15% { transform: translateX(0); } /* Pause Start */
+                    50% { transform: translateX(calc(-100% + 100%)); } /* Scroll to End */
+                    65% { transform: translateX(calc(-100% + 100%)); } /* Pause End */
+                    100% { transform: translateX(0); } /* Return */
+                }
+                .animate-pingpong-scroll {
+                    display: inline-block;
+                    min-width: 100%;
+                    animation: pingpong-scroll 10s linear infinite;
+                }
+            `}</style>
+        </div>
+    );
+};
+
+// MARQUEE TITLE
 const MarqueeTitle = ({ text }: { text: string }) => { 
     const containerRef = useRef<HTMLDivElement>(null);
     const textRef = useRef<HTMLSpanElement>(null);
@@ -267,18 +308,220 @@ const StarRating = ({ animeId, initialRating = 0 }: { animeId: string; initialRa
     ); 
 };
 
-const CharacterDetailsDialog = ({ isOpen, onClose, characterId }: { isOpen: boolean; onClose: () => void; characterId: string | null }) => {
+// --- UPDATED CHARACTER DETAILS DIALOG ---
+const CharacterDetailsDialog = ({ 
+  isOpen, onClose, characterId, onActorClick, onBack, onForward, canGoBack, canGoForward 
+}: { 
+  isOpen: boolean; onClose: () => void; characterId: string | null, onActorClick: (id: string) => void, onBack?: () => void, onForward?: () => void, canGoBack?: boolean, canGoForward?: boolean 
+}) => {
   const [data, setData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
-  useEffect(() => { if (!isOpen || !characterId) return; setLoading(true); retryOperation(() => AnimeAPI_V3.getCharacterDetails(characterId)).then((res: any) => { const item = res?.results?.data?.[0] || res?.data?.[0] || res; setData(item); setLoading(false); }).catch(() => setLoading(false)); }, [isOpen, characterId]);
-  return ( <Dialog open={isOpen} onOpenChange={(v) => !v && onClose()}> <DialogContent className="max-w-4xl w-[95vw] h-[85vh] p-0 border-0 bg-transparent shadow-none overflow-hidden sm:rounded-[40px] z-[60] [&>button]:hidden"> <DialogTitle className="sr-only">Character Details</DialogTitle> <div className="w-full h-full relative backdrop-blur-2xl bg-[#050505]/60 border border-white/10 rounded-[40px] shadow-[0_0_80px_rgba(0,0,0,0.8)] overflow-hidden flex flex-col md:flex-row"> <div className="absolute top-0 left-0 w-full h-full bg-gradient-to-br from-red-600/10 via-transparent to-blue-600/5 pointer-events-none" /> <button onClick={onClose} className="absolute top-6 right-6 z-50 p-2 rounded-full bg-black/40 border border-white/10 text-white/70 hover:text-white hover:bg-red-600 hover:border-red-500 transition-all active:scale-90"><X size={18} /></button> {loading ? <div className="w-full h-full flex items-center justify-center"><FantasyLoader text="ANALYZING..." /></div> : data ? ( <> <div className="w-full md:w-[40%] h-[40%] md:h-full relative overflow-hidden group"> <img src={data.profile || '/images/non-non.png'} className="w-full h-full object-cover opacity-90 transition-transform duration-700 group-hover:scale-105" alt={data.name || "Unknown"} /> <div className="absolute inset-0 bg-gradient-to-t from-black via-transparent to-transparent md:bg-gradient-to-r" /> <div className="absolute bottom-6 left-6 z-10"><h2 className="text-3xl md:text-4xl font-black text-white font-[Cinzel] leading-none tracking-tighter drop-shadow-lg">{data.name}</h2><p className="text-blue-500 font-bold uppercase tracking-[0.3em] text-[10px] mt-1">{data.japaneseName}</p></div> </div> <div className="w-full md:w-[60%] h-[60%] md:h-full relative z-10 flex flex-col"> <ScrollArea className="h-full p-8 custom-scrollbar"> <div className="space-y-8"> <div><h3 className="text-[10px] font-black text-zinc-500 uppercase tracking-widest mb-3 flex items-center gap-2"><Info size={12}/> Profile</h3><div className="text-zinc-300 text-sm leading-relaxed font-medium opacity-90 p-4 rounded-2xl bg-white/5 border border-white/5 shadow-inner" dangerouslySetInnerHTML={{ __html: data.about?.style || data.about?.description || "No Data" }} /></div> {data.roles && ( <div><h3 className="text-[10px] font-black text-zinc-500 uppercase tracking-widest mb-3 flex items-center gap-2"><Layers size={12}/> Roles</h3> <div className="flex flex-wrap gap-3">{data.roles.map((role:any, i:number) => ( <div key={i} className="flex items-center gap-2 p-1.5 pr-3 rounded-full bg-black/40 border border-white/5 hover:border-blue-500/50 transition-all active:scale-95 group/ani"> <img src={role.anime.poster || '/images/no-poster.png'} className="w-6 h-6 rounded-full object-cover" /> <div className="flex flex-col"><span className="text-[9px] font-bold text-zinc-400 group-hover/ani:text-white truncate max-w-[150px]">{role.character.name}</span><span className="text-[8px] text-zinc-600">{role.anime.title}</span></div> </div> ))}</div> </div> )} </div> </ScrollArea> </div> </> ) : <div className="w-full h-full flex items-center justify-center text-red-500 font-bold">DATA CORRUPTED</div>} </div> </DialogContent> </Dialog> );
+  
+  useEffect(() => { 
+      if (!isOpen || !characterId) return; 
+      setLoading(true); 
+      retryOperation(() => AnimeAPI_V3.getCharacterDetails(characterId))
+        .then((res: any) => { 
+            const item = res?.results?.data?.[0] || res?.data?.[0] || res; 
+            setData(item); 
+            setLoading(false); 
+        })
+        .catch(() => setLoading(false)); 
+  }, [isOpen, characterId]);
+
+  return ( 
+    <Dialog open={isOpen} onOpenChange={(v) => !v && onClose()}> 
+        <DialogContent className="max-w-4xl w-[90vw] h-[65vh] md:h-[550px] p-0 border-0 bg-transparent shadow-none overflow-hidden sm:rounded-[30px] z-[60] [&>button]:hidden"> 
+            <DialogTitle className="sr-only">Character Details</DialogTitle> 
+            <div className="w-full h-full relative backdrop-blur-2xl bg-[#050505]/95 border border-white/10 rounded-[30px] shadow-[0_0_80px_rgba(220,38,38,0.15)] overflow-hidden flex flex-col md:flex-row"> 
+                <div className="absolute top-0 left-0 w-full h-full bg-gradient-to-br from-red-900/10 via-transparent to-red-900/5 pointer-events-none" /> 
+                
+                {/* NAVIGATION BUTTONS - MOVED TO TOP RIGHT (Z-INDEX 100) */}
+                <div className="absolute top-1 right-1 z-[100] flex gap-2 pointer-events-auto">
+                    {onBack && canGoBack && (
+                      <button onClick={onBack} className="p-2 rounded-full bg-black/60 backdrop-blur-md border border-white/10 text-white/70 hover:text-white hover:bg-zinc-800 transition-all active:scale-90 shadow-lg group">
+                        <ArrowLeft size={14} className="group-hover:text-red-500 transition-colors" />
+                      </button>
+                    )}
+                    {onForward && canGoForward && (
+                      <button onClick={onForward} className="p-2 rounded-full bg-black/60 backdrop-blur-md border border-white/10 text-white/70 hover:text-white hover:bg-zinc-800 transition-all active:scale-90 shadow-lg group">
+                        <ArrowRight size={14} className="group-hover:text-red-500 transition-colors" />
+                      </button>
+                    )}
+                    <button onClick={onClose} className="p-2 rounded-full bg-black/60 backdrop-blur-md border border-white/10 text-white/70 hover:text-white hover:bg-red-600 hover:border-red-500 transition-all active:scale-90 shadow-lg">
+                      <X size={14} />
+                    </button> 
+                </div>
+
+                {loading ? <div className="w-full h-full flex items-center justify-center"><FantasyLoader text="ANALYZING..." /></div> : data ? ( 
+                <> 
+                    <div className="w-full md:w-[35%] h-[40%] md:h-full relative overflow-hidden group border-b md:border-b-0 md:border-r border-white/5"> 
+                        <img src={data.profile || data.image || '/images/non-non.png'} className="w-full h-full object-cover opacity-90 transition-transform duration-700 group-hover:scale-105" alt={data.name} /> 
+                        <div className="absolute inset-0 bg-gradient-to-t from-black via-transparent to-transparent md:bg-gradient-to-r" /> 
+                        <div className="absolute bottom-6 left-6 z-10">
+                            <h2 className="text-2xl md:text-3xl font-black text-white font-[Cinzel] leading-none tracking-tighter drop-shadow-lg">{data.name}</h2>
+                            <p className="text-red-500 font-bold uppercase tracking-[0.2em] text-[10px] mt-1">{data.japaneseName}</p>
+                        </div> 
+                    </div> 
+                    <div className="w-full md:w-[65%] h-[60%] md:h-full relative z-10 flex flex-col bg-[#0a0a0a]/50"> 
+                        <ScrollArea className="h-full p-6 custom-scrollbar"> 
+                            <div className="space-y-8"> 
+                                <div>
+                                    <h3 className="text-[10px] font-black text-zinc-500 uppercase tracking-widest mb-3 flex items-center gap-2"><Info size={12}/> Profile</h3>
+                                    <div className="text-zinc-300 text-sm leading-relaxed font-medium opacity-90 p-4 rounded-2xl bg-white/5 border border-white/5 shadow-inner" dangerouslySetInnerHTML={{ __html: data.about?.style || data.about?.description || "No Data Available" }} />
+                                </div> 
+                                
+                                <div>
+                                    <h3 className="text-[10px] font-black text-zinc-500 uppercase tracking-widest mb-3 flex items-center gap-2"><Mic size={12} className="text-red-500"/> Voice Artists</h3>
+                                    {data.voiceActors && data.voiceActors.length > 0 ? (
+                                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                            {data.voiceActors.map((va: any, i: number) => (
+                                                <button key={i} onClick={() => va.id && onActorClick(va.id)} className="flex items-center gap-4 p-3 rounded-2xl bg-white/5 border border-white/5 hover:bg-white/10 hover:border-red-500/30 transition-all group/va text-left active:scale-95">
+                                                    <img src={va.profile || va.image || '/images/non-non.png'} className="w-12 h-12 rounded-full object-cover border border-white/10 shadow-md group-hover/va:border-red-500/50" alt={va.name} />
+                                                    <div className="flex flex-col min-w-0">
+                                                        <span className="text-sm font-bold text-zinc-200 group-hover/va:text-white truncate">{va.name}</span>
+                                                        <span className="text-[10px] font-bold text-zinc-500 uppercase tracking-wider">{va.language}</span>
+                                                    </div>
+                                                </button>
+                                            ))}
+                                        </div>
+                                    ) : (
+                                        <div className="flex flex-col items-center justify-center py-6 opacity-40">
+                                            <img src="/images/non-non.png" className="w-12 h-12 rounded-full grayscale mb-2 border border-white/10" />
+                                            <span className="text-[10px] font-black uppercase text-zinc-500 tracking-widest">No Bloodlines Found</span>
+                                        </div>
+                                    )}
+                                </div>
+
+                                {data.animeography && data.animeography.length > 0 && ( 
+                                    <div>
+                                        <h3 className="text-[10px] font-black text-zinc-500 uppercase tracking-widest mb-3 flex items-center gap-2"><Layers size={12} className="text-yellow-500"/> Appearances</h3> 
+                                        <div className="flex flex-col gap-3">
+                                            {data.animeography.map((anime:any, i:number) => ( 
+                                                <Link key={i} href={`/watch/${anime.id}`} className="flex items-center gap-4 p-2 pr-4 rounded-xl bg-black/40 border border-white/5 hover:border-red-500/50 hover:bg-white/5 transition-all active:scale-95 group/ani"> 
+                                                    <img src={anime.poster || '/images/no-poster.png'} className="w-10 h-14 rounded-lg object-cover shadow-sm" /> 
+                                                    <div className="flex flex-col min-w-0">
+                                                        <span className="text-sm font-bold text-zinc-300 group-hover/ani:text-white truncate">{anime.title}</span>
+                                                        <span className="text-[10px] font-bold text-zinc-500 uppercase tracking-wider group-hover/ani:text-red-400 transition-colors">{anime.role || 'Character'}</span>
+                                                    </div> 
+                                                </Link> 
+                                            ))}
+                                        </div> 
+                                    </div> 
+                                )} 
+                            </div> 
+                        </ScrollArea> 
+                    </div> 
+                </> ) : <div className="w-full h-full flex items-center justify-center text-red-500 font-bold">DATA CORRUPTED</div>} 
+            </div> 
+        </DialogContent> 
+    </Dialog> 
+  );
 };
 
-const VoiceActorDetailsDialog = ({ isOpen, onClose, actorId }: { isOpen: boolean; onClose: () => void; actorId: string | null }) => {
+// --- UPDATED VOICE ACTOR DETAILS DIALOG ---
+const VoiceActorDetailsDialog = ({ 
+  isOpen, onClose, actorId, onCharacterClick, onBack, onForward, canGoBack, canGoForward 
+}: { 
+  isOpen: boolean; onClose: () => void; actorId: string | null, onCharacterClick: (id: string) => void, onBack?: () => void, onForward?: () => void, canGoBack?: boolean, canGoForward?: boolean 
+}) => {
   const [data, setData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
-  useEffect(() => { if (!isOpen || !actorId) return; setLoading(true); retryOperation(() => AnimeAPI_V3.getVoiceActorDetails(actorId)).then((res: any) => { const item = res?.results?.data?.[0] || res?.data?.[0] || res; setData(item); setLoading(false); }).catch(() => setLoading(false)); }, [isOpen, actorId]);
-  return ( <Dialog open={isOpen} onOpenChange={(v) => !v && onClose()}> <DialogContent className="max-w-4xl w-[95vw] h-[85vh] p-0 border-0 bg-transparent shadow-none overflow-hidden sm:rounded-[40px] z-[60] [&>button]:hidden"> <DialogTitle className="sr-only">Actor Details</DialogTitle> <div className="w-full h-full relative backdrop-blur-2xl bg-[#050505]/60 border border-white/10 rounded-[40px] shadow-[0_0_80px_rgba(0,0,0,0.8)] overflow-hidden flex flex-col md:flex-row"> <div className="absolute top-0 left-0 w-full h-full bg-gradient-to-br from-blue-600/10 via-transparent to-red-600/5 pointer-events-none" /> <button onClick={onClose} className="absolute top-6 right-6 z-50 p-2 rounded-full bg-black/40 border border-white/10 text-white/70 hover:text-white hover:bg-blue-600 hover:border-blue-500 transition-all active:scale-90"><X size={18} /></button> {loading ? <div className="w-full h-full flex items-center justify-center"><FantasyLoader text="IDENTIFYING..." /></div> : data ? ( <> <div className="w-full md:w-[40%] h-[40%] md:h-full relative overflow-hidden group"> <img src={data.profile || '/images/non-non.png'} className="w-full h-full object-cover opacity-90 transition-transform duration-700 group-hover:scale-105" alt={data.name} /> <div className="absolute inset-0 bg-gradient-to-t from-black via-transparent to-transparent md:bg-gradient-to-r" /> <div className="absolute bottom-6 left-6 z-10"><h2 className="text-3xl md:text-4xl font-black text-white font-[Cinzel] leading-none tracking-tighter drop-shadow-lg">{data.name}</h2><p className="text-blue-500 font-bold uppercase tracking-[0.3em] text-[10px] mt-1">{data.japaneseName}</p></div> </div> <div className="w-full md:w-[60%] h-[60%] md:h-full relative z-10 flex flex-col"> <ScrollArea className="h-full p-8 custom-scrollbar"> <div className="space-y-8"> <div><h3 className="text-[10px] font-black text-zinc-500 uppercase tracking-widest mb-3 flex items-center gap-2"><Info size={12}/> Profile</h3><div className="text-zinc-300 text-sm leading-relaxed font-medium opacity-90 p-4 rounded-2xl bg-white/5 border border-white/5 shadow-inner" dangerouslySetInnerHTML={{ __html: data.about?.style || data.about?.description || "No Data" }} /></div> {data.roles && ( <div><h3 className="text-[10px] font-black text-zinc-500 uppercase tracking-widest mb-3 flex items-center gap-2"><Layers size={12}/> Roles</h3> <div className="flex flex-wrap gap-3">{data.roles.map((role:any, i:number) => ( <div key={i} className="flex items-center gap-2 p-1.5 pr-3 rounded-full bg-black/40 border border-white/5 hover:border-blue-500/50 transition-all active:scale-95 group/ani"> <img src={role.anime.poster || '/images/no-poster.png'} className="w-6 h-6 rounded-full object-cover" /> <div className="flex flex-col"><span className="text-[9px] font-bold text-zinc-400 group-hover/ani:text-white truncate max-w-[150px]">{role.character.name}</span><span className="text-[8px] text-zinc-600">{role.anime.title}</span></div> </div> ))}</div> </div> )} </div> </ScrollArea> </div> </> ) : <div className="w-full h-full flex items-center justify-center text-red-500 font-bold">DATA CORRUPTED</div>} </div> </DialogContent> </Dialog> );
+  
+  useEffect(() => { 
+      if (!isOpen || !actorId) return; 
+      setLoading(true); 
+      retryOperation(() => AnimeAPI_V3.getVoiceActorDetails(actorId))
+        .then((res: any) => { 
+            const item = res?.results?.data?.[0] || res?.data?.[0] || res; 
+            setData(item); 
+            setLoading(false); 
+        })
+        .catch(() => setLoading(false)); 
+  }, [isOpen, actorId]);
+
+  return ( 
+    <Dialog open={isOpen} onOpenChange={(v) => !v && onClose()}> 
+        <DialogContent className="max-w-4xl w-[95vw] h-[65vh] md:h-[550px] p-0 border-0 bg-transparent shadow-none overflow-hidden sm:rounded-[30px] z-[60] [&>button]:hidden"> 
+            <DialogTitle className="sr-only">Actor Details</DialogTitle> 
+            <div className="w-full h-full relative backdrop-blur-2xl bg-[#050505]/95 border border-white/10 rounded-[30px] shadow-[0_0_80px_rgba(220,38,38,0.3)] overflow-hidden flex flex-col md:flex-row"> 
+                {/* RED THEME GRADIENT */}
+                <div className="absolute top-0 left-0 w-full h-full bg-gradient-to-br from-red-600/10 via-transparent to-red-600/5 pointer-events-none" /> 
+                
+                {/* NAVIGATION BUTTONS - MOVED TO TOP RIGHT (Z-INDEX 100) */}
+                <div className="absolute top-1 right-1 z-[100] flex gap-2 pointer-events-auto">
+                    {onBack && canGoBack && (
+                      <button onClick={onBack} className="p-2 rounded-full bg-black/60 backdrop-blur-md border border-white/10 text-white/70 hover:text-white hover:bg-zinc-800 transition-all active:scale-90 shadow-lg group">
+                        <ArrowLeft size={14} className="group-hover:text-red-500 transition-colors" />
+                      </button>
+                    )}
+                    {onForward && canGoForward && (
+                      <button onClick={onForward} className="p-2 rounded-full bg-black/60 backdrop-blur-md border border-white/10 text-white/70 hover:text-white hover:bg-zinc-800 transition-all active:scale-90 shadow-lg group">
+                        <ArrowRight size={14} className="group-hover:text-red-500 transition-colors" />
+                      </button>
+                    )}
+                    <button onClick={onClose} className="p-2 rounded-full bg-black/60 backdrop-blur-md border border-white/10 text-white/70 hover:text-white hover:bg-red-600 hover:border-red-500 transition-all active:scale-90 shadow-lg">
+                      <X size={14} />
+                    </button> 
+                </div>
+
+                {loading ? <div className="w-full h-full flex items-center justify-center"><FantasyLoader text="IDENTIFYING..." /></div> : data ? ( 
+                <> 
+                    <div className="w-full md:w-[35%] h-[40%] md:h-full relative overflow-hidden group border-b md:border-b-0 md:border-r border-white/5"> 
+                        <img src={data.profile || '/images/non-non.png'} className="w-full h-full object-cover opacity-90 transition-transform duration-700 group-hover:scale-105" alt={data.name} /> 
+                        <div className="absolute inset-0 bg-gradient-to-t from-black via-transparent to-transparent md:bg-gradient-to-r" /> 
+                        <div className="absolute bottom-6 left-6 z-10">
+                            <h2 className="text-2xl md:text-3xl font-black text-white font-[Cinzel] leading-none tracking-tighter drop-shadow-lg">{data.name}</h2>
+                            <p className="text-red-500 font-bold uppercase tracking-[0.3em] text-[10px] mt-1">{data.japaneseName}</p>
+                        </div> 
+                    </div> 
+                    <div className="w-full md:w-[65%] h-[60%] md:h-full relative z-10 flex flex-col bg-[#0a0a0a]/50"> 
+                        <ScrollArea className="h-full p-6 custom-scrollbar"> 
+                            <div className="space-y-8"> 
+                                <div>
+                                    <h3 className="text-[10px] font-black text-zinc-500 uppercase tracking-widest mb-3 flex items-center gap-2"><Info size={12}/> Profile</h3>
+                                    <div className="text-zinc-300 text-sm leading-relaxed font-medium opacity-90 p-4 rounded-2xl bg-white/5 border border-white/5 shadow-inner" dangerouslySetInnerHTML={{ __html: data.about?.style || data.about?.description || "No Data" }} />
+                                </div> 
+                                {data.roles && ( 
+                                    <div>
+                                        <h3 className="text-[10px] font-black text-zinc-500 uppercase tracking-widest mb-3 flex items-center gap-2"><Layers size={12}/> Roles</h3> 
+                                        <div className="flex flex-col gap-2">
+                                            {data.roles.map((role:any, i:number) => ( 
+                                                <div key={i} className="grid grid-cols-2 gap-2 p-1.5 rounded-xl bg-white/5 border border-white/5 hover:bg-white/10 transition-colors group/row"> 
+                                                    {/* Left: Anime Info (50% Width) */}
+                                                    <Link href={`/watch/${role.anime.id}`} className="flex items-center gap-2 min-w-0 group/ani overflow-hidden">
+                                                        <img src={role.anime.poster || '/images/no-poster.png'} className="w-8 h-12 rounded-md object-cover shadow-sm shrink-0" /> 
+                                                        <div className="flex flex-col min-w-0 overflow-hidden">
+                                                            <PingPongScroll text={role.anime.title} className="text-[10px] font-bold text-zinc-300 group-hover/ani:text-white" />
+                                                            <span className="text-[9px] font-bold text-red-500 uppercase tracking-wider group-hover/ani:underline truncate">Watch Now</span>
+                                                        </div> 
+                                                    </Link>
+
+                                                    {/* Right: Character Info (50% Width) */}
+                                                    <button onClick={() => onCharacterClick(role.character.id)} className="flex items-center gap-2 justify-end min-w-0 group/char text-right overflow-hidden">
+                                                        <div className="flex flex-col min-w-0 items-end overflow-hidden">
+                                                            <PingPongScroll text={role.character.name} className="text-[10px] font-bold text-zinc-300 group-hover/char:text-white text-right" />
+                                                            <span className="text-[9px] font-bold text-zinc-500 uppercase tracking-wider truncate w-full text-right">{role.role || role.character.role || 'Main'}</span>
+                                                        </div>
+                                                        <img 
+                                                            src={role.character.profile || role.character.image || role.character.poster || role.character.images?.jpg?.image_url || '/images/non-non.png'} 
+                                                            className="w-10 h-10 rounded-full object-cover border border-white/10 group-hover/char:border-red-500 transition-colors shadow-md shrink-0" 
+                                                            alt={role.character.name}
+                                                        /> 
+                                                    </button>
+                                                </div> 
+                                            ))}
+                                        </div> 
+                                    </div> 
+                                )} 
+                            </div> 
+                        </ScrollArea> 
+                    </div> 
+                </> ) : <div className="w-full h-full flex items-center justify-center text-red-500 font-bold">DATA CORRUPTED</div>} 
+            </div> 
+        </DialogContent> 
+    </Dialog> 
+  );
 };
 
 // ==========================================
@@ -294,6 +537,30 @@ function WatchContent() {
   const urlEpId = searchParams.get('ep'); 
   const { user } = useAuth(); 
   const { settings, updateSetting, isSettingsLoaded } = useWatchSettings();
+
+  // --- POPUP STACK MANAGEMENT ---
+  const [popupHistory, setPopupHistory] = useState<{type: 'character'|'actor', id: string}[]>([]);
+  const [popupIndex, setPopupIndex] = useState(-1);
+  
+  const activePopup = popupIndex >= 0 ? popupHistory[popupIndex] : null;
+
+  const navigateToPopup = (type: 'character'|'actor', id: string) => {
+    const newHistory = popupHistory.slice(0, popupIndex + 1);
+    newHistory.push({ type, id });
+    setPopupHistory(newHistory);
+    setPopupIndex(newHistory.length - 1);
+  };
+
+  const openCharacter = (id: string) => navigateToPopup('character', id);
+  const openActor = (id: string) => navigateToPopup('actor', id);
+  
+  const goBack = () => setPopupIndex(prev => Math.max(0, prev - 1));
+  const goForward = () => setPopupIndex(prev => Math.min(popupHistory.length - 1, prev + 1));
+  
+  const closeAll = () => {
+      setPopupHistory([]);
+      setPopupIndex(-1);
+  };
 
   const [anime, setAnime] = useState<UniversalAnime | null>(null); 
   const [isLoadingInfo, setIsLoadingInfo] = useState(true);
@@ -318,14 +585,10 @@ function WatchContent() {
   const [lastScrollY, setLastScrollY] = useState(0);
 
   const [showSkipNotification, setShowSkipNotification] = useState(false);
-  // Ref to prevent infinite loops (only trigger once per event)
   const isSkipToastLocked = useRef(false);
 
   const [epViewMode, setEpViewMode] = useState<'grid' | 'list' | 'compact'>('grid');
   const [epChunkIndex, setEpChunkIndex] = useState(0);
-  
-  const [selectedCharacter, setSelectedCharacter] = useState<string | null>(null);
-  const [selectedActor, setSelectedActor] = useState<string | null>(null);
   
   const [epProgress, setEpProgress] = useState<EpisodeProgress>({}); 
 
@@ -334,7 +597,6 @@ function WatchContent() {
   const progressRef = useRef(0);
   const playerRef = useRef<AnimePlayerRef>(null);
 
-  // New Refs for Smart Hybrid Sync
   const progressBuffer = useRef<{[key: string]: any}>({});
   const isBufferDirty = useRef(false);
 
@@ -379,20 +641,28 @@ function WatchContent() {
       resetInterfaceTimer();
   };
 
-  // FIXED SKIP INTRO TOAST (Prevent Loop)
   const handleSkipIntro = useCallback(() => {
-      if (isSkipToastLocked.current) return; 
+      if (isSkipToastLocked.current || showSkipNotification) return; 
       
       setShowSkipNotification(true);
       isSkipToastLocked.current = true;
-      
-      // Strict Timeout
       setTimeout(() => {
           setShowSkipNotification(false);
-          // Unlock after 4s (buffer)
           setTimeout(() => { isSkipToastLocked.current = false; }, 1000);
       }, 3000);
-  }, []);
+  }, [showSkipNotification]);
+
+  // --- URL AUTO UPDATE LOGIC ---
+  useEffect(() => {
+    if (currentEpId && !isLoadingInfo) {
+         const url = new URL(window.location.href);
+         const currentParamEp = url.searchParams.get('ep');
+         if (currentParamEp !== currentEpId) {
+             url.searchParams.set('ep', currentEpId);
+             window.history.replaceState({}, '', url.toString());
+         }
+    }
+  }, [currentEpId, isLoadingInfo]);
 
   // 1. INITIAL LOAD
   useEffect(() => {
@@ -433,7 +703,7 @@ function WatchContent() {
     init();
   }, [animeId]);
 
-  // 2. SMART SYNC (Compare DB vs Local timestamps)
+  // 2. SMART SYNC
   useEffect(() => {
       if (!anime) return;
 
@@ -673,7 +943,7 @@ function WatchContent() {
               last_server: settings.server,       
               episode_image: episodeImage, 
               total_episodes: anime.episodes.length,
-              type: animeType,           
+              type: animeType,            
               is_completed: isCompleted
           };
 
@@ -708,8 +978,9 @@ function WatchContent() {
       saveProgress(true); 
       setCurrentEpId(id); 
       setStreamUrl(null); 
+      isSkipToastLocked.current = false; // Reset toast lock on new ep
       
-      // FIX URL UPDATE
+      // Explicit URL update on click as well
       const newUrl = `/watch/${animeId}?ep=${id}`;
       window.history.pushState({}, '', newUrl);
   };
@@ -747,7 +1018,6 @@ function WatchContent() {
           .custom-scrollbar::-webkit-scrollbar-thumb { background: #dc2626; border-radius: 10px; opacity: 0.8; }
           .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: #ef4444; }
           
-          /* TABLET & DESKTOP (LG/1024px+): Auto Hide Interface */
           @media (min-width: 1024px) {
               ${hideInterface ? `nav, header, footer, .bottom-navigation, div[class*="navbar"], div[class*="header"], div[class*="footer"], .fixed.top-0, .fixed.bottom-0 { opacity: 0 !important; pointer-events: none !important; transition: opacity 0.5s ease-in-out; }` : ''}
               div[class*="navbar"]:hover, header:hover { opacity: 1 !important; pointer-events: auto !important; }
@@ -776,14 +1046,12 @@ function WatchContent() {
         <div className="w-full max-w-[1300px] 2xl:max-w-[1680px]">
             {/* PLAYER */}
             <div className="w-full aspect-video bg-black rounded-t-[30px] rounded-b-none overflow-hidden border-t border-l border-r border-white/5 shadow-2xl relative shadow-red-900/10" onClick={handlePlayerClick}>
-                {/* SKIPPED INTRO OVERLAY (Tiny Glass Capsule, Above Controls) */}
                 <AnimatePresence>
                     {showSkipNotification && (
                         <motion.div
                             initial={{ opacity: 0, y: 10 }}
                             animate={{ opacity: 1, y: 0 }}
                             exit={{ opacity: 0, y: 10 }}
-                            // Bottom-32 on mobile (above controls), Bottom-24 on desktop
                             className="absolute bottom-32 lg:bottom-24 left-1/2 -translate-x-1/2 z-[70] bg-black/60 backdrop-blur-md border border-white/10 text-white px-3 py-1 rounded-full flex items-center gap-2 shadow-[0_0_15px_rgba(0,0,0,0.5)] pointer-events-none"
                         >
                             <div className="w-3 h-3 bg-white rounded-full flex items-center justify-center">
@@ -821,12 +1089,12 @@ function WatchContent() {
                 )}
             </div>
 
-            {/* CONTROLS (SEAMLESSLY ATTACHED) */}
+            {/* CONTROLS */}
             <motion.div 
                 initial={{ y: -20, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ duration: 0.5, delay: 0.2 }}
                 className={cn("w-full transition-all duration-500", hideInterface ? "opacity-0 pointer-events-none translate-y-4" : "opacity-100 translate-y-0")}
             >
-                {/* 1. DESKTOP/LAPTOP CONTROLS (Hidden on Mobile/Tablet) */}
+                {/* 1. DESKTOP/LAPTOP CONTROLS */}
                 <div className="hidden lg:flex w-full bg-[#0a0a0a] border-b border-l border-r border-t-0 border-white/5 rounded-b-[30px] rounded-t-none shadow-red-900/10 shadow-lg px-5 py-2 flex-row gap-4 justify-between items-center overflow-hidden">
                     <div className="flex-1 min-w-0 flex items-center gap-4 w-full sm:w-auto overflow-hidden">
                         <MarqueeTitle text={currentEpisode?.title || `Episode ${currentEpisode?.number}`} />
@@ -875,44 +1143,34 @@ function WatchContent() {
                     </div>
                 </div>
 
-                {/* 2. MOBILE & TABLET CONTROLS (3-Row Layout) - Z-INDEX FIX */}
+                {/* 2. MOBILE & TABLET CONTROLS */}
                 <div className="flex lg:hidden w-full bg-[#0a0a0a] border-b border-l border-r border-t-0 border-white/5 rounded-b-[30px] rounded-t-none shadow-red-900/10 shadow-lg px-4 py-4 flex-col gap-3 overflow-hidden relative z-[60]">
-                    
-                    {/* Row 1: Playback Controls */}
                     <div className="flex w-full justify-between items-center gap-2">
                         <button disabled={!prevEpisode} onClick={() => prevEpisode && handleEpisodeClick(prevEpisode.id)} className="flex-1 bg-white/5 h-8 rounded-full border border-white/5 flex items-center justify-center text-zinc-400 hover:text-white active:bg-white/10"><SkipBack size={14}/></button>
-                        
                         <button onClick={() => updateSetting('autoSkip', !settings.autoSkip)} className={cn("flex-1 h-8 rounded-full border flex items-center justify-center gap-0.5 transition-colors relative", settings.autoSkip ? "bg-red-600/20 border-red-500 text-red-500" : "bg-white/5 border-white/5 text-zinc-400")}>
                             <FastForward size={14}/>
                             <sup className="font-bold text-[8px] top-[-2px] text-inherit">A</sup>
                         </button>
-                        
                         <button onClick={() => updateSetting('autoPlay', !settings.autoPlay)} className={cn("flex-1 h-8 rounded-full border flex items-center justify-center gap-0.5 transition-colors relative", settings.autoPlay ? "bg-red-600/20 border-red-500 text-red-500" : "bg-white/5 border-white/5 text-zinc-400")}>
                             <Play size={14}/>
                             <sup className="font-bold text-[8px] top-[-2px] text-inherit">A</sup>
                         </button>
-                        
                         <button onClick={() => updateSetting('autoNext', !settings.autoNext)} className={cn("flex-1 h-8 rounded-full border flex items-center justify-center gap-0.5 transition-colors relative", settings.autoNext ? "bg-red-600/20 border-red-500 text-red-500" : "bg-white/5 border-white/5 text-zinc-400")}>
                             <SkipForward size={14}/>
                             <sup className="font-bold text-[8px] top-[-2px] text-inherit">A</sup>
                         </button>
-                        
                         <button disabled={!nextEpisode} onClick={() => nextEpisode && handleEpisodeClick(nextEpisode.id)} className="flex-1 bg-white/5 h-8 rounded-full border border-white/5 flex items-center justify-center text-zinc-400 hover:text-white active:bg-white/10"><SkipForward size={14}/></button>
                     </div>
 
-                    {/* Row 2: Info & Actions */}
                     <div className="grid grid-cols-[1fr_auto_auto] gap-3 w-full items-center">
                         <div className="min-w-0"><MarqueeTitle text={currentEpisode?.title || `Episode ${currentEpisode?.number}`} /></div>
                         <NextEpisodeTimer schedule={nextEpSchedule} status={anime.info.status} />
                         <WatchListButton animeId={anime.id} animeTitle={anime.title} animeImage={anime.poster} currentEp={currentEpisode?.number} />
                     </div>
 
-                    {/* Row 3: Settings */}
                     <div className="flex w-full justify-between items-center gap-2">
                         <Button onClick={() => updateSetting('dimMode', !settings.dimMode)} variant="ghost" size="icon" className={cn("rounded-full w-8 h-8", settings.dimMode ? "text-yellow-500 bg-yellow-500/10" : "text-zinc-600 bg-white/5")}><Lightbulb size={16} /></Button>
-                        
                         <div className="flex bg-black/40 rounded-full p-1 border border-white/10 shadow-inner flex-1 justify-center">{(['sub', 'dub', 'raw'] as const).map((cat) => { const isAvailable = (servers?.[cat]?.length || 0) > 0; return (<button key={cat} disabled={!isAvailable} onClick={() => updateSetting('category', cat)} className={cn("px-3 py-0.5 rounded-full text-[10px] font-black uppercase transition-all relative active:scale-75 shadow-sm flex-1", settings.category === cat ? "bg-red-600 text-white shadow-lg" : "text-zinc-600 hover:text-zinc-300", !isAvailable && "opacity-10")}>{cat}</button>);})}</div>
-
                         <DropdownMenu modal={false}>
                             <DropdownMenuTrigger asChild>
                                 <Button variant="ghost" className="h-8 gap-2 text-[10px] font-black text-zinc-500 bg-white/5 rounded-full border border-white/5 w-24">
@@ -929,13 +1187,9 @@ function WatchContent() {
         </div>
       </motion.div>
 
+      {/* PAGE CONTENT */}
       <div className="w-full flex justify-center mt-8 px-4 md:px-8"><div className="w-full flex flex-col xl:grid xl:grid-cols-12 gap-8 max-w-[1300px] 2xl:max-w-[1680px]">
-            
-            {/* EPISODES SECTION (Mobile: 2nd, Desktop: Left) */}
-            <motion.div 
-                initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} transition={{ duration: 0.6, delay: 0.3 }}
-                className="order-2 xl:order-1 xl:col-span-4 h-[650px] bg-[#0a0a0a] rounded-[40px] border border-white/5 overflow-hidden flex flex-col shadow-2xl relative z-20"
-            >
+            <motion.div initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} transition={{ duration: 0.6, delay: 0.3 }} className="order-2 xl:order-1 xl:col-span-4 h-[650px] bg-[#0a0a0a] rounded-[40px] border border-white/5 overflow-hidden flex flex-col shadow-2xl relative z-20">
                 <div className="p-6 bg-white/5 border-b border-white/5 flex justify-between items-center shrink-0">
                     <div className="flex items-center gap-3">
                         <h3 className="font-black text-white flex items-center gap-2 uppercase text-sm font-[Cinzel] tracking-widest"><Layers size={18} className="text-red-600"/> Episodes</h3>
@@ -947,67 +1201,25 @@ function WatchContent() {
                         <button onClick={() => setEpViewMode('list')} className={cn("p-1.5 rounded-md transition-all", epViewMode === 'list' ? "bg-zinc-800 text-white shadow-sm" : "text-zinc-500 hover:text-zinc-300")}><List size={14}/></button>
                     </div>
                 </div>
-
                 <div className="w-full border-b border-white/5 bg-black/20 flex-shrink-0 py-3 px-4 relative group/chunks">
                     <div ref={chunksRef} className="flex items-center gap-2 w-full overflow-x-auto no-scrollbar cursor-grab active:cursor-grabbing">
                         {episodeChunks.map((_, idx) => (
-                            <button key={idx} onClick={() => setEpChunkIndex(idx)} 
-                                className={cn("flex-shrink-0 px-4 py-1.5 text-[10px] font-black rounded-full transition-all border shadow-sm uppercase tracking-wider", epChunkIndex === idx ? "bg-red-600 text-white border-red-500 shadow-red-900/20" : "bg-zinc-900 border-zinc-800 text-zinc-500 hover:text-zinc-300 hover:border-zinc-700")}>
-                                {(idx * chunkSize) + 1}-{Math.min((idx + 1) * chunkSize, anime.episodes.length)}
-                            </button>
+                            <button key={idx} onClick={() => setEpChunkIndex(idx)} className={cn("flex-shrink-0 px-4 py-1.5 text-[10px] font-black rounded-full transition-all border shadow-sm uppercase tracking-wider", epChunkIndex === idx ? "bg-red-600 text-white border-red-500 shadow-red-900/20" : "bg-zinc-900 border-zinc-800 text-zinc-500 hover:text-zinc-300 hover:border-zinc-700")}>{(idx * chunkSize) + 1}-{Math.min((idx + 1) * chunkSize, anime.episodes.length)}</button>
                         ))}
                     </div>
                     <div className="absolute bottom-1 left-1/2 -translate-x-1/2 w-8 h-1 bg-red-600/30 rounded-full opacity-0 group-hover/chunks:opacity-100 transition-opacity" />
                 </div>
-
                 <ScrollArea className="flex-1 p-2 shadow-inner custom-scrollbar overflow-x-hidden">
-                    <motion.div 
-                        layout 
-                        className={cn(
-                            "p-2 transition-all duration-500 ease-in-out grid",
-                            epViewMode === 'grid' ? 'grid-cols-5 gap-2.5' : 
-                            epViewMode === 'compact' ? 'grid-cols-10 gap-1.5' : 
-                            'grid-cols-1 gap-2'
-                        )}
-                    >
+                    <motion.div layout className={cn("p-2 transition-all duration-500 ease-in-out grid", epViewMode === 'grid' ? 'grid-cols-5 gap-2.5' : epViewMode === 'compact' ? 'grid-cols-10 gap-1.5' : 'grid-cols-1 gap-2')}>
                         <AnimatePresence mode="popLayout">
                         {episodeChunks[epChunkIndex]?.map((ep) => {
                             const percent = epProgress[ep.number] || 0;
                             const isFullyPlayed = percent >= 80 || percent === 100;
                             const isCurrent = ep.id === currentEpId;
-                            
                             return (
-                                <motion.button 
-                                    key={ep.id} 
-                                    layout
-                                    initial={{ opacity: 0, scale: 0.8 }}
-                                    animate={{ opacity: 1, scale: 1 }}
-                                    exit={{ opacity: 0, scale: 0.8 }}
-                                    transition={{ type: "spring", stiffness: 400, damping: 25 }}
-                                    onClick={() => handleEpisodeClick(ep.id)}
-                                    className={cn(
-                                        "relative overflow-hidden group border transition-all duration-300",
-                                        epViewMode === 'grid' ? "h-9 w-full rounded-full flex items-center justify-center text-[11px] font-black shadow-lg" : 
-                                        epViewMode === 'compact' ? "aspect-square rounded-full flex items-center justify-center text-[9px] font-bold" :
-                                        "w-[95%] mx-auto h-9 rounded-full flex items-center px-4 text-[11px] font-bold text-left",
-                                        
-                                        isCurrent 
-                                            ? "bg-red-600/90 backdrop-blur-md border-red-400 text-white shadow-[0_0_15px_rgba(220,38,38,0.6)] z-20 scale-105"
-                                            : isFullyPlayed 
-                                                ? "bg-[#000] border border-red-900/30 text-white shadow-[inset_0_0_15px_rgba(220,38,38,0.5)] drop-shadow-[0_0_8px_rgba(220,38,38,0.5)]"
-                                                : "bg-zinc-900 border-zinc-800 text-zinc-500 hover:border-zinc-700 hover:text-white"
-                                    )}
-                                    style={!isCurrent && !isFullyPlayed && percent > 0 ? {
-                                        background: `linear-gradient(to right, rgba(220, 38, 38, 0.4) ${percent}%, transparent ${percent}%)`,
-                                    } : {}}
-                                >
+                                <motion.button key={ep.id} layout initial={{ opacity: 0, scale: 0.8 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.8 }} transition={{ type: "spring", stiffness: 400, damping: 25 }} onClick={() => handleEpisodeClick(ep.id)} className={cn("relative overflow-hidden group border transition-all duration-300", epViewMode === 'grid' ? "h-9 w-full rounded-full flex items-center justify-center text-[11px] font-black shadow-lg" : epViewMode === 'compact' ? "aspect-square rounded-full flex items-center justify-center text-[9px] font-bold" : "w-[95%] mx-auto h-9 rounded-full flex items-center px-4 text-[11px] font-bold text-left", isCurrent ? "bg-red-600/90 backdrop-blur-md border-red-400 text-white shadow-[0_0_15px_rgba(220,38,38,0.6)] z-20 scale-105" : isFullyPlayed ? "bg-[#000] border border-red-900/30 text-white shadow-[inset_0_0_15px_rgba(220,38,38,0.5)] drop-shadow-[0_0_8px_rgba(220,38,38,0.5)]" : "bg-zinc-900 border-zinc-800 text-zinc-500 hover:border-zinc-700 hover:text-white")} style={!isCurrent && !isFullyPlayed && percent > 0 ? { background: `linear-gradient(to right, rgba(220, 38, 38, 0.4) ${percent}%, transparent ${percent}%)`, } : {}}>
                                     {!isCurrent && !isFullyPlayed && percent > 0 && <div className="absolute inset-0 bg-red-600/10 animate-liquid pointer-events-none" />}
-                                    <span className={cn(
-                                        "truncate relative z-10 w-full",
-                                        epViewMode === 'list' ? "text-left" : "text-center"
-                                    )}>
-                                      {epViewMode === 'list' ? `${ep.number}. ${ep.title}` : ep.number}
-                                    </span>
+                                    <span className={cn("truncate relative z-10 w-full", epViewMode === 'list' ? "text-left" : "text-center")}>{epViewMode === 'list' ? `${ep.number}. ${ep.title}` : ep.number}</span>
                                 </motion.button>
                             );
                         })}
@@ -1016,42 +1228,22 @@ function WatchContent() {
                 </ScrollArea>
             </motion.div>
             
-            {/* WRAPPER FOR INFO + COMMENTS */}
             <div className="contents xl:contents">
-                
-                {/* COMMENTS (Mobile: 3rd, Desktop: Bottom Row) */}
                 <div className="order-3 xl:order-3 xl:col-span-12 w-full" onKeyDown={(e) => e.stopPropagation()}>
                     <ShadowComments key={user?.id || 'guest'} episodeId={currentEpId || "general"} />
                 </div>
-
-                {/* ANIME INFO SECTION (Mobile: 4th, Desktop: Right) */}
-                <motion.div 
-                    initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} transition={{ duration: 0.6, delay: 0.4 }}
-                    className="order-4 xl:order-2 xl:col-span-8 h-auto xl:h-[650px] bg-[#0a0a0a] rounded-[40px] border border-white/5 overflow-hidden flex flex-col shadow-2xl relative shadow-red-900/20"
-                >
+                <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} transition={{ duration: 0.6, delay: 0.4 }} className="order-4 xl:order-2 xl:col-span-8 h-auto xl:h-[650px] bg-[#0a0a0a] rounded-[40px] border border-white/5 overflow-hidden flex flex-col shadow-2xl relative shadow-red-900/20">
                     <div className="flex-shrink-0 relative p-8 pt-16 flex flex-col sm:flex-row gap-10 bg-gradient-to-b from-red-600/5 to-transparent">
                         <div className="relative shrink-0 mx-auto lg:mx-0 flex flex-col gap-6 w-full lg:w-auto items-center lg:items-start text-center lg:text-left">
                             <div className="relative p-[3px] rounded-3xl overflow-hidden group/poster shadow-[0_0_40px_rgba(220,38,38,0.2)] mx-auto sm:mx-0 w-fit">
                                 <div className="absolute inset-[-150%] bg-[conic-gradient(from_0deg,transparent,30%,#dc2626_50%,transparent_70%)] animate-[spin_3s_linear_infinite] opacity-60 blur-[1px]" />
                                 <img src={anime.poster} className="w-44 h-60 rounded-3xl border border-white/10 object-cover relative z-10 shadow-2xl shadow-black" alt={anime.title} />
                             </div>
-                            
-                            {/* TITLE & METADATA (Mobile & Tablet - CENTERED via lg:hidden) */}
-                            <div className="flex lg:hidden flex-col gap-3 w-full items-center">
+                            <div className="flex lg:hidden flex-col gap-3 w-full items-center text-center">
                                 <h1 className="text-2xl font-black text-white font-[Cinzel] leading-none tracking-tighter drop-shadow-2xl shadow-black">{anime.title}</h1>
-                                
                                 <div className="flex flex-wrap gap-3 mt-3 justify-center items-center">
-                                    <div className="flex items-center gap-4 text-[11px] text-zinc-400 font-black bg-white/5 border border-white/5 px-5 py-2 rounded-full uppercase tracking-widest shadow-inner shadow-black/20">
-                                         {/* MERGED BADGE INTO ROW - STYLED LIKE OTHERS */}
-                                         {formatRating(anime.stats.rating) && (
-                                            <>
-                                                <span className={cn(formatRating(anime.stats.rating)?.includes('18') || formatRating(anime.stats.rating)?.includes('R') ? "text-red-500" : "text-zinc-400")}>
-                                                    {formatRating(anime.stats.rating)}
-                                                </span>
-                                                <span className="w-1.5 h-1.5 bg-zinc-800 rounded-full"/>
-                                            </>
-                                         )}
-
+                                    <div className="flex items-center flex-wrap justify-center gap-4 text-[11px] text-zinc-400 font-black bg-white/5 border border-white/5 px-5 py-2 rounded-full uppercase tracking-widest shadow-inner shadow-black/20 max-w-full">
+                                         {formatRating(anime.stats.rating) && (<><span className={cn(formatRating(anime.stats.rating)?.includes('18') || formatRating(anime.stats.rating)?.includes('R') ? "text-red-500" : "text-zinc-400")}>{formatRating(anime.stats.rating)}</span><span className="w-1.5 h-1.5 bg-zinc-800 rounded-full"/></>)}
                                         <span className={cn(anime.info.status.includes('Airing') ? 'text-green-500 animate-pulse' : 'text-zinc-500')}>{anime.info.status}</span>
                                         <span className="w-1.5 h-1.5 bg-zinc-800 rounded-full"/>
                                         <div className="flex items-center gap-1.5"><Clock className="w-3.5 h-3.5 text-red-600 shadow-red-900/20"/> {anime.stats.duration}</div>
@@ -1059,31 +1251,16 @@ function WatchContent() {
                                         <div className="text-yellow-500">MAL: {anime.stats.malScore}</div>
                                     </div>
                                 </div>
-
                                 <div className="flex justify-center w-full"><TrailerSection videos={anime.trailers} /></div>
                             </div>
-
-                            {/* DESKTOP TRAILER BUTTON (Moved to Left Column - Under Poster) */}
                             <div className="hidden lg:flex justify-center w-full"><TrailerSection videos={anime.trailers} /></div>
                         </div>
-
-                        {/* DESKTOP INFO CONTENT (Visible on Large Screens - LEFT ALIGNED via lg:flex) */}
                         <div className="hidden lg:flex flex-1 pt-2 text-left z-10 flex-col h-full w-full">
                             <h1 className="text-3xl md:text-5xl font-black text-white font-[Cinzel] leading-none mb-2 tracking-tighter drop-shadow-2xl shadow-black">{anime.title}</h1>
                             {anime.jname && <p className="text-[10px] text-zinc-600 font-black uppercase tracking-[0.4em] mb-6 opacity-60 drop-shadow-sm">{anime.jname}</p>}
-                            
                             <div className="flex flex-wrap gap-4 mt-3 justify-start items-center">
                                 <div className="flex items-center gap-4 text-[11px] text-zinc-400 font-black bg-white/5 border border-white/5 px-5 py-2 rounded-full uppercase tracking-widest shadow-inner shadow-black/20">
-                                    {/* MERGED BADGE INTO ROW - STYLED LIKE OTHERS */}
-                                    {formatRating(anime.stats.rating) && (
-                                        <>
-                                            <span className={cn(formatRating(anime.stats.rating)?.includes('18') || formatRating(anime.stats.rating)?.includes('R') ? "text-red-500" : "text-zinc-400")}>
-                                                {formatRating(anime.stats.rating)}
-                                            </span>
-                                            <span className="w-1.5 h-1.5 bg-zinc-800 rounded-full"/>
-                                        </>
-                                    )}
-
+                                    {formatRating(anime.stats.rating) && (<><span className={cn(formatRating(anime.stats.rating)?.includes('18') || formatRating(anime.stats.rating)?.includes('R') ? "text-red-500" : "text-zinc-400")}>{formatRating(anime.stats.rating)}</span><span className="w-1.5 h-1.5 bg-zinc-800 rounded-full"/></>)}
                                     <span className={cn(anime.info.status.includes('Airing') ? 'text-green-500 animate-pulse' : 'text-zinc-500')}>{anime.info.status}</span>
                                     <span className="w-1.5 h-1.5 bg-zinc-800 rounded-full"/>
                                     <div className="flex items-center gap-1.5"><Clock className="w-3.5 h-3.5 text-red-600 shadow-red-900/20"/> {anime.stats.duration}</div>
@@ -1091,27 +1268,21 @@ function WatchContent() {
                                     <div className="text-yellow-500">MAL: {anime.stats.malScore}</div>
                                 </div>
                             </div>
-
                             <div className="flex flex-wrap gap-2 mt-6 justify-start">
                                 {anime.info.genres.map((g: string) => (<Link key={g} href={`/search?type=${g}`} className="text-[9px] px-4 py-1.5 bg-white/5 rounded-full text-zinc-500 border border-white/5 hover:text-white hover:bg-red-600 transition-all font-black uppercase tracking-widest active:scale-90 shadow-sm hover:shadow-red-900/20 shadow-red-900/10">{g}</Link>))}
                             </div>
-                            
                             <div className="mt-auto pt-6 w-full flex justify-end"><StarRating animeId={animeId} initialRating={anime.stats.rating} /></div>
                         </div>
                     </div>
-
                     <div className="flex-1 min-h-0 relative px-6 sm:px-10 mt-4 overflow-hidden flex flex-col">
                         <div className="lg:hidden flex flex-wrap gap-2 justify-center mb-6">
                              {anime.info.genres.map((g: string) => (<Link key={g} href={`/search?type=${g}`} className="text-[8px] px-3 py-1 bg-white/5 rounded-full text-zinc-500 border border-white/5 uppercase font-bold">{g}</Link>))}
                         </div>
                         <div className="lg:hidden flex justify-center mb-6"><StarRating animeId={animeId} initialRating={anime.stats.rating} /></div>
-
                         <h4 className="text-[10px] font-black text-red-600 uppercase tracking-[0.5em] mb-3 flex items-center gap-2 shadow-sm shrink-0"><Info size={12} className="shadow-sm"/> Synopsis</h4>
                         <ScrollArea className="flex-1 pr-4 custom-scrollbar shadow-inner shadow-red-900/5">
                            <p className="text-zinc-400 text-sm leading-relaxed pb-8 antialiased font-medium opacity-90 drop-shadow-sm shadow-black" dangerouslySetInnerHTML={{ __html: anime.description }} />
                         </ScrollArea>
-                        
-                        {/* MOBILE METADATA GRID (Under Synopsis) */}
                         <div className="grid lg:hidden grid-cols-2 gap-3 w-full mt-6 mb-6">
                             <div className="bg-white/5 p-2 rounded-xl border border-white/5 flex flex-col items-center justify-center">
                                 <span className="text-[8px] font-black uppercase tracking-widest text-red-600 mb-1">Aired</span>
@@ -1121,7 +1292,6 @@ function WatchContent() {
                                 <span className="text-[8px] font-black uppercase tracking-widest text-red-600 mb-1">Premiered</span>
                                 <span className="text-[9px] font-bold text-zinc-300">{anime.info.premiered}</span>
                             </div>
-                            
                             <DropdownMenu modal={false}>
                                 <DropdownMenuTrigger asChild>
                                     <div className="bg-white/5 p-2 rounded-xl border border-white/5 flex flex-col items-center justify-center active:scale-95 transition-transform">
@@ -1131,7 +1301,6 @@ function WatchContent() {
                                 </DropdownMenuTrigger>
                                 <DropdownMenuContent className="bg-[#0a0a0a] border border-white/10 text-zinc-300 text-[10px] rounded-xl shadow-lg"><ScrollArea className="h-20"><div className="flex flex-col p-1">{anime.info.studios.map((s:string)=><DropdownMenuItem key={s} className="hover:bg-white/10 cursor-pointer rounded-lg">{s}</DropdownMenuItem>)}</div></ScrollArea></DropdownMenuContent>
                             </DropdownMenu>
-
                             <DropdownMenu modal={false}>
                                 <DropdownMenuTrigger asChild>
                                     <div className="bg-white/5 p-2 rounded-xl border border-white/5 flex flex-col items-center justify-center active:scale-95 transition-transform">
@@ -1143,8 +1312,6 @@ function WatchContent() {
                             </DropdownMenu>
                         </div>
                     </div>
-
-                    {/* DESKTOP BOTTOM BAR (Restored for Large Screens) */}
                     <div className="hidden lg:block flex-shrink-0 p-6 border-t border-white/5 bg-[#0a0a0a] shadow-inner shadow-red-900/5">
                         <div className="flex w-full items-center gap-3">
                             <div className="bg-white/5 p-2 px-5 rounded-full border border-white/5 flex items-center gap-3 shrink-0 whitespace-nowrap group hover:border-red-500/30 transition-all shadow-inner shadow-black/20">
@@ -1188,10 +1355,7 @@ function WatchContent() {
                 </motion.div>
             </div>
       </div></div>
-
-      {/* SEASONS & RELATED */}
       <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.8, delay: 0.5 }} className="w-full flex flex-col gap-12 mt-12 px-4 md:px-8">
-        {/* ... (Seasons & Related - Unchanged) ... */}
         {anime.seasons && anime.seasons.length > 0 && (
             <div className="w-full max-w-[1300px] 2xl:max-w-[1680px] mx-auto order-5">
                 <div className="bg-[#0a0a0a] border border-white/10 shadow-3xl rounded-[50px] p-12 overflow-hidden relative group/seasons shadow-red-900/20 shadow-md">
@@ -1203,7 +1367,6 @@ function WatchContent() {
                 </div>
             </div>
         )}
-
         {anime.related && anime.related.length > 0 && (
             <div className="w-full max-w-[1300px] 2xl:max-w-[1680px] mx-auto order-6">
                 <div className="bg-[#0a0a0a] border border-white/10 shadow-3xl rounded-[50px] p-12 overflow-hidden relative group/related shadow-red-900/20 shadow-md">
@@ -1216,34 +1379,28 @@ function WatchContent() {
             </div>
         )}
       </motion.div>
-      
-      {/* RECOMMENDED & CHARACTERS (FIXED ORDERING) */}
       <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.8, delay: 0.6 }} className="w-full flex justify-center mt-12 px-4 md:px-8 pb-12"><div className="w-full max-w-[1300px] 2xl:max-w-[1680px] grid grid-cols-1 xl:grid-cols-12 gap-8 items-start">
-            
-            {/* CHARACTERS (Mobile: Order 7, Desktop: Right Col) */}
             <div className="order-7 xl:order-2 xl:col-span-8 h-auto xl:h-[750px] bg-[#0a0a0a] rounded-[50px] border border-white/5 overflow-hidden flex flex-col shadow-2xl relative shadow-red-900/20 shadow-md">
                 <div className="p-8 bg-gradient-to-b from-white/5 to-transparent border-b border-white/5 flex items-center justify-between shadow-red-900/5 shadow-md">
                     <div className="flex items-center gap-4"><User size={20} className="text-red-600 shadow-red-600/30" /><h3 className="font-black text-white text-[11px] font-[Cinzel] tracking-[0.4em] uppercase">Manifested Bloodlines</h3></div>
                 </div>
-                {/* Mobile Height: Auto (Full List), Desktop Height: Fixed with Scroll */}
                 <div className="flex-1 p-6 md:p-10 overflow-hidden relative">
                     {isLoadingChars ? <div className="absolute inset-0 flex items-center justify-center bg-black/50 z-20"><FantasyLoader text="LOADING DATA..." /></div> : 
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 gap-4 h-full xl:overflow-y-auto custom-scrollbar pb-16">
                         {charactersList.length > 0 ? charactersList.map((char: any, i: number) => (
                             <div key={i} className={cn("flex bg-white/5 border rounded-[30px] p-4 transition-all duration-500 group shadow-lg cursor-default", char.role === 'Main' ? "border-red-500/30 shadow-[0_0_20px_rgba(220,38,38,0.25)] bg-red-600/5" : "border-white/5 hover:border-white/10 hover:shadow-red-900/10")}>
-                                <div className="flex items-center gap-4 flex-1 cursor-pointer" onClick={() => setSelectedCharacter(char.id)}>
+                                <div className="flex items-center gap-4 flex-1 cursor-pointer" onClick={() => openCharacter(char.id)}>
                                     <img src={char.poster || '/images/non-non.png'} className={cn("w-14 h-14 rounded-full object-cover border transition-colors shadow-lg", char.role === 'Main' ? "border-red-500 shadow-red-900/60" : "border-white/10 group-hover:border-red-500/50")} />
                                     <div className="flex flex-col"><span className={cn("text-[11px] font-black uppercase tracking-tighter line-clamp-1", char.role === 'Main' ? "text-red-400 text-shadow-sm" : "text-zinc-200")}>{char.name}</span><Badge variant="outline" className={cn("w-fit mt-1 text-[8px] font-bold px-2 py-0 h-4 rounded-full transition-colors", char.role === 'Main' ? "border-red-600 text-red-500 bg-red-600/10" : "border-zinc-800 text-zinc-500 group-hover:text-red-500 group-hover:border-red-500/30")}>{char.role}</Badge></div>
                                 </div>
                                 <div className="w-px bg-white/10 mx-2" />
-                                <div className="flex items-center gap-4 flex-1 justify-end text-right cursor-pointer" onClick={() => char.voiceActor?.id && setSelectedActor(char.voiceActor.id)}>
+                                <div className="flex items-center gap-4 flex-1 justify-end text-right cursor-pointer" onClick={() => char.voiceActor?.id && openActor(char.voiceActor.id)}>
                                     <div className="flex flex-col items-end">{char.voiceActor ? (<><span className="text-[11px] font-bold text-zinc-400 uppercase line-clamp-1 hover:text-white transition-colors">{char.voiceActor.name}</span><span className="text-[8px] font-bold text-zinc-600 uppercase">{char.voiceActor.language}</span></>) : <span className="text-[9px] text-zinc-600">Unknown</span>}</div>
                                     {char.voiceActor && <img src={char.voiceActor.poster || '/images/non-non.png'} className="w-12 h-12 rounded-full object-cover border border-white/5 grayscale group-hover:grayscale-0 transition-all" />}
                                 </div>
                             </div>
-                        )) : <div className="col-span-full flex justify-center items-center opacity-50"><p className="text-[10px] font-black uppercase">No Bloodlines</p></div>}
+                        )) : <div className="col-span-full flex flex-col items-center justify-center opacity-50"><img src="/images/non-non.png" alt="No Bloodlines" className="w-16 h-16 rounded-full grayscale opacity-50 mb-2 border border-white/10" /><p className="text-[10px] font-black uppercase text-zinc-500 tracking-widest">No Bloodlines Found</p></div>}
                     </div>}
-                    {/* PAGINATION CONTROLS */}
                     <div className="absolute bottom-4 left-0 w-full flex justify-between items-center px-10 pointer-events-none">
                         <button disabled={charPage <= 1} onClick={() => setCharPage(p => Math.max(1, p - 1))} className="pointer-events-auto p-3 rounded-full bg-white/5 text-zinc-300 hover:text-red-600 hover:bg-white/10 transition-all hover:scale-110 active:scale-90 shadow-lg disabled:opacity-0"><ChevronLeft size={20} /></button>
                         <div className="pointer-events-auto px-6 py-2 bg-black/80 backdrop-blur-md rounded-full border border-white/10 text-[10px] font-black uppercase tracking-widest shadow-xl">{charPage} / {totalCharPages}</div>
@@ -1251,16 +1408,28 @@ function WatchContent() {
                     </div>
                 </div>
             </div>
-
-            {/* RECOMMENDED (Mobile: Order 8, Desktop: Left Col) */}
             <div className="order-8 xl:order-1 xl:col-span-4 h-[750px] flex flex-col bg-[#0a0a0a] rounded-[50px] border border-white/5 shadow-2xl overflow-hidden relative group/paths shadow-red-900/20 shadow-md"><div className="p-8 bg-gradient-to-b from-white/5 to-transparent border-b border-white/5 flex items-center gap-4 relative z-10 shadow-red-900/5 shadow-md"><Heart size={20} className="text-red-600 fill-red-600 animate-pulse shadow-red-600/30 shadow-md" /><h3 className="font-black text-white text-[11px] font-[Cinzel] tracking-[0.4em] uppercase shadow-sm shadow-black">Recommended</h3></div><div className="flex-1 overflow-hidden p-6 relative z-10 shadow-inner shadow-red-900/5"><ScrollArea className="h-full pr-4 custom-scrollbar"><div className="space-y-4" ref={recommendationsRef} onWheel={(e:any) => e.stopPropagation()}>{anime.recommendations?.length > 0 && anime.recommendations.map((rec: any, idx: number) => rec?.id ? (<Link key={`${rec.id}-${idx}`} href={`/watch/${rec.id}`} className="flex gap-5 p-4 rounded-[32px] hover:bg-red-600/5 group transition-all duration-500 active:scale-95 border border-transparent hover:border-red-600/20 shadow-inner shadow-red-900/5"><img src={rec.poster || rec.image || '/images/no-poster.png'} className="w-16 h-24 object-cover rounded-2xl shadow-3xl group-hover:rotate-1 transition-all duration-500 shadow-black shadow-md shrink-0" alt={rec.name} /><div className="flex-1 py-1 flex flex-col justify-center min-w-0"><h4 className="text-[12px] font-black text-zinc-500 group-hover:text-red-500 line-clamp-2 transition-all uppercase tracking-tight leading-tight mb-2 shadow-black drop-shadow-md">{rec.name || rec.title}</h4><div className="flex items-center gap-3"><span className="text-[8px] font-black text-zinc-700 uppercase tracking-[0.2em] group-hover:text-zinc-500 transition-colors shadow-sm whitespace-nowrap">{rec.type || 'TV'}</span><span className="w-1 h-1 bg-zinc-900 rounded-full shadow-sm shrink-0"/><span className="text-[9px] text-zinc-800 font-black uppercase group-hover:text-red-900 transition-colors shadow-sm whitespace-nowrap">{rec.episodes || '?'} EPS</span></div></div></Link>) : null)}</div></ScrollArea></div></div>
-            
       </div></motion.div>
-
-      {/* POPUPS */}
-      <CharacterDetailsDialog isOpen={!!selectedCharacter} onClose={() => setSelectedCharacter(null)} characterId={selectedCharacter} />
-      <VoiceActorDetailsDialog isOpen={!!selectedActor} onClose={() => setSelectedActor(null)} actorId={selectedActor} />
-
+      <CharacterDetailsDialog 
+        isOpen={activePopup?.type === 'character'} 
+        onClose={closeAll} 
+        onBack={popupIndex > 0 ? goBack : undefined}
+        onForward={popupIndex < popupHistory.length - 1 ? goForward : undefined}
+        canGoBack={popupIndex > 0}
+        canGoForward={popupIndex < popupHistory.length - 1}
+        characterId={activePopup?.type === 'character' ? activePopup.id : null}
+        onActorClick={openActor}
+      />
+      <VoiceActorDetailsDialog 
+        isOpen={activePopup?.type === 'actor'} 
+        onClose={closeAll} 
+        onBack={popupIndex > 0 ? goBack : undefined}
+        onForward={popupIndex < popupHistory.length - 1 ? goForward : undefined}
+        canGoBack={popupIndex > 0}
+        canGoForward={popupIndex < popupHistory.length - 1}
+        actorId={activePopup?.type === 'actor' ? activePopup.id : null}
+        onCharacterClick={openCharacter}
+      />
       <Footer />
     </div>
   );

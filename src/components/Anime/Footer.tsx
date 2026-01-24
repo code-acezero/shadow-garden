@@ -7,7 +7,8 @@ import {
   MessageCircle, Send, ArrowUp, Share2, 
   Shield, Crown, Facebook, Disc, 
   BookOpen, Copyright, Sword, Scroll, 
-  Flame, HelpCircle, FileSignature
+  Flame, HelpCircle, FileSignature,
+  Scale
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import {
