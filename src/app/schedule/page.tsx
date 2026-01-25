@@ -16,19 +16,7 @@ import AnimeCard from '@/components/Anime/AnimeCard';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { HoverCard, HoverCardContent, HoverCardTrigger } from "@/components/ui/hover-card";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-
-// --- FONTS ---
-const demoness = localFont({ 
-  src: '../../../public/fonts/Demoness-1GlYj.ttf', 
-  variable: '--font-demoness',
-  display: 'swap' 
-});
-
-const hunters = localFont({ 
-  src: '../../../public/fonts/HuntersKpop.ttf', 
-  variable: '--font-hunters',
-  display: 'swap' 
-});
+import { demoness, hunters } from '@/lib/fonts';
 
 // --- SUB-COMPONENTS ---
 

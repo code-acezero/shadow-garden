@@ -22,18 +22,7 @@ import localFont from 'next/font/local';
 import Notifications from '@/components/Anime/Notifications';
 import ShadowAvatar from '@/components/User/ShadowAvatar';
 
-// --- FONTS ---
-const demoness = localFont({ 
-  src: '../../../public/fonts/Demoness-1GlYj.ttf', 
-  variable: '--font-demoness',
-  display: 'swap' 
-});
-
-const hunters = localFont({ 
-  src: '../../../public/fonts/HuntersKpop.ttf', 
-  variable: '--font-hunters',
-  display: 'swap' 
-});
+import { demoness, hunters } from '@/lib/fonts';
 
 // --- CONSTANTS ---
 const PLACEHOLDERS = [

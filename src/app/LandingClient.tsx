@@ -14,13 +14,7 @@ import { UserAPI, AnimeAPI_V4, UniversalAnime, supabase } from '@/lib/api'; // F
 import AuthModal from '@/components/Auth/AuthModal';
 import SearchBar from '@/components/Anime/SearchBar';
 import ShadowGardenPortal from '@/components/Portal/ShadowGardenPortal';
-import localFont from 'next/font/local';
-
-// --- FONT CONFIGURATION ---
-const demoness = localFont({ src: '../../public/fonts/Demoness-1GlYj.ttf', variable: '--font-demoness' });
-const nyctophobia = localFont({ src: '../../public/fonts/Nyctophobia-RnMM.ttf', variable: '--font-nyctophobia' });
-const horrorshow = localFont({ src: '../../public/fonts/Horrorshow-dp1E.ttf', variable: '--font-horrorshow' });
-
+import { demoness, nyctophobia, horrorshow } from '@/lib/fonts';
 // --- ASSETS ---
 const WAIFU_BG_LIST = [
   "/images/index/bg-1.jpg", "/images/index/bg-2.jpg", "/images/index/bg-3.jpg",

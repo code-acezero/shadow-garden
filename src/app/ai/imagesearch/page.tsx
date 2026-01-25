@@ -4,24 +4,12 @@ import React, { useState, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Upload, X, ScanLine, Loader2, ArrowRight, AlertTriangle, Info, PlayCircle, Clock, FileWarning, Quote, CheckCircle2, XCircle, HelpCircle } from 'lucide-react';
 import { useRouter } from 'next/navigation';
-import localFont from 'next/font/local';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { AnimeAPI_V2 } from '@/lib/api';
 import Footer from '@/components/Anime/Footer';
 
-// --- FONTS ---
-const demoness = localFont({ 
-  src: '../../../../public/fonts/Demoness-1GlYj.ttf', 
-  variable: '--font-demoness',
-  display: 'swap' 
-});
-
-const hunters = localFont({ 
-  src: '../../../../public/fonts/HuntersKpop.ttf', 
-  variable: '--font-hunters',
-  display: 'swap' 
-});
+import { demoness, hunters } from '@/lib/fonts';
 
 // --- TYPES ---
 interface ScanResult {
