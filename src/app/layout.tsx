@@ -5,18 +5,19 @@ import Navigation from "@/components/Layout/Navigation";
 import { Toaster } from 'sonner'; 
 import { AuthProvider } from '@/context/AuthContext';
 import { SettingsProvider } from "@/hooks/useSettings";
-// Import the new wrapper instead of using next/dynamic here
 import { 
   badUnicorn, demoness, horrorshow, hunters, 
   kareudon, monas, nyctophobia, onePiece 
 } from '@/lib/fonts';
 
- 
-
-  
-const inter = Inter({ subsets: ["latin"] });
+// ✅ FIX: Added 'variable' to the Inter configuration
+const inter = Inter({ 
+  subsets: ["latin"],
+  variable: '--font-inter', // This enables the .variable property
+});
 
 export const metadata: Metadata = {
+  metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000'),
   title: "Shadow Garden",
   description: "Ultimate Anime Streaming Experience",
 };
@@ -26,7 +27,9 @@ export default function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-   const fontVariables = [
+  // ✅ Mapping variables from your Armory
+  const fontVariables = [
+    inter.variable,
     badUnicorn.variable,
     demoness.variable,
     horrorshow.variable,
@@ -38,24 +41,20 @@ export default function RootLayout({
   ].join(' ');
 
   return (
-    <html lang="en" className="dark" suppressHydrationWarning>
-      <body className={`${inter.className} bg-background text-foreground`} suppressHydrationWarning>
-        
+    <html lang="en" className={`dark ${fontVariables}`} suppressHydrationWarning>
+      <body 
+        className={`${inter.className} bg-[#050505] text-foreground antialiased`} 
+        suppressHydrationWarning
+      >
         <SettingsProvider>
-            <AuthProvider>
-            
-              
-                
-                <Navigation /> 
-                
-                <main className="min-h-screen">
-                    {children}
-                </main>
-
-                <Toaster position="bottom-right" theme="dark" />
-            </AuthProvider>
+          <AuthProvider>
+            <Navigation /> 
+            <main className="min-h-screen">
+              {children}
+            </main>
+            <Toaster position="bottom-right" theme="dark" />
+          </AuthProvider>
         </SettingsProvider>
-
       </body>
     </html>
   );
