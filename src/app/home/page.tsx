@@ -1,114 +1,88 @@
 import React from 'react';
-import { consumetClient } from '@/lib/consumet'; // Your custom service
+import { AnimeService, UniversalAnimeBase } from '@/lib/api'; 
+import { consumetClient } from '@/lib/consumet'; 
 import SpotlightSlider from '@/components/Anime/SpotlightSlider';
-import AnimeCard from '@/components/Anime/AnimeCard';
-import { Flame, Clock, Calendar, Star, TrendingUp } from 'lucide-react';
+import Footer from '@/components/Anime/Footer'; 
 import MobileContainer from "@/components/Layout/MobileContainer";
-// Vercel import for analytics
-import { Analytics } from "@vercel/analytics/next"
+import RecentUpdatesSection from '@/components/Home/RecentUpdatesSection';
+import ContinueWatching from '@/components/Home/ContinueWatching';
 
 // --- CONFIGURATION ---
-// Revalidate this page every 1 hour (3600s) to keep data fresh but minimize scraping
 export const revalidate = 3600; 
 
-// Helper for Section Headers
-const SectionHeader = ({ title, icon: Icon }: { title: string; icon: any }) => (
-  <div className="flex items-center gap-2 mb-4 mt-8 px-4 md:px-8">
-    <Icon className="text-red-500 w-6 h-6" />
-    <h2 className="text-2xl font-bold text-white font-[Cinzel]">{title}</h2>
-  </div>
-);
-
 export default async function Home() {
-  // 1. Fetch Data using your custom ConsumetService
-  // This calls: consumetClient.getHomePageData() which uses Hianime on the server
-  let data;
+  let spotlightData = null;
+  let initialRecent: UniversalAnimeBase[] = [];
 
   try {
-    data = await consumetClient.getHomePageData();
+    const homeData = await consumetClient.getHomePageData();
+    spotlightData = homeData?.spotlight || [];
+
+    const recentUpdates = await AnimeService.getRecentlyUpdated(1);
+    initialRecent = recentUpdates || [];
   } catch (error) {
-    console.error("Shadow Garden connection failed:", error);
+    console.error("Shadow Garden system breach:", error);
   }
 
-  // Handle Error/Offline State
-  if (!data) return (
-    <MobileContainer hasBottomNav={true} className="bg-[#050505]">
-        <div className="flex flex-col items-center justify-center min-h-[50vh] text-red-500 font-bold gap-4">
-            <span className="text-3xl">⚠️</span>
-            Shadow Garden systems are offline.
-        </div>
-    </MobileContainer>
-  );
-
   return (
-    // 'hasBottomNav={true}' ensures content isn't hidden behind the menu
-    <MobileContainer hasBottomNav={true} className="bg-[#050505] min-h-screen pb-20">
-      
-      {/* 1. SPOTLIGHT SLIDER (Hero) */}
-      {data.spotlight && data.spotlight.length > 0 && (
-        <SpotlightSlider animes={data.spotlight} />
-      )}
+    <MobileContainer hasBottomNav={true} className="bg-[#050505] min-h-screen relative overflow-x-hidden">
+      {/* 1. GLOBAL UI STYLES & BACKGROUND GRADIENTS */}
+      <style dangerouslySetInnerHTML={{ __html: `
+        ::-webkit-scrollbar { display: none; }
+        html, body { -ms-overflow-style: none; scrollbar-width: none; background: #050505; }
+        
+        .shadow-light-top {
+          position: fixed;
+          top: -10%;
+          left: -10%;
+          width: 50%;
+          height: 60%;
+          background: radial-gradient(circle, rgba(220, 38, 38, 0.08) 0%, transparent 70%);
+          filter: blur(80px);
+          pointer-events: none;
+          z-index: 0;
+        }
 
-      {/* 2. TRENDING NOW */}
-      {data.trending && data.trending.length > 0 && (
-        <section>
-            <SectionHeader title="Trending Now" icon={Flame} />
-            <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-3 sm:gap-4 px-2 sm:px-4 md:px-8">
-                {data.trending.map((anime: any) => (
-                  <AnimeCard key={anime.id} anime={anime} />
-                ))}
-            </div>
-        </section>
-      )}
+        .shadow-light-bottom {
+          position: fixed;
+          bottom: -10%;
+          right: -10%;
+          width: 60%;
+          height: 70%;
+          background: radial-gradient(circle, rgba(153, 27, 27, 0.05) 0%, transparent 70%);
+          filter: blur(100px);
+          pointer-events: none;
+          z-index: 0;
+        }
+      `}} />
 
-      {/* 3. LATEST EPISODES */}
-      {data.recent && data.recent.length > 0 && (
-        <section>
-            <SectionHeader title="Latest Episodes" icon={Clock} />
-            <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-3 sm:gap-4 px-2 sm:px-4 md:px-8">
-                {data.recent.map((anime: any) => (
-                  <AnimeCard key={anime.id} anime={anime} />
-                ))}
-            </div>
-        </section>
-      )}
+      {/* Background Red Light Effects */}
+      <div className="shadow-light-top" />
+      <div className="shadow-light-bottom" />
 
-      {/* 4. TOP AIRING */}
-      {data.topAiring && data.topAiring.length > 0 && (
-        <section>
-            <SectionHeader title="Top Airing" icon={TrendingUp} />
-            <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-3 sm:gap-4 px-2 sm:px-4 md:px-8">
-                {data.topAiring.map((anime: any) => (
-                  <AnimeCard key={anime.id} anime={anime} />
-                ))}
-            </div>
-        </section>
-      )}
+      {/* 2. MAIN CONTENT WRAPPER */}
+      <div className="max-w-7xl mx-auto border-x border-white/5 min-h-screen flex flex-col relative z-10">
+        
+        {/* ✅ TOP BLANK SPACE (Strategic Buffer) */}
+        <div className="h-16 md:h-20 w-full" />
 
-      {/* 5. TOP UPCOMING */}
-      {data.upcoming && data.upcoming.length > 0 && (
-        <section>
-            <SectionHeader title="Top Upcoming" icon={Calendar} />
-            <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-3 sm:gap-4 px-2 sm:px-4 md:px-8">
-                {data.upcoming.map((anime: any) => (
-                  <AnimeCard key={anime.id} anime={anime} />
-                ))}
-            </div>
-        </section>
-      )}
-      
-      {/* 6. MOST POPULAR */}
-      {data.popular && data.popular.length > 0 && (
-        <section className="mb-8">
-            <SectionHeader title="All Time Popular" icon={Star} />
-            <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-3 sm:gap-4 px-2 sm:px-4 md:px-8">
-                {data.popular.map((anime: any) => (
-                  <AnimeCard key={anime.id} anime={anime} />
-                ))}
-            </div>
-        </section>
-      )}
+        {/* 3. HERO SECTION */}
+        {spotlightData && spotlightData.length > 0 && (
+          <SpotlightSlider animes={spotlightData} />
+        )}
 
+        <div className="px-4 md:px-8 space-y-12 pb-20 mt-6 flex-1">
+            
+            {/* 4. CONTINUE WATCHING */}
+            <ContinueWatching />
+
+            {/* 5. RECENT UPDATES */}
+            <RecentUpdatesSection initialData={initialRecent} />
+
+        </div>
+
+        <Footer />
+      </div>
     </MobileContainer>
   );
 }

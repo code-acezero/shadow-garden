@@ -3,22 +3,18 @@ import { createClient } from '@supabase/supabase-js';
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 
-if (!supabaseUrl || !supabaseAnonKey) {
-  throw new Error('Missing Supabase Environment Variables');
-}
-
 // --- SINGLETON CLEANUP ---
-const globalForSupabase = global as unknown as { supabase: ReturnType<typeof createClient> };
+const globalForSupabase = global as unknown as { supabase: any };
 
-export const supabase = globalForSupabase.supabase || createClient(supabaseUrl, supabaseAnonKey, {
+export const supabase = globalForSupabase.supabase || (supabaseUrl && supabaseAnonKey ? createClient(supabaseUrl, supabaseAnonKey, {
     auth: {
         persistSession: true,
         autoRefreshToken: true,
         detectSessionInUrl: true
     }
-});
+}) : null);
 
-if (process.env.NODE_ENV !== 'production') {
+if (process.env.NODE_ENV !== 'production' && supabase) {
     globalForSupabase.supabase = supabase;
 }
 
@@ -28,7 +24,6 @@ if (process.env.NODE_ENV !== 'production') {
 
 const BASE_URL = 'https://consumet-api-hianime.vercel.app/anime/hianime';
 
-// [LOAD BALANCING] URL Pools for V2 & V3
 const POOL_V2 = [
     'https://hianime-api-mu.vercel.app/api/v2/hianime',
     'https://hianime-api-v2-2nd.vercel.app/api/v2/hianime'
@@ -55,7 +50,6 @@ const normalizeList = (item: any): string[] => {
     return [];
 };
 
-// Fisher-Yates Shuffle
 const shuffleArray = <T>(array: T[]): T[] => {
     const arr = [...array];
     for (let i = arr.length - 1; i > 0; i--) {
@@ -65,11 +59,9 @@ const shuffleArray = <T>(array: T[]): T[] => {
     return arr;
 };
 
-// [SMART FETCH] Retries mirrors if one fails
 async function fetchWithFailover(urlPool: string[], endpoint: string, params: Record<string, any> = {}): Promise<any | null> {
-    const shuffledPool = shuffleArray([...urlPool]); // Randomize entry point
+    const shuffledPool = shuffleArray([...urlPool]);
     
-    // Construct Query String
     const queryParts = Object.keys(params)
         .filter(k => params[k] !== undefined && params[k] !== null)
         .map(key => `${key}=${encodeURIComponent(String(params[key]))}`);
@@ -80,24 +72,23 @@ async function fetchWithFailover(urlPool: string[], endpoint: string, params: Re
             const targetUrl = `${baseUrl}${endpoint}${queryString}`;
             const proxyUrl = typeof window !== 'undefined' ? `/api/proxy?url=${encodeURIComponent(targetUrl)}` : targetUrl;
             
-            // Timeout to force switch if slow (5 seconds)
             const controller = new AbortController();
-            const timeoutId = setTimeout(() => controller.abort(), 5000);
+            const timeoutId = setTimeout(() => controller.abort(), 8000);
 
             const response = await fetch(proxyUrl, { signal: controller.signal });
             clearTimeout(timeoutId);
 
-            if (!response.ok) continue; // Try next mirror
+            if (!response.ok) continue;
 
             const json = await response.json();
             if (json.status === 200 || json.success === true) {
-                return json.data || json.results || json; // Return successful payload
+                return json.data || json.results || json; 
             }
         } catch (error) {
-            continue; // Silently failover to next mirror
+            continue;
         }
     }
-    return null; // All mirrors failed
+    return null;
 }
 
 export interface AppUser {
@@ -176,9 +167,12 @@ export interface UniversalCharacter {
 export interface UniversalAnimeBase {
     id: string;
     title: string;
+    jname?: string;
     poster: string;
     type: string;
-    episodes?: number | { sub: number; dub: number };
+    duration?: string;
+    episodes?: { sub: number; dub: number; eps?: number };
+    rank?: number; 
 }
 
 export interface UniversalSeason {
@@ -186,17 +180,6 @@ export interface UniversalSeason {
     title: string;
     poster: string;
     isCurrent: boolean;
-}
-
-export interface UniversalStream {
-    url: string;
-    headers?: Record<string, string>;
-    subtitles: { file: string; label: string; kind: string; default?: boolean }[];
-    intro?: { start: number; end: number };
-    outro?: { start: number; end: number };
-    server: string;
-    isM3U8: boolean;
-    quality?: string;
 }
 
 // ==========================================
@@ -219,16 +202,63 @@ export class AnimeAPI {
 }
 
 // ==========================================
-//  5. API V2 (PRIMARY POOL)
+//  5. API V2 (PRIMARY POOL + PRODUCER/CATEGORY)
 // ==========================================
 export class AnimeAPI_V2 {
-  // Uses POOL_V2 with Automatic Failover
-  private static async request<T>(endpoint: string, params: Record<string, any> = {}): Promise<T | null> {
+  static async request<T>(endpoint: string, params: Record<string, any> = {}): Promise<T | null> {
     return fetchWithFailover(POOL_V2, endpoint, params);
   }
   static async getHomePage() { return this.request('/home'); }
   static async getAnimeInfo(animeId: string) { return this.request(`/anime/${animeId}`); }
-  static async search(query: string, page = 1) { return this.request('/search', { q: query, page }); }
+  
+  static async search(query: string, page = 1) { 
+    const data: any = await this.request('/search', { q: query, page });
+    if (data && data.animes) {
+        return {
+            results: data.animes.map((item: any) => ({
+                id: item.id,
+                title: item.name,
+                jname: item.jname,
+                poster: item.poster,
+                type: item.type,
+                duration: item.duration,
+                episodes: item.episodes || { sub: 0, dub: 0 }
+            }))
+        };
+    }
+    return { results: [] };
+  }
+
+  static async getSearchSuggestions(query: string) {
+    return this.request('/search/suggestion', { q: query });
+  }
+
+  static async getProducerAnimes(name: string, page = 1) {
+    return this.request(`/producer/${name}`, { page });
+  }
+
+  static async getCategoryAnimes(name: string, page = 1) {
+    return this.request(`/category/${name}`, { page });
+  }
+
+  static async getSchedule(date: string) { 
+    const data: any = await this.request('/schedule', { date });
+    if (data && data.scheduledAnimes) {
+        return {
+            scheduledAnimes: data.scheduledAnimes.map((item: any) => ({
+                id: item.id,
+                time: item.time,
+                name: item.name,
+                jname: item.jname,
+                timestamp: item.airingTimestamp,
+                secondsUntilAiring: item.secondsUntilAiring,
+                episode: item.episode
+            }))
+        };
+    }
+    return { scheduledAnimes: [] };
+  }
+
   static async getEpisodes(animeId: string) { return this.request(`/anime/${animeId}/episodes`); }
   static async getNextEpisodeSchedule(animeId: string) { return this.request(`/anime/${animeId}/next-episode-schedule`); }
   static async getEpisodeServers(animeEpisodeId: string) { return this.request('/episode/servers', { animeEpisodeId }); }
@@ -236,16 +266,54 @@ export class AnimeAPI_V2 {
 }
 
 // ==========================================
-//  6. API V3 (METADATA POOL)
+//  6. API V3 (METADATA POOL + TOP 10)
 // ==========================================
 export class AnimeAPI_V3 {
-  // Uses POOL_V3 with Automatic Failover
-  private static async request<T>(endpoint: string, params: Record<string, any> = {}): Promise<T | null> {
+  static async request<T>(endpoint: string, params: Record<string, any> = {}): Promise<T | null> {
     return fetchWithFailover(POOL_V3, endpoint, params);
   }
   static async getHomeInfo() { return this.request('/'); }
   static async getAnimeInfo(id: string) { return this.request('/info', { id }); }
-  static async search(keyword: string) { return this.request('/search', { keyword }); }
+  
+  static async search(keyword: string) { 
+    const data: any = await this.request('/search', { keyword });
+    if (data && data.data) {
+        return {
+            results: data.data.map((item: any) => ({
+                id: item.id,
+                title: item.title,
+                jname: item.japanese_title,
+                poster: item.poster,
+                type: item.tvInfo?.showType || "TV",
+                episodes: { sub: item.tvInfo?.sub || 0, dub: item.tvInfo?.dub || 0 }
+            }))
+        };
+    }
+    return { results: [] };
+  }
+
+  static async getTopTen() { return this.request('/top-ten'); }
+  static async getTopSearch() { return this.request('/top-search'); }
+  static async getRandomAnime() { return this.request('/random'); }
+
+  static async getSchedule(date: string) {
+    const data: any = await this.request('/schedule', { date });
+    if (Array.isArray(data)) {
+        return {
+            scheduledAnimes: data.map((item: any) => ({
+                id: item.id,
+                time: item.time,
+                name: item.title,
+                jname: item.japanese_title,
+                timestamp: null, 
+                secondsUntilAiring: null,
+                episode: item.episode_no
+            }))
+        };
+    }
+    return { scheduledAnimes: [] };
+  }
+
   static async getAnimeCharacters(id: string, page = 1) { return this.request(`/character/list/${id}`, { page }); }
   static async getCharacterDetails(id: string) { return this.request(`/character/${id}`); }
   static async getVoiceActorDetails(id: string) { return this.request(`/actors/${id}`); }
@@ -254,19 +322,48 @@ export class AnimeAPI_V3 {
 }
 
 // ==========================================
-//  7. API V4 (FAST & SPECIALIZED)
+//  7. API V4 (FAST & SPECIALIZED LISTS)
 // ==========================================
 export class AnimeAPI_V4 {
-  private static async request<T>(endpoint: string, params: Record<string, any> = {}): Promise<T | null> {
-    // V4 is single source but fast
+  static async request<T>(endpoint: string, params: Record<string, any> = {}): Promise<T | null> {
     return fetchWithFailover([BASE_URL_V4], endpoint, params); 
   }
+  
   static async getHome() { return this.request('/home'); }
-  static async getTopAiring(page = 1) { return this.request('/animes/top-airing', { page }); }
-  static async getMostPopular(page = 1) { return this.request('/animes/most-popular', { page }); }
+  static async getTopUpcoming(page = 1) { return this.request('/animes/top-upcoming', { page }); }
   static async getRecentlyUpdated(page = 1) { return this.request('/animes/recently-updated', { page }); }
+  static async getRecentlyAdded(page = 1) { return this.request('/animes/recently-added', { page }); }
+  static async getCompleted(page = 1) { return this.request('/animes/completed', { page }); }
+  static async getMostFavorite(page = 1) { return this.request('/animes/most-favorite', { page }); }
+  static async getMostPopular(page = 1) { return this.request('/animes/most-popular', { page }); }
+  static async getTopAiring(page = 1) { return this.request('/animes/top-airing', { page }); }
+  static async getSubbedAnime(page = 1) { return this.request('/animes/subbed-anime', { page }); }
+  static async getDubbedAnime(page = 1) { return this.request('/animes/dubbed-anime', { page }); }
+  static async getByGenre(name: string, page = 1) { return this.request(`/animes/genre/${name}`, { page }); }
+  static async getAzList(letter: string, page = 1) { return this.request(`/animes/az-list/${letter}`, { page }); }
+  static async getSearchSuggestions(keyword: string) { return this.request('/suggestion', { keyword }); }
+  static async filter(params: Record<string, any>) { return this.request('/filter', params); }
+
+  static async search(keyword: string, page = 1) { 
+    const data: any = await this.request('/search', { keyword, page });
+    if (data && data.response) {
+        return {
+            results: data.response.map((item: any) => ({
+                id: item.id,
+                title: item.title,
+                jname: item.alternativeTitle,
+                poster: item.poster,
+                type: item.type,
+                duration: item.duration,
+                episodes: item.episodes || { sub: 0, dub: 0 }
+            })),
+            pageInfo: data.pageInfo
+        };
+    }
+    return { results: [] };
+  }
+
   static async getAnimeDetail(id: string) { return this.request(`/anime/${id}`); }
-  static async search(keyword: string, page = 1) { return this.request('/search', { keyword, page }); }
   static async getEpisodes(id: string) { return this.request(`/episodes/${id}`); }
   static async getStream(id: string, server = 'hd-2', type = 'sub') { return this.request('/stream', { id, server, type }); }
 }
@@ -275,11 +372,27 @@ export class AnimeAPI_V4 {
 //  8. API HINDI (DEDICATED)
 // ==========================================
 export class AnimeAPI_Hindi {
-  private static async request<T>(endpoint: string, params: Record<string, any> = {}): Promise<T | null> {
+  static async request<T>(endpoint: string, params: Record<string, any> = {}): Promise<T | null> {
       return fetchWithFailover([BASE_URL_HINDI], endpoint, params);
   }
   static async getHome() { return this.request('/home'); }
-  static async search(keyword: string, page = 1) { return this.request('/search', { keyword, page }); }
+  
+  static async search(keyword: string, page = 1) { 
+      const data: any = await this.request('/search', { keyword, page });
+      if (data && (data.animes || data.response || data.results)) {
+          const list = data.animes || data.response || data.results || [];
+          return {
+              results: list.map((item: any) => ({
+                  id: item.id,
+                  title: item.name || item.title,
+                  poster: item.poster,
+                  type: item.type || "TV",
+                  episodes: item.episodes || { sub: 0, dub: 0 }
+              }))
+          };
+      }
+      return { results: [] };
+  }
   static async getAnimeDetails(id: string) { return this.request(`/anime/${id}`); }
 }
 
@@ -289,9 +402,34 @@ export class AnimeAPI_Hindi {
 
 export class AnimeService {
 
-    private static toSlug(id: string): string { return id.replace(/-\d+$/, ''); }
+    private static normalizeV4List(data: any): UniversalAnimeBase[] {
+        const list = data?.response || data?.animes || [];
+        return list.map((item: any) => ({
+            id: item.id,
+            title: item.title || item.name,
+            jname: item.alternativeTitle || item.jname,
+            poster: item.poster,
+            type: item.type,
+            duration: item.duration,
+            episodes: item.episodes || { sub: 0, dub: 0 }
+        }));
+    }
 
-    // --- NORMALIZERS ---
+    private static normalizeV3TopTen(item: any): UniversalAnimeBase {
+        return {
+            id: item.id,
+            title: item.title,
+            jname: item.japanese_title,
+            poster: item.poster,
+            rank: item.rank || item.number,
+            type: "TV", 
+            episodes: { 
+                sub: parseInt(item.tvInfo?.sub || "0"), 
+                dub: parseInt(item.tvInfo?.dub || "0"),
+                eps: parseInt(item.tvInfo?.eps || "0")
+            }
+        };
+    }
 
     private static normalizeV2(data: any): UniversalAnime {
         const i = data?.anime?.info || {};
@@ -322,9 +460,9 @@ export class AnimeService {
                 synonyms: m.synonyms || ""
             },
             episodes: [], characters: [], 
-            recommendations: (data?.recommendedAnimes || []).filter(Boolean).map((r: any) => ({ id: r.id, title: r.name, poster: r.poster, type: r.type, episodes: r.episodes })),
-            related: (data?.relatedAnimes || []).filter(Boolean).map((r: any) => ({ id: r.id, title: r.name, poster: r.poster, type: r.type, episodes: r.episodes })),
-            seasons: (data?.seasons || []).filter(Boolean).map((s: any) => ({ id: s.id, title: s.title, poster: s.poster, isCurrent: s.isCurrent })),
+            recommendations: (data?.recommendedAnimes || []).map((r: any) => ({ id: r.id, title: r.name, poster: r.poster, type: r.type, episodes: r.episodes })),
+            related: (data?.relatedAnimes || []).map((r: any) => ({ id: r.id, title: r.name, poster: r.poster, type: r.type, episodes: r.episodes })),
+            seasons: (data?.seasons || []).map((s: any) => ({ id: s.id, title: s.title, poster: s.poster, isCurrent: s.isCurrent })),
             trailers: i.promotionalVideos || []
         };
     }
@@ -358,19 +496,27 @@ export class AnimeService {
                 synonyms: i.Synonyms || ""
             },
             episodes: [], characters: [], 
-            recommendations: (d.recommended_data || []).filter(Boolean).map((r: any) => ({ id: r.id, title: r.title, poster: r.poster, type: r.tvInfo?.showType, episodes: { sub: r.tvInfo?.sub, dub: r.tvInfo?.dub } })),
-            related: (d.related_data || []).filter(Boolean).map((r: any) => ({ id: r.id, title: r.title, poster: r.poster, type: r.tvInfo?.showType, episodes: { sub: r.tvInfo?.sub, dub: r.tvInfo?.dub } })),
-            seasons: (d.seasons || []).filter(Boolean).map((s: any) => ({ id: s.id, title: s.title, poster: s.season_poster, isCurrent: false })),
-            trailers: (i.trailers || []).filter(Boolean).map((t: any) => ({ title: t.title, source: t.url, thumbnail: t.thumbnail }))
+            recommendations: (d.recommended_data || []).map((r: any) => ({ id: r.id, title: r.title, poster: r.poster, type: r.tvInfo?.showType, episodes: { sub: r.tvInfo?.sub, dub: r.tvInfo?.dub } })),
+            related: (d.related_data || []).map((r: any) => ({ id: r.id, title: r.title, poster: r.poster, type: r.tvInfo?.showType, episodes: { sub: r.tvInfo?.sub, dub: r.tvInfo?.dub } })),
+            seasons: (d.seasons || []).map((s: any) => ({ id: s.id, title: s.title, poster: s.season_poster, isCurrent: false })),
+            trailers: (i.trailers || []).map((t: any) => ({ title: t.title, source: t.url, thumbnail: t.thumbnail }))
         };
     }
 
-    private static normalizeCharacters(data: any): UniversalCharacter[] {
-        if (!data) return [];
-        let list = data.data || data;
-        if (!Array.isArray(list)) return [];
+    private static normalizeEpisodes(data: any, source: 'v2'|'v3'): UniversalEpisode[] {
+        let list = source === 'v2' ? (data.episodes || []) : (data.episodes || data);
+        return Array.isArray(list) ? list.map((e: any) => ({
+            id: e.episodeId || e.id,
+            number: e.number || e.episode_no || 0,
+            title: e.title || "Episode",
+            isFiller: e.isFiller || e.filler || false,
+            isDub: e.isDub || false
+        })) : [];
+    }
 
-        return list.filter(Boolean).map((c: any) => ({
+    private static normalizeCharacters(data: any): UniversalCharacter[] {
+        let list = data.data || data;
+        return Array.isArray(list) ? list.map((c: any) => ({
             id: c.character?.id || c.id,
             name: c.character?.name || c.name,
             poster: c.character?.poster || c.imageUrl || c.poster,
@@ -382,158 +528,132 @@ export class AnimeService {
                 poster: c.voiceActors?.[0]?.poster || c.voiceActor?.poster,
                 language: c.voiceActors?.[0]?.type || c.voiceActor?.language
             } : undefined
-        }));
+        })) : [];
     }
 
-    private static normalizeEpisodes(data: any, source: 'v2'|'v3'): UniversalEpisode[] {
-        if (!data) return [];
-        let list = source === 'v2' ? (data.episodes || []) : (data.episodes || data);
-        if (!Array.isArray(list)) return [];
+    // LISTS & HOME
+    static async getTopUpcoming(page = 1) { const data = await AnimeAPI_V4.getTopUpcoming(page); return data ? this.normalizeV4List(data) : []; }
+    static async getRecentlyUpdated(page = 1) { const data = await AnimeAPI_V4.getRecentlyUpdated(page); return data ? this.normalizeV4List(data) : []; }
+    static async getRecentlyAdded(page = 1) { const data = await AnimeAPI_V4.getRecentlyAdded(page); return data ? this.normalizeV4List(data) : []; }
+    static async getCompleted(page = 1) { const data = await AnimeAPI_V4.getCompleted(page); return data ? this.normalizeV4List(data) : []; }
+    static async getMostFavorite(page = 1) { const data = await AnimeAPI_V4.getMostFavorite(page); return data ? this.normalizeV4List(data) : []; }
+    static async getMostPopular(page = 1) { const data = await AnimeAPI_V4.getMostPopular(page); return data ? this.normalizeV4List(data) : []; }
+    static async getTopAiring(page = 1) { const data = await AnimeAPI_V4.getTopAiring(page); return data ? this.normalizeV4List(data) : []; }
+    static async getSubbedAnime(page = 1) { const data = await AnimeAPI_V4.getSubbedAnime(page); return data ? this.normalizeV4List(data) : []; }
+    static async getDubbedAnime(page = 1) { const data = await AnimeAPI_V4.getDubbedAnime(page); return data ? this.normalizeV4List(data) : []; }
 
-        return list.filter(Boolean).map((e: any) => ({
-            id: e.episodeId || e.id,
-            number: e.number || e.episode_no || 0,
-            title: e.title || "Episode",
-            isFiller: e.isFiller || e.filler || false,
-            isDub: e.isDub || false
-        }));
+    static async getTopTen() {
+        const data: any = await AnimeAPI_V3.getTopTen();
+        if (!data) return null;
+        return {
+            today: (data.today || []).map(this.normalizeV3TopTen),
+            week: (data.week || []).map(this.normalizeV3TopTen),
+            month: (data.month || []).map(this.normalizeV3TopTen)
+        };
     }
 
-    private static normalizeTracks(tracks: any[]): { file: string; label: string; kind: string; default?: boolean }[] {
-        if (!Array.isArray(tracks)) return [];
-        return tracks
-            .filter(t => t.kind !== "thumbnails" && t.label !== "thumbnails")
-            .map(t => ({
-                file: t.file || t.url,
-                label: t.label || t.lang || "Unknown",
-                kind: "captions",
-                default: !!t.default
-            }));
+    static async getUniversalRecent() {
+        const data: any = await AnimeAPI_V2.getHomePage();
+        return data?.recentEpisodes ? data.recentEpisodes.map((item: any) => ({ id: item.id, title: item.name, poster: item.poster, type: item.type || "TV", episodes: item.episodes || { sub: 0, dub: 0 } })) : [];
     }
 
-    // --- ORCHESTRATION ---
-
-    // 1. ANIME INFO - Locked to V2 & V3 for Stability
-    static async getAnimeInfo(id: string): Promise<UniversalAnime | null> {
-        // Priority: V2 (Layout) -> V3 (Metadata)
-        const pool = [AnimeAPI_V2, AnimeAPI_V3]; 
+   /**
+ * ✅ DEDICATED HINDI RECENT
+ * Handles unique structure: response.data.latestSeries/latestMovies
+ */
+static async getHindiRecent() {
+    try {
+        // Handshake with dedicated Hindi endpoint
+        const response: any = await AnimeAPI_Hindi.getHome();
         
-        for (const api of pool) {
-            try {
-                // @ts-ignore
-                const data = await api.getAnimeInfo(id);
-                if (data) {
-                    if (api === AnimeAPI_V2) return this.normalizeV2(data);
-                    if (api === AnimeAPI_V3) return this.normalizeV3(data);
-                }
-            } catch (e) { continue; }
+        // Safety check: The fetch utility already returns 'json.data' 
+        // if the API structure is { success: true, data: { ... } }
+        const intel = response?.latestSeries ? response : response?.data;
+
+        if (!intel) {
+            console.warn("Shadow Garden: Hindi Intelligence Link Null.");
+            return [];
         }
+
+        // Merge Series and Movies for the "Recent Updates" feed
+        const combined = [
+            ...(intel.latestSeries || []),
+            ...(intel.latestMovies || [])
+        ];
+
+        return combined.map((item: any) => ({
+            // Hindi API specific mapping: id, title, poster
+            id: item.id,
+            title: item.title,
+            // Tactical URL Fix: Cleans double-slashes in poster links
+            poster: item.poster ? item.poster.replace(/([^:]\/)\/+/g, "$1") : "", 
+            type: item.type === 'movie' ? 'MOVIE' : 'TV',
+            // Hindi API home doesn't provide ep numbers, defaulting for UI safety
+            episodes: { sub: 0, dub: 0 } 
+        }));
+    } catch (error) {
+        console.error("Hindi Data Sync Failure:", error);
+        return [];
+    }
+}
+
+    // CORE DATA METHODS
+    static async getAnimeInfo(id: string): Promise<UniversalAnime | null> {
+        const dataV2 = await AnimeAPI_V2.getAnimeInfo(id); if (dataV2) return this.normalizeV2(dataV2);
+        const dataV3 = await AnimeAPI_V3.getAnimeInfo(id); if (dataV3) return this.normalizeV3(dataV3);
         return null;
     }
 
-    // 2. EPISODES - Locked to V2 & V3 (Matches Info)
     static async getEpisodes(id: string): Promise<UniversalEpisode[]> {
-        const pool = [AnimeAPI_V2, AnimeAPI_V3];
-        for (const api of pool) {
-            try {
-                // @ts-ignore
-                const data = await api.getEpisodes(id);
-                if (data) {
-                    if (api === AnimeAPI_V2) return this.normalizeEpisodes(data, 'v2');
-                    if (api === AnimeAPI_V3) return this.normalizeEpisodes(data, 'v3');
-                }
-            } catch(e) { continue; }
-        }
+        const dataV2: any = await AnimeAPI_V2.getEpisodes(id); if (dataV2) return this.normalizeEpisodes(dataV2, 'v2');
+        const dataV3: any = await AnimeAPI_V3.getEpisodes(id); if (dataV3) return this.normalizeEpisodes(dataV3, 'v3');
         return [];
     }
 
-    // 3. CHARACTERS - Locked to V3 (Completeness)
-    static async getCharacters(id: string): Promise<UniversalCharacter[]> {
-        try {
-            const res = await AnimeAPI_V3.getAnimeCharacters(id);
-            if (res) return this.normalizeCharacters(res);
-        } catch(e) {}
-        return [];
+    static async getCharacters(id: string) {
+        const res = await AnimeAPI_V3.getAnimeCharacters(id);
+        return res ? this.normalizeCharacters(res) : [];
     }
 
-    // 4. STREAMING - RACE CONDITION (V2, V3, V4)
-    // Instantly returns the first API that responds with a valid link
     static async getStream(episodeId: string, server = 'hd-1', category = 'sub') {
         const cleanId = episodeId.replace('::', '?');
-        
-        // Define the Promises for the Race
-        const promises = [
-            // V2 Promise
-            (async () => {
-                const v2: any = await AnimeAPI_V2.getEpisodeSources(cleanId, server, category as any);
-                if (v2 && v2.sources?.[0]) return {
-                    url: v2.sources[0].url,
-                    headers: v2.headers,
-                    subtitles: this.normalizeTracks(v2.tracks),
-                    intro: v2.intro, outro: v2.outro,
-                    server: 'hd-1', isM3U8: v2.sources[0].type === 'hls'
-                };
-                throw new Error("V2 Failed");
-            })(),
-            
-            // V3 Promise
-            (async () => {
-                const v3: any = await AnimeAPI_V3.getStreamingLinks(cleanId, server, category);
-                const sl = v3?.streamingLink;
-                if (sl?.link?.file) return {
-                    url: sl.link.file,
-                    subtitles: this.normalizeTracks(sl.tracks),
-                    intro: sl.intro, outro: sl.outro,
-                    server: 'v3', isM3U8: sl.link.type === 'hls'
-                };
-                throw new Error("V3 Failed");
-            })(),
-
-            // V4 Promise
-            (async () => {
-                const v4: any = await AnimeAPI_V4.getStream(cleanId, server, category);
-                const d = v4?.data;
-                if (d?.link?.file) return {
-                    url: d.link.file,
-                    subtitles: this.normalizeTracks(d.tracks),
-                    intro: d.intro, outro: d.outro,
-                    server: 'v4', isM3U8: d.link.type === 'hls'
-                };
-                throw new Error("V4 Failed");
-            })()
-        ];
-
         try {
-            // Using Promise.any to get the first *successful* result
-            return await Promise.any(promises);
-        } catch (e) {
-            console.error("All streams failed");
-            return null;
-        }
+            const v2: any = await AnimeAPI_V2.getEpisodeSources(cleanId, server, category);
+            if (v2?.sources?.[0]) return { url: v2.sources[0].url, subtitles: v2.tracks || [], server: 'hd-1', isM3U8: v2.sources[0].type === 'hls' };
+        } catch (e) {}
+        try {
+            const v3: any = await AnimeAPI_V3.getStreamingLinks(cleanId, server, category);
+            if (v3?.streamingLink?.link?.file) return { url: v3.streamingLink.link.file, subtitles: v3.streamingLink.tracks || [], server: 'v3', isM3U8: v3.streamingLink.link.type === 'hls' };
+        } catch (e) {}
+        return null;
     }
 
-    // --- OTHER METHODS ---
-    static async getSpotlight() {
-        // Randomize Home Load
-        const pool = Math.random() > 0.5 ? AnimeAPI_V2 : AnimeAPI_V4;
-        try {
-             // @ts-ignore
-             const data = await pool[pool === AnimeAPI_V2 ? 'getHomePage' : 'getHome']();
-             return data;
-        } catch(e) { return null; }
+    static async getSchedule(date: string) {
+        try { const v2 = await AnimeAPI_V2.getSchedule(date); if (v2?.scheduledAnimes?.length > 0) return v2; } catch (e) {}
+        try { const v3 = await AnimeAPI_V3.getSchedule(date); if (v3?.scheduledAnimes?.length > 0) return v3; } catch (e) {}
+        return { scheduledAnimes: [] };
     }
-    
-    static async search(query: string) {
-        // Simple rotation
-        const api = Math.random() > 0.5 ? AnimeAPI_V2 : AnimeAPI_V3;
-        // @ts-ignore
-        try { return await api.search(query); } catch(e) { return null; }
+
+    static async getSearchSuggestions(query: string) {
+        const v4Data: any = await AnimeAPI_V4.getSearchSuggestions(query);
+        if (v4Data?.length > 0) return v4Data.map((item: any) => ({ id: item.id, title: item.title, poster: item.poster, type: item.type || 'TV', duration: item.duration || '?' }));
+        const v2Data: any = await AnimeAPI_V2.getSearchSuggestions(query);
+        if (v2Data?.suggestions) return v2Data.suggestions.map((item: any) => ({ id: item.id, title: item.name, poster: item.poster, type: item.moreInfo?.[1] || 'TV', duration: item.moreInfo?.[2] || '?' }));
+        return [];
     }
-    
-    static async getRecentReleases() { return AnimeAPI_V4.getRecentlyUpdated(1); }
+
+    static async getRandomAnime() { const data = await AnimeAPI_V3.getRandomAnime(); return data ? this.normalizeV3(data) : null; }
+    static async getTopSearch() { const data: any = await AnimeAPI_V3.getTopSearch(); return data || []; }
+    static async search(query: string, page = 1) { 
+        const v4 = await AnimeAPI_V4.search(query, page); if (v4?.results?.length > 0) return v4;
+        return await AnimeAPI_V2.search(query, page); 
+    }
+    static async filter(params: any) { const data = await AnimeAPI_V4.filter(params); return data ? this.normalizeV4List(data) : []; }
 }
 
-// ... Services (Watchlist, User, Image) remain unchanged ...
+// ==========================================
+//  10. OTHER APIS
+// ==========================================
 export class WatchlistAPI {
   static async getUserWatchlist(userId: string): Promise<WatchlistItem[]> {
     if (supabase && userId !== 'guest') {
@@ -560,8 +680,10 @@ export class WatchlistAPI {
 export class UserAPI {
   static async getCurrentUser(): Promise<AppUser | null> {
     if (supabase) {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (user) return { id: user.id, email: user.email, user_metadata: user.user_metadata };
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session?.user) {
+        return { id: session.user.id, email: session.user.email, user_metadata: session.user.user_metadata };
+      }
     }
     return null;
   }

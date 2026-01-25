@@ -1,8 +1,9 @@
 "use client";
 
 import React, { useState, useEffect, useMemo, Suspense, useRef, useCallback } from 'react';
+// Corrected Imports: Link belongs in next/link, hooks belong in next/navigation
 import { useRouter, useSearchParams, useParams, usePathname } from 'next/navigation';
-import Link from 'next/link';
+import Link from 'next/link'; 
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
   SkipForward, SkipBack, Server as ServerIcon, 
@@ -336,7 +337,7 @@ const CharacterDetailsDialog = ({
             <div className="w-full h-full relative backdrop-blur-2xl bg-[#050505]/95 border border-white/10 rounded-[30px] shadow-[0_0_80px_rgba(220,38,38,0.15)] overflow-hidden flex flex-col md:flex-row"> 
                 <div className="absolute top-0 left-0 w-full h-full bg-gradient-to-br from-red-900/10 via-transparent to-red-900/5 pointer-events-none" /> 
                 
-                {/* NAVIGATION BUTTONS - MOVED TO TOP RIGHT (Z-INDEX 100) */}
+                {/* NAVIGATION BUTTONS */}
                 <div className="absolute top-1 right-1 z-[100] flex gap-2 pointer-events-auto">
                     {onBack && canGoBack && (
                       <button onClick={onBack} className="p-2 rounded-full bg-black/60 backdrop-blur-md border border-white/10 text-white/70 hover:text-white hover:bg-zinc-800 transition-all active:scale-90 shadow-lg group">
@@ -395,18 +396,18 @@ const CharacterDetailsDialog = ({
 
                                 {data.animeography && data.animeography.length > 0 && ( 
                                     <div>
-                                        <h3 className="text-[10px] font-black text-zinc-500 uppercase tracking-widest mb-3 flex items-center gap-2"><Layers size={12} className="text-yellow-500"/> Appearances</h3> 
-                                        <div className="flex flex-col gap-3">
-                                            {data.animeography.map((anime:any, i:number) => ( 
-                                                <Link key={i} href={`/watch/${anime.id}`} className="flex items-center gap-4 p-2 pr-4 rounded-xl bg-black/40 border border-white/5 hover:border-red-500/50 hover:bg-white/5 transition-all active:scale-95 group/ani"> 
-                                                    <img src={anime.poster || '/images/no-poster.png'} className="w-10 h-14 rounded-lg object-cover shadow-sm" /> 
-                                                    <div className="flex flex-col min-w-0">
-                                                        <span className="text-sm font-bold text-zinc-300 group-hover/ani:text-white truncate">{anime.title}</span>
-                                                        <span className="text-[10px] font-bold text-zinc-500 uppercase tracking-wider group-hover/ani:text-red-400 transition-colors">{anime.role || 'Character'}</span>
-                                                    </div> 
-                                                </Link> 
-                                            ))}
-                                        </div> 
+                                            <h3 className="text-[10px] font-black text-zinc-500 uppercase tracking-widest mb-3 flex items-center gap-2"><Layers size={12} className="text-yellow-500"/> Appearances</h3> 
+                                            <div className="flex flex-col gap-3">
+                                                {data.animeography.map((anime:any, i:number) => ( 
+                                                    <Link key={i} href={`/watch/${anime.id}`} className="flex items-center gap-4 p-2 pr-4 rounded-xl bg-black/40 border border-white/5 hover:border-red-500/50 hover:bg-white/5 transition-all active:scale-95 group/ani"> 
+                                                        <img src={anime.poster || '/images/no-poster.png'} className="w-10 h-14 rounded-lg object-cover shadow-sm" /> 
+                                                        <div className="flex flex-col min-w-0">
+                                                            <span className="text-sm font-bold text-zinc-300 group-hover/ani:text-white truncate">{anime.title}</span>
+                                                            <span className="text-[10px] font-bold text-zinc-500 uppercase tracking-wider group-hover/ani:text-red-400 transition-colors">{anime.role || 'Character'}</span>
+                                                        </div> 
+                                                    </Link> 
+                                                ))}
+                                            </div> 
                                     </div> 
                                 )} 
                             </div> 
@@ -448,7 +449,7 @@ const VoiceActorDetailsDialog = ({
                 {/* RED THEME GRADIENT */}
                 <div className="absolute top-0 left-0 w-full h-full bg-gradient-to-br from-red-600/10 via-transparent to-red-600/5 pointer-events-none" /> 
                 
-                {/* NAVIGATION BUTTONS - MOVED TO TOP RIGHT (Z-INDEX 100) */}
+                {/* NAVIGATION BUTTONS */}
                 <div className="absolute top-1 right-1 z-[100] flex gap-2 pointer-events-auto">
                     {onBack && canGoBack && (
                       <button onClick={onBack} className="p-2 rounded-full bg-black/60 backdrop-blur-md border border-white/10 text-white/70 hover:text-white hover:bg-zinc-800 transition-all active:scale-90 shadow-lg group">
@@ -484,34 +485,34 @@ const VoiceActorDetailsDialog = ({
                                 </div> 
                                 {data.roles && ( 
                                     <div>
-                                        <h3 className="text-[10px] font-black text-zinc-500 uppercase tracking-widest mb-3 flex items-center gap-2"><Layers size={12}/> Roles</h3> 
-                                        <div className="flex flex-col gap-2">
-                                            {data.roles.map((role:any, i:number) => ( 
-                                                <div key={i} className="grid grid-cols-2 gap-2 p-1.5 rounded-xl bg-white/5 border border-white/5 hover:bg-white/10 transition-colors group/row"> 
-                                                    {/* Left: Anime Info (50% Width) */}
-                                                    <Link href={`/watch/${role.anime.id}`} className="flex items-center gap-2 min-w-0 group/ani overflow-hidden">
-                                                        <img src={role.anime.poster || '/images/no-poster.png'} className="w-8 h-12 rounded-md object-cover shadow-sm shrink-0" /> 
-                                                        <div className="flex flex-col min-w-0 overflow-hidden">
-                                                            <PingPongScroll text={role.anime.title} className="text-[10px] font-bold text-zinc-300 group-hover/ani:text-white" />
-                                                            <span className="text-[9px] font-bold text-red-500 uppercase tracking-wider group-hover/ani:underline truncate">Watch Now</span>
-                                                        </div> 
-                                                    </Link>
+                                            <h3 className="text-[10px] font-black text-zinc-500 uppercase tracking-widest mb-3 flex items-center gap-2"><Layers size={12}/> Roles</h3> 
+                                            <div className="flex flex-col gap-2">
+                                                {data.roles.map((role:any, i:number) => ( 
+                                                    <div key={i} className="grid grid-cols-2 gap-2 p-1.5 rounded-xl bg-white/5 border border-white/5 hover:bg-white/10 transition-colors group/row"> 
+                                                        {/* Left: Anime Info (50% Width) */}
+                                                        <Link href={`/watch/${role.anime.id}`} className="flex items-center gap-2 min-w-0 group/ani overflow-hidden">
+                                                            <img src={role.anime.poster || '/images/no-poster.png'} className="w-8 h-12 rounded-md object-cover shadow-sm shrink-0" /> 
+                                                            <div className="flex flex-col min-w-0 overflow-hidden">
+                                                                <PingPongScroll text={role.anime.title} className="text-[10px] font-bold text-zinc-300 group-hover/ani:text-white" />
+                                                                <span className="text-[9px] font-bold text-red-500 uppercase tracking-wider group-hover/ani:underline truncate">Watch Now</span>
+                                                            </div> 
+                                                        </Link>
 
-                                                    {/* Right: Character Info (50% Width) */}
-                                                    <button onClick={() => onCharacterClick(role.character.id)} className="flex items-center gap-2 justify-end min-w-0 group/char text-right overflow-hidden">
-                                                        <div className="flex flex-col min-w-0 items-end overflow-hidden">
-                                                            <PingPongScroll text={role.character.name} className="text-[10px] font-bold text-zinc-300 group-hover/char:text-white text-right" />
-                                                            <span className="text-[9px] font-bold text-zinc-500 uppercase tracking-wider truncate w-full text-right">{role.role || role.character.role || 'Main'}</span>
-                                                        </div>
-                                                        <img 
-                                                            src={role.character.profile || role.character.image || role.character.poster || role.character.images?.jpg?.image_url || '/images/non-non.png'} 
-                                                            className="w-10 h-10 rounded-full object-cover border border-white/10 group-hover/char:border-red-500 transition-colors shadow-md shrink-0" 
-                                                            alt={role.character.name}
-                                                        /> 
-                                                    </button>
-                                                </div> 
-                                            ))}
-                                        </div> 
+                                                        {/* Right: Character Info (50% Width) */}
+                                                        <button onClick={() => onCharacterClick(role.character.id)} className="flex items-center gap-2 justify-end min-w-0 group/char text-right overflow-hidden">
+                                                            <div className="flex flex-col min-w-0 items-end overflow-hidden">
+                                                                <PingPongScroll text={role.character.name} className="text-[10px] font-bold text-zinc-300 group-hover/char:text-white text-right" />
+                                                                <span className="text-[9px] font-bold text-zinc-500 uppercase tracking-wider truncate w-full text-right">{role.role || role.character.role || 'Main'}</span>
+                                                            </div>
+                                                            <img 
+                                                                src={role.character.profile || role.character.image || role.character.poster || role.character.images?.jpg?.image_url || '/images/non-non.png'} 
+                                                                className="w-10 h-10 rounded-full object-cover border border-white/10 group-hover/char:border-red-500 transition-colors shadow-md shrink-0" 
+                                                                alt={role.character.name}
+                                                            /> 
+                                                        </button>
+                                                    </div> 
+                                                ))}
+                                            </div> 
                                     </div> 
                                 )} 
                             </div> 
@@ -537,6 +538,10 @@ function WatchContent() {
   const searchParams = useSearchParams(); 
   const animeId = params.id as string; 
   const urlEpId = searchParams.get('ep'); 
+  // ✅ FIX: Image Search Params
+  const urlEpNumber = searchParams.get('episode');
+  const urlTimestamp = searchParams.get('timestamp');
+
   const { user } = useAuth(); 
   const { settings, updateSetting, isSettingsLoaded } = useWatchSettings();
 
@@ -598,6 +603,8 @@ function WatchContent() {
   const [isResumeLoaded, setIsResumeLoaded] = useState(false);
   const progressRef = useRef(0);
   const playerRef = useRef<AnimePlayerRef>(null);
+  // ✅ Player Container Ref for Focus
+  const playerContainerRef = useRef<HTMLDivElement>(null);
 
   const progressBuffer = useRef<{[key: string]: any}>({});
   const isBufferDirty = useRef(false);
@@ -630,6 +637,11 @@ function WatchContent() {
   }, [resetInterfaceTimer]);
 
   const handlePlayerClick = () => {
+      // ✅ Focus the player container explicitly on click to enable Spacebar
+      if (playerContainerRef.current) {
+          playerContainerRef.current.focus();
+      }
+
       if (hideInterface) {
           setHideInterface(false);
           resetInterfaceTimer();
@@ -677,12 +689,24 @@ function WatchContent() {
 
             if (v2Data) {
                 if (v2Data.relatedAnimes?.length) universalData.related = v2Data.relatedAnimes.map((r:any) => ({ 
-                    id: r.id, title: r.name, poster: r.poster, type: r.type, 
-                    episodes: r.episodes?.sub || r.episodes?.eps || r.episodes 
+                    id: r.id, 
+                    title: r.name, 
+                    poster: r.poster, 
+                    type: r.type, 
+                    // ✅ EPISODE OBJECT FIX
+                    episodes: typeof r.episodes === 'object' 
+                        ? (r.episodes.sub || r.episodes.eps || 0) 
+                        : (r.episodes?.sub || r.episodes?.eps || r.episodes) 
                 }));
                 if (v2Data.recommendedAnimes?.length) universalData.recommendations = v2Data.recommendedAnimes.map((r:any) => ({ 
-                    id: r.id, title: r.name, poster: r.poster, type: r.type, 
-                    episodes: r.episodes?.sub || r.episodes?.eps || r.episodes
+                    id: r.id, 
+                    title: r.name, 
+                    poster: r.poster, 
+                    type: r.type, 
+                    // ✅ EPISODE OBJECT FIX
+                    episodes: typeof r.episodes === 'object' 
+                        ? (r.episodes.sub || r.episodes.eps || 0) 
+                        : (r.episodes?.sub || r.episodes?.eps || r.episodes)
                 }));
                 if (v2Data.seasons?.length) universalData.seasons = v2Data.seasons.map((s:any) => ({ id: s.id, title: s.title, poster: s.poster, isCurrent: s.isCurrent }));
                 if (v2Data.anime?.info?.promotionalVideos?.length) universalData.trailers = v2Data.anime.info.promotionalVideos;
@@ -790,6 +814,15 @@ function WatchContent() {
           }
 
           let targetEpId = urlEpId;
+          
+          // ✅ FIX: Priority to Image Search Params (episode number)
+          if (urlEpNumber && anime.episodes) {
+              const foundEp = anime.episodes.find(e => e.number === Number(urlEpNumber));
+              if (foundEp) {
+                  targetEpId = foundEp.id;
+              }
+          }
+
           if (!targetEpId) {
               let maxTime = 0;
               Object.values(progressBuffer.current).forEach((p:any) => {
@@ -855,11 +888,24 @@ function WatchContent() {
         setStreamError(null);
         
         let time = 0;
-        if (progressBuffer.current[currentEpId]) {
-            time = progressBuffer.current[currentEpId].progress;
-        } else if (!user) {
-            const localData = JSON.parse(localStorage.getItem('shadow_continue_watching') || '{}'); 
-            if (localData[animeId] && localData[animeId].episodeId === currentEpId) time = localData[animeId].progress; 
+        
+        // ✅ Determine Start Time
+        let isUrlOverride = false;
+        if (urlTimestamp && urlEpNumber && anime) {
+             const requestedEp = anime.episodes.find(e => e.number === Number(urlEpNumber));
+             if (requestedEp && requestedEp.id === currentEpId) {
+                 time = Number(urlTimestamp);
+                 isUrlOverride = true;
+             }
+        }
+
+        if (!isUrlOverride) {
+            if (progressBuffer.current[currentEpId]) {
+                time = progressBuffer.current[currentEpId].progress;
+            } else if (!user) {
+                const localData = JSON.parse(localStorage.getItem('shadow_continue_watching') || '{}'); 
+                if (localData[animeId] && localData[animeId].episodeId === currentEpId) time = localData[animeId].progress; 
+            }
         }
 
         setResumeTime(time);
@@ -942,10 +988,10 @@ function WatchContent() {
               progress: progress, 
               duration: duration, 
               last_updated: new Date().toISOString(),
-              last_server: settings.server,       
+              last_server: settings.server,         
               episode_image: episodeImage, 
               total_episodes: anime.episodes.length,
-              type: animeType,            
+              type: animeType,               
               is_completed: isCompleted
           };
 
@@ -980,9 +1026,8 @@ function WatchContent() {
       saveProgress(true); 
       setCurrentEpId(id); 
       setStreamUrl(null); 
-      isSkipToastLocked.current = false; // Reset toast lock on new ep
+      isSkipToastLocked.current = false;
       
-      // Explicit URL update on click as well
       const newUrl = `/watch/${animeId}?ep=${id}`;
       window.history.pushState({}, '', newUrl);
   };
@@ -1049,14 +1094,23 @@ useEffect(() => {
       `}</style>
       <div className={cn("fixed inset-0 bg-black/90 z-[39] transition-opacity duration-700 pointer-events-none", settings.dimMode ? 'opacity-100' : 'opacity-0')} />
 
-      {/* PLAYER & CONTROLS WRAPPER */}
+      {/* PLAYER WRAPPER */}
       <motion.div 
         initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.8 }}
         className="w-full flex flex-col items-center bg-[#050505] relative z-40 px-4 md:px-8 mt-6"
       >
         <div className="w-full max-w-[1300px] 2xl:max-w-[1680px]">
-            {/* PLAYER */}
-            <div className="w-full aspect-video bg-black rounded-t-[30px] rounded-b-none overflow-hidden border-t border-l border-r border-white/5 shadow-2xl relative shadow-red-900/10" onClick={handlePlayerClick}>
+            <div 
+                ref={playerContainerRef}
+                tabIndex={0} 
+                className="w-full aspect-video bg-black rounded-t-[30px] rounded-b-none overflow-hidden border-t border-l border-r border-white/5 shadow-2xl relative shadow-red-900/10 outline-none focus:ring-1 focus:ring-white/10" 
+                onClick={handlePlayerClick}
+                onKeyDown={(e) => {
+                    if (e.code === 'Space') {
+                        e.preventDefault();
+                    }
+                }}
+            >
                 <AnimatePresence>
                     {showSkipNotification && (
                         <motion.div
@@ -1105,7 +1159,6 @@ useEffect(() => {
                 initial={{ y: -20, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ duration: 0.5, delay: 0.2 }}
                 className={cn("w-full transition-all duration-500", hideInterface ? "opacity-0 pointer-events-none translate-y-4" : "opacity-100 translate-y-0")}
             >
-                {/* 1. DESKTOP/LAPTOP CONTROLS */}
                 <div className="hidden lg:flex w-full bg-[#0a0a0a] border-b border-l border-r border-t-0 border-white/5 rounded-b-[30px] rounded-t-none shadow-red-900/10 shadow-lg px-5 py-2 flex-row gap-4 justify-between items-center overflow-hidden">
                     <div className="flex-1 min-w-0 flex items-center gap-4 w-full sm:w-auto overflow-hidden">
                         <MarqueeTitle text={currentEpisode?.title || `Episode ${currentEpisode?.number}`} />
@@ -1154,7 +1207,7 @@ useEffect(() => {
                     </div>
                 </div>
 
-                {/* 2. MOBILE & TABLET CONTROLS */}
+                {/* MOBILE CONTROLS */}
                 <div className="flex lg:hidden w-full bg-[#0a0a0a] border-b border-l border-r border-t-0 border-white/5 rounded-b-[30px] rounded-t-none shadow-red-900/10 shadow-lg px-4 py-4 flex-col gap-3 overflow-hidden relative z-[60]">
                     <div className="flex w-full justify-between items-center gap-2">
                         <button disabled={!prevEpisode} onClick={() => prevEpisode && handleEpisodeClick(prevEpisode.id)} className="flex-1 bg-white/5 h-8 rounded-full border border-white/5 flex items-center justify-center text-zinc-400 hover:text-white active:bg-white/10"><SkipBack size={14}/></button>
@@ -1218,7 +1271,6 @@ useEffect(() => {
                             <button key={idx} onClick={() => setEpChunkIndex(idx)} className={cn("flex-shrink-0 px-4 py-1.5 text-[10px] font-black rounded-full transition-all border shadow-sm uppercase tracking-wider", epChunkIndex === idx ? "bg-red-600 text-white border-red-500 shadow-red-900/20" : "bg-zinc-900 border-zinc-800 text-zinc-500 hover:text-zinc-300 hover:border-zinc-700")}>{(idx * chunkSize) + 1}-{Math.min((idx + 1) * chunkSize, anime.episodes.length)}</button>
                         ))}
                     </div>
-                    <div className="absolute bottom-1 left-1/2 -translate-x-1/2 w-8 h-1 bg-red-600/30 rounded-full opacity-0 group-hover/chunks:opacity-100 transition-opacity" />
                 </div>
                 <ScrollArea className="flex-1 p-2 shadow-inner custom-scrollbar overflow-x-hidden">
                     <motion.div layout className={cn("p-2 transition-all duration-500 ease-in-out grid", epViewMode === 'grid' ? 'grid-cols-5 gap-2.5' : epViewMode === 'compact' ? 'grid-cols-10 gap-1.5' : 'grid-cols-1 gap-2')}>
@@ -1323,46 +1375,6 @@ useEffect(() => {
                             </DropdownMenu>
                         </div>
                     </div>
-                    <div className="hidden lg:block flex-shrink-0 p-6 border-t border-white/5 bg-[#0a0a0a] shadow-inner shadow-red-900/5">
-                        <div className="flex w-full items-center gap-3">
-                            <div className="bg-white/5 p-2 px-5 rounded-full border border-white/5 flex items-center gap-3 shrink-0 whitespace-nowrap group hover:border-red-500/30 transition-all shadow-inner shadow-black/20">
-                                <span className="text-[10px] font-black uppercase tracking-widest text-red-600">Aired</span>
-                                <span className="text-[10px] font-bold text-zinc-300">{anime.info.aired}</span>
-                            </div>
-                            <div className="bg-white/5 p-2 px-5 rounded-full border border-white/5 flex items-center gap-3 shrink-0 whitespace-nowrap group hover:border-red-500/30 transition-all shadow-inner shadow-black/20">
-                                <span className="text-[10px] font-black uppercase tracking-widest text-red-600">Premiered</span>
-                                <span className="text-[10px] font-bold text-zinc-300">{anime.info.premiered}</span>
-                            </div>
-                            {anime.info.studios?.length > 0 && (
-                                <DropdownMenu modal={false}>
-                                    <DropdownMenuTrigger asChild>
-                                        <div className="bg-white/5 p-2 px-5 rounded-full border border-white/5 flex items-center gap-3 flex-1 min-w-0 cursor-pointer group hover:border-red-600/50 hover:bg-white/10 transition-all active:scale-95 shadow-inner shadow-black/20 justify-between">
-                                            <div className="flex items-center gap-3 overflow-hidden">
-                                                <span className="text-[10px] font-black uppercase tracking-widest text-red-600 shrink-0">Studio</span>
-                                                <span className="text-[10px] font-bold text-zinc-300 truncate">{anime.info.studios[0]}</span>
-                                            </div>
-                                            <ChevronDown size={12} className="text-zinc-500 group-hover:text-white shrink-0"/>
-                                        </div>
-                                    </DropdownMenuTrigger>
-                                    <DropdownMenuContent className="bg-[#0a0a0a] border border-white/10 text-zinc-300"><ScrollArea className="h-24"><div className="flex flex-col p-1">{anime.info.studios.map((s:string)=><DropdownMenuItem key={s} className="text-[10px] uppercase font-bold">{s}</DropdownMenuItem>)}</div></ScrollArea></DropdownMenuContent>
-                                </DropdownMenu>
-                            )}
-                            {anime.info.producers?.length > 0 && (
-                                <DropdownMenu modal={false}>
-                                    <DropdownMenuTrigger asChild>
-                                        <div className="bg-white/5 p-2 px-5 rounded-full border border-white/5 flex items-center gap-3 flex-1 min-w-0 cursor-pointer group hover:border-red-500/30 transition-all active:scale-95 shadow-inner shadow-black/20 justify-between">
-                                            <div className="flex items-center gap-3 overflow-hidden">
-                                                <span className="text-[10px] font-black uppercase tracking-widest text-red-600 shrink-0">Producer</span>
-                                                <span className="text-[10px] font-bold text-zinc-300 truncate">{anime.info.producers[0]}</span>
-                                            </div>
-                                            <ChevronDown size={12} className="text-zinc-500 group-hover:text-white shrink-0"/>
-                                        </div>
-                                    </DropdownMenuTrigger>
-                                    <DropdownMenuContent className="bg-[#0a0a0a] border border-white/10 text-zinc-300"><ScrollArea className="h-24"><div className="flex flex-col p-1">{anime.info.producers.map((p:string)=><DropdownMenuItem key={p} className="text-[10px] uppercase font-bold">{p}</DropdownMenuItem>)}</div></ScrollArea></DropdownMenuContent>
-                                </DropdownMenu>
-                            )}
-                        </div>
-                    </div>
                 </motion.div>
             </div>
       </div></div>
@@ -1384,7 +1396,9 @@ useEffect(() => {
                     <div className="absolute top-0 right-0 w-80 h-80 bg-red-600/5 blur-[150px] pointer-events-none group-hover/related:bg-red-600/10 transition-all duration-1000" />
                     <div className="flex items-center gap-4 mb-8"><span className="w-2.5 h-2.5 bg-red-600 rounded-full animate-ping shadow-[0_0_15px_red] shadow-red-900/10" /><h4 className="text-[12px] text-white font-black uppercase tracking-[0.5em] font-[Cinzel] opacity-80 shadow-red-900/10 shadow-sm">Related Domains</h4></div>
                     <ScrollArea className="w-full whitespace-nowrap pb-6 custom-scrollbar">
-                        <div className="flex gap-6 w-max" ref={relatedRef} onWheel={(e:any) => e.stopPropagation()}>{anime.related.map((rel: any, idx: number) => rel?.id ? (<Link key={`${rel.id}-${idx}`} href={`/watch/${rel.id}`} className="group/item flex items-center gap-5 p-2 pr-10 rounded-full bg-white/5 border border-white/5 hover:border-red-600/40 hover:bg-red-600/10 transition-all duration-500 min-w-[320px] active:scale-95 shadow-inner shadow-red-900/5 shadow-md"><div className="relative shrink-0 overflow-hidden rounded-full w-16 h-16 border-2 border-white/5 group-hover/item:border-red-600 shadow-[0_0_20px_rgba(220,38,38,0.4)] transition-all duration-500 shadow-black/50 shadow-md"><img src={rel.poster || rel.image || '/images/no-poster.png'} className="w-full h-full object-cover transition-transform duration-1000 group-hover/item:scale-125 shadow-md shadow-red-900/5" alt={rel.name} /></div><div className="flex flex-col overflow-hidden gap-1"><span className="text-[13px] font-black text-zinc-300 group-hover:text-white truncate w-[180px] uppercase tracking-tighter transition-colors shadow-black drop-shadow-md">{rel.name || rel.title}</span><div className="flex items-center gap-3"><Badge variant="outline" className="text-[8px] font-black border-zinc-800 text-zinc-600 rounded-md group-hover/item:border-red-500/50 group-hover/item:text-red-500 uppercase tracking-widest shadow-sm">{rel.type}</Badge><span className="text-[9px] text-zinc-700 font-black uppercase group-hover/item:text-zinc-400 shadow-sm">{rel.episodes || '?'} EPS</span></div></div></Link>) : null)}</div><ScrollBar orientation="horizontal" className="hidden" />
+                        <div className="flex gap-6 w-max" ref={relatedRef} onWheel={(e:any) => e.stopPropagation()}>{anime.related.map((rel: any, idx: number) => rel?.id ? (<Link key={`${rel.id}-${idx}`} href={`/watch/${rel.id}`} className="group/item flex items-center gap-5 p-2 pr-10 rounded-full bg-white/5 border border-white/5 hover:border-red-600/40 hover:bg-red-600/10 transition-all duration-500 min-w-[320px] active:scale-95 shadow-inner shadow-red-900/5 shadow-md"><div className="relative shrink-0 overflow-hidden rounded-full w-16 h-16 border-2 border-white/5 group-hover/item:border-red-600 shadow-[0_0_20px_rgba(220,38,38,0.4)] transition-all duration-500 shadow-black/50 shadow-md"><img src={rel.poster || rel.image || '/images/no-poster.png'} className="w-full h-full object-cover transition-transform duration-1000 group-hover/item:scale-125 shadow-md shadow-red-900/5" alt={rel.name} /></div><div className="flex flex-col overflow-hidden gap-1"><span className="text-[13px] font-black text-zinc-300 group-hover:text-white truncate w-[180px] uppercase tracking-tighter transition-colors shadow-black drop-shadow-md">{rel.name || rel.title}</span><div className="flex items-center gap-3"><Badge variant="outline" className="text-[8px] font-black border-zinc-800 text-zinc-600 rounded-md group-hover/item:border-red-500/50 group-hover/item:text-red-500 uppercase tracking-widest shadow-sm">{rel.type}</Badge><span className="w-1 h-1 bg-zinc-900 rounded-full shadow-sm shrink-0"/><span className="text-[9px] text-zinc-700 font-black uppercase group-hover/item:text-zinc-400 shadow-sm">
+                            {typeof rel.episodes === 'object' ? (rel.episodes.sub || rel.episodes.dub || '?') : (rel.episodes || '?')} EPS
+                        </span></div></div></Link>) : null)}</div><ScrollBar orientation="horizontal" className="hidden" />
                     </ScrollArea>
                 </div>
             </div>
@@ -1419,7 +1433,9 @@ useEffect(() => {
                     </div>
                 </div>
             </div>
-            <div className="order-8 xl:order-1 xl:col-span-4 h-[750px] flex flex-col bg-[#0a0a0a] rounded-[50px] border border-white/5 shadow-2xl overflow-hidden relative group/paths shadow-red-900/20 shadow-md"><div className="p-8 bg-gradient-to-b from-white/5 to-transparent border-b border-white/5 flex items-center gap-4 relative z-10 shadow-red-900/5 shadow-md"><Heart size={20} className="text-red-600 fill-red-600 animate-pulse shadow-red-600/30 shadow-md" /><h3 className="font-black text-white text-[11px] font-[Cinzel] tracking-[0.4em] uppercase shadow-sm shadow-black">Recommended</h3></div><div className="flex-1 overflow-hidden p-6 relative z-10 shadow-inner shadow-red-900/5"><ScrollArea className="h-full pr-4 custom-scrollbar"><div className="space-y-4" ref={recommendationsRef} onWheel={(e:any) => e.stopPropagation()}>{anime.recommendations?.length > 0 && anime.recommendations.map((rec: any, idx: number) => rec?.id ? (<Link key={`${rec.id}-${idx}`} href={`/watch/${rec.id}`} className="flex gap-5 p-4 rounded-[32px] hover:bg-red-600/5 group transition-all duration-500 active:scale-95 border border-transparent hover:border-red-600/20 shadow-inner shadow-red-900/5"><img src={rec.poster || rec.image || '/images/no-poster.png'} className="w-16 h-24 object-cover rounded-2xl shadow-3xl group-hover:rotate-1 transition-all duration-500 shadow-black shadow-md shrink-0" alt={rec.name} /><div className="flex-1 py-1 flex flex-col justify-center min-w-0"><h4 className="text-[12px] font-black text-zinc-500 group-hover:text-red-500 line-clamp-2 transition-all uppercase tracking-tight leading-tight mb-2 shadow-black drop-shadow-md">{rec.name || rec.title}</h4><div className="flex items-center gap-3"><span className="text-[8px] font-black text-zinc-700 uppercase tracking-[0.2em] group-hover:text-zinc-500 transition-colors shadow-sm whitespace-nowrap">{rec.type || 'TV'}</span><span className="w-1 h-1 bg-zinc-900 rounded-full shadow-sm shrink-0"/><span className="text-[9px] text-zinc-800 font-black uppercase group-hover:text-red-900 transition-colors shadow-sm whitespace-nowrap">{rec.episodes || '?'} EPS</span></div></div></Link>) : null)}</div></ScrollArea></div></div>
+            <div className="order-8 xl:order-1 xl:col-span-4 h-[750px] flex flex-col bg-[#0a0a0a] rounded-[50px] border border-white/5 shadow-2xl overflow-hidden relative group/paths shadow-red-900/20 shadow-md"><div className="p-8 bg-gradient-to-b from-white/5 to-transparent border-b border-white/5 flex items-center gap-4 relative z-10 shadow-red-900/5 shadow-md"><Heart size={20} className="text-red-600 fill-red-600 animate-pulse shadow-red-600/30 shadow-md" /><h3 className="font-black text-white text-[11px] font-[Cinzel] tracking-[0.4em] uppercase shadow-sm shadow-black">Recommended</h3></div><div className="flex-1 overflow-hidden p-6 relative z-10 shadow-inner shadow-red-900/5"><ScrollArea className="h-full pr-4 custom-scrollbar"><div className="space-y-4" ref={recommendationsRef} onWheel={(e:any) => e.stopPropagation()}>{anime.recommendations?.length > 0 && anime.recommendations.map((rec: any, idx: number) => rec?.id ? (<Link key={`${rec.id}-${idx}`} href={`/watch/${rec.id}`} className="flex gap-5 p-4 rounded-[32px] hover:bg-red-600/5 group transition-all duration-500 active:scale-95 border border-transparent hover:border-red-600/20 shadow-inner shadow-red-900/5"><img src={rec.poster || rec.image || '/images/no-poster.png'} className="w-16 h-24 object-cover rounded-2xl shadow-3xl group-hover:rotate-1 transition-all duration-500 shadow-black shadow-md shrink-0" alt={rec.name} /><div className="flex-1 py-1 flex flex-col justify-center min-w-0"><h4 className="text-[12px] font-black text-zinc-500 group-hover:text-red-500 line-clamp-2 transition-all uppercase tracking-tight leading-tight mb-2 shadow-black drop-shadow-md">{rec.name || rec.title}</h4><div className="flex items-center gap-3"><span className="text-[8px] font-black text-zinc-700 uppercase tracking-[0.2em] group-hover:text-zinc-500 transition-colors shadow-sm whitespace-nowrap">{rec.type || 'TV'}</span><span className="w-1 h-1 bg-zinc-900 rounded-full shadow-sm shrink-0"/><span className="text-[9px] text-zinc-800 font-black uppercase group-hover:text-red-900 transition-colors shadow-sm whitespace-nowrap">
+                            {typeof rec.episodes === 'object' ? (rec.episodes.sub || rec.episodes.dub || '?') : (rec.episodes || '?')} EPS
+                        </span></div></div></Link>) : null)}</div></ScrollArea></div></div>
       </div></motion.div>
       <CharacterDetailsDialog 
         isOpen={activePopup?.type === 'character'} 

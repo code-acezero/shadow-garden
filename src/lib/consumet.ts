@@ -322,13 +322,13 @@ class ConsumetService {
         updated_at: new Date().toISOString(), 
         [`${provider}_id`]: id 
     };
-    
-    // FIX: Cast 'update' to 'any' to resolve TypeScript 'never' assignment error 
-    // caused by dynamic property keys in the Supabase upsert call.
-    supabase.from('anime_mappings').upsert(update as any, { onConflict: 'slug' }).then(({ error }) => {
+    // FIX: Cast 'update' to any and explicitly type destructured error as any
+    // This satisfies the compiler's strict binding check.
+    supabase.from('anime_mappings')
+      .upsert(update as any, { onConflict: 'slug' })
+      .then(({ error }: { error: any }) => { // 👈 Added explicit type here
         if (error) console.error("Mapping Save Error:", error.message);
-    });
+      });
   }
 }
-
 export const consumetClient = new ConsumetService();

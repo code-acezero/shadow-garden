@@ -6,7 +6,6 @@ import { Toaster } from 'sonner';
 import { AuthProvider } from '@/context/AuthContext';
 import { SettingsProvider } from "@/hooks/useSettings";
 // Import the new wrapper instead of using next/dynamic here
-import WhisperIslandWrapper from "@/components/UIx/WhisperIslandWrapper";
 
 const inter = Inter({ subsets: ["latin"] });
 
@@ -27,8 +26,7 @@ export default function RootLayout({
         <SettingsProvider>
             <AuthProvider>
             
-                {/* Use the wrapper here */}
-                <WhisperIslandWrapper />
+              
                 
                 <Navigation /> 
                 
