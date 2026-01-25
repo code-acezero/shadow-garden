@@ -37,23 +37,17 @@ export default function RecentUpdatesSection({ initialData }: { initialData: any
                     let rawUrl: string = anime.poster || anime.image || "";
                     let finalUrl = rawUrl;
 
-                    // 1. Hunt for the TMDB footprint
                     if (rawUrl.includes('image.tmdb.org')) {
-                        // Extract just the path starting from /t/p/
                         const match = rawUrl.match(/\/t\/p\/.*/);
                         if (match) {
                             finalUrl = `https://image.tmdb.org${match[0]}`;
                         }
                     } else if (rawUrl.includes('watchanimeworld')) {
-                        // If it's a broken internal link, fix double slashes
                         finalUrl = rawUrl.replace(/([^:]\/)\/+/g, "$1");
                     }
 
-                    // 2. Ensure Protocol Integrity
                     if (finalUrl.startsWith('//')) finalUrl = `https:${finalUrl}`;
                     
-                    // 3. Final Handshake via Proxy
-                    // We encode the URL to ensure special characters don't break the proxy query
                     const proxiedUrl = `/api/proxy?url=${encodeURIComponent(finalUrl)}`;
 
                     return {
@@ -77,6 +71,7 @@ export default function RecentUpdatesSection({ initialData }: { initialData: any
 
     return (
         <section className="relative animate-in fade-in slide-in-from-bottom-4 duration-700">
+            {/* Header Control Cluster */}
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-8">
                 <div className="flex items-center gap-3">
                     <div className="w-1.5 h-8 rounded-full bg-gradient-to-b from-red-600 to-violet-600 shadow-[0_0_15px_rgba(220,38,38,0.5)]" />
@@ -88,6 +83,7 @@ export default function RecentUpdatesSection({ initialData }: { initialData: any
                     </div>
                 </div>
 
+                {/* Filter Hub */}
                 <div className="flex items-center p-1 rounded-full bg-white/5 border border-white/10 backdrop-blur-xl w-fit self-center md:self-auto">
                     {filters.map((f) => (
                         <button
@@ -111,6 +107,7 @@ export default function RecentUpdatesSection({ initialData }: { initialData: any
                 </button>
             </div>
 
+            {/* Tactical Grid */}
             {loading ? (
                 <div className="h-[400px] flex flex-col items-center justify-center gap-4">
                     <Loader2 className="w-10 h-10 text-red-600 animate-spin" />
@@ -119,7 +116,14 @@ export default function RecentUpdatesSection({ initialData }: { initialData: any
             ) : data.length > 0 ? (
                 <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4 sm:gap-6">
                     {data.slice(0, 12).map((anime) => (
-                        <div key={anime.id} className="transition-all duration-300 hover:scale-[1.03]">
+                        <div 
+                            key={anime.id} 
+                            // ✅ TACTICAL STACKING FIX: 
+                            // 1. relative: allows z-index to work
+                            // 2. z-10: default level
+                            // 3. hover:z-50: Forces this card and its children (QTip) to the top of the stack
+                            className="relative z-10 transition-all duration-300 hover:scale-[1.03] hover:z-50"
+                        >
                             <AnimeCard anime={anime} />
                         </div>
                     ))}

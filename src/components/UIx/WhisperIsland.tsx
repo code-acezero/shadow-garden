@@ -16,7 +16,6 @@ import { useAuth } from '@/context/AuthContext';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
-import localFont from 'next/font/local';
 
 // Custom Components
 import Notifications from '@/components/Anime/Notifications';
@@ -29,7 +28,7 @@ const PLACEHOLDERS = [
   "Summon Solo Leveling...", "Find One Piece...", "Search Jujutsu Kaisen...", 
   "Discover Chainsaw Man...", "Look for Bleach...", "Explore Shadow Garden..."
 ];
-
+const [showAuth, setShowAuth] = useState(false);
 const GENRES = ["Action", "Adventure", "Cars", "Comedy", "Dementia", "Demons", "Drama", "Ecchi", "Fantasy", "Game", "Harem", "Hentai", "Historical", "Horror", "Isekai", "Josei", "Kids", "Magic", "Martial Arts", "Mecha", "Military", "Music", "Mystery", "Parody", "Police", "Psychological", "Romance", "Samurai", "School", "Sci-Fi", "Seinen", "Shoujo", "Shounen", "Slice of Life", "Space", "Sports", "Super Power", "Supernatural", "Thriller", "Vampire"];
 const SEASONS = ["spring", "summer", "fall", "winter"];
 const TYPES = ["tv", "movie", "ova", "ona", "special", "music"];
@@ -415,18 +414,47 @@ export default function WhisperIsland() {
             <div className={cn(`bg-black/40 backdrop-blur-xl border border-white/10 rounded-full ${standardHeight} ${standardWidth} flex items-center justify-center shadow-lg hover:bg-black/50 transition-colors`)}><Notifications /></div>
             <DropdownMenu>
                 <DropdownMenuTrigger asChild><button className="relative group outline-none"><div className={cn(`${standardHeight} ${standardWidth} rounded-full p-[2px] transition-all bg-black/40 backdrop-blur-xl border border-white/10 shadow-lg flex items-center justify-center`)}><Avatar className="w-full h-full rounded-full border border-white/10 p-0.5">{profile?.avatar_url ? <AvatarImage src={profile.avatar_url} className="object-cover rounded-full" /> : <ShadowAvatar gender={profile?.gender}/>}</Avatar></div></button></DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="w-64 bg-[#0a0a0a]/95 backdrop-blur-xl border-white/10 text-zinc-300 p-2 rounded-2xl z-[101]">
-                    {profile?.is_guest ? (<DropdownMenuItem onClick={() => router.push('/auth')} className="cursor-pointer bg-red-600/10 text-red-500 font-bold h-10 rounded-lg"><LogIn size={14} className="mr-2"/> Login</DropdownMenuItem>) : (
-                      <>
-                        <DropdownMenuItem asChild><Link href="/profile"><User size={14} className="mr-2"/> Profile</Link></DropdownMenuItem>
-                        <DropdownMenuItem asChild><Link href="/watchlist"><LayoutGrid size={14} className="mr-2"/> Library</Link></DropdownMenuItem>
-                        {/* ✅ RESTORED SETTINGS BUTTON */}
-                        <DropdownMenuItem asChild><Link href="/settings"><Settings size={14} className="mr-2"/> Settings</Link></DropdownMenuItem>
-                        <DropdownMenuSeparator className="bg-white/10"/>
-                        <DropdownMenuItem onClick={() => signOut()} className="text-red-500"><LogOut size={14} className="mr-2"/> Logout</DropdownMenuItem>
-                      </>
-                    )}
-                </DropdownMenuContent>
+              <DropdownMenuContent align="end" className="w-64 bg-[#0a0a0a]/95 backdrop-blur-xl border-white/10 text-zinc-300 p-2 rounded-2xl z-[101]">
+    {profile?.is_guest ? (
+        // ✅ TACTICAL AUTH TRIGGER: Replaces router.push with AuthModal popup
+        <DropdownMenuItem 
+            onClick={() => setShowAuth(true)} 
+            className="cursor-pointer bg-red-600/10 text-red-500 font-bold h-10 rounded-lg hover:bg-red-600 hover:text-white transition-colors"
+        >
+            <LogIn size={14} className="mr-2"/> Login / Manifest
+        </DropdownMenuItem>
+    ) : (
+        <>
+            <DropdownMenuItem asChild>
+                <Link href="/profile" className="flex items-center w-full">
+                    <User size={14} className="mr-2"/> Profile
+                </Link>
+            </DropdownMenuItem>
+            <DropdownMenuItem asChild>
+                <Link href="/watchlist" className="flex items-center w-full">
+                    <LayoutGrid size={14} className="mr-2"/> Library
+                </Link>
+            </DropdownMenuItem>
+            
+            {/* ✅ SETTINGS DOMAIN */}
+            <DropdownMenuItem asChild>
+                <Link href="/settings" className="flex items-center w-full">
+                    <Settings size={14} className="mr-2"/> Settings
+                </Link>
+            </DropdownMenuItem>
+
+            <DropdownMenuSeparator className="bg-white/10"/>
+
+            {/* ✅ TACTICAL LOGOUT: Can be direct or trigger a "Sign Out" confirmation modal */}
+            <DropdownMenuItem 
+                onClick={() => signOut()} 
+                className="text-red-500 cursor-pointer hover:bg-red-600/10 transition-colors"
+            >
+                <LogOut size={14} className="mr-2"/> Logout
+            </DropdownMenuItem>
+        </>
+    )}
+</DropdownMenuContent>
             </DropdownMenu>
         </motion.div>
 
