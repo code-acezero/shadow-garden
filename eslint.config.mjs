@@ -6,20 +6,25 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
 const compat = new FlatCompat({
-  baseDirectory: __dirname,
+  basePath: __dirname,
 });
 
 const eslintConfig = [
+  // Pull Next.js rules safely
   ...compat.extends("next/core-web-vitals", "next/typescript"),
   {
+    // ✅ TACTICAL OVERRIDE: Prevents the circular JSON crash
     rules: {
-      "@typescript-eslint/no-explicit-any": "off", 
-      "@typescript-eslint/no-unused-vars": "off",
-      "@typescript-eslint/no-empty-object-type": "off",
+      "@typescript-eslint/no-explicit-any": "off",
       "react/no-unescaped-entities": "off",
-      "@next/next/no-img-element": "off",
-    },
+      "react-hooks/rules-of-hooks": "error",
+      "react-hooks/exhaustive-deps": "warn"
+    }
   },
+  {
+    // Ignore internal build folders to prevent deep-crawling loops
+    ignores: [".next/*", "node_modules/*"]
+  }
 ];
 
 export default eslintConfig;
