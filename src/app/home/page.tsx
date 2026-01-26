@@ -1,88 +1,97 @@
-import React from 'react';
-import { AnimeService, UniversalAnimeBase } from '@/lib/api'; 
-import { consumetClient } from '@/lib/consumet'; 
-import SpotlightSlider from '@/components/Anime/SpotlightSlider';
-import Footer from '@/components/Anime/Footer'; 
+"use client";
+
+import React from "react";
+import dynamic from "next/dynamic";
+import useSWR from "swr";
+
 import MobileContainer from "@/components/Layout/MobileContainer";
-import RecentUpdatesSection from '@/components/Home/RecentUpdatesSection';
-import ContinueWatching from '@/components/Home/ContinueWatching';
+import SpotlightSlider from "@/components/Anime/SpotlightSlider";
+import Footer from "@/components/Anime/Footer";
 
-// --- CONFIGURATION ---
-export const revalidate = 3600; 
-
-export default async function Home() {
-  let spotlightData = null;
-  let initialRecent: UniversalAnimeBase[] = [];
-
-  try {
-    const homeData = await consumetClient.getHomePageData();
-    spotlightData = homeData?.spotlight || [];
-
-    const recentUpdates = await AnimeService.getRecentlyUpdated(1);
-    initialRecent = recentUpdates || [];
-  } catch (error) {
-    console.error("Shadow Garden system breach:", error);
+// Lazy-loaded heavy sections with immediate skeletons for smoother/faster feel
+const ContinueWatching = dynamic(
+  () => import("@/components/Home/ContinueWatching"),
+  { 
+    ssr: false,
+    loading: () => <div className="h-48 bg-white/5 rounded-xl animate-pulse" />
   }
+);
+
+const RecentUpdatesSection = dynamic(
+  () => import("@/components/Home/RecentUpdatesSection"),
+  { 
+    ssr: false,
+    loading: () => <div className="h-64 bg-white/5 rounded-xl animate-pulse" />
+  }
+);
+
+// Simple fetcher
+const fetcher = (url: string) =>
+  fetch(url).then((res) => {
+    if (!res.ok) throw new Error("Network error");
+    return res.json();
+  });
+
+export default function Home() {
+  // HOME DATA (spotlight, recent, etc.)
+  const { data, isLoading } = useSWR("/api/home", fetcher, {
+    revalidateOnFocus: false,
+    dedupingInterval: 60_000, // 1 min cache
+    keepPreviousData: true,   // Prevents flickering during background updates
+  });
+
+  const spotlightData = data?.spotlight ?? [];
+  const recentData = data?.recent ?? [];
 
   return (
-    <MobileContainer hasBottomNav={true} className="bg-[#050505] min-h-screen relative overflow-x-hidden">
-      {/* 1. GLOBAL UI STYLES & BACKGROUND GRADIENTS */}
-      <style dangerouslySetInnerHTML={{ __html: `
-        ::-webkit-scrollbar { display: none; }
-        html, body { -ms-overflow-style: none; scrollbar-width: none; background: #050505; }
-        
-        .shadow-light-top {
-          position: fixed;
-          top: -10%;
-          left: -10%;
-          width: 50%;
-          height: 60%;
-          background: radial-gradient(circle, rgba(220, 38, 38, 0.08) 0%, transparent 70%);
-          filter: blur(80px);
-          pointer-events: none;
-          z-index: 0;
+    <>
+      {/* Global styles for this page to handle scrollbars and mobile physics */}
+      <style jsx global>{`
+        .no-scrollbar::-webkit-scrollbar {
+          display: none;
         }
-
-        .shadow-light-bottom {
-          position: fixed;
-          bottom: -10%;
-          right: -10%;
-          width: 60%;
-          height: 70%;
-          background: radial-gradient(circle, rgba(153, 27, 27, 0.05) 0%, transparent 70%);
-          filter: blur(100px);
-          pointer-events: none;
-          z-index: 0;
+        .no-scrollbar {
+          -ms-overflow-style: none; /* IE and Edge */
+          scrollbar-width: none; /* Firefox */
         }
-      `}} />
+        .scrolling-touch {
+          -webkit-overflow-scrolling: touch;
+        }
+      `}</style>
 
-      {/* Background Red Light Effects */}
-      <div className="shadow-light-top" />
-      <div className="shadow-light-bottom" />
+      <MobileContainer
+        hasBottomNav
+        // Changed min-h-screen to h-[100dvh] for better mobile stability (no address bar jumps)
+        className="bg-[#050505] h-[100dvh] relative overflow-y-auto no-scrollbar scrolling-touch"
+      >
+        {/* Background effects */}
+        <div className="shadow-light-top" />
+        <div className="shadow-light-bottom" />
 
-      {/* 2. MAIN CONTENT WRAPPER */}
-      <div className="max-w-7xl mx-auto border-x border-white/5 min-h-screen flex flex-col relative z-10">
-        
-        {/* ✅ TOP BLANK SPACE (Strategic Buffer) */}
-        <div className="h-16 md:h-20 w-full" />
+        <div className="max-w-7xl mx-auto border-x border-white/5 min-h-full flex flex-col relative z-10">
+          {/* Top spacing */}
+<div className="h-10 md:h-15 w-full flex-shrink-0" />
+          {/* Spotlight */}
+          {!isLoading && spotlightData.length > 0 ? (
+            <SpotlightSlider animes={spotlightData} />
+          ) : (
+            <div className="h-64 bg-white/5 rounded-xl animate-pulse mx-4 md:mx-8 flex-shrink-0" />
+          )}
 
-        {/* 3. HERO SECTION */}
-        {spotlightData && spotlightData.length > 0 && (
-          <SpotlightSlider animes={spotlightData} />
-        )}
-
-        <div className="px-4 md:px-8 space-y-12 pb-20 mt-6 flex-1">
-            
-            {/* 4. CONTINUE WATCHING */}
+          {/* Main content */}
+          <div className="px-4 md:px-8 space-y-12 pb-20 mt-6 flex-1">
             <ContinueWatching />
 
-            {/* 5. RECENT UPDATES */}
-            <RecentUpdatesSection initialData={initialRecent} />
+            {!isLoading ? (
+              <RecentUpdatesSection initialData={recentData} />
+            ) : (
+              <div className="h-64 bg-white/5 rounded-xl animate-pulse" />
+            )}
+          </div>
 
+          <Footer />
         </div>
-
-        <Footer />
-      </div>
-    </MobileContainer>
+      </MobileContainer>
+    </>
   );
 }

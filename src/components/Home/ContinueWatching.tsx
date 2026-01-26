@@ -1,18 +1,21 @@
 "use client";
 
-import React, { useState, useEffect } from 'react';
-import { Play, Loader2 } from 'lucide-react';
-import { supabase, AnimeService } from '@/lib/api';
-import { useAuth } from '@/context/AuthContext';
-import { motion } from 'framer-motion';
+import React, { useState, useEffect } from "react";
+import { Play, Clock, ChevronRight, Mic, Captions } from "lucide-react";
+import { supabase, AnimeService } from "@/lib/api";
+import { useAuth } from "@/context/AuthContext";
+import { motion, AnimatePresence } from "framer-motion";
+import { useRouter } from "next/navigation";
+import Link from "next/link";
 
-// Tactical schema matching the database structure
+// --- Types ---
 interface ContinueWatchingRow {
   anime_id: string;
   anime_title?: string;
   episode_id: string;
   episode_number: number;
   progress: number;
+  duration?: number;
   last_updated: string;
   episode_image: string;
   total_episodes: number;
@@ -20,189 +23,328 @@ interface ContinueWatchingRow {
   is_completed: boolean;
 }
 
+interface ContinueWatchingItem {
+  id: string;
+  title: string;
+  poster: string;
+  episode: number;
+  totalEpisodes: number | string;
+  progress: number;
+  type: string;
+  ageRating: string | null;
+  isAdult: boolean;
+  episodeId: string;
+  sub?: number | string;
+  dub?: number | string;
+}
+
+// --- Animations ---
+const containerVariants = {
+  hidden: { opacity: 0 },
+  visible: {
+    opacity: 1,
+    transition: { staggerChildren: 0.08, delayChildren: 0.1 },
+  },
+};
+
+const itemVariants = {
+  hidden: { opacity: 0, x: 20, scale: 0.95 },
+  visible: { 
+    opacity: 1, 
+    x: 0, 
+    scale: 1,
+    transition: { type: "spring", stiffness: 100, damping: 15 }
+  },
+};
+
 export default function ContinueWatching() {
-    const { user, isLoading: authLoading } = useAuth();
-    const [items, setItems] = useState<any[]>([]);
-    const [loading, setLoading] = useState(true);
+  const { user, isLoading: authLoading } = useAuth();
+  const [items, setItems] = useState<ContinueWatchingItem[]>([]);
+  const [loading, setLoading] = useState(true);
+  const router = useRouter();
 
-    useEffect(() => {
-        const fetchProgressWithMetadata = async () => {
-            if (!user) {
-                setLoading(false);
-                return;
-            }
+  const goToWatch = (animeId: string, episodeId?: string) => {
+    if (!episodeId) return;
+    router.push(`/watch/${animeId}?ep=${episodeId}`);
+  };
 
+  useEffect(() => {
+    const fetchProgressWithMetadata = async () => {
+      if (!user) {
+        setLoading(false);
+        return;
+      }
+
+      try {
+        const { data, error } = await supabase
+          .from("user_continue_watching")
+          .select("*")
+          .eq("user_id", user.id)
+          .eq("is_completed", false)
+          .order("last_updated", { ascending: false })
+          .limit(15);
+
+        if (error) throw error;
+        
+        const dbData = data as ContinueWatchingRow[];
+
+        if (!dbData || dbData.length === 0) {
+            setItems([]);
+            setLoading(false);
+            return;
+        }
+
+        const uniqueMap = new Map<string, ContinueWatchingRow>();
+        dbData.forEach((item) => {
+          if (!uniqueMap.has(item.anime_id)) uniqueMap.set(item.anime_id, item);
+        });
+        
+        const missionArray = Array.from(uniqueMap.values()).slice(0, 10);
+
+        const enrichedItems = await Promise.all(
+          missionArray.map(async (item) => {
             try {
-                // Querying strictly based on your last_updated schema
-                const { data: dbData, error } = await supabase
-                    .from('user_continue_watching')
-                    .select('*')
-                    .eq('user_id', user.id)
-                    .eq('is_completed', false) 
-                    .order('last_updated', { ascending: false });
+              const info: any = await AnimeService.getAnimeInfo(item.anime_id);
+              const duration = item.duration || 1440;
+              const progressPercent = Math.min(Math.round((item.progress / duration) * 100), 100);
 
-                if (error) throw error;
+              const title = 
+                info?.title?.english || 
+                info?.title?.userPreferred || 
+                info?.title?.romaji || 
+                item.anime_title || 
+                item.anime_id;
 
-                // Unique Mission Logic: One entry per anime ID
-                const uniqueMissions = new Map<string, ContinueWatchingRow>();
-                if (dbData) {
-                    (dbData as ContinueWatchingRow[]).forEach((item) => {
-                        if (!uniqueMissions.has(item.anime_id)) {
-                            uniqueMissions.set(item.anime_id, item);
-                        }
-                    });
-                }
+              // --- FIXED RATING LOGIC ---
+              const statsRating = info?.stats?.rating || ""; 
+              const explicitAdult = info?.isAdult === true;
+              
+              const ratingStringAdult = ["R", "17", "18", "RX", "HENTAI", "R+"].some(tag => 
+                statsRating.toUpperCase().includes(tag)
+              );
+                
+              const isAdult = explicitAdult || ratingStringAdult;
 
-                const missionArray = Array.from(uniqueMissions.values()).slice(0, 6);
+              let displayRating = null;
 
-                // QTIP Data Enrichment
-                const enrichedItems = await Promise.all(missionArray.map(async (item: ContinueWatchingRow) => {
-                    try {
-                        const info = await AnimeService.getAnimeInfo(item.anime_id) as any;
-                        if (!info) throw new Error("Info offline");
+              if (isAdult) {
+                  displayRating = "18+";
+              } else if (statsRating && statsRating !== "?") {
+                  // Clean up the rating string
+                  let clean = statsRating.replace("PG-", "PG ").replace("R-", "").replace("+", ""); 
+                  
+                  // Specific fix requested: 13+ -> PG-13
+                  if (clean.trim() === "13" || clean.trim() === "13+") {
+                      displayRating = "PG-13";
+                  } else {
+                      displayRating = clean;
+                  }
+              }
 
-                        const currentEpisode = info.episodes?.find((ep: any) => ep.number === item.episode_number);
-                        const progressPercent = Math.min(Math.round((item.progress / 1440) * 100), 100);
-
-                        // Tactical Age Tag Logic
-                        const rawRating = info.rating || '13+';
-                        const formattedRating = rawRating.replace('13+', 'PG-13');
-
-                        return {
-                            id: item.anime_id,
-                            title: info.title?.english || info.title?.userPreferred || info.title?.romaji || item.anime_id,
-                            episodeTitle: currentEpisode?.title || `Episode ${item.episode_number}`,
-                            poster: item.episode_image || info.image || info.poster,
-                            episode: item.episode_number,
-                            totalEpisodes: info.totalEpisodes || item.total_episodes || '??',
-                            progress: progressPercent,
-                            type: info.type || item.type || 'TV',
-                            ageRating: formattedRating,
-                            episodeId: item.episode_id
-                        };
-                    } catch (apiErr) {
-                        return {
-                            id: item.anime_id,
-                            title: item.anime_id.replace(/-/g, ' ').toUpperCase(),
-                            episodeTitle: `Episode ${item.episode_number}`,
-                            poster: item.episode_image,
-                            episode: item.episode_number,
-                            totalEpisodes: item.total_episodes || '??',
-                            progress: 0,
-                            type: item.type || 'TV',
-                            ageRating: 'PG-13'
-                        };
-                    }
-                }));
-
-                setItems(enrichedItems);
-            } catch (e: any) {
-                console.error("Shadow Garden Q-Tip Failure:", e.message);
-            } finally {
-                setLoading(false);
+              return {
+                id: item.anime_id,
+                title: title,
+                poster: item.episode_image || info?.poster || info?.image || "/images/no-poster.png",
+                episode: item.episode_number,
+                totalEpisodes: info?.totalEpisodes || item.total_episodes || "?",
+                progress: progressPercent,
+                type: info?.type || item.type || "TV",
+                ageRating: displayRating,
+                isAdult: isAdult, 
+                episodeId: item.episode_id,
+                sub: info?.episodes?.sub || info?.stats?.episodes?.sub,
+                dub: info?.episodes?.dub || info?.stats?.episodes?.dub,
+              };
+            } catch (err) {
+              return {
+                id: item.anime_id,
+                title: item.anime_title || "Unknown Title",
+                poster: item.episode_image || "/images/no-poster.png",
+                episode: item.episode_number,
+                totalEpisodes: item.total_episodes || "?",
+                progress: 0,
+                type: item.type || "TV",
+                ageRating: null,
+                isAdult: false,
+                episodeId: item.episode_id,
+                sub: undefined,
+                dub: undefined
+              };
             }
-        };
+          })
+        );
 
-        if (!authLoading) fetchProgressWithMetadata();
-    }, [user, authLoading]);
+        setItems(enrichedItems);
+      } catch (e) {
+        console.error("Continue Watching Sync Error:", e);
+      } finally {
+        setLoading(false);
+      }
+    };
 
-    if (!user || items.length === 0) return null;
+    if (!authLoading) fetchProgressWithMetadata();
+  }, [user, authLoading]);
 
-    return (
-        <section className="relative animate-in fade-in slide-in-from-left-6 duration-1000">
-            <div className="flex items-center justify-between mb-6">
-                <div className="flex items-center gap-3">
-                    <div className="w-1.5 h-8 rounded-full bg-gradient-to-b from-violet-600 to-red-600 shadow-[0_0_15px_rgba(139,92,246,0.5)]" />
-                    <div className="flex flex-col">
-                        <h2 className="text-2xl font-black text-white tracking-tighter uppercase italic">
-                            Continue <span className="text-transparent bg-clip-text bg-gradient-to-r from-violet-400 to-red-500">Journey</span>
-                        </h2>
-                        <span className="text-[10px] text-zinc-500 font-bold tracking-[0.3em] uppercase">Tactical Progress Synced</span>
+  if (!user || (!loading && items.length === 0)) return null;
+
+  return (
+    <section className="w-full relative z-10 animate-in fade-in duration-700 mt-8">
+      {/* Header */}
+      <motion.div 
+        initial={{ opacity: 0, x: -20 }}
+        whileInView={{ opacity: 1, x: 0 }}
+        viewport={{ once: true }}
+        className="flex items-center justify-between mb-6 px-4 md:px-8 max-w-[1600px] mx-auto"
+      >
+        <div className="flex items-center gap-3">
+          <div className="p-2 bg-red-600/10 rounded-xl border border-red-500/20 backdrop-blur-md">
+            <Clock className="w-4 h-4 text-red-500" />
+          </div>
+          {/* Red Gradient Title */}
+          <h2 className="text-lg font-black tracking-[0.2em] uppercase font-sans drop-shadow-md bg-gradient-to-r from-red-500 via-red-600 to-red-900 bg-clip-text text-transparent">
+            Continue Adventure
+          </h2>
+        </div>
+
+        <Link 
+          href="/watchlist?tab=continue" 
+          className="group flex items-center gap-1 text-[10px] font-bold text-zinc-400 hover:text-white transition-colors uppercase tracking-widest"
+        >
+          View All
+          <ChevronRight size={12} className="group-hover:translate-x-1 transition-transform" />
+        </Link>
+      </motion.div>
+
+      {/* Horizontal Scroll Content */}
+      <AnimatePresence mode="wait">
+        {loading ? (
+          <div className="flex gap-4 overflow-hidden px-4 md:px-8 max-w-[1600px] mx-auto py-8">
+            {[...Array(6)].map((_, i) => (
+              <div key={i} className="flex-shrink-0 w-[40%] md:w-[22%] lg:w-[15%] aspect-[3/4] rounded-[32px] bg-white/5 animate-pulse border border-white/5 shadow-inner" />
+            ))}
+          </div>
+        ) : (
+          <motion.div
+            variants={containerVariants}
+            initial="hidden"
+            animate="visible"
+            className="w-full overflow-x-auto no-scrollbar py-8 px-4 md:px-8 snap-x snap-mandatory flex gap-4 md:gap-5"
+          >
+            {items.map((anime) => (
+              <motion.div
+                key={anime.id}
+                variants={itemVariants}
+                whileHover={{ scale: 1.05, y: -8 }}
+                whileTap={{ scale: 0.96 }}
+                onClick={() => goToWatch(anime.id, anime.episodeId)}
+                className="flex-shrink-0 w-[42%] sm:w-[30%] md:w-[22%] lg:w-[15.5%] xl:w-[15.5%] snap-start group relative aspect-[3/4] rounded-[32px] overflow-hidden cursor-pointer shadow-2xl shadow-black/50 ring-1 ring-white/10 bg-[#050505] transform-gpu transition-all duration-300 z-0 hover:z-10"
+              >
+                {/* 1. Background Image */}
+                <div className="absolute inset-0 overflow-hidden rounded-[32px]">
+                  <motion.img
+                    src={anime.poster}
+                    alt={anime.title}
+                    loading="lazy"
+                    decoding="async"
+                    className="w-full h-full object-cover transition-transform duration-700 ease-out group-hover:scale-110"
+                  />
+                  {/* Enhanced Shadow Gradient */}
+                  <div className="absolute inset-0 bg-gradient-to-t from-black via-black/60 to-transparent opacity-95 group-hover:opacity-100 transition-opacity duration-300" />
+                </div>
+
+                {/* 2. Top Labels */}
+                <div className="absolute top-3 left-3 z-30">
+                  <div className="px-2 py-1 bg-black/60 backdrop-blur-md border border-white/10 rounded-lg text-[8px] font-black text-white uppercase tracking-wider shadow-lg">
+                    {anime.type}
+                  </div>
+                </div>
+                
+                {/* Age Rating Tag */}
+                {anime.ageRating && (
+                  <div className="absolute top-3 right-3 z-30">
+                    <div className={`px-2 py-1 backdrop-blur-md border rounded-lg text-[8px] font-black text-white uppercase tracking-wider shadow-lg ${
+                      anime.isAdult 
+                        ? "bg-red-600/90 border-red-500/50 shadow-red-900/20" 
+                        : "bg-black/60 border-white/10"
+                    }`}>
+                      {anime.ageRating}
                     </div>
+                  </div>
+                )}
+
+                {/* 3. Center Play Button */}
+                <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all duration-300 z-20 scale-50 group-hover:scale-100 -translate-y-6">
+                  <div className="relative">
+                    <div className="absolute inset-0 rounded-full bg-red-600 blur-xl opacity-70 animate-pulse" />
+                    <div className="relative w-10 h-10 rounded-full bg-red-600 border border-white/10 flex items-center justify-center shadow-[0_0_30px_rgba(220,38,38,0.6)]">
+                      <Play className="w-4 h-4 text-white fill-white ml-0.5" />
+                    </div>
+                  </div>
                 </div>
-            </div>
 
-            {loading ? (
-                <div className="flex items-center justify-center h-48 bg-white/5 rounded-2xl border border-white/5">
-                    <Loader2 className="animate-spin text-violet-500 w-8 h-8" />
+                {/* 4. Bottom Metadata */}
+                <div className="absolute bottom-0 left-0 right-0 px-3 pb-3 z-20 flex flex-col gap-1.5">
+                  
+                  {/* Title */}
+                  <h3 className="text-sm font-black text-white leading-tight truncate drop-shadow-xl filter group-hover:text-red-400 transition-colors">
+                    {anime.title}
+                  </h3>
+
+                  {/* Adaptive Info Row */}
+                  <div className="flex items-center justify-between gap-1 w-full overflow-hidden">
+                    
+                    {/* Left: Episode Count (Flexible) */}
+                    <div className="flex-1 min-w-0 bg-white/10 backdrop-blur-md border border-white/10 px-2 py-1 rounded-md flex items-center justify-center">
+                      <span className="text-[8.5px] font-bold text-white tracking-tight uppercase whitespace-nowrap">
+                        EP {anime.episode}<span className="text-white/50 mx-0.5">/</span>{anime.totalEpisodes}
+                      </span>
+                    </div>
+                    
+                    {/* Right: Sub/Dub (Compact) */}
+                    {(anime.sub || anime.dub) && (
+                      <div className="flex-shrink-0 flex items-center gap-1.5 bg-white/10 backdrop-blur-md border border-white/10 px-2 py-1 rounded-md min-w-0">
+                        {anime.sub && (
+                          <div className="flex items-center gap-0.5 text-[8.5px] font-bold text-white tracking-tight whitespace-nowrap">
+                            <Captions size={9} className="text-zinc-300 flex-shrink-0" />
+                            <span>{anime.sub}</span>
+                          </div>
+                        )}
+                        {anime.sub && anime.dub && (
+                          <div className="w-px h-2.5 bg-white/20 flex-shrink-0" />
+                        )}
+                        {anime.dub && (
+                          <div className="flex items-center gap-0.5 text-[8.5px] font-bold text-white tracking-tight whitespace-nowrap">
+                            <Mic size={9} className="text-zinc-300 flex-shrink-0" />
+                            <span>{anime.dub}</span>
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Progress Bar & Percentage */}
+                  <div className="flex flex-col gap-1 w-full mt-0.5">
+                    <div className="w-full h-1 bg-white/20 rounded-full overflow-hidden backdrop-blur-sm shadow-inner">
+                      <motion.div
+                        initial={{ width: 0 }}
+                        animate={{ width: `${anime.progress}%` }}
+                        transition={{ duration: 1.2, ease: "circOut", delay: 0.3 }}
+                        className="h-full bg-gradient-to-r from-red-600 to-red-400 shadow-[0_0_10px_rgba(220,38,38,0.8)]"
+                      />
+                    </div>
+                    <span className="text-[8px] font-black text-zinc-300 tracking-widest uppercase opacity-90 text-center drop-shadow-md">
+                        {anime.progress}% Complete
+                    </span>
+                  </div>
                 </div>
-            ) : (
-                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4">
-                    {items.map((anime) => (
-                        <div key={anime.id} className="relative aspect-[2/3] group overflow-hidden rounded-2xl border border-white/5 bg-zinc-900/20 shadow-xl transition-all duration-300 hover:border-red-500/30">
-                            
-                            <img 
-                                src={anime.poster} 
-                                alt={anime.title}
-                                className="absolute inset-0 w-full h-full object-cover select-none transition-transform duration-700 group-hover:scale-110 opacity-70 group-hover:opacity-100"
-                            />
 
-                            {/* --- TOP CAPSULE HUD --- */}
-                            <div className="absolute top-2 left-2 z-20">
-                                <div className="px-3 py-0.5 rounded-full bg-black/60 backdrop-blur-md border border-white/10 shadow-lg">
-                                    <span className="text-[8px] font-black text-white/50 uppercase tracking-widest">{anime.type}</span>
-                                </div>
-                            </div>
-
-                            <div className="absolute top-2 right-2 z-20">
-                                <div className="px-3 py-0.5 rounded-full bg-black/60 backdrop-blur-md border border-white/10 shadow-lg">
-                                    <span className="text-[8px] font-black text-white/80 uppercase">{anime.ageRating}</span>
-                                </div>
-                            </div>
-
-                            {/* Fade Blend HUD Background */}
-                            <div 
-                                className="absolute bottom-0 left-0 right-0 h-[30%] z-10 pointer-events-none bg-gradient-to-t from-black/95 via-black/80 to-transparent backdrop-blur-[6px]"
-                                style={{
-                                    maskImage: 'linear-gradient(to top, black 60%, transparent 100%)',
-                                    WebkitMaskImage: 'linear-gradient(to top, black 60%, transparent 100%)'
-                                }}
-                            />
-
-                            {/* Q-TIP Data Intel */}
-                            <div className="absolute top-0 left-0 right-0 p-3 bg-gradient-to-b from-black/80 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 z-20">
-                                <p className="text-[9px] font-bold text-violet-400 uppercase tracking-[0.2em] line-clamp-1 italic">
-                                    {anime.episodeTitle}
-                                </p>
-                            </div>
-
-                            {/* BOTTOM CONTENT HUD */}
-                            <div className="absolute bottom-2.5 left-0 right-0 px-3 z-20 pointer-events-none flex flex-col gap-1.5">
-                                <div className="flex items-center justify-between">
-                                    <div className="flex items-center gap-1.5 px-3 py-0.5 rounded-full bg-red-950/70 border border-red-500/30 shadow-[0_0_10px_rgba(239,68,68,0.2)]">
-                                        <div className="w-1 h-1 rounded-full bg-red-500 animate-pulse" />
-                                        <span className="text-[10px] font-black text-red-200 tracking-tighter italic">{anime.episode}</span>
-                                    </div>
-                                    <div className="flex items-center gap-1">
-                                        <span className="text-[9px] font-black text-white/40 tracking-widest">{anime.totalEpisodes}</span>
-                                    </div>
-                                </div>
-
-                                <h3 className="text-[11px] font-black text-white uppercase tracking-tighter truncate drop-shadow-md leading-none">
-                                    {anime.title}
-                                </h3>
-                            </div>
-
-                            {/* Progress Pulse Line */}
-                            <div className="absolute bottom-0 left-0 w-full h-0.5 bg-black/60 z-30">
-                                <motion.div 
-                                    initial={{ width: 0 }}
-                                    animate={{ width: `${anime.progress}%` }}
-                                    transition={{ duration: 1.5, ease: "easeOut" }}
-                                    className="h-full bg-gradient-to-r from-violet-600 to-red-600 relative"
-                                />
-                            </div>
-
-                            {/* Play Action Hover */}
-                            <div className="absolute inset-0 bg-gradient-to-br from-violet-900/10 to-red-900/10 opacity-0 group-hover:opacity-100 transition-opacity duration-500 flex items-center justify-center z-40">
-                                <div className="bg-red-600 p-2.5 rounded-full shadow-[0_0_25px_rgba(220,38,38,0.4)] transform scale-50 group-hover:scale-100 transition-transform duration-500 cursor-pointer pointer-events-auto">
-                                    <Play size={18} className="fill-white text-white ml-0.5" />
-                                </div>
-                            </div>
-                        </div>
-                    ))}
-                </div>
-            )}
-        </section>
-    );
+                {/* 5. Glass Border Shine */}
+                <div className="absolute inset-0 rounded-[32px] ring-1 ring-inset ring-white/10 pointer-events-none z-30 group-hover:ring-red-500/30 transition-all duration-500" />
+              </motion.div>
+            ))}
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </section>
+  );
 }

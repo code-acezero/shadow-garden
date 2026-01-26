@@ -1,4 +1,6 @@
 import type { Metadata } from "next";
+import PageTransition from "@/components/Transitions/PageTransition";
+import ClientOnly from "@/components/ClientOnly";
 import { Inter } from "next/font/google";
 import "./globals.css";
 import Navigation from "@/components/Layout/Navigation"; 
@@ -10,10 +12,9 @@ import {
   kareudon, monas, nyctophobia, onePiece 
 } from '@/lib/fonts';
 
-// ✅ FIX: Added 'variable' to the Inter configuration
 const inter = Inter({ 
   subsets: ["latin"],
-  variable: '--font-inter', // This enables the .variable property
+  variable: '--font-inter',
 });
 
 export const metadata: Metadata = {
@@ -24,10 +25,9 @@ export const metadata: Metadata = {
 
 export default function RootLayout({
   children,
-}: Readonly<{
+}: {
   children: React.ReactNode;
-}>) {
-  // ✅ Mapping variables from your Armory
+}) {
   const fontVariables = [
     inter.variable,
     badUnicorn.variable,
@@ -42,16 +42,23 @@ export default function RootLayout({
 
   return (
     <html lang="en" className={`dark ${fontVariables}`} suppressHydrationWarning>
-      <body 
-        className={`${inter.className} bg-[#050505] text-foreground antialiased`} 
+      <body
+        className={`${inter.className} bg-[#050505] text-foreground antialiased`}
         suppressHydrationWarning
       >
         <SettingsProvider>
           <AuthProvider>
-            <Navigation /> 
-            <main className="min-h-screen">
-              {children}
+
+            <ClientOnly>
+              <Navigation />
+            </ClientOnly>
+
+            <main className="min-h-screen overflow-hidden">
+              <PageTransition>
+                {children}
+              </PageTransition>
             </main>
+
             <Toaster position="bottom-right" theme="dark" />
           </AuthProvider>
         </SettingsProvider>

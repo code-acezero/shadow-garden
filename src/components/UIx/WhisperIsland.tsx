@@ -28,12 +28,14 @@ const PLACEHOLDERS = [
   "Summon Solo Leveling...", "Find One Piece...", "Search Jujutsu Kaisen...", 
   "Discover Chainsaw Man...", "Look for Bleach...", "Explore Shadow Garden..."
 ];
-const [showAuth, setShowAuth] = useState(false);
 const GENRES = ["Action", "Adventure", "Cars", "Comedy", "Dementia", "Demons", "Drama", "Ecchi", "Fantasy", "Game", "Harem", "Hentai", "Historical", "Horror", "Isekai", "Josei", "Kids", "Magic", "Martial Arts", "Mecha", "Military", "Music", "Mystery", "Parody", "Police", "Psychological", "Romance", "Samurai", "School", "Sci-Fi", "Seinen", "Shoujo", "Shounen", "Slice of Life", "Space", "Sports", "Super Power", "Supernatural", "Thriller", "Vampire"];
 const SEASONS = ["spring", "summer", "fall", "winter"];
 const TYPES = ["tv", "movie", "ova", "ona", "special", "music"];
 const STATUS = ["currently_airing", "finished_airing", "not_yet_aired"];
 const YEARS = Array.from({ length: 2027 - 1990 }, (_, i) => (2027 - i).toString());
+
+
+
 
 // --- TYPES ---
 interface SearchResult { id: string; title: string; image: string; releaseDate?: string; type?: string; duration?: string; }
@@ -78,6 +80,8 @@ const CustomSelect = ({ label, icon: Icon, options, value, onChange }: any) => {
         return () => document.removeEventListener('mousedown', handleClick);
     }, []);
 
+
+
     return (
         <div className="space-y-1 relative" ref={ref}>
             <label className="text-[9px] text-zinc-400 font-bold uppercase ml-1 flex items-center gap-1"><Icon size={10}/> {label}</label>
@@ -111,6 +115,7 @@ const CustomSelect = ({ label, icon: Icon, options, value, onChange }: any) => {
 };
 
 export default function WhisperIsland() {
+  const [showAuth, setShowAuth] = useState(false);
   const router = useRouter();
   const pathname = usePathname(); 
   const wrapperRef = useRef<HTMLDivElement>(null);
@@ -134,8 +139,27 @@ export default function WhisperIsland() {
   const [isDetailsOpen, setIsDetailsOpen] = useState(false);
   const [isHovered, setIsHovered] = useState(false);
   const notifTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const [mounted, setMounted] = useState(false);
+
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+   
+  
 
   // --- INIT ---
+  useEffect(() => {
+  const style = document.createElement("style");
+  style.innerHTML = scrollbarStyle;
+  document.head.appendChild(style);
+
+  return () => {
+    document.head.removeChild(style);
+  };
+}, []);
+
   useEffect(() => {
     const handleResize = () => setIsMobile(window.innerWidth < 768);
     handleResize(); window.addEventListener('resize', handleResize);
@@ -260,6 +284,8 @@ export default function WhisperIsland() {
     }
   };
 
+  
+
   // UI State Vars
   const isSearchCollapsed = !!activeNotif && !isSearchActive;
   const isBusy = (!!activeNotif || isSearchActive);
@@ -272,9 +298,17 @@ export default function WhisperIsland() {
   const standardWidth = "w-10 md:w-12";
   const logoWidth = isMobile ? (shouldCollapseLogo ? 40 : 180) : (shouldCollapseLogo ? 48 : 220);
 
+
+
+ if (!mounted) {
+    return (
+      <div className="fixed top-0 left-0 right-0 z-[9999] pointer-events-none h-14" />
+    );
+  }
+
+
   return (
     <div ref={wrapperRef} className="fixed top-0 left-0 right-0 z-[9999] bg-gradient-to-b from-black/80 to-transparent pt-2 pb-1 md:pt-3 md:pb-2 px-2 sm:px-4 pointer-events-none transition-all duration-300 font-sans">
-      <style>{scrollbarStyle}</style>
       <div className="flex items-start justify-center gap-2 w-full max-w-7xl mx-auto pointer-events-auto relative text-left">
         
         {/* LEFT CAPSULE */}
