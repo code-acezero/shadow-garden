@@ -81,7 +81,9 @@ async function fetchWithFailover(urlPool: string[], endpoint: string, params: Re
             if (!response.ok) continue;
 
             const json = await response.json();
+            // Adjust logic based on API success format
             if (json.status === 200 || json.success === true) {
+                // If it's the Hindi API, sometimes data is directly in `data`
                 return json.data || json.results || json; 
             }
         } catch (error) {
@@ -369,35 +371,7 @@ export class AnimeAPI_V4 {
 }
 
 // ==========================================
-//  8. API HINDI (DEDICATED)
-// ==========================================
-export class AnimeAPI_Hindi {
-  static async request<T>(endpoint: string, params: Record<string, any> = {}): Promise<T | null> {
-      return fetchWithFailover([BASE_URL_HINDI], endpoint, params);
-  }
-  static async getHome() { return this.request('/home'); }
-  
-  static async search(keyword: string, page = 1) { 
-      const data: any = await this.request('/search', { keyword, page });
-      if (data && (data.animes || data.response || data.results)) {
-          const list = data.animes || data.response || data.results || [];
-          return {
-              results: list.map((item: any) => ({
-                  id: item.id,
-                  title: item.name || item.title,
-                  poster: item.poster,
-                  type: item.type || "TV",
-                  episodes: item.episodes || { sub: 0, dub: 0 }
-              }))
-          };
-      }
-      return { results: [] };
-  }
-  static async getAnimeDetails(id: string) { return this.request(`/anime/${id}`); }
-}
-
-// ==========================================
-//  9. ANIME SERVICE (THE ORCHESTRATOR)
+//  8. ANIME SERVICE (THE ORCHESTRATOR)
 // ==========================================
 
 export class AnimeService {
@@ -559,15 +533,10 @@ export class AnimeService {
 
    /**
  * ✅ DEDICATED HINDI RECENT
- * Handles unique structure: response.data.latestSeries/latestMovies
  */
 static async getHindiRecent() {
     try {
-        // Handshake with dedicated Hindi endpoint
         const response: any = await AnimeAPI_Hindi.getHome();
-        
-        // Safety check: The fetch utility already returns 'json.data' 
-        // if the API structure is { success: true, data: { ... } }
         const intel = response?.latestSeries ? response : response?.data;
 
         if (!intel) {
@@ -575,20 +544,16 @@ static async getHindiRecent() {
             return [];
         }
 
-        // Merge Series and Movies for the "Recent Updates" feed
         const combined = [
             ...(intel.latestSeries || []),
             ...(intel.latestMovies || [])
         ];
 
         return combined.map((item: any) => ({
-            // Hindi API specific mapping: id, title, poster
             id: item.id,
             title: item.title,
-            // Tactical URL Fix: Cleans double-slashes in poster links
             poster: item.poster ? item.poster.replace(/([^:]\/)\/+/g, "$1") : "", 
             type: item.type === 'movie' ? 'MOVIE' : 'TV',
-            // Hindi API home doesn't provide ep numbers, defaulting for UI safety
             episodes: { sub: 0, dub: 0 } 
         }));
     } catch (error) {
@@ -649,6 +614,86 @@ static async getHindiRecent() {
         return await AnimeAPI_V2.search(query, page); 
     }
     static async filter(params: any) { const data = await AnimeAPI_V4.filter(params); return data ? this.normalizeV4List(data) : []; }
+}
+
+// ==========================================
+//  11. DEDICATED HINDI ANIME API
+// ==========================================
+
+// --- Interfaces for Hindi API ---
+export interface HindiAnime {
+  id: string;
+  title: string;
+  poster: string;
+  url: string;
+  type: string;
+  description?: string;
+  genres?: string[];
+  languages?: string[];
+  totalEpisodes?: number;
+}
+
+export interface HindiEpisode {
+  id: string;
+  title: string;
+  episodeNumber: number;
+  seasonNumber: number;
+  thumbnail: string;
+  sources: {
+      url: string;
+      quality: string;
+      type: string;
+      server?: string;
+  }[];
+}
+
+export class AnimeAPI_Hindi {
+  static async request<T>(endpoint: string, params: Record<string, any> = {}): Promise<T | null> {
+      return fetchWithFailover([BASE_URL_HINDI], endpoint, params);
+  }
+
+  // Home: /api/home
+  static async getHome() { return this.request('/home'); }
+  
+  // Search: /api/search?keyword=...&page=...
+  static async search(keyword: string, page = 1) { 
+      const data: any = await this.request('/search', { keyword, page });
+      if (data && (data.results || data.data)) {
+          const list = data.results || data.data || [];
+          return {
+              results: list.map((item: any) => ({
+                  id: item.id,
+                  title: item.title,
+                  poster: item.poster,
+                  type: item.type || "series",
+                  episodes: { sub: 0, dub: 0 } // Hindi API usually lacks detailed ep counts in search
+              }))
+          };
+      }
+      return { results: [] };
+  }
+
+  // Details: /api/anime/{id}
+  static async getAnimeDetails(id: string) { return this.request(`/anime/${id}`); }
+
+  // Episodes & Stream: /api/episode/{id}
+  // Note: The Hindi API returns streaming links directly in the episode details endpoint
+  static async getEpisodeDetails(id: string) { return this.request(`/episode/${id}`); }
+
+  // Category: /api/category/{category} (anime, cartoon, series, movies)
+  static async getCategory(category: string, page = 1) {
+      return this.request(`/category/${category}`, { page });
+  }
+
+  // Language: /api/category/language/{lang}
+  static async getByLanguage(lang: string, page = 1) {
+      return this.request(`/category/language/${lang}`, { page });
+  }
+  
+  // A-Z: /api/az/{letter}
+  static async getAzList(letter: string, page = 1) {
+      return this.request(`/az/${letter}`, { page });
+  }
 }
 
 // ==========================================
