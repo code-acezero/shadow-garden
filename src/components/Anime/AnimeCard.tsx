@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { 
   Play, Calendar, MonitorPlay, 
-  Captions, Mic, Info, X 
+  Captions, Mic, Info, X, ListVideo 
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { AnimeAPI_V2 } from '@/lib/api';
@@ -31,7 +31,8 @@ interface UnifiedAnimeData {
   status?: string;
   rating?: string;
   source?: 'universal' | 'consumet' | 'hindi';
-  isHindi?: boolean; 
+  isHindi?: boolean;
+  targetRoute?: string; 
 }
 
 interface QTipData {
@@ -68,7 +69,6 @@ const qtipVariants = {
     filter: "blur(0px)",
     transition: { type: "spring", stiffness: 300, damping: 20 } 
   },
-  // ✅ INSTANT EXIT (Prevents "Behind Card" Glitch)
   exit: { 
       opacity: 0, 
       scale: 0.95, 
@@ -99,75 +99,123 @@ export default function AnimeCard({ anime, progress = 0, isHindi = false }: Anim
 
   // --- 1. MEMOIZED NORMALIZATION ---
   const normalized = useMemo(() => {
-    // 1. Image Resolution
     const displayImage = anime.poster || anime.image || anime.cover || "/images/placeholder-no-img.jpg";
     
-    // 2. Title Resolution
     let displayTitle = "Unknown Title";
     if (typeof anime.title === 'object') {
         displayTitle = anime.title.userPreferred || anime.title.english || anime.title.romaji || anime.title.native || "Unknown";
     } else if (anime.title) displayTitle = anime.title;
     else if (anime.name) displayTitle = anime.name;
 
-    // 3. Episode Counts
     const subCount = typeof anime.episodes === 'object' ? anime.episodes?.sub : anime.sub || null;
     const dubCount = typeof anime.episodes === 'object' ? anime.episodes?.dub : anime.dub || null;
-    
-    const currentEp = anime.episode || subCount || dubCount || 0;
     const totalEp = anime.totalEpisodes || (typeof anime.episodes === 'number' ? anime.episodes : null);
 
-    // 4. 18+ Logic
+    // Initial Adult Check
     const rawRating = anime.rating || "";
-    const isAdult = anime.isAdult === true || ["Rx", "RX", "18+", "Hentai", "R+"].some(t => rawRating.toUpperCase().includes(t));
+    const isAdult = anime.isAdult === true || ["Rx", "RX", "Hentai"].some(t => rawRating.toUpperCase().includes(t));
 
-    // 5. Watch Route Logic
-    let baseUrl = (isHindi || anime.isHindi || anime.source === 'hindi') 
-        ? `/watch2/${anime.id}` 
-        : `/watch/${anime.id}`;
-    
-    if (anime.episodeId) {
-        baseUrl += `?ep=${anime.episodeId}`;
-    } else if (anime.episode && anime.episode > 0) {
-        baseUrl += `?ep=${anime.episode}`;
+    // Route Logic
+    let finalRoute = "";
+    if (anime.targetRoute) {
+        finalRoute = anime.targetRoute;
+    } else {
+        const baseUrl = (isHindi || anime.isHindi || anime.source === 'hindi') 
+            ? `/watch2/${anime.id}` 
+            : `/watch/${anime.id}`;
+        if (anime.episodeId) {
+            finalRoute = `${baseUrl}?ep=${anime.episodeId}`;
+        } else if (anime.episode && anime.episode > 0) {
+            finalRoute = `${baseUrl}?ep=${anime.episode}`;
+        } else {
+            finalRoute = baseUrl;
+        }
     }
 
     return { 
         displayImage, displayTitle, 
         subCount, dubCount, 
-        currentEp, totalEp, 
+        totalEp, 
         isAdult, 
-        targetRoute: baseUrl, 
+        rawRating,
+        targetRoute: finalRoute, 
         type: anime.type || "TV" 
     };
   }, [anime, isHindi]);
 
+  // --- SMART RATING SELECTOR ---
+  // Decides whether to show the initial prop rating or the QTip rating
+  const getDisplayRating = () => {
+    // 1. If we haven't loaded QTip, definitely use initial
+    if (!qtip) return { rating: normalized.rawRating, isAdult: normalized.isAdult };
+
+    // 2. If QTip IS loaded, checks if we should override.
+    // Logic: Only override if the initial rating was missing/weak (PG 13 default equivalent).
+    // If initial was "18+", "Rx", or "R", KEEP IT. Don't let QTip downgrade it.
+    
+    const initialUpper = normalized.rawRating ? normalized.rawRating.toUpperCase() : "";
+    const hasStrongInitial = 
+        normalized.isAdult || 
+        initialUpper.includes("18") || 
+        initialUpper.includes("RX") || 
+        initialUpper.includes("HENTAI") ||
+        initialUpper.includes("R+");
+
+    if (hasStrongInitial) {
+        return { rating: normalized.rawRating, isAdult: normalized.isAdult };
+    }
+
+    // Otherwise, QTip might have better info (e.g., initial was empty, QTip found "R-17+")
+    return { rating: qtip.rating, isAdult: qtip.isAdult };
+  };
+
   // --- HELPER: AGE TAG ---
   const AgeTag = ({ adult, rating }: { adult: boolean, rating?: string }) => {
-    if (adult) {
-      return (
-        <span className="h-5 px-2 flex items-center justify-center rounded-full bg-red-600/90 border border-red-500/50 text-[9px] font-black text-white shadow-lg shadow-red-900/40">
-          18+
-        </span>
-      );
+    let label = "PG 13"; // Default Fallback (Updated from PG-13)
+    let isRed = false;
+
+    const r = rating ? rating.toUpperCase() : "";
+
+    // 1. Rx / Hentai -> Rx (Red)
+    if (r.includes("RX") || r.includes("HENTAI")) {
+        label = "Rx";
+        isRed = true;
+    } 
+    // 2. R+ / 18+ / Explicit Adult Boolean -> 18+ (Red)
+    else if (adult || r.includes("R+") || r.includes("18+")) {
+        label = "18+";
+        isRed = true;
+    } 
+    // 3. R / 17+ -> 18 (Red)
+    else if (r.includes("R") || r.includes("17")) {
+        label = "18";
+        isRed = true;
+    } 
+    // 4. Existing Tag -> Show cleaned version (Black)
+    else if (rating && rating !== "?" && rating !== "Unknown") {
+        label = rating.replace("PG-", "PG ").replace("R-", "").trim();
+        // Normalize "13" to "PG 13"
+        if (label === "13" || label === "PG-13") label = "PG 13";
+        isRed = false;
     }
-    if (rating && rating !== "?") {
-        const clean = rating.replace("PG-", "PG ").replace("R-", "").replace("+", "").trim();
-        return (
-            <span className="h-5 px-2 flex items-center justify-center rounded-full bg-black/60 border border-white/10 text-[9px] font-black text-white backdrop-blur-md">
-                {clean}
-            </span>
-        );
-    }
-    return null;
+
+    return (
+      <span className={cn(
+        "h-5 px-2 flex items-center justify-center rounded-full border text-[9px] font-black shadow-lg backdrop-blur-md",
+        isRed 
+          ? "bg-red-600/90 border-red-500/50 text-white shadow-red-900/40" 
+          : "bg-black/60 border-white/10 text-white"
+      )}>
+        {label}
+      </span>
+    );
   };
 
   // --- HANDLERS ---
   const handleMouseEnter = () => {
     if (closeTimeout.current) clearTimeout(closeTimeout.current);
-    
     if (cardRef.current) {
       const rect = cardRef.current.getBoundingClientRect();
-      // Logic: If close to right edge (< 320px), show on left
       const spaceRight = window.innerWidth - rect.right;
       setPopupPosition(spaceRight < 340 ? 'left' : 'right');
     }
@@ -175,7 +223,6 @@ export default function AnimeCard({ anime, progress = 0, isHindi = false }: Anim
   };
 
   const handleMouseLeave = () => {
-    // Short timeout to prevent flickering
     closeTimeout.current = setTimeout(() => setIsHovered(false), 100);
   };
 
@@ -199,7 +246,7 @@ export default function AnimeCard({ anime, progress = 0, isHindi = false }: Anim
         const info = data.anime.info;
         const more = data.anime.moreInfo;
         const statsRating = info.stats.rating || "";
-        const isAdult = more.genres?.includes('Hentai') || ["Rx", "RX", "18+", "R+"].some(t => statsRating.toUpperCase().includes(t));
+        const isAdult = more.genres?.includes('Hentai') || ["Rx", "RX", "Hentai"].some(t => statsRating.toUpperCase().includes(t));
 
         setQtip({
           jname: info.jname || more.japanese || normalized.displayTitle,
@@ -215,7 +262,6 @@ export default function AnimeCard({ anime, progress = 0, isHindi = false }: Anim
         });
       }
     } catch (e) { 
-        // Fallback QTip Data
         setQtip({
             jname: normalized.displayTitle,
             description: "Details unavailable.",
@@ -225,13 +271,15 @@ export default function AnimeCard({ anime, progress = 0, isHindi = false }: Anim
     setLoading(false);
   };
 
-  // Trigger Fetch
   useEffect(() => {
     if (isHovered && !qtip && !loading) {
-        fetchTimeout.current = setTimeout(fetchDataNow, 200); // 200ms delay
+        fetchTimeout.current = setTimeout(fetchDataNow, 200); 
     }
     return () => { if (fetchTimeout.current) clearTimeout(fetchTimeout.current); };
   }, [isHovered, qtip, loading]);
+
+  // Determine current display rating
+  const currentRatingData = getDisplayRating();
 
   return (
     <div 
@@ -240,13 +288,11 @@ export default function AnimeCard({ anime, progress = 0, isHindi = false }: Anim
       onMouseEnter={handleMouseEnter}
       onMouseLeave={handleMouseLeave}
     >
-      <div className="w-full h-full relative rounded-[24px] overflow-hidden bg-[#0a0a0a] ring-1 ring-white/10 shadow-lg transition-all duration-500 hover:shadow-2xl hover:shadow-red-900/20 hover:ring-red-500/30">
+      <div className="w-full h-full relative rounded-[20px] md:rounded-[24px] overflow-hidden bg-[#0a0a0a] ring-1 ring-white/10 shadow-lg transition-all duration-500 hover:shadow-2xl hover:shadow-red-900/20 hover:ring-red-500/30">
         
-        {/* --- MAIN CLICKABLE LINK --- */}
         <Link href={normalized.targetRoute} className="block w-full h-full relative">
           
-          {/* IMAGE */}
-          <div className="absolute inset-0 overflow-hidden rounded-[24px]">
+          <div className="absolute inset-0 overflow-hidden rounded-[20px] md:rounded-[24px]">
             <img
               src={normalized.displayImage}
               alt={normalized.displayTitle}
@@ -258,22 +304,20 @@ export default function AnimeCard({ anime, progress = 0, isHindi = false }: Anim
             <div className="absolute inset-0 bg-gradient-to-b from-black/60 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
           </div>
 
-          {/* TOP LEFT: Type Badge */}
-          <div className="absolute top-3 left-3 z-20">
-             <div className="h-5 px-2.5 flex items-center justify-center rounded-full bg-white/10 backdrop-blur-md border border-white/10 text-[9px] font-black text-white uppercase tracking-wider shadow-sm">
+          <div className="absolute top-2.5 left-2.5 md:top-3 md:left-3 z-20">
+             <div className="h-4 md:h-5 px-2 flex items-center justify-center rounded-full bg-white/10 backdrop-blur-md border border-white/10 text-[8px] md:text-[9px] font-black text-white uppercase tracking-wider shadow-sm">
                {normalized.type}
              </div>
           </div>
 
-          {/* TOP RIGHT: Mobile Info + Age Tag */}
-          <div className="absolute top-3 right-3 z-40 flex items-center gap-2">
-             <button onClick={handleMobileInfoToggle} className="md:hidden w-6 h-6 rounded-full bg-white/10 backdrop-blur-md border border-white/20 flex items-center justify-center text-white active:scale-90 transition-all hover:bg-white/20">
-               <Info size={12} />
+          <div className="absolute top-2.5 right-2.5 md:top-3 md:right-3 z-40 flex items-center gap-1.5 md:gap-2">
+             <button onClick={handleMobileInfoToggle} className="md:hidden w-5 h-5 md:w-6 md:h-6 rounded-full bg-white/10 backdrop-blur-md border border-white/20 flex items-center justify-center text-white active:scale-90 transition-all hover:bg-white/20">
+               <Info size={10} className="md:w-3 md:h-3" />
              </button>
-             <AgeTag adult={normalized.isAdult} rating={anime.rating} />
+             {/* Uses Smart Selected Rating */}
+             <AgeTag adult={currentRatingData.isAdult || false} rating={currentRatingData.rating} />
           </div>
 
-          {/* CENTER: Play Button */}
           <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all duration-300 z-30 scale-75 group-hover:scale-100 hidden md:flex">
              <div className="relative group/play">
                <div className="absolute inset-0 rounded-full bg-red-600 blur-xl opacity-50 group-hover/play:opacity-80 animate-pulse" />
@@ -283,40 +327,44 @@ export default function AnimeCard({ anime, progress = 0, isHindi = false }: Anim
              </div>
           </div>
 
-          {/* BOTTOM METADATA */}
-          <div className="absolute bottom-0 left-0 right-0 p-3 z-20 flex flex-col gap-2">
-            <h3 className="text-sm font-black text-white leading-tight line-clamp-2 drop-shadow-md group-hover:text-red-400 transition-colors duration-300">
+          <div className="absolute bottom-0 left-0 right-0 p-2.5 md:p-3 z-20 flex flex-col gap-1.5 md:gap-2">
+            <h3 className="text-xs md:text-sm font-black text-white leading-tight line-clamp-2 drop-shadow-md group-hover:text-red-400 transition-colors duration-300">
                {normalized.displayTitle}
             </h3>
 
-            <div className="flex items-center justify-between gap-1.5">
-                <div className="flex-shrink-0 bg-white/10 backdrop-blur-md border border-white/10 h-6 px-2.5 rounded-full flex items-center justify-center">
-                    <span className="text-[9px] font-bold text-white tracking-wide uppercase">
-                        EP {normalized.currentEp} <span className="text-white/50 mx-0.5">/</span> {normalized.totalEp || "?"}
-                    </span>
+            <div className="flex items-center justify-between gap-1 w-full overflow-hidden">
+                <div className="flex-shrink-0 flex items-center gap-1 h-5 md:h-6 px-1.5 md:px-2.5 rounded-md md:rounded-full bg-white/10 backdrop-blur-md border border-white/10 shadow-sm min-w-0">
+                   {(normalized.subCount || normalized.dubCount) ? (
+                       <>
+                           {normalized.subCount && (
+                             <div className="flex items-center gap-0.5 text-[8px] md:text-[9px] font-bold text-white">
+                               <Captions size={8} className="text-zinc-300 md:w-3 md:h-3" /> 
+                               <span>{normalized.subCount}</span>
+                             </div>
+                           )}
+                           {normalized.subCount && normalized.dubCount && <div className="w-px h-2 bg-white/20" />}
+                           {normalized.dubCount && (
+                             <div className="flex items-center gap-0.5 text-[8px] md:text-[9px] font-bold text-white">
+                               <Mic size={8} className="text-zinc-300 md:w-3 md:h-3" /> 
+                               <span>{normalized.dubCount}</span>
+                             </div>
+                           )}
+                       </>
+                   ) : (
+                       <div className="text-[8px] md:text-[9px] font-bold text-zinc-400">N/A</div>
+                   )}
                 </div>
 
-                {(normalized.subCount || normalized.dubCount) && (
-                  <div className="flex items-center gap-1.5 h-6 px-2.5 rounded-full bg-white/10 backdrop-blur-md border border-white/10 shadow-sm min-w-0">
-                    {normalized.subCount && (
-                      <div className="flex items-center gap-0.5 text-[9px] font-bold text-white">
-                        <Captions size={9} className="text-zinc-300" /> 
-                        <span>{normalized.subCount}</span>
-                      </div>
-                    )}
-                    {normalized.subCount && normalized.dubCount && <div className="w-px h-2.5 bg-white/20" />}
-                    {normalized.dubCount && (
-                      <div className="flex items-center gap-0.5 text-[9px] font-bold text-white">
-                        <Mic size={9} className="text-zinc-300" /> 
-                        <span>{normalized.dubCount}</span>
-                      </div>
-                    )}
-                  </div>
-                )}
+                <div className="flex-shrink-0 bg-white/10 backdrop-blur-md border border-white/10 h-5 md:h-6 px-1.5 md:px-2.5 rounded-md md:rounded-full flex items-center justify-center gap-1">
+                    <ListVideo size={10} className="text-zinc-300 md:w-3 md:h-3" />
+                    <span className="text-[8px] md:text-[9px] font-bold text-white tracking-wide uppercase">
+                       {normalized.totalEp || "?"}
+                    </span>
+                </div>
             </div>
 
             {progress > 0 && (
-               <div className="w-full h-1 bg-white/20 rounded-full overflow-hidden mt-0.5">
+               <div className="w-full h-0.5 md:h-1 bg-white/20 rounded-full overflow-hidden mt-0.5">
                  <div style={{ width: `${progress}%` }} className="h-full bg-red-600 shadow-[0_0_10px_red]" />
                </div>
             )}
@@ -334,9 +382,9 @@ export default function AnimeCard({ anime, progress = 0, isHindi = false }: Anim
                   <h4 className="text-white font-black text-lg leading-tight mb-1 pr-8">{normalized.displayTitle}</h4>
                   <p className="text-red-400 text-xs italic mb-3">{qtip?.jname || "..."}</p>
                   <div className="flex flex-wrap gap-2 mb-3 items-center">
-                      <AgeTag adult={normalized.isAdult} rating={qtip?.rating} />
+                      <AgeTag adult={currentRatingData.isAdult || false} rating={currentRatingData.rating} />
                       <span className="flex items-center gap-1 text-[10px] font-bold text-zinc-400">
-                         <Calendar size={10} /> {anime.releaseDate?.split('-')[0] || "?"}
+                          <Calendar size={10} /> {anime.releaseDate?.split('-')[0] || "?"}
                       </span>
                   </div>
                   <p className="text-xs text-zinc-300 leading-relaxed opacity-90 line-clamp-[8]">
@@ -380,7 +428,7 @@ export default function AnimeCard({ anime, progress = 0, isHindi = false }: Anim
                 </div>
                 <div className="flex items-center gap-3 mb-3 text-xs font-bold">
                    <div className="flex items-center">
-                      <AgeTag adult={qtip?.isAdult || normalized.isAdult} rating={qtip?.rating} />
+                      <AgeTag adult={currentRatingData.isAdult || false} rating={currentRatingData.rating} />
                    </div>
                    <div className="flex items-center gap-1 text-zinc-400">
                       <MonitorPlay size={12} />
@@ -393,20 +441,20 @@ export default function AnimeCard({ anime, progress = 0, isHindi = false }: Anim
                 <div className="mb-4 min-h-[60px]">
                    {loading && !qtip ? (
                       <div className="space-y-1.5 animate-pulse">
-                         <div className="h-2 bg-white/10 rounded w-full"/>
-                         <div className="h-2 bg-white/10 rounded w-5/6"/>
-                         <div className="h-2 bg-white/10 rounded w-4/6"/>
+                          <div className="h-2 bg-white/10 rounded w-full"/>
+                          <div className="h-2 bg-white/10 rounded w-5/6"/>
+                          <div className="h-2 bg-white/10 rounded w-4/6"/>
                       </div>
                    ) : (
                       <p className="text-[11px] text-zinc-400 leading-relaxed line-clamp-4">
-                         {qtip?.description || "Description unavailable."}
+                          {qtip?.description || "Description unavailable."}
                       </p>
                    )}
                 </div>
                 <div className="flex flex-wrap gap-1.5 pt-3 border-t border-white/5">
                    {(qtip?.genres || []).slice(0, 3).map(g => (
                       <span key={g} className="text-[9px] px-2.5 py-0.5 rounded-full bg-white/5 border border-white/10 text-zinc-300">
-                         {g}
+                          {g}
                       </span>
                    ))}
                 </div>

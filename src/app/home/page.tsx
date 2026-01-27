@@ -8,12 +8,16 @@ import MobileContainer from "@/components/Layout/MobileContainer";
 import SpotlightSlider from "@/components/Anime/SpotlightSlider";
 import Footer from "@/components/Anime/Footer";
 
-// Lazy-loaded heavy sections with immediate skeletons for smoother/faster feel
+// Lazy-loaded heavy sections with skeletons
 const ContinueWatching = dynamic(
   () => import("@/components/Home/ContinueWatching"),
   { 
     ssr: false,
-    loading: () => <div className="h-48 bg-white/5 rounded-xl animate-pulse" />
+    loading: () => (
+      <div className="w-full px-4 md:px-0 max-w-[1440px] mx-auto">
+        <div className="h-48 bg-white/5 rounded-xl animate-pulse" />
+      </div>
+    )
   }
 );
 
@@ -21,7 +25,11 @@ const RecentUpdatesSection = dynamic(
   () => import("@/components/Home/RecentUpdatesSection"),
   { 
     ssr: false,
-    loading: () => <div className="h-64 bg-white/5 rounded-xl animate-pulse" />
+    loading: () => (
+      <div className="w-full px-4 md:px-0 max-w-[1440px] mx-auto">
+        <div className="h-64 bg-white/5 rounded-xl animate-pulse" />
+      </div>
+    )
   }
 );
 
@@ -33,11 +41,10 @@ const fetcher = (url: string) =>
   });
 
 export default function Home() {
-  // HOME DATA (spotlight, recent, etc.)
   const { data, isLoading } = useSWR("/api/home", fetcher, {
     revalidateOnFocus: false,
-    dedupingInterval: 60_000, // 1 min cache
-    keepPreviousData: true,   // Prevents flickering during background updates
+    dedupingInterval: 60_000, 
+    keepPreviousData: true,   
   });
 
   const spotlightData = data?.spotlight ?? [];
@@ -45,14 +52,13 @@ export default function Home() {
 
   return (
     <>
-      {/* Global styles for this page to handle scrollbars and mobile physics */}
       <style jsx global>{`
         .no-scrollbar::-webkit-scrollbar {
           display: none;
         }
         .no-scrollbar {
-          -ms-overflow-style: none; /* IE and Edge */
-          scrollbar-width: none; /* Firefox */
+          -ms-overflow-style: none;
+          scrollbar-width: none;
         }
         .scrolling-touch {
           -webkit-overflow-scrolling: touch;
@@ -61,31 +67,38 @@ export default function Home() {
 
       <MobileContainer
         hasBottomNav
-        // Changed min-h-screen to h-[100dvh] for better mobile stability (no address bar jumps)
         className="bg-[#050505] h-[100dvh] relative overflow-y-auto no-scrollbar scrolling-touch"
       >
         {/* Background effects */}
         <div className="shadow-light-top" />
         <div className="shadow-light-bottom" />
 
-        <div className="max-w-7xl mx-auto border-x border-white/5 min-h-full flex flex-col relative z-10">
-          {/* Top spacing */}
-<div className="h-10 md:h-15 w-full flex-shrink-0" />
-          {/* Spotlight */}
-          {!isLoading && spotlightData.length > 0 ? (
-            <SpotlightSlider animes={spotlightData} />
-          ) : (
-            <div className="h-64 bg-white/5 rounded-xl animate-pulse mx-4 md:mx-8 flex-shrink-0" />
-          )}
+        {/* Main Content Wrapper */}
+        <div className="min-h-full flex flex-col relative z-10">
+          
+          {/* Top Spacing */}
+          <div className="h-4 md:h-10 w-full flex-shrink-0" />
 
-          {/* Main content */}
-          <div className="px-4 md:px-8 space-y-12 pb-20 mt-6 flex-1">
+          {/* Spotlight Slider */}
+          {/* UPDATED: Changed from max-w-[1600px] to max-w-[1440px] */}
+          <div className="w-full max-w-[1440px] mx-auto mb-6 md:mb-10 px-0 md:px-8">
+            {!isLoading && spotlightData.length > 0 ? (
+              <SpotlightSlider animes={spotlightData} />
+            ) : (
+              <div className="h-48 md:h-[400px] bg-white/5 md:rounded-2xl animate-pulse" />
+            )}
+          </div>
+
+          {/* Main Content Area */}
+          <div className="flex-1 flex flex-col gap-8 md:gap-12 pb-24 md:pb-20">
             <ContinueWatching />
 
             {!isLoading ? (
               <RecentUpdatesSection initialData={recentData} />
             ) : (
-              <div className="h-64 bg-white/5 rounded-xl animate-pulse" />
+              <div className="px-4 md:px-8 max-w-[1440px] mx-auto w-full">
+                <div className="h-64 bg-white/5 rounded-2xl animate-pulse" />
+              </div>
             )}
           </div>
 

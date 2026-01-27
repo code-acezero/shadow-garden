@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { 
   Play, Calendar, MonitorPlay, 
-  Mic, Info, X 
+  Mic, Info, X, ListVideo 
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { AnimeAPI_Hindi } from '@/lib/api'; 
@@ -40,11 +40,10 @@ const qtipVariants = {
     filter: "blur(0px)",
     transition: { type: "spring", stiffness: 300, damping: 20 } 
   },
-  // ✅ INSTANT EXIT to prevent overlapping/behind-card issues
   exit: { 
       opacity: 0, 
       scale: 0.95, 
-      transition: { duration: 0 } // Zero duration = Instant Hide
+      transition: { duration: 0 } 
   }
 };
 
@@ -79,18 +78,18 @@ export default function HindiAnimeCard({ anime }: { anime: any }) {
     let rawEp = anime.episodes?.sub || anime.episodes?.dub || anime.episode || 0;
     const epCount = rawEp > 0 ? rawEp : "?";
 
-    const targetRoute = `/watch/${anime.id}`; 
+    // --- ROUTE LOGIC FIX ---
+    const targetRoute = anime.targetRoute || `/watch/${anime.id}`; 
 
     return { poster: cleanPoster, title, type, targetRoute, epCount };
   }, [anime]);
 
-  // --- 2. FETCH DATA (Direct Hindi API) ---
+  // --- 2. FETCH DATA ---
   const fetchDataNow = async () => {
     if (qtip || loading) return;
     
     setLoading(true);
     try {
-      // Direct call to Hindi API details
       const res: any = await AnimeAPI_Hindi.getAnimeDetails(anime.id);         
       const info = res?.data || res || {};
 
@@ -120,7 +119,6 @@ export default function HindiAnimeCard({ anime }: { anime: any }) {
   const handleMouseEnter = () => {
     if (closeTimeout.current) clearTimeout(closeTimeout.current);
     
-    // Calculate position
     if (cardRef.current) {
       const rect = cardRef.current.getBoundingClientRect();
       const spaceRight = window.innerWidth - rect.right;
@@ -130,7 +128,6 @@ export default function HindiAnimeCard({ anime }: { anime: any }) {
   };
 
   const handleMouseLeave = () => {
-    // Short timeout to prevent flickering, but variants handle instant hide visually
     closeTimeout.current = setTimeout(() => setIsHovered(false), 100); 
   };
 
@@ -145,15 +142,13 @@ export default function HindiAnimeCard({ anime }: { anime: any }) {
     router.push(normalized.targetRoute);
   };
 
-  // Trigger Fetch
   useEffect(() => {
     if (isHovered && !qtip && !loading) {
-        fetchTimeout.current = setTimeout(fetchDataNow, 200); // 200ms delay before fetching
+        fetchTimeout.current = setTimeout(fetchDataNow, 200); 
     }
     return () => { if (fetchTimeout.current) clearTimeout(fetchTimeout.current); };
   }, [isHovered, qtip, loading]);
 
-  // Helper: Age Tag
   const AgeTag = ({ rating }: { rating?: string }) => {
     if (!rating || rating === "?" || rating === "Unknown") return null;
     return <span className="h-5 px-2 flex items-center justify-center rounded-full bg-black/60 border border-white/10 text-[9px] font-black text-white backdrop-blur-md">{rating}</span>;
@@ -166,11 +161,12 @@ export default function HindiAnimeCard({ anime }: { anime: any }) {
       onMouseEnter={handleMouseEnter}
       onMouseLeave={handleMouseLeave}
     >
-      <div className="w-full h-full relative rounded-[24px] overflow-hidden bg-[#0a0a0a] ring-1 ring-white/10 shadow-lg transition-all duration-500 hover:shadow-2xl hover:shadow-red-900/20 hover:ring-red-500/30">
+      <div className="w-full h-full relative rounded-[20px] md:rounded-[24px] overflow-hidden bg-[#0a0a0a] ring-1 ring-white/10 shadow-lg transition-all duration-500 hover:shadow-2xl hover:shadow-red-900/20 hover:ring-red-500/30">
         
         <Link href={normalized.targetRoute} className="block w-full h-full relative">
+          
           {/* IMAGE */}
-          <div className="absolute inset-0 overflow-hidden rounded-[24px]">
+          <div className="absolute inset-0 overflow-hidden rounded-[20px] md:rounded-[24px]">
             <img
               src={normalized.poster}
               alt={normalized.title}
@@ -184,16 +180,16 @@ export default function HindiAnimeCard({ anime }: { anime: any }) {
           </div>
 
           {/* TOP LEFT: Type Badge */}
-          <div className="absolute top-3 left-3 z-20">
-             <div className="h-5 px-2.5 flex items-center justify-center rounded-full bg-red-600/90 backdrop-blur-md border border-red-500/50 text-[9px] font-black text-white uppercase tracking-wider shadow-lg shadow-red-900/20">
+          <div className="absolute top-2.5 left-2.5 md:top-3 md:left-3 z-20">
+             <div className="h-4 md:h-5 px-2 flex items-center justify-center rounded-full bg-red-600/90 backdrop-blur-md border border-red-500/50 text-[8px] md:text-[9px] font-black text-white uppercase tracking-wider shadow-lg shadow-red-900/20">
                {normalized.type}
              </div>
           </div>
 
           {/* TOP RIGHT: Mobile Info */}
-          <div className="absolute top-3 right-3 z-40 flex items-center gap-2">
-             <button onClick={handleMobileInfoToggle} className="md:hidden w-6 h-6 rounded-full bg-white/10 backdrop-blur-md border border-white/20 flex items-center justify-center text-white active:scale-90 transition-all hover:bg-white/20">
-               <Info size={12} />
+          <div className="absolute top-2.5 right-2.5 md:top-3 md:right-3 z-40 flex items-center gap-1.5 md:gap-2">
+             <button onClick={handleMobileInfoToggle} className="md:hidden w-5 h-5 md:w-6 md:h-6 rounded-full bg-white/10 backdrop-blur-md border border-white/20 flex items-center justify-center text-white active:scale-90 transition-all hover:bg-white/20">
+               <Info size={10} className="md:w-3 md:h-3" />
              </button>
              {qtip?.rating && <AgeTag rating={qtip.rating} />}
           </div>
@@ -209,19 +205,30 @@ export default function HindiAnimeCard({ anime }: { anime: any }) {
           </div>
 
           {/* BOTTOM METADATA */}
-          <div className="absolute bottom-0 left-0 right-0 p-3 z-20 flex flex-col gap-2">
-            <h3 className="text-sm font-black text-white leading-tight line-clamp-2 drop-shadow-md group-hover:text-red-400 transition-colors duration-300">
+          <div className="absolute bottom-0 left-0 right-0 p-2.5 md:p-3 z-20 flex flex-col gap-1.5 md:gap-2">
+            <h3 className="text-xs md:text-sm font-black text-white leading-tight line-clamp-2 drop-shadow-md group-hover:text-red-400 transition-colors duration-300">
                {normalized.title}
             </h3>
+            
+            {/* Info Row: Audio (Left) & Total Ep (Right) */}
             <div className="flex items-center justify-between gap-1.5">
-                <div className="flex-shrink-0 bg-white/10 backdrop-blur-md border border-white/10 h-6 px-2.5 rounded-full flex items-center justify-center">
-                    <span className="text-[9px] font-bold text-white tracking-wide uppercase">EP {normalized.epCount}</span>
-                </div>
-                <div className="flex items-center gap-1.5 h-6 px-2.5 rounded-full bg-white/10 backdrop-blur-md border border-white/10 shadow-sm min-w-0">
-                    <div className="flex items-center gap-1 text-[9px] font-bold text-white">
-                        <Mic size={9} className="text-zinc-300" /> <span>HINDI</span>
+                
+                {/* LEFT: Audio Language */}
+                <div className="flex-shrink-0 flex items-center gap-1 h-5 md:h-6 px-1.5 md:px-2.5 rounded-md md:rounded-full bg-white/10 backdrop-blur-md border border-white/10 shadow-sm min-w-0">
+                    <div className="flex items-center gap-0.5 text-[8px] md:text-[9px] font-bold text-white">
+                        <Mic size={8} className="text-zinc-300 md:w-3 md:h-3" /> 
+                        <span>HINDI</span>
                     </div>
                 </div>
+
+                {/* RIGHT: Total Episodes */}
+                <div className="flex-shrink-0 bg-white/10 backdrop-blur-md border border-white/10 h-5 md:h-6 px-1.5 md:px-2.5 rounded-md md:rounded-full flex items-center justify-center gap-1">
+                    <ListVideo size={10} className="text-zinc-300 md:w-3 md:h-3" />
+                    <span className="text-[8px] md:text-[9px] font-bold text-white tracking-wide uppercase">
+                       {normalized.epCount}
+                    </span>
+                </div>
+
             </div>
           </div>
         </Link>
@@ -235,8 +242,8 @@ export default function HindiAnimeCard({ anime }: { anime: any }) {
                   <h4 className="text-white font-black text-lg leading-tight mb-1 pr-8">{normalized.title}</h4>
                   <p className="text-red-400 text-xs italic mb-3">{qtip?.jname || "Loading..."}</p>
                   <div className="flex flex-wrap gap-2 mb-3 items-center">
-                     {qtip?.rating && <AgeTag rating={qtip.rating} />}
-                     <span className="flex items-center gap-1 text-[10px] font-bold text-zinc-400"><Calendar size={10} /> {anime.releaseDate?.split('-')[0] || "?"}</span>
+                      {qtip?.rating && <AgeTag rating={qtip.rating} />}
+                      <span className="flex items-center gap-1 text-[10px] font-bold text-zinc-400"><Calendar size={10} /> {anime.releaseDate?.split('-')[0] || "?"}</span>
                   </div>
                   <p className="text-xs text-zinc-300 leading-relaxed opacity-90 line-clamp-[8]">{loading ? "Accessing Hindi Archives..." : (qtip?.description || "No description available.")}</p>
                   <div className="flex flex-wrap gap-1.5 mt-3">{(qtip?.genres || []).slice(0, 4).map(g => (<span key={g} className="text-[9px] px-2 py-1 rounded-full bg-white/5 border border-white/10 text-zinc-300">{g}</span>))}</div>

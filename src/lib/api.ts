@@ -81,9 +81,10 @@ async function fetchWithFailover(urlPool: string[], endpoint: string, params: Re
             if (!response.ok) continue;
 
             const json = await response.json();
-            // Adjust logic based on API success format
+            
             if (json.status === 200 || json.success === true) {
-                // If it's the Hindi API, sometimes data is directly in `data`
+                // V3 usually returns { success: true, results: { ... } }
+                // V2/V4 might return { data: ... }
                 return json.data || json.results || json; 
             }
         } catch (error) {
@@ -175,6 +176,8 @@ export interface UniversalAnimeBase {
     duration?: string;
     episodes?: { sub: number; dub: number; eps?: number };
     rank?: number; 
+    isAdult?: boolean;
+    rating?: string;
 }
 
 export interface UniversalSeason {
@@ -224,7 +227,9 @@ export class AnimeAPI_V2 {
                 poster: item.poster,
                 type: item.type,
                 duration: item.duration,
-                episodes: item.episodes || { sub: 0, dub: 0 }
+                episodes: item.episodes || { sub: 0, dub: 0 },
+                rating: item.rating || null,
+                isAdult: item.nsfw === true || item.isAdult === true
             }))
         };
     }
@@ -287,7 +292,8 @@ export class AnimeAPI_V3 {
                 jname: item.japanese_title,
                 poster: item.poster,
                 type: item.tvInfo?.showType || "TV",
-                episodes: { sub: item.tvInfo?.sub || 0, dub: item.tvInfo?.dub || 0 }
+                episodes: { sub: item.tvInfo?.sub || 0, dub: item.tvInfo?.dub || 0 },
+                isAdult: item.adultContent === true
             }))
         };
     }
@@ -297,6 +303,10 @@ export class AnimeAPI_V3 {
   static async getTopTen() { return this.request('/top-ten'); }
   static async getTopSearch() { return this.request('/top-search'); }
   static async getRandomAnime() { return this.request('/random'); }
+
+  // ✅ NEW ENDPOINTS
+  static async getSubbedAnime(page = 1) { return this.request('/subbed-anime', { page }); }
+  static async getDubbedAnime(page = 1) { return this.request('/dubbed-anime', { page }); }
 
   static async getSchedule(date: string) {
     const data: any = await this.request('/schedule', { date });
@@ -339,8 +349,11 @@ export class AnimeAPI_V4 {
   static async getMostFavorite(page = 1) { return this.request('/animes/most-favorite', { page }); }
   static async getMostPopular(page = 1) { return this.request('/animes/most-popular', { page }); }
   static async getTopAiring(page = 1) { return this.request('/animes/top-airing', { page }); }
+  
+  // NOTE: Switched these to V3 in Service, but kept here for reference
   static async getSubbedAnime(page = 1) { return this.request('/animes/subbed-anime', { page }); }
   static async getDubbedAnime(page = 1) { return this.request('/animes/dubbed-anime', { page }); }
+  
   static async getByGenre(name: string, page = 1) { return this.request(`/animes/genre/${name}`, { page }); }
   static async getAzList(letter: string, page = 1) { return this.request(`/animes/az-list/${letter}`, { page }); }
   static async getSearchSuggestions(keyword: string) { return this.request('/suggestion', { keyword }); }
@@ -357,7 +370,9 @@ export class AnimeAPI_V4 {
                 poster: item.poster,
                 type: item.type,
                 duration: item.duration,
-                episodes: item.episodes || { sub: 0, dub: 0 }
+                episodes: item.episodes || { sub: 0, dub: 0 },
+                rating: item.rating || null,
+                isAdult: item.nsfw === true || item.isAdult === true
             })),
             pageInfo: data.pageInfo
         };
@@ -376,6 +391,7 @@ export class AnimeAPI_V4 {
 
 export class AnimeService {
 
+    // Helper for V4 (still used for other lists)
     private static normalizeV4List(data: any): UniversalAnimeBase[] {
         const list = data?.response || data?.animes || [];
         return list.map((item: any) => ({
@@ -385,7 +401,30 @@ export class AnimeService {
             poster: item.poster,
             type: item.type,
             duration: item.duration,
-            episodes: item.episodes || { sub: 0, dub: 0 }
+            episodes: item.episodes || { sub: 0, dub: 0 },
+            rating: item.rating || item.stats?.rating || null,
+            isAdult: item.nsfw === true || item.isAdult === true || item.adult === true
+        }));
+    }
+
+    // ✅ NEW: Normalizer for V3 Sub/Dub Lists
+    private static normalizeV3List(data: any): UniversalAnimeBase[] {
+        // V3 response for subbed/dubbed is { results: { data: [...] } }
+        const list = data?.data || [];
+        return list.map((item: any) => ({
+            id: item.id,
+            title: item.title,
+            jname: item.japanese_title,
+            poster: item.poster,
+            type: item.tvInfo?.showType || "TV",
+            duration: item.tvInfo?.duration,
+            episodes: {
+                sub: parseInt(item.tvInfo?.sub || "0"),
+                dub: parseInt(item.tvInfo?.dub || "0"),
+                eps: parseInt(item.tvInfo?.eps || "0")
+            },
+            // ✅ V3 Explicitly provides this
+            isAdult: item.adultContent === true
         }));
     }
 
@@ -401,7 +440,8 @@ export class AnimeService {
                 sub: parseInt(item.tvInfo?.sub || "0"), 
                 dub: parseInt(item.tvInfo?.dub || "0"),
                 eps: parseInt(item.tvInfo?.eps || "0")
-            }
+            },
+            isAdult: false 
         };
     }
 
@@ -434,7 +474,7 @@ export class AnimeService {
                 synonyms: m.synonyms || ""
             },
             episodes: [], characters: [], 
-            recommendations: (data?.recommendedAnimes || []).map((r: any) => ({ id: r.id, title: r.name, poster: r.poster, type: r.type, episodes: r.episodes })),
+            recommendations: (data?.recommendedAnimes || []).map((r: any) => ({ id: r.id, title: r.name, poster: r.poster, type: r.type, episodes: r.episodes, isAdult: r.nsfw === true || r.isAdult === true })),
             related: (data?.relatedAnimes || []).map((r: any) => ({ id: r.id, title: r.name, poster: r.poster, type: r.type, episodes: r.episodes })),
             seasons: (data?.seasons || []).map((s: any) => ({ id: s.id, title: s.title, poster: s.poster, isCurrent: s.isCurrent })),
             trailers: i.promotionalVideos || []
@@ -513,8 +553,10 @@ export class AnimeService {
     static async getMostFavorite(page = 1) { const data = await AnimeAPI_V4.getMostFavorite(page); return data ? this.normalizeV4List(data) : []; }
     static async getMostPopular(page = 1) { const data = await AnimeAPI_V4.getMostPopular(page); return data ? this.normalizeV4List(data) : []; }
     static async getTopAiring(page = 1) { const data = await AnimeAPI_V4.getTopAiring(page); return data ? this.normalizeV4List(data) : []; }
-    static async getSubbedAnime(page = 1) { const data = await AnimeAPI_V4.getSubbedAnime(page); return data ? this.normalizeV4List(data) : []; }
-    static async getDubbedAnime(page = 1) { const data = await AnimeAPI_V4.getDubbedAnime(page); return data ? this.normalizeV4List(data) : []; }
+    
+    // ✅ SWITCHED TO V3
+    static async getSubbedAnime(page = 1) { const data = await AnimeAPI_V3.getSubbedAnime(page); return data ? this.normalizeV3List(data) : []; }
+    static async getDubbedAnime(page = 1) { const data = await AnimeAPI_V3.getDubbedAnime(page); return data ? this.normalizeV3List(data) : []; }
 
     static async getTopTen() {
         const data: any = await AnimeAPI_V3.getTopTen();
@@ -528,7 +570,12 @@ export class AnimeService {
 
     static async getUniversalRecent() {
         const data: any = await AnimeAPI_V2.getHomePage();
-        return data?.recentEpisodes ? data.recentEpisodes.map((item: any) => ({ id: item.id, title: item.name, poster: item.poster, type: item.type || "TV", episodes: item.episodes || { sub: 0, dub: 0 } })) : [];
+        return data?.recentEpisodes ? data.recentEpisodes.map((item: any) => ({ 
+            id: item.id, title: item.name, poster: item.poster, type: item.type || "TV", 
+            episodes: item.episodes || { sub: 0, dub: 0 },
+            isAdult: item.nsfw === true || item.isAdult === true,
+            rating: item.rating || null
+        })) : [];
     }
 
    /**
@@ -554,7 +601,9 @@ static async getHindiRecent() {
             title: item.title,
             poster: item.poster ? item.poster.replace(/([^:]\/)\/+/g, "$1") : "", 
             type: item.type === 'movie' ? 'MOVIE' : 'TV',
-            episodes: { sub: 0, dub: 0 } 
+            episodes: { sub: 0, dub: 0 },
+            isAdult: false, 
+            rating: null
         }));
     } catch (error) {
         console.error("Hindi Data Sync Failure:", error);
@@ -615,6 +664,8 @@ static async getHindiRecent() {
     }
     static async filter(params: any) { const data = await AnimeAPI_V4.filter(params); return data ? this.normalizeV4List(data) : []; }
 }
+
+// ... (Rest of file unchanged: dedicated Hindi API, etc.)
 
 // ==========================================
 //  11. DEDICATED HINDI ANIME API

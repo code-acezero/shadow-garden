@@ -1,144 +1,406 @@
 "use client";
 
-import React, { useEffect, useState } from 'react';
-import { supabase } from '@/lib/api';
+import React, { useEffect, useState, useMemo } from 'react';
+import { supabase, AnimeService } from '@/lib/api';
 import { useAuth } from '@/context/AuthContext';
-import Link from 'next/link';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { cn } from '@/lib/utils';
-import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
-import { Badge } from "@/components/ui/badge";
-import { Play, Clock, CheckCircle, XCircle, LayoutGrid, List as ListIcon } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { 
+    Play, Clock, CheckCircle, XCircle, 
+    List as ListIcon, Search, LayoutGrid, Calendar,
+    Trash2, History, LogIn, AlertCircle, TrendingUp, Star
+} from 'lucide-react';
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 
+// --- COMPONENTS ---
+import AnimeCard from '@/components/Anime/AnimeCard';
+import ContinueAnimeCard from '@/components/Anime/ContinueAnimeCard';
+import Footer from '@/components/Anime/Footer';
+import AuthModal from '@/components/Auth/AuthModal';
+import { demoness, hunters } from '@/lib/fonts';
+
+// --- TYPES ---
+interface LibraryItem {
+    id: string; 
+    anime_id: string;
+    anime_title: string;
+    anime_image: string;
+    status: 'watching' | 'completed' | 'plan_to_watch' | 'on_hold' | 'dropped';
+    progress: number;
+    total_episodes: number; 
+    score?: number;
+    updated_at: string;
+}
+
+interface ContinueWatchingRow {
+    anime_id: string;
+    anime_title?: string;
+    episode_id: string;
+    episode_number: number;
+    progress: number;
+    duration?: number;
+    last_updated: string;
+    episode_image: string;
+    total_episodes: number;
+    type: string;
+    is_completed: boolean;
+}
+
+interface ContinueItem {
+    id: string;
+    anime_id: string;
+    title: string;
+    poster: string;
+    episode: number;
+    episodeId: string;
+    progress: number;
+    totalEpisodes: number | string;
+    type: string;
+    sub?: number;
+    dub?: number;
+    ageRating: string | null;
+    isAdult: boolean;
+}
+
+// --- SKELETON ---
 const WatchlistSkeleton = () => (
-    <div className="min-h-screen bg-[#050505] p-8 grid grid-cols-2 md:grid-cols-4 gap-4 animate-pulse">
-        {[...Array(8)].map((_, i) => <div key={i} className="aspect-[3/4] bg-white/5 rounded-xl"/>)}
+    <div className="w-full grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-6 animate-pulse px-4 md:px-8">
+        {[...Array(12)].map((_, i) => (
+            <div key={i} className="aspect-[2/3] bg-white/5 rounded-2xl border border-white/5" />
+        ))}
     </div>
 );
 
 export default function WatchlistPage() {
-    const { user, isLoading } = useAuth();
-    const [library, setLibrary] = useState<any[]>([]);
+    const { user, isLoading: authLoading } = useAuth();
+    const router = useRouter();
+    const searchParams = useSearchParams();
+    
+    // Core Data
+    const [library, setLibrary] = useState<LibraryItem[]>([]);
+    const [continueData, setContinueData] = useState<ContinueItem[]>([]);
     const [loadingData, setLoadingData] = useState(true);
+    
+    // UI State
+    const [activeTab, setActiveTab] = useState<string>('all'); 
+    const [searchQuery, setSearchQuery] = useState('');
+    const [sortOption, setSortOption] = useState('updated_at');
+    const [isAuthOpen, setIsAuthOpen] = useState(false);
 
-    // Fetch User's Library
+    // Type Guard
+    const isContinueItem = (item: any): item is ContinueItem => {
+        return (item as ContinueItem).poster !== undefined;
+    };
+
+    // 1. Persist Tab Selection on Reload
     useEffect(() => {
-        const fetchLibrary = async () => {
-            if (!user || !supabase) return;
-            const { data } = await supabase
-                .from('user_library')
-                .select('*')
-                .eq('user_id', user.id)
-                .order('updated_at', { ascending: false });
-            
-            if (data) setLibrary(data);
-            setLoadingData(false);
-        };
+        if (authLoading) return;
+        const tabParam = searchParams.get('tab');
+        if (!user) setActiveTab('continue');
+        else setActiveTab(tabParam || 'all');
+    }, [authLoading, user, searchParams]);
 
-        if (user) fetchLibrary();
+    // 2. Optimized Universal Fetch (Ported from ContinueWatching.tsx logic)
+    useEffect(() => {
+        const syncShadowLibrary = async () => {
+            if (!user) {
+                setLoadingData(false);
+                return;
+            }
+            try {
+                const [libRes, contRes] = await Promise.all([
+                    supabase.from('watchlist').select('*').eq('user_id', user.id).order('updated_at', { ascending: false }),
+                    supabase.from('user_continue_watching').select('*').eq('user_id', user.id).eq('is_completed', false).order('last_updated', { ascending: false })
+                ]);
+
+                if (libRes.data) setLibrary(libRes.data);
+                
+                if (contRes.data) {
+                    const dbData = contRes.data as ContinueWatchingRow[];
+                    const uniqueMap = new Map<string, ContinueWatchingRow>();
+                    dbData.forEach((item) => {
+                        if (!uniqueMap.has(item.anime_id)) uniqueMap.set(item.anime_id, item);
+                    });
+                    
+                    const enriched = await Promise.all(Array.from(uniqueMap.values()).map(async (item) => {
+                        try {
+                            const info: any = await AnimeService.getAnimeInfo(item.anime_id);
+                            return {
+                                id: item.anime_id,
+                                anime_id: item.anime_id,
+                                title: info?.title?.english || info?.title?.userPreferred || item.anime_title || "Unknown",
+                                poster: item.episode_image || info?.poster || "/images/no-poster.png",
+                                episode: item.episode_number,
+                                episodeId: item.episode_id,
+                                progress: Math.min(Math.round((item.progress / (item.duration || 1440)) * 100), 100),
+                                totalEpisodes: info?.totalEpisodes || item.total_episodes || "?",
+                                type: info?.type || item.type || "TV",
+                                ageRating: info?.ageRating || null,
+                                isAdult: info?.isAdult || false
+                            };
+                        } catch {
+                            return {
+                                id: item.anime_id, anime_id: item.anime_id, title: item.anime_title || "Unknown",
+                                poster: item.episode_image || "/images/no-poster.png", episode: item.episode_number,
+                                episodeId: item.episode_id, progress: 0, totalEpisodes: item.total_episodes || "?", 
+                                type: item.type || "TV", ageRating: null, isAdult: false
+                            };
+                        }
+                    }));
+                    setContinueData(enriched);
+                }
+            } finally {
+                setLoadingData(false);
+            }
+        };
+        syncShadowLibrary();
     }, [user]);
 
-    if (isLoading || loadingData) return <WatchlistSkeleton />;
-    if (!user) return <div className="min-h-screen bg-[#050505] flex items-center justify-center text-zinc-500 font-bold uppercase tracking-widest">Login required to access Archives.</div>;
+    // 3. Filtering & Sorting Logic
+    const filteredData = useMemo(() => {
+        let base: (LibraryItem | ContinueItem)[] = [];
+        if (activeTab === 'continue') base = continueData;
+        else if (activeTab === 'all') base = library;
+        else base = library.filter(i => i.status === activeTab);
+        
+        if (searchQuery) {
+            base = base.filter((i) => {
+                const title = isContinueItem(i) ? i.title : i.anime_title;
+                return (title || "").toLowerCase().includes(searchQuery.toLowerCase());
+            });
+        }
+        
+        return [...base].sort((a, b) => {
+            if (activeTab === 'continue') return 0;
+            if (sortOption === 'title') {
+                const titleA = isContinueItem(a) ? a.title : a.anime_title;
+                const titleB = isContinueItem(b) ? b.title : b.anime_title;
+                return (titleA || "").localeCompare(titleB || "");
+            }
+            if (sortOption === 'score') {
+                const scoreA = isContinueItem(a) ? 0 : a.score || 0;
+                const scoreB = isContinueItem(b) ? 0 : b.score || 0;
+                return scoreB - scoreA;
+            }
+            const dateA = isContinueItem(a) ? 0 : new Date(a.updated_at).getTime();
+            const dateB = isContinueItem(b) ? 0 : new Date(b.updated_at).getTime();
+            return dateB - dateA;
+        });
+    }, [library, continueData, activeTab, searchQuery, sortOption]);
 
-    // Filter Logic
-    const watching = library.filter(i => i.status === 'watching');
-    const completed = library.filter(i => i.status === 'completed');
-    const planning = library.filter(i => i.status === 'plan_to_watch');
-    const onHold = library.filter(i => i.status === 'on_hold');
-    const dropped = library.filter(i => i.status === 'dropped');
+    const activeCount = library.filter(i => i.status === 'watching').length;
 
-    // Helper to render a grid of anime cards
-    const AnimeGrid = ({ items }: { items: any[] }) => (
-        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-6">
-            {items.map((item) => (
-                <Link key={item.anime_id} href={`/watch/${item.anime_id}`} className="group relative block">
-                    <div className="aspect-[2/3] rounded-2xl overflow-hidden border border-white/5 shadow-2xl shadow-red-900/5 relative">
-                        <img src={item.anime_image} className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110" alt={item.anime_title} />
-                        
-                        {/* Overlay with Progress for "Watching" items */}
-                        {item.status === 'watching' && (
-                            <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col items-center justify-center gap-2">
-                                <div className="w-12 h-12 rounded-full bg-red-600 flex items-center justify-center shadow-lg shadow-red-500/50">
-                                    <Play size={20} fill="white" className="ml-1 text-white" />
+    const handleTabChange = (tabId: string) => {
+        if (!user && tabId !== 'continue') {
+            setIsAuthOpen(true);
+            return;
+        }
+        setActiveTab(tabId);
+        // Navigate with scroll: false to prevent snapping jump
+        router.push(`?tab=${tabId}`, { scroll: false });
+    };
+
+    const tabs = [
+        { id: 'all', label: 'All', icon: <LayoutGrid size={14} />, count: library.length },
+        { id: 'watching', label: 'Active', icon: <Play size={14} />, count: activeCount },
+        { id: 'plan_to_watch', label: 'Planned', icon: <Calendar size={14} />, count: library.filter(i => i.status === 'plan_to_watch').length },
+        { id: 'completed', label: 'Done', icon: <CheckCircle size={14} />, count: library.filter(i => i.status === 'completed').length },
+        { id: 'on_hold', label: 'Paused', icon: <Clock size={14} />, count: library.filter(i => i.status === 'on_hold').length },
+        { id: 'continue', label: 'History', icon: <History size={14} />, count: continueData.length, highlight: true },
+    ];
+
+    return (
+        <div className="min-h-screen bg-[#050505] text-white flex flex-col font-sans selection:bg-red-500/30 overflow-x-hidden">
+            <style jsx global>{`
+                html, body { overflow-x: hidden; scrollbar-width: none; -ms-overflow-style: none; }
+                body::-webkit-scrollbar { display: none; }
+            `}</style>
+
+            <div className="flex-1 pt-24 pb-20">
+                <div className="max-w-[1440px] mx-auto w-full">
+                    
+                    {/* --- HEADER --- */}
+                    <div className="flex flex-col gap-6 mb-10 px-4 md:px-8">
+                        <div className="flex flex-col md:flex-row justify-between items-center gap-6">
+                            
+                            {/* Title & Mobile Stats */}
+                            <div className="w-full md:w-auto flex justify-between items-center">
+                                <div>
+                                    <div className="flex items-center gap-2 mb-1">
+                                        <div className="h-px w-6 bg-red-600" />
+                                        <span className={`text-red-600 text-[10px] tracking-[0.2em] font-bold uppercase ${hunters.className}`}>Archives</span>
+                                    </div>
+                                    <h1 className={`text-2xl md:text-5xl text-white ${demoness.className}`}>
+                                        SHADOW <span className="text-red-600">LIBRARY</span>
+                                    </h1>
                                 </div>
-                                <span className="text-[10px] font-black uppercase text-white tracking-widest">Continue Ep {item.progress}</span>
+                                {user && (
+                                    <div className="md:hidden flex gap-2">
+                                        <div className="bg-white/5 border border-white/5 px-2 py-1 rounded-lg flex flex-col items-center min-w-[50px]">
+                                            <span className="text-[7px] text-zinc-500 uppercase font-black">Entries</span>
+                                            <span className="text-sm font-black text-white">{library.length}</span>
+                                        </div>
+                                        <div className="bg-white/5 border border-white/5 px-2 py-1 rounded-lg flex flex-col items-center min-w-[50px]">
+                                            <span className="text-[7px] text-zinc-500 uppercase font-black">Active</span>
+                                            <span className="text-sm font-black text-white">{activeCount}</span>
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
+
+                            {/* Center Align Search, Sort, and Desktop Stats */}
+                            <div className="flex flex-1 items-center justify-center gap-4 w-full md:max-w-4xl">
+                                {user && (
+                                    <div className="hidden md:flex gap-3 shrink-0">
+                                        <div className="bg-white/5 border border-white/5 px-4 py-2 rounded-xl text-center min-w-[90px]">
+                                            <span className="block text-[8px] text-zinc-500 uppercase font-black tracking-widest">Entries</span>
+                                            <span className="text-xl font-black text-white">{library.length}</span>
+                                        </div>
+                                        <div className="bg-white/5 border border-white/5 px-4 py-2 rounded-xl text-center min-w-[90px]">
+                                            <span className="block text-[8px] text-zinc-500 uppercase font-black tracking-widest">Active</span>
+                                            <span className="text-xl font-black text-white">{activeCount}</span>
+                                        </div>
+                                    </div>
+                                )}
+                                
+                                <div className="relative flex-1 max-w-md">
+                                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-500" size={14} />
+                                    <Input 
+                                        placeholder="Search archives..." 
+                                        value={searchQuery}
+                                        onChange={(e) => setSearchQuery(e.target.value)}
+                                        className="bg-white/5 border-white/10 pl-9 h-12 rounded-xl focus:border-red-500/50 text-white w-full" 
+                                    />
+                                </div>
+
+                                <Select value={sortOption} onValueChange={setSortOption}>
+                                    <SelectTrigger className="w-[120px] md:w-[160px] bg-white/5 border-white/10 h-12 rounded-xl text-[10px] font-black uppercase">
+                                        <SelectValue placeholder="Sort" />
+                                    </SelectTrigger>
+                                    <SelectContent className="bg-[#0a0a0a] border-white/10 text-white">
+                                        <SelectItem value="updated_at">Recently Updated</SelectItem>
+                                        <SelectItem value="title">A - Z</SelectItem>
+                                        <SelectItem value="score">Top Rated</SelectItem>
+                                        <SelectItem value="progress">Most Progress</SelectItem>
+                                    </SelectContent>
+                                </Select>
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* --- TABS --- */}
+                    <div className="sticky top-16 md:top-20 z-40 bg-[#050505]/95 backdrop-blur-xl border-y border-white/5 py-3 mb-10 w-full flex items-center justify-between px-4 md:px-8">
+                        <div className="flex overflow-x-auto no-scrollbar gap-2 items-center w-full">
+                            {tabs.map((tab) => (
+                                <button
+                                    key={tab.id}
+                                    onClick={() => handleTabChange(tab.id)}
+                                    className={cn(
+                                        "flex items-center gap-2 px-5 py-2.5 rounded-full border text-[10px] font-black uppercase tracking-widest transition-all whitespace-nowrap flex-shrink-0",
+                                        activeTab === tab.id 
+                                            ? "bg-red-600 border-red-500 text-white shadow-lg shadow-red-900/40 scale-105" 
+                                            : "bg-white/5 border-white/5 text-zinc-500 hover:bg-white/10 hover:text-white",
+                                        tab.highlight && activeTab !== tab.id && "border-red-500/30 text-red-400"
+                                    )}
+                                >
+                                    {tab.icon} {tab.label} {user && <span className="opacity-40">({tab.count})</span>}
+                                </button>
+                            ))}
+                        </div>
+                        {activeTab === 'continue' && user && continueData.length > 0 && (
+                            <AlertDialog>
+                                <AlertDialogTrigger asChild>
+                                    <Button variant="destructive" size="icon" className="h-9 w-9 ml-4 rounded-xl bg-red-500/10 text-red-500 border border-red-500/20 shrink-0">
+                                        <Trash2 size={16} />
+                                    </Button>
+                                </AlertDialogTrigger>
+                                <AlertDialogContent className="bg-[#0a0a0a] border-white/10 text-white">
+                                    <AlertDialogHeader>
+                                        <AlertDialogTitle>Wipe History?</AlertDialogTitle>
+                                        <AlertDialogDescription className="text-zinc-400 italic">This will clear all continue markers permanently.</AlertDialogDescription>
+                                    </AlertDialogHeader>
+                                    <AlertDialogFooter>
+                                        <AlertDialogCancel className="bg-white/5 text-white border-white/10">Abort</AlertDialogCancel>
+                                        <AlertDialogAction onClick={async () => {
+                                            await supabase.from('user_continue_watching').delete().eq('user_id', user.id);
+                                            setContinueData([]);
+                                        }} className="bg-red-600">Confirm Wipe</AlertDialogAction>
+                                    </AlertDialogFooter>
+                                </AlertDialogContent>
+                            </AlertDialog>
+                        )}
+                    </div>
+
+                    {/* --- GRID (Fixed Large Card Size) --- */}
+                    <div className="min-h-[500px] px-4 md:px-8">
+                        {loadingData ? (
+                            <WatchlistSkeleton />
+                        ) : filteredData.length > 0 ? (
+                            <motion.div layout className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-6 md:gap-8">
+                                <AnimatePresence mode="popLayout">
+                                    {filteredData.map((item) => (
+                                        <motion.div 
+                                            key={item.id || item.anime_id} 
+                                            layout 
+                                            initial={{ opacity: 0, scale: 0.9 }} 
+                                            animate={{ opacity: 1, scale: 1 }} 
+                                            exit={{ opacity: 0, scale: 0.9 }} 
+                                            className="w-full flex"
+                                        >
+                                            <div className="w-full">
+                                                {isContinueItem(item) ? (
+                                                    <ContinueAnimeCard 
+                                                        anime={item} 
+                                                        onClick={(id, ep) => router.push(`/watch/${id}?ep=${ep}`)}
+                                                        onRemove={() => setContinueData(d => d.filter(x => x.id !== item.id))}
+                                                        variants={{ visible: { opacity: 1 }, hidden: { opacity: 0 } }}
+                                                    />
+                                                ) : (
+                                                    <AnimeCard anime={{ 
+                                                        id: item.anime_id, 
+                                                        title: item.anime_title, 
+                                                        poster: item.anime_image,
+                                                        type: "TV", 
+                                                        episodes: { sub: item.total_episodes || 0, dub: 0 }
+                                                    }} />
+                                                )}
+                                            </div>
+                                        </motion.div>
+                                    ))}
+                                </AnimatePresence>
+                            </motion.div>
+                        ) : (
+                            <div className="flex flex-col items-center justify-center h-80 border-2 border-dashed border-white/5 rounded-3xl opacity-30">
+                                <AlertCircle size={48} />
+                                <p className="mt-4 font-bold uppercase tracking-widest text-sm">Operation Null</p>
                             </div>
                         )}
                     </div>
-                    
-                    <div className="mt-3">
-                        <h4 className="text-xs font-bold text-zinc-200 line-clamp-1 group-hover:text-red-500 transition-colors">{item.anime_title}</h4>
-                        <div className="flex items-center gap-2 mt-1">
-                            <Badge variant="outline" className="text-[9px] h-4 px-1 border-white/10 text-zinc-500">{item.progress > 0 ? `Ep ${item.progress}` : 'Start'}</Badge>
-                            <span className="text-[9px] text-zinc-600 font-mono">{new Date(item.updated_at).toLocaleDateString()}</span>
-                        </div>
-                    </div>
-                </Link>
-            ))}
-            {items.length === 0 && (
-                <div className="col-span-full h-60 flex flex-col items-center justify-center text-zinc-700 gap-4 border-2 border-dashed border-white/5 rounded-3xl">
-                    <ListIcon size={32} className="opacity-20"/>
-                    <span className="text-xs uppercase tracking-widest font-bold">Sector Empty</span>
                 </div>
-            )}
-        </div>
-    );
-
-    return (
-        <div className="min-h-screen bg-[#050505] text-white pt-24 px-4 md:px-8 pb-20">
-            <div className="max-w-[1600px] mx-auto">
-                <div className="flex items-center justify-between mb-8">
-                    <h1 className="text-3xl font-black font-[Cinzel] tracking-tighter uppercase text-white shadow-red-900/20 drop-shadow-lg">
-                        Shadow <span className="text-red-600">Library</span>
-                    </h1>
-                    <div className="text-xs font-bold text-zinc-500 uppercase tracking-widest">
-                        Total Entries: <span className="text-white">{library.length}</span>
-                    </div>
-                </div>
-
-                <Tabs defaultValue="watching" className="w-full">
-                    <div className="overflow-x-auto pb-4 scrollbar-hide">
-                        <TabsList className="bg-transparent gap-2 h-auto p-0">
-                            {[
-                                { val: "watching", label: "Watching", count: watching.length, icon: <Play size={12}/> },
-                                { val: "planning", label: "Planning", count: planning.length, icon: <Clock size={12}/> },
-                                { val: "completed", label: "Completed", count: completed.length, icon: <CheckCircle size={12}/> },
-                                { val: "on_hold", label: "On Hold", count: onHold.length, icon: <Clock size={12}/> },
-                                { val: "dropped", label: "Dropped", count: dropped.length, icon: <XCircle size={12}/> },
-                            ].map((tab) => (
-                                <TabsTrigger 
-                                    key={tab.val} 
-                                    value={tab.val}
-                                    className="data-[state=active]:bg-red-600 data-[state=active]:text-white bg-white/5 border border-white/5 text-zinc-500 rounded-full px-5 py-2 text-[10px] font-black uppercase tracking-widest transition-all gap-2"
-                                >
-                                    {tab.icon} {tab.label} <span className="opacity-50 ml-1">({tab.count})</span>
-                                </TabsTrigger>
-                            ))}
-                        </TabsList>
-                    </div>
-
-                    <TabsContent value="watching" className="mt-4 animate-in fade-in slide-in-from-bottom-4">
-                        <div className="mb-6 flex items-center gap-2 text-red-500 text-xs font-bold uppercase tracking-widest"><Play size={14}/> Continue Operations</div>
-                        <AnimeGrid items={watching} />
-                    </TabsContent>
-
-                    <TabsContent value="planning" className="mt-4 animate-in fade-in slide-in-from-bottom-4">
-                        <AnimeGrid items={planning} />
-                    </TabsContent>
-
-                    <TabsContent value="completed" className="mt-4 animate-in fade-in slide-in-from-bottom-4">
-                        <AnimeGrid items={completed} />
-                    </TabsContent>
-
-                    <TabsContent value="on_hold" className="mt-4 animate-in fade-in slide-in-from-bottom-4">
-                        <AnimeGrid items={onHold} />
-                    </TabsContent>
-
-                    <TabsContent value="dropped" className="mt-4 animate-in fade-in slide-in-from-bottom-4">
-                        <AnimeGrid items={dropped} />
-                    </TabsContent>
-                </Tabs>
             </div>
+
+            <Footer />
+            <AuthModal isOpen={isAuthOpen} onClose={() => setIsAuthOpen(false)} onAuthSuccess={() => window.location.reload()} />
         </div>
     );
 }
