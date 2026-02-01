@@ -11,7 +11,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { motion, AnimatePresence, wrap, PanInfo } from 'framer-motion';
 import { useRouter } from 'next/navigation';
-import { supabase } from '@/lib/api';
+import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/context/AuthContext';
 import AuthModal from '@/components/Auth/AuthModal';
 import { cn } from '@/lib/utils';

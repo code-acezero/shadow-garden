@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from 'react';
-import { supabase } from '@/lib/api';
+import { supabase } from '@/lib/supabase'; // ✅ IMPORT SINGLETON
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
 import { Plus, Eye, CheckCircle, XCircle, Clock, Loader2, Trash2 } from 'lucide-react';
@@ -43,8 +43,9 @@ export default function WatchListButton({ animeId, animeTitle, animeImage, curre
             if (!supabase || !user) return;
 
             try {
-                // ✅ FIX: Cast the .from() call to 'any' to prevent 'status' property error on type 'never'
-                const { data, error } = await (supabase.from('watchlist') as any)
+                // ✅ Check using the Shared Client
+                const { data, error } = await supabase
+                    .from('watchlist')
                     .select('status')
                     .eq('user_id', user.id)
                     .eq('anime_id', animeId)
@@ -70,14 +71,13 @@ export default function WatchListButton({ animeId, animeTitle, animeImage, curre
 
     // 2. Handle Add / Update Status
     const handleUpdate = async (newStatus: string) => {
-        if (!supabase) return;
         if (!user) { toast.error("Log in to track your journey."); return; }
         
         setLoading(true);
 
         try {
-            // ✅ FIX: Cast the .from() call to 'any' to resolve the Postgrest overload 'never' error
-            const { error } = await (supabase.from('watchlist') as any)
+            const { error } = await supabase
+                .from('watchlist')
                 .upsert({
                     user_id: user.id,
                     anime_id: animeId,
@@ -102,12 +102,12 @@ export default function WatchListButton({ animeId, animeTitle, animeImage, curre
 
     // 3. Handle Remove
     const handleRemove = async () => {
-        if (!supabase || !user) return;
+        if (!user) return;
         setLoading(true);
 
         try {
-            // ✅ FIX: Cast to any for consistency
-            const { error } = await (supabase.from('watchlist') as any)
+            const { error } = await supabase
+                .from('watchlist')
                 .delete()
                 .eq('user_id', user.id)
                 .eq('anime_id', animeId);
@@ -132,7 +132,7 @@ export default function WatchListButton({ animeId, animeTitle, animeImage, curre
                 <button 
                     disabled={loading || isAuthLoading}
                     className={cn(
-                        "flex items-center gap-2 rounded-full px-4 h-8 text-[10px] font-bold transition-all shadow-lg active:scale-95 border",
+                        "flex items-center gap-2 rounded-full px-4 h-8 text-[10px] font-bold transition-all shadow-lg active:scale-95 border outline-none focus:outline-none focus:ring-0",
                         activeConfig 
                             ? activeConfig.color 
                             : "bg-white/5 border-white/10 text-zinc-400 hover:bg-white/10 hover:text-white"
@@ -148,7 +148,7 @@ export default function WatchListButton({ animeId, animeTitle, animeImage, curre
                         key={key} 
                         onClick={() => handleUpdate(key)} 
                         className={cn(
-                            "text-xs cursor-pointer hover:bg-white/5 gap-2 uppercase tracking-wide font-bold",
+                            "text-xs cursor-pointer hover:bg-white/5 gap-2 uppercase tracking-wide font-bold focus:bg-white/10",
                             status === key && "text-red-500 bg-red-900/10"
                         )}
                     >
@@ -159,7 +159,7 @@ export default function WatchListButton({ animeId, animeTitle, animeImage, curre
                 {status && (
                     <>
                         <DropdownMenuSeparator className="bg-white/10" />
-                        <DropdownMenuItem onClick={handleRemove} className="text-xs cursor-pointer text-red-500 hover:bg-red-900/20 gap-2 font-bold uppercase tracking-wide">
+                        <DropdownMenuItem onClick={handleRemove} className="text-xs cursor-pointer text-red-500 hover:bg-red-900/20 gap-2 font-bold uppercase tracking-wide focus:bg-red-900/20">
                             <Trash2 size={14} /> Remove
                         </DropdownMenuItem>
                     </>

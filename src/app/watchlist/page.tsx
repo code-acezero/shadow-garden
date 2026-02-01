@@ -1,7 +1,8 @@
 "use client";
 
 import React, { useEffect, useState, useMemo, Suspense } from 'react';
-import { supabase, AnimeService } from '@/lib/api';
+import { supabase } from '@/lib/supabase'; // ✅ IMPORT SINGLETON
+import { AnimeService } from '@/lib/api';
 import { useAuth } from '@/context/AuthContext';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { cn } from '@/lib/utils';
@@ -129,10 +130,13 @@ function WatchlistContent() {
     useEffect(() => {
         const syncShadowArchives = async () => {
             if (!user) {
+                // If guest, maybe load local storage data here if you implemented local sync
+                // For now just stop loading
                 setLoadingData(false);
                 return;
             }
             try {
+                // ✅ Use Shared Client
                 const [libRes, contRes] = await Promise.all([
                     supabase.from('watchlist').select('*').eq('user_id', user.id).order('updated_at', { ascending: false }),
                     supabase.from('user_continue_watching').select('*').eq('user_id', user.id).eq('is_completed', false).order('last_updated', { ascending: false })
@@ -368,7 +372,7 @@ function WatchlistContent() {
                                                 <AnimeCard anime={{ 
                                                     id: item.anime_id, 
                                                     title: item.anime_title, 
-                                                    poster: item.anime_image,
+                                                    poster: item.anime_image, 
                                                     type: "TV", 
                                                     episodes: { sub: item.total_episodes || 0, dub: 0 }
                                                 }} />

@@ -14,7 +14,8 @@ import {
   ChevronLeft, ChevronRight, Pause, ArrowLeft, ArrowRight
 } from 'lucide-react';
 
-import { AnimeService, AnimeAPI_V2, AnimeAPI_V3, supabase, UniversalAnime } from '@/lib/api';
+import { AnimeService, AnimeAPI_V2, AnimeAPI_V3, UniversalAnime } from '@/lib/api'; // ✅ Removed 'supabase' from here
+import { supabase } from '@/lib/supabase'; // ✅ IMPORT SINGLETON
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
 import { useAuth } from '@/context/AuthContext';
@@ -288,6 +289,7 @@ const StarRating = ({ animeId, initialRating = 0 }: { animeId: string; initialRa
             if (!supabase) return;
             try {
                 const allRatings = await retryOperation(async () => {
+                    // ✅ Using Shared Client
                     const { data } = await (supabase.from('anime_ratings') as any).select('rating').eq('anime_id', animeId);
                     return data;
                 });
@@ -404,17 +406,17 @@ const CharacterDetailsDialog = ({
                                 <div>
                                     <h3 className="text-[10px] font-black text-zinc-500 uppercase tracking-widest mb-3 flex items-center gap-2"><Mic size={12} className="text-red-500"/> Voice Artists</h3>
                                     {data.voiceActors && data.voiceActors.length > 0 ? (
-                                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                                            {data.voiceActors.map((va: any, i: number) => (
-                                                <button key={i} onClick={() => va.id && onActorClick(va.id)} className="flex items-center gap-4 p-3 rounded-2xl bg-white/5 border border-white/5 hover:bg-white/10 hover:border-red-500/30 transition-all group/va text-left active:scale-95">
-                                                    <img src={va.profile || va.image || '/images/non-non.png'} className="w-12 h-12 rounded-full object-cover border border-white/10 shadow-md group-hover/va:border-red-500/50" alt={va.name} loading="lazy" decoding="async"/>
-                                                    <div className="flex flex-col min-w-0">
-                                                        <span className="text-sm font-bold text-zinc-200 group-hover/va:text-white truncate">{va.name}</span>
-                                                        <span className="text-[10px] font-bold text-zinc-500 uppercase tracking-wider">{va.language}</span>
-                                                    </div>
-                                                </button>
-                                            ))}
-                                        </div>
+                                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                                {data.voiceActors.map((va: any, i: number) => (
+                                                    <button key={i} onClick={() => va.id && onActorClick(va.id)} className="flex items-center gap-4 p-3 rounded-2xl bg-white/5 border border-white/5 hover:bg-white/10 hover:border-red-500/30 transition-all group/va text-left active:scale-95">
+                                                        <img src={va.profile || va.image || '/images/non-non.png'} className="w-12 h-12 rounded-full object-cover border border-white/10 shadow-md group-hover/va:border-red-500/50" alt={va.name} loading="lazy" decoding="async"/>
+                                                        <div className="flex flex-col min-w-0">
+                                                            <span className="text-sm font-bold text-zinc-200 group-hover/va:text-white truncate">{va.name}</span>
+                                                            <span className="text-[10px] font-bold text-zinc-500 uppercase tracking-wider">{va.language}</span>
+                                                        </div>
+                                                    </button>
+                                                ))}
+                                            </div>
                                     ) : (
 
 <div className="flex flex-col items-center justify-start h-full pt-[30%] opacity-40">
@@ -644,6 +646,7 @@ function WatchContent() {
       isBufferDirty.current = false;
       const sanitizedPayload = payload.map(p => { const { duration, ...clean } = p; return clean; });
       try {
+          // ✅ Shared Client Used Here
           await (supabase.from('user_continue_watching') as any).upsert(sanitizedPayload, { onConflict: 'user_id, episode_id' });
       } catch (e) {
           isBufferDirty.current = true;
@@ -806,6 +809,7 @@ function WatchContent() {
           try { const raw = localStorage.getItem(tempStorageKey); if (raw) localData = JSON.parse(raw); } catch {}
           let dbData: {[key: string]: any} = {};
           if (user && supabase) {
+              // ✅ Shared Client
               try { const { data } = await (supabase.from('user_continue_watching') as any).select('*').eq('user_id', user.id).eq('anime_id', animeId); if (data) data.forEach((row: any) => { dbData[row.episode_id] = row; }); } catch {}
           }
           const allEpIds = new Set([...Object.keys(localData), ...Object.keys(dbData)]);

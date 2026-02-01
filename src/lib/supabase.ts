@@ -1,23 +1,26 @@
-import { createClient } from "@supabase/supabase-js";
+import { createBrowserClient } from '@supabase/ssr';
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
+// Singleton instance
+let supabaseInstance: ReturnType<typeof createBrowserClient> | null = null;
 
-if (!supabaseUrl || !supabaseKey) {
-  throw new Error("Missing Supabase Environment Variables");
-}
+export const getSupabaseBrowserClient = () => {
+  if (!supabaseInstance) {
+    const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+    const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 
-// --- SINGLETON PATTERN (Prevents "Too Many Connections" Crash) ---
-const globalForSupabase = global as unknown as { supabase: ReturnType<typeof createClient> };
-
-export const supabase = globalForSupabase.supabase || createClient(supabaseUrl, supabaseKey, {
-    auth: {
-        persistSession: true,
-        autoRefreshToken: true,
-        detectSessionInUrl: true
+    if (!url || !key) {
+        console.error("🚨 CRITICAL: Supabase Env Vars missing!");
+        console.error("URL:", url ? "Set" : "MISSING");
+        console.error("Key:", key ? "Set" : "MISSING");
     }
-});
 
-if (process.env.NODE_ENV !== 'production') {
-    globalForSupabase.supabase = supabase;
-}
+    supabaseInstance = createBrowserClient(
+      url!,
+      key!
+    );
+  }
+  return supabaseInstance;
+};
+
+// Export the singleton directly for ease of use
+export const supabase = getSupabaseBrowserClient();

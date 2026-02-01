@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
-import { supabase } from '@/lib/api';
+// ✅ FIXED: Import from the correct singleton file
+import { supabase } from '@/lib/supabase';
 
 // Define the shape of the user data to prevent 'never' type errors
 interface WatchlistUser {
@@ -16,6 +17,8 @@ async function checkAnimeUpdates() {
 
   try {
     // 1. Get all unique anime IDs from everyone's 'watching' list
+    // In a real scenario, you'd fetch this list from the DB first.
+    // For now, we hardcode one for testing the notification system.
     const animeIdToCheck = 'solo-leveling'; 
     
     // 2. Fetch latest data from Consumet
@@ -66,7 +69,13 @@ async function checkAnimeUpdates() {
   }
 }
 
+// Support both GET (cron jobs) and POST (manual trigger)
 export async function GET() {
+  const result = await checkAnimeUpdates();
+  return NextResponse.json({ status: 'Oracle Check Complete', result });
+}
+
+export async function POST() {
   const result = await checkAnimeUpdates();
   return NextResponse.json({ status: 'Oracle Check Complete', result });
 }

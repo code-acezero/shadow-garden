@@ -21,7 +21,8 @@ import {
 } from '@/components/ui/dialog';
 import * as VisuallyHidden from "@radix-ui/react-visually-hidden";
 
-import { AppUser, supabase, ImageAPI } from '@/lib/api';
+import { AppUser, ImageAPI } from '@/lib/api'; // ✅ Removed 'supabase' from here
+import { supabase } from '@/lib/supabase'; // ✅ Imported SINGLETON
 import { motion, AnimatePresence } from 'framer-motion';
 import { toast } from 'sonner';
 import { formatDistanceToNow } from 'date-fns';

@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect, useRef } from 'react';
-import { supabase } from '@/lib/api'; 
+import { supabase } from '@/lib/supabase'; // ✅ IMPORT SINGLETON
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
 import { 
@@ -251,7 +251,7 @@ export default function ShadowComments({ episodeId }: { episodeId: string }) {
     const fetchComments = async () => {
         if (!supabase) return;
 
-        // Fetch User
+        // Fetch User (using shared client)
         const { data: { user } } = await supabase.auth.getUser();
         if (user) setUserId(user.id);
 
@@ -309,7 +309,7 @@ export default function ShadowComments({ episodeId }: { episodeId: string }) {
         if (!supabase) return;
         if (!userId) { toast.error("Log in to transmit."); return; }
         
-        // ✅ FIX: Cast the from() selection to 'any' to bypass Postgrest 'never' overload error
+        // ✅ Using Shared Client
         const { error } = await (supabase.from('comments') as any).insert({
             episode_id: episodeId,
             user_id: userId,
@@ -335,7 +335,6 @@ export default function ShadowComments({ episodeId }: { episodeId: string }) {
 
     const handleEdit = async (id: string, newContent: string) => {
         if (!supabase) return;
-        // ✅ FIX: Cast to any to prevent 'never' error on update object
         const { error } = await (supabase.from('comments') as any).update({ content: newContent, is_edited: true }).eq('id', id);
         if(error) toast.error("Update failed.");
         else toast.success("Signal updated.");
@@ -343,7 +342,6 @@ export default function ShadowComments({ episodeId }: { episodeId: string }) {
 
     const handleReport = async (commentId: string, reportedUserId: string) => {
         if (!supabase || !userId) return;
-        // ✅ FIX: Cast to any to bypass 'never' overload on comment_reports table
         const { error } = await (supabase.from('comment_reports') as any).insert({
             comment_id: commentId,
             reporter_id: userId,
@@ -401,12 +399,12 @@ export default function ShadowComments({ episodeId }: { episodeId: string }) {
                             >
                                 <div className="flex items-center gap-3 mb-3 relative z-10">
                                     <Avatar className="w-8 h-8 border border-white/10">
-                                        <AvatarImage src={c.profiles?.avatar_url || undefined} />
-                                        <AvatarFallback className="bg-zinc-800 text-[10px]">{displayName[0]}</AvatarFallback>
+                                            <AvatarImage src={c.profiles?.avatar_url || undefined} />
+                                            <AvatarFallback className="bg-zinc-800 text-[10px]">{displayName[0]}</AvatarFallback>
                                     </Avatar>
                                     <div className="flex flex-col">
-                                        <span className="text-[10px] font-bold text-zinc-200">{displayName}</span>
-                                        <span className="text-[8px] text-zinc-600">{formatDistanceToNow(new Date(c.created_at))} ago</span>
+                                            <span className="text-[10px] font-bold text-zinc-200">{displayName}</span>
+                                            <span className="text-[8px] text-zinc-600">{formatDistanceToNow(new Date(c.created_at))} ago</span>
                                     </div>
                                 </div>
                                 <p className="text-[10px] text-zinc-400 line-clamp-2 leading-relaxed mb-3 relative z-10">

@@ -9,12 +9,16 @@ import {
   Ghost, Terminal, Globe, Crown, Sword, 
   MessageCircle, Flame, Users, Scroll as ScrollIcon, Activity
 } from 'lucide-react';
+
+// ✅ FIXED IMPORTS
 import { Button } from '@/components/ui/button';
-import { UserAPI, AnimeAPI_V4, UniversalAnime, supabase } from '@/lib/api'; // FIXED: UniversalAnime & V4
+import { UserAPI, AnimeAPI_V4, UniversalAnime } from '@/lib/api'; 
+import { supabase } from '@/lib/supabase'; // ✅ CRITICAL: Import Singleton directly
 import AuthModal from '@/components/Auth/AuthModal';
 import SearchBar from '@/components/Anime/SearchBar';
 import ShadowGardenPortal from '@/components/Portal/ShadowGardenPortal';
 import { demoness, nyctophobia, horrorshow } from '@/lib/fonts';
+
 // --- ASSETS ---
 const WAIFU_BG_LIST = [
   "/images/index/bg-1.jpg", "/images/index/bg-2.jpg", "/images/index/bg-3.jpg",
@@ -34,23 +38,25 @@ const FLOATING_STICKERS = [
 // --- COMPONENTS ---
 
 const GuildStats = React.memo(() => {
-  const [stats, setStats] = useState({ users: 0, posts: 0 });
-  const [liveUsers, setLiveUsers] = useState(1);
+  const [stats, setStats] = useState({ users: 15420, posts: 8540 });
+  const [liveUsers, setLiveUsers] = useState(1200);
 
   useEffect(() => {
+    let isMounted = true;
     const fetchStats = async () => {
       try {
         const { count: userCount } = await supabase.from('profiles').select('*', { count: 'exact', head: true });
         const { count: postCount } = await supabase.from('social_posts').select('*', { count: 'exact', head: true });
         
-        setStats({ 
-          users: userCount || 15420,
-          posts: postCount || 8540 
-        });
-        
-        setLiveUsers(Math.floor((userCount || 1000) * 0.08));
+        if (isMounted) {
+          setStats({ 
+            users: userCount || 15420,
+            posts: postCount || 8540 
+          });
+          setLiveUsers(Math.floor((userCount || 15420) * 0.08));
+        }
       } catch (e) {
-        console.error("Guild Stats Error", e);
+        console.warn("Guild Stats Error - Using Fallback", e);
       }
     };
     fetchStats();
@@ -62,7 +68,10 @@ const GuildStats = React.memo(() => {
       });
     }, 3000);
 
-    return () => clearInterval(interval);
+    return () => {
+      isMounted = false;
+      clearInterval(interval);
+    };
   }, []);
 
   return (
@@ -132,7 +141,7 @@ export default function LandingClient() {
   const [triggerEntry, setTriggerEntry] = useState(false);     
   const [bgImage, setBgImage] = useState(WAIFU_BG_LIST[0]);
   
-  const [trending, setTrending] = useState<UniversalAnime[]>([]); // FIXED TYPE
+  const [trending, setTrending] = useState<UniversalAnime[]>([]); 
   const [isLoadingTrending, setIsLoadingTrending] = useState(true);
 
   const { scrollY } = useScroll();
@@ -140,26 +149,36 @@ export default function LandingClient() {
   const heroScale = useTransform(scrollY, [0, 400], [1, 1.1]);
 
   useEffect(() => {
-    // 1. Random BG
+    // 1. Random BG (Client-side only)
     const randomIdx = Math.floor(Math.random() * WAIFU_BG_LIST.length);
     setBgImage(WAIFU_BG_LIST[randomIdx]);
 
     // 2. Auth & Data
     const init = async () => {
-      // Auth Check
+      // ✅ HANDOVER PROTOCOL (CRITICAL FIX)
+      // Check for the "Pass" in local storage instantly (0ms)
+      const hasAuthHint = typeof window !== 'undefined' && localStorage.getItem('shadow_auth_hint') === 'true';
+
+      if (hasAuthHint) {
+        // Assume logged in, redirect immediately
+        router.replace('/home');
+        return;
+      }
+
+      // If no hint, do the full API check (Fallback)
       const user = await UserAPI.getCurrentUser();
       if (user) {
-        router.replace('/home'); // Use replace to prevent back navigation
+        if (typeof window !== 'undefined') localStorage.setItem('shadow_auth_hint', 'true');
+        router.replace('/home'); 
         return;
       } else {
+        // Confirmed Guest
         setIsCheckingAuth(false);
       }
 
-      // Fetch Trending (Using V4 for Speed)
+      // Fetch Trending (Only if we stay)
       try {
-        // FIX: Add ': any' type assertion here
         const data: any = await AnimeAPI_V4.getTopAiring(1);
-        
         if (data && data.results) {
           setTrending(data.results.slice(0, 6)); 
         }
@@ -172,10 +191,12 @@ export default function LandingClient() {
     init();
   }, [router]);
 
+  // Handlers
   const handleSceneReady = useCallback(() => { setShowLandingUI(true); }, []);
   const handleEnterClick = useCallback(() => { setShowLandingUI(false); setTriggerEntry(true); }, []);
   const handlePortalComplete = useCallback(() => { router.push('/home'); }, [router]);
 
+  // Prevent Flash
   if (isCheckingAuth) return <div className="min-h-screen bg-[#050505]" />;
 
   return (
@@ -194,16 +215,14 @@ export default function LandingClient() {
       <AnimatePresence mode="wait">
         {showLandingUI && (
           <motion.div 
-            className="absolute inset-0 z-10 overflow-y-auto overflow-x-hidden"
-            style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
+            // ✅ FIXED JSX ERROR: Replaced <style jsx> with Tailwind
+            className="absolute inset-0 z-10 overflow-y-auto overflow-x-hidden [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0, y: -50, filter: "blur(20px)" }}
             transition={{ duration: 1.5, ease: "easeInOut" }}
           >
-            <style jsx global>{` ::-webkit-scrollbar { display: none; } `}</style>
-
-            {/* Static Background Layer */}
+            {/* Static Background */}
             <motion.div 
               style={{ opacity: heroOpacity, scale: heroScale, willChange: 'transform, opacity' }} 
               className="absolute inset-0 z-0 pointer-events-none h-screen fixed"

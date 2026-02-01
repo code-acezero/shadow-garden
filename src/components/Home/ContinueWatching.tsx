@@ -2,7 +2,8 @@
 
 import React, { useState, useEffect } from "react";
 import { Clock, ChevronRight } from "lucide-react";
-import { supabase, AnimeService } from "@/lib/api";
+import { AnimeService } from "@/lib/api";
+import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/context/AuthContext";
 import { motion, AnimatePresence } from "framer-motion";
 import { useRouter } from "next/navigation";

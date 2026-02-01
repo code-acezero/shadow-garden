@@ -2,7 +2,8 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { useAuth } from '@/context/AuthContext';
-import { supabase, ImageAPI } from '@/lib/api'; 
+import { supabase } from '@/lib/supabase'; // ✅ IMPORT SINGLETON
+import { ImageAPI } from '@/lib/api'; 
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -22,10 +23,10 @@ import AuthModal from '@/components/Auth/AuthModal';
 import ShadowAvatar from '@/components/User/ShadowAvatar'; 
 import * as VisuallyHidden from "@radix-ui/react-visually-hidden";
 import { motion, AnimatePresence } from 'framer-motion';
-import { useIsMobile } from '@/hooks/use-mobile'; // Integrated mobile hook
+import { useIsMobile } from '@/hooks/use-mobile'; 
 
 export default function ProfilePage() {
-    const { user, profile: rawProfile, refreshProfile, updateGuestProfile, isLoading } = useAuth();
+    const { user, profile: rawProfile, refreshSession, isLoading } = useAuth(); // Changed refreshProfile to refreshSession
     const profile = rawProfile as any;
     const isMobile = useIsMobile();
 
@@ -76,6 +77,7 @@ export default function ProfilePage() {
     useEffect(() => {
         const fetchAvatars = async () => {
             try {
+                // Keep using fetch for external/local APIs if needed, or switch to supabase storage if you have a bucket
                 const res = await fetch('/api/avatars');
                 const data = await res.json();
                 setGuestAvatars(data.images || []);
@@ -99,17 +101,18 @@ export default function ProfilePage() {
             twitter_url: twitter, github_url: github, instagram_url: instagram,
             affinity
         };
-        if (profile.is_guest) {
-            (updateGuestProfile as any)(payload);
-            setIsEditing(false);
-            return toast.success("Guild Cache Updated");
-        }
+        
+        // Guest Logic Removed/Simplified - If guest needs updating, it should be handled via local storage or specific guest API, 
+        // but typically profile pages require auth. Assuming logged in user for Supabase update.
+        if (!user) return setShowAuthModal(true);
+
         try {
-            const { error } = await (supabase.from('profiles') as any).update(payload).eq('id', user?.id);
+            // ✅ Use Shared Client
+            const { error } = await supabase.from('profiles').update(payload).eq('id', user.id);
             if (error) throw error;
             toast.success("Guild Intel Re-encrypted");
             setIsEditing(false);
-            refreshProfile();
+            refreshSession();
         } catch (e) { toast.error("Database Link Failure"); }
     };
 
@@ -120,7 +123,7 @@ export default function ProfilePage() {
     };
 
     const handleImgBBUpload = async (e: React.ChangeEvent<HTMLInputElement>, type: 'avatar' | 'banner') => {
-        if (profile.is_guest) return setShowAuthModal(true);
+        if (!user) return setShowAuthModal(true);
         const file = e.target.files?.[0];
         if (!file) return;
 
@@ -129,31 +132,33 @@ export default function ProfilePage() {
             const url = await ImageAPI.uploadImage(file);
             if (type === 'avatar') {
                 const newHistory = [url, ...(profile.pfp_history || [])].slice(0, 15);
-                await (supabase.from('profiles') as any).update({ avatar_url: url, pfp_history: newHistory }).eq('id', user?.id);
+                await supabase.from('profiles').update({ avatar_url: url, pfp_history: newHistory }).eq('id', user.id);
                 toast.success("Vessel Synchronized");
             } else {
                 setTempCoverUrl(url);
                 setShowCoverAdjust(true);
                 setShowCoverModal(false);
             }
-            refreshProfile();
+            refreshSession();
         } catch (err) { toast.error("Ritual Broken"); } finally { toast.dismiss(tid); }
     };
 
     const saveCoverAdjustment = async () => {
+        if (!user) return;
         const newHistory = [tempCoverUrl, ...(profile.banner_history || [])].slice(0, 15);
-        await (supabase.from('profiles') as any).update({ 
+        await supabase.from('profiles').update({ 
             banner_url: tempCoverUrl, banner_pos: coverPosition, banner_history: newHistory 
-        }).eq('id', user?.id);
+        }).eq('id', user.id);
         setShowCoverAdjust(false);
-        refreshProfile();
+        refreshSession();
         toast.success("Atmosphere Anchored");
     };
 
     const deleteFromHistory = async (urlToDelete: string, field: 'pfp_history' | 'banner_history') => {
+        if (!user) return;
         const newHistory = profile[field].filter((url: string) => url !== urlToDelete);
-        await (supabase.from('profiles') as any).update({ [field]: newHistory }).eq('id', user?.id);
-        refreshProfile();
+        await supabase.from('profiles').update({ [field]: newHistory }).eq('id', user.id);
+        refreshSession();
         toast.info("Fragment Erased");
     };
 
@@ -317,7 +322,7 @@ export default function ProfilePage() {
                             <h4 className="text-[10px] font-black text-zinc-500 uppercase tracking-[0.6em] flex items-center justify-center gap-4"><Users size={16}/> Standard Issue</h4>
                             <div className="grid grid-cols-4 sm:grid-cols-6 gap-3 md:gap-4">
                                 {guestAvatars.map((url, i) => (
-                                    <button key={i} onClick={async () => { await (supabase.from('profiles') as any).update({ avatar_url: url }).eq('id', user?.id); refreshProfile(); setShowAvatarModal(false); }} className="relative aspect-square rounded-[20px] md:rounded-[25px] overflow-hidden border-2 border-transparent hover:border-red-600 transition-all hover:scale-110 active:scale-95 shadow-lg">
+                                    <button key={i} onClick={async () => { if (!user) return; await supabase.from('profiles').update({ avatar_url: url }).eq('id', user.id); refreshSession(); setShowAvatarModal(false); }} className="relative aspect-square rounded-[20px] md:rounded-[25px] overflow-hidden border-2 border-transparent hover:border-red-600 transition-all hover:scale-110 active:scale-95 shadow-lg">
                                         <img src={url} className="w-full h-full object-cover" />
                                         {profile.avatar_url === url && <div className="absolute inset-0 bg-red-600/40 flex items-center justify-center backdrop-blur-[1px]"><Check size={20}/></div>}
                                     </button>
@@ -330,7 +335,7 @@ export default function ProfilePage() {
                                 <AnimatePresence>
                                     {profile.pfp_history?.map((url: string) => (
                                         <motion.div key={url} initial={{ scale: 0.5, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0 }} className="relative aspect-square group">
-                                            <img onClick={async () => { await (supabase.from('profiles') as any).update({ avatar_url: url }).eq('id', user?.id); refreshProfile(); setShowAvatarModal(false); }} src={url} className="w-full h-full object-cover rounded-[20px] md:rounded-[35px] border-2 border-transparent hover:border-red-600 cursor-pointer transition-all shadow-lg" />
+                                            <img onClick={async () => { if (!user) return; await supabase.from('profiles').update({ avatar_url: url }).eq('id', user.id); refreshSession(); setShowAvatarModal(false); }} src={url} className="w-full h-full object-cover rounded-[20px] md:rounded-[35px] border-2 border-transparent hover:border-red-600 cursor-pointer transition-all shadow-lg" />
                                             <button onClick={() => deleteFromHistory(url, 'pfp_history')} className="absolute -top-2 -right-2 bg-red-600 p-2 rounded-full opacity-100 md:opacity-0 group-hover:opacity-100 hover:scale-110 transition-transform"><Trash2 size={12}/></button>
                                         </motion.div>
                                     ))}

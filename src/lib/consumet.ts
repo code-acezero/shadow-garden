@@ -1,7 +1,7 @@
 import 'server-only'; // 🛡️ SAFETY: Prevents this file from ever running on the client
 import { ANIME, IAnimeResult } from "@consumet/extensions";
-// ✅ Import Supabase from your singleton file to prevent connection crashes
-import { supabase } from '@/lib/api';
+// ✅ FIXED: Import from the correct singleton file
+import { supabase } from '@/lib/supabase';
 
 // -- PROVIDERS (Server-Side Only) --
 const isServer = typeof window === 'undefined';
@@ -322,11 +322,13 @@ class ConsumetService {
         updated_at: new Date().toISOString(), 
         [`${provider}_id`]: id 
     };
-    // FIX: Cast 'update' to any and explicitly type destructured error as any
-    // This satisfies the compiler's strict binding check.
+    
+    // FIX: TypeScript Strict Mode Handling
+    // 1. Cast 'update' to 'any' to bypass strict object literal checks if types are incomplete
+    // 2. Explicitly type the destructured response to handle potential Supabase errors safely
     supabase.from('anime_mappings')
       .upsert(update as any, { onConflict: 'slug' })
-      .then(({ error }: { error: any }) => { // 👈 Added explicit type here
+      .then(({ error }: { error: any }) => { 
         if (error) console.error("Mapping Save Error:", error.message);
       });
   }

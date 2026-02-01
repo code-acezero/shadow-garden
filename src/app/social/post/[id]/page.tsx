@@ -2,10 +2,11 @@
 
 import React, { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import { supabase } from '@/lib/api';
+// ✅ FIXED: Import from the correct singleton file
+import { supabase } from '@/lib/supabase';
 import { ArrowLeft, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge'; // ✅ Added missing import
+import { Badge } from '@/components/ui/badge'; 
 import OtakuVerse from '@/components/Social/OtakuVerse';
 import { toast } from 'sonner';
 

@@ -1,5 +1,5 @@
 import { Metadata } from 'next';
-import LandingClient from './LandingClient';
+import LandingClient from '@/components/Landing/LandingClient'; // ✅ Moved to components folder
 
 // --- SERVER SIDE METADATA ---
 export const metadata: Metadata = {
@@ -8,7 +8,7 @@ export const metadata: Metadata = {
   openGraph: {
     title: 'Shadow Garden | The Ultimate Sanctuary',
     description: 'Join the guild. Access the archives. Become legend.',
-    images: ['/images/index/bg-1.jpg'], // Uses one of your backgrounds as the preview card
+    images: ['/images/index/bg-1.jpg'], // Make sure this image exists in public/images/index/
     type: 'website',
   },
   twitter: {

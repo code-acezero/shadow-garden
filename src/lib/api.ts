@@ -1,22 +1,4 @@
-import { createClient } from '@supabase/supabase-js';
-
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-
-// --- SINGLETON CLEANUP ---
-const globalForSupabase = global as unknown as { supabase: any };
-
-export const supabase = globalForSupabase.supabase || (supabaseUrl && supabaseAnonKey ? createClient(supabaseUrl, supabaseAnonKey, {
-    auth: {
-        persistSession: true,
-        autoRefreshToken: true,
-        detectSessionInUrl: true
-    }
-}) : null);
-
-if (process.env.NODE_ENV !== 'production' && supabase) {
-    globalForSupabase.supabase = supabase;
-}
+import { supabase } from "@/lib/supabase"; // ✅ IMPORT SINGLETON
 
 // ==========================================
 //  1. CONFIGURATION & POOLS
@@ -73,19 +55,25 @@ async function fetchWithFailover(urlPool: string[], endpoint: string, params: Re
             const proxyUrl = typeof window !== 'undefined' ? `/api/proxy?url=${encodeURIComponent(targetUrl)}` : targetUrl;
             
             const controller = new AbortController();
-            const timeoutId = setTimeout(() => controller.abort(), 8000);
+            const timeoutId = setTimeout(() => controller.abort(), 8000); // 8s timeout
 
-            const response = await fetch(proxyUrl, { signal: controller.signal });
-            clearTimeout(timeoutId);
+            try {
+                const response = await fetch(proxyUrl, { signal: controller.signal });
+                clearTimeout(timeoutId);
 
-            if (!response.ok) continue;
+                if (!response.ok) continue;
 
-            const json = await response.json();
-            
-            if (json.status === 200 || json.success === true) {
-                // V3 usually returns { success: true, results: { ... } }
-                // V2/V4 might return { data: ... }
-                return json.data || json.results || json; 
+                const json = await response.json();
+                
+                if (json.status === 200 || json.success === true) {
+                    return json.data || json.results || json; 
+                }
+            } catch (innerError: any) {
+                // ✅ SILENCE THE ABORT ERROR (Fixes console noise on redirect)
+                if (innerError.name === 'AbortError') {
+                    continue; 
+                }
+                throw innerError; 
             }
         } catch (error) {
             continue;
@@ -665,13 +653,10 @@ static async getHindiRecent() {
     static async filter(params: any) { const data = await AnimeAPI_V4.filter(params); return data ? this.normalizeV4List(data) : []; }
 }
 
-// ... (Rest of file unchanged: dedicated Hindi API, etc.)
-
 // ==========================================
 //  11. DEDICATED HINDI ANIME API
 // ==========================================
 
-// --- Interfaces for Hindi API ---
 export interface HindiAnime {
   id: string;
   title: string;
@@ -750,6 +735,7 @@ export class AnimeAPI_Hindi {
 // ==========================================
 //  10. OTHER APIS
 // ==========================================
+
 export class WatchlistAPI {
   static async getUserWatchlist(userId: string): Promise<WatchlistItem[]> {
     if (supabase && userId !== 'guest') {
@@ -759,13 +745,17 @@ export class WatchlistAPI {
     const local = typeof window !== 'undefined' ? localStorage.getItem(`watchlist_${userId}`) : null;
     return local ? JSON.parse(local) : [];
   }
+
   static async addToWatchlist(userId: string, animeId: string, status: WatchlistItem['status'], progress: number = 0, episodeId?: string): Promise<boolean> {
     const item: any = { anime_id: animeId, status, progress, updated_at: new Date().toISOString() };
     if (episodeId) item.episode_id = episodeId;
+    
     if (supabase && userId !== 'guest') {
       const { error } = await supabase.from('watchlist').upsert({ user_id: userId, ...item }, { onConflict: 'user_id, anime_id' });
       return !error;
     }
+    
+    // Local storage fallback
     const list = await this.getUserWatchlist(userId);
     const updated = [...list.filter(i => i.anime_id !== animeId), item];
     if (typeof window !== 'undefined') localStorage.setItem(`watchlist_${userId}`, JSON.stringify(updated));
@@ -783,11 +773,26 @@ export class UserAPI {
     }
     return null;
   }
-  static async signIn(email: string, password: string) { return supabase ? await supabase.auth.signInWithPassword({ email, password }) : { data: null, error: null }; }
-  static async signUp(email: string, password: string, username: string) { 
-      return supabase ? await supabase.auth.signUp({ email, password, options: { data: { username, full_name: username } } }) : { data: null, error: null }; 
+
+  static async signIn(email: string, password: string) { 
+    return supabase ? await supabase.auth.signInWithPassword({ email, password }) : { data: null, error: null }; 
   }
-  static async signOut() { if (supabase) await supabase.auth.signOut(); }
+
+  static async signUp(email: string, password: string, username: string) { 
+    return supabase ? await supabase.auth.signUp({ email, password, options: { data: { username, full_name: username } } }) : { data: null, error: null }; 
+  }
+  
+  static async signOut() { 
+      if (supabase) {
+          await supabase.auth.signOut();
+          if (typeof window !== 'undefined') {
+              // 1. Remove ONLY the Auth Token
+              localStorage.removeItem('shadow_garden_auth'); 
+              // 2. Clear session storage
+              sessionStorage.clear();
+          }
+      }
+  }
 }
 
 export class ImageAPI {
