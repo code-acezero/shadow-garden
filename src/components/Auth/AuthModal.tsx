@@ -15,7 +15,7 @@ import { AppUser, UserAPI } from '@/lib/api';
 import { supabase } from '@/lib/supabase'; 
 import { motion, AnimatePresence } from 'framer-motion';
 import { hunters } from '@/lib/fonts'; 
-import { playVoice, syncVoiceProfile, speakGuild } from '@/lib/voice'; 
+import { playVoice, syncVoiceProfile } from '@/lib/voice'; 
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/context/AuthContext'; 
 import { Avatar, AvatarImage } from '@/components/ui/avatar';
@@ -156,15 +156,22 @@ export default function AuthModal({ isOpen, onClose, onAuthSuccess, initialView 
 
   // --- ACTIONS ---
   
-  // ✅ SWITCH ACCOUNT (Unstoppable Reload)
+  // ✅ SWITCH ACCOUNT (Unstoppable Reload + Voice)
   const handleSwitchAccount = async (id: string) => {
       if (currentUser?.id === id) { onClose(); return; }
 
       setSwitchingToId(id); 
       setIsLoading(true);
 
-      // 1. Play Voice
-      speakGuild("", currentProfile, 'GOODBYE');
+      // 1. Play Goodbye Voice
+      const role = currentProfile?.role;
+      const isMaster = role === 'admin' || role === 'moderator';
+      
+      playVoice(isMaster ? 'BYE_MASTER' : 'BYE_ADVENTURER');
+      notifyIsland('Guild Receptionist', isMaster 
+        ? 'See you again, Master. Have a nice day. Goodbye.' 
+        : 'See you again, Adventurer. Have a nice day. Goodbye.'
+      );
       
       // 2. Suppress flags
       if (typeof window !== 'undefined') {
@@ -175,8 +182,8 @@ export default function AuthModal({ isOpen, onClose, onAuthSuccess, initialView 
       // 3. START UNSTOPPABLE TIMER (4s)
       setTimeout(() => {
           if (typeof window !== 'undefined') {
-              sessionStorage.removeItem('shadow_suppress_welcome'); // Allow welcome next load
-              window.location.assign('/home'); // HARD RELOAD
+              sessionStorage.removeItem('shadow_suppress_welcome'); 
+              window.location.assign('/home'); // Hard Reload
           }
       }, 4000);
 
@@ -184,12 +191,19 @@ export default function AuthModal({ isOpen, onClose, onAuthSuccess, initialView 
       switchAccount(id).catch(() => {});
   };
 
-  // ✅ LEAVE ACCOUNT (Unstoppable Reload)
+  // ✅ LEAVE ACCOUNT (Corrected)
   const handleSignOutActive = async () => {
       setIsLoading(true);
       
-      // 1. Voice
-      speakGuild("", currentProfile, 'GOODBYE');
+      // 1. Play Voice First
+      const role = currentProfile?.role;
+      const isMaster = role === 'admin' || role === 'moderator';
+      
+      playVoice(isMaster ? 'BYE_MASTER' : 'BYE_ADVENTURER');
+      notifyIsland('Guild Receptionist', isMaster 
+        ? 'See you again, Master. Have a nice day. Goodbye.' 
+        : 'See you again, Adventurer. Have a nice day. Goodbye.'
+      );
       
       // 2. Flags
       if (typeof window !== 'undefined') {
@@ -197,37 +211,42 @@ export default function AuthModal({ isOpen, onClose, onAuthSuccess, initialView 
           sessionStorage.setItem('shadow_suppress_welcome', 'true');
       }
       
-      // 3. Determine Logic
-      const otherAccount = savedAccounts.find(a => a.id !== currentUser?.id);
-      
-      // 4. START UNSTOPPABLE TIMER (4s)
+      // 3. START BACKGROUND REMOVAL NOW
+      // We don't wait for voice to finish to start the removal/switch logic.
+      // We let it happen in background so by the time 4s is up, it's ready.
+      signOut().catch(() => {});
+
+      // 4. START UNSTOPPABLE RELOAD TIMER (4s)
       setTimeout(() => {
           if (typeof window !== 'undefined') {
-              // If we are switching, allow welcome. If just logging out to guest, allow guest welcome.
               sessionStorage.removeItem('shadow_suppress_welcome');
-              window.location.assign('/home'); // HARD RELOAD
+              window.location.assign('/home'); // Force Reload to clear state/load new account
           }
       }, 4000);
-
-      // 5. Run Logic (Fire and Forget)
-      // Synchronous removal first (critical)
-      if (currentUser?.id) removeAccount(currentUser.id);
-
-      // Async session updates in background
-      if (otherAccount) {
-          switchAccount(otherAccount.id).catch(() => {});
-      } else {
-          signOut().catch(() => {});
-      }
   };
 
-  // ✅ ADD ACCOUNT (Unstoppable Reload)
+  // ✅ ADD ACCOUNT / LOGIN (Voice on Success + Auto-Leave current)
   const handleEnter = async (e: React.FormEvent) => {
     e.preventDefault();
     if (isDuplicate) return;
     setIsLoading(true);
 
     const isAddingAccount = !!currentUser;
+
+    // --- 1. HANDLE ADDING ACCOUNT (Play Goodbye First) ---
+    if (isAddingAccount) {
+        const role = currentProfile?.role;
+        const isMaster = role === 'admin' || role === 'moderator';
+        
+        playVoice(isMaster ? 'BYE_MASTER' : 'BYE_ADVENTURER');
+        notifyIsland('Guild Receptionist', isMaster 
+            ? 'See you again, Master. Have a nice day. Goodbye.' 
+            : 'See you again, Adventurer. Have a nice day. Goodbye.'
+        );
+
+        // Wait for audio to finish before touching auth state
+        await waitForAudio(4000);
+    }
 
     try {
       const { data, error } = await supabase.auth.signInWithPassword({
@@ -238,7 +257,7 @@ export default function AuthModal({ isOpen, onClose, onAuthSuccess, initialView 
       if (error) throw error;
 
       if (data?.user) {
-        // ... (Session persistence check - keeping it minimal here for brevity, assume success) ...
+        // ... (Session persistence check) ...
         let attempts = 0;
         let sessionConfirmed = false;
         while (attempts < 10 && !sessionConfirmed) {
@@ -248,23 +267,30 @@ export default function AuthModal({ isOpen, onClose, onAuthSuccess, initialView 
         }
 
         if (sessionConfirmed) {
+            // ✅ Sync Profile 
             syncVoiceProfile(data.user.id).catch(() => {});
             
+            // Fetch Role immediately to play correct voice
+            const { data: profileData } = await supabase.from('profiles').select('role').eq('id', data.user.id).single();
+            const role = profileData?.role || 'user';
+            const isMaster = role === 'admin' || role === 'moderator';
+
             if (isAddingAccount) {
                 // ✅ ADDING ACCOUNT:
-                // No Voice (Silent wait)
-                if (typeof window !== 'undefined') sessionStorage.removeItem('shadow_welcome_shown'); // Clear for new user
-                
-                // UNSTOPPABLE RELOAD after 4s
-                setTimeout(() => {
-                    if (typeof window !== 'undefined') {
-                        // Open accounts menu on load? No, make active.
-                        window.location.assign('/home'); 
-                    }
-                }, 4000);
+                // No Welcome Voice (Prevent overlap). 
+                // Hard reload triggers normal flow on next page load.
+                if (typeof window !== 'undefined') {
+                    sessionStorage.removeItem('shadow_welcome_shown'); 
+                    window.location.assign('/home'); 
+                }
             } else {
-                // ✅ FRESH LOGIN: No Reload, SPA Push
-                notifyIsland('Guild Receptionist', `Welcome back, ${formData.email.split('@')[0]}`);
+                // ✅ FRESH LOGIN: Play Voice & SPA Push
+                playVoice(isMaster ? 'GREET_MASTER' : 'GREET_ADVENTURER');
+                notifyIsland('Guild Receptionist', isMaster 
+                    ? `Welcome back Master, it is good to see you again.` 
+                    : `Welcome back Adventurer, it is good to see you again.`
+                );
+
                 onAuthSuccess({ id: data.user.id, email: data.user.email });
                 onClose();
                 router.push('/home');
@@ -287,7 +313,7 @@ export default function AuthModal({ isOpen, onClose, onAuthSuccess, initialView 
   // ... (Styles & UI) ...
   const inputClass = "h-11 pl-10 bg-zinc-800/50 border-white/5 rounded-full text-xs placeholder:text-zinc-600 focus:bg-zinc-800/80 focus:border-white/10 outline-none focus:outline-none focus-visible:ring-0 focus-visible:ring-offset-0 focus-visible:border-white/20 transition-all";
   const tabClass = "rounded-full data-[state=active]:bg-zinc-700/80 data-[state=active]:text-white font-bold text-[10px] uppercase tracking-widest text-zinc-400 outline-none focus:outline-none focus:ring-0 focus-visible:ring-0";
-  const tabClassRed = "rounded-full data-[state=active]:bg-red-900/60 data-[state=active]:text-red-100 font-bold text-[10px] uppercase tracking-widest text-zinc-400 outline-none focus:outline-none focus:ring-0 focus-visible:ring-0";
+  const tabClassRed = "rounded-full data-[state=active]:bg-primary-900/60 data-[state=active]:text-primary-100 font-bold text-[10px] uppercase tracking-widest text-zinc-400 outline-none focus:outline-none focus:ring-0 focus-visible:ring-0";
 
   const SocialBtn = ({ icon: Icon, onClick }: any) => (
     <button type="button" onClick={onClick} className="w-10 h-10 flex items-center justify-center rounded-full bg-zinc-800/50 hover:bg-zinc-700 border border-white/5 hover:border-white/10 transition-all text-zinc-400 hover:text-white hover:scale-110 shadow-lg outline-none focus:outline-none focus:ring-0"><Icon /></button>
@@ -299,7 +325,7 @@ export default function AuthModal({ isOpen, onClose, onAuthSuccess, initialView 
       <DialogContent className="sm:max-w-[340px] w-[90%] bg-black/40 backdrop-blur-xl border border-white/5 text-white p-0 overflow-hidden rounded-[2.5rem] shadow-[0_0_60px_-15px_rgba(0,0,0,0.8)] my-auto max-h-[85vh] outline-none focus:outline-none ring-0">
         <div className="relative p-6 pt-8">
             <div className="text-center space-y-2 mb-6">
-                <div className="flex items-center justify-center gap-3"><YinYangIcon /><DialogTitle className={`text-2xl text-white ${hunters.className} tracking-wider pt-1 drop-shadow-md`}>SHADOW <span className="text-red-600">GARDEN</span></DialogTitle></div>
+                <div className="flex items-center justify-center gap-3"><YinYangIcon /><DialogTitle className={`text-2xl text-white ${hunters.className} tracking-wider pt-1 drop-shadow-md`}>SHADOW <span className="text-primary-600">GARDEN</span></DialogTitle></div>
                 <p className="text-zinc-500 text-[9px] uppercase tracking-[0.3em] font-bold">Official Guild Access</p>
             </div>
             
@@ -310,17 +336,17 @@ export default function AuthModal({ isOpen, onClose, onAuthSuccess, initialView 
                             {savedAccounts.map((account) => (
                                 <div 
                                     key={account.id} 
-                                    className={`flex items-center justify-between p-2 rounded-xl border transition-all outline-none focus:outline-none ring-0 ${currentUser?.id === account.id ? 'bg-red-900/20 border-red-500/50' : 'bg-zinc-900/50 border-white/5 hover:border-white/20'}`}
+                                    className={`flex items-center justify-between p-2 rounded-xl border transition-all outline-none focus:outline-none ring-0 ${currentUser?.id === account.id ? 'bg-primary-900/20 border-primary-500/50' : 'bg-zinc-900/50 border-white/5 hover:border-white/20'}`}
                                 >
                                     <div className="flex items-center gap-3 cursor-pointer flex-1 outline-none" onClick={() => handleSwitchAccount(account.id)}>
                                         <Avatar className="w-10 h-10 border border-white/10">
                                             {account.avatar_url ? <AvatarImage src={account.avatar_url} /> : <ShadowAvatar />}
                                         </Avatar>
                                         <div className="text-left">
-                                            <div className={`text-xs font-bold ${currentUser?.id === account.id ? 'text-red-400' : 'text-white'}`}>{account.username}</div>
+                                            <div className={`text-xs font-bold ${currentUser?.id === account.id ? 'text-primary-400' : 'text-white'}`}>{account.username}</div>
                                             <div className="text-[9px] text-zinc-500 flex items-center gap-1">
                                                 {switchingToId === account.id ? (
-                                                    <><Loader2 className="w-3 h-3 animate-spin text-red-500"/> Switching...</>
+                                                    <><Loader2 className="w-3 h-3 animate-spin text-primary-500"/> Switching...</>
                                                 ) : currentUser?.id === account.id ? (
                                                     <><span className="w-1.5 h-1.5 bg-green-500 rounded-full animate-pulse" /> Active</>
                                                 ) : 'Saved'}
@@ -328,7 +354,7 @@ export default function AuthModal({ isOpen, onClose, onAuthSuccess, initialView 
                                         </div>
                                     </div>
                                     {currentUser?.id !== account.id && (
-                                        <button onClick={() => removeAccount(account.id)} className="p-2 text-zinc-500 hover:text-red-500 transition-colors outline-none"><Trash2 size={14}/></button>
+                                        <button onClick={() => removeAccount(account.id)} className="p-2 text-zinc-500 hover:text-primary-500 transition-colors outline-none"><Trash2 size={14}/></button>
                                     )}
                                 </div>
                             ))}
@@ -344,7 +370,7 @@ export default function AuthModal({ isOpen, onClose, onAuthSuccess, initialView 
                         )}
 
                         {currentUser && (
-                            <button onClick={handleSignOutActive} className="w-full h-11 flex items-center justify-center gap-2 rounded-full bg-red-900/20 hover:bg-red-900/40 text-red-400 hover:text-red-300 transition-all text-xs font-bold uppercase tracking-wider mt-2 border border-red-500/20 outline-none focus:outline-none">
+                            <button onClick={handleSignOutActive} className="w-full h-11 flex items-center justify-center gap-2 rounded-full bg-primary-900/20 hover:bg-primary-900/40 text-primary-400 hover:text-primary-300 transition-all text-xs font-bold uppercase tracking-wider mt-2 border border-primary-500/20 outline-none focus:outline-none">
                                 {isLoading ? <Loader2 className="animate-spin w-4 h-4"/> : <><LogOut size={14} /> Leave {currentUser.email?.split('@')[0]}</>}
                             </button>
                         )}
@@ -368,29 +394,29 @@ export default function AuthModal({ isOpen, onClose, onAuthSuccess, initialView 
                                     
                                     {/* ✅ DUPLICATE WARNING */}
                                     {isDuplicate && (
-                                        <div className="flex items-center gap-2 text-[9px] text-red-400 px-2">
+                                        <div className="flex items-center gap-2 text-[9px] text-primary-400 px-2">
                                             <AlertCircle size={10} /> This profile is already available
                                         </div>
                                     )}
 
-                                    <div className="flex items-center justify-between px-2"><div className="flex items-center gap-2"><Checkbox id="remember" checked={rememberMe} onCheckedChange={(c) => setRememberMe(!!c)} className="border-zinc-600 data-[state=checked]:bg-red-600 border-red-600 w-3.5 h-3.5 rounded-sm" /><label htmlFor="remember" className="text-[10px] text-zinc-500 cursor-pointer font-medium">Remember Pass</label></div><button type="button" onClick={() => setView('FORGOT')} className="text-[10px] text-zinc-500 hover:text-red-400 font-medium outline-none focus:outline-none">Forget Pass?</button></div>
+                                    <div className="flex items-center justify-between px-2"><div className="flex items-center gap-2"><Checkbox id="remember" checked={rememberMe} onCheckedChange={(c) => setRememberMe(!!c)} className="border-zinc-600 data-[state=checked]:bg-primary-600 border-primary-600 w-3.5 h-3.5 rounded-sm" /><label htmlFor="remember" className="text-[10px] text-zinc-500 cursor-pointer font-medium">Remember Pass</label></div><button type="button" onClick={() => setView('FORGOT')} className="text-[10px] text-zinc-500 hover:text-primary-400 font-medium outline-none focus:outline-none">Forget Pass?</button></div>
                                     <SpotlightButton type="submit" disabled={!isEnterValid || isLoading} className="w-full h-11 bg-zinc-200/90 hover:bg-white text-black font-extrabold text-[10px] uppercase tracking-widest rounded-full shadow-[0_0_20px_-5px_rgba(255,255,255,0.3)]">{isLoading ? <LoaderIcon /> : 'Enter Guild'}</SpotlightButton>
                                 </form>
                             </TabsContent>
                             <TabsContent value="REGISTER" className="space-y-4 mt-5 outline-none focus:outline-none">
                                 <form onSubmit={handleRegister} className="space-y-3">
-                                    <div className="relative group"><UserIcon className="absolute left-4 top-1/2 -translate-y-1/2 text-zinc-500 w-3.5 h-3.5 group-focus-within:text-white" /><Input placeholder="Codename" value={formData.username} onChange={(e) => handleInputChange('username', e.target.value)} className={`${inputClass} ${usernameAvailable === false ? 'border-red-500/30 text-red-200' : ''}`} required />{usernameAvailable === false && <span onClick={suggestNewUsername} className="absolute right-4 top-1/2 -translate-y-1/2 text-[9px] text-red-400 cursor-pointer hover:underline">Taken</span>}</div>
+                                    <div className="relative group"><UserIcon className="absolute left-4 top-1/2 -translate-y-1/2 text-zinc-500 w-3.5 h-3.5 group-focus-within:text-white" /><Input placeholder="Codename" value={formData.username} onChange={(e) => handleInputChange('username', e.target.value)} className={`${inputClass} ${usernameAvailable === false ? 'border-primary-500/30 text-primary-200' : ''}`} required />{usernameAvailable === false && <span onClick={suggestNewUsername} className="absolute right-4 top-1/2 -translate-y-1/2 text-[9px] text-primary-400 cursor-pointer hover:underline">Taken</span>}</div>
                                     <div className="relative group"><Mail className="absolute left-4 top-1/2 -translate-y-1/2 text-zinc-500 w-3.5 h-3.5 group-focus-within:text-white" /><Input type="email" placeholder="Email" value={formData.email} onChange={(e) => handleInputChange('email', e.target.value)} className={inputClass} required /></div>
                                     
                                     {/* ✅ DUPLICATE WARNING */}
                                     {isDuplicate && (
-                                        <div className="flex items-start gap-2 text-[9px] text-red-400 px-2 leading-tight">
+                                        <div className="flex items-start gap-2 text-[9px] text-primary-400 px-2 leading-tight">
                                             <AlertCircle size={10} className="shrink-0 mt-0.5" /> A guild card is already created with this email, try to use a different one or enter with this email.
                                         </div>
                                     )}
 
                                     <div className="space-y-2"><div className="flex justify-between items-center px-2"><Label className="text-[9px] uppercase font-bold text-zinc-600">Security Level</Label><div className="flex gap-1">{[1,2,3,4].map(i => (<div key={i} className={`h-1 w-3 rounded-full transition-all ${passwordStrength >= i*25 ? (passwordStrength > 75 ? 'bg-green-500' : 'bg-yellow-600') : 'bg-white/5'}`} />))}</div></div><div className="grid grid-cols-2 gap-2"><Input type="password" placeholder="Pass" value={formData.password} onChange={(e) => handleInputChange('password', e.target.value)} className={`${inputClass} px-4`} required /><div className="relative"><Input type="password" placeholder="Confirm" value={formData.confirmPassword} onChange={(e) => handleInputChange('confirmPassword', e.target.value)} className={`h-11 px-4 bg-zinc-800/50 border-white/5 rounded-full text-xs placeholder:text-zinc-600 focus:bg-zinc-800/80 outline-none focus:outline-none focus-visible:ring-0 focus-visible:ring-offset-0 focus-visible:border-white/20 transition-all ${passwordsMatch ? 'border-green-500/30' : 'focus:border-white/10'}`} required />{passwordsMatch && formData.confirmPassword && <CheckCircle2 className="absolute right-3 top-1/2 -translate-y-1/2 text-green-500 w-3.5 h-3.5" />}</div></div></div>
-                                    <SpotlightButton type="submit" disabled={!isRegisterValid || isLoading} className="w-full h-11 bg-red-600 hover:bg-red-700 text-white font-extrabold text-[10px] uppercase tracking-widest rounded-full shadow-[0_0_20px_-5px_rgba(255,255,255,0.4)]">{isLoading ? <LoaderIcon /> : 'Sign Contract'}</SpotlightButton>
+                                    <SpotlightButton type="submit" disabled={!isRegisterValid || isLoading} className="w-full h-11 bg-primary-600 hover:bg-primary-700 text-white font-extrabold text-[10px] uppercase tracking-widest rounded-full shadow-[0_0_20px_-5px_rgba(255,255,255,0.4)]">{isLoading ? <LoaderIcon /> : 'Sign Contract'}</SpotlightButton>
                                 </form>
                             </TabsContent>
                         </Tabs>
@@ -411,19 +437,19 @@ export default function AuthModal({ isOpen, onClose, onAuthSuccess, initialView 
                         {view === 'OTP' ? (
                             <>
                                 <div className="bg-zinc-900/50 border border-white/5 rounded-[1.5rem] p-4 flex gap-3 items-start"><Smartphone className="w-5 h-5 text-zinc-400 shrink-0 mt-0.5" /><div><h4 className="text-xs font-bold text-white">Verification Required</h4><p className="text-[10px] text-zinc-500 mt-1 leading-relaxed">We sent an 8-digit Guild Token to <b>{formData.email}</b>. Check spam.</p></div></div>
-                                <form onSubmit={handleVerifyOTP} className="space-y-4"><Input placeholder="12345678" value={formData.otp} onChange={(e) => handleInputChange('otp', e.target.value)} className="h-12 text-center text-xl tracking-[0.5em] font-mono bg-zinc-800/50 border-white/5 rounded-full focus:bg-zinc-800 focus:border-red-500/50 text-white outline-none focus:outline-none focus-visible:ring-0 focus-visible:ring-offset-0 focus-visible:border-white/20" maxLength={8} required /><SpotlightButton type="submit" disabled={!isOtpValid || isLoading} className="w-full h-11 bg-white text-black font-extrabold text-[10px] uppercase tracking-widest rounded-full">{isLoading ? <LoaderIcon /> : 'Unseal Access'}</SpotlightButton></form>
+                                <form onSubmit={handleVerifyOTP} className="space-y-4"><Input placeholder="12345678" value={formData.otp} onChange={(e) => handleInputChange('otp', e.target.value)} className="h-12 text-center text-xl tracking-[0.5em] font-mono bg-zinc-800/50 border-white/5 rounded-full focus:bg-zinc-800 focus:border-primary-500/50 text-white outline-none focus:outline-none focus-visible:ring-0 focus-visible:ring-offset-0 focus-visible:border-white/20" maxLength={8} required /><SpotlightButton type="submit" disabled={!isOtpValid || isLoading} className="w-full h-11 bg-white text-black font-extrabold text-[10px] uppercase tracking-widest rounded-full">{isLoading ? <LoaderIcon /> : 'Unseal Access'}</SpotlightButton></form>
                                 <div className="text-center"><button onClick={handleResendToken} disabled={isLoading} className="text-[10px] text-zinc-600 hover:text-white underline decoration-zinc-700 underline-offset-4 outline-none focus:outline-none">Resend Token</button></div>
                             </>
                         ) : (
                             <>
                                 <div className="space-y-1 px-1"><h3 className="text-sm font-bold text-white">Recover Guild Pass</h3><p className="text-[10px] text-zinc-500">Enter linked email to receive a recovery token.</p></div>
-                                <form onSubmit={handleForgotPass} className="space-y-4"><div className="relative group"><Mail className="absolute left-4 top-1/2 -translate-y-1/2 text-zinc-500 w-3.5 h-3.5 group-focus-within:text-white" /><Input type="email" placeholder="agent@shadow.garden" value={formData.email} onChange={(e) => handleInputChange('email', e.target.value)} className={inputClass} required /></div><SpotlightButton type="submit" disabled={!formData.email || isLoading} className="w-full h-11 bg-red-600 text-white font-extrabold text-[10px] uppercase tracking-widest rounded-full shadow-[0_0_20px_-5px_rgba(255,255,255,0.4)]">{isLoading ? <LoaderIcon /> : 'Send Scroll'}</SpotlightButton></form>
+                                <form onSubmit={handleForgotPass} className="space-y-4"><div className="relative group"><Mail className="absolute left-4 top-1/2 -translate-y-1/2 text-zinc-500 w-3.5 h-3.5 group-focus-within:text-white" /><Input type="email" placeholder="agent@shadow.garden" value={formData.email} onChange={(e) => handleInputChange('email', e.target.value)} className={inputClass} required /></div><SpotlightButton type="submit" disabled={!formData.email || isLoading} className="w-full h-11 bg-primary-600 text-white font-extrabold text-[10px] uppercase tracking-widest rounded-full shadow-[0_0_20px_-5px_rgba(255,255,255,0.4)]">{isLoading ? <LoaderIcon /> : 'Send Scroll'}</SpotlightButton></form>
                             </>
                         )}
                     </motion.div>
                 )}
             </AnimatePresence>
-            <p className="mt-6 text-center text-[9px] text-zinc-700 font-medium">By entering, you accept the <span className="text-zinc-500 hover:text-red-500 cursor-pointer transition-colors">Shadow Laws</span>.</p>
+            <p className="mt-6 text-center text-[9px] text-zinc-700 font-medium">By entering, you accept the <span className="text-zinc-500 hover:text-primary-500 cursor-pointer transition-colors">Shadow Laws</span>.</p>
         </div>
       </DialogContent>
     </Dialog>

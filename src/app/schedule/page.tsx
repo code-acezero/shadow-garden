@@ -4,7 +4,7 @@ import React, { useState, useRef, useMemo, useEffect } from 'react';
 import Link from 'next/link';
 import useSWR from 'swr';
 import { useRouter } from 'next/navigation';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion, AnimatePresence, Variants } from 'framer-motion';
 import { 
   Calendar, ChevronLeft, ChevronRight, 
   PlayCircle, Timer, AlertCircle, Layers, Star, 
@@ -18,13 +18,13 @@ import { HoverCard, HoverCardContent, HoverCardTrigger } from "@/components/ui/h
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { demoness, hunters } from '@/lib/fonts';
 
-// --- ANIMATION VARIANTS ---
-const containerVariants = {
+// --- ANIMATION VARIANTS (Fixed TS Errors) ---
+const containerVariants: Variants = {
   hidden: { opacity: 0 },
   show: { opacity: 1, transition: { staggerChildren: 0.05 } }
 };
 
-const itemVariants = {
+const itemVariants: Variants = {
   hidden: { opacity: 0, y: 15 },
   show: { opacity: 1, y: 0, transition: { type: "spring", stiffness: 70, damping: 12 } }
 };
@@ -34,8 +34,8 @@ const itemVariants = {
 const SectionHeader = ({ title, icon: Icon, subtitle }: { title: string, icon: any, subtitle?: string }) => (
     <div className="flex flex-col gap-1 mb-6">
         <div className="flex items-center gap-3">
-            <div className="p-2 bg-red-600/10 rounded-lg border border-red-500/20 shadow-[0_0_15px_rgba(220,38,38,0.2)]">
-                <Icon size={18} className="text-red-500" />
+            <div className="p-2 bg-primary-600/10 rounded-lg border border-primary-500/20 shadow-[0_0_15px_rgba(220,38,38,0.2)]">
+                <Icon size={18} className="text-primary-500" />
             </div>
             <h3 className={`text-xl md:text-2xl text-white tracking-widest ${hunters.className}`}>
                 {title}
@@ -56,7 +56,7 @@ const AnimeTooltipContent = ({ displayData, isLoading }: { displayData: any, isL
             />
             <div className="absolute inset-0 bg-gradient-to-t from-[#080808] via-[#080808]/40 to-transparent" />
             <div className="absolute bottom-4 left-5 right-5">
-                <span className="inline-block px-2 py-0.5 mb-2 bg-red-600 text-white text-[10px] font-bold uppercase tracking-wider rounded-sm font-sans">
+                <span className="inline-block px-2 py-0.5 mb-2 bg-primary-600 text-white text-[10px] font-bold uppercase tracking-wider rounded-sm font-sans">
                     {displayData.type || 'TV'}
                 </span>
                 <h4 className="text-xl font-black text-white leading-none line-clamp-2 drop-shadow-md font-sans">
@@ -70,7 +70,7 @@ const AnimeTooltipContent = ({ displayData, isLoading }: { displayData: any, isL
         <div className="p-5 space-y-4 bg-[#080808] relative font-sans">
             <div className="flex items-center justify-between text-xs">
                 <div className="flex items-center gap-3 text-zinc-300">
-                    <span className="flex items-center gap-1.5"><Clock size={12} className="text-red-500" /> {displayData.stats?.duration || displayData.duration || '? min'}</span>
+                    <span className="flex items-center gap-1.5"><Clock size={12} className="text-primary-500" /> {displayData.stats?.duration || displayData.duration || '? min'}</span>
                     <span className="w-1 h-1 rounded-full bg-zinc-700" />
                     <span className="flex items-center gap-1"><Star size={12} className="text-yellow-500" /> {displayData.stats?.malScore || displayData.malScore || 'N/A'}</span>
                 </div>
@@ -126,7 +126,7 @@ const MobileInfoBtn = ({ anime }: { anime: any }) => {
                     {/* CLOSE BUTTON */}
                     <button 
                         onClick={() => setIsOpen(false)}
-                        className="absolute top-3 right-3 z-50 p-1.5 bg-black/50 hover:bg-red-600/80 backdrop-blur-md rounded-full text-white border border-white/10 transition-colors"
+                        className="absolute top-3 right-3 z-50 p-1.5 bg-black/50 hover:bg-primary-600/80 backdrop-blur-md rounded-full text-white border border-white/10 transition-colors"
                     >
                         <X size={14} />
                     </button>
@@ -168,10 +168,10 @@ const ScheduleCard = ({ anime }: { anime: any }) => {
         <motion.div variants={itemVariants} layoutId={`schedule-${anime.id}`} className="relative group">
             <MobileInfoBtn anime={anime} />
             <QTip anime={anime} trigger={
-                <Link href={`/watch/${anime.id}`} className="flex w-full items-stretch h-20 md:h-24 rounded-2xl bg-[#0f0f0f] border border-white/5 hover:border-red-500/30 transition-all active:scale-[0.98] overflow-hidden">
-                    <div className="w-16 md:w-20 bg-white/5 flex flex-col items-center justify-center border-r border-white/5 group-hover:bg-red-600/10 group-hover:border-red-500/20 transition-colors">
+                <Link href={`/watch/${anime.id}`} className="flex w-full items-stretch h-20 md:h-24 rounded-2xl bg-[#0f0f0f] border border-white/5 hover:border-primary-500/30 transition-all active:scale-[0.98] overflow-hidden">
+                    <div className="w-16 md:w-20 bg-white/5 flex flex-col items-center justify-center border-r border-white/5 group-hover:bg-primary-600/10 group-hover:border-primary-500/20 transition-colors">
                         <span className="text-sm md:text-lg font-black text-white">{anime.time}</span>
-                        <span className="text-[8px] font-bold text-zinc-500 uppercase tracking-wider group-hover:text-red-400">JST</span>
+                        <span className="text-[8px] font-bold text-zinc-500 uppercase tracking-wider group-hover:text-primary-400">JST</span>
                     </div>
                     <div className="flex-1 flex flex-col justify-center px-4 py-2 min-w-0">
                         <h3 className="text-xs md:text-sm font-bold text-zinc-200 group-hover:text-white transition-colors line-clamp-1 mb-1 pr-6">
@@ -179,15 +179,15 @@ const ScheduleCard = ({ anime }: { anime: any }) => {
                         </h3>
                         <p className="text-[10px] text-zinc-500 line-clamp-1 italic mb-2">{anime.jname}</p>
                         <div className="flex items-center gap-2">
-                            <span className="px-2 py-0.5 bg-white/5 rounded text-[9px] font-bold text-zinc-400 border border-white/5 group-hover:border-red-500/20 group-hover:text-red-400 transition-colors">
+                            <span className="px-2 py-0.5 bg-white/5 rounded text-[9px] font-bold text-zinc-400 border border-white/5 group-hover:border-primary-500/20 group-hover:text-primary-400 transition-colors">
                                 EP {anime.episode || '?'}
                             </span>
-                            <div className="w-4 h-4 rounded-full bg-red-600 flex items-center justify-center opacity-0 -translate-x-2 group-hover:opacity-100 group-hover:translate-x-0 transition-all duration-300">
+                            <div className="w-4 h-4 rounded-full bg-primary-600 flex items-center justify-center opacity-0 -translate-x-2 group-hover:opacity-100 group-hover:translate-x-0 transition-all duration-300">
                                 <PlayCircle size={10} className="text-white fill-white" />
                             </div>
                         </div>
                     </div>
-                    <div className="absolute inset-0 bg-gradient-to-r from-transparent via-transparent to-red-900/10 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none" />
+                    <div className="absolute inset-0 bg-gradient-to-r from-transparent via-transparent to-primary-900/10 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none" />
                 </Link>
             } />
         </motion.div>
@@ -212,7 +212,7 @@ const CompactAnimeCard = ({ anime, rank }: { anime: any, rank?: number }) => (
                 )}
             </div>
             <div className="flex-1 min-w-0 pr-6">
-                <h4 className="text-[11px] md:text-xs font-bold text-zinc-300 truncate group-hover:text-red-400 transition-colors">
+                <h4 className="text-[11px] md:text-xs font-bold text-zinc-300 truncate group-hover:text-primary-400 transition-colors">
                     {anime.title}
                 </h4>
                 <div className="flex items-center gap-2 mt-1">
@@ -307,33 +307,32 @@ const TopChartCard = ({ anime, rank, index, mobileActiveIndex, onMobileClick }: 
                 {rank}
             </div>
 
-            <QTip anime={anime} side={isRightEdge ? "left" : "right"} trigger={
-                <Link href={`/watch/${anime.id}`} className={cn(
-                    "block w-full h-full relative bg-[#0a0a0a] rounded-xl overflow-hidden shadow-[0_10px_30px_-5px_rgba(0,0,0,0.8)] transition-all ring-1 ring-white/10",
-                    isMobileActive ? "ring-red-500/50 shadow-[0_20px_50px_rgba(220,38,38,0.3)]" : "group-hover:ring-red-500/50 group-hover:shadow-[0_20px_50px_rgba(220,38,38,0.3)]"
-                )}>
-                    <div className="absolute inset-0 rounded-xl border-r border-t border-white/20 z-20 pointer-events-none" />
-                    <div className="absolute inset-y-0 left-0 w-1/3 bg-gradient-to-r from-black/90 to-transparent z-20 pointer-events-none mix-blend-multiply" />
-                    <img src={anime.poster} alt={anime.title} className="w-full h-full object-cover opacity-80 group-hover:opacity-100 transition-opacity" loading="lazy" />
-                    <div className={cn("absolute inset-0 bg-gradient-to-tr from-white/10 to-transparent opacity-0 transition-opacity duration-500 pointer-events-none z-30", isMobileActive ? "opacity-100" : "group-hover:opacity-100")} />
-                    <div className="absolute inset-0 bg-gradient-to-t from-black via-black/20 to-transparent z-10" />
-                    <div className={cn("absolute bottom-0 left-0 w-full p-3 md:p-4 transform transition-transform duration-300 z-30", isMobileActive ? "translate-y-0" : "translate-y-2 group-hover:translate-y-0")}>
-                        <h3 className={cn("text-xs md:text-sm font-bold text-white line-clamp-2 leading-tight transition-colors drop-shadow-md pr-2", isMobileActive ? "text-red-200" : "group-hover:text-red-200")}>
-                            {anime.title}
-                        </h3>
-                        <div className={cn("flex items-center gap-2 mt-2 transition-opacity duration-300 delay-75", isMobileActive ? "opacity-100" : "opacity-0 group-hover:opacity-100")}>
-                            <span className="text-[9px] text-zinc-300 bg-black/50 backdrop-blur-md px-1.5 py-0.5 rounded border border-white/10">
-                                EPS {anime.episodes?.sub || '?'}
+            {/* QTip Removed for Top 10 List - Direct Link Used */}
+            <Link href={`/watch/${anime.id}`} className={cn(
+                "block w-full h-full relative bg-[#0a0a0a] rounded-xl overflow-hidden shadow-[0_10px_30px_-5px_rgba(0,0,0,0.8)] transition-all ring-1 ring-white/10",
+                isMobileActive ? "ring-red-500/50 shadow-[0_20px_50px_rgba(220,38,38,0.3)]" : "group-hover:ring-red-500/50 group-hover:shadow-[0_20px_50px_rgba(220,38,38,0.3)]"
+            )}>
+                <div className="absolute inset-0 rounded-xl border-r border-t border-white/20 z-20 pointer-events-none" />
+                <div className="absolute inset-y-0 left-0 w-1/3 bg-gradient-to-r from-black/90 to-transparent z-20 pointer-events-none mix-blend-multiply" />
+                <img src={anime.poster} alt={anime.title} className="w-full h-full object-cover opacity-80 group-hover:opacity-100 transition-opacity" loading="lazy" />
+                <div className={cn("absolute inset-0 bg-gradient-to-tr from-white/10 to-transparent opacity-0 transition-opacity duration-500 pointer-events-none z-30", isMobileActive ? "opacity-100" : "group-hover:opacity-100")} />
+                <div className="absolute inset-0 bg-gradient-to-t from-black via-black/20 to-transparent z-10" />
+                <div className={cn("absolute bottom-0 left-0 w-full p-3 md:p-4 transform transition-transform duration-300 z-30", isMobileActive ? "translate-y-0" : "translate-y-2 group-hover:translate-y-0")}>
+                    <h3 className={cn("text-xs md:text-sm font-bold text-white line-clamp-2 leading-tight transition-colors drop-shadow-md pr-2", isMobileActive ? "text-primary-200" : "group-hover:text-primary-200")}>
+                        {anime.title}
+                    </h3>
+                    <div className={cn("flex items-center gap-2 mt-2 transition-opacity duration-300 delay-75", isMobileActive ? "opacity-100" : "opacity-0 group-hover:opacity-100")}>
+                        <span className="text-[9px] text-zinc-300 bg-black/50 backdrop-blur-md px-1.5 py-0.5 rounded border border-white/10">
+                            EPS {anime.episodes?.sub || '?'}
+                        </span>
+                        {isMobileActive && (
+                            <span className="text-[9px] text-primary-400 font-bold uppercase tracking-wider animate-pulse">
+                                Watch
                             </span>
-                            {isMobileActive && (
-                                <span className="text-[9px] text-red-400 font-bold uppercase tracking-wider animate-pulse">
-                                    Watch
-                                </span>
-                            )}
-                        </div>
+                        )}
                     </div>
-                </Link>
-            } />
+                </div>
+            </Link>
         </motion.div>
     );
 };
@@ -345,10 +344,10 @@ const DaySelector = ({ selectedDate, onSelect }: { selectedDate: Date, onSelect:
 
     return (
         <div className="w-full border-b border-white/5 bg-[#050505]/80 backdrop-blur-xl z-40 sticky top-0 transition-all">
-            <div className="max-w-[1440px] mx-auto px-4 md:px-8 py-3 flex items-center gap-4">
+            <div className="max-w-[1350px] mx-auto px-4 md:px-8 py-3 flex items-center gap-4">
                 <button 
                     onClick={() => onSelect(new Date())}
-                    className="hidden md:flex flex-col items-center justify-center h-[60px] px-4 rounded-xl border border-red-500/20 bg-red-500/10 text-red-500 hover:bg-red-500 hover:text-white transition-all shrink-0"
+                    className="hidden md:flex flex-col items-center justify-center h-[60px] px-4 rounded-xl border border-primary-500/20 bg-primary-500/10 text-primary-500 hover:bg-primary-500 hover:text-white transition-all shrink-0"
                 >
                     <span className="text-[8px] font-black uppercase tracking-widest">Jump To</span>
                     <span className="text-sm font-bold">TODAY</span>
@@ -362,7 +361,7 @@ const DaySelector = ({ selectedDate, onSelect }: { selectedDate: Date, onSelect:
                             <button key={i} onClick={() => onSelect(date)} className={cn("flex flex-col items-center justify-center min-w-[50px] md:min-w-[56px] h-[56px] md:h-[60px] rounded-xl border transition-all duration-300 snap-center shrink-0 relative overflow-hidden group", isSelected ? "bg-white text-black border-white scale-100 z-10 font-bold shadow-lg shadow-white/10" : "bg-white/5 border-white/5 text-zinc-500 hover:bg-white/10 hover:text-zinc-300")}>
                                 <span className="text-[8px] font-bold uppercase tracking-wider opacity-80">{format(date, 'EEE')}</span>
                                 <span className={cn("text-lg md:text-xl font-black font-[Cinzel] leading-none mt-0.5", isSelected ? "text-black" : "text-zinc-400 group-hover:text-white")}>{format(date, 'dd')}</span>
-                                {isToday && !isSelected && <span className="absolute top-1 right-1 w-1.5 h-1.5 bg-red-500 rounded-full" />}
+                                {isToday && !isSelected && <span className="absolute top-1 right-1 w-1.5 h-1.5 bg-primary-500 rounded-full" />}
                             </button>
                         );
                     })}
@@ -433,26 +432,26 @@ export default function SchedulePage() {
   const handleUpcomingPage = (dir: number) => setUpcomingPage(p => Math.max(1, Math.min(p + dir, upcomingTotalPages)));
 
   return (
-    <div className="min-h-screen w-full bg-[#050505] font-sans text-zinc-100 overflow-x-hidden selection:bg-red-500/30">
+    <div className="min-h-screen w-full bg-[#050505] font-sans text-zinc-100 overflow-x-hidden selection:bg-primary-500/30">
       <style jsx global>{`
         html, body { overflow-x: hidden; scrollbar-width: none; -ms-overflow-style: none; }
         body::-webkit-scrollbar { display: none; }
       `}</style>
 
       <div className="fixed inset-0 pointer-events-none z-0">
-          <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[800px] h-[500px] bg-red-900/10 blur-[120px] rounded-full mix-blend-screen opacity-30" />
+          <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[800px] h-[500px] bg-primary-900/10 blur-[120px] rounded-full mix-blend-screen opacity-30" />
       </div>
       
       <div className="relative z-10 flex flex-col items-center w-full pb-20">
           
-          <div className="w-full max-w-[1440px] px-4 md:px-8 mt-24 mb-10 flex flex-col md:flex-row justify-between items-start md:items-end gap-6">
+          <div className="w-full max-w-[1350px] px-4 md:px-8 mt-24 mb-10 flex flex-col md:flex-row justify-between items-start md:items-end gap-6">
               <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}>
                   <div className="flex items-center gap-3 mb-3">
-                      <div className="h-px w-8 bg-red-600" />
-                      <span className={`text-red-600 text-xs tracking-[0.3em] font-bold uppercase ${hunters.className}`}>Guild Operations</span>
+                      <div className="h-px w-8 bg-primary-600" />
+                      <span className={`text-primary-600 text-xs tracking-[0.3em] font-bold uppercase ${hunters.className}`}>Guild Operations</span>
                   </div>
                   <h1 className={`text-4xl md:text-6xl text-white ${demoness.className} leading-none`}>
-                      CHRONO<span className="text-transparent bg-clip-text bg-gradient-to-br from-red-500 to-red-900">SPHERE</span>
+                      CHRONO<span className="text-transparent bg-clip-text bg-gradient-to-br from-primary-500 to-primary-900">SPHERE</span>
                   </h1>
               </motion.div>
               <div className="hidden md:block text-right">
@@ -466,7 +465,7 @@ export default function SchedulePage() {
 
           <DaySelector selectedDate={selectedDate} onSelect={setSelectedDate} />
 
-          <div className="w-full max-w-[1440px] px-4 md:px-8 mt-12 space-y-20">
+          <div className="w-full max-w-[1350px] px-4 md:px-8 mt-12 space-y-20">
 
               {/* SECTION 1: SCHEDULE GRID */}
               <section>
@@ -497,7 +496,7 @@ export default function SchedulePage() {
                       <SectionHeader title="Dominating Charts" icon={Flame} subtitle="Most active operations currently engaged" />
                       <div className="flex p-1 bg-white/5 rounded-full border border-white/5 backdrop-blur-md">
                           {(['today', 'week', 'month'] as const).map((tab) => (
-                              <button key={tab} onClick={() => setTopTab(tab)} className={cn("px-5 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest transition-all", topTab === tab ? "bg-red-600 text-white shadow-lg shadow-red-900/40" : "text-zinc-500 hover:text-white")}>{tab}</button>
+                              <button key={tab} onClick={() => setTopTab(tab)} className={cn("px-5 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest transition-all", topTab === tab ? "bg-primary-600 text-white shadow-lg shadow-primary-900/40" : "text-zinc-500 hover:text-white")}>{tab}</button>
                           ))}
                       </div>
                   </div>
@@ -568,7 +567,7 @@ export default function SchedulePage() {
                           <div key={`${anime.id}-${idx}`} className="relative group">
                               <MobileInfoBtn anime={anime} />
                               <QTip anime={anime} trigger={
-                                  <Link href={`/watch/${anime.id}`} className="group relative aspect-[2/3] block rounded-xl overflow-hidden bg-zinc-900 border border-white/5 hover:border-red-500/50 hover:shadow-[0_0_20px_rgba(220,38,38,0.2)] transition-all">
+                                  <Link href={`/watch/${anime.id}`} className="group relative aspect-[2/3] block rounded-xl overflow-hidden bg-zinc-900 border border-white/5 hover:border-primary-500/50 hover:shadow-[0_0_20px_rgba(220,38,38,0.2)] transition-all">
                                       <img src={anime.poster} className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110 opacity-70 group-hover:opacity-100 grayscale group-hover:grayscale-0" loading="lazy" />
                                       <div className="absolute inset-0 bg-gradient-to-t from-black via-transparent to-transparent" />
                                       <div className="absolute bottom-0 left-0 w-full p-3">

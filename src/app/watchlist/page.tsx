@@ -161,7 +161,7 @@ function WatchlistContent() {
                                 poster: item.episode_image || info?.poster || "/images/no-poster.png",
                                 episode: item.episode_number,
                                 episodeId: item.episode_id,
-                                progress: Math.min(Math.round((item.progress / (item.duration || 1440)) * 100), 100),
+                                progress: Math.min(Math.round((item.progress / (item.duration || 1350)) * 100), 100),
                                 totalEpisodes: info?.totalEpisodes || item.total_episodes || "?",
                                 type: info?.type || item.type || "TV",
                                 ageRating: info?.ageRating || null,
@@ -235,7 +235,7 @@ function WatchlistContent() {
 
     return (
         <div className="flex-1 pt-24 pb-20">
-            <div className="max-w-[1440px] mx-auto w-full">
+            <div className="max-w-[1350px] mx-auto w-full">
                 
                 {/* --- HEADER --- */}
                 <div className="flex flex-col gap-6 mb-10 px-4 md:px-8">
@@ -243,11 +243,11 @@ function WatchlistContent() {
                         <div className="w-full md:w-auto flex justify-between items-center">
                             <div>
                                 <div className="flex items-center gap-2 mb-1">
-                                    <div className="h-px w-6 bg-red-600" />
-                                    <span className={`text-red-600 text-[10px] tracking-[0.2em] font-bold uppercase ${hunters.className}`}>Archives</span>
+                                    <div className="h-px w-6 bg-primary-600" />
+                                    <span className={`text-primary-600 text-[10px] tracking-[0.2em] font-bold uppercase ${hunters.className}`}>Archives</span>
                                 </div>
                                 <h1 className={`text-2xl md:text-5xl text-white ${demoness.className}`}>
-                                    SHADOW <span className="text-red-600">LIBRARY</span>
+                                    SHADOW <span className="text-primary-600">LIBRARY</span>
                                 </h1>
                             </div>
                             {user && (
@@ -284,7 +284,7 @@ function WatchlistContent() {
                                     placeholder="Search archives..." 
                                     value={searchQuery}
                                     onChange={(e) => setSearchQuery(e.target.value)}
-                                    className="bg-white/5 border-white/10 pl-9 h-12 rounded-xl focus:border-red-500/50 text-white w-full" 
+                                    className="bg-white/5 border-white/10 pl-9 h-12 rounded-xl focus:border-primary-500/50 text-white w-full" 
                                 />
                             </div>
 
@@ -311,9 +311,9 @@ function WatchlistContent() {
                                 className={cn(
                                     "flex items-center gap-2 px-5 py-2.5 rounded-full border text-[10px] font-black uppercase tracking-widest transition-all whitespace-nowrap flex-shrink-0",
                                     activeTab === tab.id 
-                                        ? "bg-red-600 border-red-500 text-white shadow-lg shadow-red-900/40 scale-105" 
+                                        ? "bg-primary-600 border-primary-500 text-white shadow-lg shadow-primary-900/40 scale-105" 
                                         : "bg-white/5 border-white/5 text-zinc-500 hover:bg-white/10 hover:text-white",
-                                    tab.highlight && activeTab !== tab.id && "border-red-500/30 text-red-400"
+                                    tab.highlight && activeTab !== tab.id && "border-primary-500/30 text-primary-400"
                                 )}
                             >
                                 {tab.icon} {tab.label} {user && <span className="opacity-40">({tab.count})</span>}
@@ -323,7 +323,7 @@ function WatchlistContent() {
                     {activeTab === 'continue' && user && continueData.length > 0 && (
                         <AlertDialog>
                             <AlertDialogTrigger asChild>
-                                <Button variant="destructive" size="icon" className="h-9 w-9 ml-4 rounded-xl bg-red-500/10 text-red-500 border border-red-500/20 shrink-0">
+                                <Button variant="destructive" size="icon" className="h-9 w-9 ml-4 rounded-xl bg-primary-500/10 text-primary-500 border border-primary-500/20 shrink-0">
                                     <Trash2 size={16} />
                                 </Button>
                             </AlertDialogTrigger>
@@ -337,7 +337,7 @@ function WatchlistContent() {
                                     <AlertDialogAction onClick={async () => {
                                         await supabase.from('user_continue_watching').delete().eq('user_id', user.id);
                                         setContinueData([]);
-                                    }} className="bg-red-600">Confirm Wipe</AlertDialogAction>
+                                    }} className="bg-primary-600">Confirm Wipe</AlertDialogAction>
                                 </AlertDialogFooter>
                             </AlertDialogContent>
                         </AlertDialog>
@@ -398,7 +398,7 @@ function WatchlistContent() {
 // --- WRAPPER PAGE WITH SUSPENSE ---
 export default function WatchlistPage() {
     return (
-        <div className="min-h-screen bg-[#050505] text-white flex flex-col font-sans selection:bg-red-500/30 overflow-x-hidden">
+        <div className="min-h-screen bg-[#050505] text-white flex flex-col font-sans selection:bg-primary-500/30 overflow-x-hidden">
             <style jsx global>{`
                 html, body { overflow-x: hidden; scrollbar-width: none; -ms-overflow-style: none; }
                 body::-webkit-scrollbar { display: none; }

@@ -1,461 +1,671 @@
 "use client";
 
-import React, { useState } from 'react';
-import { 
-  User, Play, Monitor, Shield, Database, 
-  ChevronRight, RefreshCw, Trash2, LogOut, 
-  Languages, Sparkles, Server, Volume2, 
-  Bell, Lock, Wifi, Eye, Moon, Zap, 
-  Download, FileJson, AlertTriangle, Layers,
-  Keyboard, Type, Speaker, Fingerprint
+import React, { useState, useRef, useEffect, useMemo } from 'react';
+import {
+  User, Play, Monitor, Shield, Database,
+  Trash2, LogOut, Server, Palette, 
+  Bell, Lock, Eye, Download, FileJson,
+  AlertTriangle, Layers, Type, Speaker, Fingerprint,
+  HardDrive, Mail, Key, Crown, RefreshCw,
+  SkipForward, FastForward, ChevronDown, Check, X,
+  Volume2, Settings as SettingsIcon,
+  LayoutTemplate, Brush, Sun, Moon, Sparkles, Sidebar,
+  Mic2, Radio, Menu, ArrowLeft, ChevronRight, Zap,
+  Globe, Pause, PanelLeftClose, PanelLeftOpen, AudioWaveform
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { useSettings, AppSettings } from '@/hooks/useSettings'; 
+import { useSettings } from '@/hooks/useSettings';
+import { useAuth } from '@/context/AuthContext';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
+import { useRouter } from 'next/navigation';
+import { supabase } from '@/lib/supabase';
+import { cn } from '@/lib/utils';
+import AnimePlayer from '@/components/Player/AnimePlayer';
+import Footer from '@/components/Anime/Footer';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { refreshVoiceCache, getVoiceSettings } from '@/lib/voice';
 
-// --- TABS CONFIGURATION ---
-const TABS = [
-  { id: 'general', label: 'Profile & Account', icon: User },
-  { id: 'player', label: 'Player & Audio', icon: Play },
-  { id: 'appearance', label: 'Look & Feel', icon: Sparkles },
-  { id: 'content', label: 'Content & Lang', icon: Languages },
-  { id: 'notifications', label: 'Notifications', icon: Bell },
-  { id: 'data', label: 'Data & Storage', icon: Database },
+// --- CONSTANTS ---
+const THEME_COLORS = [
+  { id: 'red', hex: '#dc2626', label: 'Crimson' }, { id: 'rose', hex: '#e11d48', label: 'Rose' },
+  { id: 'orange', hex: '#ea580c', label: 'Sunset' }, { id: 'gold', hex: '#d97706', label: 'Gold' },
+  { id: 'lime', hex: '#84cc16', label: 'Lime' }, { id: 'green', hex: '#16a34a', label: 'Emerald' },
+  { id: 'teal', hex: '#0d9488', label: 'Teal' }, { id: 'cyan', hex: '#0891b2', label: 'Neon' },
+  { id: 'blue', hex: '#2563eb', label: 'Royal' }, { id: 'indigo', hex: '#4f46e5', label: 'Indigo' },
+  { id: 'violet', hex: '#7c3aed', label: 'Violet' }, { id: 'purple', hex: '#9333ea', label: 'Amethyst' },
+  { id: 'pink', hex: '#db2777', label: 'Magenta' }, { id: 'mono', hex: '#52525b', label: 'Mono' },
 ];
 
-export default function Settings() {
-  const [activeTab, setActiveTab] = useState('general');
-  const { settings, updateSetting, resetSettings } = useSettings();
+const SUB_STYLES = {
+    colors: { White: '#ffffff', Yellow: '#fbbf24', Cyan: '#22d3ee', Red: '#f87171', Green: '#4ade80', Purple: '#c084fc', Black: '#000000' },
+    sizes: { Small: '14px', Normal: '20px', Large: '28px', Huge: '36px' },
+    backgrounds: { None: 'transparent', Outline: 'text-shadow', Box: 'smart', Blur: 'smart-blur' },
+    fonts: { Sans: "'Inter', sans-serif", Serif: "'Merriweather', serif", Mono: "'JetBrains Mono', monospace", Hand: "'BadUnicorn', sans-serif", Anime: "'Monas', sans-serif" }
+};
 
-  // Helper for boolean toggles
-  const handleToggle = (key: any, val: boolean) => {
-    updateSetting(key, val);
+const APP_FONTS: Record<string, string> = {
+    hunters: 'var(--font-hunters)', badUnicorn: 'BadUnicorn', demoness: 'Demoness', horrorshow: 'Horrorshow', kareudon: 'Kareudon', monas: 'Monas', nyctophobia: 'Nyctophobia', onePiece: 'One Piece', inter: '"Inter", sans-serif'
+};
+
+const MENU_ITEMS = [
+  { id: 'general', label: 'Adventurer Card', icon: Fingerprint },
+  { id: 'player', label: 'Crystal Ball', icon: Play },
+  { id: 'appearance', label: 'Visual Grimoire', icon: Palette },
+  { id: 'whisper', label: 'Telepathy', icon: Mic2 },
+  { id: 'notifications', label: 'Missives', icon: Bell },
+  { id: 'data', label: 'Archive', icon: HardDrive },
+];
+
+// --- HELPER: WHISPER NOTIFICATION ---
+const notifyWhisper = (message: string, type: 'success' | 'error' | 'info' = 'success') => {
+    if (typeof window !== 'undefined') {
+        const event = new CustomEvent('shadow-whisper', { 
+            detail: { id: Date.now(), type, title: "System Settings", message } 
+        });
+        window.dispatchEvent(event);
+    }
+};
+
+export default function Settings() {
+  const { profile } = useAuth();
+  const { settings, updateSetting, resetSettings, storageUsage, clearCache } = useSettings();
+  
+  const [activeTab, setActiveTab] = useState('general');
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [isSidebarExpanded, setIsSidebarExpanded] = useState(true);
+  const [mounted, setMounted] = useState(false);
+  
+  const [passData, setPassData] = useState({ newPass: '', confirmPass: '' });
+  const [isChangingPass, setIsChangingPass] = useState(false);
+  
+  const [voices, setVoices] = useState<any[]>([]);
+  const [voicesLoaded, setVoicesLoaded] = useState(false);
+  const [playingVoice, setPlayingVoice] = useState<string | null>(null);
+  const [subStyle, setSubStyle] = useState({ color: 'White', size: 'Normal', bg: 'Box', font: 'Sans', lift: 'Middle' });
+  const [dummySubUrl, setDummySubUrl] = useState('');
+  
+  const audioRef = useRef<HTMLAudioElement | null>(null);
+  const audioContextRef = useRef<AudioContext | null>(null);
+  const contentRef = useRef<HTMLDivElement>(null);
+  const router = useRouter();
+
+  const isAuthenticated = !!(profile && profile.id && !profile.is_guest);
+
+  useEffect(() => { setMounted(true); refreshVoiceCache(); }, []);
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+        const savedSidebar = localStorage.getItem('shadow_sidebar_state');
+        const savedTab = localStorage.getItem('shadow_settings_tab');
+        const savedPlayer = localStorage.getItem('shadow_player_prefs');
+        if (savedSidebar !== null) setIsSidebarExpanded(JSON.parse(savedSidebar));
+        if (savedTab !== null) setActiveTab(savedTab);
+        if (savedPlayer) { try { setSubStyle(JSON.parse(savedPlayer).subStyle); } catch(e){} }
+    }
+    const blob = new Blob([`WEBVTT\n\n00:00:01.000 --> 00:00:04.000\nScales? I don't see any scales.\n\n00:00:04.500 --> 00:00:08.000\nThe world is changing. We must adapt or die.`], { type: 'text/vtt' });
+    const url = URL.createObjectURL(blob);
+    setDummySubUrl(url);
+    return () => URL.revokeObjectURL(url);
+  }, []);
+
+  // ✅ DYNAMIC VOICE FETCHING (Merges DB + Public Folder)
+  useEffect(() => {
+      if (mounted && activeTab === 'whisper' && !voicesLoaded) {
+          const fetchAsync = async () => {
+             try {
+                 // 1. Fetch DB Voices (User Uploaded)
+                 const { data: dbData } = await supabase.from('voice_packs').select('*');
+                 
+                 // 2. Fetch Public Folder Voices (Scanner API)
+                 let staticVoices = [];
+                 try {
+                     const res = await fetch('/api/system/voices');
+                     if (res.ok) {
+                         const json = await res.json();
+                         staticVoices = json.staticVoices || [];
+                     }
+                 } catch (e) {
+                     console.warn("System voice scanner unreachable:", e);
+                 }
+
+                 // 3. Merge & Normalize
+                 const allVoices = [...(dbData || []), ...staticVoices].map(v => ({
+                     id: v.id || v.name, // Fallback for static files
+                     name: v.character || v.name, // Unify name
+                     language: v.language || 'en',
+                     gender: v.gender || 'Unknown', 
+                     preview: v.file_url || v.preview || v.path, // Handle both DB url and file path
+                     is_db: !!v.created_at
+                 }));
+
+                 // Deduplicate by name + lang
+                 // We use a Map to ensure unique Name+Lang keys, preferring DB entries if duplicates exist
+                 const uniqueMap = new Map();
+                 allVoices.forEach(item => {
+                    const key = `${item.name}-${item.language}`;
+                    if(!uniqueMap.has(key)) uniqueMap.set(key, item);
+                 });
+                 
+                 setVoices(Array.from(uniqueMap.values()));
+                 setVoicesLoaded(true);
+             } catch (e) {
+                 console.error("Voice fetch failed", e);
+             }
+          }
+          fetchAsync();
+      }
+  }, [mounted, activeTab, voicesLoaded]);
+
+  // Grouping Logic: Language -> Character Name -> Array of Clips
+  const voiceLibrary = useMemo(() => {
+      return voices.reduce((acc: Record<string, any>, v: any) => {
+          const lang = v.language || 'en';
+          if (!acc[lang]) acc[lang] = {};
+          
+          const charName = v.name || 'Unknown';
+          if (!acc[lang][charName]) {
+              acc[lang][charName] = {
+                  name: charName,
+                  gender: v.gender,
+                  clips: []
+              };
+          }
+          // Add preview clip
+          if (v.preview) acc[lang][charName].clips.push(v.preview);
+          
+          return acc;
+      }, {});
+  }, [voices]);
+
+  // Preview Logic with Volume Boost
+  const handleVoicePreview = (charName: string, clips: string[]) => {
+      if (!clips || clips.length === 0) {
+          notifyWhisper("No audio crystals found.", "error");
+          return;
+      }
+
+      // Pick Random Clip
+      const randomUrl = clips[Math.floor(Math.random() * clips.length)];
+      
+      if (playingVoice === charName) {
+          audioRef.current?.pause();
+          setPlayingVoice(null);
+      } else {
+          if (audioRef.current) { 
+            audioRef.current.pause(); 
+            audioRef.current = null;
+          }
+          
+          const audio = new Audio(randomUrl);
+          audio.crossOrigin = "anonymous";
+          audioRef.current = audio;
+
+          // VOLUME BOOST LOGIC
+          if (settings.volumeBoost) {
+              try {
+                  if (!audioContextRef.current) {
+                      const AudioCtx = window.AudioContext || (window as any).webkitAudioContext;
+                      audioContextRef.current = new AudioCtx();
+                  }
+                  const ctx = audioContextRef.current;
+                  if(ctx && ctx.state === 'suspended') ctx.resume();
+
+                  if (ctx) {
+                      const source = ctx.createMediaElementSource(audio);
+                      const gainNode = ctx.createGain();
+                      gainNode.gain.value = 2.0; 
+                      source.connect(gainNode);
+                      gainNode.connect(ctx.destination);
+                  }
+              } catch(e) { console.warn("Audio Context Error", e); }
+          } else {
+              audio.volume = 1.0;
+          }
+
+          audio.onended = () => setPlayingVoice(null);
+          audio.play().catch(() => notifyWhisper("Audio artifact corrupted.", "error"));
+          setPlayingVoice(charName);
+      }
   };
 
-  // --- RENDER CONTENT ---
+  const selectVoicePack = (name: string, lang: string) => {
+      const newSettings = { ...getVoiceSettings(), pack: name, language: lang };
+      localStorage.setItem('shadow_voice_settings', JSON.stringify(newSettings));
+      updateSetting('whisperVoice', name); 
+      
+      notifyWhisper(`Voice pact formed with ${name}.`, "success");
+      
+      if (profile) {
+          supabase.from('profiles').update({ voice_pack: name }).eq('id', profile.id).then();
+      }
+  };
+
+  const toggleSidebar = () => {
+      setIsSidebarExpanded(!isSidebarExpanded);
+      localStorage.setItem('shadow_sidebar_state', JSON.stringify(!isSidebarExpanded));
+  };
+
+  const changeTab = (id: string) => {
+      setActiveTab(id);
+      localStorage.setItem('shadow_settings_tab', id);
+      setMobileMenuOpen(false);
+      contentRef.current?.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  const updatePlayerPref = (key: string, value: any) => {
+      const current = JSON.parse(localStorage.getItem('shadow_player_prefs') || '{}');
+      const newState = { ...current, subStyle: { ...(current.subStyle || {}), ...value } };
+      if (key === 'subStyle') setSubStyle(newState.subStyle);
+      localStorage.setItem('shadow_player_prefs', JSON.stringify(newState));
+  };
+
+  const handleGlobalAction = (action: string) => {
+      if (typeof window !== 'undefined') window.dispatchEvent(new CustomEvent(action));
+  };
+
+  const handleChangePassword = async () => {
+      if (!isAuthenticated) return notifyWhisper("Log in required", "error");
+      if (passData.newPass !== passData.confirmPass) return notifyWhisper("Mismatch", "error");
+      setIsChangingPass(true);
+      try {
+          await supabase.auth.updateUser({ password: passData.newPass });
+          notifyWhisper("Updated", "success");
+          setPassData({ newPass: '', confirmPass: '' });
+      } catch(e: any) { notifyWhisper(e.message, "error"); }
+      finally { setIsChangingPass(false); }
+  };
+
+  const handleExport = () => {
+    const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(settings));
+    const downloadAnchorNode = document.createElement('a');
+    downloadAnchorNode.setAttribute("href", dataStr);
+    downloadAnchorNode.setAttribute("download", `shadow_config_${new Date().toISOString().split('T')[0]}.json`);
+    document.body.appendChild(downloadAnchorNode);
+    downloadAnchorNode.click();
+    downloadAnchorNode.remove();
+    notifyWhisper("Config Exported", "success");
+  };
+
+  const currentFont = APP_FONTS[settings.fontFamily || 'hunters'] || 'var(--font-hunters)';
+
   const renderContent = () => {
     switch (activeTab) {
-      // ----------------------------------------------------------------------
-      // 1. GENERAL & ACCOUNT
-      // ----------------------------------------------------------------------
-      case 'general':
-        return (
-          <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
-            <SectionHeader title="Identity" desc="Manage your Shadow Garden persona" />
-            
-            {/* Profile Card */}
-            <div className="flex items-center gap-6 p-6 bg-gradient-to-r from-red-900/10 to-transparent border border-white/10 rounded-2xl relative overflow-hidden group">
-              <div className="absolute inset-0 bg-red-600/5 opacity-0 group-hover:opacity-100 transition-opacity" />
-              <div className="w-20 h-20 rounded-full bg-black border-2 border-red-500 shadow-[0_0_30px_rgba(220,38,38,0.4)] flex items-center justify-center overflow-hidden">
-                 <img src={settings.avatar || "https://api.dicebear.com/7.x/bottts/svg?seed=Shadow"} alt="Avatar" className="w-full h-full object-cover" />
-              </div>
-              <div className="flex-1 z-10">
-                <label className="text-[10px] text-red-400 font-bold uppercase tracking-[0.2em] mb-1 block">Codename</label>
-                <input 
-                  type="text" 
-                  value={settings.username || "Shadow"}
-                  onChange={(e) => updateSetting('username', e.target.value)}
-                  className="w-full bg-transparent text-3xl font-black text-white border-none focus:outline-none focus:ring-0 p-0 font-cinzel placeholder:text-white/20" 
-                  placeholder="ENTER NAME"
-                />
-                <p className="text-xs text-zinc-500 mt-2">ID: 8a63-2b91-4c0d</p>
-              </div>
-              <Button variant="outline" className="border-white/10 bg-black/40 hover:bg-red-600 hover:border-red-600 hover:text-white transition-all z-10">
-                Change ID
-              </Button>
-            </div>
-
-            <div className="grid gap-4 md:grid-cols-2">
-                <div className="bg-white/5 p-4 rounded-xl border border-white/10 space-y-4">
-                    <h4 className="text-sm font-bold text-zinc-300 flex items-center gap-2"><Lock size={14}/> Security</h4>
-                    <ToggleRow title="Two-Factor Auth" desc="Secure via Authenticator" checked={settings.twoFactor} onChange={(v: boolean) => handleToggle('twoFactor', v)} />
-                    <ToggleRow title="Login Alerts" desc="Email on new device login" checked={settings.loginAlerts} onChange={(v: boolean) => handleToggle('loginAlerts', v)} />
-                    <Button variant="secondary" className="w-full h-8 text-xs">Change Password</Button>
-                </div>
-                <div className="bg-white/5 p-4 rounded-xl border border-white/10 space-y-4">
-                    <h4 className="text-sm font-bold text-zinc-300 flex items-center gap-2"><Eye size={14}/> Privacy</h4>
-                    <ToggleRow title="Incognito Mode" desc="Don't save watch history" checked={settings.incognito} onChange={(v: boolean) => handleToggle('incognito', v)} />
-                    <ToggleRow title="Public Activity" desc="Show what I'm watching" checked={settings.publicActivity} onChange={(v: boolean) => handleToggle('publicActivity', v)} />
-                    <ToggleRow title="Allow Friend Requests" desc="Let others find you" checked={settings.allowRequests} onChange={(v: boolean) => handleToggle('allowRequests', v)} />
+      case 'general': return (
+          <div className="space-y-8 animate-in fade-in slide-in-from-right-4 duration-500 w-full">
+            <div className="relative overflow-hidden rounded-[32px] border border-white/10 bg-[#0f0f0f] shadow-2xl p-8 group">
+                <div className="absolute inset-0 bg-gradient-to-r from-primary/10 via-transparent to-transparent opacity-50" />
+                <div className="relative z-10 flex flex-col md:flex-row items-center gap-8">
+                    <div className="relative shrink-0">
+                        <div className="w-28 h-28 rounded-full bg-black border-4 border-white/5 flex items-center justify-center overflow-hidden shadow-[0_0_40px_var(--primary-color)]">
+                            <img src={settings.avatar || profile?.avatar_url || "https://api.dicebear.com/7.x/bottts/svg?seed=Shadow"} alt="Avatar" className="w-full h-full object-cover" />
+                        </div>
+                    </div>
+                    <div className="flex-1 text-center md:text-left space-y-2">
+                        <h2 className="text-3xl font-black text-white tracking-tight drop-shadow-md font-sans">{profile?.username || "Shadow Agent"}</h2>
+                        <div className="flex flex-col md:flex-row items-center gap-3">
+                            <span className="text-xs font-bold text-zinc-400 uppercase tracking-widest bg-white/5 px-3 py-1 rounded-full">{profile?.username || "Guest"}</span>
+                            <span className={`flex items-center gap-1.5 px-3 py-1 rounded-full border text-[9px] font-black uppercase tracking-wider ${profile?.role === 'admin' ? 'bg-red-500/10 border-red-500/30 text-red-400' : 'bg-blue-500/10 border-blue-500/30 text-blue-400'}`}>
+                                <Crown size={10} /> {profile?.role === 'admin' ? 'Guild Master' : 'Adventurer'}
+                            </span>
+                        </div>
+                    </div>
                 </div>
             </div>
 
-            <SettingRow 
-              icon={LogOut} 
-              title="Disengage" 
-              desc="Sign out of your account on this device"
-              action={<Button variant="destructive" size="sm" className="bg-red-900/20 text-red-500 hover:bg-red-600 hover:text-white border border-red-900/50">Log Out</Button>}
-            />
+            {isAuthenticated ? (
+                <div className="bg-[#0f0f0f] rounded-[32px] border border-white/5 p-8 shadow-lg">
+                    <h3 className="text-xs font-black text-zinc-500 uppercase tracking-widest mb-4 flex items-center gap-2"><Mail size={14} className="text-primary"/> Contact</h3>
+                    <div className="flex items-center justify-between p-4 bg-black/40 border border-white/5 rounded-2xl">
+                        <span className="text-sm font-mono text-zinc-300">{profile?.email}</span>
+                        <div className="flex items-center gap-1 text-[9px] font-black text-green-400 bg-green-900/20 px-2 py-1 rounded-md border border-green-900/30 uppercase tracking-wider"><Check size={10}/> Verified</div>
+                    </div>
+                </div>
+            ) : (
+                <div className="bg-gradient-to-r from-blue-900/20 to-blue-900/5 border border-blue-500/20 rounded-[32px] p-8 flex flex-col md:flex-row items-center justify-between gap-6 shadow-lg">
+                    <div className="flex gap-6 items-center">
+                        <div className="p-4 bg-blue-500/20 rounded-2xl text-blue-400"><User size={28} /></div>
+                        <div><h4 className="font-bold text-white text-lg">Guest Mode</h4><p className="text-sm text-blue-200/60 mt-1 max-w-sm">Sign in to sync your data.</p></div>
+                    </div>
+                    <Button onClick={() => window.dispatchEvent(new CustomEvent('shadow-open-auth', { detail: { view: 'ENTER' } }))} className="bg-blue-600 hover:bg-blue-500 text-white px-8 h-12 rounded-xl font-bold shadow-lg">Connect</Button>
+                </div>
+            )}
+
+            <div className="grid gap-6 md:grid-cols-2">
+                <div className="bg-[#0f0f0f] rounded-[32px] border border-white/5 p-8 shadow-lg space-y-6">
+                    <h3 className="text-xs font-black text-zinc-500 uppercase tracking-widest flex items-center gap-2"><Lock size={14} className="text-primary"/> Security</h3>
+                    <ToggleRow title="Two-Factor Auth" desc="Secure via Authenticator" checked={settings.twoFactor} onChange={(v: boolean) => updateSetting('twoFactor', v)} />
+                    <div className="pt-4 border-t border-white/5 space-y-3">
+                        <label className="text-[10px] font-bold text-zinc-500 uppercase">Change Password</label>
+                        <input type="password" placeholder="New Password" value={passData.newPass} onChange={e => setPassData({...passData, newPass: e.target.value})} className="w-full bg-black/40 border border-white/5 rounded-xl px-4 py-3 text-sm text-white focus:border-primary/50 outline-none" />
+                        <input type="password" placeholder="Confirm" value={passData.confirmPass} onChange={e => setPassData({...passData, confirmPass: e.target.value})} className="w-full bg-black/40 border border-white/5 rounded-xl px-4 py-3 text-sm text-white focus:border-primary/50 outline-none" />
+                        <Button disabled={isChangingPass} onClick={handleChangePassword} className="w-full h-10 rounded-xl text-xs font-bold bg-white/5 hover:bg-primary hover:text-white border border-white/5">Update</Button>
+                    </div>
+                </div>
+                <div className="bg-[#0f0f0f] rounded-[32px] border border-white/5 p-8 shadow-lg space-y-6 h-fit">
+                    <h3 className="text-xs font-black text-zinc-500 uppercase tracking-widest flex items-center gap-2 text-red-500"><AlertTriangle size={14}/> Danger Zone</h3>
+                    <div className="space-y-3">
+                        <Button variant="outline" onClick={() => router.push('/?auth=forgot-password')} className="w-full h-12 rounded-xl border-white/5 bg-white/[0.02] hover:bg-white/5 text-zinc-400 font-bold justify-start px-4 text-xs"><RefreshCw size={14} className="mr-3"/> Reset Password</Button>
+                        <Button variant="destructive" onClick={() => handleGlobalAction('shadow-trigger-leave')} className="w-full h-12 rounded-xl bg-red-500/10 text-red-500 hover:bg-red-500/20 border border-red-500/20 font-bold justify-start px-4 text-xs"><Trash2 size={14} className="mr-3"/> Disengage Session</Button>
+                    </div>
+                </div>
+            </div>
           </div>
-        );
+      );
 
-      // ----------------------------------------------------------------------
-      // 2. PLAYER & AUDIO
-      // ----------------------------------------------------------------------
-      case 'player':
-        return (
-          <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
-            <SectionHeader title="Playback Automation" desc="Hands-free viewing experience" />
-            <div className="space-y-1 bg-white/5 rounded-2xl border border-white/10 overflow-hidden">
-              <ToggleRow title="Auto-Play Next" desc="Start next episode immediately" checked={settings.autoPlay} onChange={(v: boolean) => handleToggle('autoPlay', v)} />
-              <ToggleRow title="Auto-Skip Intro" desc="Skip OP sequences" checked={settings.autoSkipIntro} onChange={(v: boolean) => handleToggle('autoSkipIntro', v)} />
-              <ToggleRow title="Auto-Skip Outro" desc="Skip ED sequences" checked={settings.autoSkipOutro} onChange={(v: boolean) => handleToggle('autoSkipOutro', v)} />
-              <ToggleRow title="Continue Watching" desc="Resume from last position" checked={settings.resumePlayback} onChange={(v: boolean) => handleToggle('resumePlayback', v)} />
-            </div>
-
-            <SectionHeader title="Video & Audio" desc="Stream quality configuration" />
-            <div className="grid gap-4 md:grid-cols-2">
-              <SelectCard 
-                icon={Server} label="Preferred Server" value={settings.defaultServer || 'hd-1'} 
-                options={['hd-1', 'hd-2', 'mirror-1', 'mirror-2']} 
-                onChange={(v: any) => updateSetting('defaultServer', v)} 
-              />
-              <SelectCard 
-                icon={Monitor} label="Default Quality" value={settings.defaultQuality || '1080p'} 
-                options={['4K', '1080p', '720p', '480p', 'Auto']} 
-                onChange={(v: any) => updateSetting('defaultQuality', v)} 
-              />
-              <SelectCard 
-                icon={Speaker} label="Default Audio" value={settings.defaultAudio || 'jp'} 
-                options={['Japanese', 'English', 'Spanish', 'Portuguese']} 
-                onChange={(v: any) => updateSetting('defaultAudio', v)} 
-              />
-              <SelectCard 
-                icon={Type} label="Subtitle Language" value={settings.subLanguage || 'en'} 
-                options={['English', 'Spanish', 'French', 'None']} 
-                onChange={(v: any) => updateSetting('subLanguage', v)} 
-              />
-            </div>
-
-            <div className="bg-white/5 p-6 rounded-2xl border border-white/10 space-y-6">
-                <div className="flex justify-between items-center">
-                    <h4 className="font-bold text-sm text-zinc-300">Default Volume</h4>
-                    <span className="text-xs font-mono text-red-400">{settings.defaultVolume || 100}%</span>
+      case 'player': return (
+          <div className="space-y-8 animate-in fade-in slide-in-from-right-4 duration-500 w-full">
+            <SectionHeader title="Crystal Ball" desc="Customize your viewing experience" font={currentFont} />
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <div className="bg-[#0f0f0f] rounded-[32px] p-8 border border-white/5 space-y-6 shadow-lg">
+                    <h3 className="text-xs font-black text-zinc-500 uppercase tracking-widest flex items-center gap-2"><Play size={14} className="text-primary"/> Automation</h3>
+                    <div className="space-y-3">
+                        <ToggleRow title="Auto-Play Next" desc="Start next episode immediately" checked={settings.autoPlay} onChange={(v: boolean) => updateSetting('autoPlay', v)} />
+                        <ToggleRow title="Auto-Skip Intro" desc="Skip OP sequences automatically" checked={settings.autoSkipOpEd} onChange={(v: boolean) => updateSetting('autoSkipOpEd', v)} />
+                        <ToggleRow title="Resume Playback" desc="Continue from last known position" checked={settings.resumePlayback} onChange={(v: boolean) => updateSetting('resumePlayback', v)} />
+                        <ToggleRow title="Volume Boost" desc="Amplify audio output (Experimental)" checked={settings.volumeBoost || false} onChange={(v: boolean) => updateSetting('volumeBoost', v)} />
+                    </div>
                 </div>
-                <input 
-                    type="range" min="0" max="100" 
-                    value={settings.defaultVolume || 100} 
-                    onChange={(e) => updateSetting('defaultVolume', parseInt(e.target.value))}
-                    className="w-full accent-red-600 h-2 bg-zinc-800 rounded-lg appearance-none cursor-pointer"
-                />
+                <div className="bg-[#0f0f0f] rounded-[32px] p-8 border border-white/5 space-y-6 shadow-lg">
+                    <h3 className="text-xs font-black text-zinc-500 uppercase tracking-widest flex items-center gap-2"><Server size={14} className="text-primary"/> Preferences</h3>
+                    <div className="grid grid-cols-2 gap-4">
+                        <SelectCard icon={Server} label="Server" value={settings.defaultServer} options={['hd-1', 'hd-2', 'mirror-1']} displayOptions={['Portal 1', 'Portal 2', 'Portal 3']} onChange={(v: any) => updateSetting('defaultServer', v)} />
+                        <SelectCard icon={Monitor} label="Quality" value={settings.defaultQuality} options={['1080p', '720p', '480p', 'Auto']} onChange={(v: any) => updateSetting('defaultQuality', v)} />
+                        <SelectCard icon={Speaker} label="Audio" value={settings.defaultAudio} options={['Japanese', 'English']} onChange={(v: any) => updateSetting('defaultAudio', v)} />
+                        <SelectCard icon={Type} label="Subtitles" value={settings.subLanguage} options={['English', 'Spanish', 'None']} onChange={(v: any) => updateSetting('subLanguage', v)} />
+                    </div>
+                </div>
+            </div>
+            <div className="space-y-6 pt-8 border-t border-white/5">
+                <SectionHeader title="Caption Studio" desc="Visual customization preview" font={currentFont} />
+                <div className="relative w-full aspect-video bg-black rounded-[32px] overflow-hidden border border-white/10 shadow-2xl flex flex-col justify-end group ring-1 ring-white/5">
+                    {dummySubUrl && (
+                        <AnimePlayer 
+                            url="https://bitdash-a.akamaihd.net/content/sintel/hls/playlist.m3u8" 
+                            title="System Preview"
+                            poster="https://upload.wikimedia.org/wikipedia/commons/thumb/c/ca/Sintel_poster.jpg/800px-Sintel_poster.jpg"
+                            autoPlay={false}
+                            initialVolume={0.2}
+                            startTime={0}
+                            subtitles={[{ lang: 'en', label: 'English', url: dummySubUrl, default: true }]}
+                        />
+                    )}
+                </div>
+                <div className="bg-[#0f0f0f] rounded-[32px] p-8 border border-white/5 space-y-8 shadow-lg">
+                    <h3 className="text-xs font-black text-zinc-500 uppercase tracking-widest flex items-center gap-2"><Type size={14} className="text-primary"/> Style Controls</h3>
+                    <div className="space-y-6">
+                        <div className="space-y-3">
+                            <span className="text-[10px] font-bold text-zinc-400 uppercase ml-1">Text Color</span>
+                            <div className="flex gap-3 flex-wrap">
+                                {Object.keys(SUB_STYLES.colors).map((c) => (
+                                    <button key={c} onClick={() => updatePlayerPref('subStyle', { color: c })} className={cn("w-10 h-10 rounded-full border-2 transition-all active:scale-90 hover:scale-110 shadow-lg", subStyle.color === c ? "border-white scale-110 shadow-xl" : "border-transparent opacity-50 hover:opacity-100")} style={{background: SUB_STYLES.colors[c as keyof typeof SUB_STYLES.colors]}} />
+                                ))}
+                            </div>
+                        </div>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                            <div className="space-y-3">
+                                <span className="text-[10px] font-bold text-zinc-400 uppercase ml-1">Font Size</span>
+                                <div className="flex gap-2 bg-black/40 rounded-full p-1.5 border border-white/5">
+                                    {Object.keys(SUB_STYLES.sizes).map((s) => (
+                                        <button key={s} onClick={() => updatePlayerPref('subStyle', { size: s })} className={cn("flex-1 py-2 rounded-full text-[10px] font-bold transition-all active:scale-95", subStyle.size === s ? "bg-primary text-white shadow-lg" : "text-zinc-500 hover:text-zinc-300 hover:bg-white/5")}>{s}</button>
+                                    ))}
+                                </div>
+                            </div>
+                            <div className="space-y-3">
+                                <span className="text-[10px] font-bold text-zinc-400 uppercase ml-1">Background Style</span>
+                                <div className="flex gap-2 bg-black/40 rounded-full p-1.5 border border-white/5">
+                                    {Object.keys(SUB_STYLES.backgrounds).map((b) => (
+                                        <button key={b} onClick={() => updatePlayerPref('subStyle', { bg: b })} className={cn("flex-1 py-2 rounded-full text-[10px] font-bold transition-all active:scale-95", subStyle.bg === b ? "bg-primary text-white shadow-lg" : "text-zinc-500 hover:text-zinc-300 hover:bg-white/5")}>{b}</button>
+                                    ))}
+                                </div>
+                            </div>
+                        </div>
+                        <div className="space-y-3">
+                            <span className="text-[10px] font-bold text-zinc-400 uppercase ml-1">Font Family</span>
+                            <div className="flex gap-3 overflow-x-auto pb-4 scrollbar-hide snap-x">
+                                {Object.keys(SUB_STYLES.fonts).map((f) => (
+                                    <button key={f} onClick={() => updatePlayerPref('subStyle', { font: f })} className={cn("px-6 py-3 rounded-2xl text-xs font-bold border transition-all whitespace-nowrap min-w-[120px] snap-center hover:scale-105 active:scale-95", subStyle.font === f ? "bg-white text-black border-white shadow-xl" : "bg-white/5 text-zinc-400 border-transparent hover:bg-white/10 hover:border-white/20")} style={{fontFamily: SUB_STYLES.fonts[f as keyof typeof SUB_STYLES.fonts]}}>{f}</button>
+                                ))}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+          </div>
+      );
+
+      case 'appearance': return (
+          <div className="space-y-8 animate-in fade-in slide-in-from-right-4 duration-500 w-full">
+            <SectionHeader title="Visual Grimoire" desc="Define the system atmosphere" font={currentFont} />
+            <div className="bg-[#0f0f0f] rounded-[32px] p-8 border border-white/5 space-y-8 shadow-lg">
+                <h3 className="text-xs font-black text-zinc-500 uppercase tracking-widest flex items-center gap-2"><Brush size={14} className="text-primary"/> Color Palette</h3>
+                <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-7 gap-6">
+                    {THEME_COLORS.map((color) => {
+                        const isActive = settings.accentColor === color.id;
+                        return (
+                            <button key={color.id} onClick={() => updateSetting('accentColor', color.id as any)} className={cn("aspect-square rounded-[24px] border-[3px] transition-all flex flex-col items-center justify-center relative overflow-hidden group outline-none focus:outline-none focus:ring-0", isActive ? 'border-primary shadow-[0_0_30px_var(--primary-color)] bg-white/5' : 'border-transparent bg-white/5 hover:bg-white/10')}>
+                                <div className={`w-10 h-10 rounded-full mb-3 shadow-lg transition-transform duration-500 group-hover:scale-110`} style={{ backgroundColor: color.hex, boxShadow: `0 0 20px ${color.hex}60` }} />
+                                <span className={`text-[9px] font-bold uppercase tracking-widest transition-colors ${isActive ? 'text-white' : 'text-zinc-500 group-hover:text-white'}`}>{color.label}</span>
+                                {isActive && <div className="absolute inset-0 bg-gradient-to-t from-white/10 to-transparent" />}
+                            </button>
+                        );
+                    })}
+                </div>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="bg-[#0f0f0f] rounded-[32px] p-8 border border-white/5 space-y-6 shadow-lg">
+                    <h3 className="text-xs font-black text-zinc-500 uppercase tracking-widest flex items-center gap-2"><Sparkles size={14} className="text-primary"/> Effects & Motion</h3>
+                    <div className="space-y-3">
+                        <ToggleRow title="Glassmorphism" desc="Blur effects on panels (High GPU)" checked={settings.glassEffect} onChange={(v: boolean) => updateSetting('glassEffect', v)} />
+                        <ToggleRow title="UI Glow" desc="Global ambient glow effects" checked={settings.uiGlow} onChange={(v: boolean) => updateSetting('uiGlow', v)} />
+                        <ToggleRow title="Particle System" desc="Ambient floating particles" checked={settings.particles} onChange={(v: boolean) => updateSetting('particles', v)} />
+                        <ToggleRow title="Reduced Motion" desc="Disable complex animations" checked={settings.reducedMotion} onChange={(v: boolean) => updateSetting('reducedMotion', v)} />
+                    </div>
+                </div>
+                <div className="bg-[#0f0f0f] rounded-[32px] p-8 border border-white/5 space-y-6 shadow-lg">
+                    <h3 className="text-xs font-black text-zinc-500 uppercase tracking-widest flex items-center gap-2"><LayoutTemplate size={14} className="text-primary"/> Structure</h3>
+                    <div className="space-y-3">
+                        <ToggleRow title="Rounded Corners" desc="Use rounded UI elements" checked={settings.roundedUI} onChange={(v: boolean) => updateSetting('roundedUI', v)} />
+                    </div>
+                    <div className="space-y-4 pt-4">
+                        <SelectCard icon={Sidebar} label="Borders" value={settings.uiBorders} options={['thin', 'normal', 'thick']} displayOptions={['Thin', 'Normal', 'Thick']} onChange={(v: any) => updateSetting('uiBorders', v)} />
+                        <SelectCard icon={Layers} label="Density" value={settings.cardVariant} options={['default', 'compact', 'minimal']} displayOptions={['Default', 'Compact', 'Minimal']} onChange={(v: any) => updateSetting('cardVariant', v)} />
+                        <div className="p-6 bg-black/40 border border-white/5 rounded-[32px] flex flex-col gap-4 hover:border-white/10 transition-colors">
+                            <div className="flex items-center gap-3 text-zinc-400 mb-1">
+                                <div className="p-2 bg-white/5 rounded-xl text-primary"><Type size={16} /></div>
+                                <span className="text-[10px] font-black uppercase tracking-widest">Font Family</span>
+                            </div>
+                            <div className="flex flex-wrap gap-2">
+                                {Object.keys(APP_FONTS).map((fontKey) => (
+                                    <button key={fontKey} onClick={() => updateSetting('fontFamily', fontKey)} className={cn("flex-1 py-2 px-3 text-[12px] font-bold rounded-full border transition-all uppercase whitespace-nowrap outline-none focus:outline-none focus:ring-0", settings.fontFamily === fontKey ? 'bg-primary text-white border-primary shadow-lg' : 'bg-transparent border-white/10 text-zinc-500 hover:border-white/30 hover:text-zinc-300 hover:bg-white/10')} style={{ fontFamily: APP_FONTS[fontKey] }}>{fontKey === 'onePiece' ? 'One Piece' : fontKey}</button>
+                                ))}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+          </div>
+      );
+
+      case 'whisper': return (
+          <div className="space-y-8 animate-in fade-in slide-in-from-right-4 duration-500 w-full">
+            <SectionHeader title="Telepathy" desc="Configure your AI companion voice" font={currentFont} />
+            
+            {/* STATUS CARD */}
+            <div className="bg-[#0f0f0f] rounded-[32px] p-8 border border-white/5 space-y-8 shadow-lg">
+                <div className="flex items-center justify-between">
+                    <h3 className="text-xs font-black text-zinc-500 uppercase tracking-widest flex items-center gap-2"><Mic2 size={14} className="text-primary"/> Companion Status</h3>
+                    <div className={`px-4 py-1.5 rounded-full text-[10px] font-black border uppercase tracking-widest ${settings.whisperEnabled ? 'bg-primary/20 border-primary text-primary shadow-[0_0_15px_var(--primary-color)]' : 'bg-zinc-900 border-zinc-800 text-zinc-600'}`}>{settings.whisperEnabled ? 'Online' : 'Offline'}</div>
+                </div>
+                <ToggleRow title="Enable Whisper Voice" desc="Allow system audio feedback" checked={settings.whisperEnabled} onChange={(v: boolean) => updateSetting('whisperEnabled', v)} />
+                <div className="space-y-3">
+                    <div className="flex justify-between text-[10px] font-bold text-zinc-500 uppercase ml-1"><span>Voice Volume</span><span>{Math.round((settings.whisperVolume || 0.8) * 100)}%</span></div>
+                    <input type="range" min="0" max="1" step="0.1" value={settings.whisperVolume ?? 0.8} onChange={(e) => updateSetting('whisperVolume', parseFloat(e.target.value))} className="w-full accent-primary h-2 bg-zinc-800 rounded-lg appearance-none cursor-pointer hover:bg-zinc-700 transition-colors" />
+                </div>
+            </div>
+
+            {/* VOICE PACKS */}
+            <div className="space-y-6">
+                <h3 className="text-xs font-black text-zinc-500 uppercase tracking-widest px-2 flex items-center gap-2"><Radio size={14} className="text-primary"/> Soul Echoes</h3>
                 
-                <div className="grid grid-cols-2 gap-4 pt-2">
-                    <ToggleRow title="Haptic Feedback" desc="Vibrate on actions" checked={settings.haptics} onChange={(v: boolean) => handleToggle('haptics', v)} />
-                    <ToggleRow title="PiP Mode" desc="Picture-in-Picture" checked={settings.pipMode} onChange={(v: boolean) => handleToggle('pipMode', v)} />
-                </div>
+                <Tabs defaultValue="en" className="w-full">
+                    <TabsList className="bg-black/40 p-1 rounded-full border border-white/5 mb-6 h-auto flex flex-wrap gap-1 justify-start">
+                        {Object.keys(voiceLibrary).map(lang => (
+                            <TabsTrigger key={lang} value={lang} className="rounded-full px-5 py-2 data-[state=active]:bg-primary-600 data-[state=active]:text-white text-xs font-bold uppercase transition-all">
+                                {lang === 'en' ? 'English' : lang === 'jp' ? 'Japanese' : lang}
+                            </TabsTrigger>
+                        ))}
+                    </TabsList>
+
+                    {Object.entries(voiceLibrary).map(([lang, characters]: any) => (
+                        <TabsContent key={lang} value={lang} className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 animate-in fade-in slide-in-from-bottom-2">
+                            {Object.values(characters).map((pack: any) => {
+                                const currentSettings = getVoiceSettings();
+                                const isActive = currentSettings.pack === pack.name;
+                                const isPlaying = playingVoice === pack.name;
+                                
+                                return (
+                                    <div 
+                                        key={pack.name} 
+                                        onClick={() => selectVoicePack(pack.name, lang)}
+                                        className={cn(
+                                            "relative p-5 rounded-[24px] border-[2px] transition-all cursor-pointer overflow-hidden group hover:scale-[1.02] active:scale-95 flex flex-col justify-between gap-4",
+                                            isActive 
+                                                ? 'bg-primary/10 border-primary shadow-[0_0_20px_rgba(220,38,38,0.15)]' 
+                                                : 'bg-[#0f0f0f] border-white/5 hover:border-white/20'
+                                        )}
+                                    >
+                                        <div className="flex justify-between items-start">
+                                            <div className="flex items-center gap-4">
+                                                <div className={cn(
+                                                    "w-10 h-10 rounded-full flex items-center justify-center transition-colors border",
+                                                    isActive ? 'bg-primary text-white border-primary shadow-lg' : 'bg-zinc-900 text-zinc-600 border-white/5 group-hover:border-white/10'
+                                                )}>
+                                                    {isPlaying ? <AudioWaveform size={18} className="animate-pulse"/> : <Mic2 size={18} />}
+                                                </div>
+                                                <div>
+                                                    <h4 className={cn("text-sm font-bold", isActive ? 'text-white' : 'text-zinc-300')}>{pack.name}</h4>
+                                                    <p className="text-[10px] text-zinc-500 font-mono uppercase tracking-wider">{pack.gender || 'Unknown'}</p>
+                                                </div>
+                                            </div>
+                                            {isActive && <div className="bg-primary text-white rounded-full p-1 shadow-lg"><Check size={12} strokeWidth={4} /></div>}
+                                        </div>
+                                        
+                                        <div className="flex gap-2 mt-2">
+                                            <Button 
+                                                size="sm" 
+                                                variant="outline" 
+                                                className={cn(
+                                                    "h-8 flex-1 rounded-full text-[10px] font-bold uppercase tracking-widest border-white/10 hover:bg-white/10 hover:text-white transition-all",
+                                                    isPlaying && "border-primary text-primary"
+                                                )}
+                                                onClick={(e) => { e.stopPropagation(); handleVoicePreview(pack.name, pack.clips); }}
+                                            >
+                                                {isPlaying ? <><Pause size={12} className="mr-2"/> Stop</> : <><Play size={12} className="mr-2"/> Preview</>}
+                                            </Button>
+                                        </div>
+                                    </div>
+                                );
+                            })}
+                        </TabsContent>
+                    ))}
+                </Tabs>
             </div>
           </div>
-        );
+      );
 
-      // ----------------------------------------------------------------------
-      // 3. APPEARANCE
-      // ----------------------------------------------------------------------
-      case 'appearance':
-        return (
-          <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
-            <SectionHeader title="System Theme" desc="Define the visual atmosphere" />
-            
-            {/* Theme Grid */}
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                {['red', 'purple', 'blue', 'gold', 'green', 'pink', 'mono', 'neon'].map((color) => (
-                <button
-                    key={color}
-                    onClick={() => updateSetting('accentColor', color as any)}
-                    className={`
-                    h-16 rounded-xl border-2 transition-all flex flex-col items-center justify-center relative overflow-hidden group
-                    ${settings.accentColor === color ? 'border-white scale-105 shadow-[0_0_20px_rgba(255,255,255,0.2)]' : 'border-transparent bg-white/5 hover:bg-white/10'}
-                    `}
-                >
-                    <div className={`w-6 h-6 rounded-full mb-2`} style={{ backgroundColor: getColorHex(color) }} />
-                    <span className="text-[10px] font-bold uppercase tracking-widest text-zinc-400">{color}</span>
-                    {settings.accentColor === color && <div className="absolute inset-0 bg-gradient-to-t from-white/10 to-transparent" />}
-                </button>
-                ))}
-            </div>
-
-            <SectionHeader title="Interface Customization" desc="Fine-tune the UI density and effects" />
-            <div className="space-y-1 bg-white/5 rounded-2xl border border-white/10 overflow-hidden">
-                <ToggleRow title="Glassmorphism" desc="Enable blur effects on panels" checked={settings.glassEffect} onChange={(v: boolean) => handleToggle('glassEffect', v)} />
-                <ToggleRow title="Particle Effects" desc="Show floating embers in background" checked={settings.particles} onChange={(v: boolean) => handleToggle('particles', v)} />
-                <ToggleRow title="Reduced Motion" desc="Disable complex animations" checked={settings.reducedMotion} onChange={(v: boolean) => handleToggle('reducedMotion', v)} />
-                <ToggleRow title="Rounded Corners" desc="Use rounded UI elements" checked={settings.roundedUI} onChange={(v: boolean) => handleToggle('roundedUI', v)} />
-            </div>
-
-            <div className="grid gap-4 md:grid-cols-2">
-                <SelectCard 
-                    icon={Layers} label="Card Density" value={settings.cardVariant || 'default'} 
-                    options={['Default', 'Compact', 'Minimal']} 
-                    onChange={(v: any) => updateSetting('cardVariant', v)} 
-                />
-                <SelectCard 
-                    icon={Type} label="Font Family" value={settings.fontFamily || 'cinzel'} 
-                    options={['Cinzel', 'Inter', 'Roboto', 'Mono']} 
-                    onChange={(v: any) => updateSetting('fontFamily', v)} 
-                />
-            </div>
+      case 'notifications': return (
+            <div className="space-y-8 animate-in fade-in slide-in-from-right-4 duration-500 w-full"><SectionHeader title="Missives" desc="Control incoming signals" font={currentFont} /><div className="bg-[#0f0f0f] rounded-[32px] p-8 border border-white/5 space-y-6 shadow-lg"><h3 className="text-xs font-black text-zinc-500 uppercase tracking-widest flex items-center gap-2"><Bell size={14} className="text-primary"/> Alert Channels</h3><div className="space-y-3"><ToggleRow title="Push Notifications" desc="Browser alerts for new content" checked={settings.pushNotifs} onChange={(v: boolean) => updateSetting('pushNotifs', v)} /><ToggleRow title="Email Digests" desc="Weekly summary of activity" checked={settings.emailNotifs} onChange={(v: boolean) => updateSetting('emailNotifs', v)} /><ToggleRow title="Episode Alerts" desc="Notify when watchlist items update" checked={settings.newEpAlerts} onChange={(v: boolean) => updateSetting('newEpAlerts', v)} /><ToggleRow title="Guild Activity" desc="Replies and friend requests" checked={settings.communityAlerts} onChange={(v: boolean) => updateSetting('communityAlerts', v)} /><ToggleRow title="System Broadcasts" desc="Important updates from the Guild" checked={settings.systemAlerts} onChange={(v: boolean) => updateSetting('systemAlerts', v)} /></div></div></div>
+      );
+      case 'data': return (
+          <div className="space-y-8 animate-in fade-in slide-in-from-right-4 duration-500 w-full">
+            <SectionHeader title="Archive" desc="Manage browser storage" font={currentFont} />
+            <div className="grid gap-6 md:grid-cols-3"><div className="bg-[#0f0f0f] p-6 rounded-[30px] border border-white/5 text-center hover:border-white/10 transition-colors cursor-default"><h3 className="text-3xl font-black text-white mb-2 tracking-tighter">{storageUsage}</h3><p className="text-[10px] text-zinc-500 uppercase tracking-widest mb-6 font-bold">App Cache</p><Button size="sm" onClick={clearCache} variant="secondary" className="w-full h-10 rounded-xl text-xs font-bold bg-white/5 hover:bg-white/10 hover:text-white border border-white/5">Purge Data</Button></div><div className="bg-[#0f0f0f] p-6 rounded-[30px] border border-white/5 text-center opacity-60"><h3 className="text-3xl font-black text-white mb-2 tracking-tighter">--</h3><p className="text-[10px] text-zinc-500 uppercase tracking-widest mb-6 font-bold">Watchlist DB</p><Button size="sm" disabled variant="secondary" className="w-full h-10 rounded-xl text-xs font-bold bg-white/5 border border-white/5">Coming Soon</Button></div></div>
+            <div className="bg-[#0f0f0f] rounded-[32px] p-8 border border-white/5 space-y-6 shadow-lg"><h3 className="text-xs font-black text-zinc-500 uppercase tracking-widest flex items-center gap-2"><HardDrive size={14} className="text-primary"/> Backup Protocols</h3><div className="space-y-3"><ToggleRow title="Cloud Sync" desc="Sync settings to profile automatically" checked={settings.autoBackup} onChange={(v: boolean) => updateSetting('autoBackup', v)} /><ToggleRow title="Bandwidth Saver" desc="Limit data usage on cellular networks" checked={settings.bandwidthSaver} onChange={(v: boolean) => updateSetting('bandwidthSaver', v)} /></div></div>
+            <div className="flex gap-4"><Button onClick={handleExport} className="flex-1 bg-blue-600/10 text-blue-400 border border-blue-500/20 hover:bg-blue-600 hover:text-white outline-none h-12 rounded-2xl font-bold tracking-widest text-xs uppercase transition-all hover:scale-[1.02] active:scale-95"><Download size={16} className="mr-3" /> Export Config</Button><Button disabled className="flex-1 bg-white/5 text-zinc-500 border border-white/5 cursor-not-allowed outline-none h-12 rounded-2xl font-bold tracking-widest text-xs uppercase"><FileJson size={16} className="mr-3" /> Import (Coming Soon)</Button></div>
+            <div className="bg-[#0f0f0f] rounded-[32px] p-8 border border-white/5 space-y-6 shadow-lg"><h3 className="text-xs font-black text-zinc-500 uppercase tracking-widest flex items-center gap-2 text-red-500"><AlertTriangle size={14}/> Reset Zone</h3><div className="space-y-3"><SettingRow icon={RefreshCw} title="Clear Watch History" desc="Remove all progress markers" action={<Button variant="outline" size="sm" className="h-9 rounded-xl border-white/10 hover:bg-white/10 text-zinc-300 font-bold">Clear</Button>} /><SettingRow icon={Trash2} title="Factory Reset" desc="Reset all settings to default" action={<Button variant="destructive" size="sm" onClick={() => { if(confirm('Reset all settings?')) resetSettings(); }} className="h-9 rounded-xl font-bold">Reset</Button>} /></div></div>
           </div>
         );
-
-      // ----------------------------------------------------------------------
-      // 4. CONTENT
-      // ----------------------------------------------------------------------
-      case 'content':
-        return (
-          <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
-            <SectionHeader title="Library Filters" desc="Control what content is displayed" />
-            
-            <div className="space-y-1 bg-white/5 rounded-2xl border border-white/10 overflow-hidden">
-              <ToggleRow title="Show NSFW Content" desc="Allow 18+ content in search" checked={settings.showNSFW} onChange={(v: boolean) => handleToggle('showNSFW', v)} />
-              <ToggleRow title="Blur Spoilers" desc="Blur episode thumbnails and descriptions" checked={settings.blurSpoilers} onChange={(v: boolean) => handleToggle('blurSpoilers', v)} />
-              <ToggleRow title="Hide Fillers" desc="Automatically filter out filler episodes" checked={settings.hideFillers} onChange={(v: boolean) => handleToggle('hideFillers', v)} />
-              <ToggleRow title="Use Japanese Titles" desc="Romaji titles (e.g. Kimetsu no Yaiba)" checked={settings.useJapaneseTitle} onChange={(v: boolean) => handleToggle('useJapaneseTitle', v)} />
-            </div>
-
-            <SectionHeader title="Discovery" desc="How recommendations work" />
-            <div className="grid gap-4 md:grid-cols-2">
-                <SelectCard 
-                    icon={Sparkles} label="Homepage Layout" value={settings.homeLayout || 'trending'} 
-                    options={['Trending', 'Seasonal', 'Classic', 'Personal']} 
-                    onChange={(v: any) => updateSetting('homeLayout', v)} 
-                />
-                <SelectCard 
-                    icon={Layers} label="List View" value={settings.listView || 'grid'} 
-                    options={['Grid', 'List', 'Comfortable']} 
-                    onChange={(v: any) => updateSetting('listView', v)} 
-                />
-            </div>
-            
-            <div className="bg-red-900/10 border border-red-500/20 p-4 rounded-xl flex items-start gap-4">
-                <AlertTriangle className="text-red-500 shrink-0 mt-1" size={20} />
-                <div>
-                    <h4 className="text-sm font-bold text-white">Reset Algorithms</h4>
-                    <p className="text-xs text-zinc-400 mt-1 mb-2">Clear your recommendation data to start fresh.</p>
-                    <Button size="sm" variant="outline" className="h-7 text-xs border-red-500/30 hover:bg-red-900/20 text-red-400">Clear Data</Button>
-                </div>
-            </div>
-          </div>
-        );
-
-      // ----------------------------------------------------------------------
-      // 5. NOTIFICATIONS
-      // ----------------------------------------------------------------------
-      case 'notifications':
-        return (
-            <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
-                <SectionHeader title="Alerts" desc="Stay updated with the Shadow Garden" />
-                <div className="space-y-1 bg-white/5 rounded-2xl border border-white/10 overflow-hidden">
-                    <ToggleRow title="Push Notifications" desc="Enable browser notifications" checked={settings.pushNotifs} onChange={(v: boolean) => handleToggle('pushNotifs', v)} />
-                    <ToggleRow title="Email Digests" desc="Weekly summary of new episodes" checked={settings.emailNotifs} onChange={(v: boolean) => handleToggle('emailNotifs', v)} />
-                    <ToggleRow title="New Episode Alerts" desc="Notify when watchlist updates" checked={settings.newEpAlerts} onChange={(v: boolean) => handleToggle('newEpAlerts', v)} />
-                    <ToggleRow title="Community Replies" desc="Notify when someone replies to you" checked={settings.communityAlerts} onChange={(v: boolean) => handleToggle('communityAlerts', v)} />
-                    <ToggleRow title="System Announcements" desc="Important updates from the devs" checked={settings.systemAlerts} onChange={(v: boolean) => handleToggle('systemAlerts', v)} />
-                </div>
-            </div>
-        );
-
-      // ----------------------------------------------------------------------
-      // 6. DATA & STORAGE
-      // ----------------------------------------------------------------------
-      case 'data':
-        return (
-          <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
-            <SectionHeader title="Local Storage" desc="Manage cached data" />
-            
-            <div className="grid gap-4 md:grid-cols-3">
-                <div className="bg-white/5 p-4 rounded-xl border border-white/10 text-center">
-                    <h3 className="text-2xl font-black text-white mb-1">124 MB</h3>
-                    <p className="text-[10px] text-zinc-500 uppercase tracking-widest mb-3">Image Cache</p>
-                    <Button size="sm" variant="secondary" className="w-full h-8 text-xs">Clear</Button>
-                </div>
-                <div className="bg-white/5 p-4 rounded-xl border border-white/10 text-center">
-                    <h3 className="text-2xl font-black text-white mb-1">45 MB</h3>
-                    <p className="text-[10px] text-zinc-500 uppercase tracking-widest mb-3">Api Data</p>
-                    <Button size="sm" variant="secondary" className="w-full h-8 text-xs">Clear</Button>
-                </div>
-                <div className="bg-white/5 p-4 rounded-xl border border-white/10 text-center">
-                    <h3 className="text-2xl font-black text-white mb-1">1.2 GB</h3>
-                    <p className="text-[10px] text-zinc-500 uppercase tracking-widest mb-3">Downloads</p>
-                    <Button size="sm" variant="secondary" className="w-full h-8 text-xs">Manage</Button>
-                </div>
-            </div>
-
-            <SectionHeader title="Backup & Sync" desc="Preserve your legacy" />
-            <div className="space-y-1 bg-white/5 rounded-2xl border border-white/10 overflow-hidden">
-                <ToggleRow title="Auto-Backup" desc="Sync settings to cloud weekly" checked={settings.autoBackup} onChange={(v: boolean) => handleToggle('autoBackup', v)} />
-                <ToggleRow title="Bandwidth Saver" desc="Reduce data usage on cellular" checked={settings.bandwidthSaver} onChange={(v: boolean) => handleToggle('bandwidthSaver', v)} />
-            </div>
-
-            <div className="flex gap-4">
-                <Button className="flex-1 bg-blue-600/10 text-blue-400 border border-blue-500/20 hover:bg-blue-600 hover:text-white">
-                    <Download size={16} className="mr-2" /> Export Data (JSON)
-                </Button>
-                <Button className="flex-1 bg-green-600/10 text-green-400 border border-green-500/20 hover:bg-green-600 hover:text-white">
-                    <FileJson size={16} className="mr-2" /> Import Data
-                </Button>
-            </div>
-
-            <SectionHeader title="Danger Zone" desc="Irreversible actions" />
-            <div className="space-y-2">
-              <SettingRow icon={RefreshCw} title="Clear Watch History" desc="Remove all progress markers" action={<Button variant="outline" size="sm">Clear</Button>} />
-              <SettingRow icon={Trash2} title="Factory Reset" desc="Reset all settings to default" action={<Button variant="destructive" size="sm" onClick={() => { if(confirm('Reset all settings?')) resetSettings(); }}>Reset</Button>} />
-            </div>
-          </div>
-        );
-
       default: return null;
     }
   };
 
+  if (!mounted) return <LoadingSkeleton />;
+
   return (
-    <div className="min-h-screen bg-[#050505] text-white pt-24 pb-20 px-4 md:px-8 font-sans selection:bg-red-900 selection:text-white">
-      <div className="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-4 gap-8">
-        
-        {/* SIDEBAR TABS */}
-        <div className="lg:col-span-1 space-y-2 sticky top-24 h-fit">
-          <div className="mb-8 px-2">
-            <h1 className="text-4xl font-black font-cinzel text-transparent bg-clip-text bg-gradient-to-r from-red-600 to-white tracking-tight">
-              Settings
-            </h1>
-            <p className="text-xs text-zinc-500 font-bold uppercase tracking-[0.3em] mt-2">Control Center</p>
-          </div>
-          
-          <div className="space-y-1">
-            {TABS.map((tab) => {
-                const Icon = tab.icon;
-                const isActive = activeTab === tab.id;
-                return (
-                <button
-                    key={tab.id}
-                    onClick={() => setActiveTab(tab.id)}
-                    className={`
-                    w-full flex items-center gap-3 px-4 py-3.5 rounded-xl transition-all duration-300 group relative overflow-hidden border
-                    ${isActive 
-                        ? 'bg-red-600 text-white border-red-500 shadow-[0_0_20px_rgba(220,38,38,0.3)]' 
-                        : 'bg-transparent text-zinc-400 border-transparent hover:bg-white/5 hover:text-white hover:border-white/5'}
-                    `}
-                >
-                    <Icon size={18} className={`relative z-10 transition-transform duration-300 ${isActive ? 'scale-110' : 'group-hover:scale-110'}`} />
-                    <span className="font-bold text-sm tracking-wide relative z-10">{tab.label}</span>
-                    {isActive && <motion.div layoutId="glow" className="absolute inset-0 bg-gradient-to-r from-white/10 to-transparent" />}
-                </button>
-                )
-            })}
-          </div>
+    <>
+      <style jsx global>{`
+        ::-webkit-scrollbar { display: none; }
+        * { -ms-overflow-style: none; scrollbar-width: none; -webkit-tap-highlight-color: transparent; outline: none !important; }
+        ::selection { background: rgba(var(--primary-color), 0.3); color: white; }
+        button:focus { outline: none !important; box-shadow: none !important; }
+      `}</style>
 
-          <div className="mt-8 px-4 pt-8 border-t border-white/5">
-            <p className="text-[10px] text-zinc-600 font-mono text-center">
-                Shadow Garden Client v2.4.0<br/>
-                Connected to Node: Alpha-7
-            </p>
+      <div className="lg:hidden fixed top-[60px] left-0 w-full z-40 bg-[#050505]/95 backdrop-blur-xl border-b border-white/10 px-6 py-4 flex items-center justify-between shadow-2xl transition-all">
+          <div className="flex items-center gap-2">
+              <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-primary to-white flex items-center justify-center shadow-[0_0_15px_var(--primary-color)]"><SettingsIcon size={16} className="text-black" /></div>
+              <h1 className="text-xl font-black text-transparent bg-clip-text bg-gradient-to-r from-primary to-white tracking-widest uppercase" style={{ fontFamily: currentFont }}>Magical Core</h1>
           </div>
-        </div>
+          <button onClick={() => setMobileMenuOpen(!mobileMenuOpen)} className="p-2.5 rounded-full hover:bg-white/10 active:scale-95 transition-all text-white border border-white/5">{mobileMenuOpen ? <X size={20}/> : <Menu size={20}/>}</button>
+      </div>
 
-        {/* MAIN CONTENT AREA */}
-        <div className="lg:col-span-3">
-          <motion.div
-            key={activeTab}
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.4, ease: "easeOut" }}
-            className="bg-[#0a0a0a] border border-white/5 rounded-[30px] p-6 md:p-10 shadow-2xl relative overflow-hidden min-h-[600px]"
-          >
-            {/* Background Decoration */}
-            <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-red-600/5 rounded-full blur-[120px] pointer-events-none" />
-            <div className="absolute bottom-0 left-0 w-[300px] h-[300px] bg-blue-600/5 rounded-full blur-[100px] pointer-events-none" />
-            
-            <div className="relative z-10">
-                {renderContent()}
+      <div className="h-12 lg:hidden w-full bg-[#050505]" />
+
+      <div className="h-screen w-full bg-[#050505] text-white font-sans flex flex-col justify-center overflow-hidden lg:pt-20">
+        <div className="w-full max-w-[1350px] mx-auto h-full flex relative">
+            <motion.div layout initial={false} animate={{ width: isSidebarExpanded ? 280 : 80 }} transition={{ type: "spring", stiffness: 300, damping: 30 }} className="hidden lg:flex flex-col border-r border-white/5 bg-zinc-900/50 backdrop-blur-xl rounded-r-[32px] my-4 ml-4 shrink-0 h-[calc(100vh-8rem)] sticky top-4 overflow-hidden z-30 shadow-2xl">
+                <div className="flex-1 overflow-y-auto py-6 px-3 flex flex-col justify-between no-scrollbar">
+                    <div className="space-y-6">
+                        <div className="flex items-center justify-between px-2 h-10">
+                            <AnimatePresence mode="wait">{isSidebarExpanded && (<motion.div initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -10 }} className="overflow-hidden whitespace-nowrap"><h1 className="text-xl font-black text-transparent bg-clip-text bg-gradient-to-r from-primary to-white tracking-widest uppercase" style={{ fontFamily: currentFont }}>Magical Core</h1><p className="text-[9px] text-zinc-500 font-bold uppercase tracking-[0.2em]">Control Center</p></motion.div>)}</AnimatePresence>
+                            <button onClick={toggleSidebar} className="p-2 rounded-full hover:bg-white/10 text-zinc-400 hover:text-white transition-colors ml-auto">{isSidebarExpanded ? <PanelLeftClose size={18} /> : <PanelLeftOpen size={18} />}</button>
+                        </div>
+                        <div className="space-y-2">
+                            {MENU_ITEMS.map((tab) => {
+                                const Icon = tab.icon;
+                                const isActive = activeTab === tab.id;
+                                return (
+                                    <button key={tab.id} onClick={() => changeTab(tab.id)} title={!isSidebarExpanded ? tab.label : ''} className={`w-full flex items-center gap-3 px-3 py-3 rounded-full transition-all duration-300 group relative overflow-hidden outline-none ${isActive ? 'bg-primary text-white shadow-[0_0_20px_var(--primary-color)]' : 'text-zinc-500 hover:bg-white/5 hover:text-white'}`}>
+                                        <div className="flex shrink-0 items-center justify-center w-6"><Icon size={20} className="relative z-10" /></div>
+                                        <AnimatePresence>{isSidebarExpanded && (<motion.span initial={{ opacity: 0, width: 0 }} animate={{ opacity: 1, width: "auto" }} exit={{ opacity: 0, width: 0 }} transition={{ duration: 0.2 }} className="block font-bold text-sm tracking-wide relative z-10 whitespace-nowrap overflow-hidden">{tab.label}</motion.span>)}</AnimatePresence>
+                                        {isActive && <motion.div layoutId="glow" className="absolute inset-0 bg-gradient-to-r from-white/20 to-transparent rounded-full" />}
+                                    </button>
+                                )
+                            })}
+                        </div>
+                    </div>
+                    <AnimatePresence>{isSidebarExpanded && (<motion.div initial={{opacity:0}} animate={{opacity:1}} exit={{opacity:0}} className="px-4 py-4 border-t border-white/5 text-center whitespace-nowrap overflow-hidden"><p className="text-[10px] text-zinc-600 font-mono">Shadow Garden v0.1.2 (Beta)</p></motion.div>)}</AnimatePresence>
+                </div>
+            </motion.div>
+
+            <div className="flex-1 h-full min-w-0 overflow-y-auto scroll-smooth no-scrollbar p-4 lg:p-6 pb-32">
+                <motion.div key={activeTab} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.3 }} className="min-h-[600px] w-full max-w-full">
+                    {renderContent()}
+                </motion.div>
+                <div className="mt-20 w-full max-w-full"><Footer /></div>
             </div>
-          </motion.div>
         </div>
 
+        <AnimatePresence>
+            {mobileMenuOpen && (
+                <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="lg:hidden fixed inset-0 z-50 flex items-start justify-center bg-black/60 backdrop-blur-md pt-20 px-6" onClick={() => setMobileMenuOpen(false)}>
+                    <motion.div initial={{ scale: 0.9, y: 20 }} animate={{ scale: 1, y: 0 }} exit={{ scale: 0.9, y: 20 }} className="bg-[#0f0f0f] border border-white/10 rounded-[32px] p-4 w-full max-w-xs shadow-2xl space-y-2 flex flex-col items-center" onClick={e => e.stopPropagation()}>
+                        <div className="flex items-center justify-between w-full px-2 mb-2">
+                            <h2 className="text-sm font-black text-white uppercase tracking-widest" style={{ fontFamily: currentFont }}>Magical Core</h2>
+                            <button onClick={() => setMobileMenuOpen(false)} className="p-1.5 rounded-full hover:bg-white/10 text-zinc-400"><X size={16}/></button>
+                        </div>
+                        {MENU_ITEMS.map((tab) => (<button key={tab.id} onClick={() => changeTab(tab.id)} className={`w-full flex items-center justify-center gap-3 px-6 py-3 rounded-full border transition-all ${activeTab === tab.id ? 'bg-primary text-white border-primary shadow-lg' : 'bg-white/5 text-zinc-400 border-white/5 hover:bg-white/10'}`}><tab.icon size={16} /><span className="font-bold text-xs">{tab.label}</span></button>))}
+                    </motion.div>
+                </motion.div>
+            )}
+        </AnimatePresence>
       </div>
-    </div>
+    </>
   );
 }
 
-// --- REUSABLE SUB-COMPONENTS ---
-
-function SectionHeader({ title, desc }: { title: string, desc: string }) {
-  return (
-    <div className="mb-6 pb-4 border-b border-white/5">
-      <h2 className="text-xl font-black text-white font-cinzel tracking-wide flex items-center gap-2">
-        <div className="w-1 h-6 bg-red-600 rounded-full" />
-        {title}
-      </h2>
-      <p className="text-xs text-zinc-500 font-medium ml-3 mt-1">{desc}</p>
-    </div>
-  );
-}
-
-function SettingRow({ icon: Icon, title, desc, action }: any) {
-  return (
-    <div className="flex items-center justify-between p-4 bg-white/5 border border-white/10 rounded-xl hover:bg-white/[0.07] transition-colors group">
-      <div className="flex items-center gap-4">
-        <div className="p-2.5 bg-black rounded-lg text-zinc-400 group-hover:text-red-500 transition-colors border border-white/5">
-          <Icon size={20} />
-        </div>
-        <div>
-          <h4 className="text-sm font-bold text-zinc-200">{title}</h4>
-          <p className="text-[10px] text-zinc-500 font-medium">{desc}</p>
-        </div>
-      </div>
-      {action}
-    </div>
-  );
-}
-
-function ToggleRow({ title, desc, checked, onChange }: any) {
-  return (
-    <div className="flex items-center justify-between p-4 border-b border-white/5 last:border-0 hover:bg-white/[0.02] transition-colors cursor-pointer" onClick={() => onChange(!checked)}>
-      <div>
-        <h4 className="text-sm font-bold text-zinc-200">{title}</h4>
-        <p className="text-[10px] text-zinc-500 font-medium">{desc}</p>
-      </div>
-      <div className={`w-12 h-6 flex items-center rounded-full p-1 transition-all duration-300 ${checked ? 'bg-red-600 shadow-[0_0_10px_rgba(220,38,38,0.4)]' : 'bg-zinc-800'}`}>
-        <motion.div 
-          layout 
-          className="bg-white w-4 h-4 rounded-full shadow-md"
-          animate={{ x: checked ? 24 : 0 }}
-          transition={{ type: "spring", stiffness: 500, damping: 30 }}
-        />
-      </div>
-    </div>
-  );
-}
-
-function SelectCard({ icon: Icon, label, value, options, onChange }: any) {
-  return (
-    <div className="p-5 bg-white/5 border border-white/10 rounded-xl flex flex-col gap-3 hover:border-white/20 transition-colors">
-      <div className="flex items-center gap-2 text-zinc-400 mb-1">
-        <Icon size={14} className="text-red-500" />
-        <span className="text-[10px] font-black uppercase tracking-widest">{label}</span>
-      </div>
-      <div className="flex flex-wrap gap-2">
-        {options.map((opt: string) => (
-          <button
-            key={opt}
-            onClick={() => onChange(opt)}
-            className={`
-              flex-1 py-2 px-3 text-[10px] font-bold rounded-lg border transition-all uppercase whitespace-nowrap
-              ${value === opt 
-                ? 'bg-white text-black border-white shadow-lg' 
-                : 'bg-transparent border-white/10 text-zinc-500 hover:border-white/30 hover:text-zinc-300'}
-            `}
-          >
-            {opt}
-          </button>
-        ))}
-      </div>
-    </div>
-  );
-}
-
-function getColorHex(name: string) {
-  const colors: any = { 
-    red: '#dc2626', purple: '#9333ea', blue: '#2563eb', gold: '#ca8a04',
-    green: '#16a34a', pink: '#db2777', mono: '#52525b', neon: '#22d3ee'
-  };
-  return colors[name] || '#ffffff';
-}
+function SectionHeader({ title, desc, font }: { title: string, desc: string, font?: string }) { return (<div className="mb-8 pb-6 border-b border-white/5 flex flex-col gap-1 w-full"><h2 className="text-2xl font-black text-white tracking-widest flex items-center gap-3 uppercase" style={{ fontFamily: font }}><div className="w-1.5 h-8 bg-primary rounded-full shadow-[0_0_15px_var(--primary-color)]" />{title}</h2><p className="text-xs text-zinc-500 font-bold ml-5 uppercase tracking-widest">{desc}</p></div>); }
+function ToggleRow({ title, desc, checked, onChange }: any) { return (<div className="flex items-center justify-between p-4 border-b border-white/5 last:border-0 hover:bg-white/[0.02] transition-colors cursor-pointer group w-full" onClick={() => onChange(!checked)}><div><h4 className="text-sm font-bold text-zinc-200 group-hover:text-white transition-colors">{title}</h4><p className="text-[10px] text-zinc-500 font-medium">{desc}</p></div><div className={`w-14 h-8 flex items-center rounded-full p-1 transition-all duration-500 ${checked ? 'bg-primary shadow-[0_0_20px_var(--primary-color)]' : 'bg-zinc-900 border border-white/10'}`}><motion.div layout className="bg-white w-6 h-6 rounded-full shadow-lg" animate={{ x: checked ? 24 : 0 }} transition={{ type: "spring", stiffness: 500, damping: 30 }} /></div></div>); }
+function LoadingSkeleton() { return (<div className="w-full max-w-[1350px] mx-auto h-screen flex justify-center pt-24 px-8 space-y-8 animate-in fade-in"><div className="w-full max-w-5xl space-y-8"><SectionHeader title="System Identity" desc="Verifying security clearance..." /><div className="w-full h-48 bg-[#0f0f0f] rounded-[32px] animate-pulse border border-white/5" /><div className="grid gap-6 md:grid-cols-2"><div className="h-40 bg-[#0f0f0f] rounded-[32px] animate-pulse border border-white/5" /><div className="h-40 bg-[#0f0f0f] rounded-[32px] animate-pulse border border-white/5" /></div></div></div>); }
+function SettingRow({ icon: Icon, title, desc, action }: any) { return (<div className="flex items-center justify-between p-4 bg-black/40 border border-white/5 rounded-[24px] hover:border-white/10 transition-colors group w-full"><div className="flex items-center gap-4"><div className="p-3 bg-white/5 rounded-2xl text-zinc-400 group-hover:text-primary group-hover:bg-primary/10 transition-colors"><Icon size={18} /></div><div><h4 className="text-sm font-bold text-zinc-200">{title}</h4><p className="text-[10px] text-zinc-500 font-medium">{desc}</p></div></div>{action}</div>); }
+function SelectCard({ icon: Icon, label, value, options, onChange, displayOptions }: any) { return (<div className="p-6 bg-black/40 border border-white/5 rounded-[32px] flex flex-col gap-4 hover:border-white/10 transition-colors w-full"><div className="flex items-center gap-3 text-zinc-400 mb-1"><div className="p-2 bg-white/5 rounded-xl text-primary"><Icon size={16} /></div><span className="text-[10px] font-black uppercase tracking-widest">{label}</span></div><div className="flex flex-wrap gap-2">{options.map((opt: string, idx: number) => (<button key={opt} onClick={() => onChange(opt)} className={`flex-1 py-1.5 px-3 text-[10px] font-bold rounded-full border transition-all uppercase whitespace-nowrap outline-none focus:ring-2 focus:ring-primary/50 ${value === opt ? 'bg-primary text-white border-primary shadow-lg' : 'bg-transparent border-white/10 text-zinc-500 hover:border-white/30 hover:text-zinc-300 hover:bg-white/10'}`}>{displayOptions ? displayOptions[idx] : opt}</button>))}</div></div>); }

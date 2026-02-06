@@ -122,7 +122,7 @@ export default function ContinueWatching() {
           missionArray.map(async (item) => {
             try {
               const info: any = await AnimeService.getAnimeInfo(item.anime_id);
-              const duration = item.duration || 1440;
+              const duration = item.duration || 1350;
               const progressPercent = Math.min(Math.round((item.progress / duration) * 100), 100);
 
               const title = 
@@ -207,18 +207,18 @@ export default function ContinueWatching() {
 
   return (
     <section className="w-full relative z-10 animate-in fade-in duration-700 mt-8">
-      {/* Header - Updated max-w to 1440px */}
+      {/* Header - Updated max-w to 1350px */}
       <motion.div 
         initial={{ opacity: 0, x: -20 }}
         whileInView={{ opacity: 1, x: 0 }}
         viewport={{ once: true }}
-        className="flex items-center justify-between flex-nowrap mb-4 md:mb-6 px-4 md:px-8 max-w-[1440px] mx-auto gap-4"
+        className="flex items-center justify-between flex-nowrap mb-4 md:mb-6 px-4 md:px-8 max-w-[1350px] mx-auto gap-4"
       >
         <div className="flex items-center gap-2 md:gap-3 min-w-0">
-          <div className="p-1.5 md:p-2 bg-red-600/10 rounded-lg md:rounded-xl border border-red-500/20 backdrop-blur-md flex-shrink-0">
-            <Clock className="w-3.5 h-3.5 md:w-4 md:h-4 text-red-500" />
+          <div className="p-1.5 md:p-2 bg-primary-600/10 rounded-lg md:rounded-xl border border-primary-500/20 backdrop-blur-md flex-shrink-0">
+            <Clock className="w-3.5 h-3.5 md:w-4 md:h-4 text-primary-500" />
           </div>
-          <h2 className="text-sm md:text-lg font-black tracking-[0.15em] md:tracking-[0.2em] uppercase font-sans drop-shadow-md bg-gradient-to-r from-red-500 via-red-600 to-red-900 bg-clip-text text-transparent truncate">
+          <h2 className="text-sm md:text-lg font-black tracking-[0.15em] md:tracking-[0.2em] uppercase font-sans drop-shadow-md bg-gradient-to-r from-primary-500 via-primary-600 to-primary-900 bg-clip-text text-transparent truncate">
             Continue Adventure
           </h2>
         </div>
@@ -232,10 +232,10 @@ export default function ContinueWatching() {
         </Link>
       </motion.div>
 
-      {/* Horizontal Scroll Content - Updated max-w to 1440px */}
+      {/* Horizontal Scroll Content - Updated max-w to 1350px */}
       <AnimatePresence mode="wait">
         {loading ? (
-          <div className="flex gap-4 overflow-hidden px-4 md:px-8 max-w-[1440px] mx-auto py-8">
+          <div className="flex gap-4 overflow-hidden px-4 md:px-8 max-w-[1350px] mx-auto py-8">
             {[...Array(6)].map((_, i) => (
               <div key={i} className="flex-shrink-0 w-[42%] md:w-[22%] lg:w-[15%] aspect-[3/4] rounded-[32px] bg-white/5 animate-pulse border border-white/5 shadow-inner" />
             ))}
@@ -245,7 +245,7 @@ export default function ContinueWatching() {
             variants={containerVariants}
             initial="hidden"
             animate="visible"
-            className="w-full max-w-[1440px] mx-auto overflow-x-auto no-scrollbar py-8 px-4 md:px-8 snap-x snap-mandatory flex gap-4 md:gap-5"
+            className="w-full max-w-[1350px] mx-auto overflow-x-auto no-scrollbar py-8 px-4 md:px-8 snap-x snap-mandatory flex gap-4 md:gap-5"
           >
             {items.map((anime) => (
               <ContinueAnimeCard 

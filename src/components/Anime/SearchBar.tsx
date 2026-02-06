@@ -162,12 +162,12 @@ export default function SearchBar() {
       
       {/* SEARCH CAPSULE */}
       <form onSubmit={handleSearchSubmit} className="relative group">
-        <div className="absolute inset-0 bg-gradient-to-r from-red-600/10 via-transparent to-blue-600/10 rounded-2xl blur-lg opacity-0 group-hover:opacity-100 transition-opacity duration-700 pointer-events-none" />
+        <div className="absolute inset-0 bg-gradient-to-r from-primary-600/10 via-transparent to-blue-600/10 rounded-2xl blur-lg opacity-0 group-hover:opacity-100 transition-opacity duration-700 pointer-events-none" />
         
-        <div className="relative flex flex-col bg-[#0a0a0a]/90 border border-white/10 rounded-2xl backdrop-blur-3xl shadow-2xl transition-all focus-within:border-red-500/50 overflow-hidden">
+        <div className="relative flex flex-col bg-[#0a0a0a]/90 border border-white/10 rounded-2xl backdrop-blur-3xl shadow-2xl transition-all focus-within:border-primary-500/50 overflow-hidden">
             
             <div className="flex items-center h-12">
-                <div className="pl-4 pr-3 text-gray-400 group-focus-within:text-red-500 transition-colors">
+                <div className="pl-4 pr-3 text-gray-400 group-focus-within:text-primary-500 transition-colors">
                     <Search className="w-5 h-5" />
                 </div>
 
@@ -198,7 +198,7 @@ export default function SearchBar() {
                     <AnimatePresence>
                         {isLoading && (
                             <motion.div initial={{ scale: 0 }} animate={{ scale: 1 }} exit={{ scale: 0 }}>
-                                <Loader2 className="w-4 h-4 text-red-500 animate-spin mr-1" />
+                                <Loader2 className="w-4 h-4 text-primary-500 animate-spin mr-1" />
                             </motion.div>
                         )}
                     </AnimatePresence>
@@ -216,11 +216,11 @@ export default function SearchBar() {
                         onClick={() => setShowFilters(!showFilters)}
                         className={cn(
                             "relative p-1.5 rounded-lg transition-all",
-                            showFilters || activeFilterCount > 0 ? "bg-red-600/20 text-red-400" : "text-gray-400 hover:text-white hover:bg-white/5"
+                            showFilters || activeFilterCount > 0 ? "bg-primary-600/20 text-primary-400" : "text-gray-400 hover:text-white hover:bg-white/5"
                         )}
                     >
                         <Filter className="w-4 h-4" />
-                        {activeFilterCount > 0 && <span className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-red-600 rounded-full border border-black flex items-center justify-center text-[7px] font-bold text-white">{activeFilterCount}</span>}
+                        {activeFilterCount > 0 && <span className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-primary-600 rounded-full border border-black flex items-center justify-center text-[7px] font-bold text-white">{activeFilterCount}</span>}
                     </button>
 
                     <button type="button" onClick={() => router.push('/ai/imagesearch')} className="group/ai relative flex items-center justify-center w-8 h-8 rounded-full hover:bg-white/5 transition-all">
@@ -315,7 +315,7 @@ export default function SearchBar() {
                                 <Button 
                                     type="submit" 
                                     size="sm" 
-                                    className="h-7 text-[10px] bg-red-600 hover:bg-red-700 text-white rounded-md px-4"
+                                    className="h-7 text-[10px] bg-primary-600 hover:bg-primary-700 text-white rounded-md px-4"
                                 >
                                     Apply & Search
                                 </Button>
@@ -337,7 +337,7 @@ export default function SearchBar() {
             <div className="p-2 space-y-1 relative z-10">
               <div className="px-4 py-2 text-[10px] font-bold text-gray-500 uppercase tracking-widest flex justify-between border-b border-white/5 mb-1">
                 <span>Summoning Intel...</span>
-                <span className="text-red-500">{suggestions.length} Found</span>
+                <span className="text-primary-500">{suggestions.length} Found</span>
               </div>
               
               {suggestions.map((item) => (
@@ -351,7 +351,7 @@ export default function SearchBar() {
                   </div>
 
                   <div className="flex-1 min-w-0">
-                    <h4 className="text-sm font-bold text-gray-200 group-hover:text-red-400 truncate transition-colors">{item.title}</h4>
+                    <h4 className="text-sm font-bold text-gray-200 group-hover:text-primary-400 truncate transition-colors">{item.title}</h4>
                     <div className="flex flex-wrap gap-1.5 mt-1">
                         <span className="text-[9px] px-1.5 py-px rounded border border-white/10 text-gray-400 flex items-center gap-1 bg-black/20 font-mono">
                             <Clock size={8}/> {item.releaseDate}
@@ -362,7 +362,7 @@ export default function SearchBar() {
                     </div>
                   </div>
 
-                  <div className="mr-2 opacity-0 group-hover:opacity-100 transform translate-x-2 group-hover:translate-x-0 transition-all text-red-500">
+                  <div className="mr-2 opacity-0 group-hover:opacity-100 transform translate-x-2 group-hover:translate-x-0 transition-all text-primary-500">
                     <PlayCircle size={18} />
                   </div>
                 </div>
@@ -371,7 +371,7 @@ export default function SearchBar() {
 
             <div 
               onClick={() => handleSearchSubmit()}
-              className="p-3 bg-white/5 border-t border-white/5 text-center text-xs font-bold text-gray-400 hover:text-white cursor-pointer hover:bg-red-600/10 transition-colors flex items-center justify-center gap-2"
+              className="p-3 bg-white/5 border-t border-white/5 text-center text-xs font-bold text-gray-400 hover:text-white cursor-pointer hover:bg-primary-600/10 transition-colors flex items-center justify-center gap-2"
             >
               See all results <PlayCircle size={12} />
             </div>

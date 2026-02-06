@@ -14,7 +14,7 @@ const ContinueWatching = dynamic(
   { 
     ssr: false,
     loading: () => (
-      <div className="w-full px-4 md:px-0 max-w-[1440px] mx-auto">
+      <div className="w-full px-4 md:px-0 max-w-[1350px] mx-auto">
         <div className="h-48 bg-white/5 rounded-xl animate-pulse" />
       </div>
     )
@@ -26,7 +26,7 @@ const RecentUpdatesSection = dynamic(
   { 
     ssr: false,
     loading: () => (
-      <div className="w-full px-4 md:px-0 max-w-[1440px] mx-auto">
+      <div className="w-full px-4 md:px-0 max-w-[1350px] mx-auto">
         <div className="h-64 bg-white/5 rounded-xl animate-pulse" />
       </div>
     )
@@ -76,12 +76,11 @@ export default function Home() {
         {/* Main Content Wrapper */}
         <div className="min-h-full flex flex-col relative z-10">
           
-          {/* Top Spacing */}
-          <div className="h-4 md:h-10 w-full flex-shrink-0" />
+          {/* Top Spacing - Increased by ~10-15% (h-20 on mobile, h-14 on desktop) */}
+          <div className="h-20 md:h-14 w-full flex-shrink-0" />
 
           {/* Spotlight Slider */}
-          {/* UPDATED: Changed from max-w-[1600px] to max-w-[1440px] */}
-          <div className="w-full max-w-[1440px] mx-auto mb-6 md:mb-10 px-0 md:px-8">
+          <div className="w-full max-w-[1350px] mx-auto mb-6 md:mb-10 px-0 md:px-8">
             {!isLoading && spotlightData.length > 0 ? (
               <SpotlightSlider animes={spotlightData} />
             ) : (
@@ -96,7 +95,7 @@ export default function Home() {
             {!isLoading ? (
               <RecentUpdatesSection initialData={recentData} />
             ) : (
-              <div className="px-4 md:px-8 max-w-[1440px] mx-auto w-full">
+              <div className="px-4 md:px-8 max-w-[1350px] mx-auto w-full">
                 <div className="h-64 bg-white/5 rounded-2xl animate-pulse" />
               </div>
             )}

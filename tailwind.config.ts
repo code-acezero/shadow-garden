@@ -1,7 +1,7 @@
 import type { Config } from "tailwindcss";
+import tailwindAnimate from "tailwindcss-animate"; // <--- 1. Import it here
 
 const config: Config = {
-  // FIX: Change ["class"] to just "class"
   darkMode: "class",
   content: [
     './pages/**/*.{ts,tsx}',
@@ -18,6 +18,8 @@ const config: Config = {
         "2xl": "1400px",
       },
     },
+
+   
     extend: {
       colors: {
         border: "hsl(var(--border))",
@@ -25,10 +27,27 @@ const config: Config = {
         ring: "hsl(var(--ring))",
         background: "hsl(var(--background))",
         foreground: "hsl(var(--foreground))",
+    
+        
+        // ✅ DYNAMIC FULL PALETTE
+        // This maps every shade to a CSS variable, allowing full gradients/depth
         primary: {
-          DEFAULT: "hsl(var(--primary))",
-          foreground: "hsl(var(--primary-foreground))",
+          DEFAULT: "var(--primary-600)", // Default mainly used for buttons/text
+          50: "var(--primary-50)",
+          100: "var(--primary-100)",
+          200: "var(--primary-200)",
+          300: "var(--primary-300)",
+          400: "var(--primary-400)",
+          500: "var(--primary-500)", // Standard Brand Color
+          600: "var(--primary-600)", // Hover States
+          700: "var(--primary-700)", // Active States / Dark Gradients
+          800: "var(--primary-800)",
+          900: "var(--primary-900)", // Deep Backgrounds
+          950: "var(--primary-950)", // Almost Black
+          foreground: "#ffffff",
         },
+        
+        // ✅ SECONDARY PALETTE (Optional: Synced or Static)
         secondary: {
           DEFAULT: "hsl(var(--secondary))",
           foreground: "hsl(var(--secondary-foreground))",
@@ -59,6 +78,22 @@ const config: Config = {
         md: "calc(var(--radius) - 2px)",
         sm: "calc(var(--radius) - 4px)",
       },
+      fontFamily: {
+        primary: ["var(--font-primary)", "sans-serif"], 
+        cinzel: ["var(--font-hunters)", "serif"],       
+        inter: ["var(--font-inter)", "sans-serif"],  
+        
+        // Use the CSS variables injected by Next.js
+        hunters: ["var(--font-hunters)"],
+        badUnicorn: ["var(--font-bad-unicorn)"],
+        demoness: ["var(--font-demoness)"],
+        horrorshow: ["var(--font-horrorshow)"],
+        kareudon: ["var(--font-kareudon)"],
+        monas: ["var(--font-monas)"],
+        nyctophobia: ["var(--font-nyctophobia)"],
+        onePiece: ["var(--font-one-piece)"],
+  
+      },
       keyframes: {
         "accordion-down": {
           from: { height: "0" },
@@ -75,7 +110,9 @@ const config: Config = {
       },
     },
   },
-  plugins: [require("tailwindcss-animate")],
+  plugins: [
+    tailwindAnimate,
+  ],
 };
 
 export default config;

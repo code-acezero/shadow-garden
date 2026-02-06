@@ -181,7 +181,7 @@ export default function TestPage() {
         <div className="lg:col-span-12 flex justify-between items-end border-b border-gray-800 pb-6 mb-2">
           <div>
             <h1 className="text-3xl font-bold text-white tracking-tight flex items-center gap-3">
-              <Activity className="text-red-500" /> 
+              <Activity className="text-primary-500" /> 
               Shadow Garden <span className="text-gray-600">Diagnostics</span>
             </h1>
             <p className="text-sm text-gray-400 mt-2">Advanced HLS Proxy Debugger & Signal Analyzer</p>
@@ -189,7 +189,7 @@ export default function TestPage() {
           <div className="flex gap-2">
             <button 
               onClick={() => { setTargetUrl(DEFAULT_STREAM.url); setUseProxy(true); }}
-              className="px-4 py-2 bg-red-900/20 border border-red-800 text-red-400 rounded hover:bg-red-900/40 transition-colors text-xs font-medium"
+              className="px-4 py-2 bg-primary-900/20 border border-primary-800 text-primary-400 rounded hover:bg-primary-900/40 transition-colors text-xs font-medium"
             >
               Load HiAnime Stream
             </button>
@@ -265,7 +265,7 @@ export default function TestPage() {
                 <div key={i} className="flex gap-3">
                   <span className="text-gray-600 shrink-0">[{log.time}]</span>
                   <span className={`${
-                    log.type === 'error' ? 'text-red-400' : 
+                    log.type === 'error' ? 'text-primary-400' : 
                     log.type === 'success' ? 'text-green-400' : 
                     log.type === 'warn' ? 'text-yellow-400' : 'text-blue-300'
                   }`}>
@@ -307,7 +307,7 @@ export default function TestPage() {
               </div>
               <div className="bg-[#111] p-4 rounded border border-gray-800">
                  <div className="text-gray-500 text-[10px] uppercase mb-1 flex items-center gap-1"><ShieldAlert className="w-3 h-3"/> Rewriter</div>
-                 <div className={`text-xl font-mono ${analysis.isRewritten ? 'text-green-400' : 'text-red-400'}`}>
+                 <div className={`text-xl font-mono ${analysis.isRewritten ? 'text-green-400' : 'text-primary-400'}`}>
                    {analysis.isRewritten ? 'ACTIVE' : 'INACTIVE'}
                  </div>
               </div>

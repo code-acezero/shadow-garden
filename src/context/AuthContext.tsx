@@ -1,9 +1,8 @@
 "use client";
 
-import { createContext, useContext, useEffect, useState, useRef } from "react";
+import { createContext, useContext, useEffect, useState, useRef, useCallback, useMemo } from "react";
 import { supabase } from "@/lib/supabase"; 
-import { authLog } from "@/lib/debug"; 
-import { AuthChangeEvent, Session } from "@supabase/supabase-js"; 
+import { Session, User, AuthChangeEvent } from "@supabase/supabase-js"; 
 
 export interface SavedAccount {
   id: string;
@@ -15,7 +14,7 @@ export interface SavedAccount {
 }
 
 type AuthContextType = {
-  user: any | null;
+  user: User | null;
   profile: any | null;
   isLoading: boolean;
   savedAccounts: SavedAccount[];
@@ -37,124 +36,184 @@ const AuthContext = createContext<AuthContextType>({
 });
 
 export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
-  const [user, setUser] = useState<any>(null);
+  const [user, setUser] = useState<User | null>(null);
   const [profile, setProfile] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [savedAccounts, setSavedAccounts] = useState<SavedAccount[]>([]);
   
-  const mounted = useRef(false);
+  const isMounted = useRef(true);
+  const hasInitialized = useRef(false);
+  const currentProfileId = useRef<string | null>(null);
 
-  const loadSavedAccounts = () => {
-    if (typeof window === 'undefined') return;
+  const fetchProfile = useCallback(async (userId: string, userEmail?: string, userMeta?: any) => {
     try {
-        const stored = localStorage.getItem('shadow_multi_auth');
-        if (stored) setSavedAccounts(JSON.parse(stored));
-    } catch (e) { console.error("Failed to load accounts", e); }
-  };
-
-  const fetchProfile = async (currentUser: any) => {
-    try {
-        if (!currentUser?.id) return;
-        const { data, error } = await supabase.from("profiles").select("*").eq("id", currentUser.id).single();
-        let currentProfile = data && !error ? data : {
-            id: currentUser.id,
-            username: currentUser.user_metadata?.full_name || "Shadow Agent",
-            email: currentUser.email,
+        const { data } = await supabase.from("profiles").select("*").eq("id", userId).single();
+        if (data) return data;
+        return {
+            id: userId,
+            username: userMeta?.full_name || userEmail?.split('@')[0] || "Adventurer",
+            email: userEmail,
+            avatar_url: userMeta?.avatar_url,
+            role: 'user',
             is_guest: false
         };
-        setProfile(currentProfile);
-        return currentProfile;
-    } catch (error: any) { if (error.name === 'AbortError') return; }
-  };
-
-  useEffect(() => {
-    mounted.current = true;
-    loadSavedAccounts(); 
-
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event: AuthChangeEvent, session: Session | null) => {
-        if (session?.user) {
-            setUser(session.user);
-            const userProfile = await fetchProfile(session.user);
-            
-            setSavedAccounts(prev => {
-                const existing = prev.filter(a => a.id !== session.user.id);
-                const updatedAccount: SavedAccount = {
-                    id: session.user.id,
-                    email: session.user.email!,
-                    username: userProfile?.username || session.user.email?.split('@')[0],
-                    avatar_url: userProfile?.avatar_url,
-                    session: session, 
-                    lastActive: Date.now()
-                };
-                const newAccounts = [updatedAccount, ...existing].slice(0, 2);
-                localStorage.setItem('shadow_multi_auth', JSON.stringify(newAccounts));
-                return newAccounts;
-            });
-
-            if (mounted.current) setIsLoading(false);
-        } 
-        else if (event === 'SIGNED_OUT') {
-            setUser(null);
-            setProfile(null);
-            if (mounted.current) setIsLoading(false);
-        }
-    });
-
-    return () => { mounted.current = false; subscription.unsubscribe(); };
+    } catch (e) { return null; }
   }, []);
 
-  const switchAccount = async (accountId: string) => {
-    // 1. Local Update (Instant)
-    const stored = localStorage.getItem('shadow_multi_auth');
-    const accounts: SavedAccount[] = stored ? JSON.parse(stored) : savedAccounts;
-    const target = accounts.find(a => a.id === accountId);
-    
-    if (!target) return;
+  const updateSavedAccounts = useCallback((session: Session, profileData: any) => {
+      if (!session?.user) return;
+      setSavedAccounts(prev => {
+          const existing = prev.filter(a => a.id !== session.user.id);
+          const updated: SavedAccount = {
+              id: session.user.id,
+              email: session.user.email!,
+              username: profileData?.username,
+              avatar_url: profileData?.avatar_url,
+              session: session,
+              lastActive: Date.now()
+          };
+          const nextList = [updated, ...existing].slice(0, 2);
+          if (typeof window !== 'undefined') localStorage.setItem('shadow_multi_auth', JSON.stringify(nextList));
+          return nextList;
+      });
+  }, []);
 
-    authLog('AUTH_ACTION', `Switching to ${target.username}...`);
-    
-    const updated = accounts.map(a => a.id === accountId ? { ...a, lastActive: Date.now() } : a)
-                            .sort((a, b) => b.lastActive - a.lastActive);
-    setSavedAccounts(updated);
-    localStorage.setItem('shadow_multi_auth', JSON.stringify(updated));
+  useEffect(() => {
+    if (hasInitialized.current) return;
+    hasInitialized.current = true;
+    isMounted.current = true;
 
-    // 2. Network (Background)
-    // We do NOT await this in the UI flow anymore to prevent blocking
-    return supabase.auth.setSession(target.session);
-  };
-
-  const removeAccount = (accountId: string) => {
-    // 1. Sync Storage Update (Crucial)
-    const stored = localStorage.getItem('shadow_multi_auth');
-    const currentList: SavedAccount[] = stored ? JSON.parse(stored) : [];
-    const newList = currentList.filter(a => a.id !== accountId);
-    
-    localStorage.setItem('shadow_multi_auth', JSON.stringify(newList));
-    setSavedAccounts(newList);
-    
-    // 2. Fire and Forget SignOut
-    if (user?.id === accountId) {
-        // Don't await. Just start it.
-        supabase.auth.signOut().catch(() => {});
+    if (typeof window !== 'undefined') {
+        try {
+            const stored = localStorage.getItem('shadow_multi_auth');
+            if (stored) setSavedAccounts(JSON.parse(stored));
+        } catch(e) {}
     }
-  };
 
-  const signOut = async () => {
-    if (typeof window !== 'undefined') localStorage.removeItem('shadow_auth_hint');
+    const init = async () => {
+        try {
+            const { data: { session } } = await supabase.auth.getSession();
+            if (session?.user && isMounted.current) {
+                setUser(session.user);
+                const profileData = await fetchProfile(session.user.id, session.user.email, session.user.user_metadata);
+                if (isMounted.current && profileData) {
+                    setProfile(profileData);
+                    currentProfileId.current = profileData.id;
+                    updateSavedAccounts(session, profileData);
+                }
+            }
+        } catch (e) { console.error("Auth Init error", e); } 
+        finally { if (isMounted.current) setIsLoading(false); }
+    };
+
+    init();
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event: AuthChangeEvent, session: Session | null) => {
+        if (!isMounted.current) return;
+        if (session?.user) {
+            setUser(session.user);
+            if (currentProfileId.current !== session.user.id) {
+                const profileData = await fetchProfile(session.user.id, session.user.email, session.user.user_metadata);
+                if (isMounted.current && profileData) {
+                    setProfile(profileData);
+                    currentProfileId.current = profileData.id;
+                    updateSavedAccounts(session, profileData);
+                }
+            }
+        } else if (event === 'SIGNED_OUT') {
+            setUser(null);
+            setProfile(null);
+            currentProfileId.current = null;
+        }
+        if (isMounted.current) setIsLoading(false);
+    });
+
+    return () => { isMounted.current = false; subscription.unsubscribe(); };
+  }, [fetchProfile, updateSavedAccounts]);
+
+  const switchAccount = useCallback(async (accountId: string) => {
+    const target = savedAccounts.find(a => a.id === accountId);
+    if (!target) return;
+    setIsLoading(true);
+    await supabase.auth.setSession({ access_token: target.session.access_token, refresh_token: target.session.refresh_token });
+    window.location.reload(); 
+  }, [savedAccounts]);
+
+  const removeAccount = useCallback((accountId: string) => {
+    const nextList = savedAccounts.filter(a => a.id !== accountId);
+    setSavedAccounts(nextList);
+    if (typeof window !== 'undefined') localStorage.setItem('shadow_multi_auth', JSON.stringify(nextList));
+    if (user?.id === accountId) {
+      supabase.auth.signOut().then(() => { 
+        setUser(null); 
+        setProfile(null);
+        currentProfileId.current = null;
+      });
+    }
+  }, [savedAccounts, user]);
+
+  // ✅ FIXED: Sequential "Remove -> SignOut -> Switch? -> Reload"
+  const signOut = useCallback(async () => {
     try {
-        await supabase.auth.signOut();
-    } catch (e) {}
-    setUser(null);
-    setProfile(null);
-  };
+      const currentId = user?.id;
+      // 1. Calculate remaining accounts (this is the list AFTER current is gone)
+      const remainingAccounts = savedAccounts.filter(a => a.id !== currentId);
+      
+      // 2. Commit removal to Storage & State IMMEDIATELY
+      if (typeof window !== 'undefined') {
+          localStorage.setItem('shadow_multi_auth', JSON.stringify(remainingAccounts));
+      }
+      setSavedAccounts(remainingAccounts);
 
-  const refreshSession = async () => {
-    const { data: { session } } = await supabase.auth.getSession();
-    if (session?.user) { setUser(session.user); await fetchProfile(session.user); }
-  };
+      // 3. Perform the Sign Out (Clears current session)
+      await supabase.auth.signOut();
+      
+      // 4. Decision: Switch or Guest?
+      if (remainingAccounts.length > 0) {
+        // --- SWITCH LOGIC ---
+        const nextAccount = remainingAccounts[0];
+        
+        // Restore session for the next account
+        const { error } = await supabase.auth.setSession({
+            access_token: nextAccount.session.access_token,
+            refresh_token: nextAccount.session.refresh_token
+        });
+
+        if (error) {
+            console.error("Switch failed, defaulting to guest", error);
+        }
+      } 
+      
+      // 5. FINAL STEP: Reload unconditionally.
+      // If switch worked -> Loads as User B.
+      // If switch failed/no accounts -> Loads as Guest.
+      window.location.reload();
+      
+    } catch(e) {
+      // Failsafe
+      window.location.reload();
+    }
+  }, [savedAccounts, user]);
+
+  const refreshSession = useCallback(async () => {
+    try {
+        const { data: { session } } = await supabase.auth.refreshSession();
+        if (session?.user) {
+            setUser(session.user);
+            const profileData = await fetchProfile(session.user.id, session.user.email, session.user.user_metadata);
+            if (profileData) {
+                setProfile(profileData);
+                currentProfileId.current = profileData.id;
+            }
+        }
+    } catch(e) {}
+  }, [fetchProfile]);
+
+  const value = useMemo(() => ({ user, profile, isLoading, savedAccounts, signOut, refreshSession, switchAccount, removeAccount }), 
+    [user?.id, profile?.id, isLoading, savedAccounts.length, signOut, refreshSession, switchAccount, removeAccount]);
 
   return (
-    <AuthContext.Provider value={{ user, profile, isLoading, savedAccounts, signOut, refreshSession, switchAccount, removeAccount }}>
+    <AuthContext.Provider value={value}>
       {children}
     </AuthContext.Provider>
   );

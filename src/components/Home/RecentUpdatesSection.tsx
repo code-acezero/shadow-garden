@@ -6,9 +6,9 @@ import { cn } from '@/lib/utils';
 import AnimeCard from '@/components/Anime/AnimeCard';
 import HindiAnimeCard from '@/components/Anime/HindiAnimeCard'; 
 import { AnimeService } from '@/lib/api';
+import { hpi } from '@/lib/hpi'; 
 import Link from 'next/link';
 
-// ... (Interface & Cache setup unchanged) ...
 interface CacheData {
     [key: string]: {
         data: any[];
@@ -33,7 +33,6 @@ export default function RecentUpdatesSection({ initialData }: { initialData: any
         { id: 'hindi', label: 'Hindi' }
     ];
 
-    // ... (Persistence Logic unchanged) ...
     useEffect(() => {
         setIsMounted(true);
         const savedFilter = localStorage.getItem('shadow_recent_filter');
@@ -47,7 +46,6 @@ export default function RecentUpdatesSection({ initialData }: { initialData: any
         localStorage.setItem('shadow_recent_filter', newFilter);
     };
 
-    // ... (Data Fetching Logic unchanged - ensure map uses rating as updated before) ...
     useEffect(() => {
         if (!isMounted) return;
 
@@ -64,35 +62,50 @@ export default function RecentUpdatesSection({ initialData }: { initialData: any
                 let results: any[] = [];
                 
                 if (filter === 'all') {
-                    if (data.length > 0 && data === initialData) {
-                       results = initialData;
-                    } else {
-                       results = initialData || []; 
-                    }
+                    results = initialData || []; 
                 } else {
                     switch (filter) {
                         case 'sub': results = await AnimeService.getSubbedAnime(1); break;
                         case 'dub': results = await AnimeService.getDubbedAnime(1); break;
-                        case 'hindi': results = await AnimeService.getHindiRecent(); break;
+                        case 'hindi': 
+                            try {
+                                const hindiHome = await hpi.desidub.getHome();
+                                // Pulling from the "Latest Episode" sector as the tactical primary source
+                                const latestSection = hindiHome.sections.find(s => s.title === "Latest Episode");
+                                results = latestSection ? latestSection.items : [];
+                            } catch (e) {
+                                console.error("HPI Hindi sector reach failed", e);
+                                results = [];
+                            }
+                            break;
                     }
                 }
 
                 const sanitizedResults = results.map(anime => {
+                    // --- Image Proxy Logic ---
                     let rawUrl: string = anime.poster || anime.image || "";
                     let finalUrl = rawUrl;
-
+                    
                     if (rawUrl.includes('image.tmdb.org')) {
                         const match = rawUrl.match(/\/t\/p\/.*/);
                         if (match) finalUrl = `https://image.tmdb.org${match[0]}`;
                     } else if (rawUrl.includes('watchanimeworld')) {
                         finalUrl = rawUrl.replace(/([^:]\/)\/+/g, "$1");
                     }
+                    
                     if (finalUrl.startsWith('//')) finalUrl = `https:${finalUrl}`;
                     const proxiedUrl = finalUrl ? `/api/proxy?url=${encodeURIComponent(finalUrl)}` : "/images/placeholder.jpg";
 
+                    // --- Episode Processing ---
                     const rawSub = (typeof anime.episodes === 'object' ? anime.episodes.sub : anime.sub) || 0;
                     const rawDub = (typeof anime.episodes === 'object' ? anime.episodes.dub : anime.dub) || 0;
                     const rawTotal = anime.totalEpisodes || anime.episodes || 0;
+
+                    let epValue = anime.episode;
+                    if (typeof epValue === 'string') {
+                        const match = epValue.match(/\d+/);
+                        epValue = match ? parseInt(match[0], 10) : 0;
+                    }
 
                     let watchParams = "";
                     let targetEp = 0;
@@ -104,21 +117,24 @@ export default function RecentUpdatesSection({ initialData }: { initialData: any
                         targetEp = rawDub;
                         if (targetEp > 0) watchParams = `?ep=${targetEp}&type=dub`;
                     } else if (filter === 'hindi') {
-                        targetEp = anime.episode || rawTotal || 0; 
-                        if (targetEp > 0) watchParams = `?ep=${targetEp}&type=hindi`;
+                        // For Hindi, we use the specific episode number from the scraper
+                        targetEp = epValue || rawTotal || 0; 
+                        if (targetEp > 0) watchParams = `?ep=${targetEp}`;
                     } else {
                         targetEp = rawSub || anime.episode || 0;
                         if (targetEp > 0) watchParams = `?ep=${targetEp}`;
                     }
 
+                    // --- Updated Watch Page Trigger ---
+                    // Redirects Hindi content to the specialized /hindi-watch sector
                     const baseRoute = (filter === 'hindi' || anime.isHindi) 
-                        ? `/watch2/${anime.id}` 
+                        ? `/hindi-watch/${anime.id}` 
                         : `/watch/${anime.id}`;
-
-                    const finalRoute = `${baseRoute}${watchParams}`;
 
                     return {
                         ...anime,
+                        // dataId must persist for the HindiAnimeCard's HPI Qtip fetch
+                        dataId: anime.dataId || null, 
                         poster: proxiedUrl,
                         image: proxiedUrl,
                         rating: anime.rating || null,
@@ -129,7 +145,8 @@ export default function RecentUpdatesSection({ initialData }: { initialData: any
                         },
                         sub: rawSub > 0 ? rawSub : null,
                         dub: rawDub > 0 ? rawDub : null,
-                        targetRoute: finalRoute 
+                        episode: filter === 'hindi' ? targetEp : anime.episode, 
+                        targetRoute: `${baseRoute}${watchParams}` 
                     };
                 });
 
@@ -139,7 +156,7 @@ export default function RecentUpdatesSection({ initialData }: { initialData: any
                 if (filter !== 'all') cache.current[filter] = { data: finalData, timestamp: Date.now() };
 
             } catch (error) {
-                console.error("Link Severed:", error);
+                console.error("Tactical connection severed:", error);
                 setData([]);
             } finally {
                 setLoading(false);
@@ -150,23 +167,19 @@ export default function RecentUpdatesSection({ initialData }: { initialData: any
     }, [filter, isMounted, initialData]);
 
     return (
-        // ✅ UPDATED: max-w-[1440px]
-        <section className="w-full relative z-10 animate-in fade-in duration-700 mt-8 mb-12 px-4 md:px-8 max-w-[1440px] mx-auto">
+        <section className="w-full relative z-10 animate-in fade-in duration-700 mt-8 mb-12 px-4 md:px-8 max-w-[1350px] mx-auto">
             
             {/* --- HEADER --- */}
             <div className="flex flex-wrap md:flex-nowrap items-center justify-between mb-6 gap-y-4 md:gap-4 relative">
-                
-                {/* 1. LEFT: Title */}
                 <div className="flex items-center gap-2 md:gap-3 min-w-0 order-1">
-                    <div className="p-1.5 md:p-2 bg-red-600/10 rounded-lg md:rounded-xl border border-red-500/20 backdrop-blur-md flex-shrink-0">
-                        <Sparkles className="w-3.5 h-3.5 md:w-4 md:h-4 text-red-500" />
+                    <div className="p-1.5 md:p-2 bg-primary-600/10 rounded-lg md:rounded-xl border border-primary-500/20 backdrop-blur-md flex-shrink-0">
+                        <Sparkles className="w-3.5 h-3.5 md:w-4 md:h-4 text-primary-500" />
                     </div>
-                    <h2 className="text-sm md:text-lg font-black tracking-[0.15em] md:tracking-[0.2em] uppercase font-sans drop-shadow-md bg-gradient-to-r from-red-500 via-violet-500 to-violet-600 bg-clip-text text-transparent truncate">
+                    <h2 className="text-sm md:text-lg font-black tracking-[0.15em] md:tracking-[0.2em] uppercase font-sans drop-shadow-md bg-gradient-to-r from-primary-500 via-violet-500 to-violet-600 bg-clip-text text-transparent truncate">
                         Recent Updates
                     </h2>
                 </div>
 
-                {/* 2. CENTER (Desktop) / BOTTOM (Mobile): Filter Toggles */}
                 <div className="order-3 w-full md:w-auto md:order-2 md:absolute md:left-1/2 md:-translate-x-1/2 md:z-10 flex justify-start md:justify-center">
                      <div className="flex items-center p-1 rounded-full bg-[#0a0a0a] border border-white/10 shadow-inner w-full md:w-auto overflow-x-auto no-scrollbar">
                         {filters.map((f) => (
@@ -177,7 +190,7 @@ export default function RecentUpdatesSection({ initialData }: { initialData: any
                                 className={cn(
                                     "flex-1 md:flex-none px-4 md:px-6 py-1.5 md:py-2 rounded-full text-[9px] md:text-[10px] font-black uppercase tracking-widest transition-all duration-300 disabled:opacity-50 whitespace-nowrap",
                                     filter === f.id 
-                                        ? "bg-gradient-to-r from-red-600 to-red-500 text-white shadow-lg shadow-red-900/20" 
+                                        ? "bg-gradient-to-r from-primary-600 to-primary-500 text-white shadow-lg shadow-primary-900/20" 
                                         : "text-zinc-500 hover:text-white hover:bg-white/5"
                                 )}
                             >
@@ -187,7 +200,6 @@ export default function RecentUpdatesSection({ initialData }: { initialData: any
                     </div>
                 </div>
 
-                {/* 3. RIGHT: View All */}
                 <Link 
                     href="/catalog" 
                     className="order-2 md:order-3 group flex-shrink-0 flex items-center gap-0.5 md:gap-1 text-[9px] md:text-[10px] font-bold text-zinc-400 hover:text-white transition-colors uppercase tracking-widest whitespace-nowrap"
@@ -200,11 +212,11 @@ export default function RecentUpdatesSection({ initialData }: { initialData: any
             {/* --- GRID CONTENT --- */}
             {loading ? (
                 <div className="h-[300px] md:h-[400px] w-full flex flex-col items-center justify-center gap-4 rounded-[24px] md:rounded-[32px] border border-white/5 bg-white/5">
-                    <Loader2 className="w-8 h-8 md:w-10 md:h-10 text-red-600 animate-spin drop-shadow-[0_0_15px_rgba(220,38,38,0.5)]" />
+                    <Loader2 className="w-8 h-8 md:w-10 md:h-10 text-primary-600 animate-spin drop-shadow-[0_0_15px_rgba(220,38,38,0.5)]" />
                     <p className="text-[9px] md:text-[10px] font-black text-zinc-500 uppercase tracking-[0.4em] animate-pulse">Syncing Intel...</p>
                 </div>
             ) : data.length > 0 ? (
-                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4 md:gap-6">
+                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4 md:gap-6 relative">
                     {data.slice(0, 12).map((anime, idx) => (
                         <div 
                             key={`${anime.id}-${idx}`}

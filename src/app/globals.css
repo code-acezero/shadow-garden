@@ -4,101 +4,103 @@
 
 @layer base {
   :root {
+    /* ========================================= */
+    /* 🔴 DEFAULT THEME: SHADOW GARDEN RED       */
+    /* ========================================= */
+    
+    /* 1. The Dynamic Palette (Used by bg-primary-500, etc.) */
+    --primary-50: #fef2f2;
+    --primary-100: #fee2e2;
+    --primary-200: #fecaca;
+    --primary-300: #fca5a5;
+    --primary-400: #f87171;
+    --primary-500: #ef4444;  /* Standard Red */
+    --primary-600: #dc2626;  /* Main Brand Color */
+    --primary-700: #b91c1c;
+    --primary-800: #991b1b;
+    --primary-900: #7f1d1d;
+    --primary-950: #450a0a;  /* Deep Backgrounds */
+
+    /* 2. Legacy Variables (For non-tailwind styles) */
+    --primary-color: #dc2626; 
+    
+    /* 3. Fonts */
+    --font-primary: var(--font-hunters); 
+
+    /* 4. Base Layout Colors (Light Mode Fallback) */
     --background: 0 0% 100%;
-    --foreground: 222.2 84% 4.9%;
-
+    --foreground: 0 0% 3.9%;
     --card: 0 0% 100%;
-    --card-foreground: 222.2 84% 4.9%;
-
+    --card-foreground: 0 0% 3.9%;
     --popover: 0 0% 100%;
-    --popover-foreground: 222.2 84% 4.9%;
-
-    --primary: 222.2 47.4% 11.2%;
-    --primary-foreground: 210 40% 98%;
-
-    --secondary: 210 40% 96.1%;
-    --secondary-foreground: 222.2 47.4% 11.2%;
-
-    --muted: 210 40% 96.1%;
-    --muted-foreground: 215.4 16.3% 46.9%;
-
-    --accent: 210 40% 96.1%;
-    --accent-foreground: 222.2 47.4% 11.2%;
-
+    --popover-foreground: 0 0% 3.9%;
+    
+    /* 5. Component Colors (Matching Red Theme) */
+    --primary: 0 72.2% 50.6%; /* Red HSL */
+    --primary-foreground: 0 85.7% 97.3%;
+    --secondary: 0 0% 96.1%;
+    --secondary-foreground: 0 0% 9%;
+    --muted: 0 0% 96.1%;
+    --muted-foreground: 0 0% 45.1%;
+    --accent: 0 0% 96.1%;
+    --accent-foreground: 0 0% 9%;
     --destructive: 0 84.2% 60.2%;
-    --destructive-foreground: 210 40% 98%;
-
-    --border: 214.3 31.8% 91.4%;
-    --input: 214.3 31.8% 91.4%;
-    --ring: 222.2 84% 4.9%;
-
-    --radius: 0.5rem;
-
-    --sidebar-background: 0 0% 98%;
-    --sidebar-foreground: 240 5.3% 26.1%;
-    --sidebar-primary: 240 5.9% 10%;
-    --sidebar-primary-foreground: 0 0% 98%;
-    --sidebar-accent: 240 4.8% 95.9%;
-    --sidebar-accent-foreground: 240 5.9% 10%;
-    --sidebar-border: 220 13% 91%;
-    --sidebar-ring: 217.2 91.2% 59.8%;
+    --destructive-foreground: 0 0% 98%;
+    
+    /* 6. Borders & Rings */
+    --border: 0 0% 89.8%;
+    --input: 0 0% 89.8%;
+    --ring: 0 72.2% 50.6%; /* Red Ring */
+    --radius: 0.75rem;
   }
 
   .dark {
-    --background: 222.2 84% 4.9%;
-    --foreground: 210 40% 98%;
+    /* Dark Mode Overrides (Defaulting to Red/Black) */
+    --background: 0 0% 2%;  /* Almost Black */
+    --foreground: 0 0% 98%;
 
-    --card: 222.2 84% 4.9%;
-    --card-foreground: 210 40% 98%;
+    --card: 0 0% 3%;
+    --card-foreground: 0 0% 98%;
 
-    --popover: 222.2 84% 4.9%;
-    --popover-foreground: 210 40% 98%;
+    --popover: 0 0% 3%;
+    --popover-foreground: 0 0% 98%;
 
-    --primary: 210 40% 98%;
-    --primary-foreground: 222.2 47.4% 11.2%;
+    /* Keep Primary Red in Dark Mode */
+    --primary: 0 72.2% 50.6%; 
+    --primary-foreground: 0 85.7% 97.3%;
 
-    --secondary: 217.2 32.6% 17.5%;
-    --secondary-foreground: 210 40% 98%;
+    --secondary: 0 0% 14.9%;
+    --secondary-foreground: 0 0% 98%;
 
-    --muted: 217.2 32.6% 17.5%;
-    --muted-foreground: 215 20.2% 65.1%;
+    --muted: 0 0% 14.9%;
+    --muted-foreground: 0 0% 63.9%;
 
-    --accent: 217.2 32.6% 17.5%;
-    --accent-foreground: 210 40% 98%;
+    --accent: 0 0% 14.9%;
+    --accent-foreground: 0 0% 98%;
 
     --destructive: 0 62.8% 30.6%;
-    --destructive-foreground: 210 40% 98%;
+    --destructive-foreground: 0 0% 98%;
 
-    --border: 217.2 32.6% 17.5%;
-    --input: 217.2 32.6% 17.5%;
-    --ring: 212.7 26.8% 83.9%;
+    --border: 0 0% 14.9%;
+    --input: 0 0% 14.9%;
     
-    --sidebar-background: 240 5.9% 10%;
-    --sidebar-foreground: 240 4.8% 95.9%;
-    --sidebar-primary: 224.3 76.3% 48%;
-    --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 240 3.7% 15.9%;
-    --sidebar-accent-foreground: 240 4.8% 95.9%;
-    --sidebar-border: 240 3.7% 15.9%;
-    --sidebar-ring: 217.2 91.2% 59.8%;
+    /* Important: Default Ring should be Red, not Blue */
+    --ring: 0 72.2% 50.6%; 
   }
 }
 
 @layer base {
-  /* --- MOBILE OPTIMIZATION START --- */
+  /* --- MOBILE OPTIMIZATION --- */
   html {
-    /* Scale down entire app on mobile */
     font-size: 14px;
     scroll-behavior: smooth;
   }
 
-  /* Reset to standard size on tablets/desktop */
   @media (min-width: 768px) {
     html {
       font-size: 16px;
     }
   }
-  /* --- MOBILE OPTIMIZATION END --- */
 
   * {
     @apply border-border;
@@ -106,27 +108,30 @@
 
   body {
     @apply bg-background text-foreground;
-    /* Prevent horizontal scroll on mobile */
     overflow-x: hidden;
     -webkit-tap-highlight-color: transparent;
   }
 }
 
-/* Hide scrollbars on mobile for cleaner look */
-.no-scrollbar::-webkit-scrollbar {
+/* --- UTILITIES --- */
+
+/* 1. Global Scrollbar Hiding (Cleanest Method) */
+::-webkit-scrollbar {
   display: none;
 }
-.no-scrollbar {
-  -ms-overflow-style: none;
-  scrollbar-width: none;
+
+* {
+  -ms-overflow-style: none;  /* IE and Edge */
+  scrollbar-width: none;  /* Firefox */
 }
 
-/* Hide scrollbar but keep scrolling */
-.no-scrollbar {
-  -ms-overflow-style: none; /* IE */
-  scrollbar-width: none; /* Firefox */
+/* 2. Remove Blue Highlight on Mobile */
+* {
+  -webkit-tap-highlight-color: transparent;
 }
 
-.no-scrollbar::-webkit-scrollbar {
-  display: none; /* Chrome, Safari */
+/* 3. Global Selection Color (Matches Theme) */
+::selection {
+  background: var(--primary-600); /* Uses the active theme color */
+  color: #ffffff;
 }

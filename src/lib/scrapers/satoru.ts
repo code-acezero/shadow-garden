@@ -68,23 +68,22 @@ export const SatoruService = {
     const html = await res.text();
     const $ = cheerio.load(html);
 
-   let schema: any = {};
+    let schema: any = {};
+    try {
+      const schemaRaw = $('script[type="application/json"]').html();
+      if (schemaRaw) {
+        schema = JSON.parse(
+          schemaRaw
+            .replace(/[\u0000-\u001F\u007F-\u009F]/g, '')
+            .replace(/,\s*}/g, '}')
+            .replace(/,\s*]/g, ']')
+        );
+      }
+    } catch {
+      schema = {};
+    }
 
-try {
-  const schemaRaw = $('script[type="application/json"]').html();
-  if (schemaRaw) {
-    schema = JSON.parse(
-      schemaRaw
-        .replace(/[\u0000-\u001F\u007F-\u009F]/g, '')
-        .replace(/,\s*}/g, '}')
-        .replace(/,\s*]/g, ']')
-    );
-  }
-} catch {
-  schema = {};
-}
-
-    const internalId = $('#anime-id').val() || html.match(/const movieId = (\d+);/)?.[1];
+    const internalId = ($('#anime-id').val() as string) || html.match(/const movieId = (\d+);/)?.[1];
     
     const epRes = await fetch(`${BASE_URL}/ajax/v2/episode/list/${internalId}`, { headers, signal });
     const epData = await epRes.json();
@@ -128,6 +127,52 @@ try {
         category: langGroup === 'jp' ? 'sub' : 'dub'
       };
     }).get();
+  },
+
+  // 6. Mission: Watch Page Intelligence (NEW)
+  async getWatchInfo(id: string, signal?: AbortSignal) {
+    const res = await fetch(`${BASE_URL}/watch/${id}`, { headers, signal });
+    const html = await res.text();
+    const $ = cheerio.load(html);
+
+    // Extract the embedded video player source
+    const iframeSrc = $('#iframe-embed').attr('src');
+    
+    // Extract current episode breadcrumb context
+    const currentEpTitle = $('.breadcrumb-item.active').text().replace('Watching', '').trim();
+    
+    // Extract internal ID for fetching servers later
+    const internalId = ($('#anime-id').val() as string) || html.match(/const movieId = (\d+);/)?.[1];
+
+    // Extract Seasons / Related parts
+    const seasons = $('.os-list .os-item').map((_, el) => ({
+        id: $(el).attr('href')?.split('/').pop(),
+        title: $(el).find('.title').text().trim(),
+        poster: $(el).find('.season-poster').attr('style')?.match(/url\((.*?)\)/)?.[1],
+        isActive: $(el).hasClass('active')
+    })).get();
+
+    // Extract Recommendations from the watch page bottom
+    const recommendations = this.extractAnimeList($, '.block_area_category .flw-item');
+
+    return {
+        id,
+        internalId,
+        iframeSrc,
+        currentEpTitle,
+        seasons,
+        recommendations,
+        title: $('.anis-watch-detail .film-name a.dynamic-name').text().trim(),
+        japaneseTitle: $('.anis-watch-detail .film-name a.dynamic-name').attr('data-jname'),
+        poster: $('.anis-watch-detail .film-poster-img').attr('src'),
+        description: $('.film-description .text').text().trim(),
+        stats: {
+            type: $('.anis-watch-detail .item:contains("TV"), .anis-watch-detail .item:contains("Movie")').text().trim(),
+            duration: $('.anis-watch-detail .item:contains("min")').text().trim(),
+            quality: $('.anis-watch-detail .tick-quality').text().trim(),
+            rating: $('.anis-watch-detail .tick-pg').text().trim()
+        }
+    };
   },
 
   // --- INTERNAL EXTRACTION UTILITIES ---

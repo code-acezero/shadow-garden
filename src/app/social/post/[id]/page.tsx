@@ -59,7 +59,7 @@ export default function SinglePostPage() {
     return (
       <div className="min-h-screen flex items-center justify-center bg-black">
         <div className="flex flex-col items-center gap-4">
-          <Loader2 className="w-10 h-10 text-red-600 animate-spin" />
+          <Loader2 className="w-10 h-10 text-primary-600 animate-spin" />
           <p className="text-zinc-500 font-[Cinzel] tracking-widest animate-pulse text-xs">
             DECRYPTING_SIGNAL...
           </p>
@@ -72,7 +72,7 @@ export default function SinglePostPage() {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center bg-black text-white p-4">
         <div className="absolute inset-0 bg-[url('/noise.png')] opacity-5 pointer-events-none" />
-        <h1 className="text-4xl font-black mb-4 font-[Cinzel] text-red-600 tracking-tighter">
+        <h1 className="text-4xl font-black mb-4 font-[Cinzel] text-primary-600 tracking-tighter">
           SIGNAL_DISRUPTED
         </h1>
         <p className="text-zinc-500 mb-8 max-w-md text-center text-sm uppercase tracking-widest leading-relaxed">
@@ -80,7 +80,7 @@ export default function SinglePostPage() {
         </p>
         <Button 
           onClick={() => router.push('/social')} 
-          className="bg-red-600 hover:bg-red-700 text-white font-black px-8 rounded-full shadow-[0_0_20px_rgba(220,38,38,0.4)] transition-all"
+          className="bg-primary-600 hover:bg-primary-700 text-white font-black px-8 rounded-full shadow-[0_0_20px_rgba(220,38,38,0.4)] transition-all"
         >
           RETURN TO GLOBAL FEED
         </Button>
@@ -103,7 +103,7 @@ export default function SinglePostPage() {
               <ArrowLeft />
             </Button>
             <div>
-              <h2 className="font-[Cinzel] text-sm md:text-lg tracking-[0.2em] text-red-500 uppercase leading-none">
+              <h2 className="font-[Cinzel] text-sm md:text-lg tracking-[0.2em] text-primary-500 uppercase leading-none">
                 Transmission_Log
               </h2>
               <p className="text-[10px] text-zinc-600 font-bold uppercase tracking-tighter mt-1">
@@ -112,14 +112,14 @@ export default function SinglePostPage() {
             </div>
           </div>
           
-          <Badge variant="outline" className="border-red-900/50 text-red-600 animate-pulse font-black text-[10px]">
+          <Badge variant="outline" className="border-primary-900/50 text-primary-600 animate-pulse font-black text-[10px]">
             LIVE_SIGNAL
           </Badge>
         </div>
       </div>
 
       <main className="relative">
-        <div className="absolute top-0 left-0 w-full h-96 bg-gradient-to-b from-red-600/5 to-transparent pointer-events-none" />
+        <div className="absolute top-0 left-0 w-full h-96 bg-gradient-to-b from-primary-600/5 to-transparent pointer-events-none" />
         
         {/* Pass the current post ID as highlightId */}
         <OtakuVerse 

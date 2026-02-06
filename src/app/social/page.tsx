@@ -13,7 +13,7 @@ export default function SocialPage() {
     <div className="min-h-screen bg-[#050505] text-white pt-24 pb-24">
       {/* Background Ambience */}
       <div className="fixed inset-0 pointer-events-none">
-        <div className="absolute top-0 left-0 w-[500px] h-[500px] bg-red-900/10 rounded-full blur-[120px] opacity-50" />
+        <div className="absolute top-0 left-0 w-[500px] h-[500px] bg-primary-900/10 rounded-full blur-[120px] opacity-50" />
         <div className="absolute bottom-0 right-0 w-[500px] h-[500px] bg-blue-900/10 rounded-full blur-[120px] opacity-50" />
       </div>
 

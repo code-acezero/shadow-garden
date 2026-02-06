@@ -59,11 +59,11 @@ export default function Notifications() {
         onClick={() => setIsOpen(!isOpen)}
         className="relative p-2 group transition-all"
       >
-        <div className={`absolute inset-0 bg-red-600/20 rounded-full transition-transform duration-300 ${isOpen ? 'scale-100' : 'scale-0 group-hover:scale-100'}`} />
+        <div className={`absolute inset-0 bg-primary-600/20 rounded-full transition-transform duration-300 ${isOpen ? 'scale-100' : 'scale-0 group-hover:scale-100'}`} />
         <Bell size={20} className={`relative z-10 transition-colors ${isOpen ? 'text-white' : 'text-gray-300 group-hover:text-white'}`} />
         
         {unreadCount > 0 && (
-          <span className="absolute top-1.5 right-2 w-2.5 h-2.5 bg-red-500 rounded-full animate-pulse border-2 border-[#050505] flex items-center justify-center">
+          <span className="absolute top-1.5 right-2 w-2.5 h-2.5 bg-primary-500 rounded-full animate-pulse border-2 border-[#050505] flex items-center justify-center">
              {/* Optional: Add number inside if needed */}
           </span>
         )}
@@ -81,10 +81,10 @@ export default function Notifications() {
               className="absolute right-0 mt-4 w-80 md:w-96 bg-[#0a0a0a]/95 border border-white/10 rounded-2xl shadow-[0_0_50px_rgba(0,0,0,0.8)] overflow-hidden z-50 backdrop-blur-xl"
             >
               {/* Header */}
-              <div className="p-4 border-b border-white/5 flex justify-between items-center bg-gradient-to-r from-red-900/10 to-transparent">
+              <div className="p-4 border-b border-white/5 flex justify-between items-center bg-gradient-to-r from-primary-900/10 to-transparent">
                 <div className="flex items-center gap-2">
                    <h3 className="font-bold text-white text-sm">Notifications</h3>
-                   {unreadCount > 0 && <span className="text-[10px] bg-red-600 text-white px-1.5 rounded-full">{unreadCount}</span>}
+                   {unreadCount > 0 && <span className="text-[10px] bg-primary-600 text-white px-1.5 rounded-full">{unreadCount}</span>}
                 </div>
                 <div className="flex gap-2">
                    <button onClick={markAllRead} className="text-[10px] text-gray-400 hover:text-white flex items-center gap-1">
@@ -101,7 +101,7 @@ export default function Notifications() {
                   notifications.map((item) => (
                     <div 
                       key={item.id} 
-                      className={`relative p-4 border-b border-white/5 hover:bg-white/5 transition-colors group ${!item.read ? 'bg-red-500/5' : ''}`}
+                      className={`relative p-4 border-b border-white/5 hover:bg-white/5 transition-colors group ${!item.read ? 'bg-primary-500/5' : ''}`}
                     >
                       <button 
                          onClick={() => removeNotif(item.id)}
@@ -111,7 +111,7 @@ export default function Notifications() {
                       </button>
 
                       <div className="flex gap-3">
-                        <div className={`mt-1 w-2 h-2 rounded-full flex-shrink-0 ${!item.read ? 'bg-red-500 shadow-[0_0_8px_red]' : 'bg-gray-600'}`} />
+                        <div className={`mt-1 w-2 h-2 rounded-full flex-shrink-0 ${!item.read ? 'bg-primary-500 shadow-[0_0_8px_red]' : 'bg-gray-600'}`} />
                         <div>
                           <h4 className={`text-sm ${!item.read ? 'text-white font-bold' : 'text-gray-400 font-medium'}`}>{item.title}</h4>
                           <p className="text-xs text-gray-500 mt-1 leading-relaxed">{item.desc}</p>

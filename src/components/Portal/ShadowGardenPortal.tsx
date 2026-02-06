@@ -1085,29 +1085,29 @@ const AnimationPreferencePopup = React.memo(({
     
     return (
         <div className="fixed inset-0 z-[999] bg-black/95 flex items-center justify-center p-6">
-            <div className="absolute inset-0 bg-gradient-to-t from-red-900/10 via-black to-black pointer-events-none" />
+            <div className="absolute inset-0 bg-gradient-to-t from-primary-900/10 via-black to-black pointer-events-none" />
             
             <motion.div 
                 initial={{ opacity: 0, scale: 0.95, y: 10 }} 
                 animate={{ opacity: 1, scale: 1, y: 0 }} 
                 transition={{ duration: 0.4, ease: "circOut" }}
-                className="relative max-w-lg w-full bg-[#080505] border border-red-900/30 p-1 rounded-sm shadow-[0_0_50px_-10px_rgba(220,38,38,0.2)] overflow-hidden"
+                className="relative max-w-lg w-full bg-[#080505] border border-primary-900/30 p-1 rounded-sm shadow-[0_0_50px_-10px_rgba(220,38,38,0.2)] overflow-hidden"
             >
-                <div className="absolute top-0 left-0 w-2 h-2 border-t border-l border-red-500" />
-                <div className="absolute top-0 right-0 w-2 h-2 border-t border-r border-red-500" />
-                <div className="absolute bottom-0 left-0 w-2 h-2 border-b border-l border-red-500" />
-                <div className="absolute bottom-0 right-0 w-2 h-2 border-b border-r border-red-500" />
+                <div className="absolute top-0 left-0 w-2 h-2 border-t border-l border-primary-500" />
+                <div className="absolute top-0 right-0 w-2 h-2 border-t border-r border-primary-500" />
+                <div className="absolute bottom-0 left-0 w-2 h-2 border-b border-l border-primary-500" />
+                <div className="absolute bottom-0 right-0 w-2 h-2 border-b border-r border-primary-500" />
 
                 <div className="p-8 relative z-10">
-                    <div className="flex items-center gap-3 mb-6 border-b border-red-900/20 pb-4">
-                        <div className="p-2 bg-red-950/30 rounded border border-red-900/50">
-                            <Power className="w-5 h-5 text-red-500 animate-pulse" />
+                    <div className="flex items-center gap-3 mb-6 border-b border-primary-900/20 pb-4">
+                        <div className="p-2 bg-primary-950/30 rounded border border-primary-900/50">
+                            <Power className="w-5 h-5 text-primary-500 animate-pulse" />
                         </div>
                         <div>
                             <h3 className="text-lg text-white font-bold tracking-[0.2em] font-mono">
                                 SYSTEM DETECTED
                             </h3>
-                            <p className="text-[10px] text-red-400/60 uppercase tracking-widest">
+                            <p className="text-[10px] text-primary-400/60 uppercase tracking-widest">
                                 Dimensional Gate Protocol
                             </p>
                         </div>
@@ -1115,17 +1115,17 @@ const AnimationPreferencePopup = React.memo(({
 
                     <p className="text-gray-400 text-sm mb-8 leading-relaxed font-mono">
                         A returning signal has been identified. The dimensional gate is ready for synchronization. <br/><br/>
-                        <span className="text-red-400">Query:</span> Initiate full immersion sequence?
+                        <span className="text-primary-400">Query:</span> Initiate full immersion sequence?
                     </p>
 
                     <div className="grid grid-cols-1 gap-3 mb-8">
                         <Button 
                             onClick={() => onChoice(true, never ? 9999 : (pause7 ? 7 : 0))} 
-                            className="group relative overflow-hidden bg-red-950/20 hover:bg-red-900/40 border border-red-900/50 hover:border-red-500 transition-all duration-300 h-14"
+                            className="group relative overflow-hidden bg-primary-950/20 hover:bg-primary-900/40 border border-primary-900/50 hover:border-primary-500 transition-all duration-300 h-14"
                         >
-                            <div className="absolute inset-0 bg-gradient-to-r from-transparent via-red-500/10 to-transparent translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-700" />
+                            <div className="absolute inset-0 bg-gradient-to-r from-transparent via-primary-500/10 to-transparent translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-700" />
                             <div className="flex items-center justify-center gap-3">
-                                <PlayCircle className="w-5 h-5 text-red-500" />
+                                <PlayCircle className="w-5 h-5 text-primary-500" />
                                 <span className="text-white font-bold tracking-widest text-xs">INITIATE SEQUENCE</span>
                             </div>
                         </Button>
@@ -1147,13 +1147,13 @@ const AnimationPreferencePopup = React.memo(({
                             <Checkbox 
                                 id="pause" 
                                 checked={pause7} 
-                                className="border-red-900/50 data-[state=checked]:bg-red-900 data-[state=checked]:text-white"
+                                className="border-primary-900/50 data-[state=checked]:bg-primary-900 data-[state=checked]:text-white"
                                 onCheckedChange={(c) => { 
                                     setPause7(!!c); 
                                     if(c) setNever(false); 
                                 }} 
                             />
-                            <label htmlFor="pause" className="text-xs text-gray-500 font-mono cursor-pointer hover:text-red-400 transition-colors flex items-center gap-2">
+                            <label htmlFor="pause" className="text-xs text-gray-500 font-mono cursor-pointer hover:text-primary-400 transition-colors flex items-center gap-2">
                                 <Clock className="w-3 h-3" /> Auto-bypass for 7 cycles (days)
                             </label>
                         </div>
@@ -1161,13 +1161,13 @@ const AnimationPreferencePopup = React.memo(({
                             <Checkbox 
                                 id="never" 
                                 checked={never} 
-                                className="border-red-900/50 data-[state=checked]:bg-red-900 data-[state=checked]:text-white"
+                                className="border-primary-900/50 data-[state=checked]:bg-primary-900 data-[state=checked]:text-white"
                                 onCheckedChange={(c) => { 
                                     setNever(!!c); 
                                     if(c) setPause7(false); 
                                 }} 
                             />
-                            <label htmlFor="never" className="text-xs text-gray-500 font-mono cursor-pointer hover:text-red-400 transition-colors">
+                            <label htmlFor="never" className="text-xs text-gray-500 font-mono cursor-pointer hover:text-primary-400 transition-colors">
                                 Permanently disable gate sequence
                             </label>
                         </div>
@@ -1191,11 +1191,11 @@ const GuildCookieNotice = React.memo(({
         <motion.div 
             initial={{ y: 50, opacity: 0 }} 
             animate={{ y: 0, opacity: 1 }} 
-            className="bg-[#0a0505]/95 backdrop-blur-xl border border-red-900/50 rounded-xl p-5 shadow-2xl max-w-sm w-full pointer-events-auto"
+            className="bg-[#0a0505]/95 backdrop-blur-xl border border-primary-900/50 rounded-xl p-5 shadow-2xl max-w-sm w-full pointer-events-auto"
         >
             <div className="flex items-start gap-4 mb-3">
-                <div className="p-3 bg-gradient-to-br from-red-900/40 to-black rounded-full border border-red-500/20">
-                    <Scroll className="w-5 h-5 text-red-500" />
+                <div className="p-3 bg-gradient-to-br from-primary-900/40 to-black rounded-full border border-primary-500/20">
+                    <Scroll className="w-5 h-5 text-primary-500" />
                 </div>
                 <div>
                     <h4 className="text-white font-bold tracking-widest text-lg mb-1">
@@ -1209,7 +1209,7 @@ const GuildCookieNotice = React.memo(({
             <div className="flex gap-3">
                 <Button 
                     onClick={onAccept} 
-                    className="flex-1 bg-red-700 hover:bg-red-600 text-white text-xs font-bold border border-red-500/50 h-10"
+                    className="flex-1 bg-primary-700 hover:bg-primary-600 text-white text-xs font-bold border border-primary-500/50 h-10"
                 >
                     <Fingerprint className="w-3 h-3 mr-2" /> SIGN CONTRACT
                 </Button>

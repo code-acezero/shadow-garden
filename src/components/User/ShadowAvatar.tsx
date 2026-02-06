@@ -14,7 +14,7 @@ export default function ShadowAvatar({ gender = 'male', className }: ShadowAvata
     return (
         <div className={cn("w-full h-full bg-[#050505] flex items-end justify-center overflow-hidden relative", className)}>
             {/* Red Glow Background */}
-            <div className="absolute top-1/4 left-1/2 -translate-x-1/2 w-1/2 h-1/2 bg-red-600 blur-[20px] opacity-40 animate-pulse" />
+            <div className="absolute top-1/4 left-1/2 -translate-x-1/2 w-1/2 h-1/2 bg-primary-600 blur-[20px] opacity-40 animate-pulse" />
             
             {/* Silhouette SVG */}
             <svg 

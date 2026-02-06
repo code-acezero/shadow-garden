@@ -58,7 +58,7 @@ const formatText = (text: string) => {
             return <span key={i} className="bg-zinc-800 text-zinc-800 hover:text-zinc-200 cursor-pointer px-1 rounded transition-colors select-none" title="Click to reveal spoiler">{part.slice(2, -2)}</span>;
         }
         if (part.startsWith('**') && part.endsWith('**')) {
-            return <strong key={i} className="text-red-400">{part.slice(2, -2)}</strong>;
+            return <strong key={i} className="text-primary-400">{part.slice(2, -2)}</strong>;
         }
         if (part.startsWith('*') && part.endsWith('*')) {
             return <em key={i} className="text-zinc-300">{part.slice(1, -1)}</em>;
@@ -85,7 +85,7 @@ const CommentItem = ({ comment, currentUserId, onReply, onReport, onDelete, onEd
     return (
         <div className="flex gap-4 group animate-in fade-in slide-in-from-bottom-2 duration-500">
             <Link href={`/profile/${comment.user_id}`} onClick={(e) => e.stopPropagation()}>
-                <Avatar className="w-10 h-10 border-2 border-zinc-800 shrink-0 cursor-pointer hover:border-red-500 transition-colors">
+                <Avatar className="w-10 h-10 border-2 border-zinc-800 shrink-0 cursor-pointer hover:border-primary-500 transition-colors">
                     <AvatarImage src={avatarUrl || undefined} />
                     <AvatarFallback className="bg-zinc-900 text-zinc-500 text-xs font-black">{displayName[0]}</AvatarFallback>
                 </Avatar>
@@ -97,7 +97,7 @@ const CommentItem = ({ comment, currentUserId, onReply, onReport, onDelete, onEd
                         <Link 
                             href={`/profile/${comment.user_id}`} 
                             onClick={(e) => e.stopPropagation()}
-                            className={cn("text-xs font-black uppercase tracking-wide hover:text-red-500 transition-colors", comment.user_id === currentUserId ? "text-red-400" : "text-zinc-200")}
+                            className={cn("text-xs font-black uppercase tracking-wide hover:text-primary-500 transition-colors", comment.user_id === currentUserId ? "text-primary-400" : "text-zinc-200")}
                         >
                             {comment.user_id === currentUserId ? "You" : displayName}
                         </Link>
@@ -114,10 +114,10 @@ const CommentItem = ({ comment, currentUserId, onReply, onReport, onDelete, onEd
                             {currentUserId === comment.user_id ? (
                                 <>
                                     <DropdownMenuItem onClick={() => setIsEditing(true)} className="text-xs gap-2 cursor-pointer text-zinc-300 focus:text-white"><Edit2 size={12}/> Edit</DropdownMenuItem>
-                                    <DropdownMenuItem onClick={() => onDelete(comment.id)} className="text-xs text-red-400 gap-2 cursor-pointer focus:text-red-500"><Trash2 size={12}/> Delete</DropdownMenuItem>
+                                    <DropdownMenuItem onClick={() => onDelete(comment.id)} className="text-xs text-primary-400 gap-2 cursor-pointer focus:text-primary-500"><Trash2 size={12}/> Delete</DropdownMenuItem>
                                 </>
                             ) : (
-                                <DropdownMenuItem onClick={() => onReport(comment.id, comment.user_id)} className="text-xs text-red-400 gap-2 cursor-pointer focus:text-red-500"><Flag size={12}/> Report</DropdownMenuItem>
+                                <DropdownMenuItem onClick={() => onReport(comment.id, comment.user_id)} className="text-xs text-primary-400 gap-2 cursor-pointer focus:text-primary-500"><Flag size={12}/> Report</DropdownMenuItem>
                             )}
                         </DropdownMenuContent>
                     </DropdownMenu>
@@ -132,7 +132,7 @@ const CommentItem = ({ comment, currentUserId, onReply, onReport, onDelete, onEd
                         />
                         <div className="flex gap-2 justify-end">
                             <Button size="sm" variant="ghost" onClick={() => setIsEditing(false)} className="h-6 text-[10px] text-zinc-400">Cancel</Button>
-                            <Button size="sm" onClick={handleSaveEdit} className="h-6 text-[10px] bg-red-600 hover:bg-red-700 text-white">Save Changes</Button>
+                            <Button size="sm" onClick={handleSaveEdit} className="h-6 text-[10px] bg-primary-600 hover:bg-primary-700 text-white">Save Changes</Button>
                         </div>
                     </div>
                 ) : (
@@ -144,7 +144,7 @@ const CommentItem = ({ comment, currentUserId, onReply, onReport, onDelete, onEd
                 )}
 
                 <div className="flex items-center gap-4 pt-1">
-                    <button className="flex items-center gap-1.5 text-[10px] text-zinc-500 hover:text-red-500 transition-colors">
+                    <button className="flex items-center gap-1.5 text-[10px] text-zinc-500 hover:text-primary-500 transition-colors">
                         <ThumbsUp size={12}/> {comment.likes_count || 0}
                     </button>
                     <button className="flex items-center gap-1.5 text-[10px] text-zinc-500 hover:text-blue-400 transition-colors">
@@ -198,11 +198,11 @@ const CommentInput = ({ episodeId, focusOnMount = false, replyingTo, onCancelRep
     };
 
     return (
-        <div className="flex flex-col gap-2 bg-black/20 p-3 rounded-xl border border-white/5 focus-within:border-red-500/30 transition-all relative">
+        <div className="flex flex-col gap-2 bg-black/20 p-3 rounded-xl border border-white/5 focus-within:border-primary-500/30 transition-all relative">
             {replyingTo && (
-                <div className="flex items-center justify-between bg-red-900/10 px-3 py-1.5 rounded-lg border border-red-500/20 mb-1">
-                    <span className="text-[10px] text-red-400 font-bold">Replying to <span className="text-white">{replyingTo.username}</span></span>
-                    <button onClick={onCancelReply} className="text-red-400 hover:text-white"><X size={10}/></button>
+                <div className="flex items-center justify-between bg-primary-900/10 px-3 py-1.5 rounded-lg border border-primary-500/20 mb-1">
+                    <span className="text-[10px] text-primary-400 font-bold">Replying to <span className="text-white">{replyingTo.username}</span></span>
+                    <button onClick={onCancelReply} className="text-primary-400 hover:text-white"><X size={10}/></button>
                 </div>
             )}
             
@@ -217,17 +217,17 @@ const CommentInput = ({ episodeId, focusOnMount = false, replyingTo, onCancelRep
                 <div className="flex gap-1">
                     <button onClick={() => handleFormat('bold')} className="p-1.5 rounded hover:bg-white/10 text-zinc-500 hover:text-white transition-colors" title="Bold"><Bold size={12}/></button>
                     <button onClick={() => handleFormat('italic')} className="p-1.5 rounded hover:bg-white/10 text-zinc-500 hover:text-white transition-colors" title="Italic"><Italic size={12}/></button>
-                    <button onClick={() => handleFormat('spoiler')} className="p-1.5 rounded hover:bg-white/10 text-zinc-500 hover:text-red-500 transition-colors" title="Spoiler Tag"><EyeOff size={12}/></button>
+                    <button onClick={() => handleFormat('spoiler')} className="p-1.5 rounded hover:bg-white/10 text-zinc-500 hover:text-primary-500 transition-colors" title="Spoiler Tag"><EyeOff size={12}/></button>
                 </div>
                 <div className="flex items-center gap-3">
                     <div className="flex items-center gap-2 cursor-pointer" onClick={() => setIsSpoiler(!isSpoiler)}>
-                        <div className={cn("w-3 h-3 rounded-full border transition-colors", isSpoiler ? "bg-red-600 border-red-600" : "border-zinc-600")} />
-                        <span className={cn("text-[9px] font-bold uppercase", isSpoiler ? "text-red-500" : "text-zinc-600")}>Spoiler</span>
+                        <div className={cn("w-3 h-3 rounded-full border transition-colors", isSpoiler ? "bg-primary-600 border-primary-600" : "border-zinc-600")} />
+                        <span className={cn("text-[9px] font-bold uppercase", isSpoiler ? "text-primary-500" : "text-zinc-600")}>Spoiler</span>
                     </div>
                     <Button 
                         size="sm" 
                         onClick={() => { if(text.trim()) { onPost(text, isSpoiler, replyingTo ? replyingTo.id : null); setText(""); } }} 
-                        className="h-6 px-4 bg-white/5 hover:bg-red-600 text-white text-[10px] font-black uppercase tracking-widest rounded-full transition-all"
+                        className="h-6 px-4 bg-white/5 hover:bg-primary-600 text-white text-[10px] font-black uppercase tracking-widest rounded-full transition-all"
                     >
                         Send <Send size={10} className="ml-2"/>
                     </Button>
@@ -378,14 +378,14 @@ export default function ShadowComments({ episodeId }: { episodeId: string }) {
             {/* PREVIEW CARD */}
             <div 
                 onClick={handleContainerClick}
-                className="bg-[#0a0a0a] rounded-[40px] border border-white/5 shadow-2xl shadow-red-900/10 overflow-hidden mb-12 cursor-pointer hover:border-red-500/20 hover:shadow-red-900/20 transition-all duration-300 group/card"
+                className="bg-[#0a0a0a] rounded-[40px] border border-white/5 shadow-2xl shadow-primary-900/10 overflow-hidden mb-12 cursor-pointer hover:border-primary-500/20 hover:shadow-primary-900/20 transition-all duration-300 group/card"
             >
-                 <div className="p-8 border-b border-white/5 bg-gradient-to-r from-red-900/5 to-transparent flex items-center justify-between">
+                 <div className="p-8 border-b border-white/5 bg-gradient-to-r from-primary-900/5 to-transparent flex items-center justify-between">
                     <div className="flex items-center gap-3">
-                        <MessageSquare size={20} className="text-red-600 group-hover/card:text-red-500 transition-colors" />
+                        <MessageSquare size={20} className="text-primary-600 group-hover/card:text-primary-500 transition-colors" />
                         <h3 className="font-black text-white text-[11px] font-[Cinzel] tracking-[0.4em] uppercase">Community Transmission</h3>
                     </div>
-                    <Badge variant="outline" className="text-[9px] border-red-600/30 text-red-500 font-bold">{comments.reduce((acc, c) => acc + 1 + (c.replies?.length || 0), 0)} Signals</Badge>
+                    <Badge variant="outline" className="text-[9px] border-primary-600/30 text-primary-500 font-bold">{comments.reduce((acc, c) => acc + 1 + (c.replies?.length || 0), 0)} Signals</Badge>
                  </div>
 
                  <div className="p-8 grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -395,7 +395,7 @@ export default function ShadowComments({ episodeId }: { episodeId: string }) {
                             <div 
                                 key={c.id} 
                                 onClick={(e) => handlePreviewCommentClick(e, c.id, displayName)} 
-                                className="bg-white/5 p-4 rounded-2xl border border-white/5 group-hover/card:bg-white/10 transition-colors shadow-sm relative overflow-hidden hover:border-red-500/40"
+                                className="bg-white/5 p-4 rounded-2xl border border-white/5 group-hover/card:bg-white/10 transition-colors shadow-sm relative overflow-hidden hover:border-primary-500/40"
                             >
                                 <div className="flex items-center gap-3 mb-3 relative z-10">
                                     <Avatar className="w-8 h-8 border border-white/10">
@@ -408,7 +408,7 @@ export default function ShadowComments({ episodeId }: { episodeId: string }) {
                                     </div>
                                 </div>
                                 <p className="text-[10px] text-zinc-400 line-clamp-2 leading-relaxed mb-3 relative z-10">
-                                    {c.is_spoiler ? <span className="text-red-800 blur-sm select-none">SPOILER</span> : c.content}
+                                    {c.is_spoiler ? <span className="text-primary-800 blur-sm select-none">SPOILER</span> : c.content}
                                 </p>
                                 <div className="absolute inset-0 bg-gradient-to-t from-black/80 to-transparent opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
                                     <span className="text-[9px] font-bold text-white uppercase tracking-widest flex items-center gap-2"><CornerDownRight size={10}/> Reply</span>
@@ -422,20 +422,20 @@ export default function ShadowComments({ episodeId }: { episodeId: string }) {
                  <div className="px-8 pb-8">
                      <div 
                         onClick={handleInputTriggerClick}
-                        className="flex items-center gap-4 bg-black/40 p-2 pl-4 rounded-full border border-white/10 cursor-text group-hover/card:border-red-500/30 transition-all shadow-inner"
+                        className="flex items-center gap-4 bg-black/40 p-2 pl-4 rounded-full border border-white/10 cursor-text group-hover/card:border-primary-500/30 transition-all shadow-inner"
                     >
-                        <div className="w-6 h-6 rounded-full bg-red-600 flex items-center justify-center"><User size={12} className="text-white" /></div>
+                        <div className="w-6 h-6 rounded-full bg-primary-600 flex items-center justify-center"><User size={12} className="text-white" /></div>
                         <span className="text-[10px] text-zinc-500 font-bold group-hover/card:text-zinc-400">Transmit your thoughts...</span>
-                        <Button size="icon" className="rounded-full w-8 h-8 ml-auto bg-white/5 hover:bg-red-600 text-white border border-white/5"><Send size={12} /></Button>
+                        <Button size="icon" className="rounded-full w-8 h-8 ml-auto bg-white/5 hover:bg-primary-600 text-white border border-white/5"><Send size={12} /></Button>
                     </div>
                  </div>
             </div>
 
             {/* FULL DIALOG OVERLAY */}
             <Dialog open={isOpen} onOpenChange={setIsOpen}>
-                <DialogContent className="bg-[#0a0a0a] border-red-500/20 max-w-5xl h-[85vh] flex flex-col p-0 gap-0 overflow-hidden shadow-2xl shadow-red-900/20 rounded-[30px] outline-none">
+                <DialogContent className="bg-[#0a0a0a] border-primary-500/20 max-w-5xl h-[85vh] flex flex-col p-0 gap-0 overflow-hidden shadow-2xl shadow-primary-900/20 rounded-[30px] outline-none">
                     <DialogHeader className="p-6 border-b border-white/5 bg-black/40 backdrop-blur-xl z-20">
-                        <DialogTitle className="text-sm font-black uppercase tracking-[0.2em] flex items-center gap-2 text-white"><MessageSquare size={14} className="text-red-600"/> Discussion Channel</DialogTitle>
+                        <DialogTitle className="text-sm font-black uppercase tracking-[0.2em] flex items-center gap-2 text-white"><MessageSquare size={14} className="text-primary-600"/> Discussion Channel</DialogTitle>
                         <DialogDescription className="text-xs text-zinc-500">Share your theories, avoid spoilers, respect the code.</DialogDescription>
                     </DialogHeader>
 
@@ -454,8 +454,8 @@ export default function ShadowComments({ episodeId }: { episodeId: string }) {
 
                          {/* Sidebar / Bottom Input */}
                          <div className="w-full md:w-96 border-l border-white/5 bg-[#050505] p-6 flex flex-col gap-6 z-20 shadow-xl">
-                             <div className="flex items-center gap-2 text-zinc-400 text-xs font-bold uppercase tracking-wider"><AlertTriangle size={12} className="text-red-600"/> Posting Rules</div>
-                             <ul className="text-[10px] text-zinc-500 space-y-2 list-disc pl-4 marker:text-red-900">
+                             <div className="flex items-center gap-2 text-zinc-400 text-xs font-bold uppercase tracking-wider"><AlertTriangle size={12} className="text-primary-600"/> Posting Rules</div>
+                             <ul className="text-[10px] text-zinc-500 space-y-2 list-disc pl-4 marker:text-primary-900">
                                  <li>Do not post direct download links.</li>
                                  <li>Use the <b>Spoiler</b> tool for plot details.</li>
                                  <li>Respect other agents in the field.</li>

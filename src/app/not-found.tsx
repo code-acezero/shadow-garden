@@ -12,8 +12,8 @@ export default function NotFound() {
         <div className="min-h-screen bg-[#050505] flex flex-col items-center justify-center p-6 text-center">
             {/* The Shadow Portal Visual */}
             <div className="relative mb-8">
-                <div className="absolute inset-0 bg-red-600/20 blur-[100px] rounded-full animate-pulse" />
-                <Ghost size={80} className="text-red-600 relative z-10 animate-bounce" />
+                <div className="absolute inset-0 bg-primary-600/20 blur-[100px] rounded-full animate-pulse" />
+                <Ghost size={80} className="text-primary-600 relative z-10 animate-bounce" />
             </div>
 
             <h1 className={`${demoness.className} text-8xl md:text-9xl text-white tracking-tighter drop-shadow-[0_0_30px_rgba(220,38,38,0.5)]`}>
@@ -32,7 +32,7 @@ export default function NotFound() {
             {/* Tactical Retreat Button */}
             <button 
                 onClick={() => router.back()}
-                className="mt-12 group relative flex items-center gap-3 px-10 py-4 rounded-full bg-red-600 text-white font-black uppercase tracking-[0.2em] text-[10px] overflow-hidden transition-all hover:bg-red-700 active:scale-95 shadow-[0_0_20px_rgba(220,38,38,0.3)]"
+                className="mt-12 group relative flex items-center gap-3 px-10 py-4 rounded-full bg-primary-600 text-white font-black uppercase tracking-[0.2em] text-[10px] overflow-hidden transition-all hover:bg-primary-700 active:scale-95 shadow-[0_0_20px_rgba(220,38,38,0.3)]"
             >
                 <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-1000" />
                 <ArrowLeft size={16} className="group-hover:-translate-x-1 transition-transform" />

@@ -31,14 +31,14 @@ export default function AuthDebugger() {
   }, [logs]);
 
   return (
-    <div className="fixed bottom-0 right-0 w-full md:w-[600px] h-[300px] bg-black/95 border-t-2 border-red-600 z-[9999] flex flex-col shadow-2xl font-mono text-xs">
-      <div className="flex items-center justify-between p-2 bg-red-900/20 border-b border-white/10">
-        <span className="text-red-500 font-bold uppercase tracking-widest">Shadow Auth Trace</span>
+    <div className="fixed bottom-0 right-0 w-full md:w-[600px] h-[300px] bg-black/95 border-t-2 border-primary-600 z-[9999] flex flex-col shadow-2xl font-mono text-xs">
+      <div className="flex items-center justify-between p-2 bg-primary-900/20 border-b border-white/10">
+        <span className="text-primary-500 font-bold uppercase tracking-widest">Shadow Auth Trace</span>
         <div className="flex gap-2">
           <button onClick={() => setIsPaused(!isPaused)} className="p-1 hover:bg-white/10 rounded text-zinc-400">
             {isPaused ? <Play size={14}/> : <Pause size={14}/>}
           </button>
-          <button onClick={() => setLogs([])} className="p-1 hover:bg-white/10 rounded text-red-400">
+          <button onClick={() => setLogs([])} className="p-1 hover:bg-white/10 rounded text-primary-400">
             <Trash2 size={14}/>
           </button>
           <button onClick={() => setLogs([])} className="p-1 hover:bg-white/10 rounded text-zinc-400">

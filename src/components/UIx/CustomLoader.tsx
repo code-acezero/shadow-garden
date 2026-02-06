@@ -185,7 +185,7 @@ export default function CustomLoader() {
 
                     {/* TEXT */}
                     <motion.p
-                        className="absolute bottom-[35%] md:bottom-[30%] text-[10px] uppercase tracking-[0.6em] text-red-600/80 font-bold whitespace-nowrap z-20"
+                        className="absolute bottom-[35%] md:bottom-[30%] text-[10px] uppercase tracking-[0.6em] text-primary-600/80 font-bold whitespace-nowrap z-20"
                         initial={{ opacity: 0, y: 20 }} 
                         animate={{ opacity: 1, y: 0 }} 
                         exit={{ opacity: 0, filter: "blur(5px)", transition: { duration: 0.3 } }} 

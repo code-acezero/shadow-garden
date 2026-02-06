@@ -88,7 +88,7 @@ export default function ProfilePage() {
 
     // Hydration Loading State
     if (!hasMounted || isLoading) return (
-        <div className="min-h-screen bg-black flex items-center justify-center text-red-600 font-[Cinzel] text-xl tracking-widest animate-pulse uppercase italic">
+        <div className="min-h-screen bg-black flex items-center justify-center text-primary-600 font-[Cinzel] text-xl tracking-widest animate-pulse uppercase italic">
             Synchronizing Guild Record...
         </div>
     );
@@ -166,7 +166,7 @@ export default function ProfilePage() {
     const xpProgress = (currentLvl / 100) * 100;
 
     return (
-        <div className="min-h-screen bg-[#020202] text-white pb-32 overflow-x-hidden selection:bg-red-600/30 font-sans">
+        <div className="min-h-screen bg-[#020202] text-white pb-32 overflow-x-hidden selection:bg-primary-600/30 font-sans">
             <style jsx global>{`
                 body { overflow: auto !important; padding-right: 0px !important; }
                 @keyframes heartbeat-glow {
@@ -200,13 +200,13 @@ export default function ProfilePage() {
                             className="w-full h-full object-cover"
                         />
                     ) : (
-                        <div className="w-full h-full flex flex-col items-center justify-center relative"><Skull className="text-red-900/10 w-20 h-20 animate-pulse" /></div>
+                        <div className="w-full h-full flex flex-col items-center justify-center relative"><Skull className="text-primary-900/10 w-20 h-20 animate-pulse" /></div>
                     )}
                 </AnimatePresence>
                 <div className="absolute inset-0 bg-gradient-to-b from-black/40 via-transparent to-[#020202] z-10 pointer-events-none" />
                 
                 <div className="absolute inset-0 flex items-center justify-center z-[50] opacity-0 group-hover:opacity-100 transition-all duration-500">
-                    <Button onClick={() => setShowCoverModal(true)} className="glass-ios hover:bg-red-600/30 rounded-full px-6 py-4 md:px-10 md:py-8 h-auto transition-all shadow-2xl border border-white/20 active:scale-95 flex flex-col gap-2">
+                    <Button onClick={() => setShowCoverModal(true)} className="glass-ios hover:bg-primary-600/30 rounded-full px-6 py-4 md:px-10 md:py-8 h-auto transition-all shadow-2xl border border-white/20 active:scale-95 flex flex-col gap-2">
                         <Camera className="text-white drop-shadow-[0_0_8px_rgba(220,38,38,1)]" size={isMobile ? 24 : 32}/> 
                         <span className="font-[Cinzel] font-black text-[10px] md:text-[12px] uppercase tracking-[0.3em] text-white">Modify Atmosphere</span>
                     </Button>
@@ -219,7 +219,7 @@ export default function ProfilePage() {
                     <motion.div initial={{ y: 50, opacity: 0 }} animate={{ y: 0, opacity: 1 }} className="w-full lg:w-80 shrink-0">
                         <div className="glass-ios rounded-[40px] md:rounded-[60px] p-6 md:p-8 shadow-[0_40px_80px_rgba(0,0,0,0.8)] relative overflow-hidden">
                             <div className="relative group mx-auto w-40 h-40 md:w-56 md:h-56 mb-6 md:mb-8">
-                                <div className="w-full h-full rounded-[40px] md:rounded-[70px] p-1.5 avatar-pulse-glow bg-black border-2 border-red-600/50 overflow-hidden relative z-10">
+                                <div className="w-full h-full rounded-[40px] md:rounded-[70px] p-1.5 avatar-pulse-glow bg-black border-2 border-primary-600/50 overflow-hidden relative z-10">
                                     <Avatar className="w-full h-full rounded-[36px] md:rounded-[65px] border-4 border-[#020202] bg-black">
                                         <AvatarImage src={profile.avatar_url} className="object-cover" />
                                         <AvatarFallback><ShadowAvatar gender={gender}/></AvatarFallback>
@@ -231,17 +231,17 @@ export default function ProfilePage() {
                             </div>
                             <div className="text-center space-y-3 relative z-10">
                                 <h2 className="text-2xl md:text-3xl font-black font-[Cinzel] text-white uppercase tracking-tighter">{profile.full_name || 'Classified'}</h2>
-                                <p className="text-red-500 font-mono text-[9px] md:text-[10px] tracking-[0.4em] font-bold">Node_ID: {profile.username}</p>
+                                <p className="text-primary-500 font-mono text-[9px] md:text-[10px] tracking-[0.4em] font-bold">Node_ID: {profile.username}</p>
                                 <div className="pt-4 space-y-2">
                                     <div className="flex justify-between items-end px-1">
                                         <span className="text-[9px] font-black text-zinc-500 uppercase tracking-widest">Level</span>
-                                        <span className="text-md md:text-lg font-black font-[Cinzel] text-red-500">{profile.level || 1} <span className="text-zinc-600 text-[10px]">/ 100</span></span>
+                                        <span className="text-md md:text-lg font-black font-[Cinzel] text-primary-500">{profile.level || 1} <span className="text-zinc-600 text-[10px]">/ 100</span></span>
                                     </div>
                                     <div className="h-1.5 w-full bg-white/5 rounded-full overflow-hidden border border-white/5">
-                                        <motion.div initial={{ width: 0 }} animate={{ width: `${((profile.level || 1) / 100) * 100}%` }} className="h-full bg-gradient-to-r from-red-600 via-red-500 to-zinc-600" />
+                                        <motion.div initial={{ width: 0 }} animate={{ width: `${((profile.level || 1) / 100) * 100}%` }} className="h-full bg-gradient-to-r from-primary-600 via-primary-500 to-zinc-600" />
                                     </div>
                                 </div>
-                                <div className="flex justify-center pt-4 md:pt-6"><Badge className="glass-ios text-red-500 border border-red-500/30 px-5 py-1 rounded-full text-[9px] font-black uppercase tracking-widest">{profile.rank}</Badge></div>
+                                <div className="flex justify-center pt-4 md:pt-6"><Badge className="glass-ios text-primary-500 border border-primary-500/30 px-5 py-1 rounded-full text-[9px] font-black uppercase tracking-widest">{profile.rank}</Badge></div>
                             </div>
                         </div>
 
@@ -259,23 +259,23 @@ export default function ProfilePage() {
                         <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-6 md:gap-8">
                             <motion.div initial={{ x: 20, opacity: 0 }} animate={{ x: 0, opacity: 1 }}>
                                 <h1 className="text-4xl md:text-7xl font-black tracking-tighter text-white fantasy-title uppercase leading-none italic">Guild Card</h1>
-                                <p className="text-red-900 mt-2 md:mt-4 font-black tracking-[0.4em] md:tracking-[0.6em] uppercase text-[8px] md:text-[10px] flex items-center gap-3"><Shield size={12}/> Identity Database Matrix // CLEAR: SSS</p>
+                                <p className="text-primary-900 mt-2 md:mt-4 font-black tracking-[0.4em] md:tracking-[0.6em] uppercase text-[8px] md:text-[10px] flex items-center gap-3"><Shield size={12}/> Identity Database Matrix // CLEAR: SSS</p>
                             </motion.div>
                             <div className="flex items-center gap-3 md:gap-4 w-full md:w-auto">
                                 {isEditing ? (
                                     <>
                                         <Button onClick={handleCancelEditing} variant="outline" className="flex-1 md:flex-none glass-ios rounded-full px-6 md:px-10 h-12 md:h-14 font-black uppercase text-[10px] md:text-[11px] tracking-[0.2em] text-white"><XCircle size={16} className="mr-2"/> Void</Button>
-                                        <Button onClick={handleUpdateProfile} className="flex-1 md:flex-none bg-red-600 hover:bg-red-700 rounded-full px-6 md:px-10 h-12 md:h-14 font-black uppercase text-[10px] md:text-[11px] tracking-[0.2em] shadow-2xl text-white"><Sword size={16} className="mr-2"/> Commit</Button>
+                                        <Button onClick={handleUpdateProfile} className="flex-1 md:flex-none bg-primary-600 hover:bg-primary-700 rounded-full px-6 md:px-10 h-12 md:h-14 font-black uppercase text-[10px] md:text-[11px] tracking-[0.2em] shadow-2xl text-white"><Sword size={16} className="mr-2"/> Commit</Button>
                                     </>
                                 ) : (
-                                    <Button onClick={() => setIsEditing(true)} className="w-full md:w-auto glass-ios hover:bg-red-600/20 rounded-full px-12 h-12 md:h-14 font-black uppercase text-[10px] md:text-[11px] tracking-[0.2em] transition-all group text-white shadow-2xl"><Wand2 size={18} className="mr-2 text-red-600 group-hover:rotate-12 transition-transform"/> Recalibrate Intel</Button>
+                                    <Button onClick={() => setIsEditing(true)} className="w-full md:w-auto glass-ios hover:bg-primary-600/20 rounded-full px-12 h-12 md:h-14 font-black uppercase text-[10px] md:text-[11px] tracking-[0.2em] transition-all group text-white shadow-2xl"><Wand2 size={18} className="mr-2 text-primary-600 group-hover:rotate-12 transition-transform"/> Recalibrate Intel</Button>
                                 )}
                             </div>
                         </div>
 
                         {/* Status Grid */}
                         <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4 text-white">
-                            {[{ l: 'STR', v: 85, i: Dumbbell, c: 'text-red-500' }, { l: 'AGI', v: 92, i: Move, c: 'text-green-500' }, { l: 'INT', v: 78, i: Brain, c: 'text-blue-500' }, { l: 'LUK', v: 64, i: Crown, c: 'text-yellow-500' }].map((stat) => (
+                            {[{ l: 'STR', v: 85, i: Dumbbell, c: 'text-primary-500' }, { l: 'AGI', v: 92, i: Move, c: 'text-green-500' }, { l: 'INT', v: 78, i: Brain, c: 'text-blue-500' }, { l: 'LUK', v: 64, i: Crown, c: 'text-yellow-500' }].map((stat) => (
                                 <div key={stat.l} className="glass-ios rounded-2xl md:rounded-3xl p-4 md:p-6 flex flex-col items-center justify-center gap-1 md:gap-2 border border-white/5 hover:bg-white/[0.08] transition-all">
                                     <stat.i size={isMobile ? 16 : 20} className={`${stat.c} opacity-80`} />
                                     <span className="text-[8px] md:text-[10px] font-black text-zinc-500 uppercase tracking-widest">{stat.l}</span>
@@ -286,7 +286,7 @@ export default function ProfilePage() {
 
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 md:gap-8">
                             <div className="glass-ios rounded-[30px] md:rounded-[50px] p-6 md:p-10 space-y-6 md:space-y-8 border border-white/10 shadow-2xl">
-                                <h3 className="font-black uppercase tracking-widest text-[12px] md:text-sm text-white font-[Cinzel] flex items-center gap-4"><Skull size={24} className="text-red-500"/> Physical Vessel</h3>
+                                <h3 className="font-black uppercase tracking-widest text-[12px] md:text-sm text-white font-[Cinzel] flex items-center gap-4"><Skull size={24} className="text-primary-500"/> Physical Vessel</h3>
                                 <div className="space-y-4 md:space-y-6">
                                     <Input disabled={!isEditing} value={fullName} onChange={(e) => setFullName(e.target.value)} className="bg-black/60 border-white/10 h-12 md:h-14 rounded-xl md:rounded-2xl text-white text-xs md:text-sm font-bold focus:ring-red-600" placeholder="Archive Name" />
                                     <Select disabled={!isEditing} value={gender} onValueChange={setGender}>
@@ -305,8 +305,8 @@ export default function ProfilePage() {
                             </div>
                         </div>
 
-                        <div className="glass-ios rounded-[30px] md:rounded-[50px] p-8 md:p-12 border-red-900/10 shadow-2xl relative overflow-hidden">
-                            <label className="text-[9px] md:text-[10px] font-black text-red-900 uppercase tracking-[0.5em] md:tracking-[0.8em] mb-6 md:mb-10 block text-center">Neural Autobiography</label>
+                        <div className="glass-ios rounded-[30px] md:rounded-[50px] p-8 md:p-12 border-primary-900/10 shadow-2xl relative overflow-hidden">
+                            <label className="text-[9px] md:text-[10px] font-black text-primary-900 uppercase tracking-[0.5em] md:tracking-[0.8em] mb-6 md:mb-10 block text-center">Neural Autobiography</label>
                             <Textarea disabled={!isEditing} value={bio} onChange={(e) => setBio(e.target.value)} className="bg-transparent border-none text-xl md:text-2xl font-medium text-white text-center resize-none min-h-[250px] md:min-h-[300px] focus:ring-0 italic font-[Cinzel] custom-scrollbar" placeholder="Establish your legend..." />
                         </div>
                     </div>
@@ -316,15 +316,15 @@ export default function ProfilePage() {
             {/* IDENTITY CUSTOMIZER (PFP) */}
             <Dialog open={showAvatarModal} onOpenChange={setShowAvatarModal}>
                 <DialogContent className="bg-black/95 backdrop-blur-3xl border-white/10 text-white max-w-4xl w-[95vw] rounded-[40px] md:rounded-[60px] p-6 md:p-12 shadow-[0_0_150px_rgba(220,38,38,0.3)] custom-scrollbar overflow-y-auto max-h-[90vh]">
-                    <DialogHeader><DialogTitle className="font-[Cinzel] text-3xl md:text-5xl font-black text-center text-red-600 uppercase tracking-[0.3em]">Identity_Gallery</DialogTitle></DialogHeader>
+                    <DialogHeader><DialogTitle className="font-[Cinzel] text-3xl md:text-5xl font-black text-center text-primary-600 uppercase tracking-[0.3em]">Identity_Gallery</DialogTitle></DialogHeader>
                     <div className="space-y-12 md:space-y-16 mt-8 md:mt-12">
                         <div className="space-y-6 md:space-y-8">
                             <h4 className="text-[10px] font-black text-zinc-500 uppercase tracking-[0.6em] flex items-center justify-center gap-4"><Users size={16}/> Standard Issue</h4>
                             <div className="grid grid-cols-4 sm:grid-cols-6 gap-3 md:gap-4">
                                 {guestAvatars.map((url, i) => (
-                                    <button key={i} onClick={async () => { if (!user) return; await supabase.from('profiles').update({ avatar_url: url }).eq('id', user.id); refreshSession(); setShowAvatarModal(false); }} className="relative aspect-square rounded-[20px] md:rounded-[25px] overflow-hidden border-2 border-transparent hover:border-red-600 transition-all hover:scale-110 active:scale-95 shadow-lg">
+                                    <button key={i} onClick={async () => { if (!user) return; await supabase.from('profiles').update({ avatar_url: url }).eq('id', user.id); refreshSession(); setShowAvatarModal(false); }} className="relative aspect-square rounded-[20px] md:rounded-[25px] overflow-hidden border-2 border-transparent hover:border-primary-600 transition-all hover:scale-110 active:scale-95 shadow-lg">
                                         <img src={url} className="w-full h-full object-cover" />
-                                        {profile.avatar_url === url && <div className="absolute inset-0 bg-red-600/40 flex items-center justify-center backdrop-blur-[1px]"><Check size={20}/></div>}
+                                        {profile.avatar_url === url && <div className="absolute inset-0 bg-primary-600/40 flex items-center justify-center backdrop-blur-[1px]"><Check size={20}/></div>}
                                     </button>
                                 ))}
                             </div>
@@ -335,12 +335,12 @@ export default function ProfilePage() {
                                 <AnimatePresence>
                                     {profile.pfp_history?.map((url: string) => (
                                         <motion.div key={url} initial={{ scale: 0.5, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0 }} className="relative aspect-square group">
-                                            <img onClick={async () => { if (!user) return; await supabase.from('profiles').update({ avatar_url: url }).eq('id', user.id); refreshSession(); setShowAvatarModal(false); }} src={url} className="w-full h-full object-cover rounded-[20px] md:rounded-[35px] border-2 border-transparent hover:border-red-600 cursor-pointer transition-all shadow-lg" />
-                                            <button onClick={() => deleteFromHistory(url, 'pfp_history')} className="absolute -top-2 -right-2 bg-red-600 p-2 rounded-full opacity-100 md:opacity-0 group-hover:opacity-100 hover:scale-110 transition-transform"><Trash2 size={12}/></button>
+                                            <img onClick={async () => { if (!user) return; await supabase.from('profiles').update({ avatar_url: url }).eq('id', user.id); refreshSession(); setShowAvatarModal(false); }} src={url} className="w-full h-full object-cover rounded-[20px] md:rounded-[35px] border-2 border-transparent hover:border-primary-600 cursor-pointer transition-all shadow-lg" />
+                                            <button onClick={() => deleteFromHistory(url, 'pfp_history')} className="absolute -top-2 -right-2 bg-primary-600 p-2 rounded-full opacity-100 md:opacity-0 group-hover:opacity-100 hover:scale-110 transition-transform"><Trash2 size={12}/></button>
                                         </motion.div>
                                     ))}
                                 </AnimatePresence>
-                                <div onClick={() => avatarInputRef.current?.click()} className="aspect-square border-2 border-dashed border-red-900/20 rounded-[20px] md:rounded-[35px] flex flex-col items-center justify-center gap-2 cursor-pointer hover:bg-red-600/10 hover:border-red-600 text-white active:scale-95 group transition-all">
+                                <div onClick={() => avatarInputRef.current?.click()} className="aspect-square border-2 border-dashed border-primary-900/20 rounded-[20px] md:rounded-[35px] flex flex-col items-center justify-center gap-2 cursor-pointer hover:bg-primary-600/10 hover:border-primary-600 text-white active:scale-95 group transition-all">
                                     <Upload size={isMobile ? 24 : 32}/><span className="text-[7px] font-black uppercase text-center tracking-tighter">Inject Essence</span>
                                 </div>
                             </div>
@@ -361,12 +361,12 @@ export default function ProfilePage() {
                                 <AnimatePresence>
                                     {profile.banner_history?.map((url: string) => (
                                         <motion.div key={url} initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="relative aspect-video group">
-                                            <img onClick={async () => { setTempCoverUrl(url); setShowCoverAdjust(true); setShowCoverModal(false); }} src={url} className="w-full h-full object-cover rounded-[20px] md:rounded-[30px] border-2 border-transparent hover:border-red-600 cursor-pointer transition-all shadow-xl" />
-                                            <button onClick={() => deleteFromHistory(url, 'banner_history')} className="absolute -top-2 -right-2 bg-red-600 p-2 rounded-full opacity-100 md:opacity-0 group-hover:opacity-100 hover:scale-110 transition-transform"><Trash2 size={12}/></button>
+                                            <img onClick={async () => { setTempCoverUrl(url); setShowCoverAdjust(true); setShowCoverModal(false); }} src={url} className="w-full h-full object-cover rounded-[20px] md:rounded-[30px] border-2 border-transparent hover:border-primary-600 cursor-pointer transition-all shadow-xl" />
+                                            <button onClick={() => deleteFromHistory(url, 'banner_history')} className="absolute -top-2 -right-2 bg-primary-600 p-2 rounded-full opacity-100 md:opacity-0 group-hover:opacity-100 hover:scale-110 transition-transform"><Trash2 size={12}/></button>
                                         </motion.div>
                                     ))}
                                 </AnimatePresence>
-                                <div onClick={() => bannerInputRef.current?.click()} className="aspect-video border-2 border-dashed border-zinc-800 rounded-[20px] md:rounded-[30px] flex flex-col items-center justify-center cursor-pointer hover:bg-red-600/10 hover:border-red-600 text-white active:scale-95 group transition-all">
+                                <div onClick={() => bannerInputRef.current?.click()} className="aspect-video border-2 border-dashed border-zinc-800 rounded-[20px] md:rounded-[30px] flex flex-col items-center justify-center cursor-pointer hover:bg-primary-600/10 hover:border-primary-600 text-white active:scale-95 group transition-all">
                                     <Upload size={32}/><span className="text-[9px] font-black uppercase tracking-widest mt-2">New Atmosphere</span>
                                 </div>
                             </div>
@@ -378,12 +378,12 @@ export default function ProfilePage() {
 
             {/* COVER RITUAL ADJUSTER */}
             <Dialog open={showCoverAdjust} onOpenChange={setShowCoverAdjust}>
-                <DialogContent className="bg-black/95 border-red-900/20 text-white max-w-4xl w-[95vw] rounded-[40px] md:rounded-[50px] p-6 md:p-10 shadow-[0_0_100px_rgba(220,38,38,0.3)]">
-                    <DialogHeader><DialogTitle className="font-[Cinzel] text-xl md:text-2xl font-black text-center text-red-600 tracking-widest uppercase">Atmosphere Ritual: Alignment</DialogTitle></DialogHeader>
+                <DialogContent className="bg-black/95 border-primary-900/20 text-white max-w-4xl w-[95vw] rounded-[40px] md:rounded-[50px] p-6 md:p-10 shadow-[0_0_100px_rgba(220,38,38,0.3)]">
+                    <DialogHeader><DialogTitle className="font-[Cinzel] text-xl md:text-2xl font-black text-center text-primary-600 tracking-widest uppercase">Atmosphere Ritual: Alignment</DialogTitle></DialogHeader>
                     <div className="space-y-8 md:space-y-10 mt-6">
                         <div className="relative w-full h-[200px] md:h-[300px] overflow-hidden rounded-[30px] md:rounded-[40px] border-2 border-white/10 shadow-2xl">
                             <img src={tempCoverUrl} style={{ objectPosition: `50% ${coverPosition}%` }} className="w-full h-full object-cover" />
-                            <div className="absolute inset-x-0 top-1/2 -translate-y-1/2 border-y border-red-600/30 h-10 pointer-events-none flex items-center justify-center"><Move className="text-red-600 animate-pulse" size={24}/></div>
+                            <div className="absolute inset-x-0 top-1/2 -translate-y-1/2 border-y border-primary-600/30 h-10 pointer-events-none flex items-center justify-center"><Move className="text-primary-600 animate-pulse" size={24}/></div>
                         </div>
                         <div className="px-4 md:px-10 space-y-4">
                             <div className="flex justify-between text-[8px] md:text-[10px] font-black uppercase tracking-widest text-zinc-500"><span>Lower Orbit</span><span>Upper Orbit</span></div>
@@ -391,7 +391,7 @@ export default function ProfilePage() {
                         </div>
                         <div className="flex justify-center gap-3 md:gap-4">
                             <Button onClick={() => setShowCoverAdjust(false)} variant="outline" className="flex-1 md:flex-none rounded-full px-8 md:px-10 glass-ios text-[10px] font-black uppercase tracking-widest h-12 md:h-14 text-white">Abort</Button>
-                            <Button onClick={saveCoverAdjustment} className="flex-1 md:flex-none rounded-full px-8 md:px-12 bg-red-600 hover:bg-red-700 text-[10px] font-black uppercase tracking-widest h-12 md:h-14 shadow-lg shadow-red-900/40 text-white"><Check size={18} className="mr-2"/> Anchor Alignment</Button>
+                            <Button onClick={saveCoverAdjustment} className="flex-1 md:flex-none rounded-full px-8 md:px-12 bg-primary-600 hover:bg-primary-700 text-[10px] font-black uppercase tracking-widest h-12 md:h-14 shadow-lg shadow-primary-900/40 text-white"><Check size={18} className="mr-2"/> Anchor Alignment</Button>
                         </div>
                     </div>
                 </DialogContent>

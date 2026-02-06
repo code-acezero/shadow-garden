@@ -94,7 +94,7 @@ export default function ContinueAnimeCard({ anime, onClick, onRemove, variants }
         >
           <button
             onClick={handleRemove}
-            className="p-1.5 bg-black/60 backdrop-blur-md border border-white/10 rounded-full text-white hover:bg-red-600 hover:border-red-500 transition-colors shadow-lg group/btn"
+            className="p-1.5 bg-black/60 backdrop-blur-md border border-white/10 rounded-full text-white hover:bg-primary-600 hover:border-primary-500 transition-colors shadow-lg group/btn"
             title="Remove from Continue Watching"
           >
             <X size={10} className="group-hover/btn:scale-110 transition-transform" />
@@ -108,7 +108,7 @@ export default function ContinueAnimeCard({ anime, onClick, onRemove, variants }
           <div
             className={`px-1.5 py-0.5 md:px-2 md:py-1 backdrop-blur-md border rounded-lg text-[7px] md:text-[8px] font-black text-white uppercase tracking-wider shadow-lg ${
               anime.isAdult
-                ? "bg-red-600/90 border-red-500/50 shadow-red-900/20"
+                ? "bg-primary-600/90 border-primary-500/50 shadow-primary-900/20"
                 : "bg-black/60 border-white/10"
             }`}
           >
@@ -120,8 +120,8 @@ export default function ContinueAnimeCard({ anime, onClick, onRemove, variants }
       {/* 3. Center Play Button */}
       <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all duration-300 z-20 scale-50 group-hover:scale-100 -translate-y-4 md:-translate-y-6">
         <div className="relative">
-          <div className="absolute inset-0 rounded-full bg-red-600 blur-xl opacity-70 animate-pulse" />
-          <div className="relative w-8 h-8 md:w-10 md:h-10 rounded-full bg-red-600 border border-white/10 flex items-center justify-center shadow-[0_0_30px_rgba(220,38,38,0.6)]">
+          <div className="absolute inset-0 rounded-full bg-primary-600 blur-xl opacity-70 animate-pulse" />
+          <div className="relative w-8 h-8 md:w-10 md:h-10 rounded-full bg-primary-600 border border-white/10 flex items-center justify-center shadow-[0_0_30px_rgba(220,38,38,0.6)]">
             <Play className="w-3 h-3 md:w-4 md:h-4 text-white fill-white ml-0.5" />
           </div>
         </div>
@@ -130,7 +130,7 @@ export default function ContinueAnimeCard({ anime, onClick, onRemove, variants }
       {/* 4. Bottom Metadata */}
       <div className="absolute bottom-0 left-0 right-0 px-2.5 pb-2.5 md:px-3 md:pb-3 z-20 flex flex-col gap-1 md:gap-1.5">
         {/* Title */}
-        <h3 className="text-xs md:text-sm font-black text-white leading-tight truncate drop-shadow-xl filter group-hover:text-red-400 transition-colors">
+        <h3 className="text-xs md:text-sm font-black text-white leading-tight truncate drop-shadow-xl filter group-hover:text-primary-400 transition-colors">
           {anime.title}
         </h3>
 
@@ -173,7 +173,7 @@ export default function ContinueAnimeCard({ anime, onClick, onRemove, variants }
               initial={{ width: 0 }}
               animate={{ width: `${anime.progress}%` }}
               transition={{ duration: 1.2, ease: "circOut", delay: 0.3 }}
-              className="h-full bg-gradient-to-r from-red-600 to-red-400 shadow-[0_0_10px_rgba(220,38,38,0.8)]"
+              className="h-full bg-gradient-to-r from-primary-600 to-primary-400 shadow-[0_0_10px_rgba(220,38,38,0.8)]"
             />
           </div>
           <span className="text-[7px] md:text-[8px] font-black text-zinc-300 tracking-widest uppercase opacity-90 text-center drop-shadow-md">

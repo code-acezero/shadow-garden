@@ -32,7 +32,7 @@ export default function WatchListButton({ animeId, animeTitle, animeImage, curre
         "completed": { label: "Completed", icon: <CheckCircle size={14}/>, color: "text-blue-400 border-blue-500/20 bg-blue-500/10" },
         "plan_to_watch": { label: "Planning", icon: <Clock size={14}/>, color: "text-purple-400 border-purple-500/20 bg-purple-500/10" },
         "on_hold": { label: "On Hold", icon: <Clock size={14}/>, color: "text-yellow-400 border-yellow-500/20 bg-yellow-500/10" },
-        "dropped": { label: "Dropped", icon: <XCircle size={14}/>, color: "text-red-400 border-red-500/20 bg-red-500/10" },
+        "dropped": { label: "Dropped", icon: <XCircle size={14}/>, color: "text-primary-400 border-primary-500/20 bg-primary-500/10" },
     };
 
     // 1. Initial Check: Is this anime in the user's DB?
@@ -142,14 +142,14 @@ export default function WatchListButton({ animeId, animeTitle, animeImage, curre
                     <span className="uppercase tracking-wider">{activeConfig ? activeConfig.label : "Add to List"}</span>
                 </button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent className="bg-[#0a0a0a] border-white/10 text-zinc-300 z-[100] shadow-2xl shadow-red-900/20 min-w-[150px]">
+            <DropdownMenuContent className="bg-[#0a0a0a] border-white/10 text-zinc-300 z-[100] shadow-2xl shadow-primary-900/20 min-w-[150px]">
                 {Object.keys(statusMap).map((key) => (
                     <DropdownMenuItem 
                         key={key} 
                         onClick={() => handleUpdate(key)} 
                         className={cn(
                             "text-xs cursor-pointer hover:bg-white/5 gap-2 uppercase tracking-wide font-bold focus:bg-white/10",
-                            status === key && "text-red-500 bg-red-900/10"
+                            status === key && "text-primary-500 bg-primary-900/10"
                         )}
                     >
                         {statusMap[key].icon} {statusMap[key].label}
@@ -159,7 +159,7 @@ export default function WatchListButton({ animeId, animeTitle, animeImage, curre
                 {status && (
                     <>
                         <DropdownMenuSeparator className="bg-white/10" />
-                        <DropdownMenuItem onClick={handleRemove} className="text-xs cursor-pointer text-red-500 hover:bg-red-900/20 gap-2 font-bold uppercase tracking-wide focus:bg-red-900/20">
+                        <DropdownMenuItem onClick={handleRemove} className="text-xs cursor-pointer text-primary-500 hover:bg-primary-900/20 gap-2 font-bold uppercase tracking-wide focus:bg-primary-900/20">
                             <Trash2 size={14} /> Remove
                         </DropdownMenuItem>
                     </>

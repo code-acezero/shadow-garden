@@ -34,7 +34,7 @@ export default function SafeEmbed({ url }: SafeEmbedProps) {
           onClick={() => setHasStarted(true)}
         >
             <div className="relative group">
-                <div className="absolute inset-0 bg-red-600 rounded-full blur opacity-40 group-hover:opacity-60 transition-opacity animate-pulse"></div>
+                <div className="absolute inset-0 bg-primary-600 rounded-full blur opacity-40 group-hover:opacity-60 transition-opacity animate-pulse"></div>
                 <div className="relative bg-white text-black p-5 rounded-full shadow-2xl transform group-hover:scale-110 transition-transform duration-200">
                     <Play fill="currentColor" className="w-8 h-8 ml-1" />
                 </div>

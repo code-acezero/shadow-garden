@@ -203,7 +203,7 @@ export default function AnimeCard({ anime, progress = 0, isHindi = false }: Anim
       <span className={cn(
         "h-5 px-2 flex items-center justify-center rounded-full border text-[9px] font-black shadow-lg backdrop-blur-md",
         isRed 
-          ? "bg-red-600/90 border-red-500/50 text-white shadow-red-900/40" 
+          ? "bg-primary-600/90 border-primary-500/50 text-white shadow-primary-900/40" 
           : "bg-black/60 border-white/10 text-white"
       )}>
         {label}
@@ -288,7 +288,7 @@ export default function AnimeCard({ anime, progress = 0, isHindi = false }: Anim
       onMouseEnter={handleMouseEnter}
       onMouseLeave={handleMouseLeave}
     >
-      <div className="w-full h-full relative rounded-[20px] md:rounded-[24px] overflow-hidden bg-[#0a0a0a] ring-1 ring-white/10 shadow-lg transition-all duration-500 hover:shadow-2xl hover:shadow-red-900/20 hover:ring-red-500/30">
+      <div className="w-full h-full relative rounded-[20px] md:rounded-[24px] overflow-hidden bg-[#0a0a0a] ring-1 ring-white/10 shadow-lg transition-all duration-500 hover:shadow-2xl hover:shadow-primary-900/20 hover:ring-red-500/30">
         
         <Link href={normalized.targetRoute} className="block w-full h-full relative">
           
@@ -320,15 +320,15 @@ export default function AnimeCard({ anime, progress = 0, isHindi = false }: Anim
 
           <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all duration-300 z-30 scale-75 group-hover:scale-100 hidden md:flex">
              <div className="relative group/play">
-               <div className="absolute inset-0 rounded-full bg-red-600 blur-xl opacity-50 group-hover/play:opacity-80 animate-pulse" />
-               <div className="relative w-14 h-14 rounded-full bg-red-600 border border-white/10 flex items-center justify-center shadow-[0_0_30px_rgba(220,38,38,0.5)] transition-transform duration-200 group-hover/play:scale-110">
+               <div className="absolute inset-0 rounded-full bg-primary-600 blur-xl opacity-50 group-hover/play:opacity-80 animate-pulse" />
+               <div className="relative w-14 h-14 rounded-full bg-primary-600 border border-white/10 flex items-center justify-center shadow-[0_0_30px_rgba(220,38,38,0.5)] transition-transform duration-200 group-hover/play:scale-110">
                  <Play className="w-6 h-6 text-white fill-white ml-1" />
                </div>
              </div>
           </div>
 
           <div className="absolute bottom-0 left-0 right-0 p-2.5 md:p-3 z-20 flex flex-col gap-1.5 md:gap-2">
-            <h3 className="text-xs md:text-sm font-black text-white leading-tight line-clamp-2 drop-shadow-md group-hover:text-red-400 transition-colors duration-300">
+            <h3 className="text-xs md:text-sm font-black text-white leading-tight line-clamp-2 drop-shadow-md group-hover:text-primary-400 transition-colors duration-300">
                {normalized.displayTitle}
             </h3>
 
@@ -365,7 +365,7 @@ export default function AnimeCard({ anime, progress = 0, isHindi = false }: Anim
 
             {progress > 0 && (
                <div className="w-full h-0.5 md:h-1 bg-white/20 rounded-full overflow-hidden mt-0.5">
-                 <div style={{ width: `${progress}%` }} className="h-full bg-red-600 shadow-[0_0_10px_red]" />
+                 <div style={{ width: `${progress}%` }} className="h-full bg-primary-600 shadow-[0_0_10px_red]" />
                </div>
             )}
           </div>
@@ -375,12 +375,12 @@ export default function AnimeCard({ anime, progress = 0, isHindi = false }: Anim
         <AnimatePresence>
           {showMobileInfo && (
             <motion.div variants={mobileOverlayVariants} initial="hidden" animate="visible" exit="exit" className="absolute inset-0 z-50 bg-black/95 backdrop-blur-xl p-4 flex flex-col gap-3 md:hidden">
-               <button onClick={handleMobileInfoToggle} className="absolute top-3 right-3 w-8 h-8 flex items-center justify-center rounded-full bg-white/10 text-white active:bg-red-600 transition-colors z-50">
+               <button onClick={handleMobileInfoToggle} className="absolute top-3 right-3 w-8 h-8 flex items-center justify-center rounded-full bg-white/10 text-white active:bg-primary-600 transition-colors z-50">
                  <X size={16} />
                </button>
                <div className="flex-1 overflow-y-auto no-scrollbar pt-2">
                   <h4 className="text-white font-black text-lg leading-tight mb-1 pr-8">{normalized.displayTitle}</h4>
-                  <p className="text-red-400 text-xs italic mb-3">{qtip?.jname || "..."}</p>
+                  <p className="text-primary-400 text-xs italic mb-3">{qtip?.jname || "..."}</p>
                   <div className="flex flex-wrap gap-2 mb-3 items-center">
                       <AgeTag adult={currentRatingData.isAdult || false} rating={currentRatingData.rating} />
                       <span className="flex items-center gap-1 text-[10px] font-bold text-zinc-400">
@@ -396,7 +396,7 @@ export default function AnimeCard({ anime, progress = 0, isHindi = false }: Anim
                     ))}
                   </div>
                </div>
-               <button onClick={(e) => { handlePlay(e); }} className="w-full py-3 bg-red-600 rounded-full font-black text-white text-sm uppercase tracking-widest shadow-lg shadow-red-900/40 flex items-center justify-center gap-2 active:scale-95 transition-transform">
+               <button onClick={(e) => { handlePlay(e); }} className="w-full py-3 bg-primary-600 rounded-full font-black text-white text-sm uppercase tracking-widest shadow-lg shadow-primary-900/40 flex items-center justify-center gap-2 active:scale-95 transition-transform">
                  <Play size={16} fill="currentColor" /> Watch Now
                </button>
             </motion.div>
@@ -420,11 +420,11 @@ export default function AnimeCard({ anime, progress = 0, isHindi = false }: Anim
              <div className="bg-[#0f0f0f]/95 backdrop-blur-xl border border-white/10 rounded-2xl p-5 shadow-[0_20px_60px_rgba(0,0,0,0.8)] relative overflow-hidden">
                 <div className="mb-3">
                    <Link href={normalized.targetRoute}>
-                     <h4 className="text-white font-black text-base lg:text-lg leading-tight mb-1 cursor-pointer hover:text-red-500 transition-colors">
+                     <h4 className="text-white font-black text-base lg:text-lg leading-tight mb-1 cursor-pointer hover:text-primary-500 transition-colors">
                        {normalized.displayTitle}
                      </h4>
                    </Link>
-                   <p className="text-red-500/80 text-xs font-bold italic line-clamp-1">{qtip?.jname}</p>
+                   <p className="text-primary-500/80 text-xs font-bold italic line-clamp-1">{qtip?.jname}</p>
                 </div>
                 <div className="flex items-center gap-3 mb-3 text-xs font-bold">
                    <div className="flex items-center">
@@ -458,7 +458,7 @@ export default function AnimeCard({ anime, progress = 0, isHindi = false }: Anim
                       </span>
                    ))}
                 </div>
-                <div className="absolute -top-10 -right-10 w-32 h-32 bg-red-600/10 blur-[60px] rounded-full pointer-events-none" />
+                <div className="absolute -top-10 -right-10 w-32 h-32 bg-primary-600/10 blur-[60px] rounded-full pointer-events-none" />
              </div>
           </motion.div>
         )}

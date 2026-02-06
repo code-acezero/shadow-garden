@@ -340,15 +340,15 @@ export default function OtakuVerse({ user, onAuthRequired, highlightId }: OtakuV
       <div className="space-y-6">
         <div className="text-center mb-8">
           <h1 className="text-4xl font-black text-white mb-2 font-[Cinzel] tracking-widest uppercase italic">
-            Otaku<span className="text-red-600">Verse</span>
+            Otaku<span className="text-primary-600">Verse</span>
           </h1>
-          <Badge variant="outline" className="border-red-900/40 text-zinc-500 uppercase tracking-tighter">Shadow Network Feed</Badge>
+          <Badge variant="outline" className="border-primary-900/40 text-zinc-500 uppercase tracking-tighter">Shadow Network Feed</Badge>
         </div>
 
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
           <TabsList className="grid w-full grid-cols-4 bg-[#0a0a0a] border border-white/10 p-1 rounded-xl">
             {['feed', 'trending', 'following', 'discover'].map((tab) => (
-              <TabsTrigger key={tab} value={tab} className="capitalize data-[state=active]:bg-red-600 data-[state=active]:text-white font-black rounded-lg text-xs">
+              <TabsTrigger key={tab} value={tab} className="capitalize data-[state=active]:bg-primary-600 data-[state=active]:text-white font-black rounded-lg text-xs">
                 {tab === 'trending' && <Flame size={12} className="mr-1 text-orange-400" />}
                 {tab}
               </TabsTrigger>
@@ -356,14 +356,14 @@ export default function OtakuVerse({ user, onAuthRequired, highlightId }: OtakuV
           </TabsList>
 
           <TabsContent value={activeTab} className="space-y-6 mt-6">
-            <Card className="bg-[#0a0a0a] border-white/10 hover:border-red-500/30 transition-all cursor-pointer group" onClick={() => user ? setShowCreatePost(true) : onAuthRequired()}>
+            <Card className="bg-[#0a0a0a] border-white/10 hover:border-primary-500/30 transition-all cursor-pointer group" onClick={() => user ? setShowCreatePost(true) : onAuthRequired()}>
               <CardContent className="p-4 flex gap-4 items-center">
                 <Avatar className="w-10 h-10 border border-white/10">
                   <AvatarImage src={user?.user_metadata?.avatar_url} />
                   <AvatarFallback>?</AvatarFallback>
                 </Avatar>
                 <div className="flex-1 bg-white/5 h-10 rounded-full flex items-center px-4 text-zinc-500 text-sm font-black italic">Start a transmission...</div>
-                <Button size="icon" variant="ghost" className="text-red-600"><ImageIcon size={20} /></Button>
+                <Button size="icon" variant="ghost" className="text-primary-600"><ImageIcon size={20} /></Button>
               </CardContent>
             </Card>
 
@@ -392,8 +392,8 @@ export default function OtakuVerse({ user, onAuthRequired, highlightId }: OtakuV
                                             </Avatar>
                                             <div>
                                                 <div className="flex items-center gap-2">
-                                                    <p className="text-sm font-black text-white hover:text-red-500 cursor-pointer transition-colors uppercase tracking-tight">{post.user?.username}</p>
-                                                    {post.user.role === 'admin' && <ShieldCheck size={14} className="text-red-600" />}
+                                                    <p className="text-sm font-black text-white hover:text-primary-500 cursor-pointer transition-colors uppercase tracking-tight">{post.user?.username}</p>
+                                                    {post.user.role === 'admin' && <ShieldCheck size={14} className="text-primary-600" />}
                                                 </div>
                                                 <p className="text-[10px] text-zinc-500 font-bold uppercase">{formatDistanceToNow(new Date(post.created_at))} ago</p>
                                             </div>
@@ -405,7 +405,7 @@ export default function OtakuVerse({ user, onAuthRequired, highlightId }: OtakuV
                                             <DropdownMenuContent align="end" className="bg-black border-white/10 text-zinc-300">
                                                 <DropdownMenuItem className="focus:bg-white/10 cursor-pointer font-bold"><Flag size={14} className="mr-2"/> Report</DropdownMenuItem>
                                                 {user?.id === post.user_id && (
-                                                    <DropdownMenuItem onClick={() => handleDeletePost(post.id)} className="focus:bg-red-900/20 text-red-500 font-bold cursor-pointer"><Trash2 size={14} className="mr-2"/> Delete</DropdownMenuItem>
+                                                    <DropdownMenuItem onClick={() => handleDeletePost(post.id)} className="focus:bg-primary-900/20 text-primary-500 font-bold cursor-pointer"><Trash2 size={14} className="mr-2"/> Delete</DropdownMenuItem>
                                                 )}
                                             </DropdownMenuContent>
                                         </DropdownMenu>
@@ -419,7 +419,7 @@ export default function OtakuVerse({ user, onAuthRequired, highlightId }: OtakuV
                                                     <div key={i} className="relative aspect-square overflow-hidden cursor-zoom-in group" onClick={() => setLightbox({ isOpen: true, src: img })}>
                                                         <img src={img} className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105" alt="Post" />
                                                         <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                                                            <Badge className="bg-red-600 font-black tracking-widest text-[10px]">VIEW_HD</Badge>
+                                                            <Badge className="bg-primary-600 font-black tracking-widest text-[10px]">VIEW_HD</Badge>
                                                         </div>
                                                     </div>
                                                 ))}
@@ -427,7 +427,7 @@ export default function OtakuVerse({ user, onAuthRequired, highlightId }: OtakuV
                                         )}
                                         <div className="p-4 flex items-center justify-between">
                                             <div className="flex gap-8">
-                                                <button onClick={() => handleLike(post)} className={`flex items-center gap-2 text-xs font-black transition-all ${post.is_liked_by_user ? 'text-red-500 scale-110' : 'text-zinc-500 hover:text-red-500'}`}>
+                                                <button onClick={() => handleLike(post)} className={`flex items-center gap-2 text-xs font-black transition-all ${post.is_liked_by_user ? 'text-primary-500 scale-110' : 'text-zinc-500 hover:text-primary-500'}`}>
                                                     <Heart size={20} className={post.is_liked_by_user ? "fill-current" : ""} /> {post.likes_count}
                                                 </button>
                                                 <button onClick={() => { setActivePostForComments(post); fetchComments(post.id); }} className="flex items-center gap-2 text-xs font-black text-zinc-500 hover:text-blue-500">
@@ -446,7 +446,7 @@ export default function OtakuVerse({ user, onAuthRequired, highlightId }: OtakuV
                                                         <DropdownMenuItem onClick={() => handleShare('whatsapp', post)} className="focus:bg-white/10 cursor-pointer font-bold"><MessageSquare size={14} className="mr-2 text-green-500"/> WhatsApp</DropdownMenuItem>
                                                         <DropdownMenuItem onClick={() => handleShare('telegram', post)} className="focus:bg-white/10 cursor-pointer font-bold"><SendHorizontal size={14} className="mr-2 text-sky-500"/> Telegram</DropdownMenuItem>
                                                         <DropdownMenuItem onClick={() => handleShare('discord', post)} className="focus:bg-white/10 cursor-pointer font-bold"><X size={14} className="mr-2 text-indigo-400"/> Discord</DropdownMenuItem>
-                                                        <DropdownMenuItem onClick={() => handleShare('copy', post)} className="focus:bg-white/10 cursor-pointer border-t border-white/5 mt-1 font-bold"><LinkIcon size={14} className="mr-2 text-red-500"/> Copy Link</DropdownMenuItem>
+                                                        <DropdownMenuItem onClick={() => handleShare('copy', post)} className="focus:bg-white/10 cursor-pointer border-t border-white/5 mt-1 font-bold"><LinkIcon size={14} className="mr-2 text-primary-500"/> Copy Link</DropdownMenuItem>
                                                     </DropdownMenuContent>
                                                 </DropdownMenu>
                                             </div>
@@ -467,7 +467,7 @@ export default function OtakuVerse({ user, onAuthRequired, highlightId }: OtakuV
       <Dialog open={showCreatePost} onOpenChange={setShowCreatePost}>
         <DialogContent className="bg-[#0a0a0a] border-white/10 text-white max-w-2xl">
           <DialogHeader>
-            <DialogTitle className="font-[Cinzel] tracking-widest uppercase text-red-500">New Broadcast</DialogTitle>
+            <DialogTitle className="font-[Cinzel] tracking-widest uppercase text-primary-500">New Broadcast</DialogTitle>
           </DialogHeader>
           <div className="space-y-4 mt-4">
             <Textarea placeholder="What's happening?" value={newPost} onChange={(e) => setNewPost(e.target.value)} className="min-h-[150px] bg-white/5 border-none text-zinc-200 resize-none focus-visible:ring-1 ring-red-600 font-medium" />
@@ -476,7 +476,7 @@ export default function OtakuVerse({ user, onAuthRequired, highlightId }: OtakuV
                     {selectedImages.map((image, index) => (
                         <div key={index} className="relative group rounded-lg overflow-hidden border border-white/10 shrink-0">
                           <img src={URL.createObjectURL(image)} className="w-20 h-20 object-cover" alt="Preview" />
-                          <button onClick={() => setSelectedImages(prev => prev.filter((_, i) => i !== index))} className="absolute top-1 right-1 bg-red-600 rounded-full text-white"><X size={10} /></button>
+                          <button onClick={() => setSelectedImages(prev => prev.filter((_, i) => i !== index))} className="absolute top-1 right-1 bg-primary-600 rounded-full text-white"><X size={10} /></button>
                         </div>
                     ))}
                 </div>
@@ -484,7 +484,7 @@ export default function OtakuVerse({ user, onAuthRequired, highlightId }: OtakuV
             <div className="flex justify-between items-center pt-4 border-t border-white/10">
                 <Button variant="ghost" onClick={() => document.getElementById('img-upload')?.click()}><ImageIcon size={20} /></Button>
                 <input id="img-upload" type="file" hidden multiple accept="image/*" onChange={handleImageUpload} />
-                <Button onClick={handleCreatePost} disabled={isUploading} className="bg-red-600 hover:bg-red-700 text-white font-black px-8 rounded-full">
+                <Button onClick={handleCreatePost} disabled={isUploading} className="bg-primary-600 hover:bg-primary-700 text-white font-black px-8 rounded-full">
                     {isUploading ? <Loader2 className="animate-spin" /> : "BROADCAST"}
                 </Button>
             </div>
@@ -502,7 +502,7 @@ export default function OtakuVerse({ user, onAuthRequired, highlightId }: OtakuV
           </DialogHeader>
           <div className="p-6 overflow-y-auto flex-1 custom-scrollbar">
             <h2 className="text-xl font-black mb-6 flex items-center gap-2 uppercase tracking-tighter italic">
-                <MessageCircle className="text-red-600" /> Neural_Log: {activePostForComments?.user.username}
+                <MessageCircle className="text-primary-600" /> Neural_Log: {activePostForComments?.user.username}
             </h2>
             <div className="space-y-6">
               {comments.map((comment) => (
@@ -512,8 +512,8 @@ export default function OtakuVerse({ user, onAuthRequired, highlightId }: OtakuV
           </div>
           <div className="p-4 bg-black border-t border-white/5">
             {replyTarget && (
-                <div className="flex items-center justify-between bg-red-600/10 border border-red-600/20 px-3 py-1.5 rounded-lg mb-2">
-                    <span className="text-[10px] font-black text-red-500 uppercase flex items-center gap-2"><CornerDownRight size={14}/> Replying to @{replyTarget.name}</span>
+                <div className="flex items-center justify-between bg-primary-600/10 border border-primary-600/20 px-3 py-1.5 rounded-lg mb-2">
+                    <span className="text-[10px] font-black text-primary-500 uppercase flex items-center gap-2"><CornerDownRight size={14}/> Replying to @{replyTarget.name}</span>
                     <button onClick={() => setReplyTarget(null)}><X size={14}/></button>
                 </div>
             )}
@@ -521,7 +521,7 @@ export default function OtakuVerse({ user, onAuthRequired, highlightId }: OtakuV
               <Avatar className="w-10 h-10 border border-white/10"><AvatarImage src={user?.user_metadata?.avatar_url}/></Avatar>
               <div className="flex-1 relative">
                 <Textarea placeholder="Intercept signal..." className="bg-white/5 border-none resize-none pr-12 min-h-[48px] max-h-32 rounded-2xl py-3 font-medium text-sm" value={commentText} onChange={(e) => setCommentText(e.target.value)} />
-                <button onClick={handlePostComment} className="absolute right-3 bottom-2 text-red-600 p-1"><Send size={22}/></button>
+                <button onClick={handlePostComment} className="absolute right-3 bottom-2 text-primary-600 p-1"><Send size={22}/></button>
               </div>
             </div>
           </div>
@@ -537,15 +537,15 @@ function CommentNode({ comment, onReply }: { comment: Comment, onReply: (id: str
             <Avatar className="w-8 h-8 shrink-0"><AvatarImage src={comment.user.avatar_url}/></Avatar>
             <div className="flex-1">
                 <div className="bg-white/5 rounded-2xl p-3 inline-block max-w-full">
-                    <p className="text-xs font-black text-red-500 uppercase">{comment.user.username}</p>
+                    <p className="text-xs font-black text-primary-500 uppercase">{comment.user.username}</p>
                     <p className="text-sm text-zinc-300 font-medium">{comment.content}</p>
                 </div>
                 <div className="flex items-center gap-4 mt-1.5 ml-2">
                     <span className="text-[10px] text-zinc-600 font-black uppercase">{formatDistanceToNow(new Date(comment.created_at))}</span>
-                    <button onClick={() => onReply(comment.id, comment.user.username)} className="text-[10px] font-black text-zinc-400 hover:text-red-600 uppercase">Reply</button>
+                    <button onClick={() => onReply(comment.id, comment.user.username)} className="text-[10px] font-black text-zinc-400 hover:text-primary-600 uppercase">Reply</button>
                 </div>
                 {comment.replies && comment.replies.length > 0 && (
-                    <div className="mt-4 ml-2 pl-4 border-l-2 border-red-600/10 space-y-4">
+                    <div className="mt-4 ml-2 pl-4 border-l-2 border-primary-600/10 space-y-4">
                         {comment.replies.map(reply => <CommentNode key={reply.id} comment={reply} onReply={onReply} />)}
                     </div>
                 )}

@@ -1,23 +1,23 @@
-import { supabase } from "@/lib/supabase"; // ✅ IMPORT SINGLETON
+import { supabase } from "@/lib/supabase"; 
 
 // ==========================================
-//  1. CONFIGURATION & POOLS
+//  1. CONFIGURATION & POOLS (✅ EXPORTED)
 // ==========================================
 
-const BASE_URL = 'https://consumet-api-hianime.vercel.app/anime/hianime';
+export const BASE_URL = 'https://consumet-api-hianime.vercel.app/anime/hianime';
 
-const POOL_V2 = [
+export const POOL_V2 = [
     'https://hianime-api-mu.vercel.app/api/v2/hianime',
     'https://hianime-api-v2-2nd.vercel.app/api/v2/hianime'
 ];
 
-const POOL_V3 = [
+export const POOL_V3 = [
     'https://hianime-api-v3.vercel.app/api',
     'https://hianime-api-v3-2nd.vercel.app/api'
 ];
 
-const BASE_URL_V4 = 'https://hianime-api-v4.vercel.app/api/v1'; 
-const BASE_URL_HINDI = 'https://hindi-anime-api-v1.vercel.app/api';
+export const BASE_URL_V4 = 'https://hianime-api-v4.vercel.app/api/v1'; 
+export const BASE_URL_HINDI = 'https://hindi-anime-api-v1.vercel.app/api';
 
 // ==========================================
 //  2. SHARED UTILS
@@ -69,7 +69,6 @@ async function fetchWithFailover(urlPool: string[], endpoint: string, params: Re
                     return json.data || json.results || json; 
                 }
             } catch (innerError: any) {
-                // ✅ SILENCE THE ABORT ERROR (Fixes console noise on redirect)
                 if (innerError.name === 'AbortError') {
                     continue; 
                 }
@@ -292,7 +291,6 @@ export class AnimeAPI_V3 {
   static async getTopSearch() { return this.request('/top-search'); }
   static async getRandomAnime() { return this.request('/random'); }
 
-  // ✅ NEW ENDPOINTS
   static async getSubbedAnime(page = 1) { return this.request('/subbed-anime', { page }); }
   static async getDubbedAnime(page = 1) { return this.request('/dubbed-anime', { page }); }
 
@@ -338,7 +336,6 @@ export class AnimeAPI_V4 {
   static async getMostPopular(page = 1) { return this.request('/animes/most-popular', { page }); }
   static async getTopAiring(page = 1) { return this.request('/animes/top-airing', { page }); }
   
-  // NOTE: Switched these to V3 in Service, but kept here for reference
   static async getSubbedAnime(page = 1) { return this.request('/animes/subbed-anime', { page }); }
   static async getDubbedAnime(page = 1) { return this.request('/animes/dubbed-anime', { page }); }
   
@@ -379,7 +376,6 @@ export class AnimeAPI_V4 {
 
 export class AnimeService {
 
-    // Helper for V4 (still used for other lists)
     private static normalizeV4List(data: any): UniversalAnimeBase[] {
         const list = data?.response || data?.animes || [];
         return list.map((item: any) => ({
@@ -395,9 +391,7 @@ export class AnimeService {
         }));
     }
 
-    // ✅ NEW: Normalizer for V3 Sub/Dub Lists
     private static normalizeV3List(data: any): UniversalAnimeBase[] {
-        // V3 response for subbed/dubbed is { results: { data: [...] } }
         const list = data?.data || [];
         return list.map((item: any) => ({
             id: item.id,
@@ -411,7 +405,6 @@ export class AnimeService {
                 dub: parseInt(item.tvInfo?.dub || "0"),
                 eps: parseInt(item.tvInfo?.eps || "0")
             },
-            // ✅ V3 Explicitly provides this
             isAdult: item.adultContent === true
         }));
     }
@@ -533,7 +526,6 @@ export class AnimeService {
         })) : [];
     }
 
-    // LISTS & HOME
     static async getTopUpcoming(page = 1) { const data = await AnimeAPI_V4.getTopUpcoming(page); return data ? this.normalizeV4List(data) : []; }
     static async getRecentlyUpdated(page = 1) { const data = await AnimeAPI_V4.getRecentlyUpdated(page); return data ? this.normalizeV4List(data) : []; }
     static async getRecentlyAdded(page = 1) { const data = await AnimeAPI_V4.getRecentlyAdded(page); return data ? this.normalizeV4List(data) : []; }
@@ -542,7 +534,6 @@ export class AnimeService {
     static async getMostPopular(page = 1) { const data = await AnimeAPI_V4.getMostPopular(page); return data ? this.normalizeV4List(data) : []; }
     static async getTopAiring(page = 1) { const data = await AnimeAPI_V4.getTopAiring(page); return data ? this.normalizeV4List(data) : []; }
     
-    // ✅ SWITCHED TO V3
     static async getSubbedAnime(page = 1) { const data = await AnimeAPI_V3.getSubbedAnime(page); return data ? this.normalizeV3List(data) : []; }
     static async getDubbedAnime(page = 1) { const data = await AnimeAPI_V3.getDubbedAnime(page); return data ? this.normalizeV3List(data) : []; }
 
@@ -566,40 +557,36 @@ export class AnimeService {
         })) : [];
     }
 
-   /**
- * ✅ DEDICATED HINDI RECENT
- */
-static async getHindiRecent() {
-    try {
-        const response: any = await AnimeAPI_Hindi.getHome();
-        const intel = response?.latestSeries ? response : response?.data;
+    static async getHindiRecent() {
+        try {
+            const response: any = await AnimeAPI_Hindi.getHome();
+            const intel = response?.latestSeries ? response : response?.data;
 
-        if (!intel) {
-            console.warn("Shadow Garden: Hindi Intelligence Link Null.");
+            if (!intel) {
+                console.warn("Shadow Garden: Hindi Intelligence Link Null.");
+                return [];
+            }
+
+            const combined = [
+                ...(intel.latestSeries || []),
+                ...(intel.latestMovies || [])
+            ];
+
+            return combined.map((item: any) => ({
+                id: item.id,
+                title: item.title,
+                poster: item.poster ? item.poster.replace(/([^:]\/)\/+/g, "$1") : "", 
+                type: item.type === 'movie' ? 'MOVIE' : 'TV',
+                episodes: { sub: 0, dub: 0 },
+                isAdult: false, 
+                rating: null
+            }));
+        } catch (error) {
+            console.error("Hindi Data Sync Failure:", error);
             return [];
         }
-
-        const combined = [
-            ...(intel.latestSeries || []),
-            ...(intel.latestMovies || [])
-        ];
-
-        return combined.map((item: any) => ({
-            id: item.id,
-            title: item.title,
-            poster: item.poster ? item.poster.replace(/([^:]\/)\/+/g, "$1") : "", 
-            type: item.type === 'movie' ? 'MOVIE' : 'TV',
-            episodes: { sub: 0, dub: 0 },
-            isAdult: false, 
-            rating: null
-        }));
-    } catch (error) {
-        console.error("Hindi Data Sync Failure:", error);
-        return [];
     }
-}
 
-    // CORE DATA METHODS
     static async getAnimeInfo(id: string): Promise<UniversalAnime | null> {
         const dataV2 = await AnimeAPI_V2.getAnimeInfo(id); if (dataV2) return this.normalizeV2(dataV2);
         const dataV3 = await AnimeAPI_V3.getAnimeInfo(id); if (dataV3) return this.normalizeV3(dataV3);
@@ -688,10 +675,8 @@ export class AnimeAPI_Hindi {
       return fetchWithFailover([BASE_URL_HINDI], endpoint, params);
   }
 
-  // Home: /api/home
   static async getHome() { return this.request('/home'); }
   
-  // Search: /api/search?keyword=...&page=...
   static async search(keyword: string, page = 1) { 
       const data: any = await this.request('/search', { keyword, page });
       if (data && (data.results || data.data)) {
@@ -702,31 +687,21 @@ export class AnimeAPI_Hindi {
                   title: item.title,
                   poster: item.poster,
                   type: item.type || "series",
-                  episodes: { sub: 0, dub: 0 } // Hindi API usually lacks detailed ep counts in search
+                  episodes: { sub: 0, dub: 0 } 
               }))
           };
       }
       return { results: [] };
   }
 
-  // Details: /api/anime/{id}
   static async getAnimeDetails(id: string) { return this.request(`/anime/${id}`); }
-
-  // Episodes & Stream: /api/episode/{id}
-  // Note: The Hindi API returns streaming links directly in the episode details endpoint
   static async getEpisodeDetails(id: string) { return this.request(`/episode/${id}`); }
-
-  // Category: /api/category/{category} (anime, cartoon, series, movies)
   static async getCategory(category: string, page = 1) {
       return this.request(`/category/${category}`, { page });
   }
-
-  // Language: /api/category/language/{lang}
   static async getByLanguage(lang: string, page = 1) {
       return this.request(`/category/language/${lang}`, { page });
   }
-  
-  // A-Z: /api/az/{letter}
   static async getAzList(letter: string, page = 1) {
       return this.request(`/az/${letter}`, { page });
   }
@@ -755,7 +730,6 @@ export class WatchlistAPI {
       return !error;
     }
     
-    // Local storage fallback
     const list = await this.getUserWatchlist(userId);
     const updated = [...list.filter(i => i.anime_id !== animeId), item];
     if (typeof window !== 'undefined') localStorage.setItem(`watchlist_${userId}`, JSON.stringify(updated));
@@ -786,9 +760,7 @@ export class UserAPI {
       if (supabase) {
           await supabase.auth.signOut();
           if (typeof window !== 'undefined') {
-              // 1. Remove ONLY the Auth Token
               localStorage.removeItem('shadow_garden_auth'); 
-              // 2. Clear session storage
               sessionStorage.clear();
           }
       }
@@ -796,12 +768,41 @@ export class UserAPI {
 }
 
 export class ImageAPI {
+  /**
+   * ✅ SECURITY FIX: API key now properly managed via environment variable
+   * Add NEXT_PUBLIC_IMGBB_API_KEY to your .env.local file
+   */
   static async uploadImage(file: File): Promise<string> {
-    const API_KEY = process.env.NEXT_PUBLIC_IMGBB_API_KEY || '1DL4pRCKKmg238fsCU6i7ZYEStP9fL9o4q'; 
+    const API_KEY = process.env.NEXT_PUBLIC_IMGBB_API_KEY;
+    
+    if (!API_KEY) {
+      console.error('⚠️ IMGBB_API_KEY not found in environment variables');
+      throw new Error('Image upload service is not configured');
+    }
+    
     const formData = new FormData();
     formData.append('image', file);
-    const response = await fetch(`https://api.imgbb.com/1/upload?key=${API_KEY}`, { method: 'POST', body: formData });
-    const data = await response.json();
-    return data.success ? data.data.url : '';
+    
+    try {
+      const response = await fetch(`https://api.imgbb.com/1/upload?key=${API_KEY}`, { 
+        method: 'POST', 
+        body: formData 
+      });
+      
+      if (!response.ok) {
+        throw new Error(`Upload failed: ${response.status}`);
+      }
+      
+      const data = await response.json();
+      
+      if (!data.success) {
+        throw new Error('Image upload failed');
+      }
+      
+      return data.data.url;
+    } catch (error) {
+      console.error('Image upload error:', error);
+      throw error;
+    }
   }
 }

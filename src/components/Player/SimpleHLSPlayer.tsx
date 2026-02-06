@@ -87,7 +87,7 @@ export default function SimpleHLSPlayer({ url }: SimplePlayerProps) {
           crossOrigin="anonymous" // Important for CORS
         />
         {error && (
-          <div className="absolute inset-0 flex items-center justify-center bg-black/80 text-red-500 p-4 text-center">
+          <div className="absolute inset-0 flex items-center justify-center bg-black/80 text-primary-500 p-4 text-center">
             {error}
           </div>
         )}

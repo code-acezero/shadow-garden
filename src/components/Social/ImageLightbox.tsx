@@ -29,7 +29,7 @@ export default function ImageLightbox({ src, isOpen, onClose }: LightboxProps) {
           <button className="p-2 bg-white/10 rounded-full hover:bg-white/20 text-white transition-colors" onClick={(e) => { e.stopPropagation(); window.open(src, '_blank'); }}>
             <Download size={20} />
           </button>
-          <button className="p-2 bg-red-600 rounded-full hover:bg-red-700 text-white transition-colors" onClick={onClose}>
+          <button className="p-2 bg-primary-600 rounded-full hover:bg-primary-700 text-white transition-colors" onClick={onClose}>
             <X size={20} />
           </button>
         </motion.div>

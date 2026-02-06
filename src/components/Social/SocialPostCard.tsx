@@ -70,7 +70,7 @@ export default function SocialPostCard({
                 </AvatarFallback>
               </Avatar>
               <div>
-                <p className="text-sm font-bold text-white hover:text-red-500 cursor-pointer transition-colors">
+                <p className="text-sm font-bold text-white hover:text-primary-500 cursor-pointer transition-colors">
                   {post.user?.username || "Unknown Agent"}
                 </p>
                 <p className="text-[10px] text-zinc-500 font-medium">
@@ -91,7 +91,7 @@ export default function SocialPostCard({
                   <Flag size={14} className="mr-2"/> Report
                 </DropdownMenuItem>
                 {currentUserId === post.user_id && (
-                  <DropdownMenuItem onClick={() => onDelete(post.id)} className="focus:bg-red-900/20 text-red-500 focus:text-red-400 cursor-pointer">
+                  <DropdownMenuItem onClick={() => onDelete(post.id)} className="focus:bg-primary-900/20 text-primary-500 focus:text-primary-400 cursor-pointer">
                     <Trash2 size={14} className="mr-2"/> Delete
                   </DropdownMenuItem>
                 )}
@@ -134,7 +134,7 @@ export default function SocialPostCard({
             {post.tags && post.tags.length > 0 && (
               <div className="flex flex-wrap gap-2">
                 {post.tags.map((tag: string) => (
-                  <Badge key={tag} variant="outline" className="text-[10px] border-red-500/20 text-red-400 hover:bg-red-500/10 cursor-pointer">
+                  <Badge key={tag} variant="outline" className="text-[10px] border-primary-500/20 text-primary-400 hover:bg-primary-500/10 cursor-pointer">
                     #{tag}
                   </Badge>
                 ))}
@@ -147,7 +147,7 @@ export default function SocialPostCard({
                 <button 
                   onClick={() => onLike(post)} 
                   className={`flex items-center gap-2 text-xs font-bold transition-all active:scale-95 ${
-                    post.is_liked_by_user ? 'text-red-500' : 'text-zinc-500 hover:text-red-500'
+                    post.is_liked_by_user ? 'text-primary-500' : 'text-zinc-500 hover:text-primary-500'
                   }`}
                 >
                   <Heart size={18} className={post.is_liked_by_user ? "fill-current" : ""} /> 
@@ -187,7 +187,7 @@ export default function SocialPostCard({
           </DialogHeader>
           <div className="space-y-4 py-2">
             {/* Original Post Snippet */}
-            <div className="bg-white/5 p-3 rounded-lg border-l-2 border-red-500">
+            <div className="bg-white/5 p-3 rounded-lg border-l-2 border-primary-500">
                 <p className="text-xs text-zinc-400 line-clamp-2 italic">"{post.content}"</p>
             </div>
 
@@ -195,7 +195,7 @@ export default function SocialPostCard({
               value={commentText}
               onChange={(e) => setCommentText(e.target.value)}
               placeholder="Transmit your message..."
-              className="bg-black/50 border-white/10 focus:border-red-500/50 min-h-[100px] resize-none"
+              className="bg-black/50 border-white/10 focus:border-primary-500/50 min-h-[100px] resize-none"
             />
           </div>
           <DialogFooter className="flex-row justify-end gap-2">
@@ -203,7 +203,7 @@ export default function SocialPostCard({
             <Button 
                 onClick={handleSubmitComment} 
                 disabled={!commentText.trim() || isSubmitting}
-                className="bg-red-600 hover:bg-red-700 text-white"
+                className="bg-primary-600 hover:bg-primary-700 text-white"
             >
                {isSubmitting ? "Sending..." : <><Send size={14} className="mr-2"/> Reply</>}
             </Button>
