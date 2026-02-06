@@ -7,7 +7,7 @@ import {
   Play, Calendar, MonitorPlay, 
   Captions, Mic, Info, X, ListVideo 
 } from 'lucide-react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion, AnimatePresence, Variants } from 'framer-motion';
 import { AnimeAPI_V2 } from '@/lib/api';
 import { cn } from '@/lib/utils';
 
@@ -54,8 +54,8 @@ interface AnimeCardProps {
   isHindi?: boolean;
 }
 
-// --- ANIMATION VARIANTS ---
-const qtipVariants = {
+// --- ANIMATION VARIANTS (Fixed Typing) ---
+const qtipVariants: Variants = {
   hidden: (direction: 'left' | 'right') => ({ 
     opacity: 0, 
     x: direction === 'right' ? -15 : 15, 
@@ -76,7 +76,7 @@ const qtipVariants = {
   }
 };
 
-const mobileOverlayVariants = {
+const mobileOverlayVariants: Variants = {
   hidden: { y: "100%", opacity: 0 },
   visible: { y: 0, opacity: 1, transition: { type: "spring", stiffness: 100, damping: 20 } },
   exit: { y: "100%", opacity: 0, transition: { duration: 0.2 } }
@@ -113,7 +113,7 @@ export default function AnimeCard({ anime, progress = 0, isHindi = false }: Anim
 
     // Initial Adult Check
     const rawRating = anime.rating || "";
-    const isAdult = anime.isAdult === true || ["Rx", "RX", "Hentai"].some(t => rawRating.toUpperCase().includes(t));
+    const isAdult = anime.isAdult === true || ["Rx", "RX", "Hentai"].some((t: string) => rawRating.toUpperCase().includes(t));
 
     // Route Logic
     let finalRoute = "";
@@ -144,15 +144,9 @@ export default function AnimeCard({ anime, progress = 0, isHindi = false }: Anim
   }, [anime, isHindi]);
 
   // --- SMART RATING SELECTOR ---
-  // Decides whether to show the initial prop rating or the QTip rating
   const getDisplayRating = () => {
-    // 1. If we haven't loaded QTip, definitely use initial
     if (!qtip) return { rating: normalized.rawRating, isAdult: normalized.isAdult };
 
-    // 2. If QTip IS loaded, checks if we should override.
-    // Logic: Only override if the initial rating was missing/weak (PG 13 default equivalent).
-    // If initial was "18+", "Rx", or "R", KEEP IT. Don't let QTip downgrade it.
-    
     const initialUpper = normalized.rawRating ? normalized.rawRating.toUpperCase() : "";
     const hasStrongInitial = 
         normalized.isAdult || 
@@ -165,36 +159,30 @@ export default function AnimeCard({ anime, progress = 0, isHindi = false }: Anim
         return { rating: normalized.rawRating, isAdult: normalized.isAdult };
     }
 
-    // Otherwise, QTip might have better info (e.g., initial was empty, QTip found "R-17+")
     return { rating: qtip.rating, isAdult: qtip.isAdult };
   };
 
   // --- HELPER: AGE TAG ---
   const AgeTag = ({ adult, rating }: { adult: boolean, rating?: string }) => {
-    let label = "PG 13"; // Default Fallback (Updated from PG-13)
+    let label = "PG 13"; 
     let isRed = false;
 
     const r = rating ? rating.toUpperCase() : "";
 
-    // 1. Rx / Hentai -> Rx (Red)
     if (r.includes("RX") || r.includes("HENTAI")) {
         label = "Rx";
         isRed = true;
     } 
-    // 2. R+ / 18+ / Explicit Adult Boolean -> 18+ (Red)
     else if (adult || r.includes("R+") || r.includes("18+")) {
         label = "18+";
         isRed = true;
     } 
-    // 3. R / 17+ -> 18 (Red)
     else if (r.includes("R") || r.includes("17")) {
         label = "18";
         isRed = true;
     } 
-    // 4. Existing Tag -> Show cleaned version (Black)
     else if (rating && rating !== "?" && rating !== "Unknown") {
         label = rating.replace("PG-", "PG ").replace("R-", "").trim();
-        // Normalize "13" to "PG 13"
         if (label === "13" || label === "PG-13") label = "PG 13";
         isRed = false;
     }
@@ -246,7 +234,7 @@ export default function AnimeCard({ anime, progress = 0, isHindi = false }: Anim
         const info = data.anime.info;
         const more = data.anime.moreInfo;
         const statsRating = info.stats.rating || "";
-        const isAdult = more.genres?.includes('Hentai') || ["Rx", "RX", "Hentai"].some(t => statsRating.toUpperCase().includes(t));
+        const isAdult = more.genres?.includes('Hentai') || ["Rx", "RX", "Hentai"].some((t: string) => statsRating.toUpperCase().includes(t));
 
         setQtip({
           jname: info.jname || more.japanese || normalized.displayTitle,
@@ -278,7 +266,6 @@ export default function AnimeCard({ anime, progress = 0, isHindi = false }: Anim
     return () => { if (fetchTimeout.current) clearTimeout(fetchTimeout.current); };
   }, [isHovered, qtip, loading]);
 
-  // Determine current display rating
   const currentRatingData = getDisplayRating();
 
   return (
@@ -305,26 +292,25 @@ export default function AnimeCard({ anime, progress = 0, isHindi = false }: Anim
           </div>
 
           <div className="absolute top-2.5 left-2.5 md:top-3 md:left-3 z-20">
-             <div className="h-4 md:h-5 px-2 flex items-center justify-center rounded-full bg-white/10 backdrop-blur-md border border-white/10 text-[8px] md:text-[9px] font-black text-white uppercase tracking-wider shadow-sm">
-               {normalized.type}
-             </div>
+              <div className="h-4 md:h-5 px-2 flex items-center justify-center rounded-full bg-white/10 backdrop-blur-md border border-white/10 text-[8px] md:text-[9px] font-black text-white uppercase tracking-wider shadow-sm">
+                {normalized.type}
+              </div>
           </div>
 
           <div className="absolute top-2.5 right-2.5 md:top-3 md:right-3 z-40 flex items-center gap-1.5 md:gap-2">
-             <button onClick={handleMobileInfoToggle} className="md:hidden w-5 h-5 md:w-6 md:h-6 rounded-full bg-white/10 backdrop-blur-md border border-white/20 flex items-center justify-center text-white active:scale-90 transition-all hover:bg-white/20">
-               <Info size={10} className="md:w-3 md:h-3" />
-             </button>
-             {/* Uses Smart Selected Rating */}
-             <AgeTag adult={currentRatingData.isAdult || false} rating={currentRatingData.rating} />
+              <button onClick={handleMobileInfoToggle} className="md:hidden w-5 h-5 md:w-6 md:h-6 rounded-full bg-white/10 backdrop-blur-md border border-white/20 flex items-center justify-center text-white active:scale-90 transition-all hover:bg-white/20">
+                <Info size={10} className="md:w-3 md:h-3" />
+              </button>
+              <AgeTag adult={currentRatingData.isAdult || false} rating={currentRatingData.rating} />
           </div>
 
           <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all duration-300 z-30 scale-75 group-hover:scale-100 hidden md:flex">
-             <div className="relative group/play">
-               <div className="absolute inset-0 rounded-full bg-primary-600 blur-xl opacity-50 group-hover/play:opacity-80 animate-pulse" />
-               <div className="relative w-14 h-14 rounded-full bg-primary-600 border border-white/10 flex items-center justify-center shadow-[0_0_30px_rgba(220,38,38,0.5)] transition-transform duration-200 group-hover/play:scale-110">
-                 <Play className="w-6 h-6 text-white fill-white ml-1" />
-               </div>
-             </div>
+              <div className="relative group/play">
+                <div className="absolute inset-0 rounded-full bg-primary-600 blur-xl opacity-50 group-hover/play:opacity-80 animate-pulse" />
+                <div className="relative w-14 h-14 rounded-full bg-primary-600 border border-white/10 flex items-center justify-center shadow-[0_0_30px_rgba(220,38,38,0.5)] transition-transform duration-200 group-hover/play:scale-110">
+                  <Play className="w-6 h-6 text-white fill-white ml-1" />
+                </div>
+              </div>
           </div>
 
           <div className="absolute bottom-0 left-0 right-0 p-2.5 md:p-3 z-20 flex flex-col gap-1.5 md:gap-2">
@@ -408,58 +394,58 @@ export default function AnimeCard({ anime, progress = 0, isHindi = false }: Anim
       <AnimatePresence>
         {isHovered && !isHindi && !showMobileInfo && (
           <motion.div
-             custom={popupPosition}
-             variants={qtipVariants}
-             initial="hidden"
-             animate="visible"
-             exit="exit"
-             onMouseEnter={handleMouseEnter} 
-             onMouseLeave={handleMouseLeave}
-             className={`hidden md:block absolute top-0 w-[280px] lg:w-[320px] z-50 ${popupPosition === 'right' ? 'left-[105%]' : 'right-[105%]'}`}
+              custom={popupPosition}
+              variants={qtipVariants}
+              initial="hidden"
+              animate="visible"
+              exit="exit"
+              onMouseEnter={handleMouseEnter} 
+              onMouseLeave={handleMouseLeave}
+              className={`hidden md:block absolute top-0 w-[280px] lg:w-[320px] z-50 ${popupPosition === 'right' ? 'left-[105%]' : 'right-[105%]'}`}
           >
-             <div className="bg-[#0f0f0f]/95 backdrop-blur-xl border border-white/10 rounded-2xl p-5 shadow-[0_20px_60px_rgba(0,0,0,0.8)] relative overflow-hidden">
-                <div className="mb-3">
-                   <Link href={normalized.targetRoute}>
-                     <h4 className="text-white font-black text-base lg:text-lg leading-tight mb-1 cursor-pointer hover:text-primary-500 transition-colors">
-                       {normalized.displayTitle}
-                     </h4>
-                   </Link>
-                   <p className="text-primary-500/80 text-xs font-bold italic line-clamp-1">{qtip?.jname}</p>
-                </div>
-                <div className="flex items-center gap-3 mb-3 text-xs font-bold">
-                   <div className="flex items-center">
-                      <AgeTag adult={currentRatingData.isAdult || false} rating={currentRatingData.rating} />
-                   </div>
-                   <div className="flex items-center gap-1 text-zinc-400">
-                      <MonitorPlay size={12} />
-                      <span>{qtip?.quality || "HD"}</span>
-                   </div>
-                   <div className="ml-auto text-zinc-500 font-mono text-[10px] uppercase">
-                      {qtip?.season || "ANIME"}
-                   </div>
-                </div>
-                <div className="mb-4 min-h-[60px]">
-                   {loading && !qtip ? (
-                      <div className="space-y-1.5 animate-pulse">
-                          <div className="h-2 bg-white/10 rounded w-full"/>
-                          <div className="h-2 bg-white/10 rounded w-5/6"/>
-                          <div className="h-2 bg-white/10 rounded w-4/6"/>
-                      </div>
-                   ) : (
-                      <p className="text-[11px] text-zinc-400 leading-relaxed line-clamp-4">
-                          {qtip?.description || "Description unavailable."}
-                      </p>
-                   )}
-                </div>
-                <div className="flex flex-wrap gap-1.5 pt-3 border-t border-white/5">
-                   {(qtip?.genres || []).slice(0, 3).map(g => (
-                      <span key={g} className="text-[9px] px-2.5 py-0.5 rounded-full bg-white/5 border border-white/10 text-zinc-300">
-                          {g}
-                      </span>
-                   ))}
-                </div>
-                <div className="absolute -top-10 -right-10 w-32 h-32 bg-primary-600/10 blur-[60px] rounded-full pointer-events-none" />
-             </div>
+              <div className="bg-[#0f0f0f]/95 backdrop-blur-xl border border-white/10 rounded-2xl p-5 shadow-[0_20px_60px_rgba(0,0,0,0.8)] relative overflow-hidden">
+                 <div className="mb-3">
+                    <Link href={normalized.targetRoute}>
+                      <h4 className="text-white font-black text-base lg:text-lg leading-tight mb-1 cursor-pointer hover:text-primary-500 transition-colors">
+                        {normalized.displayTitle}
+                      </h4>
+                    </Link>
+                    <p className="text-primary-500/80 text-xs font-bold italic line-clamp-1">{qtip?.jname}</p>
+                 </div>
+                 <div className="flex items-center gap-3 mb-3 text-xs font-bold">
+                    <div className="flex items-center">
+                       <AgeTag adult={currentRatingData.isAdult || false} rating={currentRatingData.rating} />
+                    </div>
+                    <div className="flex items-center gap-1 text-zinc-400">
+                       <MonitorPlay size={12} />
+                       <span>{qtip?.quality || "HD"}</span>
+                    </div>
+                    <div className="ml-auto text-zinc-500 font-mono text-[10px] uppercase">
+                       {qtip?.season || "ANIME"}
+                    </div>
+                 </div>
+                 <div className="mb-4 min-h-[60px]">
+                    {loading && !qtip ? (
+                       <div className="space-y-1.5 animate-pulse">
+                           <div className="h-2 bg-white/10 rounded w-full"/>
+                           <div className="h-2 bg-white/10 rounded w-5/6"/>
+                           <div className="h-2 bg-white/10 rounded w-4/6"/>
+                       </div>
+                    ) : (
+                       <p className="text-[11px] text-zinc-400 leading-relaxed line-clamp-4">
+                           {qtip?.description || "Description unavailable."}
+                       </p>
+                    )}
+                 </div>
+                 <div className="flex flex-wrap gap-1.5 pt-3 border-t border-white/5">
+                    {(qtip?.genres || []).slice(0, 3).map(g => (
+                       <span key={g} className="text-[9px] px-2.5 py-0.5 rounded-full bg-white/5 border border-white/10 text-zinc-300">
+                           {g}
+                       </span>
+                    ))}
+                 </div>
+                 <div className="absolute -top-10 -right-10 w-32 h-32 bg-primary-600/10 blur-[60px] rounded-full pointer-events-none" />
+              </div>
           </motion.div>
         )}
       </AnimatePresence>
