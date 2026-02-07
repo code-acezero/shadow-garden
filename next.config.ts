@@ -1,5 +1,8 @@
-import { withSentryConfig } from "@sentry/nextjs";
 import type { NextConfig } from "next";
+
+const withBundleAnalyzer = require('@next/bundle-analyzer')({
+  enabled: process.env.ANALYZE === 'true',
+});
 
 const nextConfig: NextConfig = {
   reactStrictMode: false, // Keeps UI libs stable
@@ -44,28 +47,4 @@ const nextConfig: NextConfig = {
   },
 };
 
-// ✅ FIX: Disable Sentry webpack plugin in development
-const sentryWebpackPluginOptions = {
-  org: "shadow-garden-ou",
-  project: "javascript-nextjs",
-  
-  // Only print logs for uploading source maps in CI
-  silent: !process.env.CI,
-  
-  // ✅ CRITICAL FIX: Disable Sentry completely in development
-  dryRun: process.env.NODE_ENV !== 'production',
-  disableClientWebpackPlugin: process.env.NODE_ENV !== 'production',
-  disableServerWebpackPlugin: process.env.NODE_ENV !== 'production',
-  
-  // Upload a larger set of source maps for prettier stack traces (increases build time)
-  widenClientFileUpload: true,
-
-  webpack: {
-    automaticVercelMonitors: true,
-    treeshake: {
-      removeDebugLogging: true,
-    },
-  },
-};
-
-export default withSentryConfig(nextConfig, sentryWebpackPluginOptions);
+export default withBundleAnalyzer(nextConfig);

@@ -1,26 +1,28 @@
-"use client";
+'use client';
 
-import * as Sentry from "@sentry/nextjs";
-import NextError from "next/error";
-import { useEffect } from "react";
-
+// Removed Sentry dependency
 export default function GlobalError({
   error,
+  reset,
 }: {
   error: Error & { digest?: string };
+  reset: () => void;
 }) {
-  useEffect(() => {
-    Sentry.captureException(error);
-  }, [error]);
-
   return (
-    <html lang="en">
+    <html>
       <body>
-        {/* `NextError` is the default Next.js error page component. Its type
-        definition requires a `statusCode` prop. However, since the App Router
-        does not expose status codes for errors, we simply pass 0 to render a
-        generic error message. */}
-        <NextError statusCode={0} />
+        <div className="flex flex-col items-center justify-center min-h-screen text-center p-4 bg-[#050505] text-white font-sans">
+          <h2 className="text-2xl font-bold mb-4">Something went wrong!</h2>
+          <p className="text-zinc-400 mb-8 max-w-md">
+            A critical error occurred. The application could not recover.
+          </p>
+          <button
+            onClick={() => reset()}
+            className="px-6 py-2 bg-red-600 hover:bg-red-700 text-white rounded-full font-bold transition-colors"
+          >
+            Try again
+          </button>
+        </div>
       </body>
     </html>
   );

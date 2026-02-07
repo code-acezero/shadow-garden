@@ -6,21 +6,21 @@ import Navigation from "@/components/Layout/Navigation";
 import { Toaster } from 'sonner'; 
 import { AuthProvider } from '@/context/AuthContext';
 import { SettingsProvider } from "@/hooks/useSettings";
-// Note: CustomLoader should handle its own 'use client' logic
 import CustomLoader from "@/components/UIx/CustomLoader"; 
 import { createClient } from "@supabase/supabase-js"; 
 import { SITE_CONFIG } from '@/lib/site-config'; 
 
-// Import fonts from your library
+// Import fonts from your library (Optimized: These are just variable definitions now)
 import { 
   badUnicorn, demoness, horrorshow, hunters, 
   kareudon, monas, nyctophobia, onePiece 
 } from '@/lib/fonts';
 
+// Keep Inter preloaded as the default UI font for speed
 const inter = Inter({ 
   subsets: ["latin"],
   variable: '--font-inter',
-  display: 'swap', // Good for preventing layout shift
+  display: 'swap', 
 });
 
 export const viewport: Viewport = {
@@ -119,7 +119,8 @@ export default function RootLayout({
 }: {
   children: React.ReactNode;
 }) {
-  // Combine all font variables into one string for the className
+  // 1. Combine all font variable definitions
+  // Since we set preload: false in fonts.ts, this barely adds any size to the initial load
   const fontVariables = [
     inter.variable, 
     badUnicorn.variable, 
@@ -171,7 +172,7 @@ export default function RootLayout({
 
   return (
     <html lang="en" className={`dark ${fontVariables}`} suppressHydrationWarning>
-      <body className={`font-sans bg-[#050505] text-foreground antialiased`} suppressHydrationWarning>
+      <body className={`font-sans bg-[#050505] text-foreground antialiased selection:bg-primary-900/30 selection:text-primary-50`} suppressHydrationWarning>
         
         {/* JSON-LD Script */}
         <script
@@ -182,14 +183,12 @@ export default function RootLayout({
         {/* Global Loading Overlay */}
         <CustomLoader />
 
-        {/* ✅ FIXED: AuthProvider FIRST, then SettingsProvider */}
-        {/* This prevents circular dependency since SettingsProvider uses useAuth() */}
+        {/* AuthProvider must wrap SettingsProvider so settings can access user ID */}
         <AuthProvider>
           <SettingsProvider>
-            {/* ✅ FIXED: Removed ClientOnly wrapper - Navigation is already "use client" */}
             <Navigation />
 
-            <main className="min-h-screen overflow-hidden">
+            <main className="min-h-screen relative overflow-hidden">
               <PageTransition>
                 {children}
               </PageTransition>

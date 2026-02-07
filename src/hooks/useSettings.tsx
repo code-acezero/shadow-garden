@@ -19,7 +19,7 @@ export interface AppSettings {
   autoPlay: boolean;
   autoSkipOpEd: boolean;
   resumePlayback: boolean;
-  volumeBoost: boolean; // ✅ ADDED
+  volumeBoost: boolean; 
   defaultServer: 'hd-1' | 'hd-2' | 'mirror-1' | 'mirror-2';
   defaultQuality: '1080p' | '720p' | '480p' | '360p' | 'Auto';
   defaultAudio: 'jp' | 'en' | 'es' | 'pt'; 
@@ -67,9 +67,9 @@ export interface AppSettings {
 
 export const DEFAULT_SETTINGS: AppSettings = {
   username: 'Shadow', avatar: '', twoFactor: false, loginAlerts: true, incognito: false, publicActivity: true, allowRequests: true,
-  autoPlay: true, autoSkipOpEd: true, resumePlayback: true, volumeBoost: false, // ✅ DEFAULT FALSE
+  autoPlay: true, autoSkipOpEd: true, resumePlayback: true, volumeBoost: false, 
   defaultServer: 'hd-1', defaultQuality: '1080p', defaultAudio: 'jp', subLanguage: 'en', defaultVolume: 100, haptics: true, pipMode: true,
-  accentColor: 'red', glassEffect: true, particles: true, reducedMotion: false, roundedUI: true, uiGlow: true, uiBorders: 'normal', cardVariant: 'default', fontFamily: 'hunters',
+  accentColor: 'red', glassEffect: true, particles: true, reducedMotion: false, roundedUI: true, uiGlow: true, uiBorders: 'normal', cardVariant: 'default', fontFamily: 'inter', // Default to Inter for speed
   whisperEnabled: false, whisperVoice: 'system-alpha', whisperVolume: 0.8,
   homeLayout: 'trending', listView: 'grid', showNSFW: false, blurSpoilers: true, hideFillers: true, useJapaneseTitle: false,
   pushNotifs: true, emailNotifs: false, newEpAlerts: true, communityAlerts: true, systemAlerts: true, enableWhisper: true,
@@ -117,7 +117,7 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
       indigo: { 50: '#eef2ff', 100: '#e0e7ff', 200: '#c7d2fe', 300: '#a5b4fc', 400: '#818cf8', 500: '#6366f1', 600: '#4f46e5', 700: '#4338ca', 800: '#3730a3', 900: '#312e81', 950: '#1e1b4b' },
       violet: { 50: '#f5f3ff', 100: '#ede9fe', 200: '#ddd6fe', 300: '#c4b5fd', 400: '#a78bfa', 500: '#8b5cf6', 600: '#7c3aed', 700: '#6d28d9', 800: '#5b21b6', 900: '#4c1d95', 950: '#2e1065' },
       purple: { 50: '#faf5ff', 100: '#f3e8ff', 200: '#e9d5ff', 300: '#d8b4fe', 400: '#c084fc', 500: '#a855f7', 600: '#9333ea', 700: '#7e22ce', 800: '#6b21a8', 900: '#581c87', 950: '#3b0764' },
-      pink:   { 50: '#fdf2f8', 100: '#fce7f3', 200: '#fbcfe8', 300: '#f9a8d4', 400: '#f472b6', 500: '#ec4899', 600: '#db2777', 700: '#be185d', 800: '#9d174d', 900: '#831843', 950: '#500724' },
+      pink:   { 50: '#fdf2f8', 100: '#fce7f3', 200: '#fbcfe8', 300: '#f9a8d4', 400: '#f472b6', 500: '#ec4899', 600: '#db2777', 700: '#be123c', 800: '#9d174d', 900: '#831843', 950: '#500724' },
       rose:   { 50: '#fff1f2', 100: '#ffe4e6', 200: '#fecdd3', 300: '#fda4af', 400: '#fb7185', 500: '#f43f5e', 600: '#e11d48', 700: '#be123c', 800: '#9f1239', 900: '#881337', 950: '#4c0519' },
       mono:   { 50: '#fafafa', 100: '#f4f4f5', 200: '#e4e4e7', 300: '#d4d4d8', 400: '#a1a1aa', 500: '#71717a', 600: '#52525b', 700: '#3f3f46', 800: '#27272a', 900: '#18181b', 950: '#09090b' },
     };
@@ -126,19 +126,27 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
     Object.keys(activePalette).forEach(shade => root.style.setProperty(`--primary-${shade}`, activePalette[shade]));
     root.style.setProperty('--primary-color', activePalette[600]);
 
+    // ✅ UPDATED FONT MAPPING
+    // Maps setting value to CSS Variable defined in fonts.ts
     const fontMap: Record<string, string> = {
-        hunters: 'var(--font-hunters)',
-        badUnicorn: 'var(--font-bad-unicorn)',
-        demoness: 'var(--font-demoness)',
-        horrorshow: 'var(--font-horrorshow)',
-        kareudon: 'var(--font-kareudon)',
-        monas: 'var(--font-monas)',
-        nyctophobia: 'var(--font-nyctophobia)',
-        onePiece: 'var(--font-one-piece)', 
-        inter: 'var(--font-inter)',
+        'inter': 'var(--font-inter)',
+        'badUnicorn': 'var(--font-bad-unicorn)',
+        'demoness': 'var(--font-demoness)',
+        'horrorshow': 'var(--font-horrorshow)',
+        'hunters': 'var(--font-hunters)',
+        'kareudon': 'var(--font-kareudon)',
+        'monas': 'var(--font-monas)',
+        'nyctophobia': 'var(--font-nyctophobia)',
+        'onePiece': 'var(--font-one-piece)',
     };
 
-    root.style.setProperty('--font-primary', fontMap[s.fontFamily] || 'var(--font-hunters)');
+    const selectedFont = fontMap[s.fontFamily] || 'var(--font-inter)';
+
+    // Apply to both custom variables and default tailwind sans stack
+    root.style.setProperty('--font-primary', selectedFont);
+    root.style.setProperty('--font-sans', selectedFont);
+    
+    // UI Density & Radius
     root.style.setProperty('--radius', s.roundedUI ? '0.75rem' : '0rem');
     root.style.setProperty('--border-width', s.uiBorders === 'thick' ? '2px' : '1px');
     root.style.setProperty('--glow-opacity', s.uiGlow ? '1' : '0');
