@@ -1,7 +1,11 @@
 import * as cheerio from 'cheerio';
+import { ProxyAgent } from 'undici';
 
 const BASE_URL = 'https://satoru.one';
 const USER_AGENT = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36';
+
+// ✅ PROXY LOGIC: Reuses your existing Webshare setup
+const proxyUrl = process.env.DESIDUB_PROXY || null;
 
 const headers = { 
   'User-Agent': USER_AGENT, 
@@ -9,10 +13,27 @@ const headers = {
   'Referer': BASE_URL
 };
 
+/**
+ * Helper to fetch with proxy support
+ */
+async function fetchWithProxy(url: string, signal?: AbortSignal) {
+  const requestOptions: RequestInit & { dispatcher?: any } = {
+    headers,
+    signal,
+    next: { revalidate: 0 } // Disable cache for fresh data
+  };
+
+  if (proxyUrl) {
+    requestOptions.dispatcher = new ProxyAgent(proxyUrl);
+  }
+
+  return fetch(url, requestOptions);
+}
+
 export const SatoruService = {
   // 1. Mission: Unified Home Intelligence
   async getHome(signal?: AbortSignal) {
-    const res = await fetch(`${BASE_URL}/home`, { headers, signal });
+    const res = await fetchWithProxy(`${BASE_URL}/home`, signal);
     const html = await res.text();
     const $ = cheerio.load(html);
     
@@ -29,7 +50,7 @@ export const SatoruService = {
 
   // 2. Mission: Real-time Search Suggestions
   async getSuggestions(query: string, signal?: AbortSignal) {
-    const res = await fetch(`${BASE_URL}/ajax/search/suggest?keyword=${encodeURIComponent(query)}`, { headers, signal });
+    const res = await fetchWithProxy(`${BASE_URL}/ajax/search/suggest?keyword=${encodeURIComponent(query)}`, signal);
     const data = await res.json();
     const $ = cheerio.load(data.html);
     
@@ -49,7 +70,7 @@ export const SatoruService = {
     if (type === 'genre') url = `${BASE_URL}/genre/${query}?page=${page}`;
     if (type === 'category') url = `${BASE_URL}/anime/${query}?page=${page}`;
 
-    const res = await fetch(url, { headers, signal });
+    const res = await fetchWithProxy(url, signal);
     const html = await res.text();
     const $ = cheerio.load(html);
     
@@ -64,7 +85,7 @@ export const SatoruService = {
 
   // 4. Mission: Anime Detailed Intelligence
   async getInfo(id: string, signal?: AbortSignal) {
-    const res = await fetch(`${BASE_URL}/watch/${id}`, { headers, signal });
+    const res = await fetchWithProxy(`${BASE_URL}/watch/${id}`, signal);
     const html = await res.text();
     const $ = cheerio.load(html);
 
@@ -85,7 +106,7 @@ export const SatoruService = {
 
     const internalId = ($('#anime-id').val() as string) || html.match(/const movieId = (\d+);/)?.[1];
     
-    const epRes = await fetch(`${BASE_URL}/ajax/v2/episode/list/${internalId}`, { headers, signal });
+    const epRes = await fetchWithProxy(`${BASE_URL}/ajax/v2/episode/list/${internalId}`, signal);
     const epData = await epRes.json();
     const $ep = cheerio.load(epData.html);
     
@@ -114,7 +135,7 @@ export const SatoruService = {
 
   // 5. Mission: Server Extraction
   async getServers(episodeId: string, signal?: AbortSignal) {
-    const res = await fetch(`${BASE_URL}/ajax/v2/episode/servers?episodeId=${episodeId}`, { headers, signal });
+    const res = await fetchWithProxy(`${BASE_URL}/ajax/v2/episode/servers?episodeId=${episodeId}`, signal);
     const data = await res.json();
     const $ = cheerio.load(data.html);
     
@@ -129,9 +150,9 @@ export const SatoruService = {
     }).get();
   },
 
-  // 6. Mission: Watch Page Intelligence (NEW)
+  // 6. Mission: Watch Page Intelligence
   async getWatchInfo(id: string, signal?: AbortSignal) {
-    const res = await fetch(`${BASE_URL}/watch/${id}`, { headers, signal });
+    const res = await fetchWithProxy(`${BASE_URL}/watch/${id}`, signal);
     const html = await res.text();
     const $ = cheerio.load(html);
 

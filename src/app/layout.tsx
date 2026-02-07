@@ -9,6 +9,7 @@ import { SettingsProvider } from "@/hooks/useSettings";
 import CustomLoader from "@/components/UIx/CustomLoader"; 
 import { createClient } from "@supabase/supabase-js"; 
 import { SITE_CONFIG } from '@/lib/site-config'; 
+import WelcomeModal from "@/components/UIx/WelcomeModal";
 
 // Import fonts from your library (Optimized: These are just variable definitions now)
 import { 
@@ -182,6 +183,9 @@ export default function RootLayout({
 
         {/* Global Loading Overlay */}
         <CustomLoader />
+
+        {/* The Gatekeeper: Ensures Audio Autoplay via Interaction */}
+        <WelcomeModal />
 
         {/* AuthProvider must wrap SettingsProvider so settings can access user ID */}
         <AuthProvider>
