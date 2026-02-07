@@ -12,29 +12,27 @@ if (IS_PRODUCTION) {
   Sentry.init({
     dsn: SENTRY_DSN,
 
-    // Performance Monitoring
-    tracesSampleRate: 1.0,
+    // --- 1. DISABLE PERFORMANCE MONITORING (Saves resources) ---
+    // Setting this to 0 stops tracing transactions (speed monitoring)
+    tracesSampleRate: 0,
 
-    // Session Replay
-    replaysSessionSampleRate: 0.1, // 10% of sessions
-    replaysOnErrorSampleRate: 1.0, // 100% of sessions with errors
+    // --- 2. DISABLE SESSION REPLAY (Fixes crash & saves bandwidth) ---
+    // Set sampling rates to 0 to effectively disable it
+    replaysSessionSampleRate: 0,
+    replaysOnErrorSampleRate: 0,
 
-    // Enable logs to be sent to Sentry
+    // Enable logs to be sent to Sentry (Keep this for basic error tracking)
     enableLogs: true,
 
-    // Enable sending user PII
+    // Enable sending user PII (Optional, keep if needed)
     sendDefaultPii: true,
 
     // Environment
     environment: process.env.NEXT_PUBLIC_VERCEL_ENV || 'production',
 
-    // Integrations
-    integrations: [
-      Sentry.replayIntegration({
-        maskAllText: true,
-        blockAllMedia: true,
-      }),
-    ],
+    // --- 3. INTEGRATIONS ---
+    // Removed 'Sentry.replayIntegration()' to prevent the multiple instances crash
+    integrations: [],
   });
 } else {
   // Development mode - log to console instead
@@ -42,11 +40,13 @@ if (IS_PRODUCTION) {
   console.log('💡 Errors will be logged to console only');
   
   // Optional: You can still log errors to console in dev
-  window.addEventListener('error', (event) => {
-    console.error('🚨 [Dev Error]:', event.error);
-  });
-  
-  window.addEventListener('unhandledrejection', (event) => {
-    console.error('🚨 [Dev Unhandled Rejection]:', event.reason);
-  });
+  if (typeof window !== 'undefined') {
+    window.addEventListener('error', (event) => {
+      console.error('🚨 [Dev Error]:', event.error);
+    });
+    
+    window.addEventListener('unhandledrejection', (event) => {
+      console.error('🚨 [Dev Unhandled Rejection]:', event.reason);
+    });
+  }
 }
