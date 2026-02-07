@@ -430,7 +430,7 @@ export default function SpotlightSlider({ animes }: { animes: SpotlightAnime[] }
 
             {/* 2-4. NAVIGATION ROW - All controls in one aligned row */}
             <div className="absolute bottom-6 md:bottom-8 left-0 right-0 pointer-events-none z-50">
-              <div className="flex items-center justify-between px-4 md:px-8 max-w-[1440px] mx-auto pointer-events-none">
+              <div className="flex items-center justify-between px-4 md:px-8 max-w-[1350px] mx-auto pointer-events-none">
                 
                 {/* PREV BUTTON */}
                 <button 
