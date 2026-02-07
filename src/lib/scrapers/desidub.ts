@@ -1,6 +1,7 @@
 import { load, type CheerioAPI } from "cheerio";
+import { ProxyAgent } from "undici"; // ✅ Import ProxyAgent
 
-// --- Interfaces ---
+// --- Interfaces (Kept exactly the same) ---
 
 export interface DesiCard {
   id: string;
@@ -16,7 +17,7 @@ export interface DesiCard {
   audio?: string[];
   year?: string;
   slug?: string;
-  dataId?: string; // Crucial for Qtip fetching
+  dataId?: string;
 }
 
 export interface DesiPagination {
@@ -55,7 +56,6 @@ export interface DesiStream {
   prevEpisode: string | null;
   episodes: DesiEpisode[];
   requiresExtraction: boolean;
-  // [NEW] Added for schedule
   nextEpDate?: string | null; 
 }
 
@@ -82,7 +82,6 @@ export interface DesiDetails {
   recommendations: DesiCard[];
   downloads: { resolution: string; url: string; host: string }[];
   episodes: DesiEpisode[];
-  // [NEW] Added fields
   views?: string;
   likes?: string;
   tags?: string[];
@@ -115,6 +114,10 @@ export interface FilterParams {
 export class DesiDubService {
   private baseUrl = "https://www.desidubanime.me";
   
+  // ✅ 1. Read Proxy from Env (Add DESIDUB_PROXY to your .env)
+  // Example: http://user:pass@ip:port
+  private proxyUrl = process.env.DESIDUB_PROXY || null;
+
   private headers = {
     "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
     "Referer": this.baseUrl,
@@ -123,15 +126,22 @@ export class DesiDubService {
   };
 
   /**
-   * Fetch HTML with error handling
+   * Fetch HTML with Proxy Support
    */
   private async fetchHtml(url: string): Promise<string> {
     try {
-      const res = await fetch(url, { 
-        headers: this.headers, 
+      // ✅ 2. Configure Dispatcher for Proxy
+      const requestOptions: RequestInit & { dispatcher?: any } = {
+        headers: this.headers,
         next: { revalidate: 0 },
-        signal: AbortSignal.timeout(15000) // 15 second timeout
-      });
+        signal: AbortSignal.timeout(15000)
+      };
+
+      if (this.proxyUrl) {
+        requestOptions.dispatcher = new ProxyAgent(this.proxyUrl);
+      }
+
+      const res = await fetch(url, requestOptions);
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       return await res.text();
     } catch (e: any) {
@@ -141,11 +151,11 @@ export class DesiDubService {
   }
 
   /**
-   * Fetch JSON for AJAX endpoints
+   * Fetch JSON with Proxy Support
    */
   private async fetchJson(url: string): Promise<any> {
     try {
-      const res = await fetch(url, { 
+      const requestOptions: RequestInit & { dispatcher?: any } = {
         headers: {
           ...this.headers,
           "Accept": "application/json, text/javascript, */*; q=0.01",
@@ -153,14 +163,19 @@ export class DesiDubService {
         },
         next: { revalidate: 0 },
         signal: AbortSignal.timeout(10000)
-      });
+      };
+
+      if (this.proxyUrl) {
+        requestOptions.dispatcher = new ProxyAgent(this.proxyUrl);
+      }
+
+      const res = await fetch(url, requestOptions);
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       
       const text = await res.text();
       try {
         return JSON.parse(text);
       } catch {
-        // Sometimes API returns HTML on error
         return { html: text };
       }
     } catch (e: any) {
@@ -169,7 +184,7 @@ export class DesiDubService {
     }
   }
 
-  // --- Helper Methods ---
+  // --- Helper Methods (Unchanged) ---
 
   private clean(text: string | undefined): string {
     return text ? text.replace(/\s+/g, ' ').trim() : "";
@@ -243,11 +258,9 @@ export class DesiDubService {
     };
   }
 
-  // --- [NEW] Helper for parsing AJAX responses (Moved from Proper Code) ---
   private parseAjaxResponse(data: any): DesiCard[] {
     const items: DesiCard[] = [];
 
-    // Format 1: { html: "..." }
     if (data.html) {
       const $ = load(data.html);
       $("div, li, article, a").each((_, el) => {
@@ -256,7 +269,6 @@ export class DesiDubService {
       });
     }
     
-    // Format 2: { results: [...] }
     else if (data.results && Array.isArray(data.results)) {
       items.push(...data.results.map((r: any) => ({
         id: this.getSlug(r.url || r.link || r.permalink),
@@ -268,7 +280,6 @@ export class DesiDubService {
       })));
     }
     
-    // Format 3: Direct array
     else if (Array.isArray(data)) {
       items.push(...data.map((r: any) => ({
         id: this.getSlug(r.url || r.link),
@@ -289,7 +300,6 @@ export class DesiDubService {
     if (!href && $(el).is("a")) href = $(el).attr("href");
     if (!href) return null;
 
-    // [KEEPING YOUR DATA ID LOGIC]
     const dataId = $(el).find("[data-tippy-content-to]").attr("data-tippy-content-to") || 
                    $(el).attr("data-tippy-content-to") ||
                    $(el).find(".film-poster").attr("data-id") ||
@@ -398,12 +408,11 @@ export class DesiDubService {
   }
 
   // ==================================================
-  // 2. SEARCH SUGGESTIONS ([FIXED] - Added logic from First Block)
+  // 2. SEARCH SUGGESTIONS
   // ==================================================
   async getSuggestions(keyword: string): Promise<DesiCard[]> {
     if (!keyword || keyword.length < 2) return [];
 
-    // Strategy 1: Try WordPress AJAX endpoint
     try {
       const ajaxUrl = `${this.baseUrl}/wp-admin/admin-ajax.php?action=ajax_search&keyword=${encodeURIComponent(keyword)}`;
       const data = await this.fetchJson(ajaxUrl);
@@ -416,7 +425,6 @@ export class DesiDubService {
       console.log('WordPress AJAX failed, trying next method...');
     }
 
-    // Strategy 2: Try custom API endpoint
     try {
       const apiUrl = `${this.baseUrl}/api/suggestions?q=${encodeURIComponent(keyword)}`;
       const data = await this.fetchJson(apiUrl);
@@ -435,7 +443,6 @@ export class DesiDubService {
       console.log('API endpoint failed, trying HTML scraping...');
     }
 
-    // Strategy 3: Fallback to regular search
     try {
       const searchResults = await this.search({ keyword, page: 1 });
       return searchResults.items.slice(0, 5);
@@ -446,12 +453,11 @@ export class DesiDubService {
   }
 
   // ==================================================
-  // 3. SEARCH ([FIXED] - Added Logic from First Block)
+  // 3. SEARCH
   // ==================================================
   async search(params: FilterParams): Promise<DesiListResult> {
     const url = new URL(`${this.baseUrl}/search/`);
     
-    // Try AJAX search first if it's a simple keyword search
     if (params.keyword && !params.genre && !params.status && !params.type && params.page === 1) {
       try {
         const ajaxUrl = `${this.baseUrl}/wp-admin/admin-ajax.php?action=ajax_search&keyword=${encodeURIComponent(params.keyword)}`;
@@ -477,7 +483,6 @@ export class DesiDubService {
       }
     }
 
-    // Fallback to HTML scraping
     url.searchParams.set("asp", "1");
     
     if (params.keyword) url.searchParams.set("s_keyword", params.keyword);
@@ -497,7 +502,6 @@ export class DesiDubService {
     const $ = load(html);
     const items: DesiCard[] = [];
 
-    // [UPDATED] Enhanced Selectors List
     const selectors = [
       ".kira-grid > div",
       ".kira-grid-listing > div", 
@@ -527,14 +531,13 @@ export class DesiDubService {
   }
 
   // ==================================================
-  // 4. DETAILS ([MERGED] - Robust Recommendations + Custom Fields)
+  // 4. DETAILS
   // ==================================================
   async getDetails(id: string): Promise<DesiDetails> {
     const url = id.startsWith("http") ? id : `${this.baseUrl}/anime/${id}/`;
     const html = await this.fetchHtml(url);
     const $ = load(html);
 
-    // Basic Info
     const enTitle = this.clean($("span[data-en-title].anime").text());
     const ntTitle = this.clean($("span[data-nt-title].anime").text());
     const title = enTitle || ntTitle || this.clean($("h1").text());
@@ -554,14 +557,12 @@ export class DesiDubService {
     if(metaBlock.includes("tamil")) audio.push("Tamil");
     if(metaBlock.includes("telugu")) audio.push("Telugu");
 
-    // [FROM YOUR CODE] Scrape Tags
     const tags: string[] = [];
     $('.text-spec a[href*="/tag/"]').each((_, el) => {
         const tag = $(el).text().trim();
         if (tag) tags.push(tag);
     });
 
-    // [FROM YOUR CODE] Scrape Views & Likes
     let views = "";
     let likes = "";
     $('.anime-metadata li').each((_, el) => {
@@ -576,10 +577,8 @@ export class DesiDubService {
         }
     });
 
-    // [UPDATED] Recommendations (AJAX Logic from First Block)
     let recommended: DesiCard[] = [];
     
-    // Method 1: Check for AJAX URLs in page scripts
     const scriptMatches = html.match(/wp-admin\/admin-ajax\.php[^'"]*action[^'"]*recommend[^'"]+/gi);
     if (scriptMatches && scriptMatches.length > 0) {
       try {
@@ -591,7 +590,6 @@ export class DesiDubService {
       } catch (e) {}
     }
     
-    // Method 2: Extract anime ID and try WordPress AJAX
     if (recommended.length === 0) {
       const animeIdMatch = html.match(/post[_-]?id['"\s:=]+(\d+)/i) || 
                            html.match(/anime[_-]?id['"\s:=]+(\d+)/i) ||
@@ -614,7 +612,6 @@ export class DesiDubService {
       }
     }
 
-    // Method 3: Try with anime slug
     if (recommended.length === 0) {
       try {
         const ajaxUrl = `${this.baseUrl}/wp-admin/admin-ajax.php?action=get_related_anime&anime_slug=${id}`;
@@ -623,7 +620,6 @@ export class DesiDubService {
       } catch (e) {}
     }
 
-    // Method 4: Fallback to HTML scraping (Your existing fallback)
     if (recommended.length === 0) {
       $(".grid-anime-auto > div").each((_, el) => {
         const card = this.parseCard($, el);
@@ -631,7 +627,6 @@ export class DesiDubService {
       });
     }
     
-    // Episodes
     const episodes: DesiEpisode[] = [];
     $(".swiper-episode-anime .swiper-slide").each((_, el) => {
         const a = $(el).find("a");
@@ -651,7 +646,6 @@ export class DesiDubService {
         }
     });
 
-    // Downloads
     const downloads: { resolution: string; url: string; host: string }[] = [];
     $(".download-section-item").each((_, el) => {
         const res = this.clean($(el).find(".download-section-item-res").text());
@@ -683,7 +677,6 @@ export class DesiDubService {
       recommendations: recommended,
       downloads,
       episodes: episodes.reverse(),
-      // [FROM YOUR CODE]
       views,
       likes,
       tags
@@ -691,14 +684,13 @@ export class DesiDubService {
   }
 
   // ==================================================
-  // 5. STREAMING (Preserved nextEpDate)
+  // 5. STREAMING
   // ==================================================
   async getStream(id: string): Promise<DesiStream> {
     const url = id.startsWith("http") ? id : `${this.baseUrl}/watch/${id}/`;
     const html = await this.fetchHtml(url);
     const $ = load(html);
 
-    // [FROM YOUR CODE] Scrape Next Episode Schedule
     const nextEpDate = $('.next-scheduled-episode span[data-countdown]').attr('data-countdown') || null;
 
     const episodes: DesiEpisode[] = [];
@@ -737,7 +729,7 @@ export class DesiDubService {
       prevEpisode: cleanNav(prevUrl),
       episodes,
       requiresExtraction: true,
-      nextEpDate // Return custom field
+      nextEpDate
     };
   }
 
@@ -769,29 +761,19 @@ export class DesiDubService {
   }
 
   // ==================================================
-  // 7. QTIPS ([NEW] Added from First Block)
+  // 7. QTIPS
   // ==================================================
   async getQtip(id: string): Promise<DesiQtip> {
     const url = `${this.baseUrl}/wp-json/kiranime/v1/anime/tooltip/${id}?_locale=user`;
 
     try {
-        const res = await fetch(url, { 
-            method: 'GET',
-            headers: this.headers,
-            next: { revalidate: 3600 } 
-        });
-
-        if (!res.ok) throw new Error(`API returned ${res.status}`);
-
-        const json = await res.json();
+        const json = await this.fetchJson(url);
         
-        // The debug showed the HTML is inside json.data
         const html = json.data;
         if (!html) throw new Error("No HTML data found in response");
 
         const $ = load(html);
         
-        // Helper to find text by label (e.g., "Premiered:", "Rate:")
         const getMetaValue = (label: string) => {
             return $('.block')
                 .filter((_, el) => $(el).find('.font-medium').text().includes(label))
@@ -803,19 +785,17 @@ export class DesiDubService {
         return {
             name: $('.font-medium.line-clamp-2').text().trim(),
             description: $('.line-clamp-4').text().trim(),
-            // Rating is next to the star_rate icon
             rating: $('.flex.items-center.gap-1').first().text().replace('star_rate', '').trim(),
-            quality: "HD", // Defaulting as it's not explicit in this specific tooltip
+            quality: "HD", 
             type: $('.bg-accent-3').text().trim(),
             japaneseTitle: getMetaValue('Native:'),
-            status: getMetaValue('Rate:'), // Using Rate field for status as a proxy
+            status: getMetaValue('Rate:'), 
             aired: getMetaValue('Aired:'),
-            genres: [] // Genres aren't in this lightweight tooltip HTML
+            genres: [] 
         };
 
     } catch (e) {
         console.error(`[Qtip] Extraction failed for ID ${id}:`, e);
-        // Fallback object so the UI doesn't break
         return {
             name: "Details Unavailable",
             description: "Could not load additional intel for this title.",
