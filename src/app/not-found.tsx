@@ -1,12 +1,10 @@
 "use client";
 
-export const dynamic = "force-dynamic"; // <--- ADD THIS
-
 import React from 'react';
 import { useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
 import { ArrowLeft, Ghost, ShieldAlert } from 'lucide-react';
-import { demoness, hunters } from '@/lib/fonts'; // Your custom fonts
+import { demoness, hunters } from '@/lib/fonts';
 
 export default function NotFound() {
     const router = useRouter();
