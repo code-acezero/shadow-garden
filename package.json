@@ -4,12 +4,17 @@
   "private": true,
   "scripts": {
     "dev": "next dev --turbo",
-    "build": "next build",
+    "build": "set NODE_OPTIONS=--max-old-space-size=4096 && next build",
     "start": "next start",
     "lint": "next lint",
     "clean": "rm -rf node_modules package-lock.json && npm cache clean --force",
     "type-check": "tsc --noEmit"
   },
+
+  "engines": {
+  "node": "20.x",
+  "npm": "9.x"
+},
   "dependencies": {
     "@consumet/extensions": "^1.8.7",
     "@hookform/resolvers": "^3.9.0",

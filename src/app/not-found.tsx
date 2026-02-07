@@ -17,7 +17,7 @@ export default function NotFound() {
             {/* --- Background Ambience --- */}
             <div className="absolute inset-0 pointer-events-none">
                 {/* Red Glow Center */}
-                <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-primary-900/10 blur-[120px] rounded-full mix-blend-screen animate-pulse duration-[4s]" />
+                <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-primary-900/10 blur-[120px] rounded-full mix-blend-screen animate-pulse [animation-duration:4s]" />
                 {/* Subtle Grid (Optional) */}
                 <div 
                     className="absolute inset-0 opacity-[0.03]" 
