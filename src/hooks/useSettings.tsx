@@ -69,10 +69,19 @@ export const DEFAULT_SETTINGS: AppSettings = {
   username: 'Shadow', avatar: '', twoFactor: false, loginAlerts: true, incognito: false, publicActivity: true, allowRequests: true,
   autoPlay: true, autoSkipOpEd: true, resumePlayback: true, volumeBoost: false, 
   defaultServer: 'hd-1', defaultQuality: '1080p', defaultAudio: 'jp', subLanguage: 'en', defaultVolume: 100, haptics: true, pipMode: true,
-  accentColor: 'red', glassEffect: true, particles: true, reducedMotion: false, roundedUI: true, uiGlow: true, uiBorders: 'normal', cardVariant: 'default', fontFamily: 'inter', // Default to Inter for speed
-  whisperEnabled: false, whisperVoice: 'system-alpha', whisperVolume: 0.8,
+  accentColor: 'red', glassEffect: true, particles: true, reducedMotion: false, roundedUI: true, uiGlow: true, uiBorders: 'normal', cardVariant: 'default', fontFamily: 'inter',
+  
+  // ✅ ENABLED BY DEFAULT + SET TO HANA
+  whisperEnabled: true, 
+  whisperVoice: 'hana', // [!code highlight]
+  whisperVolume: 0.8,
+
   homeLayout: 'trending', listView: 'grid', showNSFW: false, blurSpoilers: true, hideFillers: true, useJapaneseTitle: false,
-  pushNotifs: true, emailNotifs: false, newEpAlerts: true, communityAlerts: true, systemAlerts: true, enableWhisper: true,
+  pushNotifs: true, emailNotifs: false, newEpAlerts: true, communityAlerts: true, systemAlerts: true, 
+  
+  // ✅ ENABLED BY DEFAULT
+  enableWhisper: true, 
+
   autoBackup: true, bandwidthSaver: false,
 };
 
@@ -126,8 +135,6 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
     Object.keys(activePalette).forEach(shade => root.style.setProperty(`--primary-${shade}`, activePalette[shade]));
     root.style.setProperty('--primary-color', activePalette[600]);
 
-    // ✅ UPDATED FONT MAPPING
-    // Maps setting value to CSS Variable defined in fonts.ts
     const fontMap: Record<string, string> = {
         'inter': 'var(--font-inter)',
         'badUnicorn': 'var(--font-bad-unicorn)',
@@ -142,11 +149,9 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
 
     const selectedFont = fontMap[s.fontFamily] || 'var(--font-inter)';
 
-    // Apply to both custom variables and default tailwind sans stack
     root.style.setProperty('--font-primary', selectedFont);
     root.style.setProperty('--font-sans', selectedFont);
     
-    // UI Density & Radius
     root.style.setProperty('--radius', s.roundedUI ? '0.75rem' : '0rem');
     root.style.setProperty('--border-width', s.uiBorders === 'thick' ? '2px' : '1px');
     root.style.setProperty('--glow-opacity', s.uiGlow ? '1' : '0');
@@ -156,7 +161,6 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
     const currentUserId = user?.id || 'guest';
     const runId = ++effectRunCount;
     
-    // Only re-initialize if user ID changed or first mount
     if (hasInitialized.current && userIdRef.current === currentUserId) return;
 
     hasInitialized.current = true;
@@ -180,11 +184,29 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
       currentSettings = { ...currentSettings, ...profile.settings };
     }
 
+    // --- ✅ FORCE-ACTIVATE DEFAULT VOICE (HANA) IF MISSING ---
+    const voiceConfig = localStorage.getItem('shadow_voice_settings');
+    if (!voiceConfig) {
+      console.log("🔊 Injecting Default Voice Model: Hana");
+      const defaultVoice = {
+        pack: 'hana', // [!code highlight]
+        language: 'en',
+        volume: 0.8,
+        speed: 1.0,
+        pitch: 1.0
+      };
+      localStorage.setItem('shadow_voice_settings', JSON.stringify(defaultVoice));
+      
+      // Also sync it to our settings state just in case
+      currentSettings.whisperVoice = 'hana'; // [!code highlight]
+      currentSettings.whisperEnabled = true;
+    }
+    // ---------------------------------------------------
+
     setSettings(currentSettings);
     applyThemeRef.current(currentSettings);
     setIsLoaded(true); 
     
-    // Calculate storage
     let total = 0;
     for (let x in localStorage) {
       if (Object.prototype.hasOwnProperty.call(localStorage, x)) {
