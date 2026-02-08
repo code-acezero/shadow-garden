@@ -7,8 +7,13 @@ export async function GET(request: Request) {
   const code = searchParams.get('code');
   const next = searchParams.get('next') ?? '/home';
 
+  // Environment Variable check to prevent localhost redirects in production
+  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || origin;
+
   if (code) {
+    // ✅ FIX: Await the cookies() promise
     const cookieStore = await cookies();
+
     const supabase = createServerClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL!,
       process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
@@ -27,18 +32,15 @@ export async function GET(request: Request) {
       }
     );
 
-    // Exchange the code for a session
     const { error } = await supabase.auth.exchangeCodeForSession(code);
     
     if (!error) {
-      // Success! Redirect to home
-      return NextResponse.redirect(`${origin}${next}`);
+      return NextResponse.redirect(`${siteUrl}${next}`);
     } else {
       console.error('Auth Code Exchange Error:', error);
     }
   }
 
-  // If we get here, something failed.
-  // We redirect to home but removing the error param so it doesn't loop
-  return NextResponse.redirect(`${origin}/home`);
+  // Fallback redirect
+  return NextResponse.redirect(`${siteUrl}/home`);
 }
