@@ -86,7 +86,7 @@ const useWatchSettings = () => {
   const [isLoaded, setIsLoaded] = useState(false);
   const [settings, setSettings] = useState({
     autoPlay: true, autoNext: true, autoSkip: false, dimMode: false,
-    server: 'hd-1', category: 'sub' as 'sub' | 'dub' | 'raw', volume: 1
+    server: 'VidPlay-1', category: 'sub' as 'sub' | 'dub' | 'raw', volume: 1
   });
 
   useEffect(() => {
@@ -635,8 +635,6 @@ function WatchContent() {
 
   const handleServerChange = useCallback((srvName: string) => {
       updateSetting('server', srvName);
-      setStreamUrl(null);
-      setIsStreamLoading(true);
   }, [updateSetting]);
 
   const flushSyncBuffer = useCallback(async () => {
@@ -847,18 +845,28 @@ function WatchContent() {
                   if (t > maxTime) { maxTime = t; targetEpId = p.episode_id; }
               });
           }
-          if (!targetEpId && anime.episodes.length > 0) targetEpId = anime.episodes[0].id;
+          
+          // Safety Check: Prevent older format 'episodeId' cache from failing lookup
+          if (targetEpId && anime.episodes.length > 0) {
+              const epExists = anime.episodes.find((e: any) => e.id === targetEpId);
+              if (!epExists) {
+                  // Fallback for cache mismatches (try matching old history by number)
+                  const oldData = Object.values(progressBuffer.current).find((p:any) => p.episode_id === targetEpId);
+                  if (oldData && oldData.episode_number) {
+                      const match = anime.episodes.find((e: any) => e.number === oldData.episode_number);
+                      targetEpId = match ? match.id : anime.episodes[0].id;
+                  } else {
+                      targetEpId = anime.episodes[0].id;
+                  }
+              }
+          } else if (!targetEpId && anime.episodes.length > 0) {
+              targetEpId = anime.episodes[0].id;
+          }
+
           if (targetEpId && targetEpId !== currentEpId) setCurrentEpId(targetEpId);
       };
       syncHistory();
   }, [anime, user?.id, animeId]);
-
-  // Server Fetcher
-  useEffect(() => {
-      if (!currentEpId) return;
-      const fetchServers = async () => { try { const svs = await AnimeService.getEpisodeServers(currentEpId); setServers(svs); } catch {} };
-      fetchServers();
-  }, [currentEpId]);
 
   // Characters Fetching
   useEffect(() => {
@@ -874,11 +882,15 @@ function WatchContent() {
       fetchChars();
   }, [animeId, charPage]);
 
-  // Stream Loading (FIXED: Re-render loop patched)
+  // Stream Loading (FIXED: Handles double-fetch rate limiting and populates servers list automatically)
   useEffect(() => {
     if (!currentEpId || !isSettingsLoaded) return;
     const loadStream = async () => {
-        setStreamUrl(null); setIsStreamLoading(true); setStreamError(null);
+        setStreamUrl(null); 
+        setIsStreamLoading(true); 
+        setStreamError(null);
+        setServers(null);
+        
         let time = 0; let isUrlOverride = false;
         if (urlTimestamp && urlEpNumber && anime) {
              const requestedEp = anime.episodes.find(e => e.number === Number(urlEpNumber));
@@ -894,28 +906,50 @@ function WatchContent() {
         setResumeTime(time); progressRef.current = time; setIsResumeLoaded(true);
         try {
             let targetCategory = settings.category;
-            // ✅ PATCH: Prevent infinite re-render loop by checking current setting before update
             if ((urlType === 'dub' || urlType === 'sub') && settings.category !== urlType) { 
                 targetCategory = urlType; 
                 updateSetting('category', urlType); 
             }
             
             let streamData: any = await AnimeService.getStream(currentEpId, settings.server, targetCategory);
-            if (!streamData && targetCategory === 'dub') {
+            
+            if (!streamData?.url && targetCategory === 'dub') {
                 console.warn("Dub missing, falling back to Sub");
                 targetCategory = 'sub';
                 streamData = await AnimeService.getStream(currentEpId, settings.server, 'sub');
-                if (streamData && settings.category !== 'sub') { 
+                if (streamData?.url && settings.category !== 'sub') { 
                     toast.info("Dub not available. Switching to Sub."); 
                     updateSetting('category', 'sub'); 
                 }
             }
-            if (streamData) { setStreamUrl(streamData.url); setStreamReferer(streamData.referer || null); setSubtitles(streamData.subtitles || []); setIntro(streamData.intro); setOutro(streamData.outro); } else { throw new Error("No Stream Found"); }
-        } catch(e) { setStreamError("Portal Unstable"); }
+            
+            if (streamData) { 
+                if (streamData.servers) setServers(streamData.servers);
+                
+                if (streamData.url) {
+                    setStreamUrl(streamData.url); 
+                    setStreamReferer(streamData.referer || null); 
+                    setSubtitles(streamData.subtitles || []); 
+                    setIntro(streamData.intro); 
+                    setOutro(streamData.outro);
+                    
+                    // Prevent UI desync if fallback matched a different server
+                    if (streamData.server && streamData.server.toLowerCase() !== settings.server.toLowerCase()) {
+                        updateSetting('server', streamData.server);
+                    }
+                } else {
+                    throw new Error("No Stream Found");
+                }
+            } else { 
+                throw new Error("Portal Unstable"); 
+            }
+        } catch(e) { 
+            setStreamError("Portal Unstable"); 
+        }
         setIsStreamLoading(false);
     };
     loadStream();
-  }, [currentEpId, user?.id, settings.server, settings.category, animeId, isSettingsLoaded, urlType, updateSetting]);
+  }, [currentEpId, user?.id, settings.category, settings.server, animeId, isSettingsLoaded, urlType, updateSetting]);
 
   // Interval & Visibility
   useEffect(() => { const i = setInterval(() => saveProgress(false), 10000); return () => clearInterval(i); }, [saveProgress]);
@@ -991,9 +1025,9 @@ function WatchContent() {
                             <DropdownMenuTrigger asChild>
                                 <Button variant="ghost" className="h-7 gap-2 text-[9px] font-black text-zinc-500 hover:text-white uppercase transition-all hover:scale-105 active:scale-90 shadow-md shadow-primary-900/5 whitespace-nowrap rounded-full border border-white/5 bg-white/5">
                                     <ServerIcon size={11}/>
-                                    {servers?.[settings.category]
-                                    ? `Portal ${Math.max(1, servers[settings.category].findIndex((s:any) => s.serverName === settings.server) + 1)}`
-                                    : 'Loading...'}
+                                    {servers?.[settings.category] && servers[settings.category].length > 0
+                                    ? `Portal ${Math.max(1, servers[settings.category].findIndex((s:any) => s.serverName.toLowerCase() === settings.server.toLowerCase()) + 1)}`
+                                    : (isStreamLoading ? 'Loading...' : 'No Portals')}
                                     <ChevronDown size={11}/>
                                 </Button>
                             </DropdownMenuTrigger>
@@ -1001,7 +1035,7 @@ function WatchContent() {
                                 <ScrollArea className="h-auto max-h-[180px] custom-scrollbar">
                                     <div className="flex flex-col gap-1">
                                         {servers?.[settings.category]?.map((srv: any, idx: number) => (
-                                            <DropdownMenuItem key={srv.serverId} onClick={() => handleServerChange(srv.serverName)} className={cn("cursor-pointer focus:bg-primary-600 focus:text-white px-3 py-1.5 rounded-full text-[9px] uppercase font-bold tracking-wider mb-1 transition-all", settings.server === srv.serverName ? "bg-primary-600 text-white shadow-lg" : "text-zinc-400 hover:text-white hover:bg-white/5")}>Portal {idx + 1}</DropdownMenuItem>
+                                            <DropdownMenuItem key={srv.serverId} onClick={() => handleServerChange(srv.serverName)} className={cn("cursor-pointer focus:bg-primary-600 focus:text-white px-3 py-1.5 rounded-full text-[9px] uppercase font-bold tracking-wider mb-1 transition-all", settings.server.toLowerCase() === srv.serverName.toLowerCase() ? "bg-primary-600 text-white shadow-lg" : "text-zinc-400 hover:text-white hover:bg-white/5")}>Portal {idx + 1}</DropdownMenuItem>
                                         ))}
                                     </div>
                                 </ScrollArea>
@@ -1030,10 +1064,15 @@ function WatchContent() {
                         <div className="flex bg-black/40 rounded-full p-1 border border-white/10 shadow-inner flex-1 justify-center">{(['sub', 'dub', 'raw'] as const).map((cat) => { const isAvailable = (servers?.[cat]?.length || 0) > 0; return (<button key={cat} disabled={!isAvailable} onClick={() => updateSetting('category', cat)} className={cn("px-3 py-0.5 rounded-full text-[10px] font-black uppercase transition-all relative active:scale-75 shadow-sm flex-1", settings.category === cat ? "bg-primary-600 text-white shadow-lg" : "text-zinc-600 hover:text-zinc-300", !isAvailable && "opacity-10")}>{cat}</button>);})}</div>
                         <DropdownMenu modal={false}>
                             <DropdownMenuTrigger asChild>
-                                <Button variant="ghost" className="h-8 gap-2 text-[10px] font-black text-zinc-500 bg-white/5 rounded-full border border-white/5 w-24"><ServerIcon size={12}/> Portal {servers?.[settings.category] ? Math.max(1, servers[settings.category].findIndex((s:any) => s.serverName === settings.server) + 1) : '?'}</Button>
+                                <Button variant="ghost" className="h-8 gap-2 text-[10px] font-black text-zinc-500 bg-white/5 rounded-full border border-white/5 w-24">
+                                    <ServerIcon size={12}/> 
+                                    {servers?.[settings.category] && servers[settings.category].length > 0
+                                    ? `Portal ${Math.max(1, servers[settings.category].findIndex((s:any) => s.serverName.toLowerCase() === settings.server.toLowerCase()) + 1)}`
+                                    : (isStreamLoading ? 'Loading...' : 'No Portals')}
+                                </Button>
                             </DropdownMenuTrigger>
                             <DropdownMenuContent align="end" className="bg-[#0a0a0a] border border-white/10 rounded-[24px] p-2 shadow-[0_0_25px_-5px_rgba(220,38,38,0.4)] z-[70]">
-                                <ScrollArea className="h-auto max-h-[150px]"><div className="flex flex-col gap-1">{servers?.[settings.category]?.map((srv: any, idx: number) => (<DropdownMenuItem key={srv.serverId} onClick={() => handleServerChange(srv.serverName)} className={cn("text-[10px] uppercase font-bold", settings.server === srv.serverName ? "bg-primary-600 text-white" : "text-zinc-400 hover:bg-white/10")}>Portal {idx + 1}</DropdownMenuItem>))}</div></ScrollArea>
+                                <ScrollArea className="h-auto max-h-[150px]"><div className="flex flex-col gap-1">{servers?.[settings.category]?.map((srv: any, idx: number) => (<DropdownMenuItem key={srv.serverId} onClick={() => handleServerChange(srv.serverName)} className={cn("text-[10px] uppercase font-bold", settings.server.toLowerCase() === srv.serverName.toLowerCase() ? "bg-primary-600 text-white" : "text-zinc-400 hover:bg-white/10")}>Portal {idx + 1}</DropdownMenuItem>))}</div></ScrollArea>
                             </DropdownMenuContent>
                         </DropdownMenu>
                     </div>

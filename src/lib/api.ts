@@ -97,7 +97,7 @@ async function fetchAnikoto<T = any>(endpoint: string, params: Record<string, an
 
     try {
         const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 10000); // 10s timeout
+        const timeoutId = setTimeout(() => controller.abort(), 20000); // Increased to 20s for stream resolution
 
         try {
             const response = await fetch(proxyUrl, { signal: controller.signal });
@@ -106,9 +106,14 @@ async function fetchAnikoto<T = any>(endpoint: string, params: Record<string, an
 
             const json = await response.json();
             
-            // Allow raw arrays/objects through if they lack the typical "ok" wrapper
-            if (json && !Array.isArray(json) && 'ok' in json) {
-                return json.ok ? (json.data ?? null) : null;
+            // Allow raw arrays/objects through and aggressively unwrap proxy objects
+            if (json && typeof json === 'object') {
+                if ('ok' in json) {
+                    return json.ok ? (json.data ?? json) : null;
+                }
+                if ('data' in json && Array.isArray(json.data)) {
+                    return json.data;
+                }
             }
             return json as T;
 
@@ -248,14 +253,6 @@ export interface UniversalSeason {
 // ==========================================
 //  4. ANIKOTO API CLIENT (raw endpoint wrappers)
 // ==========================================
-//  Thin 1:1 wrappers around each documented Anikoto endpoint. Nothing here
-//  normalizes into Universal* shapes — that happens in AnimeService below.
-//  Anime are addressed by `slug` (not a numeric/encrypted id like the old
-//  backend), which is why UniversalAnime.id / UniversalAnimeBase.id are now
-//  populated with the slug: it's what the new API needs for every
-//  subsequent lookup, and keeps existing routing code (`/anime/${id}`,
-//  `getAnimeInfo(id)`, etc.) working unmodified.
-// ==========================================
 export class AnimeAPI_Anikoto {
     static async getHome() { return fetchAnikoto('/home'); }
 
@@ -264,7 +261,6 @@ export class AnimeAPI_Anikoto {
     }
 
     static async filter(params: Record<string, any>) {
-        // Anikoto expects `term_type[]` for media type, not `type[]`.
         const { type, ...rest } = params;
         const query: Record<string, any> = { ...rest };
         if (type !== undefined) query.term_type = type;
@@ -311,7 +307,6 @@ export class AnimeAPI_Anikoto {
         return fetchAnikoto('/schedule', { tz, images });
     }
 
-    /** ep is an episode NUMBER (e.g. "1"), not an episode id. */
     static async getWatch(slug: string, ep: number | string) {
         return fetchAnikoto(`/watch/${encodeURIComponent(slug)}`, { ep });
     }
@@ -321,7 +316,6 @@ export class AnimeAPI_Anikoto {
 //  5. RAW -> UNIVERSAL NORMALIZERS
 // ==========================================
 
-/** Anikoto "AnimeCard" shape -> UniversalAnimeBase */
 function normalizeCard(item: any): UniversalAnimeBase {
     return {
         id: item?.slug || item?.id || '',
@@ -329,14 +323,14 @@ function normalizeCard(item: any): UniversalAnimeBase {
         jname: item?.titleJp || '',
         poster: item?.image || '',
         type: item?.type || 'TV',
-        duration: item?.date, // cards don't carry a real duration; `date` is the closest secondary label the API gives us
+        duration: item?.date,
         episodes: {
             sub: item?.episodes?.sub ?? 0,
             dub: item?.episodes?.dub ?? 0,
             eps: item?.episodes?.total
         },
         rank: item?.rank,
-        isAdult: false, // Anikoto cards carry no adult-content flag
+        isAdult: false,
         rating: item?.rating
     };
 }
@@ -345,19 +339,17 @@ export class AnimeService {
 
     private static normalizeEpisodeList(list: any[], slug: string): UniversalEpisode[] {
         return Array.isArray(list) ? list.map((e: any) => ({
-            id: `${slug}::${e.number}`, // slug::episodeNumber — parsed back apart in getStream()
+            id: `${slug}::${e.number}`,
             number: parseInt(e.number, 10) || 0,
-            // Anikoto's episode list has no title field — synthesize one so
-            // UI that renders `episode.title` still shows something sane.
             title: e.title || `Episode ${e.number}`,
-            isFiller: false, // not provided by this source
+            isFiller: false,
             isDub: !!e.hasDub
         })) : [];
     }
 
     private static normalizeRelated(list: any[]): UniversalAnimeBase[] {
         return Array.isArray(list) ? list
-            .filter((r: any) => r && (r.slug || r.id)) // some related entries have no slug/id, only a search href — skip, they're not linkable
+            .filter((r: any) => r && (r.slug || r.id))
             .map((r: any) => ({
                 id: r.slug || r.id,
                 title: r.title || 'Unknown Title',
@@ -398,31 +390,19 @@ export class AnimeService {
                 synonyms: Array.isArray(data?.alternativeTitles) ? data.alternativeTitles.join(', ') : ''
             },
             episodes: data?.episodes?.episodes ? this.normalizeEpisodeList(data.episodes.episodes, slug) : [],
-            characters: [], // Anikoto API does not expose character data at all
-            recommendations: [], // populated by getAnimeInfo() below via a separate call — the detail endpoint doesn't include these
-            related: [],        // same as above
-            seasons: [],         // no seasons endpoint on this source
-            trailers: []          // no trailers on this source
+            characters: [],
+            recommendations: [],
+            related: [],
+            seasons: [],
+            trailers: []
         };
     }
-
-    // ---------------------------------------
-    //  Home / rankings
-    // ---------------------------------------
 
     static async getUniversalRecent() {
         const home: any = await AnimeAPI_Anikoto.getHome();
         return Array.isArray(home?.latestEpisodes) ? home.latestEpisodes.map(normalizeCard) : [];
     }
 
-    /**
-     * Single combined fetch for the home page's spotlight slider + recent
-     * episodes strip. This replaces the old server-side `/api/home` Next
-     * route (which called the now-deleted `consumetServer` helper) — the
-     * home page now calls this directly from the client instead of hitting
-     * its own server route, since `AnimeAPI_Anikoto` already routes through
-     * this app's `/api/proxy` for CORS.
-     */
     static async getHomeSections() {
         const home: any = await AnimeAPI_Anikoto.getHome();
         if (!home) return { spotlight: [], recent: [] };
@@ -437,8 +417,6 @@ export class AnimeService {
     static async getTopTen() {
         const home: any = await AnimeAPI_Anikoto.getHome();
         if (!home) return null;
-        // Anikoto has no dedicated /top-ten endpoint — /home's topDay/topWeek/topMonth
-        // rank lists are the direct equivalent of the old getTopTen() response.
         return {
             today: Array.isArray(home.topDay) ? home.topDay.map(normalizeCard) : [],
             week: Array.isArray(home.topWeek) ? home.topWeek.map(normalizeCard) : [],
@@ -447,13 +425,11 @@ export class AnimeService {
     }
 
     static async getTopSearch() {
-        // No /top-search equivalent — topDay is the closest "what's hot right now" list.
         const home: any = await AnimeAPI_Anikoto.getHome();
         return Array.isArray(home?.topDay) ? home.topDay.map(normalizeCard) : [];
     }
 
     static async getRandomAnime(): Promise<UniversalAnime | null> {
-        // No /random endpoint — pick randomly from the home spotlight/topDay pool instead.
         const home: any = await AnimeAPI_Anikoto.getHome();
         const pool = [...(home?.spotlight || []), ...(home?.topDay || [])];
         if (!pool.length) return null;
@@ -461,10 +437,6 @@ export class AnimeService {
         const slug = pick?.slug || pick?.id;
         return slug ? this.getAnimeInfo(slug) : null;
     }
-
-    // ---------------------------------------
-    //  Paginated listings
-    // ---------------------------------------
 
     static async getTopUpcoming(page = 1) {
         const data: any = await AnimeAPI_Anikoto.getStatus('not-yet-aired', page);
@@ -477,8 +449,6 @@ export class AnimeService {
     }
 
     static async getRecentlyAdded(page = 1) {
-        // No dedicated "recently added" listing endpoint — new-release is the
-        // closest match (home's `newAdded` block also has no paginated endpoint).
         const data: any = await AnimeAPI_Anikoto.getLatest('new-release', page);
         return extractPaged(data).results.map(normalizeCard);
     }
@@ -489,7 +459,6 @@ export class AnimeService {
     }
 
     static async getMostFavorite(page = 1) {
-        // No separate "most favorited" endpoint — most-viewed is the closest match.
         const data: any = await AnimeAPI_Anikoto.getLatest('most-viewed', page);
         return extractPaged(data).results.map(normalizeCard);
     }
@@ -524,10 +493,6 @@ export class AnimeService {
         return extractPaged(data).results.map(normalizeCard);
     }
 
-    // ---------------------------------------
-    //  Search / filter / suggestions
-    // ---------------------------------------
-
     static async search(query: string, page = 1) {
         const data: any = await AnimeAPI_Anikoto.search(query, page);
         const paged = extractPaged(data);
@@ -542,7 +507,6 @@ export class AnimeService {
     }
 
     static async getSearchSuggestions(query: string) {
-        // No /suggestion endpoint on this source — reuse search() and cap the list.
         const data: any = await AnimeAPI_Anikoto.search(query, 1);
         const paged = extractPaged(data);
         return paged.results.slice(0, 8).map((item: any) => ({
@@ -559,14 +523,7 @@ export class AnimeService {
         return extractPaged(data).results.map(normalizeCard);
     }
 
-    // ---------------------------------------
-    //  Anime detail / episodes / streaming
-    // ---------------------------------------
-
     static async getAnimeInfo(slug: string): Promise<UniversalAnime | null> {
-        // The detail endpoint deliberately omits related/recommendations (per
-        // the docs and confirmed live) — fetch those in parallel and merge so
-        // the returned UniversalAnime still matches the old, fuller shape.
         const [detail, related, recommendations] = await Promise.all([
             AnimeAPI_Anikoto.getAnimeDetail(slug),
             AnimeAPI_Anikoto.getRelated(slug).catch(() => null),
@@ -586,107 +543,79 @@ export class AnimeService {
     }
 
     static async getCharacters(_slug: string): Promise<UniversalCharacter[]> {
-        // Anikoto API has no character/voice-actor data. Kept as an async
-        // method (rather than removed) so every existing call site still
-        // works — it just always resolves to an empty list now.
         return [];
     }
 
-    static async getStream(episodeId: string, server = 'hd-1', category: 'sub' | 'dub' = 'sub') {
-        // episodeId is expected in "slug::episodeNumber" form, produced by
-        // normalizeEpisodeList() above.
+    static async getStream(episodeId: string, server = 'VidPlay-1', category: 'sub' | 'dub' = 'sub') {
         const [slug, epNumber] = episodeId.split('::');
         if (!slug || !epNumber) return null;
 
-        const data: any = await AnimeAPI_Anikoto.getWatch(slug, epNumber);
+        let data: any = await AnimeAPI_Anikoto.getWatch(slug, epNumber);
+        
+        // Aggressive unwrapping for stringified proxy responses
+        if (typeof data === 'string') {
+            try { data = JSON.parse(data); } catch(e){}
+        }
+        if (data && typeof data === 'object' && !Array.isArray(data)) {
+            if (data.data) data = data.data; 
+        }
+        if (typeof data === 'string') {
+            try { data = JSON.parse(data); } catch(e){}
+        }
+
         if (!data || !Array.isArray(data)) return null;
 
-        // Parse sources from the array-based response structure
+        // 1. Group Servers from the EXACT SAME response
+        const serversBlock = data.find((item: any) => item.type === 'servers');
+        const list: any[] = serversBlock && Array.isArray(serversBlock.servers) ? serversBlock.servers : [];
+        const grouped: { sub: any[]; dub: any[]; raw: any[] } = { sub: [], dub: [], raw: [] };
+        for (const s of list) {
+            const bucket: 'sub' | 'dub' | 'raw' = s?.type === 'dub' ? 'dub' : s?.type === 'raw' ? 'raw' : 'sub';
+            grouped[bucket].push({ serverId: s?.id ?? s?.svId, serverName: s?.name });
+        }
+
+        // 2. Extract Stream Sources
         const sources = data
             .filter((item: any) => item.type === 'source' && item.source)
             .map((item: any) => item.source);
 
-        // Only look within the requested category — if nothing matches, return
-        // null rather than silently falling back to another category. Callers
-        // (e.g. the watch page) already do their own explicit dub->sub fallback
-        // and need a clean null to trigger it.
         const byCategory = sources.filter(s => s?.type === category);
-        if (!byCategory.length) return null;
+        
+        // Even if no stream matched, return the server list so UI can render the dropdown
+        if (!byCategory.length) return { servers: grouped, url: null };
 
         const matched =
             byCategory.find(s => s?.server?.toLowerCase() === server.toLowerCase() && (s.proxyUrl || s.m3u8 || s.url)) ||
             byCategory.find(s => s.proxyUrl || s.m3u8 || s.url) ||
             byCategory[0];
             
-        if (!matched) return null;
+        if (!matched) return { servers: grouped, url: null };
 
-        // Extract skip data from the array structure if present
         const skipBlock = data.find((item: any) => item.type === 'skip_data');
         const skip = skipBlock ? skipBlock.skip_data : null;
 
         return {
-            // ✅ FORCED PROXY: Prioritizes the proxyUrl over direct m3u8 or url fields
             url: matched.proxyUrl || matched.m3u8 || matched.url,
-            
-            // ✅ FORCED PROXY FOR SUBTITLES: Prevents CORS on caption loading
             subtitles: matched.tracks ? matched.tracks.map((t: any) => ({
                 ...t,
                 file: t.proxyUrl || t.file
             })) : [],
-
             server: matched.server || server,
+            servers: grouped, // ✅ Server list attached to stream payload
             isM3U8: !!matched.m3u8 || !!(matched.proxyUrl && matched.proxyUrl.includes('m3u8')),
-            // The CDN behind this source requires this exact Referer header or
-            // it 403s the request (hotlink protection) — the app's /api/proxy
-            // route previously guessed a referer from a hardcoded list of the
-            // OLD backend's known domains, which doesn't include this source's
-            // CDN. Passing it through explicitly is what actually fixes
-            // playback.
             referer: matched.referer || null,
-            // Flattened so existing player code (`streamData.intro` /
-            // `streamData.outro`) works unmodified.
             intro: skip?.intro || null,
             outro: skip?.outro || null,
             skipData: skip
         };
     }
 
-    /**
-     * Grouped server list for an episode, in the same `{ sub, dub, raw }`
-     * shape the old HiAnime `getEpisodeServers` returned. The new API
-     * conveniently returns both the server list AND the actual sources in a
-     * single /watch call, so this just re-groups what getStream() already
-     * fetches under the hood.
-     */
+    /** @deprecated Now handled dynamically inside getStream to avoid double network requests */
     static async getEpisodeServers(episodeId: string) {
-        const [slug, epNumber] = episodeId.split('::');
-        if (!slug || !epNumber) return null;
-
-        const data: any = await AnimeAPI_Anikoto.getWatch(slug, epNumber);
-        if (!data || !Array.isArray(data)) return null;
-
-        // Parse servers from the array-based response structure
-        const serversBlock = data.find((item: any) => item.type === 'servers');
-        const list: any[] = serversBlock && Array.isArray(serversBlock.servers) ? serversBlock.servers : [];
-        
-        const grouped: { sub: any[]; dub: any[]; raw: any[] } = { sub: [], dub: [], raw: [] };
-        for (const s of list) {
-            const bucket: 'sub' | 'dub' | 'raw' = s?.type === 'dub' ? 'dub' : s?.type === 'raw' ? 'raw' : 'sub';
-            grouped[bucket].push({ serverId: s?.id ?? s?.svId, serverName: s?.name });
-        }
-        return grouped;
+        return null;
     }
 
-    // ---------------------------------------
-    //  Schedule
-    // ---------------------------------------
-
     static async getSchedule(date: string, tzOffsetHours = 0) {
-        // The old signature took a specific `date`. Anikoto's /schedule
-        // instead always returns a rolling 7-day window from today (UTC),
-        // grouped by a human day label like "Sat Jul 04". We fetch that
-        // window and pick out the day matching the requested date; if it
-        // doesn't fall in the returned range, we fall back to day 0 (today).
         const data: any = await AnimeAPI_Anikoto.getSchedule(tzOffsetHours, true);
         if (!Array.isArray(data)) return { scheduledAnimes: [] };
 
@@ -705,33 +634,17 @@ export class AnimeService {
                 time: item?.date || '',
                 name: item?.title || 'Unknown Title',
                 jname: item?.titleJp || '',
-                timestamp: null,           // Anikoto doesn't give a raw unix timestamp per item, only the day-level midnight one
-                secondsUntilAiring: null,  // not provided by this source
+                timestamp: null,
+                secondsUntilAiring: null,
                 episode: item?.type || ''
             }))
         };
     }
 
-    // ---------------------------------------
-    //  Misc lookups
-    // ---------------------------------------
-
     static async getTooltip(id: string) {
         return AnimeAPI_Anikoto.getTooltip(id);
     }
 }
-
-// ==========================================
-//  6. OTHER APIS (unchanged — unrelated to the anime source migration)
-// ==========================================
-//  NOTE: The Hindi-anime feature (hindi-watch pages, HindiAnimeCard,
-//  HindiSearchBar, WhisperIsland's Hindi search) is NOT wired through this
-//  file. It has its own dedicated client at `src/lib/hpi.ts`, which now
-//  talks to the anime-api-ashen-chi Hindi source. The old `AnimeAPI_Hindi` /
-//  `BASE_URL_HINDI` / `getHindiRecent()` that used to live here were dead
-//  code — nothing in the app ever called them — so they've been removed
-//  rather than migrated.
-// ==========================================
 
 export class WatchlistAPI {
   static async getUserWatchlist(userId: string): Promise<WatchlistItem[]> {
@@ -790,37 +703,20 @@ export class UserAPI {
 }
 
 export class ImageAPI {
-  /**
-   * ✅ SECURITY FIX: API key now properly managed via environment variable
-   * Add NEXT_PUBLIC_IMGBB_API_KEY to your .env.local file
-   */
   static async uploadImage(file: File): Promise<string> {
-    const API_KEY = process.env.NEXT_PUBLIC_IMGBB_API_KEY;
-
+    const env = typeof globalThis !== 'undefined' ? (globalThis as any) : undefined;
+    const API_KEY = env?.process?.env?.NEXT_PUBLIC_IMGBB_API_KEY;
     if (!API_KEY) {
       console.error('⚠️ IMGBB_API_KEY not found in environment variables');
       throw new Error('Image upload service is not configured');
     }
-
     const formData = new FormData();
     formData.append('image', file);
-
     try {
-      const response = await fetch(`https://api.imgbb.com/1/upload?key=${API_KEY}`, {
-        method: 'POST',
-        body: formData
-      });
-
-      if (!response.ok) {
-        throw new Error(`Upload failed: ${response.status}`);
-      }
-
+      const response = await fetch(`https://api.imgbb.com/1/upload?key=${API_KEY}`, { method: 'POST', body: formData });
+      if (!response.ok) throw new Error(`Upload failed: ${response.status}`);
       const data = await response.json();
-
-      if (!data.success) {
-        throw new Error('Image upload failed');
-      }
-
+      if (!data.success) throw new Error('Image upload failed');
       return data.data.url;
     } catch (error) {
       console.error('Image upload error:', error);
