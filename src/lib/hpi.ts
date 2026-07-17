@@ -177,16 +177,24 @@ async function fetchHindiApi<T = any>(endpoint: string, params: Record<string, a
     .map(([k, v]) => `${encodeURIComponent(k)}=${encodeURIComponent(String(v))}`);
   const queryString = queryParts.length > 0 ? `?${queryParts.join('&')}` : '';
   const targetUrl = `${HINDI_API_BASE}${endpoint}${queryString}`;
-  
+  const proxyUrl = typeof window !== 'undefined'
+    ? `/api/proxy?url=${encodeURIComponent(targetUrl)}`
+    : targetUrl;
+
   try {
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 10000);
-    const response = await fetch(targetUrl, { signal: controller.signal, cache: 'no-store' });
+    const timeoutId = setTimeout(() => controller.abort(), 15000);
+    const response = await fetch(proxyUrl, { signal: controller.signal, cache: 'no-store' });
     clearTimeout(timeoutId);
     if (!response.ok) return null;
     const json = await response.json();
-    if (json?.ok === false) return null;
-    return json.data as T;
+
+    // The proxy wraps the upstream response — unwrap it
+    if (json && typeof json === 'object') {
+      if ('ok' in json) return json.ok ? (json.data ?? json) : null;
+      if ('data' in json) return json.data as T;
+    }
+    return json as T;
   } catch {
     return null;
   }

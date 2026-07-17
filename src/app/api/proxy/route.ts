@@ -93,14 +93,28 @@ export async function GET(request: NextRequest) {
             });
         }
 
-        // --- PHASE C: VIDEO SEGMENTS / OTHERS ---
+        // --- PHASE C: JSON API RESPONSES ---
+        const contentType = response.headers.get("Content-Type") || "";
+        if (contentType.includes("application/json") || decodedUrl.includes('/api/')) {
+            const text = await response.text();
+            return new NextResponse(text, {
+                status: 200,
+                headers: {
+                    "Content-Type": "application/json",
+                    "Access-Control-Allow-Origin": "*",
+                    "Cache-Control": "public, max-age=60"
+                }
+            });
+        }
+
+        // --- PHASE D: VIDEO SEGMENTS / OTHERS ---
         const arrayBuffer = await response.arrayBuffer();
         const buffer = Buffer.from(arrayBuffer);
 
         return new NextResponse(buffer, {
             status: 200,
             headers: {
-                "Content-Type": response.headers.get("Content-Type") || "application/octet-stream",
+                "Content-Type": contentType || "application/octet-stream",
                 "Access-Control-Allow-Origin": "*",
                 "Cache-Control": "public, max-age=31536000"
             }
