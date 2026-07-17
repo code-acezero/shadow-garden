@@ -5,6 +5,7 @@ import { useSearchParams, useParams, useRouter } from 'next/navigation';
 import AnimeCard from '@/components/Anime/AnimeCard'; 
 import { Loader2, ChevronLeft, ChevronRight } from 'lucide-react';
 import { AnimeService } from '@/lib/api';
+import { dpi } from '@/lib/dpi';
 
 function ViewAllContent() {
   const searchParams = useSearchParams();
@@ -26,7 +27,20 @@ function ViewAllContent() {
       
       setLoading(true);
       try {
-        const result = await AnimeService.getFilteredAnime(category, currentPage);
+        let result: any;
+        if (category === 'donghua') {
+           const donghuaData = await dpi.getHome(currentPage);
+           // Mock pagination for donghua since dpi.getHome just returns an array
+           result = {
+              results: donghuaData,
+              currentPage: currentPage,
+              hasNextPage: donghuaData.length === 24, // Assuming 24 is max per page
+              hasPreviousPage: currentPage > 1,
+              maxPage: 100 // Donghua scraper might not provide maxPage easily
+           };
+        } else {
+           result = await AnimeService.getFilteredAnime(category, currentPage);
+        }
         setData(result);
       } catch (error) {
         console.error("Failed to fetch page data", error);

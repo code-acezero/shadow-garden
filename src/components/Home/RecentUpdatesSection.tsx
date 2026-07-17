@@ -7,6 +7,7 @@ import AnimeCard from '@/components/Anime/AnimeCard';
 import HindiAnimeCard from '@/components/Anime/HindiAnimeCard'; 
 import { AnimeService } from '@/lib/api';
 import { hpi } from '@/lib/hpi'; 
+import { dpi } from '@/lib/dpi';
 import Link from 'next/link';
 
 interface CacheData {
@@ -30,13 +31,14 @@ export default function RecentUpdatesSection({ initialData }: { initialData: any
         { id: 'all', label: 'All' },
         { id: 'sub', label: 'Sub' },
         { id: 'dub', label: 'Dub' },
-        { id: 'hindi', label: 'Hindi' }
+        { id: 'hindi', label: 'Hindi' },
+        { id: 'donghua', label: 'Donghua' }
     ];
 
     useEffect(() => {
         setIsMounted(true);
         const savedFilter = localStorage.getItem('shadow_recent_filter');
-        if (savedFilter && ['all', 'sub', 'dub', 'hindi'].includes(savedFilter)) {
+        if (savedFilter && ['all', 'sub', 'dub', 'hindi', 'donghua'].includes(savedFilter)) {
             setFilter(savedFilter);
         }
     }, []);
@@ -70,11 +72,18 @@ export default function RecentUpdatesSection({ initialData }: { initialData: any
                         case 'hindi': 
                             try {
                                 const hindiHome = await hpi.desidub.getHome();
-                                // Pulling from the "Latest Episode" sector as the tactical primary source
                                 const latestSection = hindiHome.sections.find(s => s.title === "Latest Episode");
                                 results = latestSection ? latestSection.items : [];
                             } catch (e) {
                                 console.error("HPI Hindi sector reach failed", e);
+                                results = [];
+                            }
+                            break;
+                        case 'donghua':
+                            try {
+                                results = await dpi.getHome(1);
+                            } catch (e) {
+                                console.error("DPI Donghua sector reach failed", e);
                                 results = [];
                             }
                             break;
@@ -117,8 +126,10 @@ export default function RecentUpdatesSection({ initialData }: { initialData: any
                         targetEp = rawDub;
                         if (targetEp > 0) watchParams = `?ep=${targetEp}&type=dub`;
                     } else if (filter === 'hindi') {
-                        // For Hindi, we use the specific episode number from the scraper
                         targetEp = epValue || rawTotal || 0; 
+                        if (targetEp > 0) watchParams = `?ep=${targetEp}`;
+                    } else if (filter === 'donghua') {
+                        targetEp = rawSub || rawTotal || 0;
                         if (targetEp > 0) watchParams = `?ep=${targetEp}`;
                     } else {
                         targetEp = rawSub || anime.episode || 0;
@@ -129,6 +140,8 @@ export default function RecentUpdatesSection({ initialData }: { initialData: any
                     // Redirects Hindi content to the specialized /hindi-watch sector
                     const baseRoute = (filter === 'hindi' || anime.isHindi) 
                         ? `/hindi-watch/${anime.id}` 
+                        : (filter === 'donghua')
+                        ? `/donghua-watch/${anime.id}`
                         : `/watch/${anime.id}`;
 
                     return {
@@ -145,7 +158,7 @@ export default function RecentUpdatesSection({ initialData }: { initialData: any
                         },
                         sub: rawSub > 0 ? rawSub : null,
                         dub: rawDub > 0 ? rawDub : null,
-                        episode: filter === 'hindi' ? targetEp : anime.episode, 
+                        episode: (filter === 'hindi' || filter === 'donghua') ? targetEp : anime.episode, 
                         targetRoute: `${baseRoute}${watchParams}` 
                     };
                 });
@@ -201,7 +214,7 @@ export default function RecentUpdatesSection({ initialData }: { initialData: any
                 </div>
 
                 <Link 
-                    href={`/view/${filter === 'all' ? 'recent' : filter === 'hindi' ? 'recent' : filter}`} 
+                    href={`/view/${filter === 'all' ? 'recent' : filter === 'hindi' ? 'recent' : filter === 'donghua' ? 'recent' : filter}`} 
                     className="order-2 md:order-3 group flex-shrink-0 flex items-center gap-0.5 md:gap-1 text-[9px] md:text-[10px] font-bold text-zinc-400 hover:text-white transition-colors uppercase tracking-widest whitespace-nowrap"
                 >
                     View All
