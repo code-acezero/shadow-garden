@@ -83,27 +83,33 @@ const CommentItem = ({ comment, currentUserId, onReply, onReport, onDelete, onEd
     const avatarUrl = comment.profiles?.avatar_url;
 
     return (
-        <div className="flex gap-4 group animate-in fade-in slide-in-from-bottom-2 duration-500">
-            <Link href={`/profile/${comment.user_id}`} onClick={(e) => e.stopPropagation()}>
-                <Avatar className="w-10 h-10 border-2 border-zinc-800 shrink-0 cursor-pointer hover:border-primary-500 transition-colors">
-                    <AvatarImage src={avatarUrl || undefined} />
-                    <AvatarFallback className="bg-zinc-900 text-zinc-500 text-xs font-black">{displayName[0]}</AvatarFallback>
-                </Avatar>
-            </Link>
+        <div className="relative flex gap-3 group pt-3 animate-in fade-in slide-in-from-bottom-2 duration-500">
+            <div className="flex flex-col items-center">
+                <Link href={`/profile/${comment.user_id}`} onClick={(e) => e.stopPropagation()}>
+                    <Avatar className="w-10 h-10 border-2 border-zinc-800 shrink-0 cursor-pointer hover:border-primary-500 transition-colors z-10">
+                        <AvatarImage src={avatarUrl || undefined} />
+                        <AvatarFallback className="bg-zinc-900 text-zinc-500 text-xs font-black">{displayName[0]}</AvatarFallback>
+                    </Avatar>
+                </Link>
+                {(comment.replies && comment.replies.length > 0) && (
+                    <div className="w-[2px] flex-1 bg-white/10 mt-2 rounded-full" />
+                )}
+            </div>
             
-            <div className="flex-1 space-y-2">
+            <div className="flex-1 pb-2">
                 <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-1.5">
                         <Link 
                             href={`/profile/${comment.user_id}`} 
                             onClick={(e) => e.stopPropagation()}
-                            className={cn("text-xs font-black uppercase tracking-wide hover:text-primary-500 transition-colors", comment.user_id === currentUserId ? "text-primary-400" : "text-zinc-200")}
+                            className={cn("text-[15px] font-bold hover:underline cursor-pointer transition-colors", comment.user_id === currentUserId ? "text-primary-400" : "text-white")}
                         >
                             {comment.user_id === currentUserId ? "You" : displayName}
                         </Link>
-                        {comment.is_edited && <span className="text-[9px] text-zinc-600 italic">(edited)</span>}
-                        <span className="text-[9px] text-zinc-600 font-mono">
-                            {formatDistanceToNow(new Date(comment.created_at), { addSuffix: true })}
+                        {comment.is_edited && <span className="text-[10px] text-zinc-600 italic">(edited)</span>}
+                        <span className="text-zinc-500 text-[15px]">·</span>
+                        <span className="text-zinc-500 text-[15px] hover:underline cursor-default">
+                            {formatDistanceToNow(new Date(comment.created_at), { addSuffix: false }).replace('about ', '').replace(' minutes', 'm').replace(' hours', 'h')}
                         </span>
                     </div>
                     <DropdownMenu>
@@ -124,7 +130,7 @@ const CommentItem = ({ comment, currentUserId, onReply, onReport, onDelete, onEd
                 </div>
 
                 {isEditing ? (
-                    <div className="flex flex-col gap-2">
+                    <div className="flex flex-col gap-2 mt-2">
                         <Textarea 
                             value={editContent} 
                             onChange={(e) => setEditContent(e.target.value)} 
@@ -136,27 +142,24 @@ const CommentItem = ({ comment, currentUserId, onReply, onReport, onDelete, onEd
                         </div>
                     </div>
                 ) : (
-                    <p className="text-xs text-zinc-300 leading-relaxed font-medium whitespace-pre-wrap">
+                    <p className="text-[15px] text-zinc-300 leading-tight mt-0.5 font-medium whitespace-pre-wrap">
                         {comment.is_spoiler ? (
                             <span className="text-zinc-600 italic bg-zinc-900/50 px-2 py-1 rounded border border-zinc-800 select-none">Spoiler Content (Hover to reveal)</span>
                         ) : formatText(comment.content)}
                     </p>
                 )}
 
-                <div className="flex items-center gap-4 pt-1">
-                    <button className="flex items-center gap-1.5 text-[10px] text-zinc-500 hover:text-primary-500 transition-colors">
-                        <ThumbsUp size={12}/> {comment.likes_count || 0}
+                <div className="flex items-center gap-4 mt-2 mb-2 text-zinc-500">
+                    <button className="flex items-center gap-1.5 hover:bg-white/10 p-1.5 rounded-full transition-colors hover:text-pink-500 active:scale-95">
+                        <ThumbsUp size={16}/> <span className="text-[11px]">{comment.likes_count || 0 > 0 ? comment.likes_count : ''}</span>
                     </button>
-                    <button className="flex items-center gap-1.5 text-[10px] text-zinc-500 hover:text-blue-400 transition-colors">
-                        <ThumbsDown size={12}/>
-                    </button>
-                    <button onClick={() => setShowReply(!showReply)} className="flex items-center gap-1.5 text-[10px] text-zinc-500 hover:text-white transition-colors">
-                        <MessageSquare size={12}/> Reply
+                    <button onClick={() => setShowReply(!showReply)} className="flex items-center gap-1.5 hover:bg-white/10 p-1.5 rounded-full transition-colors hover:text-white active:scale-95">
+                        <MessageSquare size={16}/>
                     </button>
                 </div>
 
                 {showReply && (
-                    <div className="pl-4 border-l-2 border-white/5 mt-2">
+                    <div className="mt-2 mb-4">
                          <CommentInput 
                             episodeId={""} 
                             focusOnMount={true} 
@@ -169,7 +172,7 @@ const CommentItem = ({ comment, currentUserId, onReply, onReport, onDelete, onEd
 
                 {/* Recursive Replies */}
                 {comment.replies && comment.replies.length > 0 && (
-                    <div className="pl-4 border-l-2 border-white/5 space-y-4 mt-4">
+                    <div className="mt-1 space-y-0">
                         {comment.replies.map((reply: any) => (
                             <CommentItem key={reply.id} comment={reply} currentUserId={currentUserId} onReply={onReply} onReport={onReport} onDelete={onDelete} onEdit={onEdit} />
                         ))}

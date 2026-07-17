@@ -225,11 +225,22 @@ class HPIClient {
       
       const filterAnime = (items: any[]) => items.filter((i: any) => i.type !== 'Drama' && i.type !== 'Live Action');
 
+      if (results?.spotlight?.length > 0) {
+        sections.push({ title: 'Spotlight', items: filterAnime(results.spotlight).map(normalizeHindiCard) });
+      }
       if (results?.recentlyUpdated?.length > 0) {
         sections.push({ title: 'Recently Updated', items: filterAnime(results.recentlyUpdated).map(normalizeHindiCard) });
       }
-      if (results?.ongoingSeries?.length > 0) {
-        sections.push({ title: 'Ongoing Series', items: filterAnime(results.ongoingSeries).map(normalizeHindiCard) });
+      if (results?.ongoingAnime?.length > 0) {
+        sections.push({ title: 'Ongoing Anime', items: filterAnime(results.ongoingAnime).map(normalizeHindiCard) });
+      }
+      if (results?.moviesCollection?.length > 0) {
+        // Movies collection might include dramas/live action in some logic, but let's just map it.
+        // We will remove filterAnime for Movies & Drama to allow them to show
+        sections.push({ title: 'Movies Collection', items: (results.moviesCollection || []).map(normalizeHindiCard) });
+      }
+      if (results?.dramaLiveAction?.length > 0) {
+        sections.push({ title: 'Drama & Live Action', items: (results.dramaLiveAction || []).map(normalizeHindiCard) });
       }
       if (results?.completedSeries?.length > 0) {
         sections.push({ title: 'Completed Series', items: filterAnime(results.completedSeries).map(normalizeHindiCard) });
