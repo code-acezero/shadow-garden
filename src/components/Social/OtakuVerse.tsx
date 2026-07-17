@@ -75,6 +75,8 @@ export default function OtakuVerse({ user, onAuthRequired, highlightId }: OtakuV
   const [commentText, setCommentText] = useState('');
   const [replyTarget, setReplyTarget] = useState<{ id: string; name: string } | null>(null);
   const [lightbox, setLightbox] = useState<{ isOpen: boolean; src: string }>({ isOpen: false, src: '' });
+  const [searchQuery, setSearchQuery] = useState('');
+  const [trendingTags, setTrendingTags] = useState<{tag: string, count: number, cat: string}[]>([]);
 
   const channelRef = useRef<any>(null);
   const isVisibleRef = useRef(true);
@@ -154,6 +156,23 @@ export default function OtakuVerse({ user, onAuthRequired, highlightId }: OtakuV
           user: post.user || { username: 'Shadow Agent', avatar_url: '' }
         };
       }));
+
+      // Calculate trending tags from the raw data
+      if (activeTab === 'feed') {
+          const tagCounts: Record<string, number> = {};
+          data.forEach((p: any) => {
+             if (p.tags && Array.isArray(p.tags)) {
+                 p.tags.forEach((tag: string) => {
+                     tagCounts[tag] = (tagCounts[tag] || 0) + 1;
+                 });
+             }
+          });
+          const topTags = Object.entries(tagCounts)
+             .sort((a,b) => b[1] - a[1])
+             .slice(0, 5)
+             .map(([tag, count]) => ({ tag, count, cat: "Community · Trending" }));
+          setTrendingTags(topTags);
+      }
 
       if (activeTab === 'trending') {
         postsWithMetadata.sort((a, b) => (b.likes_count || 0) - (a.likes_count || 0));
@@ -303,6 +322,15 @@ export default function OtakuVerse({ user, onAuthRequired, highlightId }: OtakuV
     window.open(links[platform], '_blank', 'width=600,height=400');
   };
 
+  const handleBookmark = async (post: SocialPost) => {
+    if (!user) return onAuthRequired();
+    const isBookmarking = !post.is_bookmarked;
+    setPosts(posts.map(p => p.id === post.id ? { ...p, is_bookmarked: isBookmarking } : p));
+    if (isBookmarking) await supabase.from('social_bookmarks').insert({ post_id: post.id, user_id: user.id } as any);
+    else await supabase.from('social_bookmarks').delete().eq('post_id', post.id).eq('user_id', user.id);
+    toast.success(isBookmarking ? "Added to Bookmarks" : "Removed from Bookmarks");
+  };
+
   const extractTags = (content: string): string[] => {
     const tagRegex = /#(\w+)/g;
     const matches = content.match(tagRegex);
@@ -314,6 +342,12 @@ export default function OtakuVerse({ user, onAuthRequired, highlightId }: OtakuV
     if (files.length + selectedImages.length > 4) return toast.error('Limit: 4 images');
     setSelectedImages([...selectedImages, ...files]);
   };
+
+  const filteredPosts = posts.filter(p => {
+    if (!searchQuery) return true;
+    const q = searchQuery.toLowerCase();
+    return p.content.toLowerCase().includes(q) || (p.tags && p.tags.some(t => t.toLowerCase().includes(q)));
+  });
 
   return (
     <div className="w-full min-h-screen bg-[#050505] flex justify-center pb-20 md:pb-0">
@@ -437,11 +471,11 @@ export default function OtakuVerse({ user, onAuthRequired, highlightId }: OtakuV
            {/* Feed */}
            {isLoading ? (
                <div className="flex justify-center p-8"><Loader2 className="animate-spin text-primary-500 w-8 h-8" /></div>
-           ) : posts.length === 0 ? (
-               <div className="p-8 text-center text-zinc-500 font-bold">No posts found.</div>
+           ) : filteredPosts.length === 0 ? (
+               <div className="p-8 text-center text-zinc-500 font-bold">{searchQuery ? "No results found." : "No posts found."}</div>
            ) : (
                <div className="pb-[30vh]">
-                  {posts.map((post) => (
+                  {filteredPosts.map((post) => (
                      <PostItem 
                         key={post.id} 
                         post={post} 
@@ -450,6 +484,7 @@ export default function OtakuVerse({ user, onAuthRequired, highlightId }: OtakuV
                         onLike={() => handleLike(post)}
                         onComment={() => { setActivePostForComments(post); fetchComments(post.id); }}
                         onShare={(platform) => handleShare(platform, post)}
+                        onBookmark={() => handleBookmark(post)}
                         onDelete={() => handleDeletePost(post.id)}
                         onImageClick={(src) => setLightbox({ isOpen: true, src })}
                         currentUserId={user?.id}
@@ -463,7 +498,7 @@ export default function OtakuVerse({ user, onAuthRequired, highlightId }: OtakuV
         <aside className="hidden lg:block w-[350px] pl-8 py-4 sticky top-0 h-screen overflow-y-auto twitter-scrollbar">
             {/* Search */}
             <div className="relative group mb-4">
-                <input type="text" placeholder="Search" className="w-full bg-[#16181c] border border-transparent rounded-full py-3 px-12 text-white text-[15px] focus:outline-none focus:border-primary-500 focus:bg-black transition-colors" />
+                <input type="text" placeholder="Search" value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} className="w-full bg-[#16181c] border border-transparent rounded-full py-3 px-12 text-white text-[15px] focus:outline-none focus:border-primary-500 focus:bg-black transition-colors" />
                 <div className="absolute left-4 top-1/2 -translate-y-1/2 text-zinc-500 group-focus-within:text-primary-500 transition-colors">
                    <Hash size={18} />
                 </div>
@@ -473,20 +508,18 @@ export default function OtakuVerse({ user, onAuthRequired, highlightId }: OtakuV
             <div className="bg-[#16181c] rounded-2xl overflow-hidden border border-white/5 mb-4">
                 <h3 className="font-black text-xl p-4 text-white">What's happening</h3>
                 
-                {[
-                  { tag: "JujutsuKaisen", posts: "124K", cat: "Anime · Trending" },
-                  { tag: "SoloLeveling", posts: "89K", cat: "Anime · Trending" },
-                  { tag: "ShadowGarden", posts: "45K", cat: "Community" }
-                ].map((trend, i) => (
-                   <div key={i} className="px-4 py-3 hover:bg-white/5 cursor-pointer transition-colors flex justify-between items-start">
+                {trendingTags.length > 0 ? trendingTags.map((trend, i) => (
+                   <div key={i} onClick={() => setSearchQuery(trend.tag)} className="px-4 py-3 hover:bg-white/5 cursor-pointer transition-colors flex justify-between items-start">
                       <div>
                          <p className="text-[13px] text-zinc-500">{trend.cat}</p>
                          <p className="font-bold text-[15px] text-white">#{trend.tag}</p>
-                         <p className="text-[13px] text-zinc-500">{trend.posts} posts</p>
+                         <p className="text-[13px] text-zinc-500">{trend.count} posts</p>
                       </div>
                       <MoreHorizontal className="text-zinc-500 w-5 h-5 hover:text-primary-500 rounded-full hover:bg-primary-500/10 transition-colors" />
                    </div>
-                ))}
+                )) : (
+                   <div className="px-4 py-3 text-zinc-500 text-[13px]">No trending topics yet.</div>
+                )}
                 
                 <div className="p-4 hover:bg-white/5 cursor-pointer transition-colors text-primary-500 text-[15px] rounded-b-2xl">
                    Show more
@@ -580,7 +613,7 @@ function NavButton({ icon, label, active, onClick }: { icon: React.ReactNode, la
    )
 }
 
-const PostItem = React.forwardRef<HTMLDivElement, any>(({ post, highlightId, onLike, onComment, onShare, onDelete, onImageClick, currentUserId }, ref) => {
+const PostItem = React.forwardRef<HTMLDivElement, any>(({ post, highlightId, onLike, onComment, onShare, onBookmark, onDelete, onImageClick, currentUserId }, ref) => {
    return (
       <div ref={ref} className={`flex gap-3 p-4 border-b border-white/10 hover:bg-white/5 transition-colors cursor-pointer ${highlightId === post.id ? 'bg-white/10' : ''}`} onClick={(e) => {
           const target = e.target as HTMLElement;
@@ -667,6 +700,11 @@ const PostItem = React.forwardRef<HTMLDivElement, any>(({ post, highlightId, onL
                         <DropdownMenuItem onClick={() => onShare('twitter')} className="focus:bg-white/10 cursor-pointer font-bold py-2"><X size={16} className="mr-3 text-white"/> X</DropdownMenuItem>
                     </DropdownMenuContent>
                 </DropdownMenu>
+                <button onClick={(e) => { e.stopPropagation(); onBookmark(); }} className="flex items-center gap-0 group">
+                   <div className={`p-2 rounded-full transition-colors ${post.is_bookmarked ? 'text-primary-500' : 'group-hover:bg-primary-500/10 group-hover:text-primary-500'}`}>
+                      <Bookmark size={18} className={post.is_bookmarked ? 'fill-current' : ''} />
+                   </div>
+                </button>
             </div>
          </div>
       </div>
