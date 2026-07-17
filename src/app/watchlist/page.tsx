@@ -369,7 +369,7 @@ function WatchlistContent() {
                                                         type: item.type || "TV",
                                                         episode: item.episode,
                                                         episodeId: item.episodeId,
-                                                        episodes: { sub: Number(item.totalEpisodes) || 0, dub: 0 }
+                                                        totalEpisodes: item.totalEpisodes
                                                     }} 
                                                     progress={item.progress}
                                                 />
@@ -379,7 +379,7 @@ function WatchlistContent() {
                                                     title: item.anime_title, 
                                                     poster: item.anime_image, 
                                                     type: "TV", 
-                                                    episodes: { sub: item.total_episodes || 0, dub: 0 }
+                                                    totalEpisodes: item.total_episodes
                                                 }} />
                                             )}
                                         </div>

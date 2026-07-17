@@ -167,7 +167,9 @@ export interface DesiDubQtip {
  * ==========================================
  */
 
-const HINDI_API_BASE = 'https://anime-api-ashen-chi.vercel.app/api';
+import { BASE_URL } from './api';
+
+const HINDI_API_BASE = `${BASE_URL}/blakite`;
 
 async function fetchHindiApi<T = any>(endpoint: string, params: Record<string, any> = {}): Promise<T | null> {
   const queryParts = Object.entries(params)
@@ -175,17 +177,16 @@ async function fetchHindiApi<T = any>(endpoint: string, params: Record<string, a
     .map(([k, v]) => `${encodeURIComponent(k)}=${encodeURIComponent(String(v))}`);
   const queryString = queryParts.length > 0 ? `?${queryParts.join('&')}` : '';
   const targetUrl = `${HINDI_API_BASE}${endpoint}${queryString}`;
-  const proxyUrl = typeof window !== 'undefined' ? `/api/proxy?url=${encodeURIComponent(targetUrl)}` : targetUrl;
-
+  
   try {
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 10000);
-    const response = await fetch(proxyUrl, { signal: controller.signal, cache: 'no-store' });
+    const response = await fetch(targetUrl, { signal: controller.signal, cache: 'no-store' });
     clearTimeout(timeoutId);
     if (!response.ok) return null;
     const json = await response.json();
-    if (json?.success === false) return null;
-    return json as T;
+    if (json?.ok === false) return null;
+    return json.data as T;
   } catch {
     return null;
   }
@@ -193,22 +194,21 @@ async function fetchHindiApi<T = any>(endpoint: string, params: Record<string, a
 
 function normalizeHindiCard(item: any): AnimeCard {
   return {
-    id: item?.anime_id || item?.id || item?.slug || '',
-    title: item?.title || item?.name || 'Unknown Title',
-    image: item?.poster || item?.image || item?.img || '',
-    type: item?.showType || item?.type || 'TV',
-    episode: item?.episode_no ? String(item.episode_no) : (item?.episode || undefined),
-    episodeCount: item?.totalEpisodes || item?.episodes?.eps ? String(item.totalEpisodes || item.episodes.eps) : undefined,
-    duration: item?.run_time || item?.runningTime || item?.duration,
-    dataId: item?.anime_id != null ? String(item.anime_id) : undefined
+    id: item?.id || '',
+    title: item?.title || 'Unknown Title',
+    image: item?.image || '',
+    type: item?.type || 'TV',
+    episode: item?.episode ? String(item.episode) : undefined,
+    episodeCount: item?.episode ? String(item.episode) : undefined,
+    dataId: item?.id
   };
 }
 
 class HPIClient {
   desidub = {
     getHome: async (): Promise<DesiDubHome> => {
-      const response: any = await fetchHindiApi('/newadded');
-      const latest = Array.isArray(response?.results) ? response.results : [];
+      const results: any = await fetchHindiApi('/home');
+      const latest = Array.isArray(results?.results) ? results.results : (Array.isArray(results) ? results : []);
       const sections: DesiDubHome['sections'] = [
         { title: 'Recently Added', items: latest.map(normalizeHindiCard) }
       ];
@@ -216,57 +216,51 @@ class HPIClient {
     },
 
     search: async (query: string, page = 1) => {
-      const response: any = await fetchHindiApi('/search', { s: query, page });
-      const resultsObj = response?.results || {};
-      const list = Array.isArray(resultsObj.results) ? resultsObj.results : [];
+      const resultsObj: any = await fetchHindiApi('/search', { q: query, page });
+      const list = Array.isArray(resultsObj?.results) ? resultsObj.results : [];
       const items = list.map(normalizeHindiCard);
       return {
         title: query,
         items,
         pagination: {
-          currentPage: resultsObj.currentPage ?? page,
-          hasNextPage: (resultsObj.currentPage ?? page) < (resultsObj.totalPages ?? page),
-          totalPages: resultsObj.totalPages,
-          totalResults: items.length
+          currentPage: resultsObj?.currentPage ?? page,
+          hasNextPage: resultsObj?.hasNextPage ?? false,
+          totalPages: resultsObj?.maxPage ?? 1,
+          totalResults: resultsObj?.totalResults ?? items.length
         } as Pagination
       };
     },
 
     getSuggestions: async (query: string): Promise<AnimeCard[]> => {
-      const response: any = await fetchHindiApi('/search', { s: query, page: 1 });
-      const resultsObj = response?.results || {};
-      const list = Array.isArray(resultsObj.results) ? resultsObj.results : [];
+      const resultsObj: any = await fetchHindiApi('/search', { q: query, page: 1 });
+      const list = Array.isArray(resultsObj?.results) ? resultsObj.results : [];
       return list.map(normalizeHindiCard).slice(0, 5);
     },
 
     filter: async (params: any) => {
-      const response: any = await fetchHindiApi('/newadded');
-      const list = Array.isArray(response?.results) ? response.results : [];
+      const resultsObj: any = await fetchHindiApi('/filter', params);
+      const list = Array.isArray(resultsObj?.results) ? resultsObj.results : [];
       return {
         items: list.map(normalizeHindiCard),
         pagination: {
-          currentPage: 1,
-          hasNextPage: false,
-          totalPages: 1,
-          totalResults: list.length
+          currentPage: resultsObj?.currentPage ?? 1,
+          hasNextPage: resultsObj?.hasNextPage ?? false,
+          totalPages: resultsObj?.maxPage ?? 1,
+          totalResults: resultsObj?.totalResults ?? list.length
         } as Pagination
       };
     },
 
     getDetails: async (id: string): Promise<DesiDubDetails> => {
-      const [infoRes, episodesRes] = await Promise.all([
-        fetchHindiApi<any>('/info', { id }),
-        fetchHindiApi<any>('/episode', { id, season: 1 })
-      ]);
+      const info: any = await fetchHindiApi(`/anime/${id}`);
+      if (!info) throw new Error('Anime not found');
 
-      const info = infoRes?.data || {};
-      const epData = episodesRes?.results?.episodes || [];
-      const episodeList = Array.isArray(epData) ? epData.map((e: any) => ({
-        id: `${id}?season=${e.season || 1}&ep=${e.episode}`,
-        number: String(e.episode),
+      const episodeList = Array.isArray(info.episodes) ? info.episodes.map((e: any) => ({
+        id: `${id}?ep=${e.id.replace('ep-', '')}`,
+        number: e.number ? String(e.number) : e.id.replace('ep-', ''),
         url: '',
-        title: e.title || `Episode ${e.episode}`,
-        image: e.image || e.poster || info.poster || ''
+        title: e.title || `Episode ${e.number}`,
+        image: info.image || ''
       })) : [];
 
       return {
@@ -274,17 +268,17 @@ class HPIClient {
         title: info.title || 'Unknown Title',
         englishTitle: info.title || '',
         nativeTitle: info.title || '',
-        image: info.poster || '',
-        banner: info.poster || '',
-        type: 'TV',
-        synopsis: info.overview || '',
-        status: 'Unknown',
+        image: info.image || '',
+        banner: info.cover || info.image || '',
+        type: info.type || 'TV',
+        synopsis: info.description || '',
+        status: info.status || 'Unknown',
         rating: info.rating || 'PG-13',
-        premiered: info.year || '',
+        premiered: info.releaseDate || '',
         season: '',
-        aired: info.year || '',
-        episodesCount: String(episodeList.length || info.episodes || ''),
-        studios: [],
+        aired: info.releaseDate || '',
+        episodesCount: String(episodeList.length || info.totalEpisodes || ''),
+        studios: Array.isArray(info.studios) ? info.studios : [],
         producers: [],
         genres: Array.isArray(info.genres) ? info.genres : [],
         synonyms: [],
@@ -298,14 +292,12 @@ class HPIClient {
     getStream: async (episodeId: string): Promise<DesiDubStream> => {
       let id = episodeId;
       let ep = '1';
-      let season = '1';
 
       if (episodeId.includes('?')) {
         const [baseId, qs] = episodeId.split('?');
         id = baseId;
         const params = new URLSearchParams(qs);
         ep = params.get('ep') || '1';
-        season = params.get('season') || '1';
       } else {
         const parts = episodeId.split('-');
         if (!isNaN(Number(parts[parts.length-1]))) {
@@ -314,14 +306,14 @@ class HPIClient {
         }
       }
 
-      const streamRes: any = await fetchHindiApi('/stream', { id, season, ep });
-      const servers = Array.isArray(streamRes?.results) ? streamRes.results : [];
+      // Format endpoint: /api/blakite/watch/[slug]?ep=[ep]
+      const streamData: any = await fetchHindiApi(`/watch/${id}`, { ep });
       
-      const mappedServers = servers.map((s: any, idx: number) => ({
-        name: s.server || `Server ${idx + 1}`,
-        url: s.embed || '',
-        isEmbed: true
-      })).filter((s: any) => s.url);
+      const mappedServers = streamData?.sources ? streamData.sources.map((s: any, idx: number) => ({
+        name: s.quality || `Server ${idx + 1}`,
+        url: s.url || '',
+        isEmbed: false // These are direct streams, not embeds
+      })).filter((s: any) => s.url) : [];
 
       const primary = mappedServers[0];
 
@@ -335,10 +327,11 @@ class HPIClient {
         prevEpisode: null,
         episodes: [],
         stream: primary?.url ? { file: primary.url } : { error: 'No stream found' },
-        subtitles: [],
+        subtitles: streamData?.subtitles || [],
         intro: null,
         outro: null,
-        isM3U8: false
+        isM3U8: streamData?.isM3U8 ?? true,
+        referer: streamData?.referer || 'https://blakiteapi.xyz/'
       };
     },
 

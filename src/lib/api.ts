@@ -367,6 +367,10 @@ export class AnimeAPI_Anikoto {
         return fetchAnikoto(`/anime/tooltip/${encodeURIComponent(id)}`);
     }
 
+    static async getHomeLatest(type: 'updated-all' | 'updated-sub' | 'updated-dub' | 'trending' | 'random' = 'updated-all', page = 1) {
+        return fetchAnikoto('/home/latest', { type, page });
+    }
+
     static async getLatest(type: 'latest-updated' | 'new-release' | 'most-viewed' = 'latest-updated', page = 1) {
         return fetchAnikoto('/latest', { type, page });
     }
@@ -554,12 +558,12 @@ export class AnimeService {
     }
 
     static async getSubbedAnime(page = 1) {
-        const data: any = await AnimeAPI_Anikoto.filter({ language: ['sub'], page });
+        const data: any = await AnimeAPI_Anikoto.getHomeLatest('updated-sub', page);
         return extractPaged(data).results.map(normalizeCard);
     }
 
     static async getDubbedAnime(page = 1) {
-        const data: any = await AnimeAPI_Anikoto.filter({ language: ['dub'], page });
+        const data: any = await AnimeAPI_Anikoto.getHomeLatest('updated-dub', page);
         return extractPaged(data).results.map(normalizeCard);
     }
 
@@ -568,22 +572,25 @@ export class AnimeService {
         
         switch (category) {
             case 'sub':
-                rawData = await AnimeAPI_Anikoto.filter({ language: ['sub'], page });
+                rawData = await AnimeAPI_Anikoto.getHomeLatest('updated-sub', page);
                 break;
             case 'dub':
-                rawData = await AnimeAPI_Anikoto.filter({ language: ['dub'], page });
+                rawData = await AnimeAPI_Anikoto.getHomeLatest('updated-dub', page);
                 break;
             case 'trending':
-                rawData = await AnimeAPI_Anikoto.getTrending(page);
+                rawData = await AnimeAPI_Anikoto.getHomeLatest('trending', page);
+                break;
+            case 'random':
+                rawData = await AnimeAPI_Anikoto.getHomeLatest('random', page);
                 break;
             case 'popular':
-                rawData = await AnimeAPI_Anikoto.getMostPopular(page);
+                rawData = await AnimeAPI_Anikoto.getLatest('most-viewed', page);
                 break;
             case 'recent':
                 rawData = await AnimeAPI_Anikoto.getLatest('latest-updated', page);
                 break;
             case 'completed':
-                rawData = await AnimeAPI_Anikoto.getLatest('latest-completed', page);
+                rawData = await AnimeAPI_Anikoto.getStatus('finished-airing', page);
                 break;
             default:
                 // Default to all/recent if category is unknown or "all"
