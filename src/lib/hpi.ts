@@ -225,23 +225,26 @@ class HPIClient {
       
       const filterAnime = (items: any[]) => items.filter((i: any) => i.type !== 'Drama' && i.type !== 'Live Action');
 
-      if (results?.spotlight?.length > 0) {
-        sections.push({ title: 'Spotlight', items: filterAnime(results.spotlight).map(normalizeHindiCard) });
+      if (results?.recentlyUpdated?.length > 0) {
+        sections.push({ title: 'Recently Updated', items: filterAnime(results.recentlyUpdated).map(normalizeHindiCard) });
       }
-      if (results?.latestEpisodes?.length > 0) {
-        sections.push({ title: 'Recently Updated', items: filterAnime(results.latestEpisodes).map(normalizeHindiCard) });
+      if (results?.ongoingSeries?.length > 0) {
+        sections.push({ title: 'Ongoing Series', items: filterAnime(results.ongoingSeries).map(normalizeHindiCard) });
       }
-      if (results?.newAdded?.length > 0) {
-        sections.push({ title: 'Newly Added', items: filterAnime(results.newAdded).map(normalizeHindiCard) });
+      if (results?.completedSeries?.length > 0) {
+        sections.push({ title: 'Completed Series', items: filterAnime(results.completedSeries).map(normalizeHindiCard) });
       }
-      if (results?.topDay?.length > 0) {
-        sections.push({ title: 'Top Rated', items: filterAnime(results.topDay).map(normalizeHindiCard) });
+      if (results?.hindiDubbedOrg?.length > 0) {
+        sections.push({ title: 'Hindi Dubbed (Org)', items: filterAnime(results.hindiDubbedOrg).map(normalizeHindiCard) });
+      }
+      if (results?.hindiFanDubbed?.length > 0) {
+        sections.push({ title: 'Hindi Fan Dubbed', items: filterAnime(results.hindiFanDubbed).map(normalizeHindiCard) });
       }
       
       // Fallback if everything is empty
       if (sections.length === 0) {
          const latest = Array.isArray(results) ? results : [];
-         sections.push({ title: 'Recently Added', items: filterAnime(latest).map(normalizeHindiCard) });
+         sections.push({ title: 'Recently Updated', items: filterAnime(latest).map(normalizeHindiCard) });
       }
 
       return { sections };

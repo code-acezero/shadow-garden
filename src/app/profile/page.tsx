@@ -162,11 +162,49 @@ export default function ProfilePage() {
         toast.info("Image removed from history");
     };
 
-    // Calculate mock stats based on level
+    const [realStats, setRealStats] = useState({ animeWatched: 0, episodesWatched: 0, watchedDays: 0, totalPosts: 0 });
+
+    useEffect(() => {
+        if (!user) return;
+        const fetchStats = async () => {
+            try {
+                // Fetch Continue Watching data
+                const { data: cwData } = await supabase.from('user_continue_watching').select('progress, total_episodes, is_completed, current_episode_number').eq('user_id', user.id);
+                
+                let epCount = 0;
+                let animeCount = 0;
+                let totalSeconds = 0;
+
+                if (cwData) {
+                    cwData.forEach((row: any) => {
+                        animeCount++;
+                        if (row.is_completed) {
+                            epCount += (row.total_episodes || 12);
+                            totalSeconds += (row.total_episodes || 12) * 1440; // Approx 24 mins per ep
+                        } else {
+                            const currentEp = parseInt(row.current_episode_number || '1');
+                            epCount += currentEp;
+                            totalSeconds += (currentEp - 1) * 1440 + (row.progress || 0);
+                        }
+                    });
+                }
+                const days = (totalSeconds / (60 * 60 * 24)).toFixed(1);
+
+                // Fetch Posts data
+                const { count: pCount } = await supabase.from('social_posts').select('*', { count: 'exact', head: true }).eq('user_id', user.id);
+
+                setRealStats({ 
+                    animeWatched: animeCount,
+                    episodesWatched: epCount, 
+                    watchedDays: parseFloat(days),
+                    totalPosts: pCount || 0
+                });
+            } catch (err) { console.error("Error fetching stats:", err); }
+        };
+        fetchStats();
+    }, [user]);
+
     const currentLvl = profile.level || 1;
-    const mockAnimeWatched = Math.floor(currentLvl * 3.5);
-    const mockEpisodesWatched = Math.floor(currentLvl * 42.8);
-    const mockDaysWatched = (mockEpisodesWatched * 24 / 60 / 24).toFixed(1);
 
     return (
         <div className="min-h-screen bg-[#050505] text-white pb-32">
@@ -200,45 +238,47 @@ export default function ProfilePage() {
             </div>
 
             {/* PROFILE HEADER CONTENT */}
-            <div className="max-w-7xl mx-auto px-4 md:px-8 relative z-30 -mt-16 md:-mt-24">
-                <div className="flex flex-col md:flex-row gap-6 md:gap-8 items-start">
+            <div className="max-w-7xl mx-auto px-4 md:px-8 relative z-30 -mt-20 md:-mt-32">
+                <div className="flex flex-col md:flex-row gap-6 md:gap-8 items-start bg-[#0a0a0a]/80 backdrop-blur-3xl border border-white/10 rounded-[40px] p-6 md:p-10 shadow-2xl shadow-primary-900/10">
                     
                     {/* AVATAR */}
                     <div className="relative group shrink-0 mx-auto md:mx-0">
-                        <div className="w-32 h-32 md:w-48 md:h-48 rounded-full p-1.5 bg-[#050505] overflow-hidden relative z-10 shadow-2xl">
-                            <Avatar className="w-full h-full rounded-full border-2 border-white/10 bg-zinc-900">
+                        <div className="w-32 h-32 md:w-48 md:h-48 rounded-full p-2 bg-gradient-to-tr from-primary-600 via-primary-500 to-transparent overflow-hidden relative z-10 shadow-[0_0_40px_rgba(220,38,38,0.2)]">
+                            <Avatar className="w-full h-full rounded-full border-4 border-[#0a0a0a] bg-zinc-900">
                                 <AvatarImage src={profile.avatar_url} className="object-cover" />
                                 <AvatarFallback><ShadowAvatar gender={gender}/></AvatarFallback>
                             </Avatar>
                         </div>
-                        <div onClick={() => setShowAvatarModal(true)} className="absolute inset-1.5 bg-black/60 rounded-full z-20 opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer flex items-center justify-center backdrop-blur-sm">
+                        <div onClick={() => setShowAvatarModal(true)} className="absolute inset-2 bg-black/60 rounded-full z-20 opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer flex items-center justify-center backdrop-blur-sm">
                             <Camera className="text-white" size={32} />
                         </div>
                         {/* Level Badge on Avatar */}
-                        <div className="absolute -bottom-2 left-1/2 -translate-x-1/2 bg-primary-600 text-white text-[10px] md:text-xs font-bold px-3 py-1 rounded-full shadow-lg border-2 border-[#050505] z-30 whitespace-nowrap">
+                        <div className="absolute -bottom-4 left-1/2 -translate-x-1/2 bg-gradient-to-r from-primary-600 to-primary-500 text-white text-[10px] md:text-xs font-black uppercase tracking-widest px-6 py-2 rounded-full shadow-[0_0_20px_rgba(220,38,38,0.4)] border-2 border-[#0a0a0a] z-30 whitespace-nowrap">
                             Level {profile.level || 1}
                         </div>
                     </div>
 
                     {/* USER INFO */}
-                    <div className="flex-1 w-full pt-2 md:pt-24 text-center md:text-left flex flex-col md:flex-row justify-between items-center md:items-end gap-6">
+                    <div className="flex-1 w-full pt-2 md:pt-6 text-center md:text-left flex flex-col md:flex-row justify-between items-center md:items-end gap-6">
                         <div>
-                            <h1 className="text-2xl md:text-4xl font-black text-white">{profile.full_name || profile.username}</h1>
-                            <p className="text-zinc-400 text-sm md:text-base mt-1 font-medium">@{profile.username}</p>
+                            <h1 className="text-3xl md:text-5xl font-black text-white font-[Cinzel] tracking-tighter drop-shadow-md">{profile.full_name || profile.username}</h1>
+                            <p className="text-primary-500 text-sm md:text-base mt-1 font-bold tracking-widest uppercase">@{profile.username}</p>
                             
-                            <div className="flex flex-wrap justify-center md:justify-start items-center gap-3 mt-4">
-                                {profile.location && <span className="flex items-center gap-1.5 text-xs text-zinc-400"><MapPin size={14}/> {profile.location}</span>}
-                                {profile.website && <span className="flex items-center gap-1.5 text-xs text-zinc-400 hover:text-primary-400 transition-colors cursor-pointer" onClick={()=>window.open(profile.website)}><Globe size={14}/> {new URL(profile.website).hostname.replace('www.','')}</span>}
-                                {profile.twitter_url && <button onClick={() => window.open(profile.twitter_url)} className="text-zinc-400 hover:text-blue-400 transition-colors"><Twitter size={16}/></button>}
-                                {profile.instagram_url && <button onClick={() => window.open(profile.instagram_url)} className="text-zinc-400 hover:text-pink-400 transition-colors"><Instagram size={16}/></button>}
-                                {profile.github_url && <button onClick={() => window.open(profile.github_url)} className="text-zinc-400 hover:text-white transition-colors"><Github size={16}/></button>}
+                            <div className="flex flex-wrap justify-center md:justify-start items-center gap-4 mt-6">
+                                {profile.location && <span className="flex items-center gap-1.5 text-xs text-zinc-400 font-bold bg-white/5 px-3 py-1.5 rounded-full border border-white/5"><MapPin size={14}/> {profile.location}</span>}
+                                {profile.website && <span className="flex items-center gap-1.5 text-xs text-zinc-400 font-bold bg-white/5 px-3 py-1.5 rounded-full border border-white/5 hover:text-primary-400 hover:border-primary-500/30 transition-all cursor-pointer shadow-sm hover:shadow-primary-900/20" onClick={()=>window.open(profile.website)}><Globe size={14}/> {new URL(profile.website).hostname.replace('www.','')}</span>}
+                                <div className="flex gap-2">
+                                    {profile.twitter_url && <button onClick={() => window.open(profile.twitter_url)} className="w-8 h-8 rounded-full bg-white/5 flex items-center justify-center text-zinc-400 hover:text-blue-400 hover:bg-blue-400/10 transition-colors"><Twitter size={14}/></button>}
+                                    {profile.instagram_url && <button onClick={() => window.open(profile.instagram_url)} className="w-8 h-8 rounded-full bg-white/5 flex items-center justify-center text-zinc-400 hover:text-pink-400 hover:bg-pink-400/10 transition-colors"><Instagram size={14}/></button>}
+                                    {profile.github_url && <button onClick={() => window.open(profile.github_url)} className="w-8 h-8 rounded-full bg-white/5 flex items-center justify-center text-zinc-400 hover:text-white hover:bg-white/10 transition-colors"><Github size={14}/></button>}
+                                </div>
                             </div>
                         </div>
 
                         {/* Rank / Badges */}
-                        <div className="flex flex-col items-center md:items-end gap-2">
-                            <span className="text-xs font-bold text-zinc-500 uppercase tracking-widest">Global Rank</span>
-                            <div className="px-4 py-1.5 rounded-full bg-gradient-to-r from-primary-600/20 to-transparent border border-primary-500/30 text-primary-400 text-sm font-bold shadow-lg shadow-primary-600/10">
+                        <div className="flex flex-col items-center md:items-end gap-2 shrink-0">
+                            <span className="text-[10px] font-black text-zinc-500 uppercase tracking-[0.2em]">Global Rank</span>
+                            <div className="px-6 py-2 rounded-full bg-gradient-to-r from-primary-600/20 to-transparent border border-primary-500/30 text-primary-400 text-sm font-black uppercase tracking-widest shadow-lg shadow-primary-900/20">
                                 {profile.rank || 'Beginner'}
                             </div>
                         </div>
@@ -271,19 +311,19 @@ export default function ProfilePage() {
                                     <div className="space-y-4">
                                         <div className="flex justify-between items-center">
                                             <span className="flex items-center gap-2 text-sm text-zinc-400"><Heart size={16} className="text-pink-500"/> Watched</span>
-                                            <span className="font-bold text-white">{mockAnimeWatched}</span>
+                                            <span className="font-bold text-white">{realStats.animeWatched}</span>
                                         </div>
                                         <div className="flex justify-between items-center">
                                             <span className="flex items-center gap-2 text-sm text-zinc-400"><List size={16} className="text-blue-500"/> Episodes</span>
-                                            <span className="font-bold text-white">{mockEpisodesWatched}</span>
+                                            <span className="font-bold text-white">{realStats.episodesWatched}</span>
                                         </div>
                                         <div className="flex justify-between items-center">
                                             <span className="flex items-center gap-2 text-sm text-zinc-400"><Clock size={16} className="text-green-500"/> Days</span>
-                                            <span className="font-bold text-white">{mockDaysWatched}</span>
+                                            <span className="font-bold text-white">{realStats.watchedDays}</span>
                                         </div>
                                         <div className="flex justify-between items-center">
-                                            <span className="flex items-center gap-2 text-sm text-zinc-400"><Star size={16} className="text-yellow-500"/> Mean Score</span>
-                                            <span className="font-bold text-white">{(Math.random() * (9.5 - 7.5) + 7.5).toFixed(2)}</span>
+                                            <span className="flex items-center gap-2 text-sm text-zinc-400"><MessageSquare size={16} className="text-purple-500"/> Posts</span>
+                                            <span className="font-bold text-white">{realStats.totalPosts}</span>
                                         </div>
                                     </div>
                                     

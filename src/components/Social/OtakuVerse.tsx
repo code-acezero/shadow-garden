@@ -350,7 +350,7 @@ export default function OtakuVerse({ user, onAuthRequired, highlightId }: OtakuV
   });
 
   return (
-    <div className="w-full min-h-screen bg-[#050505] flex justify-center pb-20 md:pb-0">
+    <div className="w-full h-screen overflow-hidden bg-[#050505] flex justify-center pb-20 md:pb-0">
       <style jsx global>{`
         body {
           overflow: auto !important;
@@ -400,7 +400,7 @@ export default function OtakuVerse({ user, onAuthRequired, highlightId }: OtakuV
         </header>
 
         {/* MIDDLE COLUMN (Feed) */}
-        <main className="flex-1 max-w-[600px] w-full min-h-screen border-x border-white/10">
+        <main className="flex-1 max-w-[600px] w-full h-full overflow-y-auto custom-scrollbar border-x border-white/10 pb-[100px] md:pb-0">
            {/* Sticky Header */}
            <div className="sticky top-0 z-20 bg-black/70 backdrop-blur-md border-b border-white/10">
               <h2 className="text-xl font-bold p-4 sm:hidden font-[Cinzel] text-primary-500 tracking-widest uppercase">OtakuVerse</h2>
@@ -713,32 +713,38 @@ const PostItem = React.forwardRef<HTMLDivElement, any>(({ post, highlightId, onL
 
 function CommentNode({ comment, onReply, isLast, level = 0 }: { comment: Comment, onReply: (id: string, name: string) => void, isLast?: boolean, level?: number }) {
     return (
-        <div className="relative flex gap-3 group pt-2">
-            {!isLast && <div className="absolute top-12 bottom-[-16px] left-[19px] w-[2px] bg-white/10" />}
+        <div className="flex gap-3 group pt-3 relative">
+            <div className="flex flex-col items-center">
+                <Avatar className="w-10 h-10 shrink-0 z-10"><AvatarImage src={comment.user.avatar_url}/><AvatarFallback>?</AvatarFallback></Avatar>
+                {(!isLast || (comment.replies && comment.replies.length > 0)) && <div className="w-[2px] flex-1 bg-white/10 mt-2 rounded-full" />}
+            </div>
             
-            <Avatar className="w-10 h-10 shrink-0 z-10"><AvatarImage src={comment.user.avatar_url}/><AvatarFallback>?</AvatarFallback></Avatar>
             <div className="flex-1 pb-2">
                 <div className="flex items-center gap-1.5">
                    <span className="font-bold text-[15px] text-white hover:underline cursor-pointer">{comment.user.username}</span>
-                   <span className="text-zinc-500 text-[15px]">@{comment.user.username?.toLowerCase().replace(/\s/g, '')}</span>
                    <span className="text-zinc-500 text-[15px]">·</span>
                    <span className="text-zinc-500 text-[15px] hover:underline">{formatDistanceToNow(new Date(comment.created_at), { addSuffix: false }).replace('about ', '').replace(' minutes', 'm').replace(' hours', 'h')}</span>
                 </div>
                 <p className="text-[15px] text-white leading-tight mt-0.5 whitespace-pre-wrap">{comment.content}</p>
-                <div className="flex items-center gap-6 mt-2 text-zinc-500">
-                    <button onClick={() => onReply(comment.id, comment.user.username)} className="flex items-center gap-2 group/reply">
-                       <div className="p-1.5 -ml-1.5 rounded-full group-hover/reply:bg-blue-500/10 group-hover/reply:text-blue-500 transition-colors">
-                          <MessageCircle size={16} />
-                       </div>
+                
+                {/* Meta Threads style action bar */}
+                <div className="flex items-center gap-4 mt-2 mb-2 text-zinc-500">
+                    <button className="flex items-center gap-1.5 hover:bg-white/10 p-1.5 rounded-full transition-colors hover:text-pink-500 active:scale-95">
+                        <Heart size={16} />
                     </button>
-                    <button className="flex items-center gap-2 group/like">
-                       <div className="p-1.5 -ml-1.5 rounded-full group-hover/like:bg-pink-600/10 group-hover/like:text-pink-600 transition-colors">
-                          <Heart size={16} />
-                       </div>
+                    <button onClick={() => onReply(comment.id, comment.user.username)} className="flex items-center gap-1.5 hover:bg-white/10 p-1.5 rounded-full transition-colors hover:text-white active:scale-95">
+                        <MessageCircle size={16} />
+                    </button>
+                    <button className="flex items-center gap-1.5 hover:bg-white/10 p-1.5 rounded-full transition-colors hover:text-white active:scale-95">
+                        <Repeat2 size={16} />
+                    </button>
+                    <button className="flex items-center gap-1.5 hover:bg-white/10 p-1.5 rounded-full transition-colors hover:text-white active:scale-95">
+                        <Send size={16} />
                     </button>
                 </div>
+
                 {comment.replies && comment.replies.length > 0 && (
-                    <div className="mt-0 space-y-0">
+                    <div className="mt-1 space-y-0">
                         {comment.replies.map((reply, i) => <CommentNode key={reply.id} comment={reply} onReply={onReply} isLast={i === comment.replies!.length - 1} level={level + 1} />)}
                     </div>
                 )}
