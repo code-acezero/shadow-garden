@@ -72,7 +72,7 @@ export default function RecentUpdatesSection({ initialData }: { initialData: any
                         case 'hindi': 
                             try {
                                 const hindiHome = await hpi.desidub.getHome();
-                                const latestSection = hindiHome.sections.find(s => s.title === "Latest Episode");
+                                const latestSection = hindiHome.sections.find(s => s.title === "Recently Added") || hindiHome.sections[0];
                                 results = latestSection ? latestSection.items : [];
                             } catch (e) {
                                 console.error("HPI Hindi sector reach failed", e);
@@ -81,7 +81,9 @@ export default function RecentUpdatesSection({ initialData }: { initialData: any
                             break;
                         case 'donghua':
                             try {
-                                results = await dpi.getHome(1);
+                                const donghuaHome = await dpi.getHome(1);
+                                const latestSection = donghuaHome.sections.find(s => s.title === "Latest Episodes") || donghuaHome.sections[0];
+                                results = latestSection ? latestSection.items : [];
                             } catch (e) {
                                 console.error("DPI Donghua sector reach failed", e);
                                 results = [];

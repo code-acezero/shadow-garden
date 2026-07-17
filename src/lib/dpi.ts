@@ -67,9 +67,27 @@ async function fetchDonghuaApi<T = any>(endpoint: string, params: Record<string,
 }
 
 export const dpi = {
-  async getHome(page: number = 1): Promise<DonghuaAnimeCard[]> {
-    const res = await fetchDonghuaApi<DonghuaAnimeCard[]>('/home', { page });
-    return res || [];
+  async getHome(page: number = 1): Promise<{ sections: { title: string; items: DonghuaAnimeCard[] }[] }> {
+    const res = await fetchDonghuaApi<any>('/home', { page });
+    const sections: { title: string; items: DonghuaAnimeCard[] }[] = [];
+    
+    if (res?.spotlight?.length > 0) {
+      sections.push({ title: 'Spotlight', items: res.spotlight });
+    }
+    if (res?.latestEpisodes?.length > 0) {
+      sections.push({ title: 'Latest Episodes', items: res.latestEpisodes });
+    }
+    if (res?.topDay?.length > 0) {
+      sections.push({ title: 'Popular', items: res.topDay });
+    }
+    
+    // Fallback if everything is empty
+    if (sections.length === 0) {
+       const latest = Array.isArray(res) ? res : [];
+       sections.push({ title: 'Latest Episodes', items: latest });
+    }
+
+    return { sections };
   },
 
   async search(query: string, page: number = 1): Promise<DonghuaAnimeCard[]> {

@@ -208,10 +208,27 @@ class HPIClient {
   desidub = {
     getHome: async (): Promise<DesiDubHome> => {
       const results: any = await fetchHindiApi('/home');
-      const latest = Array.isArray(results?.results) ? results.results : (Array.isArray(results) ? results : []);
-      const sections: DesiDubHome['sections'] = [
-        { title: 'Recently Added', items: latest.map(normalizeHindiCard) }
-      ];
+      const sections: DesiDubHome['sections'] = [];
+      
+      if (results?.spotlight?.length > 0) {
+        sections.push({ title: 'Spotlight', items: results.spotlight.map(normalizeHindiCard) });
+      }
+      if (results?.latestEpisodes?.length > 0) {
+        sections.push({ title: 'Recently Updated', items: results.latestEpisodes.map(normalizeHindiCard) });
+      }
+      if (results?.newAdded?.length > 0) {
+        sections.push({ title: 'Newly Added', items: results.newAdded.map(normalizeHindiCard) });
+      }
+      if (results?.topDay?.length > 0) {
+        sections.push({ title: 'Top Rated', items: results.topDay.map(normalizeHindiCard) });
+      }
+      
+      // Fallback if everything is empty
+      if (sections.length === 0) {
+         const latest = Array.isArray(results) ? results : [];
+         sections.push({ title: 'Recently Added', items: latest.map(normalizeHindiCard) });
+      }
+
       return { sections };
     },
 

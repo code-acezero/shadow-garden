@@ -29,14 +29,18 @@ function ViewAllContent() {
       try {
         let result: any;
         if (category === 'donghua') {
-           const donghuaData = await dpi.getHome(currentPage);
-           // Mock pagination for donghua since dpi.getHome just returns an array
+           const donghuaHome = await dpi.getHome(currentPage);
+           
+           // Combine all items from sections
+           const allItems: any[] = [];
+           donghuaHome.sections.forEach(s => allItems.push(...s.items));
+           
            result = {
-              results: donghuaData,
+              results: allItems,
               currentPage: currentPage,
-              hasNextPage: donghuaData.length === 24, // Assuming 24 is max per page
+              hasNextPage: allItems.length === 24, // Assuming 24 is max per page
               hasPreviousPage: currentPage > 1,
-              maxPage: 100 // Donghua scraper might not provide maxPage easily
+              maxPage: Math.max(currentPage + 1, 5) 
            };
         } else {
            result = await AnimeService.getFilteredAnime(category, currentPage);
