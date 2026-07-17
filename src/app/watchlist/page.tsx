@@ -35,6 +35,7 @@ import {
 
 // --- COMPONENTS ---
 import AnimeCard from '@/components/Anime/AnimeCard';
+import ContinueAnimeCard from '@/components/Anime/ContinueAnimeCard';
 import Footer from '@/components/Anime/Footer';
 import AuthModal from '@/components/Auth/AuthModal';
 import { demoness, hunters } from '@/lib/fonts';
@@ -361,17 +362,10 @@ function WatchlistContent() {
                                     >
                                         <div className="w-full">
                                             {isContinueItem(item) ? (
-                                                <AnimeCard 
-                                                    anime={{ 
-                                                        id: item.anime_id, 
-                                                        title: item.title, 
-                                                        poster: item.poster, 
-                                                        type: item.type || "TV",
-                                                        episode: item.episode,
-                                                        episodeId: item.episodeId,
-                                                        totalEpisodes: item.totalEpisodes
-                                                    }} 
-                                                    progress={item.progress}
+                                                <ContinueAnimeCard 
+                                                    anime={item}
+                                                    className="w-full h-full"
+                                                    onClick={(id, episodeId) => router.push(`/watch/${id}?ep=${episodeId}`)}
                                                 />
                                             ) : (
                                                 <AnimeCard anime={{ 

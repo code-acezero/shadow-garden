@@ -25,10 +25,11 @@ interface ContinueAnimeCardProps {
   anime: ContinueWatchingItem;
   onClick: (id: string, episodeId: string) => void;
   onRemove?: (id: string) => void;
-  variants: any;
+  variants?: any;
+  className?: string;
 }
 
-export default function ContinueAnimeCard({ anime, onClick, onRemove, variants }: ContinueAnimeCardProps) {
+export default function ContinueAnimeCard({ anime, onClick, onRemove, variants, className }: ContinueAnimeCardProps) {
   const [showRemove, setShowRemove] = useState(false);
   const lastTapRef = useRef<number>(0);
   const clickTimeoutRef = useRef<NodeJS.Timeout | null>(null);
@@ -63,7 +64,10 @@ export default function ContinueAnimeCard({ anime, onClick, onRemove, variants }
       whileHover={{ scale: 1.05, y: -8 }}
       whileTap={{ scale: 0.96 }}
       onClick={handleSmartClick}
-      className="flex-shrink-0 w-[42%] sm:w-[28%] md:w-[22%] lg:w-[15.5%] xl:w-[15.5%] snap-start group relative aspect-[3/4] rounded-[24px] md:rounded-[32px] overflow-hidden cursor-pointer shadow-2xl shadow-black/50 ring-1 ring-white/10 bg-[#050505] transform-gpu transition-all duration-300 z-0 hover:z-10 select-none touch-manipulation"
+      className={cn(
+        "group relative aspect-[3/4] rounded-[24px] md:rounded-[32px] overflow-hidden cursor-pointer shadow-2xl shadow-black/50 ring-1 ring-white/10 bg-[#050505] transform-gpu transition-all duration-300 z-0 hover:z-10 select-none touch-manipulation",
+        className || "flex-shrink-0 w-[42%] sm:w-[28%] md:w-[22%] lg:w-[15.5%] xl:w-[15.5%] snap-start"
+      )}
     >
       {/* 1. Background Image */}
       <div className="absolute inset-0 overflow-hidden rounded-[24px] md:rounded-[32px]">
