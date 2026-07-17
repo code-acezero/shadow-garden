@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+  <style>
+    @media (prefers-color-scheme: dark) {
+      /* Optional: Add glow logic here if supported by browser */
+    }
+  </style>
+  <circle cx="12" cy="12" r="10" fill="white" stroke="black" stroke-width="0.5" />
+  
+  <path fill="#dc2626" d="M12 2a10 10 0 0 1 0 20 5 5 0 0 1 0-10 5 5 0 0 0 0-10z" />
+  
+  <circle cx="12" cy="7" r="1.5" fill="#dc2626" />
+  
+  <circle cx="12" cy="17" r="1.5" fill="white" />
+</svg>
