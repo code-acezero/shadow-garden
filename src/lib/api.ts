@@ -76,7 +76,7 @@ const normalizeList = (item: any): string[] => {
  * dodge CORS (same pattern the old code used — this is NOT Anikoto's own
  * `/api/proxy` streaming proxy, it's this app's internal one), and unwraps
  * the `{ ok, data }` / `{ ok, cached, data }` envelope every Anikoto
- * endpoint returns.
+ * endpoint returns (or raw arrays like /api/watch).
  */
 async function fetchAnikoto<T = any>(endpoint: string, params: Record<string, any> = {}): Promise<T | null> {
     const queryParts: string[] = [];
@@ -105,8 +105,13 @@ async function fetchAnikoto<T = any>(endpoint: string, params: Record<string, an
             if (!response.ok) return null;
 
             const json = await response.json();
-            if (json?.ok === true) return (json.data ?? null) as T;
-            return null;
+            
+            // Allow raw arrays/objects through if they lack the typical "ok" wrapper
+            if (json && !Array.isArray(json) && 'ok' in json) {
+                return json.ok ? (json.data ?? null) : null;
+            }
+            return json as T;
+
         } catch (innerError: any) {
             if (innerError.name === 'AbortError') return null;
             throw innerError;
