@@ -594,9 +594,13 @@ export class AnimeService {
         if (!slug || !epNumber) return null;
 
         const data: any = await AnimeAPI_Anikoto.getWatch(slug, epNumber);
-        if (!data) return null;
+        if (!data || !Array.isArray(data)) return null;
 
-        const sources: any[] = Array.isArray(data.sources) ? data.sources : [];
+        // Parse sources from the array-based response structure
+        const sources = data
+            .filter((item: any) => item.type === 'source' && item.source)
+            .map((item: any) => item.source);
+
         // Only look within the requested category — if nothing matches, return
         // null rather than silently falling back to another category. Callers
         // (e.g. the watch page) already do their own explicit dub->sub fallback
@@ -605,17 +609,28 @@ export class AnimeService {
         if (!byCategory.length) return null;
 
         const matched =
-            byCategory.find(s => s?.server === server && (s.m3u8 || s.proxyUrl)) ||
-            byCategory.find(s => s.m3u8 || s.proxyUrl) ||
+            byCategory.find(s => s?.server?.toLowerCase() === server.toLowerCase() && (s.proxyUrl || s.m3u8 || s.url)) ||
+            byCategory.find(s => s.proxyUrl || s.m3u8 || s.url) ||
             byCategory[0];
+            
         if (!matched) return null;
 
-        const skip = data.skip_data || null;
+        // Extract skip data from the array structure if present
+        const skipBlock = data.find((item: any) => item.type === 'skip_data');
+        const skip = skipBlock ? skipBlock.skip_data : null;
+
         return {
-            url: matched.m3u8 || matched.proxyUrl || matched.url,
-            subtitles: matched.tracks || [],
+            // ✅ FORCED PROXY: Prioritizes the proxyUrl over direct m3u8 or url fields
+            url: matched.proxyUrl || matched.m3u8 || matched.url,
+            
+            // ✅ FORCED PROXY FOR SUBTITLES: Prevents CORS on caption loading
+            subtitles: matched.tracks ? matched.tracks.map((t: any) => ({
+                ...t,
+                file: t.proxyUrl || t.file
+            })) : [],
+
             server: matched.server || server,
-            isM3U8: !!matched.m3u8,
+            isM3U8: !!matched.m3u8 || !!(matched.proxyUrl && matched.proxyUrl.includes('m3u8')),
             // The CDN behind this source requires this exact Referer header or
             // it 403s the request (hotlink protection) — the app's /api/proxy
             // route previously guessed a referer from a hardcoded list of the
@@ -624,8 +639,7 @@ export class AnimeService {
             // playback.
             referer: matched.referer || null,
             // Flattened so existing player code (`streamData.intro` /
-            // `streamData.outro`) works unmodified — the new API is the first
-            // source that actually provides real skip-intro/outro timestamps.
+            // `streamData.outro`) works unmodified.
             intro: skip?.intro || null,
             outro: skip?.outro || null,
             skipData: skip
@@ -644,9 +658,12 @@ export class AnimeService {
         if (!slug || !epNumber) return null;
 
         const data: any = await AnimeAPI_Anikoto.getWatch(slug, epNumber);
-        if (!data) return null;
+        if (!data || !Array.isArray(data)) return null;
 
-        const list: any[] = Array.isArray(data.servers) ? data.servers : [];
+        // Parse servers from the array-based response structure
+        const serversBlock = data.find((item: any) => item.type === 'servers');
+        const list: any[] = serversBlock && Array.isArray(serversBlock.servers) ? serversBlock.servers : [];
+        
         const grouped: { sub: any[]; dub: any[]; raw: any[] } = { sub: [], dub: [], raw: [] };
         for (const s of list) {
             const bucket: 'sub' | 'dub' | 'raw' = s?.type === 'dub' ? 'dub' : s?.type === 'raw' ? 'raw' : 'sub';
