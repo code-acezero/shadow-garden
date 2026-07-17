@@ -201,14 +201,18 @@ async function fetchHindiApi<T = any>(endpoint: string, params: Record<string, a
 }
 
 function normalizeHindiCard(item: any): AnimeCard {
+  // The API returns episodes as {sub, dub, total} object, not a number
+  const epObj = item?.episodes;
+  const epCount = epObj?.total ?? epObj?.dub ?? epObj?.sub ?? undefined;
   return {
-    id: item?.id || '',
-    title: item?.title || 'Unknown Title',
+    id: item?.id || item?.slug || '',
+    title: item?.title || item?.titleJp || 'Unknown Title',
     image: item?.image || '',
     type: item?.type || 'TV',
-    episode: item?.episode ? String(item.episode) : undefined,
-    episodeCount: item?.episode ? String(item.episode) : undefined,
-    dataId: item?.id
+    episode: epCount !== undefined ? String(epCount) : undefined,
+    episodeCount: epCount !== undefined ? String(epCount) : undefined,
+    slug: item?.slug || item?.id || '',
+    dataId: item?.id || item?.slug || ''
   };
 }
 
@@ -280,10 +284,12 @@ class HPIClient {
       const info: any = await fetchHindiApi(`/anime/${id}`);
       if (!info) throw new Error('Anime not found');
 
-      const episodeList = Array.isArray(info.episodes) ? info.episodes.map((e: any) => ({
-        id: `${id}?ep=${e.id.replace('ep-', '')}`,
-        number: e.number ? String(e.number) : e.id.replace('ep-', ''),
-        url: '',
+      // API returns episodes at info.episodes.episodes[] (nested)
+      const rawEpisodes = info.episodes?.episodes || info.episodes || [];
+      const episodeList = Array.isArray(rawEpisodes) ? rawEpisodes.map((e: any) => ({
+        id: e.id || '',
+        number: e.number ? String(e.number) : '1',
+        url: e.href || '',
         title: e.title || `Episode ${e.number}`,
         image: info.image || ''
       })) : [];
@@ -292,21 +298,21 @@ class HPIClient {
         id,
         title: info.title || 'Unknown Title',
         englishTitle: info.title || '',
-        nativeTitle: info.title || '',
+        nativeTitle: info.titleJp || info.title || '',
         image: info.image || '',
         banner: info.cover || info.image || '',
         type: info.type || 'TV',
-        synopsis: info.description || '',
+        synopsis: info.synopsis || info.description || '',
         status: info.status || 'Unknown',
-        rating: info.rating || 'PG-13',
-        premiered: info.releaseDate || '',
+        rating: info.rating || info.malScore || 'N/A',
+        premiered: info.premiered || info.releaseDate || '',
         season: '',
-        aired: info.releaseDate || '',
-        episodesCount: String(episodeList.length || info.totalEpisodes || ''),
+        aired: info.aired || info.releaseDate || '',
+        episodesCount: String(episodeList.length || ''),
         studios: Array.isArray(info.studios) ? info.studios : [],
-        producers: [],
+        producers: Array.isArray(info.producers) ? info.producers : [],
         genres: Array.isArray(info.genres) ? info.genres : [],
-        synonyms: [],
+        synonyms: Array.isArray(info.alternativeTitles) ? info.alternativeTitles : [],
         episodes: episodeList,
         recommendations: [],
         downloads: [],
@@ -315,48 +321,46 @@ class HPIClient {
     },
 
     getStream: async (episodeId: string): Promise<HindiStream> => {
-      let id = episodeId;
-      let ep = '1';
-
-      if (episodeId.includes('?')) {
-        const [baseId, qs] = episodeId.split('?');
-        id = baseId;
-        const params = new URLSearchParams(qs);
-        ep = params.get('ep') || '1';
-      } else {
-        const parts = episodeId.split('-');
-        if (!isNaN(Number(parts[parts.length-1]))) {
-            ep = parts.pop() || '1';
-            id = parts.join('-');
-        }
-      }
-
-      // Format endpoint: /api/blakite/watch/[slug]?ep=[ep]
-      const streamData: any = await fetchHindiApi(`/watch/${id}`, { ep });
+      // Episode IDs from the API are like "31910::1-1"
+      // The watch endpoint is /watch/{episodeId} directly
+      const streamData: any = await fetchHindiApi(`/watch/${encodeURIComponent(episodeId)}`);
       
+      // Map sources from the API response
       const mappedServers = streamData?.sources ? streamData.sources.map((s: any, idx: number) => ({
-        name: s.quality || `Server ${idx + 1}`,
-        url: s.url || '',
-        isEmbed: false // These are direct streams, not embeds
+        name: s.server || `Server ${idx + 1}`,
+        url: s.proxyUrl || s.url || s.m3u8 || '',
+        isEmbed: false
       })).filter((s: any) => s.url) : [];
 
-      const primary = mappedServers[0];
+      // Also include servers from the servers.dub/sub arrays
+      if (streamData?.servers) {
+        const dubServers = streamData.servers.dub || [];
+        const subServers = streamData.servers.sub || [];
+        [...dubServers, ...subServers].forEach((s: any, idx: number) => {
+          if (s.url && !mappedServers.find((m: any) => m.url === s.url)) {
+            mappedServers.push({ name: s.name || `Server ${mappedServers.length + 1}`, url: s.url, isEmbed: false });
+          }
+        });
+      }
+
+      const primaryUrl = streamData?.url || mappedServers[0]?.url || '';
+      const referer = streamData?.sources?.[0]?.referer || 'https://blakiteapi.xyz/';
 
       return {
         id: episodeId,
-        iframe: primary?.url || '',
-        targetUrl: primary?.url || '',
-        serverUsed: primary?.name || '',
+        iframe: primaryUrl,
+        targetUrl: primaryUrl,
+        serverUsed: mappedServers[0]?.name || 'Blakite',
         servers: mappedServers,
         nextEpisode: null,
         prevEpisode: null,
         episodes: [],
-        stream: primary?.url ? { file: primary.url } : { error: 'No stream found' },
-        subtitles: streamData?.subtitles || [],
+        stream: primaryUrl ? { file: primaryUrl } : { error: 'No stream found' },
+        subtitles: streamData?.sources?.[0]?.tracks || [],
         intro: null,
         outro: null,
-        isM3U8: streamData?.isM3U8 ?? true,
-        referer: streamData?.referer || 'https://blakiteapi.xyz/'
+        isM3U8: streamData?.isM3U8 ?? false,
+        referer
       };
     },
 

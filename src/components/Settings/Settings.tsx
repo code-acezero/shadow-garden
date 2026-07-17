@@ -605,6 +605,7 @@ export default function Settings() {
 
       <div className="lg:hidden fixed top-[60px] left-0 w-full z-40 bg-[#050505]/95 backdrop-blur-xl border-b border-white/10 px-6 py-4 flex items-center justify-between shadow-2xl transition-all">
           <div className="flex items-center gap-2">
+              <button onClick={() => router.back()} className="p-2.5 rounded-full hover:bg-white/10 active:scale-95 transition-all text-white border border-white/5 mr-2"><ArrowLeft size={18}/></button>
               <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-primary to-white flex items-center justify-center shadow-[0_0_15px_var(--primary-color)]"><SettingsIcon size={16} className="text-black" /></div>
               <h1 className="text-xl font-black text-transparent bg-clip-text bg-gradient-to-r from-primary to-white tracking-widest uppercase" style={{ fontFamily: currentFont }}>Magical Core</h1>
           </div>
@@ -619,7 +620,10 @@ export default function Settings() {
                 <div className="flex-1 overflow-y-auto py-6 px-3 flex flex-col justify-between no-scrollbar">
                     <div className="space-y-6">
                         <div className="flex items-center justify-between px-2 h-10">
-                            <AnimatePresence mode="wait">{isSidebarExpanded && (<motion.div initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -10 }} className="overflow-hidden whitespace-nowrap"><h1 className="text-xl font-black text-transparent bg-clip-text bg-gradient-to-r from-primary to-white tracking-widest uppercase" style={{ fontFamily: currentFont }}>Magical Core</h1><p className="text-[9px] text-zinc-500 font-bold uppercase tracking-[0.2em]">Control Center</p></motion.div>)}</AnimatePresence>
+                            <div className="flex items-center gap-2">
+                                <button onClick={() => router.back()} className="p-2 rounded-full hover:bg-white/10 text-zinc-400 hover:text-white transition-colors" title="Go Back"><ArrowLeft size={18} /></button>
+                                <AnimatePresence mode="wait">{isSidebarExpanded && (<motion.div initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -10 }} className="overflow-hidden whitespace-nowrap"><h1 className="text-xl font-black text-transparent bg-clip-text bg-gradient-to-r from-primary to-white tracking-widest uppercase" style={{ fontFamily: currentFont }}>Magical Core</h1><p className="text-[9px] text-zinc-500 font-bold uppercase tracking-[0.2em]">Control Center</p></motion.div>)}</AnimatePresence>
+                            </div>
                             <button onClick={toggleSidebar} className="p-2 rounded-full hover:bg-white/10 text-zinc-400 hover:text-white transition-colors ml-auto">{isSidebarExpanded ? <PanelLeftClose size={18} /> : <PanelLeftOpen size={18} />}</button>
                         </div>
                         <div className="space-y-2">

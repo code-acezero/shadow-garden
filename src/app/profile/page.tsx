@@ -86,7 +86,19 @@ export default function ProfilePage() {
         </div>
     );
 
-    if (!profile) return null;
+    if (!profile) return (
+        <div className="min-h-screen bg-[#050505] flex flex-col items-center justify-center gap-6 px-4">
+            <div className="w-20 h-20 rounded-full bg-gradient-to-tr from-primary-600 to-primary-400 flex items-center justify-center shadow-[0_0_40px_rgba(220,38,38,0.3)]">
+                <Settings size={32} className="text-white" />
+            </div>
+            <h2 className="text-2xl font-black text-white tracking-wide">Sign In Required</h2>
+            <p className="text-sm text-zinc-500 text-center max-w-xs">Connect your account to access your profile and customize your experience.</p>
+            <button onClick={() => setShowAuthModal(true)} className="px-8 py-3 bg-primary-600 hover:bg-primary-500 text-white rounded-xl font-bold text-sm transition-all shadow-lg">
+                Sign In
+            </button>
+            {showAuthModal && <AuthModal isOpen={showAuthModal} onClose={() => setShowAuthModal(false)} onAuthSuccess={() => setShowAuthModal(false)} />}
+        </div>
+    );
 
     const handleUpdateProfile = async () => {
         const payload = { 
