@@ -35,7 +35,6 @@ import {
 
 // --- COMPONENTS ---
 import AnimeCard from '@/components/Anime/AnimeCard';
-import ContinueAnimeCard from '@/components/Anime/ContinueAnimeCard';
 import Footer from '@/components/Anime/Footer';
 import AuthModal from '@/components/Auth/AuthModal';
 import { demoness, hunters } from '@/lib/fonts';
@@ -362,11 +361,17 @@ function WatchlistContent() {
                                     >
                                         <div className="w-full">
                                             {isContinueItem(item) ? (
-                                                <ContinueAnimeCard 
-                                                    anime={item} 
-                                                    onClick={(id, ep) => router.push(`/watch/${id}?ep=${ep}`)}
-                                                    onRemove={() => setContinueData(d => d.filter(x => x.id !== item.id))}
-                                                    variants={{ visible: { opacity: 1 }, hidden: { opacity: 0 } }}
+                                                <AnimeCard 
+                                                    anime={{ 
+                                                        id: item.anime_id, 
+                                                        title: item.title, 
+                                                        poster: item.poster, 
+                                                        type: item.type || "TV",
+                                                        episode: item.episode,
+                                                        episodeId: item.episodeId,
+                                                        episodes: { sub: Number(item.totalEpisodes) || 0, dub: 0 }
+                                                    }} 
+                                                    progress={item.progress}
                                                 />
                                             ) : (
                                                 <AnimeCard anime={{ 
