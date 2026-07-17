@@ -13,7 +13,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Slider } from "@/components/ui/slider";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { 
-    Camera, Save, Twitter, Instagram, Github, MapPin, Globe,
+    Camera, Save, Twitter, Instagram, Github, MapPin, Globe, List,
     Users, Image as ImageIcon, Heart, Star, Flame, Settings,
     Trash2, Clock, Upload, CheckCircle, ChevronRight, Check
 } from 'lucide-react';

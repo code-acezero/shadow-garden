@@ -71,8 +71,8 @@ export default function RecentUpdatesSection({ initialData }: { initialData: any
                         case 'dub': results = await AnimeService.getDubbedAnime(1); break;
                         case 'hindi': 
                             try {
-                                const hindiHome = await hpi.desidub.getHome();
-                                const latestSection = hindiHome.sections.find(s => s.title === "Recently Added") || hindiHome.sections[0];
+                                const hindiHome = await hpi.hindi.getHome();
+                                const latestSection = hindiHome.sections.find((s: any) => s.title === "Recently Updated") || hindiHome.sections[0];
                                 results = latestSection ? latestSection.items : [];
                             } catch (e) {
                                 console.error("HPI Hindi sector reach failed", e);

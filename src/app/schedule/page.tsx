@@ -399,7 +399,7 @@ export default function SchedulePage() {
   interface UpcomingResponse { response: any[]; pageInfo?: { totalPages?: number; }; }
   const { data: upcomingData } = useSWR<UpcomingResponse>(
     ['upcoming', upcomingPage],
-    async ([_, page]) => ({ response: await AnimeService.getTopUpcoming(page), pageInfo: { totalPages: 1 } }),
+    async ([_, page]) => ({ response: await AnimeService.getTopUpcoming(page as number), pageInfo: { totalPages: 1 } }),
     { keepPreviousData: true }
   );
 

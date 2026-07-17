@@ -72,7 +72,7 @@ export interface AnimePlayerRef {
 
 const AnimePlayer = forwardRef<AnimePlayerRef, AnimePlayerProps>(({ 
   url, title, poster, intro, outro, referer, autoSkip = false, autoPlay = true, startTime = 0, subtitles = [],
-  onEnded, onNext, onProgress, onInteract, onPause, onBuffer, 
+  onEnded, onNext, onPlay, onSkipIntro, onProgress, onInteract, onPause, onBuffer, 
   controlsTimeout = 3000, onControlsChange, initialVolume = 1, initialSpeed = 1, onSettingsChange
 }, ref) => {
   // Refs

@@ -15,7 +15,7 @@ import {
   Eye, ThumbsUp
 } from 'lucide-react';
 
-import { hpi, DesiDubStream, DesiDubDetails } from '@/lib/hpi';          
+import { hpi, HindiStream, HindiDetails } from '@/lib/hpi';          
 import { supabase } from '@/lib/supabase';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
@@ -775,7 +775,7 @@ function WatchContent() {
     const loadStream = async () => {
         setStreamUrl(null); setIsStreamLoading(true); setStreamError(null);
         try {
-            const streamData: DesiDubStream = await hpi.desidub.getStream(currentEpId);
+            const streamData: HindiStream = await hpi.hindi.getStream(currentEpId);
             if (!streamData) throw new Error("No Stream Found");
             if (streamData.nextEpDate) setNextEpDate(streamData.nextEpDate);
             setStreamMeta({

@@ -827,7 +827,7 @@ function WatchContent() {
               (supabase!.from('user_continue_watching') as any).upsert(sanitized, { onConflict: 'user_id, episode_id' });
           }
 
-          let targetEpId = null;
+          let targetEpId: string | null = null;
           if (urlEpId && !isNaN(Number(urlEpId)) && anime.episodes) {
                 const requestedNumber = Number(urlEpId);
                 const foundEp = anime.episodes.find(e => e.number === requestedNumber);
@@ -911,7 +911,7 @@ function WatchContent() {
                 updateSetting('category', urlType); 
             }
             
-            let streamData: any = await AnimeService.getStream(currentEpId, settings.server, targetCategory);
+            let streamData: any = await AnimeService.getStream(currentEpId, settings.server, targetCategory as "sub" | "dub" | undefined);
             
             if (!streamData?.url && targetCategory === 'dub') {
                 console.warn("Dub missing, falling back to Sub");

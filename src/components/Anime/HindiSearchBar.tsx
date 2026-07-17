@@ -27,7 +27,7 @@ export default function HindiSearchBar({ onClose, isActive, setIsActive, onToggl
         setIsLoading(true);
         try {
           // Changed to HPI call
-          const data = await hpi.desidub.search(query, 1);
+          const data = await hpi.hindi.search(query, 1);
           if (data?.items) {
             setSuggestions(data.items.slice(0, 5));
           }

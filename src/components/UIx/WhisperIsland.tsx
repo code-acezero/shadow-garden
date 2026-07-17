@@ -149,7 +149,7 @@ const HindiSearchBar = ({ onClose, isActive, setIsActive, onToggleMode }: { onCl
           setIsLoading(true);
           try {
             // Using HPI Client - Suggestions Endpoint
-            const data = await hpi.desidub.getSuggestions(query);
+            const data = await hpi.hindi.getSuggestions(query);
             if (Array.isArray(data)) {
                 setSuggestions(data.slice(0, 5));
             } else if ((data as any)?.items) {

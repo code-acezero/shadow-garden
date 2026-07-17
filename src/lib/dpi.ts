@@ -45,6 +45,16 @@ export interface DonghuaServer {
   url: string;
 }
 
+export interface DonghuaStreamResult {
+  servers: DonghuaServer[];
+  iframe?: string;
+  nextEpDate?: string | null;
+  subtitles?: any[];
+  intro?: { start: number; end: number } | null;
+  outro?: { start: number; end: number } | null;
+  referer?: string | null;
+}
+
 async function fetchDonghuaApi<T = any>(endpoint: string, params: Record<string, any> = {}): Promise<T | null> {
   const queryParts = Object.entries(params)
     .filter(([, v]) => v !== undefined && v !== null && v !== '')
@@ -103,5 +113,60 @@ export const dpi = {
   async getServers(id: string): Promise<DonghuaServer[]> {
     const res = await fetchDonghuaApi<DonghuaServer[]>('/servers', { id });
     return res || [];
+  },
+
+  async getStream(episodeId: string): Promise<DonghuaStreamResult> {
+    const res = await fetchDonghuaApi<any>('/watch', { id: episodeId });
+    const rawServers: DonghuaServer[] = Array.isArray(res?.servers)
+      ? res.servers
+      : Array.isArray(res?.sources)
+        ? (res.sources as any[]).map((s: any, i: number) => ({ name: s.quality || `Server ${i + 1}`, url: s.url || '' }))
+        : res?.url ? [{ name: 'Default', url: res.url }] : [];
+    return {
+      servers: rawServers,
+      iframe: res?.iframe || res?.url || '',
+      nextEpDate: res?.nextEpDate || null,
+      subtitles: res?.subtitles || [],
+      intro: res?.intro || null,
+      outro: res?.outro || null,
+      referer: res?.referer || null
+    };
+  },
+
+  bridge: {
+    getSmartDetails: async (id: string) => {
+      const info = await fetchDonghuaApi<any>(`/info/${encodeURIComponent(id)}`);
+      if (!info) throw new Error('Anime not found');
+      const detail = info?.detail || info;
+      const episodesData: any[] = info?.episodes?.episodes || info?.episodes || [];
+      return {
+        id: (detail?.id || id) as string,
+        title: (detail?.title || 'Unknown Title') as string,
+        nativeTitle: ((detail?.alternativeTitles || [])[0] || '') as string,
+        image: (detail?.image || '') as string,
+        banner: (detail?.image || '') as string,
+        type: (detail?.type || 'TV') as string,
+        synopsis: (detail?.synopsis || '') as string,
+        status: 'Ongoing' as string,
+        rating: (detail?.rating || 'PG-13') as string,
+        premiered: '' as string,
+        aired: '' as string,
+        episodesCount: String(episodesData.length || 0),
+        studios: (detail?.studios || []) as string[],
+        producers: (detail?.producers || []) as string[],
+        genres: (detail?.genres || []) as string[],
+        synonyms: (detail?.alternativeTitles || []) as string[],
+        episodes: episodesData.map((e: any) => ({
+          id: (e.id || e.href || String(e.number)) as string,
+          number: String(e.number || '1'),
+          url: (e.href || '') as string,
+          title: (e.title || `Episode ${e.number}`) as string,
+          image: (detail?.image || '') as string
+        })),
+        recommendations: [] as any[],
+        downloads: [] as any[],
+        satoruId: null
+      };
+    }
   }
 };

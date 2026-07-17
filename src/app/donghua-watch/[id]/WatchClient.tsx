@@ -15,7 +15,7 @@ import {
   Eye, ThumbsUp
 } from 'lucide-react';
 
-import { dpi, DonghuaServer, DonghuaAnimeDetail } from '@/lib/dpi';          
+import { dpi, DonghuaStreamResult, DonghuaServer, DonghuaAnimeDetail } from '@/lib/dpi';          
 import { supabase } from '@/lib/supabase';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
@@ -775,11 +775,11 @@ function WatchContent() {
     const loadStream = async () => {
         setStreamUrl(null); setIsStreamLoading(true); setStreamError(null);
         try {
-            const streamData: DonghuaServer[] = await dpi.getStream(currentEpId);
+            const streamData: DonghuaStreamResult = await dpi.getStream(currentEpId) as DonghuaStreamResult;
             if (!streamData) throw new Error("No Stream Found");
             if (streamData.nextEpDate) setNextEpDate(streamData.nextEpDate);
             setStreamMeta({
-                subtitles: streamData.subtitles || [],
+                subtitles: streamData.subtitles?.map((s: any) => ({ lang: s.lang || 'English', url: s.url || s.file })) || [],
                 intro: streamData.intro || null,
                 outro: streamData.outro || null,
                 referer: streamData.referer || null
@@ -791,7 +791,7 @@ function WatchContent() {
             const rawServers = streamData.servers || [];
             const vmoly = rawServers.find(s => s.name.toLowerCase().includes('vmoly'));
             const mirror = rawServers.find(s => s.name.toLowerCase().includes('mirror') || s.name.toLowerCase().includes('streamtape'));
-            const others = rawServers.filter(s => !s.name.toLowerCase().includes('vmoly') && !s.name.toLowerCase().includes('mirror') && !s.name.toLowerCase().includes('streamtape'));
+            const others = rawServers.filter((s: any) => !s.name.toLowerCase().includes('vmoly') && !s.name.toLowerCase().includes('mirror') && !s.name.toLowerCase().includes('streamtape'));
 
             const organizedServers = [];
             if (vmoly) organizedServers.push({ ...vmoly, label: "Portal 1" });

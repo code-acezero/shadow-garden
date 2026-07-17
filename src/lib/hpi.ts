@@ -4,17 +4,17 @@
 //  MIGRATION NOTE
 // ==========================================================================
 //  This used to be a thin client over two separate cheerio-scraped Hindi
-//  anime sources — DesiDub (via /api/desidub, src/lib/scrapers/desidub.ts)
+//  anime sources — Hindi (via /api/Hindi, src/lib/scrapers/Hindi.ts)
 //  and Satoru (via /api/satoru, src/lib/scrapers/satoru.ts) — glued together
 //  by `bridge.getSmartDetails()`, which searched Satoru by title to borrow
-//  its recommendations since DesiDub alone didn't have any worth showing.
+//  its recommendations since Hindi alone didn't have any worth showing.
 //
 //  Both scrapers are gone. This file now talks directly to a single clean
 //  JSON API instead: https://anime-api-ashen-chi.vercel.app (an
 //  itzzzme/anime-api-family Hindi-dub fork). Since it's one coherent
 //  catalog, there's no second source to "bridge" against anymore —
 //  `bridge.getSmartDetails()` is kept only so the one call site that used it
-//  doesn't need to change, but it's now a thin alias for `desidub.getDetails`
+//  doesn't need to change, but it's now a thin alias for `Hindi.getDetails`
 //  with the anime's own recommendations attached.
 //
 //  IMPORTANT — verification status: I could not get a live response back
@@ -30,7 +30,7 @@
 //  `/api/stream` and `/api/servers` shapes, which I have the least
 //  confidence in.
 //
-//  All public method names on `hpi` (`hpi.desidub.*`, `hpi.bridge.*`) and
+//  All public method names on `hpi` (`hpi.Hindi.*`, `hpi.bridge.*`) and
 //  every exported type are UNCHANGED, so none of the 5 components that
 //  import from this file (WhisperIsland, RecentUpdatesSection,
 //  HindiSearchBar, HindiAnimeCard, hindi-watch/WatchClient) needed to be
@@ -77,18 +77,18 @@ export interface AnimeCard {
 
 /**
  * ==========================================
- * DESIDUB TYPES (unchanged shape — now backed by the new source)
+ * Hindi TYPES (unchanged shape — now backed by the new source)
  * ==========================================
  */
 
-export interface DesiDubHome {
+export interface HindiHome {
   sections: {
     title: string;
     items: AnimeCard[];
   }[];
 }
 
-export interface DesiDubEpisode {
+export interface HindiEpisode {
   id: string;
   number: string;
   url: string;
@@ -96,7 +96,7 @@ export interface DesiDubEpisode {
   image: string;
 }
 
-export interface DesiDubDetails extends AnimeCard {
+export interface HindiDetails extends AnimeCard {
   nativeTitle: string;
   englishTitle: string;
   synonyms: string[];
@@ -111,7 +111,7 @@ export interface DesiDubDetails extends AnimeCard {
   studios: string[];
   producers: string[];
   genres: string[];
-  episodes: DesiDubEpisode[];
+  episodes: HindiEpisode[];
   recommendations: AnimeCard[];
   downloads: { resolution: string; url: string; host: string }[];
 
@@ -120,7 +120,7 @@ export interface DesiDubDetails extends AnimeCard {
   tags?: string[];
 }
 
-export interface DesiDubStream {
+export interface HindiStream {
   id: string;
   iframe: string;
   servers: { name: string; url: string; isEmbed: boolean }[];
@@ -149,7 +149,7 @@ export interface DesiDubStream {
   referer?: string | null;
 }
 
-export interface DesiDubQtip {
+export interface HindiQtip {
   name: string;
   description: string;
   rating: string;
@@ -205,10 +205,10 @@ function normalizeHindiCard(item: any): AnimeCard {
 }
 
 class HPIClient {
-  desidub = {
-    getHome: async (): Promise<DesiDubHome> => {
+  hindi = {
+    getHome: async (): Promise<HindiHome> => {
       const results: any = await fetchHindiApi('/home');
-      const sections: DesiDubHome['sections'] = [];
+      const sections: HindiHome['sections'] = [];
       
       if (results?.spotlight?.length > 0) {
         sections.push({ title: 'Spotlight', items: results.spotlight.map(normalizeHindiCard) });
@@ -268,7 +268,7 @@ class HPIClient {
       };
     },
 
-    getDetails: async (id: string): Promise<DesiDubDetails> => {
+    getDetails: async (id: string): Promise<HindiDetails> => {
       const info: any = await fetchHindiApi(`/anime/${id}`);
       if (!info) throw new Error('Anime not found');
 
@@ -306,7 +306,7 @@ class HPIClient {
       };
     },
 
-    getStream: async (episodeId: string): Promise<DesiDubStream> => {
+    getStream: async (episodeId: string): Promise<HindiStream> => {
       let id = episodeId;
       let ep = '1';
 
@@ -352,8 +352,8 @@ class HPIClient {
       };
     },
 
-    getQtip: async (dataId: string): Promise<DesiDubQtip> => {
-      const details = await this.getDetails(dataId);
+    getQtip: async (dataId: string): Promise<HindiQtip> => {
+      const details = await this.hindi.getDetails(dataId);
       return {
         name: details.title,
         description: details.synopsis,
@@ -370,7 +370,7 @@ class HPIClient {
 
   bridge = {
     getSmartDetails: async (id: string) => {
-      const details = await this.desidub.getDetails(id);
+      const details = await this.hindi.getDetails(id);
       if (!details) throw new Error('Anime not found');
       return { ...details, satoruId: null };
     }

@@ -483,10 +483,10 @@ export default function OtakuVerse({ user, onAuthRequired, highlightId }: OtakuV
                         ref={(el) => { postRefs.current[post.id] = el; }}
                         onLike={() => handleLike(post)}
                         onComment={() => { setActivePostForComments(post); fetchComments(post.id); }}
-                        onShare={(platform) => handleShare(platform, post)}
+                        onShare={(platform: string) => handleShare(platform, post)}
                         onBookmark={() => handleBookmark(post)}
                         onDelete={() => handleDeletePost(post.id)}
-                        onImageClick={(src) => setLightbox({ isOpen: true, src })}
+                        onImageClick={(src: string) => setLightbox({ isOpen: true, src })}
                         currentUserId={user?.id}
                      />
                   ))}

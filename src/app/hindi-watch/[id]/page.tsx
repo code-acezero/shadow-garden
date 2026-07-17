@@ -17,7 +17,7 @@ export async function generateMetadata(
   const id = params.id;
 
   // Fetch minimal info for SEO
-  const data = await hpi.desidub.getDetails(id).catch(() => null);
+  const data = await hpi.hindi.getDetails(id).catch(() => null);
 
   if (!data) {
     return {

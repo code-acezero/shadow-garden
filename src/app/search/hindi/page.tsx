@@ -34,7 +34,7 @@ function HindiSearchContent() {
     setLoading(true);
     try {
       if (keyword) {
-        const data = await hpi.desidub.search(keyword, currentPage);
+        const data = await hpi.hindi.search(keyword, currentPage);
         const items = Array.isArray(data) ? data : (data as any)?.items || (data as any)?.results || [];
         setResults(items.map((item: any) => ({
           id: item.id || item.slug,
@@ -48,7 +48,7 @@ function HindiSearchContent() {
         setHasNextPage(items.length >= 20);
       } else {
         // Show latest Hindi anime by default
-        const data = await hpi.desidub.getLatest(currentPage);
+        const homeData = await hpi.hindi.getHome(); const latestSection = homeData.sections.find((s: any) => s.title === "Recently Updated") || homeData.sections[0]; const data = latestSection ? latestSection.items : [];
         const items = Array.isArray(data) ? data : (data as any)?.items || (data as any)?.results || [];
         setResults(items.map((item: any) => ({
           id: item.id || item.slug,

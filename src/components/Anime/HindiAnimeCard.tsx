@@ -84,7 +84,7 @@ export default function HindiAnimeCard({ anime }: { anime: any }) {
     setLoading(true);
     try {
       // Direct numeric ID fetch from new scraper
-      const res = await hpi.desidub.getQtip(normalized.dataId); 
+      const res = await hpi.hindi.getQtip(normalized.dataId); 
 
       setQtip({
         jname: res.japaneseTitle, 
