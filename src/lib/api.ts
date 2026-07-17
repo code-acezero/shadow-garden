@@ -616,6 +616,13 @@ export class AnimeService {
             subtitles: matched.tracks || [],
             server: matched.server || server,
             isM3U8: !!matched.m3u8,
+            // The CDN behind this source requires this exact Referer header or
+            // it 403s the request (hotlink protection) — the app's /api/proxy
+            // route previously guessed a referer from a hardcoded list of the
+            // OLD backend's known domains, which doesn't include this source's
+            // CDN. Passing it through explicitly is what actually fixes
+            // playback.
+            referer: matched.referer || null,
             // Flattened so existing player code (`streamData.intro` /
             // `streamData.outro`) works unmodified — the new API is the first
             // source that actually provides real skip-intro/outro timestamps.

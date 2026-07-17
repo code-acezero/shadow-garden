@@ -1,7 +1,8 @@
 // src/lib/proxy/rewritePlaylistUrls.ts
 
-export function rewritePlaylistUrls(playlistText: string, baseUrl: string) {
+export function rewritePlaylistUrls(playlistText: string, baseUrl: string, referer?: string) {
   const base = new URL(baseUrl);
+  const refererSuffix = referer ? `&referer=${encodeURIComponent(referer)}` : '';
   
   return playlistText
     .split("\n")
@@ -19,7 +20,7 @@ export function rewritePlaylistUrls(playlistText: string, baseUrl: string) {
             const resolvedKeyUrl = new URL(uri, base).href;
             
             // Wrap the key URL in your proxy
-            return `URI="/api/proxy?url=${encodeURIComponent(resolvedKeyUrl)}"`;
+            return `URI="/api/proxy?url=${encodeURIComponent(resolvedKeyUrl)}${refererSuffix}"`;
           } catch (e) {
             return match; // Keep original if fail
           }
@@ -45,7 +46,7 @@ export function rewritePlaylistUrls(playlistText: string, baseUrl: string) {
             return trimmed;
         }
 
-        return `/api/proxy?url=${encodeURIComponent(resolvedUrl)}`;
+        return `/api/proxy?url=${encodeURIComponent(resolvedUrl)}${refererSuffix}`;
       } catch (e) {
         return line; 
       }

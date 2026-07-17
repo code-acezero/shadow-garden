@@ -36,6 +36,7 @@ function determineReferer(url: string): string {
 // =========================================================
 export async function GET(request: NextRequest) {
     const url = request.nextUrl.searchParams.get('url');
+    const explicitReferer = request.nextUrl.searchParams.get('referer');
 
     if (!url) {
         return NextResponse.json({ error: "Mission Failed: No URL" }, { status: 400 });
@@ -45,8 +46,10 @@ export async function GET(request: NextRequest) {
     const isM3U8 = decodedUrl.includes('.m3u8');
     const isImage = /\.(jpg|jpeg|png|webp|gif|svg)$/i.test(decodedUrl) || decodedUrl.includes('image');
 
-    // Dynamic Spoof Signal
-    const dynamicReferer = determineReferer(decodedUrl);
+    // Prefer a referer the source itself told us to use (this is how the new
+    // Anikoto-backed sources tell us what they need) over guessing from a
+    // hardcoded domain list, which only covers the old backend's CDNs.
+    const dynamicReferer = explicitReferer ? decodeURIComponent(explicitReferer) : determineReferer(decodedUrl);
 
     try {
         // We use your custom fetcher to maintain consistency
@@ -78,7 +81,7 @@ export async function GET(request: NextRequest) {
         // --- PHASE B: HLS PLAYLIST (Rewriting relative paths) ---
         if (isM3U8) {
             const playlistText = await response.text();
-            const modifiedPlaylist = rewritePlaylistUrls(playlistText, decodedUrl);
+            const modifiedPlaylist = rewritePlaylistUrls(playlistText, decodedUrl, explicitReferer ? dynamicReferer : undefined);
 
             return new NextResponse(modifiedPlaylist, {
                 status: 200,

@@ -144,6 +144,9 @@ export interface DesiDubStream {
   intro?: { start: number; end: number } | null;
   outro?: { start: number; end: number } | null;
   isM3U8?: boolean;
+  // Additive — same hotlink-protection referer requirement as the main
+  // Anikoto source. itzzzme-family APIs commonly return this as `headers.Referer`.
+  referer?: string | null;
 }
 
 export interface DesiDubQtip {
@@ -349,7 +352,8 @@ class HPIClient {
         })),
         intro: primary?.raw?.intro || primary?.raw?.skip_data?.intro || null,
         outro: primary?.raw?.outro || primary?.raw?.skip_data?.outro || null,
-        isM3U8: primary?.raw ? extractList(primary.raw, 'sources')[0]?.isM3U8 !== false : true
+        isM3U8: primary?.raw ? extractList(primary.raw, 'sources')[0]?.isM3U8 !== false : true,
+        referer: primary?.raw?.headers?.Referer || primary?.raw?.headers?.referer || null
       };
     },
 

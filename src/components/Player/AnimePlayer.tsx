@@ -42,6 +42,9 @@ interface AnimePlayerProps {
   subtitles?: any[]; 
   intro?: { start: number; end: number };
   outro?: { start: number; end: number };
+  // The upstream CDN behind `url` may require this exact Referer header or
+  // it rejects the request. Forwarded to /api/proxy so it can send it.
+  referer?: string | null;
   autoSkip?: boolean;
   autoPlay?: boolean; 
   startTime?: number; 
@@ -68,7 +71,7 @@ export interface AnimePlayerRef {
 }
 
 const AnimePlayer = forwardRef<AnimePlayerRef, AnimePlayerProps>(({ 
-  url, title, poster, intro, outro, autoSkip = false, autoPlay = true, startTime = 0, subtitles = [],
+  url, title, poster, intro, outro, referer, autoSkip = false, autoPlay = true, startTime = 0, subtitles = [],
   onEnded, onNext, onProgress, onInteract, onPause, onBuffer, 
   controlsTimeout = 3000, onControlsChange, initialVolume = 1, initialSpeed = 1, onSettingsChange
 }, ref) => {
@@ -291,7 +294,9 @@ const AnimePlayer = forwardRef<AnimePlayerRef, AnimePlayerProps>(({
     setIsBuffering(true); 
     if (hlsRef.current) hlsRef.current.destroy();
 
-    const finalUrl = url.startsWith('http') ? `/api/proxy?url=${encodeURIComponent(url)}` : url;
+    const finalUrl = url.startsWith('http')
+        ? `/api/proxy?url=${encodeURIComponent(url)}${referer ? `&referer=${encodeURIComponent(referer)}` : ''}`
+        : url;
 
     setCanSave(false);
     const timer = setTimeout(() => { setCanSave(true); }, 10000);

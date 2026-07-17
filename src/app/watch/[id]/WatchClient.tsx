@@ -603,6 +603,7 @@ function WatchContent() {
   const [isLoadingChars, setIsLoadingChars] = useState(false);
   const [currentEpId, setCurrentEpId] = useState<string | null>(null);
   const [streamUrl, setStreamUrl] = useState<string | null>(null);
+  const [streamReferer, setStreamReferer] = useState<string | null>(null);
   const [subtitles, setSubtitles] = useState<any[]>([]);
   const [intro, setIntro] = useState<any>(null);
   const [outro, setOutro] = useState<any>(null);
@@ -909,7 +910,7 @@ function WatchContent() {
                     updateSetting('category', 'sub'); 
                 }
             }
-            if (streamData) { setStreamUrl(streamData.url); setSubtitles(streamData.subtitles || []); setIntro(streamData.intro); setOutro(streamData.outro); } else { throw new Error("No Stream Found"); }
+            if (streamData) { setStreamUrl(streamData.url); setStreamReferer(streamData.referer || null); setSubtitles(streamData.subtitles || []); setIntro(streamData.intro); setOutro(streamData.outro); } else { throw new Error("No Stream Found"); }
         } catch(e) { setStreamError("Portal Unstable"); }
         setIsStreamLoading(false);
     };
@@ -969,7 +970,7 @@ function WatchContent() {
                         </motion.div>
                     )}
                 </AnimatePresence>
-                {streamUrl ? ( <AnimePlayer key={currentEpId} ref={playerRef} url={streamUrl || ""} subtitles={subtitles} intro={intro} outro={outro} title={currentEpisode?.title || anime.title} startTime={resumeTime} autoPlay={settings.autoPlay} autoSkip={settings.autoSkip} initialVolume={settings.volume} onProgress={(s:any) => progressRef.current = s.playedSeconds} onEnded={() => { saveProgress(true); if(settings.autoNext && nextEpisode) handleEpisodeClick(nextEpisode.id); }} onInteract={() => { if(!hideInterface) resetInterfaceTimer(); }} onPlay={handlePlaybackStart} onPause={handlePause} onSkipIntro={handleSkipIntro} /> ) : ( <div className="w-full h-full flex items-center justify-center border-b border-white/5"><FantasyLoader text="OPENING PORTAL..." /></div> )}
+                {streamUrl ? ( <AnimePlayer key={currentEpId} ref={playerRef} url={streamUrl || ""} referer={streamReferer} subtitles={subtitles} intro={intro} outro={outro} title={currentEpisode?.title || anime.title} startTime={resumeTime} autoPlay={settings.autoPlay} autoSkip={settings.autoSkip} initialVolume={settings.volume} onProgress={(s:any) => progressRef.current = s.playedSeconds} onEnded={() => { saveProgress(true); if(settings.autoNext && nextEpisode) handleEpisodeClick(nextEpisode.id); }} onInteract={() => { if(!hideInterface) resetInterfaceTimer(); }} onPlay={handlePlaybackStart} onPause={handlePause} onSkipIntro={handleSkipIntro} /> ) : ( <div className="w-full h-full flex items-center justify-center border-b border-white/5"><FantasyLoader text="OPENING PORTAL..." /></div> )}
             </div>
 
             <motion.div initial={{ y: -20, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ duration: 0.5, delay: 0.2 }} className={cn("w-full transition-all duration-500 will-change-transform", hideInterface ? "opacity-0 pointer-events-none translate-y-4" : "opacity-100 translate-y-0")}>

@@ -570,7 +570,7 @@ function WatchContent() {
   const [availableServers, setAvailableServers] = useState<any[]>([]);
   // Additive — the new Hindi source gives us real subtitles + skip ranges
   // (the old iframe-embed source gave none of this), so pass it through.
-  const [streamMeta, setStreamMeta] = useState<{ subtitles: any[]; intro: any; outro: any }>({ subtitles: [], intro: null, outro: null });
+  const [streamMeta, setStreamMeta] = useState<{ subtitles: any[]; intro: any; outro: any; referer: string | null }>({ subtitles: [], intro: null, outro: null, referer: null });
 
   const [hideInterface, setHideInterface] = useState(false);
   const interfaceTimeoutRef = useRef<NodeJS.Timeout | null>(null);
@@ -781,7 +781,8 @@ function WatchContent() {
             setStreamMeta({
                 subtitles: streamData.subtitles || [],
                 intro: streamData.intro || null,
-                outro: streamData.outro || null
+                outro: streamData.outro || null,
+                referer: streamData.referer || null
             });
 
             // INSTANT PROGRESS MARK ON LOAD (TRICK SAVE)
@@ -853,6 +854,7 @@ function WatchContent() {
                         subtitles={streamMeta.subtitles}
                         intro={streamMeta.intro || undefined}
                         outro={streamMeta.outro || undefined}
+                        referer={streamMeta.referer}
                         autoPlay={settings.autoPlay}
                         autoSkip={settings.autoSkip}
                         onEnded={() => { if (settings.autoPlay && nextEpisode) handleEpisodeClick(nextEpisode.id); }}
