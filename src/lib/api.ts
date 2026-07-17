@@ -127,6 +127,86 @@ async function fetchAnikoto<T = any>(endpoint: string, params: Record<string, an
 }
 
 /**
+ * SSE (Server-Sent Events) fetcher for the Anikoto /watch endpoint.
+ * The /watch endpoint returns data as an SSE stream (`data: {...}\n\n`)
+ * instead of standard JSON. This function reads the full response as text,
+ * parses each `data: ` prefixed line as JSON, and collects all parsed
+ * objects into an array — matching the shape getStream expects.
+ */
+async function fetchAnikotoSSE(endpoint: string, params: Record<string, any> = {}): Promise<any[] | null> {
+    const queryParts: string[] = [];
+    for (const [key, value] of Object.entries(params)) {
+        if (value === undefined || value === null || value === '') continue;
+        if (Array.isArray(value)) {
+            for (const v of value) {
+                if (v === undefined || v === null || v === '') continue;
+                queryParts.push(`${encodeURIComponent(key)}[]=${encodeURIComponent(String(v))}`);
+            }
+        } else {
+            queryParts.push(`${encodeURIComponent(key)}=${encodeURIComponent(String(value))}`);
+        }
+    }
+    const queryString = queryParts.length > 0 ? `?${queryParts.join('&')}` : '';
+    const targetUrl = `${BASE_URL}${endpoint}${queryString}`;
+    const proxyUrl = typeof window !== 'undefined' ? `/api/proxy?url=${encodeURIComponent(targetUrl)}` : targetUrl;
+
+    try {
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 30000); // 30s for SSE stream resolution
+
+        try {
+            const response = await fetch(proxyUrl, { signal: controller.signal });
+            clearTimeout(timeoutId);
+            if (!response.ok) return null;
+
+            const text = await response.text();
+
+            // First, try parsing as standard JSON (in case the API or proxy
+            // already collapsed the SSE stream into a single JSON response)
+            try {
+                const json = JSON.parse(text);
+                // Unwrap { ok, data } envelope if present
+                if (json && typeof json === 'object' && !Array.isArray(json)) {
+                    if ('ok' in json) {
+                        const inner = json.ok ? (json.data ?? json) : null;
+                        return inner ? (Array.isArray(inner) ? inner : [inner]) : null;
+                    }
+                    if ('data' in json && Array.isArray(json.data)) {
+                        return json.data;
+                    }
+                }
+                return Array.isArray(json) ? json : [json];
+            } catch {
+                // Not valid JSON — parse as SSE stream
+            }
+
+            // Parse SSE: each event is `data: <json>\n\n`
+            const results: any[] = [];
+            const lines = text.split('\n');
+            for (const line of lines) {
+                const trimmed = line.trim();
+                if (!trimmed.startsWith('data:')) continue;
+                const jsonStr = trimmed.slice(5).trim(); // Remove 'data:' prefix
+                if (!jsonStr) continue;
+                try {
+                    const parsed = JSON.parse(jsonStr);
+                    results.push(parsed);
+                } catch {
+                    // Skip malformed lines
+                }
+            }
+            return results.length > 0 ? results : null;
+
+        } catch (innerError: any) {
+            if (innerError.name === 'AbortError') return null;
+            throw innerError;
+        }
+    } catch {
+        return null;
+    }
+}
+
+/**
  * Defensive unwrapper for the listing endpoints (genre/type/latest/status/
  * filter). Live testing showed these actually return
  * `{ results, topRated?, currentPage, hasNextPage, hasPreviousPage,
@@ -308,7 +388,7 @@ export class AnimeAPI_Anikoto {
     }
 
     static async getWatch(slug: string, ep: number | string) {
-        return fetchAnikoto(`/watch/${encodeURIComponent(slug)}`, { ep });
+        return fetchAnikotoSSE(`/watch/${encodeURIComponent(slug)}`, { ep });
     }
 }
 
