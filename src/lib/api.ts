@@ -563,6 +563,45 @@ export class AnimeService {
         return extractPaged(data).results.map(normalizeCard);
     }
 
+    static async getFilteredAnime(category: string, page = 1) {
+        let rawData: any;
+        
+        switch (category) {
+            case 'sub':
+                rawData = await AnimeAPI_Anikoto.filter({ language: ['sub'], page });
+                break;
+            case 'dub':
+                rawData = await AnimeAPI_Anikoto.filter({ language: ['dub'], page });
+                break;
+            case 'trending':
+                rawData = await AnimeAPI_Anikoto.getTrending(page);
+                break;
+            case 'popular':
+                rawData = await AnimeAPI_Anikoto.getMostPopular(page);
+                break;
+            case 'recent':
+                rawData = await AnimeAPI_Anikoto.getLatest('latest-updated', page);
+                break;
+            case 'completed':
+                rawData = await AnimeAPI_Anikoto.getLatest('latest-completed', page);
+                break;
+            default:
+                // Default to all/recent if category is unknown or "all"
+                rawData = await AnimeAPI_Anikoto.getLatest('latest-updated', page);
+                break;
+        }
+
+        const paged = extractPaged(rawData);
+        return {
+            results: paged.results.map(normalizeCard),
+            currentPage: paged.currentPage ?? page,
+            hasNextPage: paged.hasNextPage ?? false,
+            hasPreviousPage: paged.hasPreviousPage ?? false,
+            maxPage: paged.maxPage,
+            minPage: paged.minPage
+        };
+    }
+
     static async getByGenre(genre: string, page = 1) {
         const data: any = await AnimeAPI_Anikoto.getGenre(genre, page);
         return extractPaged(data).results.map(normalizeCard);
