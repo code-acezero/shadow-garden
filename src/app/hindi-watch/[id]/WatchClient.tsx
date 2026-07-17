@@ -789,16 +789,9 @@ function WatchContent() {
             saveProgress(currentEpId);
 
             const rawServers = streamData.servers || [];
-            const vmoly = rawServers.find(s => s.name.toLowerCase().includes('vmoly'));
-            const mirror = rawServers.find(s => s.name.toLowerCase().includes('mirror') || s.name.toLowerCase().includes('streamtape'));
-            const others = rawServers.filter(s => !s.name.toLowerCase().includes('vmoly') && !s.name.toLowerCase().includes('mirror') && !s.name.toLowerCase().includes('streamtape'));
+            const organizedServers = rawServers.map((s: any) => ({ ...s, label: s.name || 'Server' }));
 
-            const organizedServers = [];
-            if (vmoly) organizedServers.push({ ...vmoly, label: "Portal 1" });
-            if (mirror) organizedServers.push({ ...mirror, label: "Portal 2 (Ads)" });
-            others.forEach((s) => { organizedServers.push({ ...s, label: `Portal ${organizedServers.length + 1} (Ads)` }); });
-
-            if (organizedServers.length === 0 && streamData.iframe) organizedServers.push({ name: 'Default', url: streamData.iframe, label: 'Portal 1' });
+            if (organizedServers.length === 0 && streamData.iframe) organizedServers.push({ name: 'Default', url: streamData.iframe, label: 'Default' });
             setAvailableServers(organizedServers);
 
             if (organizedServers.length > 0) {

@@ -309,7 +309,8 @@ const AnimePlayer = forwardRef<AnimePlayerRef, AnimePlayerProps>(({
         }
     };
 
-    if (Hls.isSupported()) {
+    const isMp4 = url.toLowerCase().includes('.mp4');
+    if (!isMp4 && Hls.isSupported()) {
       const hls = new Hls({ capLevelToPlayerSize: true, autoStartLoad: true, startLevel: -1, startPosition: startTime > 0 ? startTime : -1 });
       hls.loadSource(finalUrl);
       hls.attachMedia(video);
@@ -331,7 +332,7 @@ const AnimePlayer = forwardRef<AnimePlayerRef, AnimePlayerProps>(({
           if (data.fatal) setIsBuffering(false);
       });
       hlsRef.current = hls;
-    } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
+    } else if (isMp4 || video.canPlayType('application/vnd.apple.mpegurl')) {
       video.src = finalUrl;
       video.addEventListener('loadedmetadata', () => { 
           if (startTime > 0 && !hasInitializedRef.current) {

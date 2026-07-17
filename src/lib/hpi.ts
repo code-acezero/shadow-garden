@@ -113,6 +113,7 @@ export interface HindiDetails extends AnimeCard {
   genres: string[];
   episodes: HindiEpisode[];
   recommendations: AnimeCard[];
+  related: AnimeCard[];
   downloads: { resolution: string; url: string; host: string }[];
 
   views?: string;
@@ -222,23 +223,25 @@ class HPIClient {
       const results: any = await fetchHindiApi('/home');
       const sections: HindiHome['sections'] = [];
       
+      const filterAnime = (items: any[]) => items.filter((i: any) => i.type !== 'Drama' && i.type !== 'Live Action');
+
       if (results?.spotlight?.length > 0) {
-        sections.push({ title: 'Spotlight', items: results.spotlight.map(normalizeHindiCard) });
+        sections.push({ title: 'Spotlight', items: filterAnime(results.spotlight).map(normalizeHindiCard) });
       }
       if (results?.latestEpisodes?.length > 0) {
-        sections.push({ title: 'Recently Updated', items: results.latestEpisodes.map(normalizeHindiCard) });
+        sections.push({ title: 'Recently Updated', items: filterAnime(results.latestEpisodes).map(normalizeHindiCard) });
       }
       if (results?.newAdded?.length > 0) {
-        sections.push({ title: 'Newly Added', items: results.newAdded.map(normalizeHindiCard) });
+        sections.push({ title: 'Newly Added', items: filterAnime(results.newAdded).map(normalizeHindiCard) });
       }
       if (results?.topDay?.length > 0) {
-        sections.push({ title: 'Top Rated', items: results.topDay.map(normalizeHindiCard) });
+        sections.push({ title: 'Top Rated', items: filterAnime(results.topDay).map(normalizeHindiCard) });
       }
       
       // Fallback if everything is empty
       if (sections.length === 0) {
          const latest = Array.isArray(results) ? results : [];
-         sections.push({ title: 'Recently Added', items: latest.map(normalizeHindiCard) });
+         sections.push({ title: 'Recently Added', items: filterAnime(latest).map(normalizeHindiCard) });
       }
 
       return { sections };
@@ -281,7 +284,11 @@ class HPIClient {
     },
 
     getDetails: async (id: string): Promise<HindiDetails> => {
-      const info: any = await fetchHindiApi(`/anime/${id}`);
+      const [info, recommendationsData, relatedData] = await Promise.all([
+        fetchHindiApi(`/anime/${id}`),
+        fetchHindiApi(`/anime/${id}/recommendations`).catch(() => []),
+        fetchHindiApi(`/anime/${id}/related`).catch(() => [])
+      ]);
       if (!info) throw new Error('Anime not found');
 
       // API returns episodes at info.episodes.episodes[] (nested)
@@ -314,7 +321,8 @@ class HPIClient {
         genres: Array.isArray(info.genres) ? info.genres : [],
         synonyms: Array.isArray(info.alternativeTitles) ? info.alternativeTitles : [],
         episodes: episodeList,
-        recommendations: [],
+        recommendations: Array.isArray(recommendationsData) ? recommendationsData.map(normalizeHindiCard) : [],
+        related: Array.isArray(relatedData) ? relatedData.map(normalizeHindiCard) : [],
         downloads: [],
         dataId: id
       };
