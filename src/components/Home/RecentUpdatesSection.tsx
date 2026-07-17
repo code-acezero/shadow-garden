@@ -201,7 +201,7 @@ export default function RecentUpdatesSection({ initialData }: { initialData: any
                 </div>
 
                 <Link 
-                    href="/catalog" 
+                    href={`/view/${filter === 'all' ? 'recent' : filter === 'hindi' ? 'recent' : filter}`} 
                     className="order-2 md:order-3 group flex-shrink-0 flex items-center gap-0.5 md:gap-1 text-[9px] md:text-[10px] font-bold text-zinc-400 hover:text-white transition-colors uppercase tracking-widest whitespace-nowrap"
                 >
                     View All
