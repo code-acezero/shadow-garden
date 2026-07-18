@@ -77,6 +77,8 @@ export default function DonghuaHomeClient() {
   // Map spotlight items to match SpotlightSlider requirements
   const formattedSpotlight = spotlightData.map(item => ({
       ...item,
+      poster: item.image,
+      jname: item.title,
       description: item.title,
       baseRoute: `/donghua-watch/${item.id}`
   }));

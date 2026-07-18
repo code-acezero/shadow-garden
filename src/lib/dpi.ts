@@ -61,11 +61,12 @@ async function fetchDonghuaApi<T = any>(endpoint: string, params: Record<string,
     .map(([k, v]) => `${encodeURIComponent(k)}=${encodeURIComponent(String(v))}`);
   const queryString = queryParts.length > 0 ? `?${queryParts.join('&')}` : '';
   const targetUrl = `${DONGHUA_API_BASE}${endpoint}${queryString}`;
+  const proxyUrl = typeof window !== 'undefined' ? `/api/proxy?url=${encodeURIComponent(targetUrl)}` : targetUrl;
   
   try {
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 10000);
-    const response = await fetch(targetUrl, { signal: controller.signal, cache: 'no-store' });
+    const response = await fetch(proxyUrl, { signal: controller.signal, cache: 'no-store' });
     clearTimeout(timeoutId);
     if (!response.ok) return null;
     const json = await response.json();
@@ -87,8 +88,14 @@ export const dpi = {
     if (res?.latestEpisodes?.length > 0) {
       sections.push({ title: 'Latest Episodes', items: res.latestEpisodes });
     }
+    if (res?.newRelease?.length > 0) {
+      sections.push({ title: 'New Releases', items: res.newRelease });
+    }
+    if (res?.newAdded?.length > 0) {
+      sections.push({ title: 'Recently Added', items: res.newAdded });
+    }
     if (res?.topDay?.length > 0) {
-      sections.push({ title: 'Popular', items: res.topDay });
+      sections.push({ title: 'Popular Today', items: res.topDay });
     }
     
     // Fallback if everything is empty

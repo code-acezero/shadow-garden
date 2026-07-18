@@ -3,7 +3,8 @@
 import React from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Home, Flame, MessageCircle, Heart, User } from 'lucide-react';
+import { Home, MessageCircle, Heart, User } from 'lucide-react';
+import { DragonIcon } from '@/components/UIx/DragonIcon';
 import { cn } from '@/lib/utils';
 
 export default function MobileTabBar() {
@@ -11,7 +12,7 @@ export default function MobileTabBar() {
 
   const tabs = [
     { id: 'home', icon: Home, label: 'Home', path: '/home' },
-    { id: 'donghua', icon: Flame, label: 'Donghua', path: '/donghua' },
+    { id: 'donghua', icon: DragonIcon, label: 'Donghua', path: '/donghua' },
     { id: 'social', icon: MessageCircle, label: 'Social', path: '/social' },
     { id: 'watchlist', icon: Heart, label: 'Saved', path: '/watchlist' },
     { id: 'profile', icon: User, label: 'Profile', path: '/profile' },
