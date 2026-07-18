@@ -6,6 +6,7 @@ import AnimeCard from '@/components/Anime/AnimeCard';
 import { AnimeService } from '@/lib/api';
 import { dpi } from '@/lib/dpi';
 import { hpi } from '@/lib/hpi';
+import { omni } from '@/lib/omni';
 import { demoness, hunters } from '@/lib/fonts';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
@@ -36,6 +37,9 @@ const HINDI_GENRES = ["Action", "Adventure", "Animation", "Comedy", "Crime", "Do
 const HINDI_TYPES = ["Movie", "Series", "Drama"];
 const HINDI_STATUS = ["Ongoing", "Completed"];
 const HINDI_SORT = [{value: 'newest', label: 'Latest', icon: Clock}, {value: 'score', label: 'Top Rated', icon: Star}];
+
+const DRAMA_CATEGORIES = ["korean-drama", "chinese-drama", "japanese-drama", "hindi-dubbed"];
+const DRAMA_SORT = [{value: 'newest', label: 'Latest', icon: Clock}];
 
 // --- SUB COMPONENTS ---
 function FilterChip({ label, active, onClick }: { label: string; active: boolean; onClick: () => void }) {
@@ -169,6 +173,18 @@ function SearchContent() {
             const res = await hpi.hindi.filter({ sort: 'updated_at', page: currentPage });
             data = { results: res.items || [], hasNextPage: res.pagination?.hasNextPage, currentPage: res.pagination?.currentPage };
         }
+      } else if (selectedLibrary === 'drama') {
+        if (keyword) {
+            const res = await omni.drama.search(keyword, currentPage);
+            data = { results: res.items || [], hasNextPage: res.pagination?.hasNextPage, currentPage: res.pagination?.currentPage };
+        } else if (selectedGenres.length > 0) {
+            // We use 'selectedGenres' to store the Drama Category (e.g. korean-drama)
+            const res = await omni.drama.getCategory(selectedGenres[0], currentPage);
+            data = { results: res.items || [], hasNextPage: res.pagination?.hasNextPage, currentPage: res.pagination?.currentPage };
+        } else {
+            const res = await omni.drama.getCategory('korean-drama', currentPage);
+            data = { results: res.items || [], hasNextPage: res.pagination?.hasNextPage, currentPage: res.pagination?.currentPage };
+        }
       } else {
         if (modeParam === 'az') {
           data = await AnimeService.getFilteredAnime('recent', currentPage);
@@ -291,9 +307,9 @@ function SearchContent() {
             </p>
           )}
 
-                    {/* Library Tabs */}
-          <div className="mt-4 flex gap-2">
-            {['main', 'donghua', 'hindi'].map(lib => (
+          {/* Library Tabs */}
+          <div className="mt-4 flex flex-wrap gap-2">
+            {['main', 'donghua', 'hindi', 'drama'].map(lib => (
                 <button
                     key={lib}
                     onClick={() => {
@@ -356,7 +372,7 @@ function SearchContent() {
 
           {/* Sort Chips */}
           <div className="mt-5 flex items-center gap-3 flex-wrap">
-            {(selectedLibrary === 'donghua' ? DONGHUA_SORT : selectedLibrary === 'hindi' ? HINDI_SORT : SORT_OPTIONS).map(opt => (
+            {(selectedLibrary === 'donghua' ? DONGHUA_SORT : selectedLibrary === 'hindi' ? HINDI_SORT : selectedLibrary === 'drama' ? DRAMA_SORT : SORT_OPTIONS).map(opt => (
               <button
                 key={opt.value}
                 onClick={() => {
@@ -405,17 +421,24 @@ function SearchContent() {
               {/* Genres */}
               <div>
                 <span className="text-[10px] font-bold text-zinc-500 uppercase tracking-[0.2em] mb-3 block flex items-center gap-2">
-                  <Hash size={12} /> Genres
+                  <Hash size={12} /> {selectedLibrary === 'drama' ? 'Categories' : 'Genres'}
                 </span>
                 <div className="flex flex-wrap gap-2">
                   {(() => {
-                    const activeGenres = selectedLibrary === 'donghua' ? DONGHUA_GENRES : selectedLibrary === 'hindi' ? HINDI_GENRES : GENRES;
+                    const activeGenres = selectedLibrary === 'donghua' ? DONGHUA_GENRES : selectedLibrary === 'hindi' ? HINDI_GENRES : selectedLibrary === 'drama' ? DRAMA_CATEGORIES : GENRES;
                     return activeGenres.map(g => (
                       <FilterChip
                         key={g}
-                        label={g}
+                        label={g.replace(/-/g, ' ')}
                         active={selectedGenres.includes(g.toLowerCase())}
-                        onClick={() => toggleGenre(g)}
+                        onClick={() => {
+                          if (selectedLibrary === 'drama') {
+                            // Drama only supports single category select
+                            setSelectedGenres(selectedGenres.includes(g) ? [] : [g]);
+                          } else {
+                            toggleGenre(g);
+                          }
+                        }}
                       />
                     ));
                   })()}
@@ -424,8 +447,8 @@ function SearchContent() {
 
               {/* Dropdowns Grid */}
               <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                {selectedLibrary !== 'donghua' && <SelectDropdown label="Type" icon={Tv} options={selectedLibrary === 'hindi' ? HINDI_TYPES : TYPES} value={selectedType} onChange={setSelectedType} />}
-                <SelectDropdown label="Status" icon={Info} options={selectedLibrary === 'donghua' ? DONGHUA_STATUS : selectedLibrary === 'hindi' ? HINDI_STATUS : STATUS_OPTIONS} value={selectedStatus} onChange={setSelectedStatus} />
+                {selectedLibrary !== 'donghua' && selectedLibrary !== 'drama' && <SelectDropdown label="Type" icon={Tv} options={selectedLibrary === 'hindi' ? HINDI_TYPES : TYPES} value={selectedType} onChange={setSelectedType} />}
+                {selectedLibrary !== 'drama' && <SelectDropdown label="Status" icon={Info} options={selectedLibrary === 'donghua' ? DONGHUA_STATUS : selectedLibrary === 'hindi' ? HINDI_STATUS : STATUS_OPTIONS} value={selectedStatus} onChange={setSelectedStatus} />}
                 {selectedLibrary === 'main' && <SelectDropdown label="Season" icon={Calendar} options={SEASONS} value={selectedSeason} onChange={setSelectedSeason} />}
                 {selectedLibrary === 'main' && <SelectDropdown label="Year" icon={Layers} options={YEARS} value={selectedYear} onChange={setSelectedYear} />}
               </div>

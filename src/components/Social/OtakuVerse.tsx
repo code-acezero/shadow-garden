@@ -77,6 +77,8 @@ export default function OtakuVerse({ user, onAuthRequired, highlightId }: OtakuV
   const [lightbox, setLightbox] = useState<{ isOpen: boolean; src: string }>({ isOpen: false, src: '' });
   const [searchQuery, setSearchQuery] = useState('');
   const [trendingTags, setTrendingTags] = useState<{tag: string, count: number, cat: string}[]>([]);
+  const [aniListNews, setAniListNews] = useState<any[]>([]);
+  const [isAniNewsLoading, setIsAniNewsLoading] = useState(true);
 
   const channelRef = useRef<any>(null);
   const isVisibleRef = useRef(true);
@@ -104,6 +106,38 @@ export default function OtakuVerse({ user, onAuthRequired, highlightId }: OtakuV
       }, 600);
     }
   }, [isLoading, highlightId]);
+
+  // --- ANILIST NEWS LOGIC ---
+  useEffect(() => {
+    const fetchAniListNews = async () => {
+      try {
+        const query = `
+          query {
+            Page(page: 1, perPage: 5) {
+              threads(sort: ID_DESC) {
+                id
+                title
+                createdAt
+                replyCount
+              }
+            }
+          }
+        `;
+        const res = await fetch('https://graphql.anilist.co', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+          body: JSON.stringify({ query })
+        });
+        const data = await res.json();
+        if (data?.data?.Page?.threads) setAniListNews(data.data.Page.threads);
+      } catch (e) {
+        console.error("Failed to fetch AniList news", e);
+      } finally {
+        setIsAniNewsLoading(false);
+      }
+    };
+    fetchAniListNews();
+  }, []);
 
   // --- 1. FETCH LOGIC ---
   const fetchPosts = useCallback(async (showLoading = false) => {
@@ -523,6 +557,31 @@ export default function OtakuVerse({ user, onAuthRequired, highlightId }: OtakuV
                 
                 <div className="p-4 hover:bg-white/5 cursor-pointer transition-colors text-primary-500 text-[15px] rounded-b-2xl">
                    Show more
+                </div>
+            </div>
+
+            {/* AniList News Box */}
+            <div className="bg-[#16181c] rounded-2xl overflow-hidden border border-white/5 mb-4">
+                <h3 className="font-black text-xl p-4 text-white flex items-center justify-between">
+                   Anime News
+                   {isAniNewsLoading && <Loader2 className="w-4 h-4 animate-spin text-zinc-500" />}
+                </h3>
+                
+                {aniListNews.length > 0 ? aniListNews.map((news) => (
+                   <div key={news.id} onClick={() => window.open(`https://anilist.co/forum/thread/${news.id}`, '_blank')} className="px-4 py-3 hover:bg-white/5 cursor-pointer transition-colors flex justify-between items-start">
+                      <div>
+                         <p className="text-[13px] text-zinc-500">AniList Community</p>
+                         <p className="font-bold text-[14px] text-white line-clamp-2 leading-tight mt-0.5">{news.title}</p>
+                         <p className="text-[13px] text-zinc-500 mt-1">{news.replyCount} replies</p>
+                      </div>
+                      <MoreHorizontal className="text-zinc-500 w-5 h-5 shrink-0 hover:text-primary-500 rounded-full hover:bg-primary-500/10 transition-colors" />
+                   </div>
+                )) : !isAniNewsLoading && (
+                   <div className="px-4 py-3 text-zinc-500 text-[13px]">No news available right now.</div>
+                )}
+                
+                <div onClick={() => window.open('https://anilist.co/forum/recent', '_blank')} className="p-4 hover:bg-white/5 cursor-pointer transition-colors text-primary-500 text-[15px] rounded-b-2xl">
+                   View more on AniList
                 </div>
             </div>
 
