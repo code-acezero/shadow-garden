@@ -1009,10 +1009,14 @@ function WatchContent() {
                 let dubServers: any[] = [];
 
                 if (Array.isArray(streamData.servers)) {
-                    // For Hindi, we usually just put them in the current category
+                    // For Hindi, we always force DUB since the content is inherently Hindi dubbed
                     const mapped = mapServerArray(streamData.servers);
-                    if (targetCategory === 'dub') dubServers = mapped;
-                    else subServers = mapped;
+                    dubServers = mapped;
+                    subServers = [];
+                    if (targetCategory !== 'dub') {
+                        targetCategory = 'dub';
+                        setTimeout(() => updateSetting('category', 'dub'), 0);
+                    }
                 } else if (streamData.servers) {
                     if (streamData.servers.sub) subServers = mapServerArray(streamData.servers.sub);
                     if (streamData.servers.dub) dubServers = mapServerArray(streamData.servers.dub);
