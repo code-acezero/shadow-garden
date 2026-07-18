@@ -597,6 +597,24 @@ function WatchContent() {
     setPopupIndex(prev => prev + 1);
   }, [popupIndex]);
 
+  const iframeRef = useRef<HTMLIFrameElement>(null);
+
+  const handleSeekIframe = (seconds: number) => {
+      if (playerRef.current) {
+          const newTime = playerRef.current.getCurrentTime() + seconds;
+          playerRef.current.seekTo(Math.max(0, newTime));
+          return;
+      }
+      if (iframeRef.current && iframeRef.current.contentWindow) {
+          try {
+              // Attempt standard Dailymotion / HTML5 iframe postMessage protocols
+              iframeRef.current.contentWindow.postMessage(JSON.stringify({ event: 'command', func: 'seekTo', args: [seconds, true] }), '*');
+              iframeRef.current.contentWindow.postMessage({ type: 'seek', time: seconds, relative: true }, '*');
+              iframeRef.current.contentWindow.postMessage(`seek=${seconds}&relative=true`, '*');
+          } catch(e) {}
+      }
+  };
+
   const openCharacter = useCallback((id: string) => navigateToPopup('character', id), [navigateToPopup]);
   const openActor = useCallback((id: string) => navigateToPopup('actor', id), [navigateToPopup]);
   const goBack = useCallback(() => setPopupIndex(prev => Math.max(0, prev - 1)), []);
@@ -779,6 +797,30 @@ function WatchContent() {
             const details = await dpi.bridge.getSmartDetails(animeId);
             if (!details) throw new Error("Anime not found");
 
+            let related: any[] = [];
+            let recommendations: any[] = [];
+            try {
+                const homeData = await dpi.getHome(1);
+                const spotlight = homeData.sections.find(s => s.title.toLowerCase().includes('spotlight'))?.items || [];
+                const popular = homeData.sections.find(s => s.title.toLowerCase().includes('popular') || s.title.toLowerCase().includes('release'))?.items || [];
+                
+                related = popular.slice(0, 6).map((item: any) => ({
+                    id: item.id,
+                    title: item.title,
+                    poster: item.image,
+                    type: item.type || 'TV',
+                    episodes: { sub: 0, dub: 0 }
+                }));
+                
+                recommendations = spotlight.slice(0, 10).map((item: any) => ({
+                    id: item.id,
+                    title: item.title,
+                    poster: item.image,
+                    type: item.type || 'TV',
+                    episodes: { sub: 0, dub: 0 }
+                }));
+            } catch(err) {}
+
             const universalData: UniversalAnime = {
                 id: details.id,
                 title: details.title,
@@ -813,14 +855,8 @@ function WatchContent() {
                 })),
                 trailers: [],
                 seasons: [],
-                recommendations: details.recommendations.map(r => ({
-                    id: r.id,
-                    title: r.title,
-                    poster: r.image,
-                    type: r.type,
-                    episodes: { sub: 0, dub: parseInt(r.episode || '0', 10) }
-                })) as any[],
-                related: [],
+                recommendations,
+                related,
                 characters: []
             };
 
@@ -1064,7 +1100,7 @@ function WatchContent() {
   if (!anime) return (<div className="min-h-screen bg-[#050505] flex items-center justify-center"><div className="w-12 h-12 border-4 border-emerald-600 border-t-transparent rounded-full animate-spin" /></div>);
 
   return (
-    <div className="min-h-screen bg-[#050505] text-gray-100 pb-24 md:pb-20 pt-[env(safe-area-inset-top)] relative font-sans overflow-x-hidden">
+    <div className="min-h-screen bg-[#050505] text-gray-100 pb-24 md:pb-20 pt-[calc(env(safe-area-inset-top)+80px)] md:pt-[calc(env(safe-area-inset-top)+100px)] relative font-sans overflow-x-hidden">
       <style jsx global>{`
           .custom-scrollbar::-webkit-scrollbar { width: 6px; height: 6px; display: block; }
           .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
@@ -1091,7 +1127,7 @@ function WatchContent() {
                     streamUrl.includes('.m3u8') || streamUrl.includes('.mp4') || streamUrl.includes('/api/proxy') ? (
                         <AnimePlayer key={currentEpId} ref={playerRef} url={streamUrl || ""} referer={streamReferer} subtitles={subtitles} intro={intro} outro={outro} title={currentEpisode?.title || anime.title} startTime={resumeTime} autoPlay={settings.autoPlay} autoSkip={settings.autoSkip} initialVolume={settings.volume} onProgress={(s:any) => progressRef.current = s.playedSeconds} onEnded={() => { saveProgress(true); if(settings.autoNext && nextEpisode) handleEpisodeClick(nextEpisode.id); }} onInteract={() => { if(!hideInterface) resetInterfaceTimer(); }} onPlay={handlePlaybackStart} onPause={handlePause} onSkipIntro={handleSkipIntro} /> 
                     ) : (
-                        <iframe src={streamUrl} className="w-full h-full border-0" allowFullScreen allow="autoplay; fullscreen" />
+                        <iframe ref={iframeRef} src={streamUrl} className="w-full h-full border-0" allowFullScreen allow="autoplay; fullscreen" />
                     )
                 ) : ( <div className="w-full h-full flex items-center justify-center border-b border-white/5"><FantasyLoader text="OPENING PORTAL..." /></div> )}
             </div>
@@ -1102,8 +1138,8 @@ function WatchContent() {
                     <div className="flex w-full justify-between items-center gap-3">
                         <div className="flex items-center gap-3 w-full">
                             <button disabled={!prevEpisode} onClick={() => prevEpisode && handleEpisodeClick(prevEpisode.id)} className={cn("flex items-center justify-center gap-2 px-4 h-8 rounded-full border text-[10px] font-black uppercase tracking-tighter transition-all duration-300 shadow-md shadow-black/40 whitespace-nowrap flex-1", prevEpisode ? "bg-white/5 border-white/10 text-zinc-300 hover:bg-emerald-600 hover:border-emerald-500 hover:text-white" : "opacity-10 border-white/5 text-zinc-600")}><SkipBack size={12}/> PREV</button>
-                            <button onClick={() => updateSetting('autoSkip', !settings.autoSkip)} className="flex items-center justify-center gap-2 px-4 h-8 rounded-full border border-white/5 bg-white/5 text-[10px] font-black uppercase tracking-tighter transition-all flex-1 hover:bg-white/10"><FastForward size={12} className={cn("transition-colors", settings.autoSkip ? "text-emerald-500 shadow-[0_0_10px_teal]" : "text-zinc-500")}/><span className={cn(settings.autoSkip ? "text-white" : "text-zinc-500")}>SKIP</span></button>
-                            <button onClick={() => updateSetting('autoPlay', !settings.autoPlay)} className="flex items-center justify-center gap-2 px-4 h-8 rounded-full border border-white/5 bg-white/5 text-[10px] font-black uppercase tracking-tighter transition-all flex-1 hover:bg-white/10"><Play size={12} className={cn("transition-colors", settings.autoPlay ? "text-emerald-500 shadow-[0_0_10px_teal]" : "text-zinc-500")}/><span className={cn(settings.autoPlay ? "text-white" : "text-zinc-500")}>AUTO</span></button>
+                            <button onClick={() => handleSeekIframe(-10)} className="flex items-center justify-center gap-2 px-4 h-8 rounded-full border border-white/5 bg-white/5 text-[10px] font-black uppercase tracking-tighter transition-all flex-1 hover:bg-white/10"><SkipBack size={12} className="text-zinc-500"/><span className="text-zinc-500">-10s</span></button>
+                            <button onClick={() => handleSeekIframe(10)} className="flex items-center justify-center gap-2 px-4 h-8 rounded-full border border-white/5 bg-white/5 text-[10px] font-black uppercase tracking-tighter transition-all flex-1 hover:bg-white/10"><SkipForward size={12} className="text-zinc-500"/><span className="text-zinc-500">+10s</span></button>
                             <button onClick={() => updateSetting('autoNext', !settings.autoNext)} className="flex items-center justify-center gap-2 px-4 h-8 rounded-full border border-white/5 bg-white/5 text-[10px] font-black uppercase tracking-tighter transition-all flex-1 hover:bg-white/10"><SkipForward size={12} className={cn("transition-colors", settings.autoNext ? "text-emerald-500 shadow-[0_0_10px_teal]" : "text-zinc-500")}/><span className={cn(settings.autoNext ? "text-white" : "text-zinc-500")}>NEXT</span></button>
                             {nextEpisode ? (<button onClick={() => handleEpisodeClick(nextEpisode.id)} className="flex items-center justify-center gap-2 px-4 h-8 rounded-full border border-white/10 bg-white/5 text-zinc-300 text-[10px] font-black uppercase tracking-widest transition-all hover:bg-emerald-600 flex-1 whitespace-nowrap group">NEXT EP <SkipForward size={12} className="group-hover:translate-x-1 transition-transform" /></button>) : (<button disabled className="flex items-center justify-center gap-2 px-4 h-8 rounded-full border border-white/5 bg-white/5 text-zinc-600 text-[10px] font-black uppercase tracking-widest flex-1 whitespace-nowrap opacity-50 cursor-not-allowed">NEXT EP <SkipForward size={12}/></button>)}
                             <Button onClick={() => updateSetting('dimMode', !settings.dimMode)} variant="ghost" size="icon" className={cn("rounded-full w-8 h-8 transition-all hover:scale-110 shadow-emerald-900/10 flex-shrink-0", settings.dimMode ? "text-yellow-500 bg-yellow-500/10" : "text-zinc-600 hover:bg-white/5 shadow-none")}><Lightbulb size={14} /></Button>
@@ -1146,8 +1182,8 @@ function WatchContent() {
                 <div className="flex lg:hidden w-full bg-[#0a0a0a] border border-white/5 rounded-[30px] shadow-emerald-900/10 shadow-lg px-4 py-4 flex-col gap-3 overflow-hidden relative z-[60] mt-3">
                     <div className="flex w-full justify-between items-center gap-2">
                         <button disabled={!prevEpisode} onClick={() => prevEpisode && handleEpisodeClick(prevEpisode.id)} className="flex-1 bg-white/5 h-8 rounded-full border border-white/5 flex items-center justify-center text-zinc-400 hover:text-white active:bg-white/10"><SkipBack size={14}/></button>
-                        <button onClick={() => updateSetting('autoSkip', !settings.autoSkip)} className={cn("flex-1 h-8 rounded-full border flex items-center justify-center gap-0.5 transition-colors relative", settings.autoSkip ? "bg-emerald-600/20 border-emerald-500 text-emerald-500" : "bg-white/5 border-white/5 text-zinc-400")}><FastForward size={14}/><sup className="font-bold text-[8px] top-[-2px] text-inherit">A</sup></button>
-                        <button onClick={() => updateSetting('autoPlay', !settings.autoPlay)} className={cn("flex-1 h-8 rounded-full border flex items-center justify-center gap-0.5 transition-colors relative", settings.autoPlay ? "bg-emerald-600/20 border-emerald-500 text-emerald-500" : "bg-white/5 border-white/5 text-zinc-400")}><Play size={14}/><sup className="font-bold text-[8px] top-[-2px] text-inherit">A</sup></button>
+                        <button onClick={() => handleSeekIframe(-10)} className="flex-1 bg-white/5 h-8 rounded-full border border-white/5 flex items-center justify-center text-zinc-400 hover:text-white active:bg-white/10 gap-1"><SkipBack size={14}/> -10s</button>
+                        <button onClick={() => handleSeekIframe(10)} className="flex-1 bg-white/5 h-8 rounded-full border border-white/5 flex items-center justify-center text-zinc-400 hover:text-white active:bg-white/10 gap-1">+10s <SkipForward size={14}/></button>
                         <button onClick={() => updateSetting('autoNext', !settings.autoNext)} className={cn("flex-1 h-8 rounded-full border flex items-center justify-center gap-0.5 transition-colors relative", settings.autoNext ? "bg-emerald-600/20 border-emerald-500 text-emerald-500" : "bg-white/5 border-white/5 text-zinc-400")}><SkipForward size={14}/><sup className="font-bold text-[8px] top-[-2px] text-inherit">A</sup></button>
                         <button disabled={!nextEpisode} onClick={() => nextEpisode && handleEpisodeClick(nextEpisode.id)} className="flex-1 bg-white/5 h-8 rounded-full border border-white/5 flex items-center justify-center text-zinc-400 hover:text-white active:bg-white/10"><SkipForward size={14}/></button>
                     </div>
