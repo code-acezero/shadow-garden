@@ -580,7 +580,8 @@ function WatchContent() {
 
   // --- POPUP STACK ---
   const [popupHistory, setPopupHistory] = useState<{type: 'character'|'actor', id: string}[]>([]);
-    const activePopup = popupIndex >= 0 ? popupHistory[popupIndex] : null;
+  const [popupIndex, setPopupIndex] = useState(-1);
+  const activePopup = popupIndex >= 0 ? popupHistory[popupIndex] : null;
 
   const navigateToPopup = useCallback((type: 'character'|'actor', id: string) => {
     setPopupHistory(prev => { const n = prev.slice(0, popupIndex + 1); n.push({ type, id }); return n; });
@@ -1094,63 +1095,6 @@ function WatchContent() {
                         </motion.div>
                     </LayoutGroup>
                 </ScrollArea>
-            </motion.div>
-
-            <div className="contents xl:contents">
-                <div className="order-3 xl:order-3 xl:col-span-12 w-full" onKeyDown={(e) => e.stopPropagation()}>
-                    <ShadowComments key={user?.id || 'guest'} episodeId={currentEpId || "general"} />
-                </div>
-                <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} transition={{ duration: 0.6, delay: 0.4 }} className="order-4 xl:order-2 xl:col-span-8 h-auto xl:h-[650px] bg-[#0a0a0a] rounded-[40px] border border-white/5 overflow-hidden flex flex-col shadow-2xl relative shadow-primary-900/20">
-                    <div className="flex-shrink-0 relative p-8 pt-16 flex flex-col sm:flex-row gap-10 bg-gradient-to-b from-primary-600/5 to-transparent">
-                        <div className="relative shrink-0 mx-auto lg:mx-0 flex flex-col gap-6 w-full lg:w-auto items-center lg:items-start text-center lg:text-left">
-                            <div className="relative p-[3px] rounded-3xl overflow-hidden group/poster shadow-[0_0_40px_rgba(220,38,38,0.2)] mx-auto sm:mx-0 w-fit">
-                                <div className="absolute inset-[-150%] bg-[conic-gradient(from_0deg,transparent,30%,#dc2626_50%,transparent_70%)] animate-[spin_3s_linear_infinite] opacity-60 blur-[1px]" />
-                                <img src={anime.poster} className="w-44 h-60 rounded-3xl border border-white/10 object-cover relative z-10 shadow-2xl shadow-black" alt={anime.title} loading="lazy" decoding="async"/>
-                            </div>
-                            <div className="flex lg:hidden flex-col gap-3 w-full items-center text-center">
-                                <h1 className="text-2xl font-black text-white font-[Cinzel] leading-none tracking-tighter drop-shadow-2xl shadow-black scale-[0.85] origin-center">{anime.title}</h1>
-                                <div className="flex flex-wrap gap-3 mt-3 justify-center items-center">
-                                    <div className="flex items-center flex-wrap justify-center gap-4 text-[11px] text-zinc-400 font-black bg-white/5 border border-white/5 px-5 py-2 rounded-full uppercase tracking-widest shadow-inner shadow-black/20 max-w-full">
-                                             {formatRating(anime.stats.rating) && (<><span className={cn(formatRating(anime.stats.rating)?.includes('18') || formatRating(anime.stats.rating)?.includes('R') ? "text-primary-500" : "text-zinc-400")}>{formatRating(anime.stats.rating)}</span><span className="w-1.5 h-1.5 bg-zinc-800 rounded-full"/></>)}
-                                            <span className={cn(anime.info.status.includes('Airing') ? 'text-green-500 animate-pulse' : 'text-zinc-500')}>{anime.info.status}</span>
-                                            <span className="w-1.5 h-1.5 bg-zinc-800 rounded-full"/>
-                                            <div className="flex items-center gap-1.5"><Clock className="w-3.5 h-3.5 text-primary-600 shadow-primary-900/20"/> {anime.stats.duration}</div>
-                                            <span className="w-1.5 h-1.5 bg-zinc-800 rounded-full"/>
-                                            <div className="text-yellow-500">MAL: {anime.stats.malScore}</div>
-                                    </div>
-                                </div>
-                                <div className="flex justify-center w-full"><TrailerSection videos={anime.trailers} /></div>
-                            </div>
-                            <div className="hidden lg:flex justify-center w-full"><TrailerSection videos={anime.trailers} /></div>
-                        </div>
-                        <div className="hidden lg:flex flex-1 pt-2 text-left z-10 flex-col h-full w-full">
-                            <h1 className="text-3xl md:text-5xl font-black text-white font-[Cinzel] leading-none mb-2 tracking-tighter drop-shadow-2xl shadow-black scale-[0.85] origin-left">{anime.title}</h1>
-                            {anime.jname && <p className="text-[10px] text-zinc-600 font-black uppercase tracking-[0.4em] mb-6 opacity-60 drop-shadow-sm">{anime.jname}</p>}
-                            <div className="flex flex-wrap gap-4 mt-3 justify-start items-center">
-                                <div className="flex items-center gap-4 text-[11px] text-zinc-400 font-black bg-white/5 border border-white/5 px-5 py-2 rounded-full uppercase tracking-widest shadow-inner shadow-black/20">
-                                     {formatRating(anime.stats.rating) && (<><span className={cn(formatRating(anime.stats.rating)?.includes('18') || formatRating(anime.stats.rating)?.includes('R') ? "text-primary-500" : "text-zinc-400")}>{formatRating(anime.stats.rating)}</span><span className="w-1.5 h-1.5 bg-zinc-800 rounded-full"/></>)}
-                                     <span className={cn(anime.info.status.includes('Airing') ? 'text-green-500 animate-pulse' : 'text-zinc-500')}>{anime.info.status}</span>
-                                     <span className="w-1.5 h-1.5 bg-zinc-800 rounded-full"/>
-                                     <div className="flex items-center gap-1.5"><Clock className="w-3.5 h-3.5 text-primary-600 shadow-primary-900/20"/> {anime.stats.duration}</div>
-                                     <span className="w-1.5 h-1.5 bg-zinc-800 rounded-full"/>
-                                     <div className="text-yellow-500">MAL: {anime.stats.malScore}</div>
-                                </div>
-                            </div>
-                            <div className="flex flex-wrap gap-2 mt-6 justify-start">
-                                {anime.info.genres.map((g: string) => (<Link key={g} href={`/search?type=${g}`} className="text-[9px] px-4 py-1.5 bg-white/5 rounded-full text-zinc-500 border border-white/5 hover:text-white hover:bg-primary-600 transition-all font-black uppercase tracking-widest active:scale-90 shadow-sm hover:shadow-primary-900/20 shadow-primary-900/10">{g}</Link>))}
-                            </div>
-                            <div className="mt-auto pt-6 w-full flex justify-end"><StarRating animeId={animeId} initialRating={anime.stats.rating} /></div>
-                        </div>
-                    </div>
-                    <div className="flex-1 min-h-0 relative px-6 sm:px-10 mt-4 overflow-hidden flex flex-col">
-                        <div className="lg:hidden flex flex-wrap gap-2 justify-center mb-6">
-                             {anime.info.genres.map((g: string) => (<Link key={g} href={`/search?type=${g}`} className="text-[8px] px-3 py-1 bg-white/5 rounded-full text-zinc-500 border border-white/5 uppercase font-bold">{g}</Link>))}
-                        </div>
-                        <div className="lg:hidden flex justify-center mb-6"><StarRating animeId={animeId} initialRating={anime.stats.rating} /></div>
-                        <h4 className="text-[10px] font-black text-primary-600 uppercase tracking-[0.5em] mb-3 flex items-center gap-2 shadow-sm shrink-0"><Info size={12} className="shadow-sm"/> Synopsis</h4>
-                        <ScrollArea className="flex-1 pr-4 custom-scrollbar shadow-inner shadow-primary-900/5">
-                           <p className="text-zinc-400 text-sm leading-relaxed pb-8 antialiased font-medium opacity-90 drop-shadow-sm shadow-black" dangerouslySetInnerHTML={{ __html: anime.description }} />
-                        </ScrollArea>
             </div>
         </div>
       </motion.div>
