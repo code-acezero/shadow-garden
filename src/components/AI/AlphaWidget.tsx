@@ -186,7 +186,7 @@ export default function AlphaWidget() {
                             <div className="relative bg-[#0a0a0a]/95 backdrop-blur-md border-[2px] border-orange-600/50 rounded-2xl p-6 min-h-[140px] shadow-[0_10px_40px_rgba(0,0,0,0.8)] shadow-orange-900/20">
                                 {loading ? (
                                     <div className="flex items-center gap-3 text-orange-500 font-bold h-full">
-                                        <Loader2 className="w-5 h-5 animate-spin" /> Processing order...
+                                        <Loader2 className="w-5 h-5 animate-spin" /> Typing...
                                     </div>
                                 ) : (
                                     <div className="text-zinc-200 font-medium text-base md:text-sm lg:text-base leading-relaxed whitespace-pre-wrap font-sans min-h-[60px] max-h-[50vh] overflow-y-auto pr-2 custom-scrollbar">
@@ -194,7 +194,7 @@ export default function AlphaWidget() {
                                             initial="hidden"
                                             animate="visible"
                                             variants={{
-                                                visible: { transition: { staggerChildren: 0.015 } },
+                                                visible: { transition: { staggerChildren: 0.008 } },
                                                 hidden: {}
                                             }}
                                         >
@@ -213,9 +213,9 @@ export default function AlphaWidget() {
                                     </div>
                                 )}
 
-                                {/* Tail pointing up */}
-                                <div className="hidden md:block absolute -top-[16px] right-[40px] w-0 h-0 border-l-[14px] border-l-transparent border-r-[14px] border-r-transparent border-b-[16px] border-b-orange-600/50">
-                                    <div className="absolute -top-[12px] -left-[12px] w-0 h-0 border-l-[12px] border-l-transparent border-r-[12px] border-r-transparent border-b-[14px] border-b-[#0a0a0a]" />
+                                {/* Tail pointing right */}
+                                <div className="hidden md:block absolute top-1/2 -right-[16px] transform -translate-y-1/2 w-0 h-0 border-t-[14px] border-t-transparent border-b-[14px] border-b-transparent border-l-[16px] border-l-orange-600/50">
+                                    <div className="absolute -top-[12px] -left-[18px] w-0 h-0 border-t-[12px] border-t-transparent border-b-[12px] border-b-transparent border-l-[14px] border-l-[#0a0a0a]" />
                                 </div>
                                 {/* Tail pointing down (mobile) */}
                                 <div className="block md:hidden absolute -bottom-[16px] left-1/2 transform -translate-x-1/2 w-0 h-0 border-l-[14px] border-l-transparent border-r-[14px] border-r-transparent border-t-[16px] border-t-orange-600/50">
