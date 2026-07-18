@@ -400,6 +400,8 @@ class HPIClient {
       };
     },
 
+
+
     getQtip: async (dataId: string): Promise<HindiQtip> => {
       const details = await this.hindi.getDetails(dataId);
       return {

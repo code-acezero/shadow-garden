@@ -1,1 +1,1 @@
-const fetch = require("node-fetch"); async function test() { try { const res = await fetch("https://blakiteapi.xyz/watch/31910::1-1"); const json = await res.json(); console.log(JSON.stringify(json, null, 2)); } catch(e) { console.error(e); } } test();
+async function test() { const res = await fetch("https://anikoto-api-ivory.vercel.app/api/blakite/info/82684"); console.log("HPI Status:", res.status); console.log("HPI Body:", (await res.text()).substring(0, 500)); } test();

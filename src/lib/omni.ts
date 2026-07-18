@@ -137,25 +137,15 @@ class OmniClient {
       const res: any = await fetchOmni('/home');
       const sections: DramaSection[] = [];
 
-      const push = (title: string, items: any[]) => {
-        if (Array.isArray(items) && items.length > 0) {
-          sections.push({ title, items: items.map(normalizeDramaCard) });
-        }
-      };
-
-      if (res) {
-        push('Trending', res.trending || []);
-        push('Recently Added', res.recent || res.latestEpisodes || res.recentlyAdded || []);
-        push('Korean Drama', res.korean || []);
-        push('Chinese Drama', res.chinese || []);
-        push('Japanese Drama', res.japanese || []);
-        push('Hindi Dubbed', res.hindi || []);
-        push('Movies', res.movies || []);
-
-        // Fallback: if nothing mapped, try to use raw array
-        if (sections.length === 0 && Array.isArray(res)) {
-          sections.push({ title: 'Recently Added', items: res.map(normalizeDramaCard) });
-        }
+      if (Array.isArray(res)) {
+        res.forEach((section: any) => {
+          if (section.title && Array.isArray(section.items) && section.items.length > 0) {
+            sections.push({
+              title: section.title,
+              items: section.items.map(normalizeDramaCard)
+            });
+          }
+        });
       }
 
       // Final fallback
@@ -182,7 +172,7 @@ class OmniClient {
     },
 
     getDetail: async (slug: string): Promise<DramaDetail | null> => {
-      const res: any = await fetchOmni(`/detail/${encodeURIComponent(slug)}`);
+      const res: any = await fetchOmni(`/info/${encodeURIComponent(slug)}`);
       if (!res) return null;
 
       const episodes: DramaEpisode[] = (res.episodes || []).map((e: any, i: number) => ({

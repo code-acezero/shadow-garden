@@ -776,16 +776,11 @@ function WatchContent() {
             // internally) — no more separate enrichment call needed here.
             // Seasons/trailers aren't available from the new source, so those
             // stay empty (universalData.seasons / .trailers default to []).
-            const universalData = await AnimeService.getAnimeInfo(animeId);
+            const universalData = await hpi.bridge.getSmartDetails(animeId);
             if (!universalData) throw new Error("Anime not found");
 
-            if (!universalData.episodes || universalData.episodes.length === 0) {
-                const epData = await AnimeService.getEpisodes(animeId);
-                if (epData && Array.isArray(epData) && epData.length > 0) {
-                    universalData.episodes = epData;
-                }
-            }
-            setAnime(universalData);
+            // Episodes are already fetched by getSmartDetails (which uses getDetails)
+            setAnime(universalData as any);
             // No next-episode-schedule endpoint on the new source; nextEpSchedule
             // stays null and the countdown UI degrades gracefully (as it already
             // does for any anime with no schedule data).
