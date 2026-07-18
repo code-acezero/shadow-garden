@@ -673,7 +673,8 @@ function WhisperIslandContent() {
                             {/* Alpha Button */}
                             <button onClick={() => window.dispatchEvent(new CustomEvent('shadow-toggle-alpha'))} className={cn(`relative overflow-hidden flex items-center justify-center bg-gradient-to-r from-primary-950/80 to-black border border-primary-500/30 hover:border-primary-500 text-white font-bold rounded-full shadow-lg transition-all ${ISLAND_HEIGHT} px-3 gap-2 shrink-0`)}>
                                 <div className="absolute inset-0 overflow-hidden pointer-events-none rounded-full"><LightWave trigger={logoState} delay={0.6} /></div>
-                                <Bot size={16} className="text-primary-400" /> 
+                                <img src="/images/alpha-avatar.png" alt="Alpha" className="w-5 h-5 rounded-full object-cover border border-primary-500/50" onError={(e) => { e.currentTarget.style.display = 'none'; e.currentTarget.nextElementSibling?.classList.remove('hidden'); }} />
+                                <Bot size={16} className="text-primary-400 hidden" /> 
                                 <span className="hidden sm:inline text-[9px] tracking-widest uppercase">ALPHA</span>
                             </button>
                             
