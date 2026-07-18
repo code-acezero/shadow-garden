@@ -296,7 +296,8 @@ const AnimePlayer = forwardRef<AnimePlayerRef, AnimePlayerProps>(({
     if (hlsRef.current) hlsRef.current.destroy();
 
     const isAlreadyProxied = url.includes('/api/proxy') || url.includes('anikoto') || url.includes('satoru');
-    const finalUrl = (url.startsWith('http') && !isAlreadyProxied)
+    const isExplicitMp4 = url.toLowerCase().includes('.mp4');
+    const finalUrl = (url.startsWith('http') && !isAlreadyProxied && !isExplicitMp4)
         ? `/api/proxy?url=${encodeURIComponent(url)}${referer ? `&referer=${encodeURIComponent(referer)}` : ''}`
         : url;
 
@@ -311,7 +312,6 @@ const AnimePlayer = forwardRef<AnimePlayerRef, AnimePlayerProps>(({
         }
     };
 
-    const isExplicitMp4 = url.toLowerCase().includes('.mp4');
     const shouldUseNative = isExplicitMp4 || isM3U8 === false;
     
     if (!shouldUseNative && Hls.isSupported()) {

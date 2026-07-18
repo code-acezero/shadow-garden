@@ -922,29 +922,24 @@ function WatchContent() {
                 if (currentFetch === activeFetchRef.current) updateSetting('category', urlType); 
             }
             
-            let streamData: any = await retryOperation(
-                () => dpi.getStream(currentEpId),
+            let serversData: any = await retryOperation(
+                () => dpi.getServers(currentEpId),
                 2, 1000, 15000
             );
             
             if (currentFetch !== activeFetchRef.current) return;
 
-            if (!streamData?.url && targetCategory === 'dub') {
-                console.warn("Dub missing, falling back to Sub");
-                targetCategory = 'sub';
-                streamData = await retryOperation(
-                    () => dpi.getStream(currentEpId),
-                    2, 1000, 15000
-                );
-                if (currentFetch !== activeFetchRef.current) return;
-                
-                if (streamData?.url && settings.category !== 'sub') { 
-                    toast.info("Dub not available. Switching to Sub."); 
-                    updateSetting('category', 'sub'); 
-                }
-            }
-            
-            if (streamData) { 
+            if (serversData && serversData.length > 0) { 
+                const streamData = {
+                    servers: { sub: serversData, dub: [] }, // Donghua is usually sub
+                    url: serversData[0].url,
+                    referer: '',
+                    subtitles: [],
+                    intro: null,
+                    outro: null,
+                    server: serversData[0].name
+                };
+
                 if (streamData.servers) setServers(streamData.servers);
                 
                 if (streamData.url) {

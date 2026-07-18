@@ -156,23 +156,23 @@ export default function AlphaWidget() {
             </button>
 
             {/* Main Visual Novel Container */}
-            <div className="relative w-full h-full max-w-7xl mx-auto flex flex-col md:flex-row items-center md:items-end justify-center md:justify-between px-4 md:px-12 pointer-events-none pb-[15vh] md:pb-0">
+            <div className="relative w-full h-full max-w-7xl mx-auto flex flex-col md:flex-row items-center md:items-end justify-center md:justify-end px-4 md:px-12 pointer-events-none pb-[25vh] md:pb-0">
                 
-                {/* Speech Bubble (Left Side) */}
-                <div className="relative w-full md:w-[50%] lg:w-[45%] z-20 pointer-events-auto mb-12 md:mb-[30vh]">
+                {/* Speech Bubble (Left Side of Alpha) */}
+                <div className="relative w-full md:w-[450px] z-20 pointer-events-auto mb-12 md:mb-[40vh] md:-mr-12 xl:mr-12 flex-shrink-0">
                     <AnimatePresence mode="wait">
                         <motion.div
                             key={currentMessageContent}
-                            initial={{ opacity: 0, scale: 0.95, y: 10 }}
-                            animate={{ opacity: 1, scale: 1, y: 0 }}
-                            exit={{ opacity: 0, scale: 0.95, y: -10 }}
+                            initial={{ opacity: 0, scale: 0.95, x: 20 }}
+                            animate={{ opacity: 1, scale: 1, x: 0 }}
+                            exit={{ opacity: 0, scale: 0.95, x: -20 }}
                             transition={{ duration: 0.2 }}
                             className="relative w-full"
                         >
                             {/* Hexagon Name Tag */}
-                            <div className="absolute -top-5 left-8 z-30 drop-shadow-md">
+                            <div className="absolute -top-5 left-6 z-30 drop-shadow-md">
                                 <div 
-                                    className="bg-[#2A4489] text-white px-10 py-1 font-semibold tracking-wider flex items-center justify-center border border-[#6D91E5] text-lg"
+                                    className="bg-orange-600 text-white px-8 py-1 font-black tracking-[0.2em] uppercase flex items-center justify-center border border-orange-400 text-sm shadow-[0_0_15px_rgba(234,88,12,0.5)]"
                                     style={{ clipPath: 'polygon(10% 0, 90% 0, 100% 50%, 90% 100%, 10% 100%, 0% 50%)' }}
                                 >
                                     Alpha
@@ -180,24 +180,24 @@ export default function AlphaWidget() {
                             </div>
 
                             {/* Main Bubble */}
-                            <div className="relative bg-[#F4F6FB] border-[4px] border-[#2A4489] rounded-2xl p-6 md:p-8 min-h-[180px] shadow-[0_10px_40px_rgba(0,0,0,0.5)]">
+                            <div className="relative bg-[#0a0a0a]/95 backdrop-blur-md border-[2px] border-orange-600/50 rounded-2xl p-6 min-h-[140px] shadow-[0_10px_40px_rgba(0,0,0,0.8)] shadow-orange-900/20">
                                 {loading ? (
-                                    <div className="flex items-center gap-3 text-[#2A4489] font-bold h-full">
+                                    <div className="flex items-center gap-3 text-orange-500 font-bold h-full">
                                         <Loader2 className="w-5 h-5 animate-spin" /> Processing order...
                                     </div>
                                 ) : (
-                                    <div className="text-black font-medium text-lg md:text-xl leading-relaxed whitespace-pre-wrap">
+                                    <div className="text-zinc-200 font-medium text-base md:text-lg leading-relaxed whitespace-pre-wrap font-sans">
                                         {currentMessageContent}
                                     </div>
                                 )}
 
                                 {/* Tail pointing right */}
-                                <div className="hidden md:block absolute top-1/2 -right-[24px] transform -translate-y-1/2 w-0 h-0 border-t-[20px] border-t-transparent border-b-[20px] border-b-transparent border-l-[26px] border-l-[#2A4489]">
-                                    <div className="absolute -top-[16px] -left-[27px] w-0 h-0 border-t-[16px] border-t-transparent border-b-[16px] border-b-transparent border-l-[21px] border-l-[#F4F6FB]" />
+                                <div className="hidden md:block absolute top-1/2 -right-[16px] transform -translate-y-1/2 w-0 h-0 border-t-[14px] border-t-transparent border-b-[14px] border-b-transparent border-l-[16px] border-l-orange-600/50">
+                                    <div className="absolute -top-[12px] -left-[18px] w-0 h-0 border-t-[12px] border-t-transparent border-b-[12px] border-b-transparent border-l-[14px] border-l-[#0a0a0a]" />
                                 </div>
                                 {/* Tail pointing down (mobile) */}
-                                <div className="block md:hidden absolute -bottom-[24px] left-1/2 transform -translate-x-1/2 w-0 h-0 border-l-[20px] border-l-transparent border-r-[20px] border-r-transparent border-t-[26px] border-t-[#2A4489]">
-                                    <div className="absolute -top-[27px] -left-[16px] w-0 h-0 border-l-[16px] border-l-transparent border-r-[16px] border-r-transparent border-t-[21px] border-t-[#F4F6FB]" />
+                                <div className="block md:hidden absolute -bottom-[16px] left-1/2 transform -translate-x-1/2 w-0 h-0 border-l-[14px] border-l-transparent border-r-[14px] border-r-transparent border-t-[16px] border-t-orange-600/50">
+                                    <div className="absolute -top-[18px] -left-[12px] w-0 h-0 border-l-[12px] border-l-transparent border-r-[12px] border-r-transparent border-t-[14px] border-t-[#0a0a0a]" />
                                 </div>
                             </div>
                         </motion.div>
@@ -205,7 +205,7 @@ export default function AlphaWidget() {
                 </div>
 
                 {/* Character Sprite (Right Side) */}
-                <div className="absolute bottom-0 right-0 md:relative md:w-[50%] lg:w-[45%] h-[50vh] md:h-[85vh] z-10 flex items-end justify-center md:justify-end">
+                <div className="absolute bottom-0 right-0 md:relative md:w-auto h-[60vh] md:h-[100vh] z-10 flex items-end justify-center md:justify-end scale-[1.1] md:scale-[1.15] origin-bottom pointer-events-none">
                     <AnimatePresence mode="wait">
                         <motion.img
                             key={state}
@@ -223,19 +223,13 @@ export default function AlphaWidget() {
 
             </div>
 
-            {/* Bottom Input Area */}
-            <div className="absolute bottom-6 md:bottom-12 left-1/2 transform -translate-x-1/2 w-[90%] max-w-2xl z-40 pointer-events-auto">
-                <div className="bg-[#1A1E24]/90 backdrop-blur-md border-[3px] border-[#4DAF8C]/60 rounded-xl p-4 shadow-[0_0_30px_rgba(77,175,140,0.15)] relative">
+            {/* Bottom Input Area (Under Alpha) */}
+            <div className="absolute bottom-6 right-6 md:right-12 w-[calc(100%-48px)] md:w-[380px] z-40 pointer-events-auto">
+                <div className="bg-[#0a0a0a]/90 backdrop-blur-md border border-white/5 border-t-orange-500/30 rounded-xl p-3 shadow-[0_0_30px_rgba(234,88,12,0.1)] relative">
                     
-                    {/* Glowing Accent */}
-                    <div className="absolute -right-2 top-1/2 -translate-y-1/2 text-[#4DAF8C] opacity-80 pointer-events-none">
-                        <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
-                            <path d="M12 0L14.5 9.5L24 12L14.5 14.5L12 24L9.5 14.5L0 12L9.5 9.5L12 0Z" />
-                        </svg>
-                    </div>
-
-                    <div className="text-[#E0E0E0] text-sm font-semibold tracking-[0.1em] mb-2 pl-1">
-                        IDENTIFIER CODE:
+                    <div className="text-zinc-500 text-[10px] font-black tracking-[0.2em] mb-2 pl-1 flex items-center gap-2">
+                        <span className="w-1.5 h-1.5 rounded-full bg-orange-500 animate-pulse" />
+                        IDENTIFIER CODE
                     </div>
                     
                     <form onSubmit={handleSendMessage} className="relative flex">
@@ -244,16 +238,17 @@ export default function AlphaWidget() {
                             type="text"
                             value={input}
                             onChange={(e) => setInput(e.target.value)}
-                            className="w-full bg-[#2A2E35] border border-white/10 rounded-md py-3 pl-4 pr-14 text-white text-base outline-none focus:border-[#4DAF8C]/80 transition-colors shadow-inner"
+                            className="w-full bg-white/5 border border-white/5 rounded-lg py-2.5 pl-4 pr-12 text-white text-sm outline-none focus:border-orange-500/50 transition-colors shadow-inner"
                             disabled={loading}
                             autoComplete="off"
+                            placeholder="Awaiting orders..."
                         />
                         <button
                             type="submit"
                             disabled={!input.trim() || loading}
-                            className="absolute right-2 top-1/2 -translate-y-1/2 p-2 text-[#4DAF8C] hover:text-[#3d9173] disabled:opacity-50 transition-colors"
+                            className="absolute right-1 top-1/2 -translate-y-1/2 p-2 text-orange-500 hover:text-white disabled:opacity-30 transition-colors active:scale-90"
                         >
-                            <Send size={20} />
+                            <Send size={16} />
                         </button>
                     </form>
                 </div>

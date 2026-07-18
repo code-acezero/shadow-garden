@@ -167,7 +167,7 @@ export default function DramaHomePage() {
           <div>
             <p className="text-[9px] font-black text-orange-600 uppercase tracking-[0.5em] mb-1">Shadow Garden</p>
             <h1 className="text-2xl md:text-3xl font-black font-[Cinzel] text-white tracking-tight leading-none">
-              Drama <span className="text-orange-600">Hub</span>
+              Drama<span className="text-orange-600">no</span>
             </h1>
             <p className="text-[10px] text-zinc-500 font-bold mt-1 uppercase tracking-widest">K · C · J · Hindi Dubbed</p>
           </div>
