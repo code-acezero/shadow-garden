@@ -992,9 +992,26 @@ function WatchContent() {
             }
             
             if (streamData) { 
-                if (streamData.servers) setServers(streamData.servers);
-                
-                const finalUrl = streamData.url || streamData.targetUrl || streamData.iframe || streamData.stream?.file;
+                let finalUrl = streamData.url || streamData.targetUrl || streamData.iframe || streamData.stream?.file;
+
+                if (streamData.servers && streamData.servers.sub) {
+                    const mappedSub = streamData.servers.sub.map((s: any) => ({
+                        serverName: s.name || s.serverName || 'Server',
+                        serverId: s.name || s.serverId || 'Server',
+                        url: s.url
+                    }));
+                    setServers({ sub: mappedSub, dub: [], raw: [] });
+
+                    const selected = mappedSub.find((s: any) => s.serverName.toLowerCase() === settings.server.toLowerCase());
+                    if (selected && selected.url) {
+                        finalUrl = selected.url;
+                    } else if (mappedSub.length > 0) {
+                        setTimeout(() => updateSetting('server', mappedSub[0].serverName), 0);
+                        finalUrl = mappedSub[0].url || finalUrl;
+                    }
+                } else if (streamData.servers) {
+                    setServers(streamData.servers);
+                }
                 
                 if (finalUrl) {
                     setStreamUrl(finalUrl); 

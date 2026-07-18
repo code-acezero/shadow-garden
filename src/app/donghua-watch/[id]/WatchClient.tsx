@@ -969,14 +969,29 @@ function WatchContent() {
             if (currentFetch !== activeFetchRef.current) return;
 
             if (serversData && serversData.length > 0) { 
+                const mappedServers = serversData.map((s: any) => ({
+                    serverName: s.name || s.serverName || 'Server',
+                    serverId: s.name || s.serverId || 'Server',
+                    url: s.url
+                }));
+                
+                let finalUrl = mappedServers[0].url;
+                const selected = mappedServers.find((s: any) => s.serverName.toLowerCase() === settings.server.toLowerCase());
+                
+                if (selected && selected.url) {
+                    finalUrl = selected.url;
+                } else {
+                    setTimeout(() => updateSetting('server', mappedServers[0].serverName), 0);
+                }
+
                 const streamData = {
-                    servers: { sub: serversData, dub: [] }, // Donghua is usually sub
-                    url: serversData[0].url,
+                    servers: { sub: mappedServers, dub: [] }, // Donghua is usually sub
+                    url: finalUrl,
                     referer: '',
                     subtitles: [],
                     intro: null,
                     outro: null,
-                    server: serversData[0].name
+                    server: selected ? selected.serverName : mappedServers[0].serverName
                 };
 
                 if (streamData.servers) setServers(streamData.servers);
