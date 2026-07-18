@@ -864,14 +864,20 @@ function WatchContent() {
       syncHistory();
   }, [anime, user?.id, animeId]);
 
-    // Stream Loading (FIXED: Handles double-fetch rate limiting and populates servers list automatically)
+  const [fetchTrigger, setFetchTrigger] = useState(0);
+  const activeFetchRef = useRef(0);
+  
+  // Stream Loading
   useEffect(() => {
     if (!currentEpId || !isSettingsLoaded) return;
+    
+    activeFetchRef.current += 1;
+    const currentFetch = activeFetchRef.current;
+
     const loadStream = async () => {
         setStreamUrl(null); 
         setIsStreamLoading(true); 
         setStreamError(null);
-        setServers(null);
         
         let time = 0; let isUrlOverride = false;
         if (urlTimestamp && urlEpNumber && anime) {
@@ -890,15 +896,19 @@ function WatchContent() {
             let targetCategory = settings.category;
             if ((urlType === 'dub' || urlType === 'sub') && settings.category !== urlType) { 
                 targetCategory = urlType; 
-                updateSetting('category', urlType); 
+                if (currentFetch === activeFetchRef.current) updateSetting('category', urlType); 
             }
             
             let streamData: any = await AnimeService.getStream(currentEpId, settings.server, targetCategory as "sub" | "dub" | undefined);
             
+            if (currentFetch !== activeFetchRef.current) return;
+
             if (!streamData?.url && targetCategory === 'dub') {
                 console.warn("Dub missing, falling back to Sub");
                 targetCategory = 'sub';
                 streamData = await AnimeService.getStream(currentEpId, settings.server, 'sub');
+                if (currentFetch !== activeFetchRef.current) return;
+                
                 if (streamData?.url && settings.category !== 'sub') { 
                     toast.info("Dub not available. Switching to Sub."); 
                     updateSetting('category', 'sub'); 
@@ -915,9 +925,8 @@ function WatchContent() {
                     setIntro(streamData.intro); 
                     setOutro(streamData.outro);
                     
-                    // Prevent UI desync if fallback matched a different server
                     if (streamData.server && streamData.server.toLowerCase() !== settings.server.toLowerCase()) {
-                        updateSetting('server', streamData.server);
+                        setTimeout(() => updateSetting('server', streamData.server), 0);
                     }
                 } else {
                     throw new Error("No Stream Found");
@@ -926,12 +935,25 @@ function WatchContent() {
                 throw new Error("Portal Unstable"); 
             }
         } catch(e) { 
-            setStreamError("Portal Unstable"); 
+            if (currentFetch === activeFetchRef.current) setStreamError("Portal Unstable"); 
         }
-        setIsStreamLoading(false);
+        if (currentFetch === activeFetchRef.current) setIsStreamLoading(false);
     };
     loadStream();
-  }, [currentEpId, user?.id, settings.category, settings.server, animeId, isSettingsLoaded, urlType, updateSetting]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentEpId, user?.id, animeId, isSettingsLoaded, urlType, fetchTrigger]);
+
+  // Handle explicit server/category changes by the user
+  const initialSettingsMount = useRef(true);
+  useEffect(() => {
+      if (initialSettingsMount.current) {
+          initialSettingsMount.current = false;
+          return;
+      }
+      if (isSettingsLoaded && currentEpId) {
+          setFetchTrigger(prev => prev + 1);
+      }
+  }, [settings.server, settings.category]);
 
   // Interval & Visibility
   useEffect(() => { const i = setInterval(() => saveProgress(false), 10000); return () => clearInterval(i); }, [saveProgress]);
@@ -991,40 +1013,48 @@ function WatchContent() {
             </div>
 
             <motion.div initial={{ y: -20, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ duration: 0.5, delay: 0.2 }} className={cn("w-full transition-all duration-500 will-change-transform", hideInterface ? "opacity-0 pointer-events-none translate-y-4" : "opacity-100 translate-y-0")}>
-                <div className="hidden lg:flex w-full bg-[#0a0a0a] border border-white/5 rounded-[30px] shadow-primary-900/10 shadow-lg px-5 py-2 flex-row gap-4 justify-between items-center overflow-hidden mt-3">
-                    <div className="flex-1 min-w-0 flex items-center gap-4 w-full sm:w-auto overflow-hidden">
-                        <MarqueeTitle text={currentEpisode?.title || `Episode ${currentEpisode?.number}`} />
-                        <div className="hidden sm:block"><NextEpisodeTimer schedule={nextEpSchedule} status={anime.info.status} /></div>
-                        <WatchListButton animeId={anime.id} animeTitle={anime.title} animeImage={anime.poster} currentEp={currentEpisode?.number} />
+                <div className="hidden lg:flex w-full bg-[#0a0a0a] border border-white/5 rounded-[30px] shadow-primary-900/10 shadow-lg px-5 py-3 flex-col gap-2 overflow-visible mt-3">
+                    {/* ROW 1: Main playback controls */}
+                    <div className="flex w-full justify-between items-center gap-3">
+                        <div className="flex items-center gap-3 w-full">
+                            <button disabled={!prevEpisode} onClick={() => prevEpisode && handleEpisodeClick(prevEpisode.id)} className={cn("flex items-center justify-center gap-2 px-4 h-8 rounded-full border text-[10px] font-black uppercase tracking-tighter transition-all duration-300 shadow-md shadow-black/40 whitespace-nowrap flex-1", prevEpisode ? "bg-white/5 border-white/10 text-zinc-300 hover:bg-primary-600 hover:border-primary-500 hover:text-white" : "opacity-10 border-white/5 text-zinc-600")}><SkipBack size={12}/> PREV</button>
+                            <button onClick={() => updateSetting('autoSkip', !settings.autoSkip)} className="flex items-center justify-center gap-2 px-4 h-8 rounded-full border border-white/5 bg-white/5 text-[10px] font-black uppercase tracking-tighter transition-all flex-1 hover:bg-white/10"><FastForward size={12} className={cn("transition-colors", settings.autoSkip ? "text-primary-500 shadow-[0_0_10px_red]" : "text-zinc-500")}/><span className={cn(settings.autoSkip ? "text-white" : "text-zinc-500")}>SKIP</span></button>
+                            <button onClick={() => updateSetting('autoPlay', !settings.autoPlay)} className="flex items-center justify-center gap-2 px-4 h-8 rounded-full border border-white/5 bg-white/5 text-[10px] font-black uppercase tracking-tighter transition-all flex-1 hover:bg-white/10"><Play size={12} className={cn("transition-colors", settings.autoPlay ? "text-primary-500 shadow-[0_0_10px_red]" : "text-zinc-500")}/><span className={cn(settings.autoPlay ? "text-white" : "text-zinc-500")}>AUTO</span></button>
+                            <button onClick={() => updateSetting('autoNext', !settings.autoNext)} className="flex items-center justify-center gap-2 px-4 h-8 rounded-full border border-white/5 bg-white/5 text-[10px] font-black uppercase tracking-tighter transition-all flex-1 hover:bg-white/10"><SkipForward size={12} className={cn("transition-colors", settings.autoNext ? "text-primary-500 shadow-[0_0_10px_red]" : "text-zinc-500")}/><span className={cn(settings.autoNext ? "text-white" : "text-zinc-500")}>NEXT</span></button>
+                            {nextEpisode ? (<button onClick={() => handleEpisodeClick(nextEpisode.id)} className="flex items-center justify-center gap-2 px-4 h-8 rounded-full border border-white/10 bg-white/5 text-zinc-300 text-[10px] font-black uppercase tracking-widest transition-all hover:bg-primary-600 flex-1 whitespace-nowrap group">NEXT EP <SkipForward size={12} className="group-hover:translate-x-1 transition-transform" /></button>) : (<button disabled className="flex items-center justify-center gap-2 px-4 h-8 rounded-full border border-white/5 bg-white/5 text-zinc-600 text-[10px] font-black uppercase tracking-widest flex-1 whitespace-nowrap opacity-50 cursor-not-allowed">NEXT EP <SkipForward size={12}/></button>)}
+                            <Button onClick={() => updateSetting('dimMode', !settings.dimMode)} variant="ghost" size="icon" className={cn("rounded-full w-8 h-8 transition-all hover:scale-110 shadow-primary-900/10 flex-shrink-0", settings.dimMode ? "text-yellow-500 bg-yellow-500/10" : "text-zinc-600 hover:bg-white/5 shadow-none")}><Lightbulb size={14} /></Button>
+                        </div>
                     </div>
-                    <div className="flex items-center gap-3 overflow-x-auto w-full sm:w-auto pb-1 sm:pb-0 scrollbar-hide no-scrollbar">
-                        <button disabled={!prevEpisode} onClick={() => prevEpisode && handleEpisodeClick(prevEpisode.id)} className={cn("flex items-center gap-2 px-3 h-7 rounded-full border text-[9px] font-black uppercase tracking-tighter transition-all duration-300 shadow-md shadow-black/40 whitespace-nowrap", prevEpisode ? "bg-white/5 border-white/10 text-zinc-300 hover:bg-primary-600 hover:border-primary-500 hover:text-white hover:scale-105 active:scale-90 shadow-primary-900/10" : "opacity-10 border-white/5 text-zinc-600")}><SkipBack size={11}/> PREV</button>
-                        <button onClick={() => updateSetting('autoSkip', !settings.autoSkip)} className="flex items-center gap-2 px-3 h-7 rounded-full border border-white/5 bg-white/5 text-[9px] font-black uppercase tracking-tighter transition-all duration-300 hover:scale-105 active:scale-90 group shadow-md shadow-primary-900/5 whitespace-nowrap"><FastForward size={11} className={cn("transition-colors", settings.autoSkip ? "text-primary-600 shadow-[0_0_10px_red]" : "text-zinc-500")}/><span className={cn("transition-all duration-300", settings.autoSkip ? "text-white" : "text-zinc-500")}>SKIP</span></button>
-                        <button onClick={() => updateSetting('autoPlay', !settings.autoPlay)} className="flex items-center gap-2 px-3 h-7 rounded-full border border-white/5 bg-white/5 text-[9px] font-black uppercase tracking-tighter transition-all duration-300 hover:scale-105 active:scale-90 group shadow-md shadow-primary-900/5 whitespace-nowrap"><Play size={11} className={cn("transition-colors", settings.autoPlay ? "text-primary-600 shadow-[0_0_100_red]" : "text-zinc-500")}/><span className={cn("transition-all duration-300", settings.autoPlay ? "text-white" : "text-zinc-500")}>AUTO</span></button>
-                        <button onClick={() => updateSetting('autoNext', !settings.autoNext)} className="flex items-center gap-2 px-3 h-7 rounded-full border border-white/5 bg-white/5 text-[9px] font-black uppercase tracking-tighter transition-all duration-300 hover:scale-105 active:scale-90 group shadow-md shadow-primary-900/5 whitespace-nowrap"><SkipForward size={11} className={cn("transition-colors", settings.autoNext ? "text-primary-600 shadow-[0_0_100_red]" : "text-zinc-500")}/><span className={cn("transition-all duration-300", settings.autoNext ? "text-white" : "text-zinc-500")}>NEXT</span></button>
-                        <Button onClick={() => updateSetting('dimMode', !settings.dimMode)} variant="ghost" size="icon" className={cn("rounded-full w-7 h-7 transition-all hover:scale-110 active:rotate-12 shadow-primary-900/10 flex-shrink-0", settings.dimMode ? "text-yellow-500 bg-yellow-500/10" : "text-zinc-600 hover:bg-white/5 shadow-none")}><Lightbulb size={14} /></Button>
-                        <div className="flex bg-black/40 rounded-full p-1 border border-white/10 shadow-inner flex-shrink-0">{(['sub', 'dub', 'raw'] as const).map((cat) => { const isAvailable = (servers?.[cat]?.length || 0) > 0; return (<button key={cat} disabled={!isAvailable} onClick={() => updateSetting('category', cat)} className={cn("px-3 py-0.5 rounded-full text-[9px] font-black uppercase transition-all relative active:scale-75 shadow-sm", settings.category === cat ? "bg-primary-600 text-white shadow-lg" : "text-zinc-600 hover:text-zinc-300", !isAvailable && "opacity-10")}>{cat}{isAvailable && <span className="absolute -top-0.5 -right-0.5 w-1.5 h-1.5 bg-primary-600 rounded-full animate-pulse shadow-[0_0_5px_red]" />}</button>);})}</div>
-                        <DropdownMenu modal={false}>
-                            <DropdownMenuTrigger asChild>
-                                <Button variant="ghost" className="h-7 gap-2 text-[9px] font-black text-zinc-500 hover:text-white uppercase transition-all hover:scale-105 active:scale-90 shadow-md shadow-primary-900/5 whitespace-nowrap rounded-full border border-white/5 bg-white/5">
-                                    <ServerIcon size={11}/>
-                                    {servers?.[settings.category] && servers[settings.category].length > 0
-                                    ? `Portal ${Math.max(1, servers[settings.category].findIndex((s:any) => s.serverName.toLowerCase() === settings.server.toLowerCase()) + 1)}`
-                                    : (isStreamLoading ? 'Loading...' : 'No Portals')}
-                                    <ChevronDown size={11}/>
-                                </Button>
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent align="end" className="bg-[#050505] border border-white/10 rounded-[24px] shadow-[0_0_25px_-5px_rgba(220,38,38,0.4)] z-[40] min-w-[140px] w-auto h-auto max-h-[200px] p-2">
-                                <ScrollArea className="h-auto max-h-[180px] custom-scrollbar">
-                                    <div className="flex flex-col gap-1">
-                                        {servers?.[settings.category]?.map((srv: any, idx: number) => (
-                                            <DropdownMenuItem key={srv.serverId} onClick={() => handleServerChange(srv.serverName)} className={cn("cursor-pointer focus:bg-primary-600 focus:text-white px-3 py-1.5 rounded-full text-[9px] uppercase font-bold tracking-wider mb-1 transition-all", settings.server.toLowerCase() === srv.serverName.toLowerCase() ? "bg-primary-600 text-white shadow-lg" : "text-zinc-400 hover:text-white hover:bg-white/5")}>Portal {idx + 1}</DropdownMenuItem>
-                                        ))}
-                                    </div>
-                                </ScrollArea>
-                            </DropdownMenuContent>
-                        </DropdownMenu>
-                        {nextEpisode ? (<button onClick={() => handleEpisodeClick(nextEpisode.id)} className="flex items-center gap-2 px-3 h-7 rounded-full border border-white/10 bg-white/5 text-zinc-300 text-[9px] font-black uppercase tracking-widest transition-all duration-300 hover:bg-primary-600 hover:border-primary-500 hover:text-white hover:scale-105 active:scale-90 shadow-md whitespace-nowrap group">NEXT <SkipForward size={11} className="group-hover:translate-x-1 transition-transform" /></button>) : (<button disabled className="flex items-center gap-2 bg-white/5 border border-white/5 text-zinc-600 rounded-full px-5 h-7 text-[9px] font-black uppercase tracking-widest cursor-not-allowed opacity-50 shadow-inner whitespace-nowrap">NEXT <SkipForward size={11} /></button>)}
+                    {/* ROW 2: Metadata & Server */}
+                    <div className="flex w-full justify-between items-center gap-3 border-t border-white/5 pt-3">
+                        <div className="flex-1 min-w-0 flex items-center gap-4 overflow-hidden">
+                            <MarqueeTitle text={currentEpisode?.title || `Episode ${currentEpisode?.number}`} />
+                            <div className="hidden sm:block"><NextEpisodeTimer schedule={nextEpSchedule} status={anime.info.status} /></div>
+                            <WatchListButton animeId={anime.id} animeTitle={anime.title} animeImage={anime.poster} currentEp={currentEpisode?.number} />
+                        </div>
+                        <div className="flex items-center gap-3 flex-shrink-0">
+                            <div className="flex bg-black/40 rounded-full p-1 border border-white/10 shadow-inner flex-shrink-0">{(['sub', 'dub', 'raw'] as const).map((cat) => { const isAvailable = (servers?.[cat]?.length || 0) > 0; return (<button key={cat} disabled={!isAvailable} onClick={() => updateSetting('category', cat)} className={cn("px-4 py-1 rounded-full text-[10px] font-black uppercase transition-all relative active:scale-95 shadow-sm", settings.category === cat ? "bg-primary-600 text-white shadow-lg" : "text-zinc-600 hover:text-zinc-300", !isAvailable && "opacity-10")}>{cat}{isAvailable && <span className="absolute -top-0.5 -right-0.5 w-1.5 h-1.5 bg-primary-600 rounded-full animate-pulse shadow-[0_0_5px_red]" />}</button>);})}</div>
+                            <DropdownMenu modal={false}>
+                                <DropdownMenuTrigger asChild>
+                                    <Button variant="ghost" className="h-8 gap-2 text-[10px] font-black text-zinc-500 hover:text-white uppercase transition-all shadow-md shadow-primary-900/5 whitespace-nowrap rounded-full border border-white/5 bg-white/5 px-4">
+                                        <ServerIcon size={12}/>
+                                        {servers?.[settings.category] && servers[settings.category].length > 0
+                                        ? `Portal ${Math.max(1, servers[settings.category].findIndex((s:any) => s.serverName.toLowerCase() === settings.server.toLowerCase()) + 1)}`
+                                        : (isStreamLoading ? 'Loading...' : 'No Portals')}
+                                        <ChevronDown size={11}/>
+                                    </Button>
+                                </DropdownMenuTrigger>
+                                <DropdownMenuContent align="end" className="bg-[#050505] border border-white/10 rounded-[24px] shadow-[0_0_25px_-5px_rgba(220,38,38,0.4)] z-[40] min-w-[140px] w-auto h-auto max-h-[200px] p-2">
+                                    <ScrollArea className="h-auto max-h-[180px] custom-scrollbar">
+                                        <div className="flex flex-col gap-1">
+                                            {servers?.[settings.category]?.map((srv: any, idx: number) => (
+                                                <DropdownMenuItem key={srv.serverId} onClick={() => handleServerChange(srv.serverName)} className={cn("cursor-pointer focus:bg-primary-600 focus:text-white px-3 py-1.5 rounded-full text-[9px] uppercase font-bold tracking-wider mb-1 transition-all", settings.server.toLowerCase() === srv.serverName.toLowerCase() ? "bg-primary-600 text-white shadow-lg" : "text-zinc-400 hover:text-white hover:bg-white/5")}>Portal {idx + 1}</DropdownMenuItem>
+                                            ))}
+                                        </div>
+                                    </ScrollArea>
+                                </DropdownMenuContent>
+                            </DropdownMenu>
+                        </div>
                     </div>
                 </div>
 
@@ -1101,8 +1131,8 @@ function WatchContent() {
 
       <div className="w-full flex justify-center mt-8 px-4 md:px-8 pb-12">
           <div className="w-full flex flex-col gap-8 max-w-[1500px]">
-              <div className="w-full">
-                  <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} transition={{ duration: 0.6, delay: 0.4 }} className="order-4 xl:order-2 xl:col-span-8 h-auto xl:h-[650px] bg-[#0a0a0a] rounded-[40px] border border-white/5 overflow-hidden flex flex-col shadow-2xl relative shadow-primary-900/20">
+              <div className="w-full xl:grid xl:grid-cols-12 gap-8 items-start">
+                  <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} transition={{ duration: 0.6, delay: 0.4 }} className="xl:col-span-8 w-full h-auto xl:h-[650px] bg-[#0a0a0a] rounded-[40px] border border-white/5 overflow-hidden flex flex-col shadow-2xl relative shadow-primary-900/20">
                     <div className="flex-shrink-0 relative p-8 pt-16 flex flex-col sm:flex-row gap-10 bg-gradient-to-b from-primary-600/5 to-transparent">
                         <div className="relative shrink-0 mx-auto lg:mx-0 flex flex-col gap-6 w-full lg:w-auto items-center lg:items-start text-center lg:text-left">
                             <div className="relative p-[3px] rounded-3xl overflow-hidden group/poster shadow-[0_0_40px_rgba(220,38,38,0.2)] mx-auto sm:mx-0 w-fit">
@@ -1183,7 +1213,32 @@ function WatchContent() {
                             </DropdownMenu>
                         </div>
                     </div>
-                </motion.div>
+                  </motion.div>
+                  
+                  <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} transition={{ duration: 0.6, delay: 0.5 }} className="xl:col-span-4 w-full h-auto xl:h-[650px] bg-[#0a0a0a] rounded-[40px] border border-white/5 overflow-hidden flex flex-col shadow-2xl relative shadow-primary-900/10 mt-8 xl:mt-0">
+                     <div className="p-6 bg-white/5 border-b border-white/5 flex items-center gap-3 shrink-0"><Flame size={18} className="text-primary-600"/><h3 className="font-black text-white text-sm font-[Cinzel] tracking-widest uppercase">More Like This</h3></div>
+                     <ScrollArea className="flex-1 custom-scrollbar">
+                         <div className="p-4 flex flex-col gap-3">
+                             {anime.recommendations && anime.recommendations.length > 0 ? (
+                                 anime.recommendations.slice(0, 10).map((rec: any) => (
+                                     <Link key={rec.id} href={`/watch/${rec.id}`} className="flex gap-4 bg-white/5 border border-white/5 rounded-2xl p-2 hover:bg-white/10 hover:border-white/10 transition-colors group shadow-sm">
+                                         <div className="w-16 h-24 sm:w-20 sm:h-28 shrink-0 rounded-xl overflow-hidden relative shadow-md shadow-black/40"><img src={rec.poster} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" alt={rec.title} loading="lazy" decoding="async"/><div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center"><Play size={20} className="text-white"/></div></div>
+                                         <div className="flex-1 min-w-0 py-1 flex flex-col justify-center gap-1">
+                                             <h4 className="text-xs sm:text-sm font-black text-white line-clamp-2 leading-tight group-hover:text-primary-500 transition-colors">{rec.title}</h4>
+                                             {rec.jname && <p className="text-[9px] text-zinc-500 truncate uppercase font-bold tracking-wider">{rec.jname}</p>}
+                                             <div className="flex items-center gap-2 mt-auto text-[9px] sm:text-[10px] text-zinc-400 font-black uppercase tracking-wider"><span className="text-primary-500 px-2 py-0.5 bg-primary-900/20 rounded-md border border-primary-900/30">{rec.type || 'TV'}</span><span className="w-1 h-1 bg-zinc-600 rounded-full"/><div className="flex items-center gap-1"><Clock size={10} className="text-primary-600"/>{rec.duration || '?'}</div></div>
+                                         </div>
+                                     </Link>
+                                 ))
+                             ) : (
+                                 <div className="py-16 flex flex-col items-center justify-center text-zinc-500 gap-3">
+                                     <div className="w-12 h-12 rounded-full bg-white/5 flex items-center justify-center"><ServerIcon size={20} className="opacity-50"/></div>
+                                     <span className="text-xs font-black uppercase tracking-widest">No Recommendations Found</span>
+                                 </div>
+                             )}
+                         </div>
+                     </ScrollArea>
+                  </motion.div>
               </div>
               
               <div className="w-full">
