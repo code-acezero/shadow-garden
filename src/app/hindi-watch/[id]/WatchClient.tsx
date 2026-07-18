@@ -1001,7 +1001,7 @@ function WatchContent() {
                         let baseName = s.name || s.serverName || 'Server';
                         currentCounts[baseName] = (currentCounts[baseName] || 0) + 1;
                         if (counts[baseName] > 1) baseName = `${baseName} ${currentCounts[baseName]}`;
-                        return { serverName: baseName, serverId: baseName + idx, url: s.url };
+                        return { serverName: baseName, serverId: baseName + idx, url: s.url, isEmbed: s.isEmbed };
                     });
                 };
 
@@ -1035,11 +1035,14 @@ function WatchContent() {
                 }
 
                 const selected = currentList.find((s: any) => s.serverName.toLowerCase() === settings.server.toLowerCase());
+                let finalIsEmbed = false;
                 if (selected && selected.url) {
                     finalUrl = selected.url;
+                    finalIsEmbed = selected.isEmbed;
                 } else if (currentList.length > 0) {
                     setTimeout(() => updateSetting('server', currentList[0].serverName), 0);
                     finalUrl = currentList[0].url || finalUrl;
+                    finalIsEmbed = currentList[0].isEmbed;
                 }
                 if (finalUrl) {
                     setStreamUrl(finalUrl); 
@@ -1137,7 +1140,8 @@ function WatchContent() {
                         key={currentEpId} 
                         ref={playerRef} 
                         url={streamUrl || ""} 
-                        iframeUrl={streamUrl.includes('/api/proxy') ? decodeURIComponent(new URL(streamUrl, window.location.origin).searchParams.get('url') || streamUrl) : streamUrl} 
+                        isEmbed={!streamUrl.includes('.m3u8') && !streamUrl.includes('.mp4')}
+                        iframeUrl={streamUrl.includes('/api/proxy?url=') ? decodeURIComponent(streamUrl.split('/api/proxy?url=')[1].split('&')[0]) : streamUrl} 
                         referer={streamReferer} 
                         subtitles={subtitles} 
                         intro={intro} 

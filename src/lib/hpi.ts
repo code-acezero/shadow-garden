@@ -365,7 +365,7 @@ class HPIClient {
       const mappedServers = streamData?.sources ? streamData.sources.map((s: any, idx: number) => ({
         name: s.server || `Server ${idx + 1}`,
         url: s.url || s.m3u8 || s.proxyUrl || '',
-        isEmbed: false
+        isEmbed: !s.m3u8 && !(s.url || '').includes('.m3u8')
       })).filter((s: any) => s.url) : [];
 
       // Also include servers from the servers.dub/sub arrays
