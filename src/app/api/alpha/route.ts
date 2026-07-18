@@ -39,9 +39,6 @@ export async function POST(req: Request) {
     }
 
     const apiKey = process.env.NEXT_PUBLIC_GEMINI_API_KEY;
-    if (!apiKey) {
-      return NextResponse.json({ error: 'Gemini API key is not configured' }, { status: 500 });
-    }
 
     // Add context as a system message invisibly before the user's latest message
     let finalMessages = [...messages];
@@ -70,6 +67,10 @@ export async function POST(req: Request) {
     let replyText = '';
     
     try {
+      if (!apiKey) {
+        throw new Error("Gemini API key is missing");
+      }
+
       const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent?key=${apiKey}`, {
         method: 'POST',
         headers: {
