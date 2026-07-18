@@ -1112,7 +1112,7 @@ function WatchContent() {
   if (!anime) return (<div className="min-h-screen bg-[#050505] flex items-center justify-center"><div className="w-12 h-12 border-4 border-orange-600 border-t-transparent rounded-full animate-spin" /></div>);
 
   return (
-    <div className="min-h-screen bg-[#050505] text-gray-100 pb-24 md:pb-20 pt-[env(safe-area-inset-top)] relative font-sans overflow-x-hidden">
+    <div className="min-h-screen bg-[#050505] text-gray-100 pb-24 md:pb-20 pt-24 md:pt-28 relative font-sans overflow-x-hidden">
       <style jsx global>{`
           .custom-scrollbar::-webkit-scrollbar { width: 6px; height: 6px; display: block; }
           .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
