@@ -161,8 +161,8 @@ export default function AlphaWidget() {
             {/* Main Visual Novel Container */}
             <div className="relative w-full h-full flex flex-col md:flex-row items-center md:items-end justify-center md:justify-end px-4 md:px-0 pointer-events-none pb-[25vh] md:pb-0 overflow-hidden">
                 
-                {/* Speech Bubble (Right Side of Alpha) */}
-                <div className="absolute left-[40%] md:left-[320px] lg:left-[420px] xl:left-[480px] bottom-[30vh] md:bottom-[45vh] w-[80vw] md:w-[450px] z-20 pointer-events-auto flex-shrink-0">
+                {/* Speech Bubble (On top of input box) */}
+                <div className="absolute right-6 md:right-12 bottom-[140px] md:bottom-[150px] w-[calc(100%-48px)] md:w-[380px] z-20 pointer-events-auto flex-shrink-0">
                     <AnimatePresence mode="wait">
                         <motion.div
                             key={currentMessageContent}
@@ -189,7 +189,7 @@ export default function AlphaWidget() {
                                         <Loader2 className="w-5 h-5 animate-spin" /> Processing order...
                                     </div>
                                 ) : (
-                                    <div className="text-zinc-200 font-medium text-base md:text-lg leading-relaxed whitespace-pre-wrap font-sans min-h-[60px]">
+                                    <div className="text-zinc-200 font-medium text-base md:text-sm lg:text-base leading-relaxed whitespace-pre-wrap font-sans min-h-[60px] max-h-[50vh] overflow-y-auto pr-2 custom-scrollbar">
                                         <motion.div
                                             initial="hidden"
                                             animate="visible"
@@ -213,9 +213,9 @@ export default function AlphaWidget() {
                                     </div>
                                 )}
 
-                                {/* Tail pointing left */}
-                                <div className="hidden md:block absolute top-1/2 -left-[16px] transform -translate-y-1/2 w-0 h-0 border-t-[14px] border-t-transparent border-b-[14px] border-b-transparent border-r-[16px] border-r-orange-600/50">
-                                    <div className="absolute -top-[12px] -right-[18px] w-0 h-0 border-t-[12px] border-t-transparent border-b-[12px] border-b-transparent border-r-[14px] border-r-[#0a0a0a]" />
+                                {/* Tail pointing up */}
+                                <div className="hidden md:block absolute -top-[16px] right-[40px] w-0 h-0 border-l-[14px] border-l-transparent border-r-[14px] border-r-transparent border-b-[16px] border-b-orange-600/50">
+                                    <div className="absolute -top-[12px] -left-[12px] w-0 h-0 border-l-[12px] border-l-transparent border-r-[12px] border-r-transparent border-b-[14px] border-b-[#0a0a0a]" />
                                 </div>
                                 {/* Tail pointing down (mobile) */}
                                 <div className="block md:hidden absolute -bottom-[16px] left-1/2 transform -translate-x-1/2 w-0 h-0 border-l-[14px] border-l-transparent border-r-[14px] border-r-transparent border-t-[16px] border-t-orange-600/50">
@@ -226,8 +226,8 @@ export default function AlphaWidget() {
                     </AnimatePresence>
                 </div>
 
-                {/* Character Sprite (Left Side) */}
-                <div className="absolute bottom-0 left-[-30px] md:-left-8 lg:-left-4 h-[60vh] md:h-[100vh] z-10 flex items-end justify-center md:justify-start scale-[0.9] md:scale-[1.0] origin-bottom pointer-events-none">
+                {/* Character Sprite (Right Side) */}
+                <div className="absolute bottom-0 right-[-30px] md:-right-8 lg:-right-4 h-[60vh] md:h-[100vh] z-10 flex items-end justify-center md:justify-end scale-[0.9] md:scale-[1.0] origin-bottom pointer-events-none">
                     <AnimatePresence mode="wait">
                         <motion.img
                             key={state}
