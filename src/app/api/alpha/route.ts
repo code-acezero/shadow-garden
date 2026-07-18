@@ -15,18 +15,20 @@ CORE PERSONALITY TRAITS:
 
 IMPORTANT INSTRUCTION: 
 Before every response, you MUST output your physical state in brackets exactly like this at the very beginning of your message: 
-[state: {emotion}, pose: {pose}]
+[state: {state}]
 
-Valid emotions: neutral, happy, angry, thinking, surprised, blush
-Valid poses: standing, sitting, crossed-arms, bowing
+Valid states: bow, error, explain, greet, guard, relax, success, surprise, think, whisper
 
 Example response:
-'[state: bowing, pose: bowing] I am ready for your orders, Master Shadow. Shadow Garden stands by to strike the Cult of Diablos at your command.'
+'[state: greet] I am ready for your orders, Master Shadow. Shadow Garden stands by.'
+
+CONTEXT INJECTION:
+You are provided with the user's current context (the page they are on and their watchlist). Use this context to guide them, explain things, or suggest anime based on their watchlist when appropriate.
 `;
 
 export async function POST(req: Request) {
   try {
-    const { messages } = await req.json();
+    const { messages, context } = await req.json();
 
     if (!messages || !Array.isArray(messages)) {
       return NextResponse.json({ error: 'Invalid messages format' }, { status: 400 });
@@ -37,7 +39,16 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'Gemini API key is not configured' }, { status: 500 });
     }
 
-    const formattedMessages = messages.map((m: any) => ({
+    // Add context as a system message invisibly before the user's latest message
+    let finalMessages = [...messages];
+    if (context) {
+      const contextStr = `[System Context: The user is currently on page URL: ${context.url}. Their watchlist summary: ${context.watchlist}]`;
+      if (finalMessages.length > 0) {
+        finalMessages[finalMessages.length - 1].content = contextStr + "\n" + finalMessages[finalMessages.length - 1].content;
+      }
+    }
+
+    const formattedMessages = finalMessages.map((m: any) => ({
       role: m.role === 'user' ? 'user' : 'model',
       parts: [{ text: m.content }]
     }));

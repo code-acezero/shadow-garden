@@ -11,7 +11,7 @@ import { createClient } from "@supabase/supabase-js";
 import { SITE_CONFIG } from '@/lib/site-config'; 
 import WelcomeModal from "@/components/UIx/WelcomeModal";
 import { UserDataProvider } from '@/context/UserDataContext';
-import Footer from '@/components/Anime/Footer';
+import AlphaWidget from '@/components/AI/AlphaWidget';
 
 // Import fonts from your library (Optimized: These are just variable definitions now)
 import { 
@@ -201,6 +201,7 @@ export default function RootLayout({
                 </PageTransition>
               </main>
 
+              <AlphaWidget />
               <Toaster position="bottom-right" theme="dark" />
             </SettingsProvider>
           </UserDataProvider>

@@ -671,7 +671,7 @@ function WhisperIslandContent() {
                     {!shouldHideExtras && (
                         <motion.div key="actions" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 20 }} transition={{ duration: 0.3, ease: "circOut" }} className="flex items-center gap-2">
                             {/* Alpha Button */}
-                            <button onClick={() => router.push('/ai')} className={cn(`relative overflow-hidden flex items-center justify-center bg-gradient-to-r from-primary-950/80 to-black border border-primary-500/30 hover:border-primary-500 text-white font-bold rounded-full shadow-lg transition-all ${ISLAND_HEIGHT} px-3 gap-2 shrink-0`)}>
+                            <button onClick={() => window.dispatchEvent(new CustomEvent('shadow-toggle-alpha'))} className={cn(`relative overflow-hidden flex items-center justify-center bg-gradient-to-r from-primary-950/80 to-black border border-primary-500/30 hover:border-primary-500 text-white font-bold rounded-full shadow-lg transition-all ${ISLAND_HEIGHT} px-3 gap-2 shrink-0`)}>
                                 <div className="absolute inset-0 overflow-hidden pointer-events-none rounded-full"><LightWave trigger={logoState} delay={0.6} /></div>
                                 <Bot size={16} className="text-primary-400" /> 
                                 <span className="hidden sm:inline text-[9px] tracking-widest uppercase">ALPHA</span>
