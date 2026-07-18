@@ -1020,7 +1020,20 @@ function WatchContent() {
 
                 setServers({ sub: subServers, dub: dubServers, raw: [] });
 
-                const currentList = targetCategory === 'dub' && dubServers.length > 0 ? dubServers : subServers;
+                let currentList = targetCategory === 'dub' && dubServers.length > 0 ? dubServers : subServers;
+                
+                if (currentList.length === 0) {
+                    if (targetCategory === 'sub' && dubServers.length > 0) {
+                        targetCategory = 'dub';
+                        currentList = dubServers;
+                        setTimeout(() => updateSetting('category', 'dub'), 0);
+                    } else if (targetCategory === 'dub' && subServers.length > 0) {
+                        targetCategory = 'sub';
+                        currentList = subServers;
+                        setTimeout(() => updateSetting('category', 'sub'), 0);
+                    }
+                }
+
                 const selected = currentList.find((s: any) => s.serverName.toLowerCase() === settings.server.toLowerCase());
                 if (selected && selected.url) {
                     finalUrl = selected.url;
@@ -1120,7 +1133,27 @@ function WatchContent() {
                     )}
                 </AnimatePresence>
                 {streamUrl ? ( 
-                    <AnimePlayer key={currentEpId} ref={playerRef} url={streamUrl || ""} iframeUrl={streamUrl || ""} referer={streamReferer} subtitles={subtitles} intro={intro} outro={outro} title={currentEpisode?.title || anime.title} startTime={resumeTime} autoPlay={settings.autoPlay} autoSkip={settings.autoSkip} initialVolume={settings.volume} onProgress={(s:any) => progressRef.current = s.playedSeconds} onEnded={() => { saveProgress(true); if(settings.autoNext && nextEpisode) handleEpisodeClick(nextEpisode.id); }} onInteract={() => { if(!hideInterface) resetInterfaceTimer(); }} onPlay={handlePlaybackStart} onPause={handlePause} onSkipIntro={handleSkipIntro} /> 
+                    <AnimePlayer 
+                        key={currentEpId} 
+                        ref={playerRef} 
+                        url={streamUrl || ""} 
+                        iframeUrl={streamUrl.includes('/api/proxy') ? decodeURIComponent(new URL(streamUrl, window.location.origin).searchParams.get('url') || streamUrl) : streamUrl} 
+                        referer={streamReferer} 
+                        subtitles={subtitles} 
+                        intro={intro} 
+                        outro={outro} 
+                        title={currentEpisode?.title || anime.title} 
+                        startTime={resumeTime} 
+                        autoPlay={settings.autoPlay} 
+                        autoSkip={settings.autoSkip} 
+                        initialVolume={settings.volume} 
+                        onProgress={(s:any) => progressRef.current = s.playedSeconds} 
+                        onEnded={() => { saveProgress(true); if(settings.autoNext && nextEpisode) handleEpisodeClick(nextEpisode.id); }} 
+                        onInteract={() => { if(!hideInterface) resetInterfaceTimer(); }} 
+                        onPlay={handlePlaybackStart} 
+                        onPause={handlePause} 
+                        onSkipIntro={handleSkipIntro} 
+                    /> 
                 ) : streamError ? ( <div className="w-full h-full flex items-center justify-center border-b border-white/5"><div className="text-zinc-500 text-sm font-bold uppercase tracking-widest">{streamError}</div></div> ) : ( <div className="w-full h-full flex items-center justify-center border-b border-white/5"><FantasyLoader text="OPENING PORTAL..." /></div> )}
             </div>
 

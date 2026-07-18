@@ -364,7 +364,7 @@ class HPIClient {
       // Map sources from the API response
       const mappedServers = streamData?.sources ? streamData.sources.map((s: any, idx: number) => ({
         name: s.server || `Server ${idx + 1}`,
-        url: s.proxyUrl || s.url || s.m3u8 || '',
+        url: s.url || s.m3u8 || s.proxyUrl || '',
         isEmbed: false
       })).filter((s: any) => s.url) : [];
 
