@@ -379,7 +379,7 @@ class HPIClient {
         });
       }
 
-      const primaryUrl = streamData?.url || mappedServers[0]?.url || '';
+      const primaryUrl = mappedServers[0]?.url || streamData?.url || '';
       const referer = streamData?.sources?.[0]?.referer || 'https://blakiteapi.xyz/';
 
       return {

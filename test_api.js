@@ -1,0 +1,1 @@
+const fetch = require("node-fetch"); async function test() { try { const res = await fetch("https://blakiteapi.xyz/watch/31910::1-1"); const json = await res.json(); console.log(JSON.stringify(json, null, 2)); } catch(e) { console.error(e); } } test();

@@ -55,7 +55,7 @@ export async function POST(req: Request) {
 
     // Inject system instructions (Gemini 1.5 format)
     const payload = {
-      system_instruction: { parts: { text: SYSTEM_PROMPT } },
+      systemInstruction: { parts: { text: SYSTEM_PROMPT } },
       contents: formattedMessages,
       generationConfig: {
         temperature: 0.85,

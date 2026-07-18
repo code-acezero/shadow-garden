@@ -295,7 +295,8 @@ const AnimePlayer = forwardRef<AnimePlayerRef, AnimePlayerProps>(({
     setIsBuffering(true); 
     if (hlsRef.current) hlsRef.current.destroy();
 
-    const finalUrl = url.startsWith('http')
+    const isAlreadyProxied = url.includes('/api/proxy') || url.includes('anikoto') || url.includes('satoru');
+    const finalUrl = (url.startsWith('http') && !isAlreadyProxied)
         ? `/api/proxy?url=${encodeURIComponent(url)}${referer ? `&referer=${encodeURIComponent(referer)}` : ''}`
         : url;
 

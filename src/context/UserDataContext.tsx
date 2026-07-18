@@ -52,35 +52,18 @@ export const UserDataProvider = ({ children }: { children: React.ReactNode }) =>
 
             if (watchlistRes.data) {
                 const dbData = watchlistRes.data;
-                const enrichedLibrary = await Promise.all(dbData.map(async (item: any) => {
-                    try {
-                        const info: any = await AnimeService.getAnimeInfo(item.anime_id);
-                        return {
-                            ...item,
-                            id: item.anime_id,
-                            title: info?.title?.english || info?.title?.userPreferred || item.anime_title || "Unknown",
-                            poster: info?.poster || item.anime_image || "/images/no-poster.png",
-                            totalEpisodes: info?.totalEpisodes || "?",
-                            type: info?.type || "TV",
-                            description: info?.description || "",
-                            ageRating: info?.ageRating || null,
-                            isAdult: info?.isAdult || false,
-                            status: item.status,
-                            updated_at: item.updated_at
-                        };
-                    } catch {
-                        return {
-                            ...item,
-                            id: item.anime_id,
-                            title: item.anime_title || "Unknown",
-                            poster: item.anime_image || "/images/no-poster.png",
-                            totalEpisodes: "?",
-                            type: "TV",
-                            description: "",
-                            status: item.status,
-                            updated_at: item.updated_at
-                        };
-                    }
+                const enrichedLibrary = dbData.map((item: any) => ({
+                    ...item,
+                    id: item.anime_id,
+                    title: item.anime_title || "Unknown",
+                    poster: item.anime_image || "/images/no-poster.png",
+                    totalEpisodes: item.total_episodes || "?",
+                    type: item.type || "TV",
+                    description: item.description || "",
+                    ageRating: item.ageRating || null,
+                    isAdult: item.isAdult || false,
+                    status: item.status,
+                    updated_at: item.updated_at
                 }));
                 setLibrary(enrichedLibrary);
             }
@@ -92,35 +75,21 @@ export const UserDataProvider = ({ children }: { children: React.ReactNode }) =>
                     if (!uniqueMap.has(item.anime_id)) uniqueMap.set(item.anime_id, item);
                 });
                 
-                const enriched = await Promise.all(Array.from(uniqueMap.values()).map(async (item) => {
-                    try {
-                        const info: any = await AnimeService.getAnimeInfo(item.anime_id);
-                        return {
-                            ...item,
-                            id: item.anime_id,
-                            anime_id: item.anime_id,
-                            title: info?.title?.english || info?.title?.userPreferred || item.anime_title || "Unknown",
-                            poster: item.episode_image || info?.poster || "/images/no-poster.png",
-                            episode: item.episode_number,
-                            episodeId: item.episode_id,
-                            progress: Math.min(Math.round((item.progress / (item.duration || 1350)) * 100), 100),
-                            totalEpisodes: info?.totalEpisodes || item.total_episodes || "?",
-                            type: info?.type || item.type || "TV",
-                            ageRating: info?.ageRating || null,
-                            isAdult: info?.isAdult || false,
-                            sub: info?.episodes?.sub || info?.stats?.episodes?.sub || undefined,
-                            dub: info?.episodes?.dub || info?.stats?.episodes?.dub || undefined
-                        };
-                    } catch {
-                        return {
-                            ...item,
-                            id: item.anime_id, anime_id: item.anime_id, title: item.anime_title || "Unknown",
-                            poster: item.episode_image || "/images/no-poster.png", episode: item.episode_number,
-                            episodeId: item.episode_id, progress: 0, totalEpisodes: item.total_episodes || "?", 
-                            type: item.type || "TV", ageRating: null, isAdult: false,
-                            sub: undefined, dub: undefined
-                        };
-                    }
+                const enriched = Array.from(uniqueMap.values()).map((item) => ({
+                    ...item,
+                    id: item.anime_id,
+                    anime_id: item.anime_id,
+                    title: item.anime_title || "Unknown",
+                    poster: item.episode_image || item.anime_image || "/images/no-poster.png",
+                    episode: item.episode_number,
+                    episodeId: item.episode_id,
+                    progress: Math.min(Math.round((item.progress / (item.duration || 1350)) * 100), 100),
+                    totalEpisodes: item.total_episodes || "?",
+                    type: item.type || "TV",
+                    ageRating: item.ageRating || null,
+                    isAdult: item.isAdult || false,
+                    sub: undefined,
+                    dub: undefined
                 }));
                 setContinueData(enriched);
             }
