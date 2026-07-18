@@ -41,6 +41,7 @@ export default function AlphaWidget() {
   const { library } = useUserData();
   const pathname = usePathname();
   const userName = profile?.username || 'Shadow';
+  const displayName = profile?.username || 'TRAVELLER';
 
   const [isOpen, setIsOpen] = useState(false);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
@@ -227,14 +228,19 @@ export default function AlphaWidget() {
 
             {/* Bottom Input Area (Under Alpha) */}
             <div className="absolute bottom-6 right-6 md:right-12 w-[calc(100%-48px)] md:w-[380px] z-40 pointer-events-auto">
-                <div className="bg-[#0a0a0a]/90 backdrop-blur-md border border-white/5 border-t-orange-500/30 rounded-xl p-3 shadow-[0_0_30px_rgba(234,88,12,0.1)] relative">
+                <div className="bg-[#0a0a0a]/90 backdrop-blur-md border border-white/5 border-t-orange-500/30 rounded-xl p-3 pt-5 shadow-[0_0_30px_rgba(234,88,12,0.1)] relative mt-8">
                     
-                    <div className="text-zinc-500 text-[10px] font-black tracking-[0.2em] mb-2 pl-1 flex items-center gap-2">
-                        <span className="w-1.5 h-1.5 rounded-full bg-orange-500 animate-pulse" />
-                        IDENTIFIER CODE
+                    {/* User Hexagon Name Tag */}
+                    <div className="absolute -top-4 right-6 z-30 drop-shadow-md">
+                        <div 
+                            className="bg-zinc-800 text-zinc-200 px-6 py-0.5 font-black tracking-[0.1em] uppercase flex items-center justify-center border border-zinc-600 text-[10px] shadow-[0_0_10px_rgba(0,0,0,0.5)]"
+                            style={{ clipPath: 'polygon(10% 0, 90% 0, 100% 50%, 90% 100%, 10% 100%, 0% 50%)' }}
+                        >
+                            {displayName}
+                        </div>
                     </div>
                     
-                    <form onSubmit={handleSendMessage} className="relative flex">
+                    <form onSubmit={handleSendMessage} className="relative flex mt-2">
                         <input
                             ref={inputRef}
                             type="text"

@@ -776,11 +776,61 @@ function WatchContent() {
             // internally) — no more separate enrichment call needed here.
             // Seasons/trailers aren't available from the new source, so those
             // stay empty (universalData.seasons / .trailers default to []).
-            const universalData = await hpi.bridge.getSmartDetails(animeId);
-            if (!universalData) throw new Error("Anime not found");
+            const details = await hpi.bridge.getSmartDetails(animeId);
+            if (!details) throw new Error("Anime not found");
 
-            // Episodes are already fetched by getSmartDetails (which uses getDetails)
-            setAnime(universalData as any);
+            const universalData: UniversalAnime = {
+                id: details.id,
+                title: details.title,
+                jname: details.nativeTitle,
+                poster: details.image,
+                description: details.synopsis,
+                isAdult: false,
+                stats: {
+                    rating: details.rating || 'N/A',
+                    quality: 'HD',
+                    episodes: { sub: 0, dub: details.episodes?.length || 0 },
+                    type: details.type || 'TV',
+                    duration: '?',
+                    malScore: details.rating || 'N/A'
+                },
+                info: {
+                    premiered: details.premiered || '?',
+                    aired: details.aired || '?',
+                    status: details.status || '?',
+                    genres: details.genres || [],
+                    studios: details.studios || [],
+                    producers: details.producers || [],
+                    japanese: details.nativeTitle || '?',
+                    synonyms: (details.synonyms || []).join(', ')
+                },
+                episodes: details.episodes.map(e => ({
+                    id: e.id,
+                    number: parseInt(e.number, 10) || 1,
+                    title: e.title,
+                    url: e.url,
+                    isFiller: false
+                })),
+                trailers: [],
+                seasons: [],
+                recommendations: details.recommendations.map(r => ({
+                    id: r.id,
+                    title: r.title,
+                    poster: r.image,
+                    type: r.type,
+                    episodes: { sub: 0, dub: parseInt(r.episode || '0', 10) }
+                })) as any[],
+                related: details.related.map(r => ({
+                    id: r.id,
+                    title: r.title,
+                    poster: r.image,
+                    type: r.type,
+                    episodes: { sub: 0, dub: parseInt(r.episode || '0', 10) }
+                })) as any[],
+                characters: []
+            };
+
+            setAnime(universalData);
             // No next-episode-schedule endpoint on the new source; nextEpSchedule
             // stays null and the countdown UI degrades gracefully (as it already
             // does for any anime with no schedule data).
