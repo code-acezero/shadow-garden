@@ -1,6 +1,6 @@
-import { BASE_URL } from './api';
+import { ApiManager } from './api';
 
-const DONGHUA_API_BASE = `${BASE_URL}/donghua`;
+const getDonghuaApiBase = () => `${ApiManager.getBaseUrl()}/donghua`;
 
 export interface DonghuaAnimeCard {
   id: string;
@@ -47,6 +47,7 @@ export interface DonghuaServer {
 
 export interface DonghuaStreamResult {
   servers: DonghuaServer[];
+  url?: string;
   iframe?: string;
   nextEpDate?: string | null;
   subtitles?: any[];
@@ -55,24 +56,44 @@ export interface DonghuaStreamResult {
   referer?: string | null;
 }
 
-async function fetchDonghuaApi<T = any>(endpoint: string, params: Record<string, any> = {}): Promise<T | null> {
+async function fetchDonghuaApi<T = any>(endpoint: string, params: Record<string, any> = {}, retryCount = 0): Promise<T | null> {
   const queryParts = Object.entries(params)
     .filter(([, v]) => v !== undefined && v !== null && v !== '')
     .map(([k, v]) => `${encodeURIComponent(k)}=${encodeURIComponent(String(v))}`);
   const queryString = queryParts.length > 0 ? `?${queryParts.join('&')}` : '';
-  const targetUrl = `${DONGHUA_API_BASE}${endpoint}${queryString}`;
-  const proxyUrl = typeof window !== 'undefined' ? `/api/proxy?url=${encodeURIComponent(targetUrl)}` : targetUrl;
-  
+  const targetUrl = `${getDonghuaApiBase()}${endpoint}${queryString}`;
+  const proxyUrl = typeof window !== 'undefined'
+    ? `/api/proxy?url=${encodeURIComponent(targetUrl)}`
+    : targetUrl;
+
   try {
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 10000);
+    const timeoutId = setTimeout(() => controller.abort(), 15000);
     const response = await fetch(proxyUrl, { signal: controller.signal, cache: 'no-store' });
     clearTimeout(timeoutId);
-    if (!response.ok) return null;
+    
+    if (!response.ok) {
+        if (retryCount < ApiManager.getAllUrls().length - 1) {
+            ApiManager.rotateUrl();
+            return fetchDonghuaApi(endpoint, params, retryCount + 1);
+        }
+        return null;
+    }
+
     const json = await response.json();
-    if (json?.success === false) return null;
-    return json.data ?? json; // Return data if exists, else the root json
-  } catch {
+
+    if (json && typeof json === 'object') {
+      if ('ok' in json) return json.ok ? (json.data ?? json) : null;
+      if ('data' in json) return json.data as T;
+    }
+    return json as T;
+  } catch (innerError: any) {
+    if (innerError?.name === 'AbortError' || (innerError?.message && innerError.message.includes('fetch'))) {
+        if (retryCount < ApiManager.getAllUrls().length - 1) {
+            ApiManager.rotateUrl();
+            return fetchDonghuaApi(endpoint, params, retryCount + 1);
+        }
+    }
     return null;
   }
 }
@@ -112,6 +133,12 @@ export const dpi = {
     return res || [];
   },
 
+  async filter(params: any): Promise<DonghuaAnimeCard[]> {
+    const res = await fetchDonghuaApi<any>('/filter', params);
+    const data = res?.results || res || [];
+    return Array.isArray(data) ? data : [];
+  },
+
   async getInfo(id: string): Promise<{ detail: DonghuaAnimeDetail; episodes: { animeId: string; slug: string; episodes: DonghuaEpisode[] } } | null> {
     const res = await fetchDonghuaApi<{ detail: DonghuaAnimeDetail; episodes: { animeId: string; slug: string; episodes: DonghuaEpisode[] } }>(`/info/${encodeURIComponent(id)}`);
     return res;
@@ -131,6 +158,7 @@ export const dpi = {
         : res?.url ? [{ name: 'Default', url: res.url }] : [];
     return {
       servers: rawServers,
+      url: res?.iframe || res?.url || '',
       iframe: res?.iframe || res?.url || '',
       nextEpDate: res?.nextEpDate || null,
       subtitles: res?.subtitles || [],

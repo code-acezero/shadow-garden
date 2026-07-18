@@ -168,16 +168,16 @@ export interface HindiQtip {
  * ==========================================
  */
 
-import { BASE_URL } from './api';
+import { ApiManager } from './api';
 
-const HINDI_API_BASE = `${BASE_URL}/blakite`;
+const getHindiApiBase = () => `${ApiManager.getBaseUrl()}/blakite`;
 
-async function fetchHindiApi<T = any>(endpoint: string, params: Record<string, any> = {}): Promise<T | null> {
+async function fetchHindiApi<T = any>(endpoint: string, params: Record<string, any> = {}, retryCount = 0): Promise<T | null> {
   const queryParts = Object.entries(params)
     .filter(([, v]) => v !== undefined && v !== null && v !== '')
     .map(([k, v]) => `${encodeURIComponent(k)}=${encodeURIComponent(String(v))}`);
   const queryString = queryParts.length > 0 ? `?${queryParts.join('&')}` : '';
-  const targetUrl = `${HINDI_API_BASE}${endpoint}${queryString}`;
+  const targetUrl = `${getHindiApiBase()}${endpoint}${queryString}`;
   const proxyUrl = typeof window !== 'undefined'
     ? `/api/proxy?url=${encodeURIComponent(targetUrl)}`
     : targetUrl;
@@ -187,7 +187,15 @@ async function fetchHindiApi<T = any>(endpoint: string, params: Record<string, a
     const timeoutId = setTimeout(() => controller.abort(), 15000);
     const response = await fetch(proxyUrl, { signal: controller.signal, cache: 'no-store' });
     clearTimeout(timeoutId);
-    if (!response.ok) return null;
+    
+    if (!response.ok) {
+        if (retryCount < ApiManager.getAllUrls().length - 1) {
+            ApiManager.rotateUrl();
+            return fetchHindiApi(endpoint, params, retryCount + 1);
+        }
+        return null;
+    }
+    
     const json = await response.json();
 
     // The proxy wraps the upstream response — unwrap it
@@ -196,7 +204,13 @@ async function fetchHindiApi<T = any>(endpoint: string, params: Record<string, a
       if ('data' in json) return json.data as T;
     }
     return json as T;
-  } catch {
+  } catch (innerError: any) {
+    if (innerError?.name === 'AbortError' || (innerError?.message && innerError.message.includes('fetch'))) {
+        if (retryCount < ApiManager.getAllUrls().length - 1) {
+            ApiManager.rotateUrl();
+            return fetchHindiApi(endpoint, params, retryCount + 1);
+        }
+    }
     return null;
   }
 }

@@ -102,14 +102,15 @@ const WatchlistSkeleton = () => (
 );
 
 // --- MAIN CONTENT COMPONENT ---
+import { useUserData } from '@/context/UserDataContext';
+
+// ... inside WatchlistContent ...
 function WatchlistContent() {
     const { user, isLoading: authLoading } = useAuth();
     const router = useRouter();
     const searchParams = useSearchParams();
     
-    const [library, setLibrary] = useState<LibraryItem[]>([]);
-    const [continueData, setContinueData] = useState<ContinueItem[]>([]);
-    const [loadingData, setLoadingData] = useState(true);
+    const { library, continueData, loadingData, updateLibraryStatus, removeFromLibrary, removeFromContinue, clearContinueData } = useUserData();
     
     const [activeTab, setActiveTab] = useState<string>('all'); 
     const [searchQuery, setSearchQuery] = useState('');
@@ -121,7 +122,7 @@ function WatchlistContent() {
         if (!user) return;
         const { error } = await supabase.from('watchlist').update({ status: newStatus }).eq('user_id', user.id).eq('anime_id', animeId);
         if (!error) {
-            setLibrary(prev => prev.map(item => item.anime_id === animeId ? { ...item, status: newStatus as any } : item));
+            updateLibraryStatus(animeId, newStatus);
             if (typeof window !== 'undefined') window.dispatchEvent(new CustomEvent('shadow-whisper', { detail: { id: Date.now(), type: 'success', title: "System", message: 'Status updated' } }));
         }
     };
@@ -130,10 +131,10 @@ function WatchlistContent() {
         if (!user) return;
         if (isContinue) {
             const { error } = await supabase.from('user_continue_watching').delete().eq('user_id', user.id).eq('anime_id', animeId);
-            if (!error) setContinueData(prev => prev.filter(item => item.anime_id !== animeId));
+            if (!error) removeFromContinue(animeId);
         } else {
             const { error } = await supabase.from('watchlist').delete().eq('user_id', user.id).eq('anime_id', animeId);
-            if (!error) setLibrary(prev => prev.filter(item => item.anime_id !== animeId));
+            if (!error) removeFromLibrary(animeId);
         }
         if (typeof window !== 'undefined') window.dispatchEvent(new CustomEvent('shadow-whisper', { detail: { id: Date.now(), type: 'success', title: "System", message: 'Removed from library' } }));
     };
@@ -148,64 +149,6 @@ function WatchlistContent() {
         if (!user) setActiveTab('continue');
         else setActiveTab(tabParam || 'all');
     }, [authLoading, user, searchParams]);
-
-    useEffect(() => {
-        const syncShadowArchives = async () => {
-            if (!user) {
-                // If guest, maybe load local storage data here if you implemented local sync
-                // For now just stop loading
-                setLoadingData(false);
-                return;
-            }
-            try {
-                // ✅ Use Shared Client
-                const [libRes, contRes] = await Promise.all([
-                    supabase.from('watchlist').select('*').eq('user_id', user.id).order('updated_at', { ascending: false }),
-                    supabase.from('user_continue_watching').select('*').eq('user_id', user.id).eq('is_completed', false).order('last_updated', { ascending: false })
-                ]);
-
-                if (libRes.data) setLibrary(libRes.data);
-                
-                if (contRes.data) {
-                    const dbData = contRes.data as ContinueWatchingRow[];
-                    const uniqueMap = new Map<string, ContinueWatchingRow>();
-                    dbData.forEach((item) => {
-                        if (!uniqueMap.has(item.anime_id)) uniqueMap.set(item.anime_id, item);
-                    });
-                    
-                    const enriched = await Promise.all(Array.from(uniqueMap.values()).map(async (item) => {
-                        try {
-                            const info: any = await AnimeService.getAnimeInfo(item.anime_id);
-                            return {
-                                id: item.anime_id,
-                                anime_id: item.anime_id,
-                                title: info?.title?.english || info?.title?.userPreferred || item.anime_title || "Unknown",
-                                poster: item.episode_image || info?.poster || "/images/no-poster.png",
-                                episode: item.episode_number,
-                                episodeId: item.episode_id,
-                                progress: Math.min(Math.round((item.progress / (item.duration || 1350)) * 100), 100),
-                                totalEpisodes: info?.totalEpisodes || item.total_episodes || "?",
-                                type: info?.type || item.type || "TV",
-                                ageRating: info?.ageRating || null,
-                                isAdult: info?.isAdult || false
-                            };
-                        } catch {
-                            return {
-                                id: item.anime_id, anime_id: item.anime_id, title: item.anime_title || "Unknown",
-                                poster: item.episode_image || "/images/no-poster.png", episode: item.episode_number,
-                                episodeId: item.episode_id, progress: 0, totalEpisodes: item.total_episodes || "?", 
-                                type: item.type || "TV", ageRating: null, isAdult: false
-                            };
-                        }
-                    }));
-                    setContinueData(enriched);
-                }
-            } finally {
-                setLoadingData(false);
-            }
-        };
-        syncShadowArchives();
-    }, [user]);
 
     const filteredData = useMemo(() => {
         let base: (LibraryItem | ContinueItem)[] = [];
@@ -362,7 +305,7 @@ function WatchlistContent() {
                                     <AlertDialogCancel className="bg-white/5 text-white border-white/10">Abort</AlertDialogCancel>
                                     <AlertDialogAction onClick={async () => {
                                         await supabase.from('user_continue_watching').delete().eq('user_id', user.id);
-                                        setContinueData([]);
+                                        clearContinueData();
                                     }} className="bg-primary-600">Confirm Wipe</AlertDialogAction>
                                 </AlertDialogFooter>
                             </AlertDialogContent>

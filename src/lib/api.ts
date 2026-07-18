@@ -44,8 +44,42 @@ import { supabase } from "@/lib/supabase";
 //  1. CONFIGURATION (✅ EXPORTED)
 // ==========================================
 
-/** Base URL for the new Anikoto API. Everything now flows through here. */
-export const BASE_URL = 'https://anikoto-api-ivory.vercel.app/api';
+export class ApiManager {
+    private static urls = [
+        'https://anikoto-api-ivory.vercel.app/api',
+        // Add additional API mirrors here for rotation
+        'https://anikoto-api-ivory.vercel.app/api', 
+    ];
+    private static currentIndex = 0;
+
+    static getBaseUrl() {
+        if (typeof window !== 'undefined') {
+            const savedIndex = localStorage.getItem('shadow_api_index');
+            if (savedIndex !== null) {
+                const idx = parseInt(savedIndex, 10);
+                if (!isNaN(idx) && idx < this.urls.length) {
+                    this.currentIndex = idx;
+                }
+            }
+        }
+        return this.urls[this.currentIndex];
+    }
+
+    static rotateUrl() {
+        this.currentIndex = (this.currentIndex + 1) % this.urls.length;
+        if (typeof window !== 'undefined') {
+            localStorage.setItem('shadow_api_index', this.currentIndex.toString());
+        }
+        console.warn(`[ApiManager] Rotated API URL to: ${this.urls[this.currentIndex]}`);
+        return this.urls[this.currentIndex];
+    }
+    
+    static getAllUrls() {
+        return this.urls;
+    }
+}
+
+export const BASE_URL = ApiManager.getBaseUrl();
 
 /** @deprecated Dead mirror pool from the old HiAnime backend. Kept as an empty
  * export only so any stray `import { POOL_V2 } from ...` elsewhere doesn't
@@ -78,7 +112,7 @@ const normalizeList = (item: any): string[] => {
  * the `{ ok, data }` / `{ ok, cached, data }` envelope every Anikoto
  * endpoint returns (or raw arrays like /api/watch).
  */
-async function fetchAnikoto<T = any>(endpoint: string, params: Record<string, any> = {}): Promise<T | null> {
+async function fetchAnikoto<T = any>(endpoint: string, params: Record<string, any> = {}, retryCount = 0): Promise<T | null> {
     const queryParts: string[] = [];
     for (const [key, value] of Object.entries(params)) {
         if (value === undefined || value === null || value === '') continue;
@@ -92,21 +126,27 @@ async function fetchAnikoto<T = any>(endpoint: string, params: Record<string, an
         }
     }
     const queryString = queryParts.length > 0 ? `?${queryParts.join('&')}` : '';
-    const targetUrl = `${BASE_URL}${endpoint}${queryString}`;
+    const targetUrl = `${ApiManager.getBaseUrl()}${endpoint}${queryString}`;
     const proxyUrl = typeof window !== 'undefined' ? `/api/proxy?url=${encodeURIComponent(targetUrl)}` : targetUrl;
 
     try {
         const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 20000); // Increased to 20s for stream resolution
+        const timeoutId = setTimeout(() => controller.abort(), 20000); 
 
         try {
             const response = await fetch(proxyUrl, { signal: controller.signal });
             clearTimeout(timeoutId);
-            if (!response.ok) return null;
+            
+            if (!response.ok) {
+                if (retryCount < ApiManager.getAllUrls().length - 1) {
+                    ApiManager.rotateUrl();
+                    return fetchAnikoto(endpoint, params, retryCount + 1);
+                }
+                return null;
+            }
 
             const json = await response.json();
             
-            // Allow raw arrays/objects through and aggressively unwrap proxy objects
             if (json && typeof json === 'object') {
                 if ('ok' in json) {
                     return json.ok ? (json.data ?? json) : null;
@@ -118,10 +158,20 @@ async function fetchAnikoto<T = any>(endpoint: string, params: Record<string, an
             return json as T;
 
         } catch (innerError: any) {
-            if (innerError.name === 'AbortError') return null;
+            if (innerError.name === 'AbortError' || (innerError.message && innerError.message.includes('fetch'))) {
+                if (retryCount < ApiManager.getAllUrls().length - 1) {
+                    ApiManager.rotateUrl();
+                    return fetchAnikoto(endpoint, params, retryCount + 1);
+                }
+                return null;
+            }
             throw innerError;
         }
     } catch {
+        if (retryCount < ApiManager.getAllUrls().length - 1) {
+            ApiManager.rotateUrl();
+            return fetchAnikoto(endpoint, params, retryCount + 1);
+        }
         return null;
     }
 }
@@ -133,7 +183,7 @@ async function fetchAnikoto<T = any>(endpoint: string, params: Record<string, an
  * parses each `data: ` prefixed line as JSON, and collects all parsed
  * objects into an array — matching the shape getStream expects.
  */
-async function fetchAnikotoSSE(endpoint: string, params: Record<string, any> = {}): Promise<any[] | null> {
+async function fetchAnikotoSSE(endpoint: string, params: Record<string, any> = {}, retryCount = 0): Promise<any[] | null> {
     const queryParts: string[] = [];
     for (const [key, value] of Object.entries(params)) {
         if (value === undefined || value === null || value === '') continue;
@@ -147,22 +197,27 @@ async function fetchAnikotoSSE(endpoint: string, params: Record<string, any> = {
         }
     }
     const queryString = queryParts.length > 0 ? `?${queryParts.join('&')}` : '';
-    const targetUrl = `${BASE_URL}${endpoint}${queryString}`;
+    const targetUrl = `${ApiManager.getBaseUrl()}${endpoint}${queryString}`;
     const proxyUrl = typeof window !== 'undefined' ? `/api/proxy?url=${encodeURIComponent(targetUrl)}` : targetUrl;
 
     try {
         const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 30000); // 30s for SSE stream resolution
+        const timeoutId = setTimeout(() => controller.abort(), 25000);
 
         try {
             const response = await fetch(proxyUrl, { signal: controller.signal });
             clearTimeout(timeoutId);
-            if (!response.ok) return null;
+            
+            if (!response.ok) {
+                if (retryCount < ApiManager.getAllUrls().length - 1) {
+                    ApiManager.rotateUrl();
+                    return fetchAnikotoSSE(endpoint, params, retryCount + 1);
+                }
+                return null;
+            }
 
             const text = await response.text();
-
-            // First, try parsing as standard JSON (in case the API or proxy
-            // already collapsed the SSE stream into a single JSON response)
+            
             try {
                 const json = JSON.parse(text);
                 // Unwrap { ok, data } envelope if present
@@ -188,6 +243,7 @@ async function fetchAnikotoSSE(endpoint: string, params: Record<string, any> = {
                 if (!trimmed.startsWith('data:')) continue;
                 const jsonStr = trimmed.slice(5).trim(); // Remove 'data:' prefix
                 if (!jsonStr) continue;
+                if (jsonStr === '[DONE]') continue;
                 try {
                     const parsed = JSON.parse(jsonStr);
                     results.push(parsed);
@@ -198,10 +254,20 @@ async function fetchAnikotoSSE(endpoint: string, params: Record<string, any> = {
             return results.length > 0 ? results : null;
 
         } catch (innerError: any) {
-            if (innerError.name === 'AbortError') return null;
+            if (innerError.name === 'AbortError' || (innerError.message && innerError.message.includes('fetch'))) {
+                if (retryCount < ApiManager.getAllUrls().length - 1) {
+                    ApiManager.rotateUrl();
+                    return fetchAnikotoSSE(endpoint, params, retryCount + 1);
+                }
+                return null;
+            }
             throw innerError;
         }
     } catch {
+        if (retryCount < ApiManager.getAllUrls().length - 1) {
+            ApiManager.rotateUrl();
+            return fetchAnikotoSSE(endpoint, params, retryCount + 1);
+        }
         return null;
     }
 }

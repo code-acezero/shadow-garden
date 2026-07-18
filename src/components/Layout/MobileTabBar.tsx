@@ -3,7 +3,7 @@
 import React from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Home, MessageCircle, Heart, User, Search, CalendarDays, Bell, Settings } from 'lucide-react';
+import { Home, MessageCircle, Heart, User, Search, CalendarDays, Clapperboard, Settings } from 'lucide-react';
 import { DragonIcon } from '@/components/UIx/DragonIcon';
 import { cn } from '@/lib/utils';
 
@@ -16,14 +16,14 @@ export default function MobileTabBar() {
     { id: 'search', icon: Search, label: 'Search', path: '/search' },
     { id: 'schedule', icon: CalendarDays, label: 'Schedule', path: '/schedule' },
     { id: 'social', icon: MessageCircle, label: 'Social', path: '/social' },
-    { id: 'notifications', icon: Bell, label: 'Alerts', path: '/notifications' },
+    { id: 'drama', icon: Clapperboard, label: 'Drama', path: '/drama' },
     { id: 'watchlist', icon: Heart, label: 'Saved', path: '/watchlist' },
     { id: 'settings', icon: Settings, label: 'Settings', path: '/settings' },
     { id: 'profile', icon: User, label: 'Profile', path: '/profile' },
   ];
 
   if (pathname === '/') return null;
-  if (pathname.includes('/watch/')) return null; // Hide on watch pages to save space
+  if (pathname.includes('/watch/') || pathname.includes('/drama-watch/')) return null;
 
   return (
     <div className="md:hidden fixed bottom-0 left-0 w-full z-[100] pb-safe bg-[#050505]/80 backdrop-blur-2xl border-t border-white/5">

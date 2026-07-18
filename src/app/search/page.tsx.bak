@@ -4,8 +4,6 @@ import React, { useState, useEffect, Suspense, useCallback } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import AnimeCard from '@/components/Anime/AnimeCard';
 import { AnimeService } from '@/lib/api';
-import { dpi } from '@/lib/dpi';
-import { hpi } from '@/lib/hpi';
 import { demoness, hunters } from '@/lib/fonts';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
@@ -15,7 +13,6 @@ import {
 } from 'lucide-react';
 
 // --- CONSTANTS ---
-
 const GENRES = ["Action", "Adventure", "Comedy", "Drama", "Ecchi", "Fantasy", "Horror", "Isekai", "Mecha", "Mystery", "Psychological", "Romance", "Sci-Fi", "Seinen", "Shoujo", "Shounen", "Slice of Life", "Sports", "Supernatural", "Thriller"];
 const TYPES = ["tv", "movie", "ova", "ona", "special"];
 const STATUS_OPTIONS = ["currently-airing", "finished-airing", "not-yet-aired"];
@@ -27,15 +24,6 @@ const SORT_OPTIONS = [
   { value: "trending", label: "Trending", icon: TrendingUp },
   { value: "rating", label: "Top Rated", icon: Star },
 ];
-
-const DONGHUA_GENRES = ["Action", "Adventure", "Comedy", "Drama", "Ecchi", "Fantasy", "Harem", "Historical", "Martial Arts", "Mecha", "Mystery", "Romance", "Sci-Fi", "Shounen", "Slice of Life"];
-const DONGHUA_STATUS = ["ongoing", "completed"];
-const DONGHUA_SORT = [{value: 'update', label: 'Latest', icon: Clock}, {value: 'popular', label: 'Popular', icon: Flame}, {value: 'rating', label: 'Top Rated', icon: Star}];
-
-const HINDI_GENRES = ["Action", "Adventure", "Animation", "Comedy", "Crime", "Documentary", "Drama", "Family", "Fantasy", "History", "Horror", "Music", "Mystery", "Romance", "Science Fiction", "TV Movie", "Thriller", "War", "Western"];
-const HINDI_TYPES = ["Movie", "Series", "Drama"];
-const HINDI_STATUS = ["Ongoing", "Completed"];
-const HINDI_SORT = [{value: 'newest', label: 'Latest', icon: Clock}, {value: 'score', label: 'Top Rated', icon: Star}];
 
 // --- SUB COMPONENTS ---
 function FilterChip({ label, active, onClick }: { label: string; active: boolean; onClick: () => void }) {
@@ -112,7 +100,6 @@ function SearchContent() {
   const sortParam = searchParams.get('sort') || 'newest';
   const pageParam = parseInt(searchParams.get('page') || '1');
   const modeParam = searchParams.get('mode') || '';
-  const libraryParam = searchParams.get('library') || 'main';
 
   const [results, setResults] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -121,7 +108,6 @@ function SearchContent() {
   const [maxPage, setMaxPage] = useState<number | undefined>();
   const [showFilters, setShowFilters] = useState(false);
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
-  const [selectedLibrary, setSelectedLibrary] = useState(libraryParam);
 
   // Filter state
   const [query, setQuery] = useState(keyword);
@@ -137,55 +123,23 @@ function SearchContent() {
     try {
       let data: any;
 
-      if (selectedLibrary === 'donghua') {
-        if (keyword) {
-            const res = await dpi.search(keyword, currentPage);
-            data = { results: res, currentPage, hasNextPage: res.length >= 20 };
-        } else if (selectedGenres.length > 0 || selectedType || selectedStatus || selectedSort !== 'update') {
-            const params: Record<string, any> = { page: currentPage };
-            if (selectedGenres.length) params.genre = selectedGenres.join(',');
-            if (selectedType) params.type = selectedType;
-            if (selectedStatus) params.status = selectedStatus;
-            params.order = selectedSort === 'newest' ? 'update' : selectedSort;
-            const res = await dpi.filter(params);
-            data = { results: res, currentPage, hasNextPage: res.length >= 24 };
-        } else {
-            const res = await dpi.filter({ order: 'update', page: currentPage });
-            data = { results: res, currentPage, hasNextPage: res.length >= 24 };
-        }
-      } else if (selectedLibrary === 'hindi') {
-        if (keyword) {
-            const res = await hpi.hindi.search(keyword, currentPage);
-            data = { results: res.items || [], hasNextPage: res.pagination?.hasNextPage, currentPage: res.pagination?.currentPage };
-        } else if (selectedGenres.length > 0 || selectedType || selectedStatus || selectedSort !== 'newest') {
-            const params: Record<string, any> = { page: currentPage };
-            if (selectedGenres.length) params.genre = selectedGenres.join(',');
-            if (selectedType) params.type = selectedType;
-            if (selectedStatus) params.status = selectedStatus;
-            if (selectedSort !== 'newest') params.sort = selectedSort;
-            const res = await hpi.hindi.filter(params);
-            data = { results: res.items || [], hasNextPage: res.pagination?.hasNextPage, currentPage: res.pagination?.currentPage };
-        } else {
-            const res = await hpi.hindi.filter({ sort: 'updated_at', page: currentPage });
-            data = { results: res.items || [], hasNextPage: res.pagination?.hasNextPage, currentPage: res.pagination?.currentPage };
-        }
+      if (modeParam === 'az') {
+        // A-Z mode - fetch all anime alphabetically
+        data = await AnimeService.getFilteredAnime('recent', currentPage);
+      } else if (keyword) {
+        data = await AnimeService.search(keyword, currentPage);
+      } else if (selectedGenres.length > 0 || selectedType || selectedStatus) {
+        const params: Record<string, any> = { page: currentPage };
+        if (selectedGenres.length) params.genres = selectedGenres.join(',').toLowerCase();
+        if (selectedType) params.type = selectedType;
+        if (selectedStatus) params.status = selectedStatus;
+        if (selectedSeason) params.season = selectedSeason;
+        if (selectedYear) params.year = selectedYear;
+        const filterResults = await AnimeService.filter(params);
+        data = { results: filterResults, currentPage, hasNextPage: filterResults.length >= 20 };
       } else {
-        if (modeParam === 'az') {
-          data = await AnimeService.getFilteredAnime('recent', currentPage);
-        } else if (keyword) {
-          data = await AnimeService.search(keyword, currentPage);
-        } else if (selectedGenres.length > 0 || selectedType || selectedStatus || selectedSeason || selectedYear) {
-          const params: Record<string, any> = { page: currentPage };
-          if (selectedGenres.length) params.genres = selectedGenres.join(',').toLowerCase();
-          if (selectedType) params.type = selectedType;
-          if (selectedStatus) params.status = selectedStatus;
-          if (selectedSeason) params.season = selectedSeason;
-          if (selectedYear) params.year = selectedYear;
-          const filterResults = await AnimeService.filter(params);
-          data = { results: filterResults, currentPage, hasNextPage: filterResults.length >= 20 };
-        } else {
-          data = await AnimeService.getFilteredAnime(selectedSort === 'popular' ? 'popular' : selectedSort === 'trending' ? 'trending' : 'recent', currentPage);
-        }
+        // Default: show trending/popular
+        data = await AnimeService.getFilteredAnime(selectedSort === 'popular' ? 'popular' : selectedSort === 'trending' ? 'trending' : 'recent', currentPage);
       }
 
       setResults(data?.results || data || []);
@@ -197,7 +151,7 @@ function SearchContent() {
     } finally {
       setLoading(false);
     }
-  }, [keyword, currentPage, selectedGenres, selectedType, selectedStatus, selectedSeason, selectedYear, selectedSort, modeParam, selectedLibrary]);
+  }, [keyword, currentPage, selectedGenres, selectedType, selectedStatus, selectedSeason, selectedYear, selectedSort, modeParam]);
 
   useEffect(() => {
     fetchResults();
@@ -209,8 +163,7 @@ function SearchContent() {
     const params = new URLSearchParams();
     if (query) params.set('keyword', query);
     if (selectedGenres.length) params.set('genres', selectedGenres.join(','));
-    if (selectedSort !== 'newest' && selectedSort !== 'update') params.set('sort', selectedSort);
-    if (selectedLibrary !== 'main') params.set('library', selectedLibrary);
+    if (selectedSort !== 'newest') params.set('sort', selectedSort);
     router.push(`/search?${params.toString()}`);
   };
 
@@ -291,35 +244,6 @@ function SearchContent() {
             </p>
           )}
 
-                    {/* Library Tabs */}
-          <div className="mt-4 flex gap-2">
-            {['main', 'donghua', 'hindi'].map(lib => (
-                <button
-                    key={lib}
-                    onClick={() => {
-                        setSelectedLibrary(lib);
-                        setSelectedGenres([]);
-                        setSelectedType('');
-                        setSelectedStatus('');
-                        setSelectedSeason('');
-                        setSelectedYear('');
-                        setSelectedSort(lib === 'donghua' ? 'update' : 'newest');
-                        const params = new URLSearchParams(searchParams.toString());
-                        params.set('library', lib);
-                        params.delete('page');
-                        params.delete('genres');
-                        params.delete('type');
-                        params.delete('status');
-                        params.delete('sort');
-                        router.push(`/search?${params.toString()}`);
-                    }}
-                    className={`px-4 py-1.5 rounded-full text-xs font-bold uppercase transition-all ${selectedLibrary === lib ? 'bg-primary-600 text-white' : 'bg-white/5 text-zinc-400 hover:text-white hover:bg-white/10'}`}
-                >
-                    {lib}
-                </button>
-            ))}
-          </div>
-
           {/* Search Bar */}
           <form onSubmit={handleSearch} className="mt-6 flex gap-3">
             <div className="relative flex-1 max-w-2xl">
@@ -356,7 +280,7 @@ function SearchContent() {
 
           {/* Sort Chips */}
           <div className="mt-5 flex items-center gap-3 flex-wrap">
-            {(selectedLibrary === 'donghua' ? DONGHUA_SORT : selectedLibrary === 'hindi' ? HINDI_SORT : SORT_OPTIONS).map(opt => (
+            {SORT_OPTIONS.map(opt => (
               <button
                 key={opt.value}
                 onClick={() => {
@@ -408,26 +332,23 @@ function SearchContent() {
                   <Hash size={12} /> Genres
                 </span>
                 <div className="flex flex-wrap gap-2">
-                  {(() => {
-                    const activeGenres = selectedLibrary === 'donghua' ? DONGHUA_GENRES : selectedLibrary === 'hindi' ? HINDI_GENRES : GENRES;
-                    return activeGenres.map(g => (
-                      <FilterChip
-                        key={g}
-                        label={g}
-                        active={selectedGenres.includes(g.toLowerCase())}
-                        onClick={() => toggleGenre(g)}
-                      />
-                    ));
-                  })()}
+                  {GENRES.map(g => (
+                    <FilterChip
+                      key={g}
+                      label={g}
+                      active={selectedGenres.includes(g.toLowerCase())}
+                      onClick={() => toggleGenre(g)}
+                    />
+                  ))}
                 </div>
               </div>
 
               {/* Dropdowns Grid */}
               <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                {selectedLibrary !== 'donghua' && <SelectDropdown label="Type" icon={Tv} options={selectedLibrary === 'hindi' ? HINDI_TYPES : TYPES} value={selectedType} onChange={setSelectedType} />}
-                <SelectDropdown label="Status" icon={Info} options={selectedLibrary === 'donghua' ? DONGHUA_STATUS : selectedLibrary === 'hindi' ? HINDI_STATUS : STATUS_OPTIONS} value={selectedStatus} onChange={setSelectedStatus} />
-                {selectedLibrary === 'main' && <SelectDropdown label="Season" icon={Calendar} options={SEASONS} value={selectedSeason} onChange={setSelectedSeason} />}
-                {selectedLibrary === 'main' && <SelectDropdown label="Year" icon={Layers} options={YEARS} value={selectedYear} onChange={setSelectedYear} />}
+                <SelectDropdown label="Type" icon={Tv} options={TYPES} value={selectedType} onChange={setSelectedType} />
+                <SelectDropdown label="Status" icon={Info} options={STATUS_OPTIONS} value={selectedStatus} onChange={setSelectedStatus} />
+                <SelectDropdown label="Season" icon={Calendar} options={SEASONS} value={selectedSeason} onChange={setSelectedSeason} />
+                <SelectDropdown label="Year" icon={Layers} options={YEARS} value={selectedYear} onChange={setSelectedYear} />
               </div>
 
               {/* Filter Actions */}

@@ -25,6 +25,8 @@ import WatchListButton from '@/components/Watch/WatchListButton';
 import ShadowComments from '@/components/Comments/ShadowComments';
 import Footer from '@/components/Anime/Footer';
 import AnimeCard from '@/components/Anime/AnimeCard';
+import AuthModal from '@/components/Auth/AuthModal';
+import { useUserData } from '@/context/UserDataContext';
 import { Button } from '@/components/ui/button';
 import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
@@ -196,13 +198,17 @@ EpisodeButton.displayName = "EpisodeButton";
 interface V2EpisodeSchedule { airingISOTimestamp: string | null; airingTimestamp: number | null; secondsUntilAiring: number | null; }
 interface EpisodeProgress { [key: number]: number; }
 
-async function retryOperation<T>(operation: () => Promise<T>, retries = 3, delay = 1000): Promise<T> {
+async function retryOperation<T>(operation: () => Promise<T>, retries = 3, delay = 1000, timeoutMs = 15000): Promise<T> {
+    const timeoutPromise = new Promise<never>((_, reject) => {
+        setTimeout(() => reject(new Error('Operation timed out')), timeoutMs);
+    });
+
     try {
-        return await operation();
+        return await Promise.race([operation(), timeoutPromise]);
     } catch (error) {
         if (retries <= 0) throw error;
         await new Promise(res => setTimeout(res, delay));
-        return retryOperation(operation, retries - 1, delay * 2);
+        return retryOperation(operation, retries - 1, delay * 2, timeoutMs);
     }
 }
 
@@ -422,7 +428,6 @@ const CharacterDetailsDialog = ({
 <div className="flex flex-col items-center justify-start h-full pt-[30%] opacity-40">
     <img 
         src="/images/non-non.png" 
-        // Increased size to w-24 h-24 (approx 90-100% bigger than w-12)
         className="w-24 h-24 rounded-full grayscale mb-4 border border-white/10" 
     />
     <span className="text-[10px] font-black uppercase text-zinc-500 tracking-widest">
@@ -577,6 +582,7 @@ function WatchContent() {
   const urlType = searchParams.get('type'); 
 
   const { user } = useAuth();
+  const { continueData } = useUserData();
   const { settings, updateSetting, isSettingsLoaded } = useWatchSettings();
 
   // --- POPUP STACK ---
@@ -799,9 +805,12 @@ function WatchContent() {
           let localData: {[key: string]: any} = {};
           try { const raw = localStorage.getItem(tempStorageKey); if (raw) localData = JSON.parse(raw); } catch {}
           let dbData: {[key: string]: any} = {};
-          if (user && supabase) {
-              // ✅ Shared Client
-              try { const { data } = await (supabase.from('user_continue_watching') as any).select('*').eq('user_id', user.id).eq('anime_id', animeId); if (data) data.forEach((row: any) => { dbData[row.episode_id] = row; }); } catch {}
+          if (user && continueData) {
+              try { 
+                  continueData.forEach((row: any) => { 
+                      if (row.anime_id === animeId) dbData[row.episode_id] = row; 
+                  }); 
+              } catch {}
           }
           const allEpIds = new Set([...Object.keys(localData), ...Object.keys(dbData)]);
           allEpIds.forEach(epId => {
@@ -911,14 +920,20 @@ function WatchContent() {
                 if (currentFetch === activeFetchRef.current) updateSetting('category', urlType); 
             }
             
-            let streamData: any = await AnimeService.getStream(currentEpId, settings.server, targetCategory as "sub" | "dub" | undefined);
+            let streamData: any = await retryOperation(
+                () => AnimeService.getStream(currentEpId, settings.server, targetCategory as "sub" | "dub" | undefined),
+                2, 1000, 15000
+            );
             
             if (currentFetch !== activeFetchRef.current) return;
 
             if (!streamData?.url && targetCategory === 'dub') {
                 console.warn("Dub missing, falling back to Sub");
                 targetCategory = 'sub';
-                streamData = await AnimeService.getStream(currentEpId, settings.server, 'sub');
+                streamData = await retryOperation(
+                    () => AnimeService.getStream(currentEpId, settings.server, 'sub'),
+                    2, 1000, 15000
+                );
                 if (currentFetch !== activeFetchRef.current) return;
                 
                 if (streamData?.url && settings.category !== 'sub') { 

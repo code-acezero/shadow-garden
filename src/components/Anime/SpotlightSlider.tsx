@@ -13,6 +13,7 @@ import { motion, AnimatePresence, wrap, PanInfo, Variants } from 'framer-motion'
 import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/context/AuthContext';
+import { useUserData } from '@/context/UserDataContext';
 import AuthModal from '@/components/Auth/AuthModal';
 import { cn } from '@/lib/utils';
 import {
@@ -122,6 +123,7 @@ const notifyWhisper = (message: string, type: 'success' | 'error' = 'success') =
 const SpotlightActions = ({ anime }: { anime: SpotlightAnime }) => {
     const router = useRouter();
     const { user, isLoading: isAuthLoading } = useAuth();
+    const { library, updateLibraryStatus, addToLibrary, removeFromLibrary } = useUserData();
     const [status, setStatus] = useState<string | null>(null);
     const [loadingList, setLoadingList] = useState(false);
     const [showAuth, setShowAuth] = useState(false);
@@ -135,22 +137,10 @@ const SpotlightActions = ({ anime }: { anime: SpotlightAnime }) => {
     };
 
     useEffect(() => {
-        let isMounted = true;
-        const checkStatus = async () => {
-            if (!supabase || !user || !anime) return;
-            try {
-                const { data } = await (supabase.from('watchlist') as any)
-                    .select('status').eq('user_id', user.id).eq('anime_id', anime.id).maybeSingle();
-                if(isMounted) setStatus(data?.status || null);
-            } catch (err) { 
-                if (process.env.NODE_ENV === 'development') {
-                    console.error('Watchlist status check error:', err);
-                }
-            }
-        };
-        if (!isAuthLoading) checkStatus();
-        return () => { isMounted = false; };
-    }, [anime.id, user, isAuthLoading]);
+        if (isAuthLoading) return;
+        const entry = library.find(item => item.anime_id === anime.id);
+        setStatus(entry ? entry.status : null);
+    }, [anime.id, library, isAuthLoading]);
 
     const handleUpdateStatus = async (newStatus: string | null) => {
         if (!supabase) return;
@@ -159,17 +149,20 @@ const SpotlightActions = ({ anime }: { anime: SpotlightAnime }) => {
         try {
             if (!newStatus) {
                 await (supabase.from('watchlist') as any).delete().eq('user_id', user.id).eq('anime_id', anime.id);
+                removeFromLibrary(anime.id);
                 setStatus(null);
                 notifyWhisper("Anime removed from Quest.", "success");
             } else {
-                await (supabase.from('watchlist') as any).upsert({
+                const payload = {
                     user_id: user.id,
                     anime_id: anime.id,
                     status: newStatus,
                     anime_title: typeof anime.title === 'string' ? anime.title : (anime.title?.english || "Unknown"),
                     anime_image: anime.poster || anime.image,
                     updated_at: new Date().toISOString()
-                }, { onConflict: 'user_id, anime_id' });
+                };
+                await (supabase.from('watchlist') as any).upsert(payload, { onConflict: 'user_id, anime_id' });
+                addToLibrary(payload);
                 setStatus(newStatus);
                 notifyWhisper(`Mission updated: ${statusMap[newStatus].label}`, "success");
             }

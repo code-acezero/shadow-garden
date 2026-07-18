@@ -10,6 +10,8 @@ import CustomLoader from "@/components/UIx/CustomLoader";
 import { createClient } from "@supabase/supabase-js"; 
 import { SITE_CONFIG } from '@/lib/site-config'; 
 import WelcomeModal from "@/components/UIx/WelcomeModal";
+import { UserDataProvider } from '@/context/UserDataContext';
+import Footer from '@/components/Anime/Footer';
 
 // Import fonts from your library (Optimized: These are just variable definitions now)
 import { 
@@ -189,17 +191,21 @@ export default function RootLayout({
 
         {/* AuthProvider must wrap SettingsProvider so settings can access user ID */}
         <AuthProvider>
-          <SettingsProvider>
-            <Navigation />
+          <UserDataProvider>
+            <SettingsProvider>
+              <Navigation />
 
-            <main className="min-h-screen relative overflow-hidden">
-              <PageTransition>
-                {children}
-              </PageTransition>
-            </main>
+              <main className="min-h-screen relative overflow-hidden pt-20">
+                <PageTransition>
+                  {children}
+                </PageTransition>
+              </main>
+              
+              <Footer />
 
-            <Toaster position="bottom-right" theme="dark" />
-          </SettingsProvider>
+              <Toaster position="bottom-right" theme="dark" />
+            </SettingsProvider>
+          </UserDataProvider>
         </AuthProvider>
       </body>
     </html>
