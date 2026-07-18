@@ -115,6 +115,28 @@ function WatchlistContent() {
     const [searchQuery, setSearchQuery] = useState('');
     const [sortOption, setSortOption] = useState('updated_at');
     const [isAuthOpen, setIsAuthOpen] = useState(false);
+    const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
+
+    const handleStatusChange = async (animeId: string, newStatus: string) => {
+        if (!user) return;
+        const { error } = await supabase.from('watchlist').update({ status: newStatus }).eq('user_id', user.id).eq('anime_id', animeId);
+        if (!error) {
+            setLibrary(prev => prev.map(item => item.anime_id === animeId ? { ...item, status: newStatus as any } : item));
+            if (typeof window !== 'undefined') window.dispatchEvent(new CustomEvent('shadow-whisper', { detail: { id: Date.now(), type: 'success', title: "System", message: 'Status updated' } }));
+        }
+    };
+
+    const handleRemove = async (animeId: string, isContinue: boolean = false) => {
+        if (!user) return;
+        if (isContinue) {
+            const { error } = await supabase.from('user_continue_watching').delete().eq('user_id', user.id).eq('anime_id', animeId);
+            if (!error) setContinueData(prev => prev.filter(item => item.anime_id !== animeId));
+        } else {
+            const { error } = await supabase.from('watchlist').delete().eq('user_id', user.id).eq('anime_id', animeId);
+            if (!error) setLibrary(prev => prev.filter(item => item.anime_id !== animeId));
+        }
+        if (typeof window !== 'undefined') window.dispatchEvent(new CustomEvent('shadow-whisper', { detail: { id: Date.now(), type: 'success', title: "System", message: 'Removed from library' } }));
+    };
 
     const isContinueItem = (item: any): item is ContinueItem => {
         return (item as ContinueItem).poster !== undefined;
@@ -297,6 +319,10 @@ function WatchlistContent() {
                                     <SelectItem value="title">Alphabetical</SelectItem>
                                 </SelectContent>
                             </Select>
+                            <div className="flex items-center bg-white/5 rounded-xl border border-white/10 p-1 shrink-0">
+                                <button onClick={() => setViewMode('grid')} className={cn("p-2 rounded-lg transition-colors", viewMode === 'grid' ? "bg-primary-600 text-white" : "text-zinc-500 hover:text-white")}><LayoutGrid size={16}/></button>
+                                <button onClick={() => setViewMode('list')} className={cn("p-2 rounded-lg transition-colors", viewMode === 'list' ? "bg-primary-600 text-white" : "text-zinc-500 hover:text-white")}><ListIcon size={16}/></button>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -344,43 +370,124 @@ function WatchlistContent() {
                     )}
                 </div>
 
-                {/* --- GRID --- */}
+                {/* --- CONTENT --- */}
                 <div className="min-h-[500px] px-4 md:px-8">
                     {loadingData ? (
                         <WatchlistSkeleton />
                     ) : filteredData.length > 0 ? (
-                        <motion.div layout className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4 md:gap-6">
-                            <AnimatePresence mode="popLayout">
-                                {filteredData.map((item) => (
-                                    <motion.div 
-                                        key={item.id || (isContinueItem(item) ? item.anime_id : item.anime_id)} 
-                                        layout 
-                                        initial={{ opacity: 0, scale: 0.9 }} 
-                                        animate={{ opacity: 1, scale: 1 }} 
-                                        exit={{ opacity: 0, scale: 0.9 }} 
-                                        className="w-full flex"
-                                    >
-                                        <div className="w-full">
-                                            {isContinueItem(item) ? (
-                                                <ContinueAnimeCard 
-                                                    anime={item}
-                                                    className="w-full h-full"
-                                                    onClick={(id, episodeId) => router.push(`/watch/${id}?ep=${episodeId}`)}
-                                                />
-                                            ) : (
-                                                <AnimeCard anime={{ 
-                                                    id: item.anime_id, 
-                                                    title: item.anime_title, 
-                                                    poster: item.anime_image, 
-                                                    type: "TV", 
-                                                    totalEpisodes: item.total_episodes
-                                                }} />
-                                            )}
-                                        </div>
-                                    </motion.div>
-                                ))}
-                            </AnimatePresence>
-                        </motion.div>
+                        viewMode === 'grid' ? (
+                            <motion.div layout className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4 md:gap-6">
+                                <AnimatePresence mode="popLayout">
+                                    {filteredData.map((item) => (
+                                        <motion.div 
+                                            key={item.id || (isContinueItem(item) ? item.anime_id : item.anime_id)} 
+                                            layout 
+                                            initial={{ opacity: 0, scale: 0.9 }} 
+                                            animate={{ opacity: 1, scale: 1 }} 
+                                            exit={{ opacity: 0, scale: 0.9 }} 
+                                            className="w-full flex relative group"
+                                        >
+                                            <div className="w-full">
+                                                {isContinueItem(item) ? (
+                                                    <ContinueAnimeCard 
+                                                        anime={item}
+                                                        className="w-full h-full"
+                                                        onClick={(id, episodeId) => router.push(`/watch/${id}?ep=${episodeId}`)}
+                                                    />
+                                                ) : (
+                                                    <AnimeCard anime={{ 
+                                                        id: item.anime_id, 
+                                                        title: item.anime_title, 
+                                                        poster: item.anime_image, 
+                                                        type: "TV", 
+                                                        totalEpisodes: item.total_episodes
+                                                    }} />
+                                                )}
+                                                {/* QUICK ACTIONS OVERLAY */}
+                                                <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col gap-1 z-20">
+                                                    {!isContinueItem(item) && (
+                                                        <Select value={item.status} onValueChange={(v) => handleStatusChange(item.anime_id, v)}>
+                                                            <SelectTrigger className="w-8 h-8 rounded-full bg-black/80 border-white/20 text-white p-0 flex items-center justify-center [&>svg]:hidden focus:ring-0 shadow-xl backdrop-blur-md hover:scale-110 transition-transform">
+                                                                <Clock size={14} className="text-zinc-300"/>
+                                                            </SelectTrigger>
+                                                            <SelectContent className="bg-[#0a0a0a] border-white/10 text-white">
+                                                                <SelectItem value="watching">Watching</SelectItem>
+                                                                <SelectItem value="completed">Completed</SelectItem>
+                                                                <SelectItem value="plan_to_watch">Plan to Watch</SelectItem>
+                                                                <SelectItem value="on_hold">On Hold</SelectItem>
+                                                                <SelectItem value="dropped">Dropped</SelectItem>
+                                                            </SelectContent>
+                                                        </Select>
+                                                    )}
+                                                    <button onClick={() => handleRemove(isContinueItem(item) ? item.anime_id : item.anime_id, isContinueItem(item))} className="w-8 h-8 rounded-full bg-black/80 border border-white/20 text-red-400 flex items-center justify-center hover:bg-red-500/20 shadow-xl backdrop-blur-md hover:scale-110 transition-transform"><Trash2 size={14}/></button>
+                                                </div>
+                                            </div>
+                                        </motion.div>
+                                    ))}
+                                </AnimatePresence>
+                            </motion.div>
+                        ) : (
+                            <motion.div layout className="flex flex-col gap-3">
+                                <AnimatePresence mode="popLayout">
+                                    {filteredData.map((item) => (
+                                        <motion.div 
+                                            key={item.id || (isContinueItem(item) ? item.anime_id : item.anime_id)} 
+                                            layout 
+                                            initial={{ opacity: 0, y: 10 }} 
+                                            animate={{ opacity: 1, y: 0 }} 
+                                            exit={{ opacity: 0, y: -10 }} 
+                                            className="w-full flex items-center gap-4 bg-white/5 border border-white/10 rounded-2xl p-3 hover:bg-white/10 transition-colors"
+                                        >
+                                            <div 
+                                                className="w-16 h-20 md:w-20 md:h-28 shrink-0 rounded-xl overflow-hidden bg-zinc-900 relative cursor-pointer"
+                                                onClick={() => {
+                                                    if (isContinueItem(item)) router.push(`/watch/${item.anime_id}?ep=${item.episodeId}`);
+                                                    else router.push(`/watch/${item.anime_id}`);
+                                                }}
+                                            >
+                                                <img src={isContinueItem(item) ? item.poster : item.anime_image} alt="poster" className="w-full h-full object-cover" />
+                                                {isContinueItem(item) && (
+                                                    <div className="absolute inset-x-0 bottom-0 h-1 bg-white/20">
+                                                        <div className="h-full bg-primary-600" style={{ width: `${item.progress}%` }} />
+                                                    </div>
+                                                )}
+                                            </div>
+                                            <div className="flex-1 min-w-0 flex flex-col justify-center cursor-pointer" onClick={() => {
+                                                    if (isContinueItem(item)) router.push(`/watch/${item.anime_id}?ep=${item.episodeId}`);
+                                                    else router.push(`/watch/${item.anime_id}`);
+                                            }}>
+                                                <h3 className="font-bold text-white text-sm md:text-lg truncate">{isContinueItem(item) ? item.title : item.anime_title}</h3>
+                                                {isContinueItem(item) ? (
+                                                    <p className="text-xs text-primary-500 font-bold uppercase mt-1 tracking-widest">Episode {item.episode}</p>
+                                                ) : (
+                                                    <p className="text-[10px] text-zinc-500 font-bold uppercase mt-1 tracking-widest flex items-center gap-2">
+                                                        <span className="w-2 h-2 rounded-full bg-primary-600" />
+                                                        {item.status.replace(/_/g, ' ')}
+                                                    </p>
+                                                )}
+                                            </div>
+                                            <div className="flex items-center gap-2 shrink-0">
+                                                {!isContinueItem(item) && (
+                                                    <Select value={item.status} onValueChange={(v) => handleStatusChange(item.anime_id, v)}>
+                                                        <SelectTrigger className="w-[110px] h-9 bg-black/40 border-white/10 text-[10px] uppercase font-bold text-white rounded-lg">
+                                                            <SelectValue placeholder="Status" />
+                                                        </SelectTrigger>
+                                                        <SelectContent className="bg-[#0a0a0a] border-white/10 text-white">
+                                                            <SelectItem value="watching">Watching</SelectItem>
+                                                            <SelectItem value="completed">Completed</SelectItem>
+                                                            <SelectItem value="plan_to_watch">Plan to Watch</SelectItem>
+                                                            <SelectItem value="on_hold">On Hold</SelectItem>
+                                                            <SelectItem value="dropped">Dropped</SelectItem>
+                                                        </SelectContent>
+                                                    </Select>
+                                                )}
+                                                <button onClick={() => handleRemove(isContinueItem(item) ? item.anime_id : item.anime_id, isContinueItem(item))} className="w-9 h-9 rounded-lg bg-red-500/10 border border-red-500/20 text-red-400 flex items-center justify-center hover:bg-red-500 hover:text-white transition-colors"><Trash2 size={14}/></button>
+                                            </div>
+                                        </motion.div>
+                                    ))}
+                                </AnimatePresence>
+                            </motion.div>
+                        )
                     ) : (
                         <div className="flex flex-col items-center justify-center h-80 border-2 border-dashed border-white/5 rounded-3xl opacity-30">
                             <AlertCircle size={48} />

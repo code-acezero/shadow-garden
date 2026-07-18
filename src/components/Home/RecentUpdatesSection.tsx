@@ -232,7 +232,7 @@ export default function RecentUpdatesSection({ initialData }: { initialData: any
                 </div>
             ) : data.length > 0 ? (
                 <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4 md:gap-6 relative">
-                    {data.slice(0, 12).map((anime, idx) => (
+                    {data.slice(0, 24).map((anime, idx) => (
                         <div 
                             key={`${anime.id}-${idx}`}
                             className="group relative z-10 transition-all duration-300 hover:scale-[1.03] hover:z-50"

@@ -55,6 +55,7 @@ const MENU_ITEMS = [
   { id: 'whisper', label: 'Telepathy', icon: Mic2 },
   { id: 'notifications', label: 'Missives', icon: Bell },
   { id: 'data', label: 'Archive', icon: HardDrive },
+  { id: 'integrations', label: 'Integrations', icon: Globe },
 ];
 
 // --- HELPER: WHISPER NOTIFICATION ---
@@ -588,6 +589,68 @@ export default function Settings() {
             <div className="bg-[#0f0f0f] rounded-[32px] p-8 border border-white/5 space-y-6 shadow-lg"><h3 className="text-xs font-black text-zinc-500 uppercase tracking-widest flex items-center gap-2 text-red-500"><AlertTriangle size={14}/> Reset Zone</h3><div className="space-y-3"><SettingRow icon={RefreshCw} title="Clear Watch History" desc="Remove all progress markers" action={<Button variant="outline" size="sm" className="h-9 rounded-xl border-white/10 hover:bg-white/10 text-zinc-300 font-bold">Clear</Button>} /><SettingRow icon={Trash2} title="Factory Reset" desc="Reset all settings to default" action={<Button variant="destructive" size="sm" onClick={() => { if(confirm('Reset all settings?')) resetSettings(); }} className="h-9 rounded-xl font-bold">Reset</Button>} /></div></div>
           </div>
         );
+
+      case 'integrations': return (
+          <div className="space-y-8 animate-in fade-in slide-in-from-right-4 duration-500 w-full">
+            <SectionHeader title="Integrations" desc="Sync your progress with external services" font={currentFont} />
+            <div className="bg-[#0f0f0f] rounded-[32px] p-8 border border-white/5 space-y-6 shadow-lg">
+                <h3 className="text-xs font-black text-zinc-500 uppercase tracking-widest flex items-center gap-2"><Globe size={14} className="text-primary"/> AniList</h3>
+                <div className="flex flex-col md:flex-row items-center justify-between gap-6 p-4 bg-black/40 border border-white/5 rounded-[24px]">
+                    <div className="flex items-center gap-4">
+                        <div className="w-12 h-12 bg-[#02A9FF] rounded-2xl flex items-center justify-center shadow-lg">
+                            <span className="font-black text-white text-xl">AL</span>
+                        </div>
+                        <div>
+                            <h4 className="text-sm font-bold text-white">AniList Sync</h4>
+                            <p className="text-xs text-zinc-500">Automatically sync your watch progress to AniList.</p>
+                        </div>
+                    </div>
+                    {typeof window !== 'undefined' && localStorage.getItem('anilist_token') ? (
+                        <div className="flex items-center gap-2">
+                            <Button 
+                                onClick={async () => {
+                                    notifyWhisper('Syncing from AniList...', 'info');
+                                    // Placeholder for Import logic
+                                    setTimeout(() => notifyWhisper('Import complete (Placeholder)', 'success'), 2000);
+                                }}
+                                className="bg-white/10 hover:bg-white/20 text-white rounded-xl"
+                            >
+                                <Download size={14} className="mr-2" /> Import
+                            </Button>
+                            <Button 
+                                onClick={async () => {
+                                    notifyWhisper('Syncing to AniList...', 'info');
+                                    // Placeholder for Export logic
+                                    setTimeout(() => notifyWhisper('Export complete (Placeholder)', 'success'), 2000);
+                                }}
+                                className="bg-white/10 hover:bg-white/20 text-white rounded-xl"
+                            >
+                                <Globe size={14} className="mr-2" /> Export
+                            </Button>
+                            <Button 
+                                variant="destructive" 
+                                onClick={() => { localStorage.removeItem('anilist_token'); notifyWhisper('AniList Disconnected', 'success'); changeTab('integrations'); }}
+                                className="bg-red-500/10 text-red-500 border border-red-500/20 hover:bg-red-500 hover:text-white rounded-xl"
+                            >
+                                Disconnect
+                            </Button>
+                        </div>
+                    ) : (
+                        <Button 
+                            onClick={() => {
+                                const clientId = '46235';
+                                const redirectUrl = 'https://shadow-garden.site/home';
+                                window.location.href = `https://anilist.co/api/v2/oauth/authorize?client_id=${clientId}&redirect_uri=${redirectUrl}&response_type=code`;
+                            }}
+                            className="bg-[#02A9FF] hover:bg-[#02A9FF]/80 text-white rounded-xl shadow-[0_0_15px_rgba(2,169,255,0.4)]"
+                        >
+                            Connect to AniList
+                        </Button>
+                    )}
+                </div>
+            </div>
+          </div>
+      );
       default: return null;
     }
   };

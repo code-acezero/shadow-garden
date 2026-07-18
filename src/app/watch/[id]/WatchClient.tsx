@@ -24,6 +24,7 @@ import AnimePlayer, { AnimePlayerRef } from '@/components/Player/AnimePlayer';
 import WatchListButton from '@/components/Watch/WatchListButton';
 import ShadowComments from '@/components/Comments/ShadowComments';
 import Footer from '@/components/Anime/Footer';
+import AnimeCard from '@/components/Anime/AnimeCard';
 import { Button } from '@/components/ui/button';
 import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
@@ -860,6 +861,17 @@ function WatchContent() {
           }
 
           if (targetEpId && targetEpId !== currentEpId) setCurrentEpId(targetEpId);
+          setIsResumeLoaded(true);
+
+          // Handle Custom Timestamp from URL
+          const urlTime = searchParams.get('timestamp') || searchParams.get('t');
+          if (urlTime && !isNaN(Number(urlTime))) {
+              setResumeTime(Number(urlTime));
+          } else if (targetEpId && progressBuffer.current[targetEpId] && !progressBuffer.current[targetEpId].is_completed) {
+              setResumeTime(progressBuffer.current[targetEpId].progress || 0);
+          } else {
+              setResumeTime(0);
+          }
       };
       syncHistory();
   }, [anime, user?.id, animeId]);
@@ -1009,7 +1021,13 @@ function WatchContent() {
                         </motion.div>
                     )}
                 </AnimatePresence>
-                {streamUrl ? ( <AnimePlayer key={currentEpId} ref={playerRef} url={streamUrl || ""} referer={streamReferer} subtitles={subtitles} intro={intro} outro={outro} title={currentEpisode?.title || anime.title} startTime={resumeTime} autoPlay={settings.autoPlay} autoSkip={settings.autoSkip} initialVolume={settings.volume} onProgress={(s:any) => progressRef.current = s.playedSeconds} onEnded={() => { saveProgress(true); if(settings.autoNext && nextEpisode) handleEpisodeClick(nextEpisode.id); }} onInteract={() => { if(!hideInterface) resetInterfaceTimer(); }} onPlay={handlePlaybackStart} onPause={handlePause} onSkipIntro={handleSkipIntro} /> ) : ( <div className="w-full h-full flex items-center justify-center border-b border-white/5"><FantasyLoader text="OPENING PORTAL..." /></div> )}
+                {streamUrl ? ( 
+                    streamUrl.includes('.m3u8') || streamUrl.includes('.mp4') || streamUrl.includes('/api/proxy') ? (
+                        <AnimePlayer key={currentEpId} ref={playerRef} url={streamUrl || ""} referer={streamReferer} subtitles={subtitles} intro={intro} outro={outro} title={currentEpisode?.title || anime.title} startTime={resumeTime} autoPlay={settings.autoPlay} autoSkip={settings.autoSkip} initialVolume={settings.volume} onProgress={(s:any) => progressRef.current = s.playedSeconds} onEnded={() => { saveProgress(true); if(settings.autoNext && nextEpisode) handleEpisodeClick(nextEpisode.id); }} onInteract={() => { if(!hideInterface) resetInterfaceTimer(); }} onPlay={handlePlaybackStart} onPause={handlePause} onSkipIntro={handleSkipIntro} /> 
+                    ) : (
+                        <iframe src={streamUrl} className="w-full h-full border-0" allowFullScreen allow="autoplay; fullscreen" />
+                    )
+                ) : ( <div className="w-full h-full flex items-center justify-center border-b border-white/5"><FantasyLoader text="OPENING PORTAL..." /></div> )}
             </div>
 
             <motion.div initial={{ y: -20, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ duration: 0.5, delay: 0.2 }} className={cn("w-full transition-all duration-500 will-change-transform", hideInterface ? "opacity-0 pointer-events-none translate-y-4" : "opacity-100 translate-y-0")}>
@@ -1241,7 +1259,22 @@ function WatchContent() {
                   </motion.div>
               </div>
               
-              <div className="w-full">
+              {/* RESTORED RELATED SECTION */}
+              {anime.related && anime.related.length > 0 && (
+                  <div className="w-full mt-8 bg-[#0a0a0a] rounded-[40px] border border-white/5 p-6 md:p-8 shadow-2xl relative shadow-primary-900/10">
+                      <div className="flex items-center gap-3 mb-6">
+                          <Layers size={18} className="text-primary-600"/>
+                          <h3 className="font-black text-white text-sm font-[Cinzel] tracking-widest uppercase">Related Franchise</h3>
+                      </div>
+                      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4 md:gap-6">
+                          {anime.related.map((rel: any) => (
+                             <AnimeCard key={rel.id} anime={rel} />
+                          ))}
+                      </div>
+                  </div>
+              )}
+
+              <div className="w-full mt-8">
                   <ShadowComments key={user?.id || 'guest'} episodeId={currentEpId || "general"} />
               </div>
           </div>

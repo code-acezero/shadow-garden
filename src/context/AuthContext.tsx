@@ -79,8 +79,6 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   }, []);
 
   useEffect(() => {
-    if (hasInitialized.current) return;
-    hasInitialized.current = true;
     isMounted.current = true;
 
     if (typeof window !== 'undefined') {

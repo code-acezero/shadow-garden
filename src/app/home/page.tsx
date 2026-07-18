@@ -1,8 +1,10 @@
 "use client";
 
-import React from "react";
+import React, { useEffect } from "react";
 import dynamic from "next/dynamic";
 import useSWR from "swr";
+import { useSearchParams, useRouter } from "next/navigation";
+import { toast } from "sonner"; // If they use sonner, otherwise custom notify
 
 import MobileContainer from "@/components/Layout/MobileContainer";
 import SpotlightSlider from "@/components/Anime/SpotlightSlider";
@@ -35,11 +37,44 @@ const RecentUpdatesSection = dynamic(
 );
 
 export default function Home() {
+  const searchParams = useSearchParams();
+  const router = useRouter();
+
   const { data, isLoading } = useSWR("home-sections", () => AnimeService.getHomeSections(), {
     revalidateOnFocus: false,
     dedupingInterval: 60_000, 
     keepPreviousData: true,   
   });
+
+  useEffect(() => {
+    const code = searchParams.get('code');
+    if (code) {
+      // Exchange code for token
+      const exchangeToken = async () => {
+        try {
+          const res = await fetch('/api/auth/anilist', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ code })
+          });
+          const data = await res.json();
+          if (data.access_token) {
+            localStorage.setItem('anilist_token', data.access_token);
+            // Optionally dispatch event for user feedback
+            if (typeof window !== 'undefined') {
+                window.dispatchEvent(new CustomEvent('shadow-whisper', { 
+                    detail: { id: Date.now(), type: 'success', title: "Integration", message: "AniList connected successfully!" } 
+                }));
+            }
+            router.replace('/home'); // Remove code from URL
+          }
+        } catch (e) {
+          console.error("AniList exchange failed", e);
+        }
+      };
+      exchangeToken();
+    }
+  }, [searchParams, router]);
 
   const spotlightData = data?.spotlight ?? [];
   const recentData = data?.recent ?? [];

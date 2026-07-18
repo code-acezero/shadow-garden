@@ -483,18 +483,24 @@ export class AnimeService {
     }
 
     static async getUniversalRecent() {
-        const home: any = await AnimeAPI_Anikoto.getHome();
-        return Array.isArray(home?.latestEpisodes) ? home.latestEpisodes.map(normalizeCard) : [];
+        const data: any = await AnimeAPI_Anikoto.getLatest('latest-updated', 1);
+        return extractPaged(data).results.map(normalizeCard);
     }
 
     static async getHomeSections() {
         const home: any = await AnimeAPI_Anikoto.getHome();
-        if (!home) return { spotlight: [], recent: [] };
+        
+        // Fetch the full latest-updated list (24 items) instead of the 12-item sidebar
+        const recentData: any = await AnimeAPI_Anikoto.getLatest('latest-updated', 1);
+        const recent = extractPaged(recentData).results.map(normalizeCard);
+
+        if (!home) return { spotlight: [], recent };
+
         const spotlight = Array.isArray(home.spotlight) ? home.spotlight.map((item: any) => ({
             ...normalizeCard(item),
             description: item?.synopsis || item?.description || ''
         })) : [];
-        const recent = Array.isArray(home.latestEpisodes) ? home.latestEpisodes.map(normalizeCard) : [];
+        
         return { spotlight, recent };
     }
 
