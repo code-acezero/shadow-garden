@@ -50,7 +50,40 @@ export const UserDataProvider = ({ children }: { children: React.ReactNode }) =>
                 supabase.from('user_continue_watching').select('*').eq('user_id', user.id).eq('is_completed', false).order('last_updated', { ascending: false })
             ]);
 
-            if (watchlistRes.data) setLibrary(watchlistRes.data);
+            if (watchlistRes.data) {
+                const dbData = watchlistRes.data;
+                const enrichedLibrary = await Promise.all(dbData.map(async (item: any) => {
+                    try {
+                        const info: any = await AnimeService.getAnimeInfo(item.anime_id);
+                        return {
+                            ...item,
+                            id: item.anime_id,
+                            title: info?.title?.english || info?.title?.userPreferred || item.anime_title || "Unknown",
+                            poster: info?.poster || item.anime_image || "/images/no-poster.png",
+                            totalEpisodes: info?.totalEpisodes || "?",
+                            type: info?.type || "TV",
+                            description: info?.description || "",
+                            ageRating: info?.ageRating || null,
+                            isAdult: info?.isAdult || false,
+                            status: item.status,
+                            updated_at: item.updated_at
+                        };
+                    } catch {
+                        return {
+                            ...item,
+                            id: item.anime_id,
+                            title: item.anime_title || "Unknown",
+                            poster: item.anime_image || "/images/no-poster.png",
+                            totalEpisodes: "?",
+                            type: "TV",
+                            description: "",
+                            status: item.status,
+                            updated_at: item.updated_at
+                        };
+                    }
+                }));
+                setLibrary(enrichedLibrary);
+            }
             
             if (continueRes.data) {
                 const dbData = continueRes.data;

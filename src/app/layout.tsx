@@ -195,13 +195,11 @@ export default function RootLayout({
             <SettingsProvider>
               <Navigation />
 
-              <main className="min-h-screen relative overflow-hidden pt-20">
+              <main className="min-h-screen relative overflow-hidden">
                 <PageTransition>
                   {children}
                 </PageTransition>
               </main>
-              
-              <Footer />
 
               <Toaster position="bottom-right" theme="dark" />
             </SettingsProvider>

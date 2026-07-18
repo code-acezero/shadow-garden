@@ -12,6 +12,7 @@ import {
   Trash2, Play, Pause, AudioWaveform, Flame, Globe
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { DragonIcon } from '@/components/UIx/DragonIcon';
 import { useAuth } from '@/context/AuthContext'; 
 import { supabase } from '@/lib/supabase'; 
 import { Avatar, AvatarImage } from '@/components/ui/avatar';
@@ -184,7 +185,7 @@ const SpecialSearchBar = ({ mode, onClose, isActive, setIsActive }: { mode: 'hin
           onClick={() => !isActive && setIsActive(true)}
       >
         <div className={cn("h-full w-10 flex items-center justify-center shrink-0", mode === 'hindi' ? "text-orange-500" : "text-red-500")}>
-          {isLoading ? <Loader2 className="w-3.5 h-3.5 animate-spin"/> : (mode === 'hindi' ? <Languages className="w-4 h-4" /> : <Flame className="w-4 h-4" />)}
+          {isLoading ? <Loader2 className="w-3.5 h-3.5 animate-spin"/> : (mode === 'hindi' ? <Languages className="w-4 h-4" /> : <DragonIcon className="w-4 h-4 fill-current" />)}
         </div>
   
         <form onSubmit={handleSubmit} className="flex-1 h-full flex items-center relative">

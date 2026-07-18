@@ -947,8 +947,10 @@ function WatchContent() {
             if (streamData) { 
                 if (streamData.servers) setServers(streamData.servers);
                 
-                if (streamData.url) {
-                    setStreamUrl(streamData.url); 
+                const finalUrl = streamData.url || streamData.targetUrl || streamData.iframe || streamData.stream?.file;
+                
+                if (finalUrl) {
+                    setStreamUrl(finalUrl); 
                     setStreamReferer(streamData.referer || null); 
                     setSubtitles(streamData.subtitles || []); 
                     setIntro(streamData.intro); 

@@ -4,7 +4,7 @@ import React, { useState, useEffect, memo } from 'react';
 import { usePathname } from 'next/navigation';
 import Link from 'next/link';
 
-import { Home, User, Heart, MessageCircle, CalendarDays, Search, Settings, Bell } from 'lucide-react';
+import { Home, User, Heart, MessageCircle, CalendarDays, Search, Settings, Bell, Clapperboard } from 'lucide-react';
 import WhisperIsland from '@/components/UIx/WhisperIsland';
 import AuthModal from '@/components/Auth/AuthModal';
 import MobileTabBar from './MobileTabBar';
@@ -70,7 +70,7 @@ export default function Navigation() {
     { id: 'search', icon: Search, label: 'Search', path: '/search' },
     { id: 'schedule', icon: CalendarDays, label: 'Schedule', path: '/schedule' },
     { id: 'social', icon: MessageCircle, label: 'Otakuverse', path: '/social' },
-    { id: 'notifications', icon: Bell, label: 'Alerts', path: '/notifications' },
+    { id: 'drama', icon: Clapperboard, label: 'Drama', path: '/drama' },
     { id: 'watchlist', icon: Heart, label: 'Watchlist', path: '/watchlist' },
     { id: 'settings', icon: Settings, label: 'Settings', path: '/settings' },
     { id: 'profile', icon: User, label: 'Profile', path: '/profile' },
