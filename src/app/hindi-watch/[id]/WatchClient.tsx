@@ -929,7 +929,9 @@ function WatchContent() {
             
             if (currentFetch !== activeFetchRef.current) return;
 
-            if (!streamData?.url && targetCategory === 'dub') {
+            const hasStream = (data: any) => data && (data.url || data.iframe || data.targetUrl || data.stream?.file);
+
+            if (!hasStream(streamData) && targetCategory === 'dub') {
                 console.warn("Dub missing, falling back to Sub");
                 targetCategory = 'sub';
                 streamData = await retryOperation(
@@ -938,7 +940,7 @@ function WatchContent() {
                 );
                 if (currentFetch !== activeFetchRef.current) return;
                 
-                if (streamData?.url && settings.category !== 'sub') { 
+                if (hasStream(streamData) && settings.category !== 'sub') { 
                     toast.info("Dub not available. Switching to Sub."); 
                     updateSetting('category', 'sub'); 
                 }
