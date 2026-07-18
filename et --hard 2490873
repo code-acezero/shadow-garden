@@ -1,0 +1,70 @@
+[33m2490873[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mmain[m[33m)[m fix: remove hardcoded crossOrigin=anonymous from AnimePlayer when no subtitles are present to prevent CORS blocks on direct CDN MP4s
+[33m2b68678[m fix: dynamically use proxyUrl for HLS and direct url for MP4 to support both old and new backend shapes
+[33m520e285[m fix: fully map flat hindi server arrays to dub category unconditionally; disable mp4 proxy to prevent Vercel 4.5MB serverless limits crashing the player
+[33mb51ecc9[m fix: add proper top padding to hindi-watch page and update Alpha avatar icon to use the new alpha-av image
+[33m46e55a9[m fix: revert hpi.ts to prefer proxyUrl so that direct MP4 streams from Blakite retain their required referers and play flawlessly
+[33md918400[m fix: completely bypass HLS proxying loop by passing isEmbed to AnimePlayer directly and safely stripping proxy via string split in hindi-watch
+[33m430ff97[m fix: resolve proxy loops by unwrapping proxyUrl for iframe fallback in hindi-watch; fix sub/dub fallback logic for hindi servers
+[33mcf5f2b5[m fix: add iframe fallback natively into AnimePlayer to handle embed sources properly
+[33m0ab9c3b[m fix: correct hindi routing in AnimeCard, fix Hindi watch stream array parsing, display exact server names instead of Portals, replace ElfIcon with Sparkles
+[33mf9f96cb[m fix: correct donghua routing in AnimCard and SpotlightSlider by mapping targetRoute instead of baseRoute
+[33m11a3ebf[m fix: realign omni-api stream fetching to use episode-specific embedUrl and correct backend /servers endpoint
+[33mc2af01d[m feat: redesign Drama page to premium Netflix layout with dynamic hero synopsis fetching and hover-scaling carousels
+[33m949c907[m style: inject custom SVG ElfIcon to replace fallback Bot icon in top navigation
+[33m4e977a4[m style: replace custom DragonIcon with lucide-react Flame icon for Donghua nav button
+[33m1268eb2[m style: add Eminence in Shadow aura effects and fireflies, flip arrow to left side of speech bubble
+[33mdf75269[m style: replace default Bot icon with Alpha avatar image in top navigation bar
+[33m7b885be[m  perf: implement aggressive 2.5s AbortController timeout on Gemini API to prevent Edge route hanging and guarantee instant Groq fallbacks
+[33mb497927[m style: update Alpha AI arrow direction, UI loading text, typewriter speed, and optimize Groq model instance for ultra-fast replies
+[33m1048b26[m style: stack Alpha speech bubble directly on top of the text input area and make the text scrollable to prevent overflowing
+[33m0a92284[m style: flip Alpha layout so she is on the left and speech bubble sits on her right
+[33mf1943b3[m fix: correct fallback logic in Alpha API to ensure missing Gemini keys trigger Groq execution
+[33m3a3f2b1[m style: fix Alpha scaling to be only slightly smaller and force her to the true right corner of the screen
+[33m0ae0aec[m feat: shrink Alpha sprite to 0.5x, move to right edge, and truncate context payload to prevent Groq API limits
+[33ma2358f0[m feat: refine donghua watch page layout, add -10s/+10s iframe seek controls, and restore dynamic related section rendering
+[33made10f5[m feat: refine Alpha UI bubble position, add fluid typewriter text animation, and fix groq API edge runtime error swallowing
+[33m883c728[m fix: format stream servers array to correctly display server list on Hindi and Donghua watch pages
+[33m71738bb[m fix: restore alpha widget layout margins lost during disk crash
+[33mbf04d9f[m fix: resolve WatchClient types with proper UniversalAnime mapping and overhaul Alpha Widget identifier tag
+[33m0587a77[m fix: resolve hindi/donghua watch streams by using native hpi/dpi api bindings and restore drama omni data mapping
+[33m2261ec4[m feat: implement groq api fallback and attach alpha bubble closer
+[33me9e49c6[m feat: redesign Alpha UI to match theme and fix Donghua/Hindi streams
+[33m22d50e7[m fix: resolve Alpha API error, Supabase reload loop, and Hindi Watch infinite loader
+[33m4fce7d4[m style: rewrite AlphaWidget to exactly match the requested visual novel game UI
+[33me109cc8[m fix: update Gemini API model version to gemini-flash-latest
+[33me023dde[m fix: resolve hindi stream fallback loop and redesign alpha widget layout
+[33me4c573b[m feat: transform Alpha AI into a global floating companion widget with context injection
+[33m100ce49[m fix: resolve layout padding, watchlist enrichment, hindi stream loading, and nav icons
+[33m3f7833f[m feat: enhance alpha prompt, integrate drama search, and anilist news feed
+[33mcdc306e[m feat: add Drama section — DramaPlayer, drama home, drama watch page, nav update
+[33mfa333b6[m Fix recent updates fetching incorrect route (switched to updated-all)
+[33mdb3f3ad[m Fix watchlist type errors, finalize UI unification, and add AniList foundation
+[33m7f134e8[m Refined Watch page desktop controls layout and optimized stream fetching
+[33mde5638a[m Fix comments threading, profile page, and donghua watch with iframe player
+[33m81a14b9[m Fix Donghua API parsing, remove Hindi nav, and add Dragon icon
+[33mc140791[m Fix WatchClient type errors, layout orphaned fragments, and update subtitle/comments logic
+[33m70ea30e[m feat: Integrate Donghua natively to frontend and search island
+[33mbde579d[m Update Hindi Home to perfectly align all dynamic and static sections
+[33m64fd585[m Update Hindi Home API to align exact SubDub sections
+[33mf2dcb8b[m Update Hindi UI integration and HPI schema
+[33mdd71d4a[m Fix: align HPI routes with actual API JSON output, fix profile page, add settings back button
+[33m71bd3f1[m Fix: Hindi tab empty - add proxy route for JSON API + fix fetchHindiApi CORS
+[33m381cdf1[m Refactor: rename DesiDub to Hindi in hpi.ts and consumers
+[33md48cf67[m Update hpi and dpi to support structured api data from donghua and blakite
+[33m569bcfb[m chore: commit pending routes and ui updates
+[33m904042b[m fix animecard
+[33mc7e70c2[m feat(ui): complete OtakuVerse redesign with dynamic trending, search, and bookmarks
+[33m20000c3[m fix(ui): use ContinueAnimeCard for history items in watchlist
+[33m09cd1f4[m feat(ui): redesign OtakuVerse to X/Threads layout
+[33m95a218a[m fix(ui): correct watchlist history cards and update sub/dub filters
+[33mce68280[m fix(hpi): update HPIClient to match new anime-api-ashen-chi schema
+[33m2a6c863[m fix(home): update view all link to use dynamic filter route
+[33m788b689[m feat(catalog): rewrite view page to use AnimeService with pagination
+[33md41d335[m fix(player): resolve mobile UI and interaction bugs
+[33m82083c6[m fix: render history tab cards using AnimeCard instead of ContinueAnimeCard
+[33m270ae86[m fix: handle SSE response format from /watch endpoint for server list loading
+[33m5aed63a[m server fix
+[33m366d698[m api
+[33m6355399[m api fix
+[33mcb27e63[m fix server
+[33m488a2f7[m Initial commit for the new project

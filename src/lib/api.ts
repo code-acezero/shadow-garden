@@ -46,9 +46,14 @@ import { supabase } from "@/lib/supabase";
 
 export class ApiManager {
     private static urls = [
-        'https://anikoto-api-ivory.vercel.app/api',
+        'https://omni-api-v1.vercel.app/api',
         // Add additional API mirrors here for rotation
-        'https://anikoto-api-ivory.vercel.app/api', 
+        'https://omni-api-v2.vercel.app/api',
+
+        'https://omni-api-v3.vercel.app/api',
+
+        'https://omni-api-v4.vercel.app/api',
+
     ];
     private static currentIndex = 0;
 
@@ -73,7 +78,7 @@ export class ApiManager {
         console.warn(`[ApiManager] Rotated API URL to: ${this.urls[this.currentIndex]}`);
         return this.urls[this.currentIndex];
     }
-    
+
     static getAllUrls() {
         return this.urls;
     }
@@ -131,12 +136,12 @@ async function fetchAnikoto<T = any>(endpoint: string, params: Record<string, an
 
     try {
         const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 20000); 
+        const timeoutId = setTimeout(() => controller.abort(), 20000);
 
         try {
             const response = await fetch(proxyUrl, { signal: controller.signal });
             clearTimeout(timeoutId);
-            
+
             if (!response.ok) {
                 if (retryCount < ApiManager.getAllUrls().length - 1) {
                     ApiManager.rotateUrl();
@@ -146,7 +151,7 @@ async function fetchAnikoto<T = any>(endpoint: string, params: Record<string, an
             }
 
             const json = await response.json();
-            
+
             if (json && typeof json === 'object') {
                 if ('ok' in json) {
                     return json.ok ? (json.data ?? json) : null;
@@ -207,7 +212,7 @@ async function fetchAnikotoSSE(endpoint: string, params: Record<string, any> = {
         try {
             const response = await fetch(proxyUrl, { signal: controller.signal });
             clearTimeout(timeoutId);
-            
+
             if (!response.ok) {
                 if (retryCount < ApiManager.getAllUrls().length - 1) {
                     ApiManager.rotateUrl();
@@ -217,7 +222,7 @@ async function fetchAnikotoSSE(endpoint: string, params: Record<string, any> = {
             }
 
             const text = await response.text();
-            
+
             try {
                 const json = JSON.parse(text);
                 // Unwrap { ok, data } envelope if present
@@ -302,17 +307,17 @@ function extractPaged(data: any): {
 }
 
 export interface AppUser {
-  id: string;
-  email?: string;
-  user_metadata?: { full_name?: string; avatar_url?: string; [key: string]: any; };
+    id: string;
+    email?: string;
+    user_metadata?: { full_name?: string; avatar_url?: string;[key: string]: any; };
 }
 
 export interface WatchlistItem {
-  anime_id: string;
-  status: 'watching' | 'completed' | 'on_hold' | 'dropped' | 'plan_to_watch';
-  progress: number;
-  updated_at: string;
-  episode_id?: string;
+    anime_id: string;
+    status: 'watching' | 'completed' | 'on_hold' | 'dropped' | 'plan_to_watch';
+    progress: number;
+    updated_at: string;
+    episode_id?: string;
 }
 
 // ==========================================
@@ -555,7 +560,7 @@ export class AnimeService {
 
     static async getHomeSections() {
         const home: any = await AnimeAPI_Anikoto.getHome();
-        
+
         // Fetch the updated-all list (24 items) to show the correct recent updates
         const recentData: any = await AnimeAPI_Anikoto.getHomeLatest('updated-all', 1);
         const recent = extractPaged(recentData).results.map(normalizeCard);
@@ -566,7 +571,7 @@ export class AnimeService {
             ...normalizeCard(item),
             description: item?.synopsis || item?.description || ''
         })) : [];
-        
+
         return { spotlight, recent };
     }
 
@@ -641,7 +646,7 @@ export class AnimeService {
 
     static async getFilteredAnime(category: string, page = 1) {
         let rawData: any;
-        
+
         switch (category) {
             case 'sub':
                 rawData = await AnimeAPI_Anikoto.getHomeLatest('updated-sub', page);
@@ -749,16 +754,16 @@ export class AnimeService {
         if (!slug || !epNumber) return null;
 
         let data: any = await AnimeAPI_Anikoto.getWatch(slug, epNumber);
-        
+
         // Aggressive unwrapping for stringified proxy responses
         if (typeof data === 'string') {
-            try { data = JSON.parse(data); } catch(e){}
+            try { data = JSON.parse(data); } catch (e) { }
         }
         if (data && typeof data === 'object' && !Array.isArray(data)) {
-            if (data.data) data = data.data; 
+            if (data.data) data = data.data;
         }
         if (typeof data === 'string') {
-            try { data = JSON.parse(data); } catch(e){}
+            try { data = JSON.parse(data); } catch (e) { }
         }
 
         if (!data || !Array.isArray(data)) return null;
@@ -778,7 +783,7 @@ export class AnimeService {
             .map((item: any) => item.source);
 
         const byCategory = sources.filter(s => s?.type === category);
-        
+
         // Even if no stream matched, return the server list so UI can render the dropdown
         if (!byCategory.length) return { servers: grouped, url: null };
 
@@ -786,7 +791,7 @@ export class AnimeService {
             byCategory.find(s => s?.server?.toLowerCase() === server.toLowerCase() && (s.proxyUrl || s.m3u8 || s.url)) ||
             byCategory.find(s => s.proxyUrl || s.m3u8 || s.url) ||
             byCategory[0];
-            
+
         if (!matched) return { servers: grouped, url: null };
 
         const skipBlock = data.find((item: any) => item.type === 'skip_data');
@@ -845,80 +850,80 @@ export class AnimeService {
 }
 
 export class WatchlistAPI {
-  static async getUserWatchlist(userId: string): Promise<WatchlistItem[]> {
-    if (supabase && userId !== 'guest') {
-      const { data } = await supabase.from('watchlist').select('*').eq('user_id', userId);
-      return data || [];
-    }
-    const local = typeof window !== 'undefined' ? localStorage.getItem(`watchlist_${userId}`) : null;
-    return local ? JSON.parse(local) : [];
-  }
-
-  static async addToWatchlist(userId: string, animeId: string, status: WatchlistItem['status'], progress: number = 0, episodeId?: string): Promise<boolean> {
-    const item: any = { anime_id: animeId, status, progress, updated_at: new Date().toISOString() };
-    if (episodeId) item.episode_id = episodeId;
-
-    if (supabase && userId !== 'guest') {
-      const { error } = await supabase.from('watchlist').upsert({ user_id: userId, ...item }, { onConflict: 'user_id, anime_id' });
-      return !error;
+    static async getUserWatchlist(userId: string): Promise<WatchlistItem[]> {
+        if (supabase && userId !== 'guest') {
+            const { data } = await supabase.from('watchlist').select('*').eq('user_id', userId);
+            return data || [];
+        }
+        const local = typeof window !== 'undefined' ? localStorage.getItem(`watchlist_${userId}`) : null;
+        return local ? JSON.parse(local) : [];
     }
 
-    const list = await this.getUserWatchlist(userId);
-    const updated = [...list.filter(i => i.anime_id !== animeId), item];
-    if (typeof window !== 'undefined') localStorage.setItem(`watchlist_${userId}`, JSON.stringify(updated));
-    return true;
-  }
+    static async addToWatchlist(userId: string, animeId: string, status: WatchlistItem['status'], progress: number = 0, episodeId?: string): Promise<boolean> {
+        const item: any = { anime_id: animeId, status, progress, updated_at: new Date().toISOString() };
+        if (episodeId) item.episode_id = episodeId;
+
+        if (supabase && userId !== 'guest') {
+            const { error } = await supabase.from('watchlist').upsert({ user_id: userId, ...item }, { onConflict: 'user_id, anime_id' });
+            return !error;
+        }
+
+        const list = await this.getUserWatchlist(userId);
+        const updated = [...list.filter(i => i.anime_id !== animeId), item];
+        if (typeof window !== 'undefined') localStorage.setItem(`watchlist_${userId}`, JSON.stringify(updated));
+        return true;
+    }
 }
 
 export class UserAPI {
-  static async getCurrentUser(): Promise<AppUser | null> {
-    if (supabase) {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (session?.user) {
-        return { id: session.user.id, email: session.user.email, user_metadata: session.user.user_metadata };
-      }
+    static async getCurrentUser(): Promise<AppUser | null> {
+        if (supabase) {
+            const { data: { session } } = await supabase.auth.getSession();
+            if (session?.user) {
+                return { id: session.user.id, email: session.user.email, user_metadata: session.user.user_metadata };
+            }
+        }
+        return null;
     }
-    return null;
-  }
 
-  static async signIn(email: string, password: string) {
-    return supabase ? await supabase.auth.signInWithPassword({ email, password }) : { data: null, error: null };
-  }
+    static async signIn(email: string, password: string) {
+        return supabase ? await supabase.auth.signInWithPassword({ email, password }) : { data: null, error: null };
+    }
 
-  static async signUp(email: string, password: string, username: string) {
-    return supabase ? await supabase.auth.signUp({ email, password, options: { data: { username, full_name: username } } }) : { data: null, error: null };
-  }
+    static async signUp(email: string, password: string, username: string) {
+        return supabase ? await supabase.auth.signUp({ email, password, options: { data: { username, full_name: username } } }) : { data: null, error: null };
+    }
 
-  static async signOut() {
-      if (supabase) {
-          await supabase.auth.signOut();
-          if (typeof window !== 'undefined') {
-              localStorage.removeItem('shadow_garden_auth');
-              sessionStorage.clear();
-          }
-      }
-  }
+    static async signOut() {
+        if (supabase) {
+            await supabase.auth.signOut();
+            if (typeof window !== 'undefined') {
+                localStorage.removeItem('shadow_garden_auth');
+                sessionStorage.clear();
+            }
+        }
+    }
 }
 
 export class ImageAPI {
-  static async uploadImage(file: File): Promise<string> {
-    const env = typeof globalThis !== 'undefined' ? (globalThis as any) : undefined;
-    const API_KEY = env?.process?.env?.NEXT_PUBLIC_IMGBB_API_KEY;
-    if (!API_KEY) {
-      console.error('⚠️ IMGBB_API_KEY not found in environment variables');
-      throw new Error('Image upload service is not configured');
+    static async uploadImage(file: File): Promise<string> {
+        const env = typeof globalThis !== 'undefined' ? (globalThis as any) : undefined;
+        const API_KEY = env?.process?.env?.NEXT_PUBLIC_IMGBB_API_KEY;
+        if (!API_KEY) {
+            console.error('⚠️ IMGBB_API_KEY not found in environment variables');
+            throw new Error('Image upload service is not configured');
+        }
+        const formData = new FormData();
+        formData.append('image', file);
+        try {
+            const response = await fetch(`https://api.imgbb.com/1/upload?key=${API_KEY}`, { method: 'POST', body: formData });
+            if (!response.ok) throw new Error(`Upload failed: ${response.status}`);
+            const data = await response.json();
+            if (!data.success) throw new Error('Image upload failed');
+            return data.data.url;
+        } catch (error) {
+            console.error('Image upload error:', error);
+            throw error;
+        }
     }
-    const formData = new FormData();
-    formData.append('image', file);
-    try {
-      const response = await fetch(`https://api.imgbb.com/1/upload?key=${API_KEY}`, { method: 'POST', body: formData });
-      if (!response.ok) throw new Error(`Upload failed: ${response.status}`);
-      const data = await response.json();
-      if (!data.success) throw new Error('Image upload failed');
-      return data.data.url;
-    } catch (error) {
-      console.error('Image upload error:', error);
-      throw error;
-    }
-  }
 }
