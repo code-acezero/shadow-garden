@@ -91,14 +91,17 @@ function DramaWatchContent() {
 
   // Load stream when episode changes
   useEffect(() => {
-    if (!currentEpId || !drama?.embedUrl) return;
+    if (!currentEpId || !drama) return;
+    const ep = drama.episodes.find(e => e.id === currentEpId);
+    if (!ep?.embedUrl) return;
+
     (async () => {
       setIsStreamLoading(true);
       setStreamError(null);
       setStream(null);
       setActiveServerIdx(0);
       try {
-        const result = await omni.drama.getStream(drama.embedUrl!);
+        const result = await omni.drama.getStream(ep.embedUrl!);
         setStream(result);
         // Default to first HLS server index
         const hlsIdx = result.servers.findIndex(s => s.type === 'hls');
@@ -111,10 +114,9 @@ function DramaWatchContent() {
     })();
     // Update URL
     if (typeof window !== 'undefined') {
-      const ep = drama?.episodes?.find(e => e.id === currentEpId);
       if (ep) window.history.replaceState({}, '', `/drama-watch/${slug}?ep=${ep.number}`);
     }
-  }, [currentEpId, drama?.embedUrl]);
+  }, [currentEpId, drama]);
 
   const currentServer: DramaServer | undefined = stream?.servers[activeServerIdx];
   const isHlsActive = currentServer?.type === 'hls';

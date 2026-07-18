@@ -82,6 +82,7 @@ export interface DramaEpisode {
   number: number;
   title: string;
   url: string;
+  embedUrl?: string;
   image?: string;
 }
 
@@ -179,7 +180,8 @@ class OmniClient {
         id: e.id || e.slug || String(i + 1),
         number: e.number || i + 1,
         title: e.title || `Episode ${e.number || i + 1}`,
-        url: e.url || e.href || '',
+        url: e.url || e.href || e.embedUrl || '',
+        embedUrl: e.embedUrl || e.url || e.href || '',
         image: e.image || res.image || '',
       }));
 
@@ -206,8 +208,8 @@ class OmniClient {
 
     getStream: async (embedUrl: string): Promise<DramaStream> => {
       const res: any = await fetchOmni(
-        '/stream',
-        { embedUrl }
+        '/servers',
+        { url: embedUrl }
       );
 
       const servers: DramaServer[] = Array.isArray(res?.servers)
