@@ -45,6 +45,7 @@ interface AnimePlayerProps {
   // The upstream CDN behind `url` may require this exact Referer header or
   // it rejects the request. Forwarded to /api/proxy so it can send it.
   referer?: string | null;
+  isM3U8?: boolean;
   autoSkip?: boolean;
   autoPlay?: boolean; 
   startTime?: number; 
@@ -71,7 +72,7 @@ export interface AnimePlayerRef {
 }
 
 const AnimePlayer = forwardRef<AnimePlayerRef, AnimePlayerProps>(({ 
-  url, title, poster, intro, outro, referer, autoSkip = false, autoPlay = true, startTime = 0, subtitles = [],
+  url, title, poster, intro, outro, referer, isM3U8, autoSkip = false, autoPlay = true, startTime = 0, subtitles = [],
   onEnded, onNext, onPlay, onSkipIntro, onProgress, onInteract, onPause, onBuffer, 
   controlsTimeout = 3000, onControlsChange, initialVolume = 1, initialSpeed = 1, onSettingsChange
 }, ref) => {
@@ -309,8 +310,10 @@ const AnimePlayer = forwardRef<AnimePlayerRef, AnimePlayerProps>(({
         }
     };
 
-    const isMp4 = url.toLowerCase().includes('.mp4');
-    if (!isMp4 && Hls.isSupported()) {
+    const isExplicitMp4 = url.toLowerCase().includes('.mp4');
+    const shouldUseNative = isExplicitMp4 || isM3U8 === false;
+    
+    if (!shouldUseNative && Hls.isSupported()) {
       const hls = new Hls({ capLevelToPlayerSize: true, autoStartLoad: true, startLevel: -1, startPosition: startTime > 0 ? startTime : -1 });
       hls.loadSource(finalUrl);
       hls.attachMedia(video);
@@ -332,7 +335,7 @@ const AnimePlayer = forwardRef<AnimePlayerRef, AnimePlayerProps>(({
           if (data.fatal) setIsBuffering(false);
       });
       hlsRef.current = hls;
-    } else if (isMp4 || video.canPlayType('application/vnd.apple.mpegurl')) {
+    } else if (shouldUseNative || video.canPlayType('application/vnd.apple.mpegurl')) {
       video.src = finalUrl;
       video.addEventListener('loadedmetadata', () => { 
           if (startTime > 0 && !hasInitializedRef.current) {
@@ -502,7 +505,7 @@ const AnimePlayer = forwardRef<AnimePlayerRef, AnimePlayerProps>(({
   const changeSubtitle = (index: number) => { 
       if (videoRef.current) {
           const tracks = videoRef.current.textTracks;
-          for (let i = 0; i < tracks.length; i++) { tracks[i].mode = 'hidden'; }
+          for (let i = 0; i < tracks.length; i++) { tracks[i].mode = 'disabled'; }
           if (index !== -1 && tracks[index]) { tracks[index].mode = 'showing'; }
       }
       setCurrentSubtitle(index); if(canSave) onInteract?.(); 
@@ -856,12 +859,14 @@ const AnimePlayer = forwardRef<AnimePlayerRef, AnimePlayerProps>(({
                 <div className="relative">
                     <button onClick={(e) => { e.stopPropagation(); setActiveMenu(activeMenu === 'subs' ? 'none' : 'subs'); }} className={cn("hover:text-primary-500 transition-colors active:scale-90 p-2 md:p-0", (activeMenu === 'subs' || currentSubtitle !== -1) ? "text-primary-500 fill-red-500" : "text-white")}><Subtitles size={20} className="md:w-5 md:h-5" /></button>
                     {activeMenu === 'subs' && (
-                        <div className="absolute bottom-12 right-0 bg-black/80 backdrop-blur-md border border-white/10 rounded-2xl p-2 w-56 max-h-[50vh] md:max-h-[50vh] overflow-y-auto scrollbar-hide shadow-2xl z-50 flex flex-col gap-1 animate-in slide-in-from-bottom-2">
-                             <button onClick={(e) => { e.stopPropagation(); setActiveMenu('subSettings'); }} className="flex items-center gap-2 text-[11px] px-3 py-2 rounded-full text-left font-black text-primary-500 hover:bg-white/5 transition-all mb-1 border-b border-white/10"><Settings size={12}/> CAPTION SETTINGS</button>
-                             <button onClick={(e) => { e.stopPropagation(); changeSubtitle(-1); }} className={cn("text-[11px] px-3 py-2 rounded-full text-left font-bold transition-all active:scale-95", currentSubtitle === -1 ? "bg-primary-600 text-white" : "hover:bg-white/10 text-zinc-400")}>Off</button>
-                             {trackSubtitles.map((t, i) => (
-                                 <button key={i} onClick={(e) => { e.stopPropagation(); changeSubtitle(i); }} className={cn("text-[11px] px-3 py-2 rounded-full text-left font-bold transition-all truncate active:scale-95", currentSubtitle === i ? "bg-primary-600 text-white" : "hover:bg-white/10 text-zinc-400")}>{t.label || t.name || t.lang}</button>
-                             ))}
+                        <div className="absolute bottom-12 right-0 bg-black/80 backdrop-blur-md border border-white/10 rounded-2xl p-2 w-56 max-h-[40vh] overflow-hidden shadow-2xl z-50 flex flex-col animate-in slide-in-from-bottom-2">
+                             <button onClick={(e) => { e.stopPropagation(); setActiveMenu('subSettings'); }} className="flex items-center gap-2 text-[11px] px-3 py-2 rounded-full text-left font-black text-primary-500 hover:bg-white/5 transition-all mb-1 border-b border-white/10 shrink-0"><Settings size={12}/> CAPTION SETTINGS</button>
+                             <div className="overflow-y-auto flex-1 flex flex-col gap-1 scrollbar-hide">
+                               <button onClick={(e) => { e.stopPropagation(); changeSubtitle(-1); }} className={cn("text-[11px] px-3 py-2 rounded-full text-left font-bold transition-all active:scale-95 shrink-0", currentSubtitle === -1 ? "bg-primary-600 text-white" : "hover:bg-white/10 text-zinc-400")}>Off</button>
+                               {trackSubtitles.map((t, i) => (
+                                   <button key={i} onClick={(e) => { e.stopPropagation(); changeSubtitle(i); }} className={cn("text-[11px] px-3 py-2 rounded-full text-left font-bold transition-all truncate active:scale-95 shrink-0", currentSubtitle === i ? "bg-primary-600 text-white" : "hover:bg-white/10 text-zinc-400")}>{t.label || t.name || t.lang}</button>
+                               ))}
+                             </div>
                         </div>
                     )}
                     {activeMenu === 'subSettings' && (

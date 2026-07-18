@@ -21,10 +21,9 @@ export default function MobileContainer({
         "w-full min-h-screen flex flex-col",
         // Mobile Optimization:
         // 1. pb-safe: Adds padding for iPhone bottom swipe bar
-        // 2. pt-safe: Adds padding for Notch/Status bar
         "pt-[env(safe-area-inset-top)] pb-[env(safe-area-inset-bottom)]", 
-        // 3. Spacing for Bottom Nav (if exists)
-        hasBottomNav ? "pb-20" : "", 
+        // 3. Spacing for Bottom Nav (if exists) - Increased for new iOS Tab Bar
+        hasBottomNav ? "pb-24 md:pb-20" : "", 
         className
       )}
     >

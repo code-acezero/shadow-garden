@@ -398,7 +398,7 @@ const CharacterDetailsDialog = ({
                                             <h3 className="text-[10px] font-black text-zinc-500 uppercase tracking-widest mb-3 flex items-center gap-2"><Layers size={12} className="text-yellow-500"/> Appearances</h3>
                                             <div className="flex flex-col gap-3">
                                                 {data.animeography.map((anime:any, i:number) => (
-                                                    <Link key={i} href={`/hindi-watch/${anime.id}`} className="flex items-center gap-4 p-2 pr-4 rounded-xl bg-black/40 border border-white/5 hover:border-primary-500/50 hover:bg-white/5 transition-all active:scale-95 group/ani">
+                                                    <Link key={i} href={`/donghua-watch/${anime.id}`} className="flex items-center gap-4 p-2 pr-4 rounded-xl bg-black/40 border border-white/5 hover:border-primary-500/50 hover:bg-white/5 transition-all active:scale-95 group/ani">
                                                         <img src={anime.poster || '/images/no-poster.png'} className="w-10 h-14 rounded-lg object-cover shadow-sm" loading="lazy" decoding="async"/>
                                                         <div className="flex flex-col min-w-0">
                                                             <span className="text-sm font-bold text-zinc-300 group-hover/ani:text-white truncate">{anime.title}</span>
@@ -642,7 +642,7 @@ function WatchContent() {
       const ep = anime?.episodes.find((e: any) => e.id === id);
       const valToPush = ep ? ep.number : id;
       
-      window.history.pushState({}, '', `/hindi-watch/${animeId}?ep=${valToPush}`);
+      window.history.pushState({}, '', `/donghua-watch/${animeId}?ep=${valToPush}`);
       
       // Trigger "Trick" Save immediately on click
       saveProgress(id);
@@ -1114,7 +1114,7 @@ function WatchContent() {
                     <div className="absolute top-0 left-0 w-80 h-80 bg-primary-600/5 blur-[150px] pointer-events-none group-hover/seasons:bg-primary-600/10 transition-all duration-1000" />
                     <div className="flex items-center gap-4 mb-8"><span className="w-2.5 h-2.5 bg-primary-600 rounded-full animate-ping shadow-[0_0_15px_red] shadow-primary-900/10" /><h4 className="text-[12px] text-white font-black uppercase tracking-[0.5em] font-[Cinzel] opacity-80 shadow-primary-900/10 shadow-sm">Seasons</h4></div>
                     <ScrollArea className="w-full whitespace-nowrap pb-6 custom-scrollbar">
-                        <div className="flex gap-6 w-max" ref={seasonsRef} onWheel={(e:any) => e.stopPropagation()}>{anime.seasons.map((season: any) => season?.id ? (<Link key={season.id} href={`/hindi-watch/${season.id}`} className={cn("group/item flex items-center gap-5 p-2 pr-10 rounded-full border hover:border-primary-600/40 hover:bg-primary-600/10 transition-all duration-500 min-w-[280px] active:scale-95 shadow-inner shadow-primary-900/5 shadow-md", season.isCurrent ? "bg-primary-600/10 border-primary-600" : "bg-white/5 border-white/5")}><div className="relative shrink-0 overflow-hidden rounded-full w-14 h-14 border-2 border-white/5 group-hover/item:border-primary-600 shadow-md shadow-black/50"><img src={season.poster || '/images/no-poster.png'} className="w-full h-full object-cover transition-transform duration-1000 group-hover/item:scale-125" alt={season.title} loading="lazy" decoding="async"/></div><div className="flex flex-col overflow-hidden gap-1"><span className="text-[11px] font-black text-zinc-300 group-hover:text-white truncate w-[160px] uppercase tracking-tighter transition-colors shadow-black drop-shadow-md">{season.title}</span><span className="text-[9px] text-zinc-600 font-black uppercase tracking-[0.2em]">{season.isCurrent ? 'NOW PLAYING' : 'VIEW ARCHIVE'}</span></div></Link>) : null)}</div><ScrollBar orientation="horizontal" />
+                        <div className="flex gap-6 w-max" ref={seasonsRef} onWheel={(e:any) => e.stopPropagation()}>{anime.seasons.map((season: any) => season?.id ? (<Link key={season.id} href={`/donghua-watch/${season.id}`} className={cn("group/item flex items-center gap-5 p-2 pr-10 rounded-full border hover:border-primary-600/40 hover:bg-primary-600/10 transition-all duration-500 min-w-[280px] active:scale-95 shadow-inner shadow-primary-900/5 shadow-md", season.isCurrent ? "bg-primary-600/10 border-primary-600" : "bg-white/5 border-white/5")}><div className="relative shrink-0 overflow-hidden rounded-full w-14 h-14 border-2 border-white/5 group-hover/item:border-primary-600 shadow-md shadow-black/50"><img src={season.poster || '/images/no-poster.png'} className="w-full h-full object-cover transition-transform duration-1000 group-hover/item:scale-125" alt={season.title} loading="lazy" decoding="async"/></div><div className="flex flex-col overflow-hidden gap-1"><span className="text-[11px] font-black text-zinc-300 group-hover:text-white truncate w-[160px] uppercase tracking-tighter transition-colors shadow-black drop-shadow-md">{season.title}</span><span className="text-[9px] text-zinc-600 font-black uppercase tracking-[0.2em]">{season.isCurrent ? 'NOW PLAYING' : 'VIEW ARCHIVE'}</span></div></Link>) : null)}</div><ScrollBar orientation="horizontal" />
                     </ScrollArea>
                 </div>
             </div>
@@ -1141,7 +1141,7 @@ function WatchContent() {
                         <ScrollArea className="h-full pr-4 custom-scrollbar">
                             <div className="space-y-4" ref={recommendationsRef} onWheel={(e: any) => e.stopPropagation()}>
                                 {anime.recommendations.map((rec: any, idx: number) => rec?.id ? (
-                                    <Link key={`${rec.id}-${idx}`} href={`/hindi-watch/${rec.id}`} className="flex gap-5 p-4 rounded-[32px] hover:bg-primary-600/5 group transition-all duration-500 active:scale-95 border border-transparent hover:border-primary-600/20 shadow-inner shadow-primary-900/5">
+                                    <Link key={`${rec.id}-${idx}`} href={`/donghua-watch/${rec.id}`} className="flex gap-5 p-4 rounded-[32px] hover:bg-primary-600/5 group transition-all duration-500 active:scale-95 border border-transparent hover:border-primary-600/20 shadow-inner shadow-primary-900/5">
                                         <img src={rec.image || rec.poster || '/images/no-poster.png'} className="w-16 h-24 object-cover rounded-2xl shadow-3xl group-hover:rotate-1 transition-all duration-500 shadow-black shadow-md shrink-0" alt={rec.title || rec.name} loading="lazy" decoding="async"/>
                                         <div className="flex-1 py-1 flex flex-col justify-center min-w-0">
                                             <h4 className="text-[12px] font-black text-zinc-500 group-hover:text-primary-500 line-clamp-2 transition-all uppercase tracking-tight leading-tight mb-2 shadow-black drop-shadow-md">{rec.title || rec.name}</h4>

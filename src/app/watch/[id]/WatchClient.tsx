@@ -580,8 +580,7 @@ function WatchContent() {
 
   // --- POPUP STACK ---
   const [popupHistory, setPopupHistory] = useState<{type: 'character'|'actor', id: string}[]>([]);
-  const [popupIndex, setPopupIndex] = useState(-1);
-  const activePopup = popupIndex >= 0 ? popupHistory[popupIndex] : null;
+    const activePopup = popupIndex >= 0 ? popupHistory[popupIndex] : null;
 
   const navigateToPopup = useCallback((type: 'character'|'actor', id: string) => {
     setPopupHistory(prev => { const n = prev.slice(0, popupIndex + 1); n.push({ type, id }); return n; });
@@ -597,11 +596,7 @@ function WatchContent() {
   // --- STATE ---
   const [anime, setAnime] = useState<UniversalAnime | null>(null);
   const [isLoadingInfo, setIsLoadingInfo] = useState(true);
-  const [charPage, setCharPage] = useState(1);
-  const [totalCharPages, setTotalCharPages] = useState(1);
-  const [charactersList, setCharactersList] = useState<any[]>([]);
-  const [isLoadingChars, setIsLoadingChars] = useState(false);
-  const [currentEpId, setCurrentEpId] = useState<string | null>(null);
+          const [currentEpId, setCurrentEpId] = useState<string | null>(null);
   const [streamUrl, setStreamUrl] = useState<string | null>(null);
   const [streamReferer, setStreamReferer] = useState<string | null>(null);
   const [subtitles, setSubtitles] = useState<any[]>([]);
@@ -868,21 +863,7 @@ function WatchContent() {
       syncHistory();
   }, [anime, user?.id, animeId]);
 
-  // Characters Fetching
-  useEffect(() => {
-      // The new source doesn't provide character/voice-actor data at all, so
-      // this always resolves empty — the tab still renders, just with no
-      // characters, same as it would for a title with none in the old system.
-      const fetchChars = async () => {
-          setIsLoadingChars(true);
-          setCharactersList([]);
-          setTotalCharPages(1);
-          setIsLoadingChars(false);
-      };
-      fetchChars();
-  }, [animeId, charPage]);
-
-  // Stream Loading (FIXED: Handles double-fetch rate limiting and populates servers list automatically)
+    // Stream Loading (FIXED: Handles double-fetch rate limiting and populates servers list automatically)
   useEffect(() => {
     if (!currentEpId || !isSettingsLoaded) return;
     const loadStream = async () => {
@@ -982,7 +963,7 @@ function WatchContent() {
   if (!anime) return (<div className="min-h-screen bg-[#050505] flex items-center justify-center"><div className="w-12 h-12 border-4 border-primary-600 border-t-transparent rounded-full animate-spin" /></div>);
 
   return (
-    <div className="min-h-screen bg-[#050505] text-gray-100 pb-20 pt-10 relative font-sans overflow-x-hidden">
+    <div className="min-h-screen bg-[#050505] text-gray-100 pb-24 md:pb-20 pt-[env(safe-area-inset-top)] relative font-sans overflow-x-hidden">
       <style jsx global>{`
           .custom-scrollbar::-webkit-scrollbar { width: 6px; height: 6px; display: block; }
           .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
@@ -994,9 +975,10 @@ function WatchContent() {
       `}</style>
       <div className={cn("fixed inset-0 bg-black/90 z-[39] transition-opacity duration-700 pointer-events-none will-change-[opacity]", settings.dimMode ? 'opacity-100' : 'opacity-0')} />
 
-      <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.8 }} className="w-full flex flex-col items-center bg-[#050505] relative z-40 px-4 md:px-8 mt-6">
-        <div className="w-full max-w-[1150px] 2xl:max-w-[1500px]">
-            <div ref={playerContainerRef} tabIndex={0} className="w-full aspect-video bg-black rounded-[30px] overflow-hidden border border-white/5 shadow-2xl relative shadow-primary-900/10 outline-none focus:ring-1 focus:ring-white/10" onClick={handlePlayerClick} onKeyDown={(e) => { if (e.code === 'Space') { e.preventDefault(); } }}>
+            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.8 }} className="w-full flex flex-col items-center bg-[#050505] relative z-40 px-4 md:px-8 mt-6">
+        <div className="w-full max-w-[1500px] flex flex-col xl:grid xl:grid-cols-12 gap-8 items-start">
+            <div className="xl:col-span-8 w-full flex flex-col gap-2">
+                <div ref={playerContainerRef} tabIndex={0} className="w-full aspect-video bg-black rounded-[30px] overflow-hidden border border-white/5 shadow-2xl relative shadow-primary-900/10 outline-none focus:ring-1 focus:ring-white/10" onClick={handlePlayerClick} onKeyDown={(e) => { if (e.code === 'Space') { e.preventDefault(); } }}>
                 <AnimatePresence>
                     {showSkipNotification && (
                         <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 10 }} className="absolute bottom-32 lg:bottom-24 left-1/2 -translate-x-1/2 z-[70] bg-black/60 backdrop-blur-md border border-white/10 text-white px-3 py-1 rounded-full flex items-center gap-2 shadow-[0_0_15px_rgba(0,0,0,0.5)] pointer-events-none">
@@ -1078,12 +1060,9 @@ function WatchContent() {
                     </div>
                 </div>
             </motion.div>
-        </div>
-      </motion.div>
-
-      {/* PAGE CONTENT */}
-      <div className="w-full flex justify-center mt-8 px-4 md:px-8"><div className="w-full flex flex-col xl:grid xl:grid-cols-12 gap-8 max-w-[1150px] 2xl:max-w-[1500px]">
-            <motion.div initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} transition={{ duration: 0.6, delay: 0.3 }} className="order-2 xl:order-1 xl:col-span-4 h-[650px] bg-[#0a0a0a] rounded-[40px] border border-white/5 overflow-hidden flex flex-col shadow-2xl relative z-20">
+            </div>
+            
+            <div className="xl:col-span-4 w-full h-[650px] bg-[#0a0a0a] rounded-[40px] border border-white/5 overflow-hidden flex flex-col shadow-2xl relative z-20">
                 <div className="p-6 bg-white/5 border-b border-white/5 flex justify-between items-center shrink-0">
                     <div className="flex items-center gap-3"><h3 className="font-black text-white flex items-center gap-2 uppercase text-sm font-[Cinzel] tracking-widest"><Layers size={18} className="text-primary-600"/> Episodes</h3><Badge className="bg-white/10 backdrop-blur-md border border-white/10 text-white font-black text-[10px] px-3 h-5 rounded-full shadow-lg">{anime.episodes.length}</Badge></div>
                     <div className="flex items-center gap-1 bg-black/50 p-1 rounded-lg border border-white/5">
@@ -1172,6 +1151,64 @@ function WatchContent() {
                         <ScrollArea className="flex-1 pr-4 custom-scrollbar shadow-inner shadow-primary-900/5">
                            <p className="text-zinc-400 text-sm leading-relaxed pb-8 antialiased font-medium opacity-90 drop-shadow-sm shadow-black" dangerouslySetInnerHTML={{ __html: anime.description }} />
                         </ScrollArea>
+            </div>
+        </div>
+      </motion.div>
+
+      <div className="w-full flex justify-center mt-8 px-4 md:px-8 pb-12">
+          <div className="w-full flex flex-col gap-8 max-w-[1500px]">
+              <div className="w-full">
+                  <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} transition={{ duration: 0.6, delay: 0.4 }} className="order-4 xl:order-2 xl:col-span-8 h-auto xl:h-[650px] bg-[#0a0a0a] rounded-[40px] border border-white/5 overflow-hidden flex flex-col shadow-2xl relative shadow-primary-900/20">
+                    <div className="flex-shrink-0 relative p-8 pt-16 flex flex-col sm:flex-row gap-10 bg-gradient-to-b from-primary-600/5 to-transparent">
+                        <div className="relative shrink-0 mx-auto lg:mx-0 flex flex-col gap-6 w-full lg:w-auto items-center lg:items-start text-center lg:text-left">
+                            <div className="relative p-[3px] rounded-3xl overflow-hidden group/poster shadow-[0_0_40px_rgba(220,38,38,0.2)] mx-auto sm:mx-0 w-fit">
+                                <div className="absolute inset-[-150%] bg-[conic-gradient(from_0deg,transparent,30%,#dc2626_50%,transparent_70%)] animate-[spin_3s_linear_infinite] opacity-60 blur-[1px]" />
+                                <img src={anime.poster} className="w-44 h-60 rounded-3xl border border-white/10 object-cover relative z-10 shadow-2xl shadow-black" alt={anime.title} loading="lazy" decoding="async"/>
+                            </div>
+                            <div className="flex lg:hidden flex-col gap-3 w-full items-center text-center">
+                                <h1 className="text-2xl font-black text-white font-[Cinzel] leading-none tracking-tighter drop-shadow-2xl shadow-black scale-[0.85] origin-center">{anime.title}</h1>
+                                <div className="flex flex-wrap gap-3 mt-3 justify-center items-center">
+                                    <div className="flex items-center flex-wrap justify-center gap-4 text-[11px] text-zinc-400 font-black bg-white/5 border border-white/5 px-5 py-2 rounded-full uppercase tracking-widest shadow-inner shadow-black/20 max-w-full">
+                                             {formatRating(anime.stats.rating) && (<><span className={cn(formatRating(anime.stats.rating)?.includes('18') || formatRating(anime.stats.rating)?.includes('R') ? "text-primary-500" : "text-zinc-400")}>{formatRating(anime.stats.rating)}</span><span className="w-1.5 h-1.5 bg-zinc-800 rounded-full"/></>)}
+                                            <span className={cn(anime.info.status.includes('Airing') ? 'text-green-500 animate-pulse' : 'text-zinc-500')}>{anime.info.status}</span>
+                                            <span className="w-1.5 h-1.5 bg-zinc-800 rounded-full"/>
+                                            <div className="flex items-center gap-1.5"><Clock className="w-3.5 h-3.5 text-primary-600 shadow-primary-900/20"/> {anime.stats.duration}</div>
+                                            <span className="w-1.5 h-1.5 bg-zinc-800 rounded-full"/>
+                                            <div className="text-yellow-500">MAL: {anime.stats.malScore}</div>
+                                    </div>
+                                </div>
+                                <div className="flex justify-center w-full"><TrailerSection videos={anime.trailers} /></div>
+                            </div>
+                            <div className="hidden lg:flex justify-center w-full"><TrailerSection videos={anime.trailers} /></div>
+                        </div>
+                        <div className="hidden lg:flex flex-1 pt-2 text-left z-10 flex-col h-full w-full">
+                            <h1 className="text-3xl md:text-5xl font-black text-white font-[Cinzel] leading-none mb-2 tracking-tighter drop-shadow-2xl shadow-black scale-[0.85] origin-left">{anime.title}</h1>
+                            {anime.jname && <p className="text-[10px] text-zinc-600 font-black uppercase tracking-[0.4em] mb-6 opacity-60 drop-shadow-sm">{anime.jname}</p>}
+                            <div className="flex flex-wrap gap-4 mt-3 justify-start items-center">
+                                <div className="flex items-center gap-4 text-[11px] text-zinc-400 font-black bg-white/5 border border-white/5 px-5 py-2 rounded-full uppercase tracking-widest shadow-inner shadow-black/20">
+                                     {formatRating(anime.stats.rating) && (<><span className={cn(formatRating(anime.stats.rating)?.includes('18') || formatRating(anime.stats.rating)?.includes('R') ? "text-primary-500" : "text-zinc-400")}>{formatRating(anime.stats.rating)}</span><span className="w-1.5 h-1.5 bg-zinc-800 rounded-full"/></>)}
+                                     <span className={cn(anime.info.status.includes('Airing') ? 'text-green-500 animate-pulse' : 'text-zinc-500')}>{anime.info.status}</span>
+                                     <span className="w-1.5 h-1.5 bg-zinc-800 rounded-full"/>
+                                     <div className="flex items-center gap-1.5"><Clock className="w-3.5 h-3.5 text-primary-600 shadow-primary-900/20"/> {anime.stats.duration}</div>
+                                     <span className="w-1.5 h-1.5 bg-zinc-800 rounded-full"/>
+                                     <div className="text-yellow-500">MAL: {anime.stats.malScore}</div>
+                                </div>
+                            </div>
+                            <div className="flex flex-wrap gap-2 mt-6 justify-start">
+                                {anime.info.genres.map((g: string) => (<Link key={g} href={`/search?type=${g}`} className="text-[9px] px-4 py-1.5 bg-white/5 rounded-full text-zinc-500 border border-white/5 hover:text-white hover:bg-primary-600 transition-all font-black uppercase tracking-widest active:scale-90 shadow-sm hover:shadow-primary-900/20 shadow-primary-900/10">{g}</Link>))}
+                            </div>
+                            <div className="mt-auto pt-6 w-full flex justify-end"><StarRating animeId={animeId} initialRating={anime.stats.rating} /></div>
+                        </div>
+                    </div>
+                    <div className="flex-1 min-h-0 relative px-6 sm:px-10 mt-4 overflow-hidden flex flex-col">
+                        <div className="lg:hidden flex flex-wrap gap-2 justify-center mb-6">
+                             {anime.info.genres.map((g: string) => (<Link key={g} href={`/search?type=${g}`} className="text-[8px] px-3 py-1 bg-white/5 rounded-full text-zinc-500 border border-white/5 uppercase font-bold">{g}</Link>))}
+                        </div>
+                        <div className="lg:hidden flex justify-center mb-6"><StarRating animeId={animeId} initialRating={anime.stats.rating} /></div>
+                        <h4 className="text-[10px] font-black text-primary-600 uppercase tracking-[0.5em] mb-3 flex items-center gap-2 shadow-sm shrink-0"><Info size={12} className="shadow-sm"/> Synopsis</h4>
+                        <ScrollArea className="flex-1 pr-4 custom-scrollbar shadow-inner shadow-primary-900/5">
+                           <p className="text-zinc-400 text-sm leading-relaxed pb-8 antialiased font-medium opacity-90 drop-shadow-sm shadow-black" dangerouslySetInnerHTML={{ __html: anime.description }} />
+                        </ScrollArea>
                         {/* RESTORED AND VISIBLE ON PC */}
                         <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 w-full mt-6 mb-6">
                             <div className="bg-white/5 p-2 rounded-xl border border-white/5 flex flex-col items-center justify-center">
@@ -1203,167 +1240,14 @@ function WatchContent() {
                         </div>
                     </div>
                 </motion.div>
-            </div>
-      </div></div>
-      <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.8, delay: 0.5 }} className="w-full flex flex-col gap-12 mt-12 px-4 md:px-8">
-        {anime.seasons && anime.seasons.length > 0 && (
-            <div className="w-full max-w-[1150px] 2xl:max-w-[1500px] mx-auto order-5">
-                <div className="bg-[#0a0a0a] border border-white/10 shadow-3xl rounded-[50px] p-12 overflow-hidden relative group/seasons shadow-primary-900/20 shadow-md">
-                    <div className="absolute top-0 left-0 w-80 h-80 bg-primary-600/5 blur-[150px] pointer-events-none group-hover/seasons:bg-primary-600/10 transition-all duration-1000" />
-                    <div className="flex items-center gap-4 mb-8"><span className="w-2.5 h-2.5 bg-primary-600 rounded-full animate-ping shadow-[0_0_15px_red] shadow-primary-900/10" /><h4 className="text-[12px] text-white font-black uppercase tracking-[0.5em] font-[Cinzel] opacity-80 shadow-primary-900/10 shadow-sm">Seasons</h4></div>
-                    <ScrollArea className="w-full whitespace-nowrap pb-6 custom-scrollbar">
-                        <div className="flex gap-6 w-max" ref={seasonsRef} onWheel={(e:any) => e.stopPropagation()}>{anime.seasons.map((season: any) => season?.id ? (<Link key={season.id} href={`/watch/${season.id}`} className={cn("group/item flex items-center gap-5 p-2 pr-10 rounded-full border hover:border-primary-600/40 hover:bg-primary-600/10 transition-all duration-500 min-w-[280px] active:scale-95 shadow-inner shadow-primary-900/5 shadow-md", season.isCurrent ? "bg-primary-600/10 border-primary-600" : "bg-white/5 border-white/5")}><div className="relative shrink-0 overflow-hidden rounded-full w-14 h-14 border-2 border-white/5 group-hover/item:border-primary-600 shadow-md shadow-black/50"><img src={season.poster || '/images/no-poster.png'} className="w-full h-full object-cover transition-transform duration-1000 group-hover/item:scale-125" alt={season.title} loading="lazy" decoding="async"/></div><div className="flex flex-col overflow-hidden gap-1"><span className="text-[11px] font-black text-zinc-300 group-hover:text-white truncate w-[160px] uppercase tracking-tighter transition-colors shadow-black drop-shadow-md">{season.title}</span><span className="text-[9px] text-zinc-600 font-black uppercase tracking-[0.2em]">{season.isCurrent ? 'NOW PLAYING' : 'VIEW ARCHIVE'}</span></div></Link>) : null)}</div><ScrollBar orientation="horizontal" />
-                    </ScrollArea>
-                </div>
-            </div>
-        )}
-        {anime.related && anime.related.length > 0 && (
-            <div className="w-full max-w-[1150px] 2xl:max-w-[1500px] mx-auto order-6">
-                <div className="bg-[#0a0a0a] border border-white/10 shadow-3xl rounded-[50px] p-12 overflow-hidden relative group/related shadow-primary-900/20 shadow-md">
-                    <div className="absolute top-0 right-0 w-80 h-80 bg-primary-600/5 blur-[150px] pointer-events-none group-hover/related:bg-primary-600/10 transition-all duration-1000" />
-                    <div className="flex items-center gap-4 mb-8"><span className="w-2.5 h-2.5 bg-primary-600 rounded-full animate-ping shadow-[0_0_15px_red] shadow-primary-900/10" /><h4 className="text-[12px] text-white font-black uppercase tracking-[0.5em] font-[Cinzel] opacity-80 shadow-primary-900/10 shadow-sm">Related Domains</h4></div>
-                    <ScrollArea className="w-full whitespace-nowrap pb-6 custom-scrollbar">
-                        <div className="flex gap-6 w-max" ref={relatedRef} onWheel={(e:any) => e.stopPropagation()}>{anime.related.map((rel: any, idx: number) => rel?.id ? (<Link key={`${rel.id}-${idx}`} href={`/watch/${rel.id}`} className="group/item flex items-center gap-5 p-2 pr-10 rounded-full bg-white/5 border border-white/5 hover:border-primary-600/40 hover:bg-primary-600/10 transition-all duration-500 min-w-[320px] active:scale-95 shadow-inner shadow-primary-900/5 shadow-md"><div className="relative shrink-0 overflow-hidden rounded-full w-16 h-16 border-2 border-white/5 group-hover/item:border-primary-600 shadow-[0_0_20px_rgba(220,38,38,0.4)] transition-all duration-500 shadow-black/50 shadow-md"><img src={rel.poster || rel.image || '/images/no-poster.png'} className="w-full h-full object-cover transition-transform duration-1000 group-hover/item:scale-125 shadow-md shadow-primary-900/5" alt={rel.name} loading="lazy" decoding="async"/></div><div className="flex flex-col overflow-hidden gap-1"><span className="text-[13px] font-black text-zinc-300 group-hover:text-white truncate w-[180px] uppercase tracking-tighter transition-colors shadow-black drop-shadow-md">{rel.name || rel.title}</span><div className="flex items-center gap-3"><Badge variant="outline" className="text-[8px] font-black border-zinc-800 text-zinc-600 rounded-md group-hover/item:border-primary-500/50 group-hover/item:text-primary-500 uppercase tracking-widest shadow-sm">{rel.type}</Badge><span className="w-1 h-1 bg-zinc-900 rounded-full shadow-sm shrink-0"/><span className="text-[9px] text-zinc-700 font-black uppercase group-hover:text-zinc-400 shadow-sm">
-                            {typeof rel.episodes === 'object' ? (rel.episodes.sub || rel.episodes.dub || '?') : (rel.episodes || '?')} EPS
-                        </span></div></div></Link>) : null)}</div><ScrollBar orientation="horizontal" className="hidden" />
-                    </ScrollArea>
-                </div>
-            </div>
-        )}
-      </motion.div>
-      <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.8, delay: 0.6 }} className="w-full flex justify-center mt-12 px-4 md:px-8 pb-12">
-  <div className="w-full max-w-[1150px] 2xl:max-w-[1500px] grid grid-cols-1 xl:grid-cols-12 gap-8 items-start">
-    
-    {/* MANIFESTED BLOODLINES (CHARACTERS) */}
-    <div className={cn(
-      "order-7 xl:order-2 xl:col-span-8 h-auto xl:h-[750px] bg-[#0a0a0a] rounded-[50px] border border-white/5 overflow-hidden flex flex-col shadow-2xl relative shadow-primary-900/20 shadow-md", 
-      charactersList.length === 0 ? "hidden xl:flex" : "flex"
-    )}>
-      <div className="p-8 bg-gradient-to-b from-white/5 to-transparent border-b border-white/5 flex items-center justify-between shadow-primary-900/5 shadow-md">
-        <div className="flex items-center gap-4">
-          <User size={20} className="text-primary-600 shadow-primary-600/30" />
-          {/* Title Size Restored (Removed scale-[0.92]) */}
-          <h3 className="font-black text-white text-[11px] font-[Cinzel] tracking-[0.4em] uppercase">
-            Manifested Bloodlines
-          </h3>
-        </div>
-      </div>
-      
-      <div className="flex-1 p-6 md:p-10 overflow-hidden relative">
-        {isLoadingChars ? (
-          <div className="absolute inset-0 flex items-center justify-center bg-black/50 z-20">
-            <FantasyLoader text="LOADING DATA..." />
-          </div>
-        ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 gap-4 h-full xl:overflow-y-auto custom-scrollbar pb-16">
-            {charactersList.length > 0 ? (
-              charactersList.map((char: any, i: number) => (
-                <div key={i} className={cn("flex bg-white/5 border rounded-[30px] p-4 transition-all duration-500 group shadow-lg cursor-default", char.role === 'Main' ? "border-primary-500/30 shadow-[0_0_20px_rgba(220,38,38,0.25)] bg-primary-600/5" : "border-white/5 hover:border-white/10 hover:shadow-primary-900/10")}>
-                  <div className="flex items-center gap-4 flex-1 cursor-pointer" onClick={() => openCharacter(char.id)}>
-                    <img src={char.poster || '/images/non-non.png'} className={cn("w-14 h-14 rounded-full object-cover border transition-colors shadow-lg", char.role === 'Main' ? "border-primary-500 shadow-primary-900/60" : "border-white/10 group-hover:border-primary-500/50")} loading="lazy" decoding="async" />
-                    <div className="flex flex-col">
-                      <span className={cn("text-[11px] font-black uppercase tracking-tighter line-clamp-1", char.role === 'Main' ? "text-primary-400 text-shadow-sm" : "text-zinc-200")}>{char.name}</span>
-                      <Badge variant="outline" className={cn("w-fit mt-1 text-[8px] font-bold px-2 py-0 h-4 rounded-full transition-colors", char.role === 'Main' ? "border-primary-600 text-primary-500 bg-primary-600/10" : "border-zinc-800 text-zinc-500 group-hover:text-primary-500 group-hover:border-primary-500/30")}>{char.role}</Badge>
-                    </div>
-                  </div>
-                  <div className="w-px bg-white/10 mx-2" />
-                  <div className="flex items-center gap-4 flex-1 justify-end text-right cursor-pointer" onClick={() => char.voiceActor?.id && openActor(char.voiceActor.id)}>
-                    <div className="flex flex-col items-end">
-                      {char.voiceActor ? (
-                        <>
-                          <span className="text-[11px] font-bold text-zinc-400 uppercase line-clamp-1 hover:text-white transition-colors">{char.voiceActor.name}</span>
-                          <span className="text-[8px] font-bold text-zinc-600 uppercase">{char.voiceActor.language}</span>
-                        </>
-                      ) : (
-                        <span className="text-[9px] text-zinc-600">Unknown</span>
-                      )}
-                    </div>
-                    {char.voiceActor && <img src={char.voiceActor.poster || '/images/non-non.png'} className="w-12 h-12 rounded-full object-cover border border-white/5 grayscale group-hover:grayscale-0 transition-all" loading="lazy" decoding="async" />}
-                  </div>
-                </div>
-              ))
-            ) : (
-              /* EMPTY STATE - 80% Image Width & Centered */
-              <div className="col-span-full flex flex-col items-center justify-center h-full min-h-[400px] opacity-40">
-                <img 
-                  src="/images/non-non.gif" 
-                  alt="No Bloodlines" 
-                  className="w-[100%] h-auto object-contain grayscale opacity-20 mb-3 border-0 -translate-x-[10%]" 
-                />
-                <p className="text-[20px] font-black uppercase text-zinc-500 tracking-widest">
-                  No Bloodlines Found
-                </p>
               </div>
-            )}
+              
+              <div className="w-full">
+                  <ShadowComments key={user?.id || 'guest'} episodeId={currentEpId || "general"} />
+              </div>
           </div>
-        )}
-        <div className="absolute bottom-4 left-0 w-full flex justify-between items-center px-10 pointer-events-none">
-          <button disabled={charPage <= 1} onClick={() => setCharPage(p => Math.max(1, p - 1))} className="pointer-events-auto p-3 rounded-full bg-white/5 text-zinc-300 hover:text-primary-600 hover:bg-white/10 transition-all hover:scale-110 active:scale-90 shadow-lg disabled:opacity-0">
-            <ChevronLeft size={20} />
-          </button>
-          <div className="pointer-events-auto px-6 py-2 bg-black/80 backdrop-blur-md rounded-full border border-white/10 text-[10px] font-black uppercase tracking-widest shadow-xl">
-            {charPage} / {totalCharPages}
-          </div>
-          <button disabled={charPage >= totalCharPages} onClick={() => setCharPage(p => p + 1)} className="pointer-events-auto p-3 rounded-full bg-white/5 text-zinc-300 hover:text-primary-600 hover:bg-white/10 transition-all hover:scale-110 active:scale-90 shadow-lg disabled:opacity-0">
-            <ChevronRight size={20} />
-          </button>
-        </div>
       </div>
-    </div>
 
-    {/* RECOMMENDED SECTION */}
-    <div className="order-8 xl:order-1 xl:col-span-4 h-[750px] flex flex-col bg-[#0a0a0a] rounded-[50px] border border-white/5 shadow-2xl overflow-hidden relative group/paths shadow-primary-900/20 shadow-md">
-      <div className="p-8 bg-gradient-to-b from-white/5 to-transparent border-b border-white/5 flex items-center gap-4 relative z-10 shadow-primary-900/5 shadow-md">
-        <Heart size={20} className="text-primary-600 fill-red-600 animate-pulse shadow-primary-600/30 shadow-md" />
-        {/* Title Size Restored */}
-        <h3 className="font-black text-white text-[11px] font-[Cinzel] tracking-[0.4em] uppercase shadow-sm shadow-black">
-          Recommended
-        </h3>
-      </div>
-      <div className="flex-1 overflow-hidden p-6 relative z-10 shadow-inner shadow-primary-900/5">
-        <ScrollArea className="h-full pr-4 custom-scrollbar">
-          <div className="space-y-4" ref={recommendationsRef} onWheel={(e: any) => e.stopPropagation()}>
-            {anime.recommendations?.length > 0 && anime.recommendations.map((rec: any, idx: number) => rec?.id ? (
-              <Link key={`${rec.id}-${idx}`} href={`/watch/${rec.id}`} className="flex gap-5 p-4 rounded-[32px] hover:bg-primary-600/5 group transition-all duration-500 active:scale-95 border border-transparent hover:border-primary-600/20 shadow-inner shadow-primary-900/5">
-                <img src={rec.poster || rec.image || '/images/no-poster.png'} className="w-16 h-24 object-cover rounded-2xl shadow-3xl group-hover:rotate-1 transition-all duration-500 shadow-black shadow-md shrink-0" alt={rec.name} loading="lazy" decoding="async" />
-                <div className="flex-1 py-1 flex flex-col justify-center min-w-0">
-                  <h4 className="text-[12px] font-black text-zinc-500 group-hover:text-primary-500 line-clamp-2 transition-all uppercase tracking-tight leading-tight mb-2 shadow-black drop-shadow-md">{rec.name || rec.title}</h4>
-                  <div className="flex items-center gap-3">
-                    <span className="text-[8px] font-black text-zinc-700 uppercase tracking-[0.2em] group-hover:text-zinc-500 transition-colors shadow-sm whitespace-nowrap">{rec.type || 'TV'}</span>
-                    <span className="w-1 h-1 bg-zinc-900 rounded-full shadow-sm shrink-0" />
-                    <span className="text-[9px] text-zinc-800 font-black uppercase group-hover:text-primary-900 transition-colors shadow-sm whitespace-nowrap">
-                      {typeof rec.episodes === 'object' ? (rec.episodes.sub || rec.episodes.dub || '?') : (rec.episodes || '?')} EPS
-                    </span>
-                  </div>
-                </div>
-              </Link>
-            ) : null)}
-          </div>
-        </ScrollArea>
-      </div>
-    </div>
-  </div>
-</motion.div>
-      <CharacterDetailsDialog
-        isOpen={activePopup?.type === 'character'}
-        onClose={closeAll}
-        onBack={popupIndex > 0 ? goBack : undefined}
-        onForward={popupIndex < popupHistory.length - 1 ? goForward : undefined}
-        canGoBack={popupIndex > 0}
-        canGoForward={popupIndex < popupHistory.length - 1}
-        characterId={activePopup?.type === 'character' ? activePopup.id : null}
-        onActorClick={openActor}
-      />
-      <VoiceActorDetailsDialog
-        isOpen={activePopup?.type === 'actor'}
-        onClose={closeAll}
-        onBack={popupIndex > 0 ? goBack : undefined}
-        onForward={popupIndex < popupHistory.length - 1 ? goForward : undefined}
-        canGoBack={popupIndex > 0}
-        canGoForward={popupIndex < popupHistory.length - 1}
-        actorId={activePopup?.type === 'actor' ? activePopup.id : null}
-        onCharacterClick={openCharacter}
-      />
       <Footer />
     </div>
   );

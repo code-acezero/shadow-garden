@@ -9,7 +9,7 @@ import {
   Bell, CheckCircle, Info, Languages, Flag, Heart, AlertOctagon, 
   ArrowDownAZ, LayoutGrid, RotateCcw, ScanSearch, Users, Plus,
   ShieldAlert, MessageSquareWarning, Volume2, Mic2, Radio, Check, 
-  Trash2, Play, Pause, AudioWaveform
+  Trash2, Play, Pause, AudioWaveform, Flame, Globe
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/context/AuthContext'; 
@@ -136,8 +136,8 @@ const CustomSelect = ({ label, icon: Icon, options, value, onChange }: any) => {
     );
 };
 
-// --- NEW HINDI SEARCH BAR (INLINED WITH HPI) ---
-const HindiSearchBar = ({ onClose, isActive, setIsActive, onToggleMode }: { onClose: () => void; isActive: boolean; setIsActive: (active: boolean) => void; onToggleMode: () => void; }) => {
+// --- NEW SPECIAL SEARCH BAR (INLINED WITH HPI / DPI) ---
+const SpecialSearchBar = ({ mode, onClose, isActive, setIsActive }: { mode: 'hindi' | 'donghua'; onClose: () => void; isActive: boolean; setIsActive: (active: boolean) => void; }) => {
     const router = useRouter();
     const [query, setQuery] = useState('');
     const [suggestions, setSuggestions] = useState<any[]>([]);
@@ -148,25 +148,27 @@ const HindiSearchBar = ({ onClose, isActive, setIsActive, onToggleMode }: { onCl
         if (query.trim().length > 1) {
           setIsLoading(true);
           try {
-            // Using HPI Client - Suggestions Endpoint
-            const data = await hpi.hindi.getSuggestions(query);
-            if (Array.isArray(data)) {
-                setSuggestions(data.slice(0, 5));
-            } else if ((data as any)?.items) {
-                setSuggestions((data as any).items.slice(0, 5));
+            if (mode === 'hindi') {
+                const data = await hpi.hindi.getSuggestions(query);
+                if (Array.isArray(data)) setSuggestions(data.slice(0, 5));
+                else if ((data as any)?.items) setSuggestions((data as any).items.slice(0, 5));
+            } else {
+                const { dpi } = await import('@/lib/dpi');
+                const data = await dpi.search(query);
+                if (Array.isArray(data)) setSuggestions(data.slice(0, 5));
             }
           } catch (e) { setSuggestions([]); } finally { setIsLoading(false); }
         } else setSuggestions([]);
       }, 400);
       return () => clearTimeout(delay);
-    }, [query]);
+    }, [query, mode]);
   
     const handleSubmit = (e?: React.FormEvent) => {
       if (e) e.preventDefault();
       setIsActive(false);
       const params = new URLSearchParams();
       if (query) params.set('keyword', query);
-      router.push(`/search/hindi?${params.toString()}`);
+      router.push(`/search/${mode}?${params.toString()}`);
     };
   
     const handleClose = (e: React.MouseEvent) => {
@@ -181,8 +183,8 @@ const HindiSearchBar = ({ onClose, isActive, setIsActive, onToggleMode }: { onCl
           className="w-full h-full flex items-center relative group"
           onClick={() => !isActive && setIsActive(true)}
       >
-        <div className="h-full w-10 flex items-center justify-center shrink-0 text-orange-500">
-          {isLoading ? <Loader2 className="w-3.5 h-3.5 animate-spin"/> : <Languages className="w-4 h-4" />}
+        <div className={cn("h-full w-10 flex items-center justify-center shrink-0", mode === 'hindi' ? "text-orange-500" : "text-red-500")}>
+          {isLoading ? <Loader2 className="w-3.5 h-3.5 animate-spin"/> : (mode === 'hindi' ? <Languages className="w-4 h-4" /> : <Flame className="w-4 h-4" />)}
         </div>
   
         <form onSubmit={handleSubmit} className="flex-1 h-full flex items-center relative">
@@ -190,13 +192,13 @@ const HindiSearchBar = ({ onClose, isActive, setIsActive, onToggleMode }: { onCl
             value={query} 
             onChange={(e) => setQuery(e.target.value)} 
             onFocus={() => setIsActive(true)} 
-            placeholder="Search Hindi/Dubbed Anime..."
+            placeholder={mode === 'hindi' ? "Search Hindi/Dubbed Anime..." : "Search Donghua..."}
             className="bg-transparent border-none outline-none focus:ring-0 text-white placeholder-zinc-500 text-[11px] md:text-xs h-full w-full pr-2 font-medium" 
           />
         </form>
   
         <div className="flex items-center gap-1 pr-1.5">
-          {query && <button onClick={handleSubmit} className="p-1 bg-orange-600 text-white rounded-full hover:bg-orange-700 shadow-lg"><ArrowRight size={12} /></button>}
+          {query && <button onClick={handleSubmit} className={cn("p-1 text-white rounded-full shadow-lg", mode === 'hindi' ? "bg-orange-600 hover:bg-orange-700" : "bg-red-600 hover:bg-red-700")}><ArrowRight size={12} /></button>}
           {(query || isActive) && (
               <button 
                   onClick={handleClose} 
@@ -209,15 +211,14 @@ const HindiSearchBar = ({ onClose, isActive, setIsActive, onToggleMode }: { onCl
   
         <AnimatePresence>
           {isActive && suggestions.length > 0 && (
-              <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 10 }} className="absolute top-[120%] left-0 right-0 bg-[#0a0a0a]/95 border border-orange-500/20 rounded-2xl shadow-2xl p-1 z-50">
+              <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 10 }} className={cn("absolute top-[120%] left-0 right-0 bg-[#0a0a0a]/95 border rounded-2xl shadow-2xl p-1 z-50", mode === 'hindi' ? "border-orange-500/20" : "border-red-500/20")}>
                   {suggestions.map((s: any) => (
-                      <div key={s.id} onClick={() => router.push(`/hindi-watch/${s.id}`)} className="flex items-center gap-2 p-1.5 hover:bg-white/10 rounded-xl cursor-pointer group transition-all">
-                          {/* HPI Data Mapping */}
+                      <div key={s.id} onClick={() => router.push(`/${mode}-watch/${s.id}`)} className="flex items-center gap-2 p-1.5 hover:bg-white/10 rounded-xl cursor-pointer group transition-all">
                           <img src={s.image || s.poster || '/images/no-poster.png'} className="w-8 h-10 object-cover rounded bg-zinc-800" alt="" />
                           <div className="min-w-0 flex-1">
-                              <div className="text-xs font-bold text-white truncate group-hover:text-orange-500">{s.title}</div>
+                              <div className={cn("text-xs font-bold text-white truncate", mode === 'hindi' ? "group-hover:text-orange-500" : "group-hover:text-red-500")}>{s.title}</div>
                               <div className="text-[9px] text-zinc-500 font-medium uppercase">
-                                  Hindi • {s.type || "TV"} • {s.episodeCount || s.episode || '?'} EPS
+                                  {mode === 'hindi' ? 'Hindi' : 'Donghua'} • {s.type || "TV"} • {s.episodeCount || s.episode || '?'} EPS
                               </div>
                           </div>
                       </div>
@@ -229,7 +230,7 @@ const HindiSearchBar = ({ onClose, isActive, setIsActive, onToggleMode }: { onCl
     );
 };
 
-const SearchBarContent = ({ query, setQuery, isHindiMode, setIsHindiMode, showFilters, setShowFilters, handleSearchSubmit, filters, setFilters, toggleGenre, suggestions, handleSuggestionClick, router, compact = false, onCloseMobile, onReset, waveTrigger, isLoadingSearch }: any) => {
+const SearchBarContent = ({ query, setQuery, searchMode, setSearchMode, showFilters, setShowFilters, handleSearchSubmit, filters, setFilters, toggleGenre, suggestions, handleSuggestionClick, router, compact = false, onCloseMobile, onReset, waveTrigger, isLoadingSearch }: any) => {
     return (
         <motion.div 
             initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.3 }}
@@ -239,13 +240,13 @@ const SearchBarContent = ({ query, setQuery, isHindiMode, setIsHindiMode, showFi
                 <LightWave trigger={waveTrigger} delay={0.2} />
              </div>
 
-             {isHindiMode ? (
+             {searchMode !== 'anime' ? (
                  <div className="flex w-full h-full items-center pl-1 relative z-10">
-                    <HindiSearchBar onClose={() => { setShowFilters(false); if (onCloseMobile) onCloseMobile(); }} isActive={!compact} setIsActive={()=>{}} onToggleMode={() => setIsHindiMode(false)} />
+                    <SpecialSearchBar mode={searchMode as 'hindi' | 'donghua'} onClose={() => { setShowFilters(false); if (onCloseMobile) onCloseMobile(); }} isActive={!compact} setIsActive={()=>{}} />
                     {!compact && (
                         <div className="flex items-center ml-auto gap-1">
                             <button onClick={(e) => { e.stopPropagation(); setShowFilters(!showFilters); }} className={cn("p-1.5 rounded-full transition-colors", showFilters ? "text-primary-400 bg-primary-500/10" : "text-zinc-400 hover:text-white")}><Filter size={14} /></button>
-                            <button onClick={() => router.push('/ai/imagesearch')} className="p-1.5 rounded-full text-zinc-400 hover:text-primary-500 transition-colors"><ScanSearch size={14} /></button>
+                            <button onClick={(e) => { e.stopPropagation(); router.push('/ai/imagesearch'); }} className="p-1.5 rounded-full text-zinc-400 hover:text-primary-500 transition-colors block"><ScanSearch size={14} /></button>
                         </div>
                     )}
                  </div>
@@ -274,18 +275,31 @@ const SearchBarContent = ({ query, setQuery, isHindiMode, setIsHindiMode, showFi
                  {showFilters && !compact && (
                      <motion.div initial={{ opacity: 0, y: 10, scale: 0.95 }} animate={{ opacity: 1, y: 0, scale: 1 }} exit={{ opacity: 0, y: 10, scale: 0.95 }} className="absolute top-[120%] left-0 right-0 bg-[#0a0a0a]/90 backdrop-blur-2xl border border-white/10 rounded-3xl p-5 shadow-2xl z-[100] ring-1 ring-white/5">
                          <div className="flex justify-between items-center mb-4 border-b border-white/5 pb-2">
-                             <span className="text-[10px] font-black text-zinc-400 uppercase tracking-widest">{isHindiMode ? 'Hindi Filters' : 'Filters'}</span>
+                             <span className="text-[10px] font-black text-zinc-400 uppercase tracking-widest">{searchMode === 'hindi' ? 'Hindi Filters' : searchMode === 'donghua' ? 'Donghua Filters' : 'Filters'}</span>
                              <div className="flex gap-2 items-center">
-                                {!isHindiMode && (
-                                    <button onClick={() => router.push('/search?mode=az')} className="flex items-center gap-1 text-[9px] px-2 py-1.5 rounded-full bg-transparent text-zinc-500 border border-transparent hover:bg-white/5 transition-all"><ArrowDownAZ size={10}/> A-Z</button>
+                                {searchMode === 'anime' && (
+                                    <>
+                                        <button onClick={() => router.push('/search?mode=az')} className="flex items-center gap-1 text-[9px] px-2 py-1.5 rounded-full bg-transparent text-zinc-500 border border-transparent hover:bg-white/5 transition-all"><ArrowDownAZ size={10}/> A-Z</button>
+                                        <button onClick={() => setSearchMode('hindi')} className="flex items-center gap-1 text-[9px] px-3 py-1.5 rounded-full border bg-white/5 text-zinc-400 border-white/10 hover:bg-white/10 transition-all"><Languages size={10}/> Hindi</button>
+                                        <button onClick={() => setSearchMode('donghua')} className="flex items-center gap-1 text-[9px] px-3 py-1.5 rounded-full border bg-white/5 text-zinc-400 border-white/10 hover:bg-white/10 transition-all"><Flame size={10}/> Donghua</button>
+                                    </>
                                 )}
-                                <button onClick={() => { setIsHindiMode(!isHindiMode); }} className={cn("flex items-center gap-1 text-[9px] px-3 py-1.5 rounded-full border transition-all", isHindiMode ? "bg-orange-500/20 text-orange-400 border-orange-500/30" : "bg-white/5 text-zinc-400 border-white/10 hover:bg-white/10")}>
-                                    <Languages size={10}/> {isHindiMode ? 'Global' : 'Hindi'}
-                                </button>
+                                {searchMode === 'hindi' && (
+                                    <>
+                                        <button onClick={() => setSearchMode('anime')} className="flex items-center gap-1 text-[9px] px-3 py-1.5 rounded-full border bg-white/5 text-zinc-400 border-white/10 hover:bg-white/10 transition-all"><Globe size={10}/> Global</button>
+                                        <button onClick={() => setSearchMode('donghua')} className="flex items-center gap-1 text-[9px] px-3 py-1.5 rounded-full border bg-white/5 text-zinc-400 border-white/10 hover:bg-white/10 transition-all"><Flame size={10}/> Donghua</button>
+                                    </>
+                                )}
+                                {searchMode === 'donghua' && (
+                                    <>
+                                        <button onClick={() => setSearchMode('anime')} className="flex items-center gap-1 text-[9px] px-3 py-1.5 rounded-full border bg-white/5 text-zinc-400 border-white/10 hover:bg-white/10 transition-all"><Globe size={10}/> Global</button>
+                                        <button onClick={() => setSearchMode('hindi')} className="flex items-center gap-1 text-[9px] px-3 py-1.5 rounded-full border bg-white/5 text-zinc-400 border-white/10 hover:bg-white/10 transition-all"><Languages size={10}/> Hindi</button>
+                                    </>
+                                )}
                              </div>
                          </div>
                          <div className="space-y-4">
-                             {isHindiMode ? (
+                             {searchMode !== 'anime' ? (
                                  <>
                                      <div>
                                          <span className="text-[9px] font-bold text-zinc-500 uppercase mb-2 block ml-1">Genres</span>
@@ -324,7 +338,7 @@ const SearchBarContent = ({ query, setQuery, isHindiMode, setIsHindiMode, showFi
                                  <button onClick={onReset} className="flex items-center gap-1.5 text-[9px] text-zinc-500 hover:text-white transition-colors px-2 py-1 rounded-md hover:bg-white/5"><RotateCcw size={10} /> Reset</button>
                                  <div className="flex gap-2">
                                      <Button size="sm" variant="ghost" className="h-8 text-[10px] bg-white/5 hover:bg-white/10 text-zinc-300 rounded-full border border-white/5"><Dices size={12} className="mr-1.5"/> Random</Button>
-                                     <Button size="sm" onClick={handleSearchSubmit} className={cn("h-8 text-[10px] text-white px-6 rounded-full shadow-lg", isHindiMode ? "bg-orange-600 hover:bg-orange-700" : "bg-primary-600 hover:bg-primary-700")}>Apply</Button>
+                                     <Button size="sm" onClick={handleSearchSubmit} className={cn("h-8 text-[10px] text-white px-6 rounded-full shadow-lg", searchMode === 'hindi' ? "bg-orange-600 hover:bg-orange-700" : searchMode === 'donghua' ? "bg-red-600 hover:bg-red-700" : "bg-primary-600 hover:bg-primary-700")}>Apply</Button>
                                  </div>
                              </div>
                          </div>
@@ -369,7 +383,7 @@ function WhisperIslandContent() {
   const [isLoadingSearch, setIsLoadingSearch] = useState(false);
   const [filters, setFilters] = useState({ genre: [] as string[], season: "", year: "", type: "", status: "", sort: "newest", language: "" });
   const [showFilters, setShowFilters] = useState(false);
-  const [isHindiMode, setIsHindiMode] = useState(false);
+  const [searchMode, setSearchMode] = useState<'anime' | 'hindi' | 'donghua'>('anime');
   const [activeNotif, setActiveNotif] = useState<any | null>(null);
   const [centerMode, setCenterMode] = useState<any>('SEARCH_SOLO');
   const [isMobileSearchExpanded, setIsMobileSearchExpanded] = useState(false);
@@ -549,7 +563,7 @@ function WhisperIslandContent() {
 
   // --- MISSING GLOBAL SEARCH EFFECT RESTORED ---
   useEffect(() => {
-    if (isHindiMode) return; 
+    if (searchMode !== 'anime') return; 
     const delay = setTimeout(async () => {
       if (query.trim().length > 1) {
         setIsLoadingSearch(true);
@@ -566,7 +580,7 @@ function WhisperIslandContent() {
       }
     }, 400);
     return () => clearTimeout(delay);
-  }, [query, isHindiMode]);
+  }, [query, searchMode]);
 
   useEffect(() => {
     if (!activeNotif) setCenterMode('SEARCH_SOLO');
@@ -575,14 +589,13 @@ function WhisperIslandContent() {
     if (activeNotif && centerMode !== 'ISLAND_DETAILS') notifTimerRef.current = setTimeout(() => setActiveNotif(null), 8000);
   }, [activeNotif, centerMode]);
 
-  const handleSearchSubmit = (e?: React.FormEvent) => { if(e) e.preventDefault(); const params = new URLSearchParams(); if (query) params.set('keyword', query); if (filters.genre.length > 0) params.set('genres', filters.genre.join(',').toLowerCase()); if (filters.sort) params.set('sort', filters.sort); if (filters.language) params.set('lang', filters.language.toLowerCase()); const route = isHindiMode ? '/search/hindi' : '/search'; router.push(`${route}?${params.toString()}`); setShowFilters(false); };
+  const handleSearchSubmit = (e?: React.FormEvent) => { if(e) e.preventDefault(); const params = new URLSearchParams(); if (query) params.set('keyword', query); if (filters.genre.length > 0) params.set('genres', filters.genre.join(',').toLowerCase()); if (filters.sort) params.set('sort', filters.sort); if (filters.language) params.set('lang', filters.language.toLowerCase()); const route = searchMode === 'hindi' ? '/search/hindi' : searchMode === 'donghua' ? '/search/donghua' : '/search'; router.push(`${route}?${params.toString()}`); setShowFilters(false); };
   const toggleGenre = (g: string) => setFilters(prev => ({ ...prev, genre: prev.genre.includes(g) ? prev.genre.filter(i => i !== g) : [...prev.genre, g] }));
   const handleSuggestionClick = (id: string) => { setQuery(''); router.push(`/watch/${id}`); };
   const activateSearchFocus = (e: React.MouseEvent) => { e.stopPropagation(); setCenterMode('SEARCH_FOCUSED'); };
   const activateIslandFocus = (e: React.MouseEvent) => { e.stopPropagation(); setCenterMode('ISLAND_FOCUSED'); };
   const activateIslandDetails = (e: React.MouseEvent) => { e.stopPropagation(); if(centerMode === 'ISLAND_DETAILS') setCenterMode('ISLAND_FOCUSED'); else setCenterMode('ISLAND_DETAILS'); };
   const dismissNotification = (e: React.MouseEvent) => { e.stopPropagation(); setActiveNotif(null); };
-  const handleHindiToggle = () => { setIsHindiMode(!isHindiMode); setShowFilters(false); };
   const closeMobileExpand = () => { setIsMobileSearchExpanded(false); };
   const resetFilters = () => setFilters({ genre: [], season: "", year: "", type: "", status: "", sort: "newest", language: "" });
   const shouldHideExtras = isMobile && (isMobileSearchExpanded || centerMode === 'ISLAND_DETAILS' || activeNotif);
@@ -627,7 +640,7 @@ function WhisperIslandContent() {
             <div className="flex-1 flex items-start justify-center pointer-events-auto z-50 min-w-0 w-full">
                 <LayoutGroup>
                     <div className="flex items-start justify-center gap-2 w-full h-full relative">
-                        {centerMode === 'SEARCH_SOLO' && (<motion.div layoutId="main-capsule" transition={FLUID_TRANSITION} onClick={() => isMobile && setIsMobileSearchExpanded(true)} className={cn(`relative bg-black/40 backdrop-blur-xl border border-white/10 shadow-xl rounded-[2rem] ${ISLAND_HEIGHT} flex items-center w-full`)}><div className="absolute left-1 h-full w-10 flex items-center justify-center z-10 pointer-events-none">{isLoadingSearch ? <Loader2 className="w-4 h-4 animate-spin text-primary-500"/> : <Search size={16} className="text-zinc-400" />}</div><SearchBarContent query={query} setQuery={setQuery} isHindiMode={isHindiMode} setIsHindiMode={handleHindiToggle} showFilters={showFilters} setShowFilters={setShowFilters} isLoadingSearch={isLoadingSearch} handleSearchSubmit={handleSearchSubmit} filters={filters} setFilters={setFilters} toggleGenre={toggleGenre} suggestions={suggestions} handleSuggestionClick={handleSuggestionClick} router={router} compact={isMobile && !isMobileSearchExpanded} onCloseMobile={closeMobileExpand} onReset={resetFilters} waveTrigger={logoState} /></motion.div>)}
+                        {centerMode === 'SEARCH_SOLO' && (<motion.div layoutId="main-capsule" transition={FLUID_TRANSITION} onClick={() => isMobile && setIsMobileSearchExpanded(true)} className={cn(`relative bg-black/40 backdrop-blur-xl border border-white/10 shadow-xl rounded-[2rem] ${ISLAND_HEIGHT} flex items-center w-full`)}><div className="absolute left-1 h-full w-10 flex items-center justify-center z-10 pointer-events-none">{isLoadingSearch ? <Loader2 className="w-4 h-4 animate-spin text-primary-500"/> : <Search size={16} className="text-zinc-400" />}</div><SearchBarContent query={query} setQuery={setQuery} searchMode={searchMode} setSearchMode={(mode: any) => { setSearchMode(mode); setShowFilters(false); }} showFilters={showFilters} setShowFilters={setShowFilters} isLoadingSearch={isLoadingSearch} handleSearchSubmit={handleSearchSubmit} filters={filters} setFilters={setFilters} toggleGenre={toggleGenre} suggestions={suggestions} handleSuggestionClick={handleSuggestionClick} router={router} compact={isMobile && !isMobileSearchExpanded} onCloseMobile={closeMobileExpand} onReset={resetFilters} waveTrigger={logoState} /></motion.div>)}
                         {(centerMode === 'ISLAND_FOCUSED' || centerMode === 'ISLAND_DETAILS') && activeNotif && (
                             <>
                                 <motion.div layoutId="search-bubble" transition={FLUID_TRANSITION} onClick={activateSearchFocus} className={cn(`flex items-center justify-center rounded-full bg-black/40 backdrop-blur-xl border border-white/10 hover:bg-white/10 shadow-[0_0_15px_-5px_rgba(255,255,255,0.1)] ${ISLAND_HEIGHT} w-10 md:w-12 shrink-0 cursor-pointer z-40`)}><Search size={16} className="text-zinc-300" /></motion.div>
@@ -642,7 +655,7 @@ function WhisperIslandContent() {
                             <>
                                 <motion.div layoutId="main-capsule" transition={FLUID_TRANSITION} className={cn(`relative bg-black/40 backdrop-blur-xl border border-white/10 shadow-xl rounded-[2rem] w-full ${ISLAND_HEIGHT} flex items-center`)}>
                                     <div className="absolute left-1 h-full w-10 flex items-center justify-center z-10 pointer-events-none">{isLoadingSearch ? <Loader2 className="w-4 h-4 animate-spin text-primary-500"/> : <Search size={16} className="text-zinc-400" />}</div>
-                                    <SearchBarContent query={query} setQuery={setQuery} isHindiMode={isHindiMode} setIsHindiMode={handleHindiToggle} showFilters={showFilters} setShowFilters={setShowFilters} isLoadingSearch={isLoadingSearch} handleSearchSubmit={handleSearchSubmit} filters={filters} setFilters={setFilters} toggleGenre={toggleGenre} suggestions={suggestions} handleSuggestionClick={handleSuggestionClick} router={router} onReset={resetFilters} waveTrigger={logoState} />
+                                    <SearchBarContent query={query} setQuery={setQuery} searchMode={searchMode} setSearchMode={(mode: any) => { setSearchMode(mode); setShowFilters(false); }} showFilters={showFilters} setShowFilters={setShowFilters} isLoadingSearch={isLoadingSearch} handleSearchSubmit={handleSearchSubmit} filters={filters} setFilters={setFilters} toggleGenre={toggleGenre} suggestions={suggestions} handleSuggestionClick={handleSuggestionClick} router={router} onReset={resetFilters} waveTrigger={logoState} />
                                 </motion.div>
                                 <motion.div layoutId="island-body" transition={FLUID_TRANSITION} onClick={activateIslandFocus} className={cn(`flex items-center justify-center rounded-full bg-[#0a0a0a]/95 border border-primary-500/30 hover:border-primary-500 shadow-[0_0_20px_-5px_rgba(220,38,38,0.5)] ${ISLAND_HEIGHT} w-10 md:w-12 shrink-0 cursor-pointer`)}><motion.div layout="position">{getNotifIcon(activeNotif.type)}</motion.div></motion.div>
                             </>
