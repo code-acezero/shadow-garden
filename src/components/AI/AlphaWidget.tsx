@@ -109,21 +109,21 @@ export default function AlphaWidget() {
         }),
       });
 
-      if (!res.ok) throw new Error('API Error');
-
       const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'API Error');
+
       const rawReply = data.reply || '[state: error] I have nothing to report.';
 
       setMessages([...newMessages, { role: 'model', content: rawReply }]);
 
       const { newState } = extractStateAndContent(rawReply, state);
       setState(newState);
-    } catch (err) {
+    } catch (err: any) {
       setMessages([
         ...newMessages,
         {
           role: 'model',
-          content: '[state: error] An error occurred in our communications network.',
+          content: `[state: error] Error: ${err.message || 'An error occurred in our communications network.'}`,
         },
       ]);
       setState('error');
@@ -162,7 +162,7 @@ export default function AlphaWidget() {
             <div className="relative w-full h-full max-w-7xl mx-auto flex flex-col md:flex-row items-center md:items-end justify-center md:justify-end px-4 md:px-12 pointer-events-none pb-[25vh] md:pb-0">
                 
                 {/* Speech Bubble (Left Side of Alpha) */}
-                <div className="relative w-full md:w-[450px] z-20 pointer-events-auto mb-12 md:mb-[45vh] md:-mr-[8rem] lg:-mr-[12rem] xl:-mr-[16rem] flex-shrink-0">
+                <div className="absolute right-[120px] md:right-[320px] lg:right-[420px] bottom-[30vh] md:bottom-[45vh] w-[90vw] md:w-[450px] z-20 pointer-events-auto flex-shrink-0">
                     <AnimatePresence mode="wait">
                         <motion.div
                             key={currentMessageContent}
@@ -189,8 +189,27 @@ export default function AlphaWidget() {
                                         <Loader2 className="w-5 h-5 animate-spin" /> Processing order...
                                     </div>
                                 ) : (
-                                    <div className="text-zinc-200 font-medium text-base md:text-lg leading-relaxed whitespace-pre-wrap font-sans">
-                                        {currentMessageContent}
+                                    <div className="text-zinc-200 font-medium text-base md:text-lg leading-relaxed whitespace-pre-wrap font-sans min-h-[60px]">
+                                        <motion.div
+                                            initial="hidden"
+                                            animate="visible"
+                                            variants={{
+                                                visible: { transition: { staggerChildren: 0.015 } },
+                                                hidden: {}
+                                            }}
+                                        >
+                                            {currentMessageContent.split("").map((char, index) => (
+                                                <motion.span
+                                                    key={`${index}-${char}`}
+                                                    variants={{
+                                                        hidden: { opacity: 0 },
+                                                        visible: { opacity: 1 }
+                                                    }}
+                                                >
+                                                    {char}
+                                                </motion.span>
+                                            ))}
+                                        </motion.div>
                                     </div>
                                 )}
 
@@ -208,7 +227,7 @@ export default function AlphaWidget() {
                 </div>
 
                 {/* Character Sprite (Right Side) */}
-                <div className="absolute bottom-0 right-0 md:relative md:w-auto h-[60vh] md:h-[100vh] z-10 flex items-end justify-center md:justify-end scale-[1.1] md:scale-[1.15] origin-bottom pointer-events-none md:translate-x-12 lg:translate-x-20">
+                <div className="absolute bottom-0 right-[-30px] md:right-12 lg:right-24 h-[60vh] md:h-[100vh] z-10 flex items-end justify-center md:justify-end scale-[1.1] md:scale-[1.15] origin-bottom pointer-events-none">
                     <AnimatePresence mode="wait">
                         <motion.img
                             key={state}
