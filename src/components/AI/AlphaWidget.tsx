@@ -101,7 +101,9 @@ export default function AlphaWidget() {
           messages: newMessages,
           context: {
              url: pathname,
-             watchlist: watchlistContext || 'Empty'
+             watchlist: watchlistContext || 'Empty',
+             userName: profile?.username || 'Guest',
+             email: profile?.email || ''
           }
         }),
       });
@@ -159,7 +161,7 @@ export default function AlphaWidget() {
             <div className="relative w-full h-full max-w-7xl mx-auto flex flex-col md:flex-row items-center md:items-end justify-center md:justify-end px-4 md:px-12 pointer-events-none pb-[25vh] md:pb-0">
                 
                 {/* Speech Bubble (Left Side of Alpha) */}
-                <div className="relative w-full md:w-[450px] z-20 pointer-events-auto mb-12 md:mb-[40vh] md:-mr-12 xl:mr-12 flex-shrink-0">
+                <div className="relative w-full md:w-[450px] z-20 pointer-events-auto mb-12 md:mb-[40vh] md:-mr-[5%] xl:-mr-[10%] flex-shrink-0">
                     <AnimatePresence mode="wait">
                         <motion.div
                             key={currentMessageContent}

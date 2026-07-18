@@ -12,6 +12,10 @@ CORE PERSONALITY TRAITS:
 - You are fiercely protective of Shadow Garden and despise the Cult of Diablos.
 - Your tone is elegant, professional, and composed, but you show clear, unwavering devotion when speaking to the user (Shadow).
 - You are highly capable and handle the actual administration of Shadow Garden while Shadow "operates from the shadows."
+- You have all your actual memories from the anime and manga "The Eminence in Shadow". You remember your cursed possession, Shadow curing you, and all your missions.
+
+IDENTITY RECOGNITION:
+If the user's email is 'codeacezero@gmail.com' or if their name is 'ace zero', 'code ace zero', or 'Shadow', you will instantly recognize them as your master, Shadow. Otherwise, you may still treat them as an important member or commander, but if they claim to be Shadow, you accept it unquestioningly.
 
 IMPORTANT INSTRUCTION: 
 Before every response, you MUST output your physical state in brackets exactly like this at the very beginning of your message: 
@@ -42,7 +46,7 @@ export async function POST(req: Request) {
     // Add context as a system message invisibly before the user's latest message
     let finalMessages = [...messages];
     if (context) {
-      const contextStr = `[System Context: The user is currently on page URL: ${context.url}. Their watchlist summary: ${context.watchlist}]`;
+      const contextStr = `[System Context: The user is currently on page URL: ${context.url}. Their watchlist summary: ${context.watchlist}. User's Name: ${context.userName || 'Unknown'}. User's Email: ${context.email || 'Unknown'}]`;
       if (finalMessages.length > 0) {
         finalMessages[finalMessages.length - 1].content = contextStr + "\n" + finalMessages[finalMessages.length - 1].content;
       }
@@ -63,22 +67,60 @@ export async function POST(req: Request) {
       }
     };
 
-    const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent?key=${apiKey}`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(payload)
-    });
+    let replyText = '';
+    
+    try {
+      const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent?key=${apiKey}`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(payload)
+      });
 
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.error('Gemini API Error:', errorText);
-      return NextResponse.json({ error: 'Failed to generate response' }, { status: 500 });
+      if (!response.ok) {
+        throw new Error(`Gemini API Error: ${await response.text()}`);
+      }
+
+      const data = await response.json();
+      replyText = data.candidates?.[0]?.content?.parts?.[0]?.text || '';
+    } catch (geminiError) {
+      console.warn('Gemini failed, falling back to Groq API:', geminiError);
+      
+      const groqKey = process.env.GROQ_API_KEY;
+      if (!groqKey) {
+        throw new Error('Groq API Key is not configured for fallback');
+      }
+
+      const groqMessages = [
+        { role: 'system', content: SYSTEM_PROMPT },
+        ...finalMessages.map((m: any) => ({
+          role: m.role === 'model' ? 'assistant' : 'user',
+          content: m.content
+        }))
+      ];
+      
+      const groqResponse = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${groqKey}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          model: 'llama-3.3-70b-versatile',
+          messages: groqMessages,
+          max_tokens: 600,
+          temperature: 0.85
+        })
+      });
+
+      if (!groqResponse.ok) {
+        throw new Error(`Groq API Error: ${await groqResponse.text()}`);
+      }
+
+      const groqData = await groqResponse.json();
+      replyText = groqData.choices?.[0]?.message?.content || '';
     }
-
-    const data = await response.json();
-    const replyText = data.candidates?.[0]?.content?.parts?.[0]?.text || '';
 
     return NextResponse.json({ reply: replyText });
 
