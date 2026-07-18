@@ -45,6 +45,8 @@ interface AnimePlayerProps {
   // The upstream CDN behind `url` may require this exact Referer header or
   // it rejects the request. Forwarded to /api/proxy so it can send it.
   referer?: string | null;
+  iframeUrl?: string | null;
+  isEmbed?: boolean;
   isM3U8?: boolean;
   autoSkip?: boolean;
   autoPlay?: boolean; 
@@ -72,7 +74,7 @@ export interface AnimePlayerRef {
 }
 
 const AnimePlayer = forwardRef<AnimePlayerRef, AnimePlayerProps>(({ 
-  url, title, poster, intro, outro, referer, isM3U8, autoSkip = false, autoPlay = true, startTime = 0, subtitles = [],
+  url, iframeUrl, isEmbed, title, poster, intro, outro, referer, isM3U8, autoSkip = false, autoPlay = true, startTime = 0, subtitles = [],
   onEnded, onNext, onPlay, onSkipIntro, onProgress, onInteract, onPause, onBuffer, 
   controlsTimeout = 3000, onControlsChange, initialVolume = 1, initialSpeed = 1, onSettingsChange
 }, ref) => {
@@ -143,6 +145,8 @@ const AnimePlayer = forwardRef<AnimePlayerRef, AnimePlayerProps>(({
   const [activeMenu, setActiveMenu] = useState<'none' | 'main' | 'quality' | 'speed' | 'audio' | 'subs' | 'subSettings' | 'gestures' | 'vGesture' | 'hGesture'>('none');
 
   const [canSave, setCanSave] = useState(false); 
+  const [hlsFailed, setHlsFailed] = useState(false);
+  const useIframe = isEmbed || hlsFailed || !url;
 
   // Helper
   const formatTime = (t: number) => {
@@ -333,7 +337,10 @@ const AnimePlayer = forwardRef<AnimePlayerRef, AnimePlayerProps>(({
       hls.on(Hls.Events.AUDIO_TRACKS_UPDATED, (_, data) => { setAudioTracks(data.audioTracks); setCurrentAudio(data.audioTracks.findIndex(t => t.default)); });
       hls.on(Hls.Events.FRAG_BUFFERED, onLevelLoaded); 
       hls.on(Hls.Events.ERROR, (e, data) => {
-          if (data.fatal) setIsBuffering(false);
+          if (data.fatal) {
+              setIsBuffering(false);
+              if (iframeUrl) setHlsFailed(true);
+          }
       });
       hlsRef.current = hls;
     } else if (shouldUseNative || video.canPlayType('application/vnd.apple.mpegurl')) {
@@ -345,6 +352,11 @@ const AnimePlayer = forwardRef<AnimePlayerRef, AnimePlayerProps>(({
           }
           if (autoPlay) video.play(); 
       });
+      video.addEventListener('error', () => {
+          if (iframeUrl) setHlsFailed(true);
+      });
+    } else {
+        if (iframeUrl) setHlsFailed(true);
     }
 
     const onEnterPiP = () => setIsPiPActive(true);
@@ -688,6 +700,35 @@ const AnimePlayer = forwardRef<AnimePlayerRef, AnimePlayerProps>(({
     if (controlsTimeoutRef.current) clearTimeout(controlsTimeoutRef.current);
     if (isPlaying && activeMenu === 'none') { controlsTimeoutRef.current = setTimeout(() => setShowControls(false), controlsTimeout); }
   };
+
+  if (useIframe && iframeUrl) {
+    return (
+      <div className="relative w-full aspect-video bg-black rounded-[30px] overflow-hidden ring-1 ring-white/10 shadow-2xl">
+        <iframe
+          src={iframeUrl}
+          className="w-full h-full border-0"
+          allowFullScreen
+          allow="autoplay; fullscreen; encrypted-media"
+          title={title || 'Player'}
+        />
+        {title && (
+          <div className="absolute top-3 left-1/2 -translate-x-1/2 bg-black/70 backdrop-blur-md border border-white/10 rounded-full px-4 py-1.5 pointer-events-none z-10 shadow-lg shadow-black/50">
+            <span className="text-[9px] font-black text-white uppercase tracking-widest truncate max-w-xs block">{title}</span>
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  if (useIframe && !iframeUrl && !url) {
+    return (
+      <div className="w-full aspect-video bg-black rounded-[30px] flex items-center justify-center ring-1 ring-white/10 shadow-2xl">
+        <div className="text-zinc-500 text-sm font-bold uppercase tracking-widest flex items-center gap-3">
+            <Loader2 className="w-5 h-5 animate-spin" /> No stream available
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div 
