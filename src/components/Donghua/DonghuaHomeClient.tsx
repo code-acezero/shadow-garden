@@ -40,7 +40,7 @@ function DonghuaSection({ title, items }: { title: string, items: any[] }) {
             sub: rawSub > 0 ? rawSub : null,
             dub: null,
             episode: rawSub || rawTotal || 0,
-            baseRoute: `/donghua-watch/${anime.id}`
+            targetRoute: `/donghua-watch/${anime.id}`
         };
     });
 
@@ -80,7 +80,7 @@ export default function DonghuaHomeClient() {
       poster: item.image,
       jname: item.title,
       description: item.title,
-      baseRoute: `/donghua-watch/${item.id}`
+      targetRoute: `/donghua-watch/${item.id}`
   }));
 
   return (

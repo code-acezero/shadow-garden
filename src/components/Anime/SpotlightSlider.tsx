@@ -185,7 +185,7 @@ const SpotlightActions = ({ anime }: { anime: SpotlightAnime }) => {
             >
                 {/* WATCH BUTTON */}
                 <Button 
-                    onClick={() => router.push(`/watch/${anime.id}`)} 
+                    onClick={() => router.push((anime as any).targetRoute || `/watch/${anime.id}`)} 
                     className="h-9 md:h-11 px-4 md:px-7 rounded-full bg-primary-600 hover:bg-primary-700 text-white text-[10px] md:text-xs font-black tracking-widest uppercase shadow-[0_0_30px_rgba(220,38,38,0.4)] transition-all transform hover:scale-105 active:scale-95 flex-1 sm:flex-none border border-primary-500/20"
                 >
                     <Play className="mr-1.5 h-3 w-3 md:h-4 md:w-4 fill-white" /> Watch Now
