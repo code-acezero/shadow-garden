@@ -146,9 +146,58 @@ export default function AlphaWidget() {
         >
             {/* Dimmed Overlay */}
             <div 
-                className="absolute inset-0 bg-[#050505]/60 backdrop-blur-[2px] cursor-pointer" 
+                className="absolute inset-0 bg-[#050505]/70 backdrop-blur-[2px] cursor-pointer" 
                 onClick={() => setIsOpen(false)}
             />
+
+            {/* Eminence in Shadow Left Side VFX */}
+            <div className="absolute left-0 top-0 bottom-0 w-1/2 md:w-[60%] pointer-events-none overflow-hidden mix-blend-screen opacity-70">
+                {/* Glowing Purple/Blue Waves */}
+                <motion.div 
+                    animate={{ 
+                        x: ['-20%', '0%', '-20%'], 
+                        y: ['-10%', '5%', '-10%'],
+                        scale: [1, 1.1, 1]
+                    }}
+                    transition={{ duration: 10, repeat: Infinity, ease: "linear" }}
+                    className="absolute -left-[20%] top-[20%] w-[80vh] h-[80vh] bg-indigo-900/40 rounded-full blur-[120px]" 
+                />
+                <motion.div 
+                    animate={{ 
+                        x: ['0%', '-15%', '0%'], 
+                        y: ['10%', '-5%', '10%'],
+                        scale: [1.1, 1, 1.1]
+                    }}
+                    transition={{ duration: 15, repeat: Infinity, ease: "linear" }}
+                    className="absolute -left-[10%] bottom-[10%] w-[60vh] h-[60vh] bg-blue-900/30 rounded-full blur-[100px]" 
+                />
+                
+                {/* Fireflies / Slime particles */}
+                {Array.from({ length: 20 }).map((_, i) => (
+                    <motion.div
+                        key={i}
+                        animate={{
+                            y: [0, -Math.random() * 300 - 150],
+                            x: [0, Math.random() * 150 - 75],
+                            opacity: [0, 0.9, 0],
+                            scale: [0, Math.random() * 1.5 + 0.5, 0]
+                        }}
+                        transition={{
+                            duration: Math.random() * 4 + 4,
+                            repeat: Infinity,
+                            delay: Math.random() * 5,
+                            ease: "easeInOut"
+                        }}
+                        className="absolute bg-blue-400/80 rounded-full shadow-[0_0_15px_rgba(96,165,250,1)]"
+                        style={{
+                            left: `${Math.random() * 80 + 10}%`,
+                            bottom: `${Math.random() * 60}%`,
+                            width: `${Math.random() * 5 + 2}px`,
+                            height: `${Math.random() * 5 + 2}px`
+                        }}
+                    />
+                ))}
+            </div>
 
             {/* Close Button Top Right */}
             <button 
@@ -213,9 +262,9 @@ export default function AlphaWidget() {
                                     </div>
                                 )}
 
-                                {/* Tail pointing right */}
-                                <div className="hidden md:block absolute top-1/2 -right-[16px] transform -translate-y-1/2 w-0 h-0 border-t-[14px] border-t-transparent border-b-[14px] border-b-transparent border-l-[16px] border-l-orange-600/50">
-                                    <div className="absolute -top-[12px] -left-[18px] w-0 h-0 border-t-[12px] border-t-transparent border-b-[12px] border-b-transparent border-l-[14px] border-l-[#0a0a0a]" />
+                                {/* Tail pointing left */}
+                                <div className="hidden md:block absolute top-1/2 -left-[16px] transform -translate-y-1/2 w-0 h-0 border-t-[14px] border-t-transparent border-b-[14px] border-b-transparent border-r-[16px] border-r-orange-600/50">
+                                    <div className="absolute -top-[12px] -right-[18px] w-0 h-0 border-t-[12px] border-t-transparent border-b-[12px] border-b-transparent border-r-[14px] border-r-[#0a0a0a]" />
                                 </div>
                                 {/* Tail pointing down (mobile) */}
                                 <div className="block md:hidden absolute -bottom-[16px] left-1/2 transform -translate-x-1/2 w-0 h-0 border-l-[14px] border-l-transparent border-r-[14px] border-r-transparent border-t-[16px] border-t-orange-600/50">
