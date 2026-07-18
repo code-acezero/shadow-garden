@@ -162,7 +162,7 @@ export default function AlphaWidget() {
             <div className="relative w-full h-full max-w-7xl mx-auto flex flex-col md:flex-row items-center md:items-end justify-center md:justify-end px-4 md:px-12 pointer-events-none pb-[25vh] md:pb-0">
                 
                 {/* Speech Bubble (Left Side of Alpha) */}
-                <div className="relative w-full md:w-[450px] z-20 pointer-events-auto mb-12 md:mb-[40vh] md:-mr-[5%] xl:-mr-[10%] flex-shrink-0">
+                <div className="relative w-full md:w-[450px] z-20 pointer-events-auto mb-12 md:mb-[45vh] md:-mr-[8rem] lg:-mr-[12rem] xl:-mr-[16rem] flex-shrink-0">
                     <AnimatePresence mode="wait">
                         <motion.div
                             key={currentMessageContent}
@@ -208,7 +208,7 @@ export default function AlphaWidget() {
                 </div>
 
                 {/* Character Sprite (Right Side) */}
-                <div className="absolute bottom-0 right-0 md:relative md:w-auto h-[60vh] md:h-[100vh] z-10 flex items-end justify-center md:justify-end scale-[1.1] md:scale-[1.15] origin-bottom pointer-events-none">
+                <div className="absolute bottom-0 right-0 md:relative md:w-auto h-[60vh] md:h-[100vh] z-10 flex items-end justify-center md:justify-end scale-[1.1] md:scale-[1.15] origin-bottom pointer-events-none md:translate-x-12 lg:translate-x-20">
                     <AnimatePresence mode="wait">
                         <motion.img
                             key={state}
