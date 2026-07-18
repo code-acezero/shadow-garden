@@ -159,10 +159,10 @@ export default function AlphaWidget() {
             </button>
 
             {/* Main Visual Novel Container */}
-            <div className="relative w-full h-full max-w-7xl mx-auto flex flex-col md:flex-row items-center md:items-end justify-center md:justify-end px-4 md:px-12 pointer-events-none pb-[25vh] md:pb-0">
+            <div className="relative w-full h-full flex flex-col md:flex-row items-center md:items-end justify-center md:justify-end px-4 md:px-0 pointer-events-none pb-[25vh] md:pb-0 overflow-hidden">
                 
                 {/* Speech Bubble (Left Side of Alpha) */}
-                <div className="absolute right-[40%] md:right-[250px] lg:right-[300px] bottom-[30vh] md:bottom-[45vh] w-[80vw] md:w-[450px] z-20 pointer-events-auto flex-shrink-0">
+                <div className="absolute right-[40%] md:right-[320px] lg:right-[420px] xl:right-[480px] bottom-[30vh] md:bottom-[45vh] w-[80vw] md:w-[450px] z-20 pointer-events-auto flex-shrink-0">
                     <AnimatePresence mode="wait">
                         <motion.div
                             key={currentMessageContent}
@@ -227,7 +227,7 @@ export default function AlphaWidget() {
                 </div>
 
                 {/* Character Sprite (Right Side) */}
-                <div className="absolute bottom-0 right-[-100px] md:-right-12 lg:-right-4 h-[60vh] md:h-[100vh] z-10 flex items-end justify-center md:justify-end scale-[0.55] md:scale-[0.5] origin-bottom pointer-events-none">
+                <div className="absolute bottom-0 right-[-30px] md:-right-8 lg:-right-4 h-[60vh] md:h-[100vh] z-10 flex items-end justify-center md:justify-end scale-[0.9] md:scale-[1.0] origin-bottom pointer-events-none">
                     <AnimatePresence mode="wait">
                         <motion.img
                             key={state}
