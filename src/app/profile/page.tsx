@@ -15,7 +15,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { 
     Camera, Save, Twitter, Instagram, Github, MapPin, Globe, List,
     Users, Image as ImageIcon, Heart, Star, Flame, Settings,
-    Trash2, Clock, Upload, CheckCircle, ChevronRight, Check
+    Trash2, Clock, Upload, CheckCircle, ChevronRight, Check, MessageSquare
 } from 'lucide-react';
 import { toast } from 'sonner';
 import AuthModal from '@/components/Auth/AuthModal';

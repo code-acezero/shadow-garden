@@ -82,19 +82,21 @@ const CommentItem = ({ comment, currentUserId, onReply, onReport, onDelete, onEd
     const displayName = comment.profiles?.full_name || comment.profiles?.username || `User_${comment.user_id.slice(0,4)}`;
     const avatarUrl = comment.profiles?.avatar_url;
 
-    // Flatten all nested replies into a single array
-    const flattenReplies = (replies: any[]): any[] => {
+    // Flatten all nested replies into a single array, keeping track of who they replied to
+    const flattenReplies = (replies: any[], parentName?: string): any[] => {
         if (!replies || replies.length === 0) return [];
         const result: any[] = [];
         for (const reply of replies) {
-            result.push(reply);
+            const currentName = reply.profiles?.full_name || reply.profiles?.username || `User_${reply.user_id.slice(0,4)}`;
+            result.push({...reply, replyingToName: parentName});
             if (reply.replies && reply.replies.length > 0) {
-                result.push(...flattenReplies(reply.replies));
+                result.push(...flattenReplies(reply.replies, currentName));
             }
         }
         return result;
     };
 
+    // For root comments, we start flattening without a parent name
     const allReplies = !isReply ? flattenReplies(comment.replies || []) : [];
     const hasReplies = allReplies.length > 0;
 
@@ -159,7 +161,8 @@ const CommentItem = ({ comment, currentUserId, onReply, onReport, onDelete, onEd
                             </div>
                         </div>
                     ) : (
-                        <p className="text-[15px] text-zinc-300 leading-tight mt-0.5 font-medium whitespace-pre-wrap">
+                        <p className="text-[15px] text-zinc-300 leading-tight mt-0.5 font-medium whitespace-pre-wrap break-words overflow-hidden">
+                            {comment.replyingToName && <span className="text-primary-500 font-bold mr-1">@{comment.replyingToName}</span>}
                             {comment.is_spoiler ? (
                                 <span className="text-zinc-600 italic bg-zinc-900/50 px-2 py-1 rounded border border-zinc-800 select-none">Spoiler Content (Hover to reveal)</span>
                             ) : formatText(comment.content)}

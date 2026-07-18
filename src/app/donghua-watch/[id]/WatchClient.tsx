@@ -21,7 +21,7 @@ import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
 import { useAuth } from '@/context/AuthContext';
 
-import AnimePlayer, { AnimePlayerRef } from '@/components/Player/AnimePlayer';
+// Donghua uses iframe-based players (Dailymotion, DonghuaPlanet) — no custom player needed
 import WatchListButton from '@/components/Watch/WatchListButton';
 import ShadowComments from '@/components/Comments/ShadowComments';
 import Footer from '@/components/Anime/Footer';
@@ -578,7 +578,7 @@ function WatchContent() {
   const [epChunkIndex, setEpChunkIndex] = useState(0);
   const [epProgress, setEpProgress] = useState<{[key: number]: number}>({});
    
-  const playerRef = useRef<AnimePlayerRef>(null);
+  const playerRef = useRef<any>(null);
   const playerContainerRef = useRef<HTMLDivElement>(null);
   const progressBuffer = useRef<{[key: string]: any}>({});
 
@@ -846,20 +846,15 @@ function WatchContent() {
         <div className="w-full max-w-[1350px]">
             <div ref={playerContainerRef} tabIndex={0} className="w-full aspect-video bg-black rounded-[30px] overflow-hidden border border-white/5 shadow-2xl relative shadow-primary-900/10 outline-none focus-visible:ring-0 focus-visible:outline-none ring-0" onClick={handlePlayerClick} onKeyDown={(e) => { if (e.code === 'Space') { e.preventDefault(); } }}>
                 {streamUrl ? ( 
-                    <AnimePlayer 
-                        key={streamUrl} 
-                        ref={playerRef} 
-                        url={streamUrl} 
-                        title={currentEpisode?.title || anime.title}
-                        subtitles={streamMeta.subtitles}
-                        intro={streamMeta.intro || undefined}
-                        outro={streamMeta.outro || undefined}
-                        referer={streamMeta.referer}
-                        autoPlay={settings.autoPlay}
-                        autoSkip={settings.autoSkip}
-                        onEnded={() => { if (settings.autoPlay && nextEpisode) handleEpisodeClick(nextEpisode.id); }}
-                        onInteract={() => { if(!hideInterface) { if (interfaceTimeoutRef.current) clearTimeout(interfaceTimeoutRef.current); interfaceTimeoutRef.current = setTimeout(() => setHideInterface(true), 15000); } }} 
-                    /> 
+                    <iframe
+                        key={streamUrl}
+                        src={streamUrl}
+                        className="w-full h-full border-0"
+                        allowFullScreen
+                        allow="autoplay; fullscreen; encrypted-media; picture-in-picture"
+                        referrerPolicy="no-referrer"
+                        sandbox="allow-scripts allow-same-origin allow-popups allow-forms allow-presentation"
+                    />
                 ) : ( 
                     <div className="w-full h-full flex items-center justify-center border-b border-white/5">
                           {streamError ? <div className="flex flex-col items-center gap-2"><AlertCircle className="w-10 h-10 text-primary-500" /><span className="text-[10px] font-black uppercase tracking-widest text-primary-500">{streamError}</span><Button variant="outline" size="sm" onClick={() => window.location.reload()} className="mt-2 text-[10px] uppercase border-primary-500/50 hover:bg-primary-500/20">Retry Connection</Button></div> : <FantasyLoader text="OPENING PORTAL..." />}
