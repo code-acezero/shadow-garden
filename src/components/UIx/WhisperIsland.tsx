@@ -5,7 +5,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { motion, AnimatePresence, LayoutGroup, Transition, Variants } from 'framer-motion';
 import { 
   Search, X, Loader2, Filter, Calendar, Tv, Layers, 
-  Bot, LogIn, LogOut, Settings, User, ChevronDown, ArrowRight, Dices, 
+  Bot, LogIn, LogOut, Settings, User, ChevronDown, ArrowRight, Dices, Sparkles,
   Bell, CheckCircle, Info, Languages, Flag, Heart, AlertOctagon, 
   ArrowDownAZ, LayoutGrid, RotateCcw, ScanSearch, Users, Plus,
   ShieldAlert, MessageSquareWarning, Volume2, Mic2, Radio, Check, 
@@ -35,16 +35,6 @@ const ISLAND_HEIGHT = "h-11 md:h-12";
 const FLUID_TRANSITION: Transition = { type: "spring", stiffness: 320, damping: 30, mass: 1 };
 
 // --- ANIMATIONS ---
-const ElfIcon = ({ size = 16, className = "" }: any) => (
-  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
-    <path d="M17.5 8.5c2.5-2.5 5.5-3.5 5.5-3.5s-.5 3.5-3 6" />
-    <path d="M6.5 8.5c-2.5-2.5-5.5-3.5-5.5-3.5s.5 3.5 3 6" />
-    <circle cx="12" cy="13" r="7" />
-    <path d="M10 12h.01" />
-    <path d="M14 12h.01" />
-    <path d="M10 15.5c1.1.7 2.9.7 4 0" />
-  </svg>
-);
 
 const glitchVariants: Variants = {
     initial: { opacity: 0, filter: "blur(8px)", y: 10 },
@@ -685,7 +675,7 @@ function WhisperIslandContent() {
                             <button onClick={() => window.dispatchEvent(new CustomEvent('shadow-toggle-alpha'))} className={cn(`relative overflow-hidden flex items-center justify-center bg-gradient-to-r from-primary-950/80 to-black border border-primary-500/30 hover:border-primary-500 text-white font-bold rounded-full shadow-lg transition-all ${ISLAND_HEIGHT} px-3 gap-2 shrink-0`)}>
                                 <div className="absolute inset-0 overflow-hidden pointer-events-none rounded-full"><LightWave trigger={logoState} delay={0.6} /></div>
                                 <img src="/images/alpha-avatar.png" alt="Alpha" className="w-5 h-5 rounded-full object-cover border border-primary-500/50" onError={(e) => { e.currentTarget.style.display = 'none'; e.currentTarget.nextElementSibling?.classList.remove('hidden'); }} />
-                                <ElfIcon size={16} className="text-primary-400 hidden" /> 
+                                <Sparkles size={16} className="text-primary-400 hidden" /> 
                                 <span className="hidden sm:inline text-[9px] tracking-widest uppercase">ALPHA</span>
                             </button>
                             

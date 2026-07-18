@@ -121,7 +121,7 @@ export default function AnimeCard({ anime, progress = 0, isHindi = false }: Anim
         finalRoute = anime.targetRoute;
     } else {
         const baseUrl = (isHindi || anime.isHindi || anime.source === 'hindi') 
-            ? `/watch2/${anime.id}` 
+            ? `/hindi-watch/${anime.id}` 
             : `/watch/${anime.id}`;
         if (anime.episodeId) {
             finalRoute = `${baseUrl}?ep=${anime.episodeId}`;

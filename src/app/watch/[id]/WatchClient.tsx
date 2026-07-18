@@ -1072,7 +1072,7 @@ function WatchContent() {
                                     <Button variant="ghost" className="h-8 gap-2 text-[10px] font-black text-zinc-500 hover:text-white uppercase transition-all shadow-md shadow-primary-900/5 whitespace-nowrap rounded-full border border-white/5 bg-white/5 px-4">
                                         <ServerIcon size={12}/>
                                         {servers?.[settings.category] && servers[settings.category].length > 0
-                                        ? `Portal ${Math.max(1, servers[settings.category].findIndex((s:any) => s.serverName.toLowerCase() === settings.server.toLowerCase()) + 1)}`
+                                        ? (() => { const active = servers[settings.category].find((s:any) => s.serverName.toLowerCase() === settings.server.toLowerCase()); return active ? active.serverName : servers[settings.category][0].serverName; })()
                                         : (isStreamLoading ? 'Loading...' : 'No Portals')}
                                         <ChevronDown size={11}/>
                                     </Button>
@@ -1081,7 +1081,7 @@ function WatchContent() {
                                     <ScrollArea className="h-auto max-h-[180px] custom-scrollbar">
                                         <div className="flex flex-col gap-1">
                                             {servers?.[settings.category]?.map((srv: any, idx: number) => (
-                                                <DropdownMenuItem key={srv.serverId} onClick={() => handleServerChange(srv.serverName)} className={cn("cursor-pointer focus:bg-primary-600 focus:text-white px-3 py-1.5 rounded-full text-[9px] uppercase font-bold tracking-wider mb-1 transition-all", settings.server.toLowerCase() === srv.serverName.toLowerCase() ? "bg-primary-600 text-white shadow-lg" : "text-zinc-400 hover:text-white hover:bg-white/5")}>Portal {idx + 1}</DropdownMenuItem>
+                                                <DropdownMenuItem key={srv.serverId} onClick={() => handleServerChange(srv.serverName)} className={cn("cursor-pointer focus:bg-primary-600 focus:text-white px-3 py-1.5 rounded-full text-[9px] uppercase font-bold tracking-wider mb-1 transition-all", settings.server.toLowerCase() === srv.serverName.toLowerCase() ? "bg-primary-600 text-white shadow-lg" : "text-zinc-400 hover:text-white hover:bg-white/5")}>{srv.serverName}</DropdownMenuItem>
                                             ))}
                                         </div>
                                     </ScrollArea>
@@ -1113,12 +1113,12 @@ function WatchContent() {
                                 <Button variant="ghost" className="h-8 gap-2 text-[10px] font-black text-zinc-500 bg-white/5 rounded-full border border-white/5 w-24">
                                     <ServerIcon size={12}/> 
                                     {servers?.[settings.category] && servers[settings.category].length > 0
-                                    ? `Portal ${Math.max(1, servers[settings.category].findIndex((s:any) => s.serverName.toLowerCase() === settings.server.toLowerCase()) + 1)}`
+                                    ? (() => { const active = servers[settings.category].find((s:any) => s.serverName.toLowerCase() === settings.server.toLowerCase()); return active ? active.serverName : servers[settings.category][0].serverName; })()
                                     : (isStreamLoading ? 'Loading...' : 'No Portals')}
                                 </Button>
                             </DropdownMenuTrigger>
                             <DropdownMenuContent align="end" className="bg-[#0a0a0a] border border-white/10 rounded-[24px] p-2 shadow-[0_0_25px_-5px_rgba(220,38,38,0.4)] z-[70]">
-                                <ScrollArea className="h-auto max-h-[150px]"><div className="flex flex-col gap-1">{servers?.[settings.category]?.map((srv: any, idx: number) => (<DropdownMenuItem key={srv.serverId} onClick={() => handleServerChange(srv.serverName)} className={cn("text-[10px] uppercase font-bold", settings.server.toLowerCase() === srv.serverName.toLowerCase() ? "bg-primary-600 text-white" : "text-zinc-400 hover:bg-white/10")}>Portal {idx + 1}</DropdownMenuItem>))}</div></ScrollArea>
+                                <ScrollArea className="h-auto max-h-[150px]"><div className="flex flex-col gap-1">{servers?.[settings.category]?.map((srv: any, idx: number) => (<DropdownMenuItem key={srv.serverId} onClick={() => handleServerChange(srv.serverName)} className={cn("text-[10px] uppercase font-bold", settings.server.toLowerCase() === srv.serverName.toLowerCase() ? "bg-primary-600 text-white" : "text-zinc-400 hover:bg-white/10")}>{srv.serverName}</DropdownMenuItem>))}</div></ScrollArea>
                             </DropdownMenuContent>
                         </DropdownMenu>
                     </div>

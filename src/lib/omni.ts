@@ -138,8 +138,8 @@ class OmniClient {
       const res: any = await fetchOmni('/home');
       const sections: DramaSection[] = [];
 
-      if (Array.isArray(res)) {
-        res.forEach((section: any) => {
+      if (res && Array.isArray(res.sections)) {
+        res.sections.forEach((section: any) => {
           if (section.title && Array.isArray(section.items) && section.items.length > 0) {
             sections.push({
               title: section.title,

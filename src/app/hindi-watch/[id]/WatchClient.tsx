@@ -993,26 +993,41 @@ function WatchContent() {
             
             if (streamData) { 
                 let finalUrl = streamData.url || streamData.targetUrl || streamData.iframe || streamData.stream?.file;
+                const mapServerArray = (arr: any[]) => {
+                    const baseNames = arr.map(s => s.name || s.serverName || 'Server');
+                    const counts = baseNames.reduce((acc: any, val: string) => { acc[val] = (acc[val] || 0) + 1; return acc; }, {});
+                    const currentCounts: Record<string, number> = {};
+                    return arr.map((s: any, idx: number) => {
+                        let baseName = s.name || s.serverName || 'Server';
+                        currentCounts[baseName] = (currentCounts[baseName] || 0) + 1;
+                        if (counts[baseName] > 1) baseName = `${baseName} ${currentCounts[baseName]}`;
+                        return { serverName: baseName, serverId: baseName + idx, url: s.url };
+                    });
+                };
 
-                if (streamData.servers && streamData.servers.sub) {
-                    const mappedSub = streamData.servers.sub.map((s: any) => ({
-                        serverName: s.name || s.serverName || 'Server',
-                        serverId: s.name || s.serverId || 'Server',
-                        url: s.url
-                    }));
-                    setServers({ sub: mappedSub, dub: [], raw: [] });
+                let subServers: any[] = [];
+                let dubServers: any[] = [];
 
-                    const selected = mappedSub.find((s: any) => s.serverName.toLowerCase() === settings.server.toLowerCase());
-                    if (selected && selected.url) {
-                        finalUrl = selected.url;
-                    } else if (mappedSub.length > 0) {
-                        setTimeout(() => updateSetting('server', mappedSub[0].serverName), 0);
-                        finalUrl = mappedSub[0].url || finalUrl;
-                    }
+                if (Array.isArray(streamData.servers)) {
+                    // For Hindi, we usually just put them in the current category
+                    const mapped = mapServerArray(streamData.servers);
+                    if (targetCategory === 'dub') dubServers = mapped;
+                    else subServers = mapped;
                 } else if (streamData.servers) {
-                    setServers(streamData.servers);
+                    if (streamData.servers.sub) subServers = mapServerArray(streamData.servers.sub);
+                    if (streamData.servers.dub) dubServers = mapServerArray(streamData.servers.dub);
                 }
-                
+
+                setServers({ sub: subServers, dub: dubServers, raw: [] });
+
+                const currentList = targetCategory === 'dub' && dubServers.length > 0 ? dubServers : subServers;
+                const selected = currentList.find((s: any) => s.serverName.toLowerCase() === settings.server.toLowerCase());
+                if (selected && selected.url) {
+                    finalUrl = selected.url;
+                } else if (currentList.length > 0) {
+                    setTimeout(() => updateSetting('server', currentList[0].serverName), 0);
+                    finalUrl = currentList[0].url || finalUrl;
+                }
                 if (finalUrl) {
                     setStreamUrl(finalUrl); 
                     setStreamReferer(streamData.referer || null); 
@@ -1140,7 +1155,7 @@ function WatchContent() {
                                     <Button variant="ghost" className="h-8 gap-2 text-[10px] font-black text-zinc-500 hover:text-white uppercase transition-all shadow-md shadow-orange-900/5 whitespace-nowrap rounded-full border border-white/5 bg-white/5 px-4">
                                         <ServerIcon size={12}/>
                                         {servers?.[settings.category] && servers[settings.category].length > 0
-                                        ? `Portal ${Math.max(1, servers[settings.category].findIndex((s:any) => s.serverName.toLowerCase() === settings.server.toLowerCase()) + 1)}`
+                                        ? (() => { const active = servers[settings.category].find((s:any) => s.serverName.toLowerCase() === settings.server.toLowerCase()); return active ? active.serverName : servers[settings.category][0].serverName; })()
                                         : (isStreamLoading ? 'Loading...' : 'No Portals')}
                                         <ChevronDown size={11}/>
                                     </Button>
@@ -1149,7 +1164,7 @@ function WatchContent() {
                                     <ScrollArea className="h-auto max-h-[180px] custom-scrollbar">
                                         <div className="flex flex-col gap-1">
                                             {servers?.[settings.category]?.map((srv: any, idx: number) => (
-                                                <DropdownMenuItem key={srv.serverId} onClick={() => handleServerChange(srv.serverName)} className={cn("cursor-pointer focus:bg-orange-600 focus:text-white px-3 py-1.5 rounded-full text-[9px] uppercase font-bold tracking-wider mb-1 transition-all", settings.server.toLowerCase() === srv.serverName.toLowerCase() ? "bg-orange-600 text-white shadow-lg" : "text-zinc-400 hover:text-white hover:bg-white/5")}>Portal {idx + 1}</DropdownMenuItem>
+                                                <DropdownMenuItem key={srv.serverId} onClick={() => handleServerChange(srv.serverName)} className={cn("cursor-pointer focus:bg-orange-600 focus:text-white px-3 py-1.5 rounded-full text-[9px] uppercase font-bold tracking-wider mb-1 transition-all", settings.server.toLowerCase() === srv.serverName.toLowerCase() ? "bg-orange-600 text-white shadow-lg" : "text-zinc-400 hover:text-white hover:bg-white/5")}>{srv.serverName}</DropdownMenuItem>
                                             ))}
                                         </div>
                                     </ScrollArea>
@@ -1181,12 +1196,12 @@ function WatchContent() {
                                 <Button variant="ghost" className="h-8 gap-2 text-[10px] font-black text-zinc-500 bg-white/5 rounded-full border border-white/5 w-24">
                                     <ServerIcon size={12}/> 
                                     {servers?.[settings.category] && servers[settings.category].length > 0
-                                    ? `Portal ${Math.max(1, servers[settings.category].findIndex((s:any) => s.serverName.toLowerCase() === settings.server.toLowerCase()) + 1)}`
+                                    ? (() => { const active = servers[settings.category].find((s:any) => s.serverName.toLowerCase() === settings.server.toLowerCase()); return active ? active.serverName : servers[settings.category][0].serverName; })()
                                     : (isStreamLoading ? 'Loading...' : 'No Portals')}
                                 </Button>
                             </DropdownMenuTrigger>
                             <DropdownMenuContent align="end" className="bg-[#0a0a0a] border border-white/10 rounded-[24px] p-2 shadow-[0_0_25px_-5px_rgba(220,38,38,0.4)] z-[70]">
-                                <ScrollArea className="h-auto max-h-[150px]"><div className="flex flex-col gap-1">{servers?.[settings.category]?.map((srv: any, idx: number) => (<DropdownMenuItem key={srv.serverId} onClick={() => handleServerChange(srv.serverName)} className={cn("text-[10px] uppercase font-bold", settings.server.toLowerCase() === srv.serverName.toLowerCase() ? "bg-orange-600 text-white" : "text-zinc-400 hover:bg-white/10")}>Portal {idx + 1}</DropdownMenuItem>))}</div></ScrollArea>
+                                <ScrollArea className="h-auto max-h-[150px]"><div className="flex flex-col gap-1">{servers?.[settings.category]?.map((srv: any, idx: number) => (<DropdownMenuItem key={srv.serverId} onClick={() => handleServerChange(srv.serverName)} className={cn("text-[10px] uppercase font-bold", settings.server.toLowerCase() === srv.serverName.toLowerCase() ? "bg-orange-600 text-white" : "text-zinc-400 hover:bg-white/10")}>{srv.serverName}</DropdownMenuItem>))}</div></ScrollArea>
                             </DropdownMenuContent>
                         </DropdownMenu>
                     </div>
