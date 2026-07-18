@@ -483,15 +483,15 @@ export class AnimeService {
     }
 
     static async getUniversalRecent() {
-        const data: any = await AnimeAPI_Anikoto.getLatest('latest-updated', 1);
+        const data: any = await AnimeAPI_Anikoto.getHomeLatest('updated-all', 1);
         return extractPaged(data).results.map(normalizeCard);
     }
 
     static async getHomeSections() {
         const home: any = await AnimeAPI_Anikoto.getHome();
         
-        // Fetch the full latest-updated list (24 items) instead of the 12-item sidebar
-        const recentData: any = await AnimeAPI_Anikoto.getLatest('latest-updated', 1);
+        // Fetch the updated-all list (24 items) to show the correct recent updates
+        const recentData: any = await AnimeAPI_Anikoto.getHomeLatest('updated-all', 1);
         const recent = extractPaged(recentData).results.map(normalizeCard);
 
         if (!home) return { spotlight: [], recent };
@@ -534,7 +534,7 @@ export class AnimeService {
     }
 
     static async getRecentlyUpdated(page = 1) {
-        const data: any = await AnimeAPI_Anikoto.getLatest('latest-updated', page);
+        const data: any = await AnimeAPI_Anikoto.getHomeLatest('updated-all', page);
         return extractPaged(data).results.map(normalizeCard);
     }
 
@@ -593,14 +593,14 @@ export class AnimeService {
                 rawData = await AnimeAPI_Anikoto.getLatest('most-viewed', page);
                 break;
             case 'recent':
-                rawData = await AnimeAPI_Anikoto.getLatest('latest-updated', page);
+                rawData = await AnimeAPI_Anikoto.getHomeLatest('updated-all', page);
                 break;
             case 'completed':
                 rawData = await AnimeAPI_Anikoto.getStatus('finished-airing', page);
                 break;
             default:
                 // Default to all/recent if category is unknown or "all"
-                rawData = await AnimeAPI_Anikoto.getLatest('latest-updated', page);
+                rawData = await AnimeAPI_Anikoto.getHomeLatest('updated-all', page);
                 break;
         }
 
