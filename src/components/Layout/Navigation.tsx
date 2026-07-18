@@ -4,11 +4,10 @@ import React, { useState, useEffect, memo } from 'react';
 import { usePathname } from 'next/navigation';
 import Link from 'next/link';
 
-import { Home, User, Heart, MessageCircle, CalendarDays, Search, Settings, Bell, Clapperboard } from 'lucide-react';
+import { Home, User, Heart, MessageCircle, CalendarDays, Search, Settings, Bell, Clapperboard, Flame } from 'lucide-react';
 import WhisperIsland from '@/components/UIx/WhisperIsland';
 import AuthModal from '@/components/Auth/AuthModal';
 import MobileTabBar from './MobileTabBar';
-import { DragonIcon } from '@/components/UIx/DragonIcon';
 
 // Memoized Island to prevent re-renders when Nav state changes
 const MemoizedWhisperIsland = memo(WhisperIsland);
@@ -66,7 +65,7 @@ export default function Navigation() {
 
   const navItems = [
     { id: 'home', icon: Home, label: 'Home', path: '/home' },
-    { id: 'donghua', icon: DragonIcon, label: 'Donghua', path: '/donghua' },
+    { id: 'donghua', icon: Flame, label: 'Donghua', path: '/donghua' },
     { id: 'search', icon: Search, label: 'Search', path: '/search' },
     { id: 'schedule', icon: CalendarDays, label: 'Schedule', path: '/schedule' },
     { id: 'social', icon: MessageCircle, label: 'Otakuverse', path: '/social' },
