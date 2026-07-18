@@ -763,7 +763,8 @@ const AnimePlayer = forwardRef<AnimePlayerRef, AnimePlayerProps>(({
         onTimeUpdate={handleTimeUpdate}
         onLoadedMetadata={() => setDuration(videoRef.current?.duration || 0)}
         onEnded={() => { if(canSave) onInteract?.(); onEnded?.(); }}
-        crossOrigin="anonymous" playsInline
+        playsInline
+        {...(trackSubtitles.length > 0 ? { crossOrigin: "anonymous" } : {})}
       >
         {trackSubtitles.map((sub, i) => (
             <track key={i} kind="captions" src={sub.url || sub.file} label={sub.label} srcLang={sub.lang} default={false} />
