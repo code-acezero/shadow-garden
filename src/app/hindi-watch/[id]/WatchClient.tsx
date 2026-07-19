@@ -608,6 +608,7 @@ function WatchContent() {
   const [isLoadingInfo, setIsLoadingInfo] = useState(true);
           const [currentEpId, setCurrentEpId] = useState<string | null>(null);
   const [streamUrl, setStreamUrl] = useState<string | null>(null);
+  const [streamIsEmbed, setStreamIsEmbed] = useState<boolean>(false);
   const [streamReferer, setStreamReferer] = useState<string | null>(null);
   const [subtitles, setSubtitles] = useState<any[]>([]);
   const [intro, setIntro] = useState<any>(null);
@@ -1050,6 +1051,7 @@ function WatchContent() {
                 }
                 if (finalUrl) {
                     setStreamUrl(finalUrl); 
+                    setStreamIsEmbed(Boolean(finalIsEmbed));
                     setStreamReferer(streamData.referer || null); 
                     setSubtitles(streamData.subtitles || []); 
                     setIntro(streamData.intro); 
@@ -1144,7 +1146,8 @@ function WatchContent() {
                         key={currentEpId} 
                         ref={playerRef} 
                         url={streamUrl || ""} 
-                        isEmbed={!streamUrl.includes('.m3u8') && !streamUrl.includes('.mp4')}
+                        isEmbed={streamIsEmbed}
+                        isM3U8={!streamIsEmbed && !streamUrl.toLowerCase().includes('.mp4')}
                         iframeUrl={streamUrl.includes('/api/proxy?url=') ? decodeURIComponent(streamUrl.split('/api/proxy?url=')[1].split('&')[0]) : streamUrl} 
                         referer={streamReferer} 
                         subtitles={subtitles} 

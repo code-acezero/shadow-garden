@@ -53,9 +53,10 @@ export async function GET(request: NextRequest) {
 
     try {
         // We use your custom fetcher to maintain consistency
-        const response = await fetchWithCustomReferer(decodedUrl, dynamicReferer);
+        const rangeHeader = request.headers.get('range');
+        const response = await fetchWithCustomReferer(decodedUrl, dynamicReferer, rangeHeader);
 
-        if (!response.ok) {
+        if (!response.ok && response.status !== 206) {
             return NextResponse.json({
                 error: `Signal Interrupted: ${response.statusText}`,
                 status: response.status
@@ -108,13 +109,21 @@ export async function GET(request: NextRequest) {
         }
 
         // --- PHASE D: VIDEO SEGMENTS / OTHERS ---
+        const passthroughHeaders: Record<string, string> = {
+            "Content-Type": contentType || "application/octet-stream",
+            "Access-Control-Allow-Origin": "*",
+            "Access-Control-Expose-Headers": "Content-Length, Content-Range, Accept-Ranges",
+            "Accept-Ranges": response.headers.get("Accept-Ranges") || "bytes",
+            "Cache-Control": "public, max-age=31536000",
+        };
+        const contentRange = response.headers.get("Content-Range");
+        if (contentRange) passthroughHeaders["Content-Range"] = contentRange;
+        const contentLength = response.headers.get("Content-Length");
+        if (contentLength) passthroughHeaders["Content-Length"] = contentLength;
+
         return new NextResponse(response.body, {
-            status: 200,
-            headers: {
-                "Content-Type": contentType || "application/octet-stream",
-                "Access-Control-Allow-Origin": "*",
-                "Cache-Control": "public, max-age=31536000"
-            }
+            status: response.status === 206 ? 206 : 200,
+            headers: passthroughHeaders
         });
 
     } catch (error: any) {

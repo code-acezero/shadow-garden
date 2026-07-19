@@ -360,32 +360,50 @@ class HPIClient {
       // Episode IDs from the API are like "31910::1-1"
       // The watch endpoint is /watch/{episodeId} directly
       const streamData: any = await fetchHindiApi(`/watch/${encodeURIComponent(episodeId)}`);
-      
+
+      const defaultReferer = streamData?.sources?.[0]?.referer || 'https://blakiteapi.xyz/';
+
+      // Raw CDN links (e.g. rumble.cloud) are Referer-gated hotlink protection —
+      // a plain <video src="..."> can never send a custom Referer, so the raw
+      // link 403s and playback silently never starts. Always route real
+      // playback through a proxy that can forward the correct Referer.
+      const toPlayableUrl = (rawUrl: string, referer?: string) => {
+        if (!rawUrl) return '';
+        return `/api/proxy?url=${encodeURIComponent(rawUrl)}&referer=${encodeURIComponent(referer || defaultReferer)}`;
+      };
+
       // Map sources from the API response
+      const seenRawUrls = new Set<string>();
       const mappedServers = streamData?.sources ? streamData.sources.map((s: any, idx: number) => {
-        // The user explicitly requested to NOT route any proxies, so we use direct URLs
-        const isMp4 = s.url && s.url.toLowerCase().includes('.mp4');
-        const bestUrl = s.url || s.m3u8 || s.proxyUrl || '';
+        const rawUrl = s.url || s.m3u8 || '';
+        if (rawUrl) seenRawUrls.add(rawUrl);
+        const isMp4 = rawUrl.toLowerCase().includes('.mp4');
+        // Prefer the API's own pre-built proxy URL when it gives us one; otherwise
+        // build one against our own /api/proxy so the Referer is still forwarded.
+        const bestUrl = s.proxyUrl || toPlayableUrl(rawUrl, s.referer);
         return {
           name: s.server || `Server ${idx + 1}`,
           url: bestUrl,
-          isEmbed: !s.m3u8 && !(s.url || '').includes('.m3u8') && !isMp4
+          isEmbed: !s.m3u8 && !rawUrl.includes('.m3u8') && !isMp4
         };
       }).filter((s: any) => s.url) : [];
 
-      // Also include servers from the servers.dub/sub arrays
+      // Also include servers from the servers.dub/sub arrays, deduped against
+      // the RAW url (not the proxied one) so we don't add a second, broken,
+      // un-proxied copy of a server we already mapped above.
       if (streamData?.servers) {
         const dubServers = streamData.servers.dub || [];
         const subServers = streamData.servers.sub || [];
-        [...dubServers, ...subServers].forEach((s: any, idx: number) => {
-          if (s.url && !mappedServers.find((m: any) => m.url === s.url)) {
-            mappedServers.push({ name: s.name || `Server ${mappedServers.length + 1}`, url: s.url, isEmbed: false });
+        [...dubServers, ...subServers].forEach((s: any) => {
+          if (s.url && !seenRawUrls.has(s.url)) {
+            seenRawUrls.add(s.url);
+            mappedServers.push({ name: s.name || `Server ${mappedServers.length + 1}`, url: toPlayableUrl(s.url, s.referer), isEmbed: false });
           }
         });
       }
 
-      const primaryUrl = streamData?.url || mappedServers[0]?.url || '';
-      const referer = streamData?.sources?.[0]?.referer || 'https://blakiteapi.xyz/';
+      const primaryUrl = mappedServers[0]?.url || toPlayableUrl(streamData?.url, defaultReferer);
+      const referer = defaultReferer;
 
       return {
         id: episodeId,
