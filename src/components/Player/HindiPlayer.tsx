@@ -294,14 +294,8 @@ const HindiPlayer = forwardRef<HindiPlayerRef, HindiPlayerProps>(({
     setIsBuffering(true); 
     if (hlsRef.current) hlsRef.current.destroy();
 
-    const isAlreadyProxied = url.includes('/api/proxy') || url.includes('anikoto') || url.includes('satoru');
-    const isExplicitMp4 = url.toLowerCase().includes('.mp4');
-    // We do not proxy MP4s because upstream Rumble blocks Vercel IPs but allows direct client access with CORS *
-    const isMp4 = url.toLowerCase().includes('.mp4');
-    
-    const finalUrl = (url.startsWith('http') && !isAlreadyProxied && !isMp4)
-        ? `/api/proxy?url=${encodeURIComponent(url)}${referer ? `&referer=${encodeURIComponent(referer)}` : ''}`
-        : url;
+    // The user explicitly requested to NOT route any proxies
+    const finalUrl = url;
 
     setCanSave(false);
     const timer = setTimeout(() => { setCanSave(true); }, 10000);

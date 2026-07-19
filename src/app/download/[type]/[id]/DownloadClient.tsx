@@ -226,7 +226,7 @@ function DownloadContent() {
                     <h3 className="text-white font-black uppercase tracking-widest mb-4 flex items-center gap-2"><ServerIcon size={16} className="text-green-500"/> Native MP4 Options</h3>
                     <div className="flex flex-col gap-3">
                       {mp4Servers.map((srv: any, idx: number) => (
-                        <a key={idx} href={srv.url} download target="_blank" rel="noreferrer" className="flex items-center justify-between p-4 rounded-xl bg-white/5 hover:bg-green-600 hover:text-white transition-all border border-white/5 group">
+                        <a key={idx} href={srv.url} download rel="noreferrer" className="flex items-center justify-between p-4 rounded-xl bg-white/5 hover:bg-green-600 hover:text-white transition-all border border-white/5 group">
                           <span className="font-bold">{srv.name || `Server ${idx + 1}`}</span>
                           <Download size={16} className="opacity-50 group-hover:opacity-100" />
                         </a>
@@ -270,7 +270,7 @@ function DownloadContent() {
                      <div className="flex flex-wrap gap-2">
                        {subs.map((sub: any, idx: number) => (
                          sub.url || sub.file ? (
-                          <a key={idx} href={sub.url || sub.file} download target="_blank" rel="noreferrer" className="px-4 py-2 rounded-full bg-white/5 hover:bg-blue-600 hover:text-white transition-all border border-white/5 text-xs font-bold uppercase tracking-wider flex items-center gap-2">
+                          <a key={idx} href={sub.url || sub.file} download rel="noreferrer" className="px-4 py-2 rounded-full bg-white/5 hover:bg-blue-600 hover:text-white transition-all border border-white/5 text-xs font-bold uppercase tracking-wider flex items-center gap-2">
                             {sub.label || sub.lang || 'Unknown'} <Download size={12} />
                           </a>
                          ) : null

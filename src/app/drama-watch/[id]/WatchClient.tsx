@@ -103,9 +103,10 @@ function DramaWatchContent() {
       try {
         const result = await omni.drama.getStream(ep.embedUrl!);
         setStream(result);
-        // Default to first HLS server index
-        const hlsIdx = result.servers.findIndex(s => s.type === 'hls');
-        setActiveServerIdx(hlsIdx >= 0 ? hlsIdx : 0);
+        // Default to 'byse' server first, otherwise first HLS, otherwise first server
+        const byseIdx = result.servers.findIndex((s: any) => s.name?.toLowerCase().includes('byse'));
+        const hlsIdx = result.servers.findIndex((s: any) => s.type === 'hls');
+        setActiveServerIdx(byseIdx >= 0 ? byseIdx : (hlsIdx >= 0 ? hlsIdx : 0));
       } catch {
         setStreamError('Failed to load stream');
       } finally {
@@ -184,25 +185,33 @@ function DramaWatchContent() {
             {/* Controls Bar */}
             <div className="w-full bg-[#0a0a0a] border border-white/5 rounded-[30px] shadow-lg px-5 py-3 flex flex-col gap-2 mt-3">
               <div className="flex w-full justify-between items-center gap-3">
-                <div className="flex items-center gap-2 w-full">
-                  <button disabled={!prevEp} onClick={() => prevEp && handleEpClick(prevEp.id)} className={cn("flex items-center gap-2 px-4 h-8 rounded-full border text-[10px] font-black uppercase tracking-tighter transition-all flex-1 whitespace-nowrap", prevEp ? "bg-white/5 border-white/10 text-zinc-300 hover:bg-orange-600 hover:border-orange-500 hover:text-white" : "opacity-10 border-white/5 text-zinc-600")}>
-                    <SkipBack size={12} /> PREV
+                {/* Episode title */}
+                <div className="flex-1 min-w-0 flex items-center gap-2 overflow-hidden border-r border-white/5 pr-3">
+                  <span className="text-[10px] text-orange-500 font-black uppercase shrink-0">NOW:</span>
+                  <span className="text-[10px] font-black uppercase tracking-tighter text-zinc-300 truncate">
+                    {currentEp ? `EP ${currentEp.number} — ${currentEp.title}` : drama.title}
+                  </span>
+                </div>
+
+                <div className="flex items-center gap-2 shrink-0">
+                  <button disabled={!prevEp} onClick={() => prevEp && handleEpClick(prevEp.id)} className={cn("flex items-center justify-center gap-1 w-8 h-8 rounded-full border transition-all", prevEp ? "bg-white/5 border-white/10 text-zinc-300 hover:bg-orange-600 hover:border-orange-500 hover:text-white" : "opacity-10 border-white/5 text-zinc-600")}>
+                    <SkipBack size={12} />
                   </button>
                   {nextEp ? (
-                    <button onClick={() => handleEpClick(nextEp.id)} className="flex items-center gap-2 px-4 h-8 rounded-full border border-white/10 bg-white/5 text-zinc-300 text-[10px] font-black uppercase tracking-widest transition-all hover:bg-orange-600 flex-1 whitespace-nowrap">
-                      NEXT EP <SkipForward size={12} />
+                    <button onClick={() => handleEpClick(nextEp.id)} className="flex items-center justify-center gap-1 w-8 h-8 rounded-full border border-white/10 bg-white/5 text-zinc-300 transition-all hover:bg-orange-600">
+                      <SkipForward size={12} />
                     </button>
                   ) : (
-                    <button disabled className="flex items-center gap-2 px-4 h-8 rounded-full border border-white/5 bg-white/5 text-zinc-600 text-[10px] font-black uppercase flex-1 whitespace-nowrap opacity-50 cursor-not-allowed">
-                      NEXT EP <SkipForward size={12} />
+                    <button disabled className="flex items-center justify-center gap-1 w-8 h-8 rounded-full border border-white/5 bg-white/5 text-zinc-600 opacity-50 cursor-not-allowed">
+                      <SkipForward size={12} />
                     </button>
                   )}
                 </div>
 
                 {/* Server Switcher */}
-                <div className="flex items-center gap-3">
+                <div className="flex items-center gap-3 shrink-0 border-l border-white/5 pl-3">
                   {currentEpId && (
-                    <Link href={`/download/drama/${slug}?ep=${currentEpId}`} className="flex items-center gap-2 px-4 h-8 rounded-full border border-white/10 bg-white/5 text-zinc-300 text-[10px] font-black uppercase tracking-widest transition-all hover:bg-orange-600 hover:border-orange-500 hover:text-white whitespace-nowrap shadow-md shadow-orange-900/5">
+                    <Link href={`/download/drama/${slug}?ep=${currentEpId}`} className="flex items-center justify-center w-8 h-8 rounded-full border border-white/10 bg-white/5 text-zinc-300 transition-all hover:bg-orange-600 hover:border-orange-500 hover:text-white shadow-md shadow-orange-900/5">
                         <Download size={12} />
                     </Link>
                   )}
@@ -211,7 +220,7 @@ function DramaWatchContent() {
                     <DropdownMenuTrigger asChild>
                       <Button variant="ghost" className="h-8 gap-2 text-[10px] font-black text-zinc-500 hover:text-white uppercase rounded-full border border-white/5 bg-white/5 px-4 whitespace-nowrap">
                         <ServerIcon size={12} />
-                        {currentServer?.name || 'Server'} {currentServer?.type === 'hls' ? '(HLS)' : '(Embed)'}
+                        {currentServer?.name || 'Server'}
                         <ChevronDown size={11} />
                       </Button>
                     </DropdownMenuTrigger>
@@ -228,16 +237,6 @@ function DramaWatchContent() {
                     </DropdownMenuContent>
                   </DropdownMenu>
                 )}
-                </div>
-              </div>
-
-              {/* Episode title */}
-              <div className="flex items-center gap-3 border-t border-white/5 pt-3">
-                <div className="flex-1 min-w-0 flex items-center gap-2 overflow-hidden">
-                  <span className="text-[10px] text-orange-500 font-black uppercase shrink-0">NOW:</span>
-                  <span className="text-[10px] font-black uppercase tracking-tighter text-zinc-300 truncate">
-                    {currentEp ? `EP ${currentEp.number} — ${currentEp.title}` : drama.title}
-                  </span>
                 </div>
               </div>
             </div>
@@ -300,8 +299,9 @@ function DramaWatchContent() {
 
       {/* Info Section */}
       <div className="w-full flex justify-center mt-8 px-4 md:px-8 pb-12">
-        <div className="w-full max-w-[1500px]">
-          <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }} className="w-full bg-[#0a0a0a] rounded-[40px] border border-white/5 overflow-hidden flex flex-col shadow-2xl">
+        <div className="w-full max-w-[1500px] flex flex-col xl:grid xl:grid-cols-12 gap-8 items-start">
+          
+          <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }} className="xl:col-span-8 w-full bg-[#0a0a0a] rounded-[40px] border border-white/5 overflow-hidden flex flex-col shadow-2xl">
             <div className="flex-shrink-0 p-8 flex flex-col sm:flex-row gap-8 bg-gradient-to-b from-orange-600/5 to-transparent">
               <div className="shrink-0">
                 <div className="relative p-[3px] rounded-3xl overflow-hidden group/poster shadow-[0_0_40px_rgba(220,38,38,0.2)] w-fit mx-auto sm:mx-0">
@@ -328,9 +328,30 @@ function DramaWatchContent() {
                 )}
               </div>
             </div>
-
-            {/* Recommendations were moved to the sidebar */}
           </motion.div>
+
+          {/* Right Side: Recommendations */}
+          <div className="xl:col-span-4 w-full">
+            {drama.recommendations.length > 0 && (
+              <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.4 }} className="w-full bg-[#0a0a0a] rounded-[40px] border border-white/5 p-6 shadow-2xl">
+                <div className="flex items-center gap-3 mb-6"><Flame size={18} className="text-orange-600" /><h3 className="font-black text-white text-sm font-[Cinzel] tracking-widest uppercase">More Like This</h3></div>
+                <ScrollArea className="h-[400px] pr-4">
+                  <div className="grid grid-cols-2 gap-4">
+                    {drama.recommendations.map(rec => (
+                      <Link key={rec.id} href={`/drama-watch/${rec.id}`} className="group flex flex-col gap-2">
+                        <div className="aspect-[2/3] rounded-2xl overflow-hidden bg-zinc-900 relative shadow-md">
+                          <img src={rec.image || '/images/no-poster.png'} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" alt={rec.title} loading="lazy" />
+                          <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center"><Play size={20} className="text-white" /></div>
+                        </div>
+                        <p className="text-[10px] font-bold text-zinc-400 group-hover:text-white transition-colors line-clamp-2">{rec.title}</p>
+                      </Link>
+                    ))}
+                  </div>
+                </ScrollArea>
+              </motion.div>
+            )}
+          </div>
+
         </div>
       </div>
       <Footer />

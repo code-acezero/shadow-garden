@@ -38,6 +38,11 @@ const DramaSearch = () => {
           onFocus={() => setIsFocused(true)}
           onBlur={() => setTimeout(() => setIsFocused(false), 200)}
           onChange={e => setQuery(e.target.value)}
+          onKeyDown={e => {
+            if (e.key === 'Enter' && query.trim()) {
+              window.location.href = `/drama/search?q=${encodeURIComponent(query.trim())}`;
+            }
+          }}
           placeholder="Titles, people, genres"
           className={cn("bg-transparent text-white text-xs font-bold w-full outline-none placeholder:text-white/60 transition-all", !isFocused && !query && "md:block hidden")}
         />
@@ -103,11 +108,9 @@ const DramaRow = ({ section, isFirst }: { section: DramaSection, isFirst?: boole
          <span className="text-[10px] font-bold text-cyan-500 opacity-0 group-hover:opacity-100 transition-all -translate-x-2 group-hover:translate-x-0 flex items-center">Explore All <ChevronRight size={12}/></span>
       </h2>
       <div className="px-4 md:px-12 w-full pb-4 relative group/row">
-          <ScrollArea className="w-full" type="scroll">
-            <div className="flex gap-2 pb-6 pt-2 pr-12 overflow-x-auto [&::-webkit-scrollbar]:hidden [-ms-overflow-style:'none'] [scrollbar-width:'none']">
-              {section.items.map(item => <DCard key={item.id} item={item} />)}
-            </div>
-          </ScrollArea>
+          <div className="flex gap-4 pb-6 pt-2 pr-12 overflow-x-auto no-scrollbar scroll-smooth snap-x snap-mandatory">
+            {section.items.map(item => <div key={item.id} className="snap-start shrink-0"><DCard item={item} /></div>)}
+          </div>
       </div>
     </div>
   );
@@ -129,12 +132,14 @@ const HeroBanner = ({ item }: { item: DramaCard }) => {
       {/* Background Image */}
       <div className="absolute inset-0 w-full h-full">
         {item.image && (
-          <img src={detail?.banner || item.image} alt={item.title} className="w-full h-full object-cover opacity-90 scale-105" loading="eager" />
+          <img src={detail?.banner || item.image} alt={item.title} className="w-full h-full object-cover opacity-80 scale-105" loading="eager" />
         )}
-        {/* Netflix Edge Gradients */}
-        <div className="absolute inset-0 bg-gradient-to-r from-[#050505] via-[#050505]/60 to-transparent w-full md:w-[60%]" />
-        <div className="absolute inset-0 bg-gradient-to-t from-[#050505] via-[#050505]/20 to-transparent" />
-        <div className="absolute inset-0 bg-gradient-to-t from-[#050505] via-[#050505]/80 to-transparent h-64 bottom-0" />
+        {/* Futuristic Gradients & Grid */}
+        <div className="absolute inset-0 bg-gradient-to-r from-[#050505] via-[#050505]/70 to-transparent w-full md:w-[65%]" />
+        <div className="absolute inset-0 bg-gradient-to-t from-[#050505] via-[#050505]/40 to-transparent" />
+        <div className="absolute inset-0 bg-gradient-to-t from-[#050505] via-[#050505]/90 to-transparent h-72 bottom-0" />
+        <div className="absolute inset-0 bg-[linear-gradient(to_right,#4f4f4f2e_1px,transparent_1px),linear-gradient(to_bottom,#4f4f4f2e_1px,transparent_1px)] bg-[size:32px_32px] opacity-30" />
+        <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-cyan-500 via-purple-500 to-orange-500 opacity-50" />
       </div>
 
       {/* Floating Top Nav Search Override (Only for Desktop really, mobile gets it too) */}
@@ -146,9 +151,9 @@ const HeroBanner = ({ item }: { item: DramaCard }) => {
       <div className="absolute bottom-24 md:bottom-32 left-0 w-full px-4 md:px-12 flex flex-col justify-end z-10 pointer-events-none">
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.8 }} className="max-w-2xl pointer-events-auto">
           {item.country && (
-            <div className="flex items-center gap-2 mb-2 md:mb-4">
-              <span className="text-red-600 text-2xl md:text-4xl font-black leading-[0] tracking-tighter">N</span>
-              <span className="text-[8px] md:text-[10px] font-black text-zinc-300 uppercase tracking-[0.4em]">{item.country} SERIES</span>
+            <div className="flex items-center gap-3 mb-3 md:mb-5">
+              <span className="w-2 h-2 rounded-full bg-cyan-500 shadow-[0_0_10px_#06b6d4] animate-pulse" />
+              <span className="text-[9px] md:text-[11px] font-black text-cyan-400 uppercase tracking-[0.5em]">{item.country} ORIGINAL</span>
             </div>
           )}
           
@@ -156,10 +161,10 @@ const HeroBanner = ({ item }: { item: DramaCard }) => {
             {item.title}
           </h1>
 
-          <div className="flex items-center gap-3 text-[10px] md:text-xs font-bold text-zinc-300 mb-4 drop-shadow-lg uppercase tracking-widest">
-              <span className="text-green-500">{Math.floor(Math.random() * 20 + 80)}% Match</span>
+          <div className="flex items-center gap-4 text-[10px] md:text-xs font-bold text-zinc-300 mb-5 drop-shadow-lg uppercase tracking-widest">
+              <span className="text-cyan-400 border border-cyan-400/30 bg-cyan-400/10 px-2 py-0.5 rounded shadow-[0_0_10px_rgba(34,211,238,0.2)]">99% SYNC</span>
               {item.year && <span>{item.year}</span>}
-              {detail?.status && <span className="border border-zinc-500/50 px-1 py-0.5 rounded">{detail.status}</span>}
+              {detail?.status && <span className="border border-purple-500/50 text-purple-400 bg-purple-500/10 px-2 py-0.5 rounded">{detail.status}</span>}
               {item.episode && <span>{item.episode} EPS</span>}
           </div>
 

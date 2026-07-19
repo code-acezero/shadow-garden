@@ -363,9 +363,9 @@ class HPIClient {
       
       // Map sources from the API response
       const mappedServers = streamData?.sources ? streamData.sources.map((s: any, idx: number) => {
-        // We now use Web Streams in our proxy, so we want the direct MP4 url to be proxied by US, not the upstream Anikoto proxy
+        // The user explicitly requested to NOT route any proxies, so we use direct URLs
         const isMp4 = s.url && s.url.toLowerCase().includes('.mp4');
-        const bestUrl = isMp4 ? (s.url || s.proxyUrl) : (s.proxyUrl || s.m3u8 || s.url || '');
+        const bestUrl = s.url || s.m3u8 || s.proxyUrl || '';
         return {
           name: s.server || `Server ${idx + 1}`,
           url: bestUrl,
