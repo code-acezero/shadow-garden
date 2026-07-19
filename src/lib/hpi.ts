@@ -366,7 +366,6 @@ class HPIClient {
       // Raw CDN links (e.g. rumble.cloud) are Referer-gated hotlink protection —
       // a plain <video src="..."> can never send a custom Referer, so the raw
       // link 403s and playback silently never starts. Always route real
-      // playback through a proxy that can forward the correct Referer.
       const toPlayableUrl = (rawUrl: string, referer?: string) => {
         if (!rawUrl) return '';
         return `/api/proxy?url=${encodeURIComponent(rawUrl)}&referer=${encodeURIComponent(referer || defaultReferer)}`;
@@ -377,9 +376,7 @@ class HPIClient {
       const mappedServers = streamData?.sources ? streamData.sources.map((s: any, idx: number) => {
         const rawUrl = s.url || s.m3u8 || '';
         if (rawUrl) seenRawUrls.add(rawUrl);
-        const isMp4 = rawUrl.toLowerCase().includes('.mp4');
-        // Prefer the API's own pre-built proxy URL when it gives us one; otherwise
-        // build one against our own /api/proxy so the Referer is still forwarded.
+        // Use the API-provided proxyUrl (omni-api), which is Edge-enabled and supports Range requests
         const bestUrl = s.proxyUrl || toPlayableUrl(rawUrl, s.referer);
         return {
           name: s.server || `Server ${idx + 1}`,

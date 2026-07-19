@@ -2,7 +2,7 @@
 
 import React, { useEffect, useRef, useState, useCallback, forwardRef, useImperativeHandle } from 'react';
 import Hls from 'hls.js';
-import { Play, Pause, Volume2, VolumeX, Settings, Maximize, Subtitles, Gauge, ChevronRight, ChevronLeft, ChevronsLeft, ChevronsRight, Loader2, PictureInPicture } from 'lucide-react';
+import { Play, Pause, Volume2, VolumeX, Settings, Maximize, Subtitles, Gauge, ChevronRight, ChevronLeft, ChevronsLeft, ChevronsRight, Loader2, PictureInPicture, Server as ServerIcon } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 interface DramaPlayerProps {
@@ -21,6 +21,12 @@ interface DramaPlayerProps {
   onProgress?: (s: { playedSeconds: number }) => void;
   onInteract?: () => void;
   initialVolume?: number;
+  episodes?: { id: string; number: number; title: string; }[];
+  currentEpId?: string | null;
+  onEpisodeSelect?: (id: string) => void;
+  servers?: { name: string; type: string; url?: string; }[];
+  activeServerIdx?: number;
+  onServerSelect?: (idx: number) => void;
 }
 
 export interface DramaPlayerRef {
@@ -32,7 +38,8 @@ export interface DramaPlayerRef {
 
 const DramaPlayer = forwardRef<DramaPlayerRef, DramaPlayerProps>(({
   url, iframeUrl, title, poster, referer, autoPlay = true, startTime = 0,
-  onEnded, onPlay, onPause, onProgress, onInteract, initialVolume = 1
+  onEnded, onPlay, onPause, onProgress, onInteract, initialVolume = 1,
+  episodes = [], currentEpId, onEpisodeSelect, servers = [], activeServerIdx = 0, onServerSelect
 }, ref) => {
   const videoRef = useRef<HTMLVideoElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -54,6 +61,8 @@ const DramaPlayer = forwardRef<DramaPlayerRef, DramaPlayerProps>(({
   const [currentQuality, setCurrentQuality] = useState(-1);
   const [speed, setSpeed] = useState(1);
   const [showSettings, setShowSettings] = useState(false);
+  const [showEpisodes, setShowEpisodes] = useState(false);
+  const [showServers, setShowServers] = useState(false);
   const [hlsFailed, setHlsFailed] = useState(false);
 
   const controlsTimer = useRef<NodeJS.Timeout | null>(null);
@@ -221,6 +230,10 @@ const DramaPlayer = forwardRef<DramaPlayerRef, DramaPlayerProps>(({
         showUI();
       }}
     >
+      {/* Click-to-close menus overlay */}
+      {(showSettings || showEpisodes || showServers) && (
+        <div className="absolute inset-0 z-40 cursor-auto" onClick={(e) => { e.stopPropagation(); setShowSettings(false); setShowEpisodes(false); setShowServers(false); }} />
+      )}
       <video
         ref={videoRef}
         poster={poster}
@@ -290,32 +303,58 @@ const DramaPlayer = forwardRef<DramaPlayerRef, DramaPlayerProps>(({
         </div>
 
         {/* Controls Row */}
-        <div className="flex items-center justify-between pointer-events-auto">
+        <div className="flex items-center justify-between pointer-events-auto mt-2">
           <div className="flex items-center gap-2 md:gap-5">
-            <button onClick={(e) => { e.stopPropagation(); togglePlay(); }} className="hover:text-primary-500 transition-colors active:scale-90">
-              {isPlaying ? <Pause size={20} /> : <Play size={20} />}
+            <button onClick={(e) => { e.stopPropagation(); togglePlay(); }} className="hover:text-primary-500 transition-colors active:scale-90 text-white">
+              {isPlaying ? <Pause size={24} /> : <Play size={24} />}
             </button>
-            <button onClick={(e) => { e.stopPropagation(); seek(-10); }} className="hidden md:flex items-center gap-0.5 px-2 py-1 rounded-full border border-white/20 hover:border-primary-500 hover:bg-primary-500/10 transition-all active:scale-95">
-              <ChevronsLeft size={12} /><span className="text-[10px] font-black">10</span>
-            </button>
-            <button onClick={(e) => { e.stopPropagation(); seek(10); }} className="hidden md:flex items-center gap-0.5 px-2 py-1 rounded-full border border-white/20 hover:border-primary-500 hover:bg-primary-500/10 transition-all active:scale-95">
-              <span className="text-[10px] font-black">10</span><ChevronsRight size={12} />
-            </button>
-            <div className="flex items-center gap-1 group/vol">
-              <button onClick={(e) => { e.stopPropagation(); toggleMute(); }}>{isMuted || volume === 0 ? <VolumeX size={20} /> : <Volume2 size={20} />}</button>
-              <div className="w-0 overflow-hidden md:group-hover/vol:w-20 transition-all duration-300">
-                <input type="range" min="0" max="1" step="0.05" value={isMuted ? 0 : volume}
-                  onChange={(e) => { const v = parseFloat(e.target.value); setVolume(v); setIsMuted(v === 0); if (videoRef.current) { videoRef.current.volume = v; videoRef.current.muted = v === 0; } }}
-                  className="w-16 h-1 accent-red-600 cursor-pointer" onClick={(e) => e.stopPropagation()} />
+            <div className="text-[11px] font-bold text-zinc-400 font-mono hidden md:block"><span className="text-white">{formatTime(currentTime)}</span> / {formatTime(duration)}</div>
+            
+            {/* Integrated Episodes Menu */}
+            {episodes && episodes.length > 0 && (
+              <div className="relative">
+                <button onClick={(e) => { e.stopPropagation(); setShowEpisodes(!showEpisodes); setShowServers(false); setShowSettings(false); }} className={cn("text-[10px] md:text-xs font-black uppercase tracking-widest px-3 py-1.5 rounded-full border transition-all active:scale-95 text-white", showEpisodes ? "bg-primary-600 border-primary-500" : "bg-white/10 border-white/20 hover:border-primary-500")}>
+                  Episodes
+                </button>
+                {showEpisodes && (
+                  <div className="absolute bottom-full mb-4 left-0 bg-black/90 backdrop-blur-md border border-white/10 rounded-2xl p-2 w-64 shadow-2xl z-50 flex flex-col gap-1 animate-in slide-in-from-bottom-2 max-h-64 overflow-y-auto no-scrollbar" onClick={(e) => e.stopPropagation()}>
+                    <p className="text-[10px] font-black text-zinc-500 uppercase px-3 pb-2 pt-1 sticky top-0 bg-black/90 z-10 border-b border-white/10">Select Episode</p>
+                    {episodes.map(ep => (
+                      <button key={ep.id} onClick={() => { onEpisodeSelect?.(ep.id); setShowEpisodes(false); }} className={cn("text-[11px] px-3 py-2 rounded-xl text-left font-bold transition-all flex items-center justify-between group", currentEpId === ep.id ? "bg-primary-600 text-white" : "text-zinc-400 hover:text-white hover:bg-white/10")}>
+                        <span className="truncate">EP {ep.number}: {ep.title}</span>
+                        {currentEpId === ep.id && <Play size={10} className="shrink-0" />}
+                      </button>
+                    ))}
+                  </div>
+                )}
               </div>
-            </div>
-            <div className="text-[10px] font-bold text-zinc-400 font-mono"><span className="text-white">{formatTime(currentTime)}</span> / {formatTime(duration)}</div>
+            )}
+
+            {/* Integrated Servers Menu */}
+            {servers && servers.length > 0 && (
+              <div className="relative">
+                <button onClick={(e) => { e.stopPropagation(); setShowServers(!showServers); setShowEpisodes(false); setShowSettings(false); }} className={cn("text-[10px] md:text-xs font-black uppercase tracking-widest px-3 py-1.5 rounded-full border transition-all active:scale-95 text-white flex items-center gap-2", showServers ? "bg-primary-600 border-primary-500" : "bg-white/10 border-white/20 hover:border-primary-500")}>
+                  <ServerIcon size={12} className="hidden md:block" /> {servers[activeServerIdx]?.name || 'Server'}
+                </button>
+                {showServers && (
+                  <div className="absolute bottom-full mb-4 left-0 bg-black/90 backdrop-blur-md border border-white/10 rounded-2xl p-2 w-56 shadow-2xl z-50 flex flex-col gap-1 animate-in slide-in-from-bottom-2" onClick={(e) => e.stopPropagation()}>
+                    <p className="text-[10px] font-black text-zinc-500 uppercase px-3 pb-2 pt-1 border-b border-white/10">Audio / Server</p>
+                    {servers.map((srv, idx) => (
+                      <button key={idx} onClick={() => { onServerSelect?.(idx); setShowServers(false); }} className={cn("text-[11px] px-3 py-2 rounded-xl text-left font-bold transition-all flex items-center justify-between", activeServerIdx === idx ? "bg-primary-600 text-white" : "text-zinc-400 hover:text-white hover:bg-white/10")}>
+                        <span>{srv.name}</span>
+                        <span className={cn("text-[8px] px-2 py-0.5 rounded-full", srv.type === 'hls' ? "bg-green-900/50 text-green-400" : "bg-zinc-800 text-zinc-400")}>{srv.type === 'hls' ? 'HLS' : 'Embed'}</span>
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
           </div>
 
           <div className="flex items-center gap-2 md:gap-4 relative">
-            <div className="relative">
-              <button onClick={(e) => { e.stopPropagation(); setShowSettings(!showSettings); }} className={cn("hover:text-primary-500 transition-colors active:scale-90 p-2 md:p-0", showSettings && "text-primary-500")}>
-                <Settings size={20} />
+            <div className="relative z-50">
+              <button onClick={(e) => { e.stopPropagation(); setShowSettings(!showSettings); setShowEpisodes(false); setShowServers(false); }} className={cn("hover:text-primary-500 transition-colors active:scale-90 p-2 md:p-0 text-white", showSettings && "text-primary-500")}>
+                <Settings size={22} />
               </button>
               {showSettings && (
                 <div className="absolute bottom-12 right-0 bg-black/85 backdrop-blur-md border border-white/10 rounded-2xl p-2 w-48 shadow-2xl z-50 flex flex-col gap-1 animate-in slide-in-from-bottom-2" onClick={(e) => e.stopPropagation()}>
@@ -327,8 +366,7 @@ const DramaPlayer = forwardRef<DramaPlayerRef, DramaPlayerProps>(({
                 </div>
               )}
             </div>
-            <button onClick={(e) => { e.stopPropagation(); togglePiP(); }} className="hover:text-primary-500 transition-colors active:scale-90 p-2 md:p-0"><PictureInPicture size={20} /></button>
-            <button onClick={(e) => { e.stopPropagation(); toggleFullscreen(); }} className="hover:text-primary-500 transition-colors active:scale-90 p-2 md:p-0"><Maximize size={20} /></button>
+            <button onClick={(e) => { e.stopPropagation(); toggleFullscreen(); }} className="hover:text-primary-500 transition-colors active:scale-90 p-2 md:p-0 text-white"><Maximize size={22} /></button>
           </div>
         </div>
       </div>

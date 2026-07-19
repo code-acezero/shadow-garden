@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { fetchWithCustomReferer } from './fetchWithCustomReferer';
 import { rewritePlaylistUrls } from './rewritePlaylistUrls';
 
+export const runtime = 'edge';
+
 // =========================================================
 // 1. TACTICAL DOMAIN MAPPING
 // =========================================================

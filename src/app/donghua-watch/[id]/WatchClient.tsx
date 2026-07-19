@@ -809,7 +809,8 @@ function WatchContent() {
                     title: item.title,
                     poster: item.image,
                     type: item.type || 'TV',
-                    episodes: { sub: 0, dub: 0 }
+                    episodes: { sub: 0, dub: 0 },
+                    targetRoute: `/donghua-watch/${item.id}`
                 }));
                 
                 recommendations = spotlight.slice(0, 10).map((item: any) => ({
@@ -817,7 +818,8 @@ function WatchContent() {
                     title: item.title,
                     poster: item.image,
                     type: item.type || 'TV',
-                    episodes: { sub: 0, dub: 0 }
+                    episodes: { sub: 0, dub: 0 },
+                    targetRoute: `/donghua-watch/${item.id}`
                 }));
             } catch(err) {}
 
@@ -997,53 +999,58 @@ function WatchContent() {
                 if (currentFetch === activeFetchRef.current) updateSetting('category', urlType); 
             }
             
-            let serversData: any = await retryOperation(
-                () => dpi.getServers(currentEpId),
+            let streamDataResult: any = await retryOperation(
+                () => dpi.getStream(currentEpId),
                 2, 1000, 15000
             );
             
             if (currentFetch !== activeFetchRef.current) return;
 
-            if (serversData && serversData.length > 0) { 
-                const mappedServers = serversData.map((s: any) => ({
+            if (streamDataResult) {
+                const streamData = streamDataResult;
+                const mappedServers = (streamData.servers || []).map((s: any) => ({
                     serverName: s.name || s.serverName || 'Server',
                     serverId: s.name || s.serverId || 'Server',
-                    url: s.url
+                    url: s.url || streamData.url || streamData.iframe
                 }));
                 
-                let finalUrl = mappedServers[0].url;
-                const selected = mappedServers.find((s: any) => s.serverName.toLowerCase() === settings.server.toLowerCase());
-                
-                if (selected && selected.url) {
-                    finalUrl = selected.url;
-                } else {
-                    setTimeout(() => updateSetting('server', mappedServers[0].serverName), 0);
-                }
-
-                const streamData = {
-                    servers: { sub: mappedServers, dub: [] }, // Donghua is usually sub
-                    url: finalUrl,
-                    referer: '',
-                    subtitles: [],
-                    intro: null,
-                    outro: null,
-                    server: selected ? selected.serverName : mappedServers[0].serverName
-                };
-
-                if (streamData.servers) setServers(streamData.servers);
-                
-                if (streamData.url) {
-                    setStreamUrl(streamData.url); 
-                    setStreamReferer(streamData.referer || null); 
-                    setSubtitles(streamData.subtitles || []); 
-                    setIntro(streamData.intro); 
-                    setOutro(streamData.outro);
+                if (mappedServers.length > 0) {
+                    let finalUrl = mappedServers[0].url;
+                    const selected = mappedServers.find((s: any) => s.serverName.toLowerCase() === settings.server.toLowerCase());
                     
-                    if (streamData.server && streamData.server.toLowerCase() !== settings.server.toLowerCase()) {
-                        setTimeout(() => updateSetting('server', streamData.server), 0);
+                    if (selected && selected.url) {
+                        finalUrl = selected.url;
+                    } else {
+                        setTimeout(() => updateSetting('server', mappedServers[0].serverName), 0);
+                    }
+
+                    const finalStreamData = {
+                        servers: { sub: mappedServers, dub: [] }, // Donghua is usually sub
+                        url: finalUrl,
+                        referer: streamData.referer || '',
+                        subtitles: streamData.subtitles || [],
+                        intro: streamData.intro || null,
+                        outro: streamData.outro || null,
+                        server: selected ? selected.serverName : mappedServers[0].serverName
+                    };
+
+                    if (finalStreamData.servers) setServers(finalStreamData.servers);
+                    
+                    if (finalStreamData.url) {
+                        setStreamUrl(finalStreamData.url); 
+                        setStreamReferer(finalStreamData.referer || null); 
+                        setSubtitles(finalStreamData.subtitles || []); 
+                        setIntro(finalStreamData.intro); 
+                        setOutro(finalStreamData.outro);
+                        
+                        if (finalStreamData.server && finalStreamData.server.toLowerCase() !== settings.server.toLowerCase()) {
+                            setTimeout(() => updateSetting('server', finalStreamData.server), 0);
+                        }
+                    } else {
+                        throw new Error("No Stream Found");
                     }
                 } else {
-                    throw new Error("No Stream Found");
+                    throw new Error("No Servers Found");
                 }
             } else { 
                 throw new Error("Portal Unstable"); 
@@ -1129,6 +1136,8 @@ function WatchContent() {
                     ) : (
                         <iframe ref={iframeRef} src={streamUrl} className="w-full h-full border-0" allowFullScreen allow="autoplay; fullscreen" />
                     )
+                ) : streamError ? (
+                     <div className="w-full h-full flex items-center justify-center border-b border-white/5"><div className="text-emerald-500 text-sm font-bold uppercase tracking-widest">{streamError}</div></div>
                 ) : ( <div className="w-full h-full flex items-center justify-center border-b border-white/5"><FantasyLoader text="OPENING PORTAL..." /></div> )}
             </div>
 
@@ -1346,7 +1355,7 @@ function WatchContent() {
                          <div className="p-4 flex flex-col gap-3">
                              {anime.recommendations && anime.recommendations.length > 0 ? (
                                  anime.recommendations.slice(0, 10).map((rec: any) => (
-                                     <Link key={rec.id} href={`/watch/${rec.id}`} className="flex gap-4 bg-white/5 border border-white/5 rounded-2xl p-2 hover:bg-white/10 hover:border-white/10 transition-colors group shadow-sm">
+                                     <Link key={rec.id} href={`/donghua-watch/${rec.id}`} className="flex gap-4 bg-white/5 border border-white/5 rounded-2xl p-2 hover:bg-white/10 hover:border-white/10 transition-colors group shadow-sm">
                                          <div className="w-16 h-24 sm:w-20 sm:h-28 shrink-0 rounded-xl overflow-hidden relative shadow-md shadow-black/40"><img src={rec.poster} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" alt={rec.title} loading="lazy" decoding="async"/><div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center"><Play size={20} className="text-white"/></div></div>
                                          <div className="flex-1 min-w-0 py-1 flex flex-col justify-center gap-1">
                                              <h4 className="text-xs sm:text-sm font-black text-white line-clamp-2 leading-tight group-hover:text-emerald-500 transition-colors">{rec.title}</h4>

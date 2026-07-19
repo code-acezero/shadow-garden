@@ -16,8 +16,8 @@ export default function MobileTabBar() {
     { id: 'schedule', icon: CalendarDays, label: 'Schedule', path: '/schedule' },
     { id: 'social', icon: MessageCircle, label: 'Social', path: '/social' },
     { id: 'drama', icon: Clapperboard, label: 'Drama', path: '/drama' },
-    { id: 'watchlist', icon: Heart, label: 'Saved', path: '/watchlist' },
     { id: 'settings', icon: Settings, label: 'Settings', path: '/settings' },
+    { id: 'drama-search', icon: Search, label: 'Drama Search', path: '/drama-search' },
     { id: 'profile', icon: User, label: 'Profile', path: '/profile' },
   ];
 

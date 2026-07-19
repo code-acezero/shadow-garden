@@ -72,6 +72,7 @@ export default function Navigation() {
     { id: 'drama', icon: Clapperboard, label: 'Drama', path: '/drama' },
     { id: 'watchlist', icon: Heart, label: 'Watchlist', path: '/watchlist' },
     { id: 'settings', icon: Settings, label: 'Settings', path: '/settings' },
+    { id: 'drama-search', icon: Search, label: 'Drama Search', path: '/drama-search' },
     { id: 'profile', icon: User, label: 'Profile', path: '/profile' },
   ];
 
