@@ -187,14 +187,26 @@ class OmniClient {
 
       const recommendations: DramaCard[] = (res.recommendations || res.related || []).map(normalizeDramaCard);
 
+      let finalTitle = res.title || res.name || 'Unknown Drama';
+      if (finalTitle === 'FAQs') {
+        finalTitle = slug
+          .replace('watch-', '')
+          .split('-')
+          .map(w => w.charAt(0).toUpperCase() + w.slice(1))
+          .join(' ');
+      }
+
+      let finalStatus = res.status || 'Unknown';
+      if (finalStatus === 'UNKNOWN') finalStatus = 'Completed';
+
       return {
         id: slug,
         slug,
-        title: res.title || res.name || 'Unknown Drama',
+        title: finalTitle,
         image: res.image || res.poster || res.thumbnail || '',
         banner: res.banner || res.cover || res.image || '',
         synopsis: res.description || res.synopsis || res.plot || '',
-        status: res.status || 'Unknown',
+        status: finalStatus,
         type: res.type || res.country || 'Drama',
         rating: res.rating ? String(res.rating) : undefined,
         year: res.year ? String(res.year) : undefined,

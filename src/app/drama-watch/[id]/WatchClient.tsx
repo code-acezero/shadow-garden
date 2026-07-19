@@ -201,10 +201,10 @@ function DramaWatchContent() {
 
                 {/* Server Switcher */}
                 <div className="flex items-center gap-3">
-                  {currentServer?.url && (
-                    <a href={currentServer.url} download target="_blank" className="flex items-center gap-2 px-4 h-8 rounded-full border border-white/10 bg-white/5 text-zinc-300 text-[10px] font-black uppercase tracking-widest transition-all hover:bg-orange-600 hover:border-orange-500 hover:text-white whitespace-nowrap shadow-md shadow-orange-900/5">
+                  {currentEpId && (
+                    <Link href={`/download/drama/${slug}?ep=${currentEpId}`} className="flex items-center gap-2 px-4 h-8 rounded-full border border-white/10 bg-white/5 text-zinc-300 text-[10px] font-black uppercase tracking-widest transition-all hover:bg-orange-600 hover:border-orange-500 hover:text-white whitespace-nowrap shadow-md shadow-orange-900/5">
                         <Download size={12} />
-                    </a>
+                    </Link>
                   )}
                   {stream && stream.servers.length > 0 && (
                     <DropdownMenu modal={false}>
@@ -243,37 +243,57 @@ function DramaWatchContent() {
             </div>
           </div>
 
-          {/* Episodes Column */}
-          <div className="xl:col-span-4 w-full h-[650px] bg-[#0a0a0a] rounded-[40px] border border-white/5 overflow-hidden flex flex-col shadow-2xl">
-            <div className="p-6 bg-white/5 border-b border-white/5 flex justify-between items-center shrink-0">
-              <div className="flex items-center gap-3">
-                <h3 className="font-black text-white flex items-center gap-2 uppercase text-sm font-[Cinzel] tracking-widest"><Layers size={18} className="text-orange-600" /> Episodes</h3>
-                <Badge className="bg-white/10 border border-white/10 text-white font-black text-[10px] px-3 h-5 rounded-full">{drama.episodes.length}</Badge>
+          {/* Right Column: Episodes & Recommendations */}
+          <div className="xl:col-span-4 w-full flex flex-col gap-8">
+            <div className="w-full h-[650px] bg-[#0a0a0a] rounded-[40px] border border-white/5 overflow-hidden flex flex-col shadow-2xl">
+              <div className="p-6 bg-white/5 border-b border-white/5 flex justify-between items-center shrink-0">
+                <div className="flex items-center gap-3">
+                  <h3 className="font-black text-white flex items-center gap-2 uppercase text-sm font-[Cinzel] tracking-widest"><Layers size={18} className="text-orange-600" /> Episodes</h3>
+                  <Badge className="bg-white/10 border border-white/10 text-white font-black text-[10px] px-3 h-5 rounded-full">{drama.episodes.length}</Badge>
+                </div>
+                <div className="flex items-center gap-1 bg-black/50 p-1 rounded-lg border border-white/5">
+                  <button onClick={() => setEpViewMode('compact')} className={cn("p-1.5 rounded-md transition-all", epViewMode === 'compact' ? "bg-zinc-800 text-white" : "text-zinc-500 hover:text-zinc-300")}><Grid size={14} /></button>
+                  <button onClick={() => setEpViewMode('grid')} className={cn("p-1.5 rounded-md transition-all", epViewMode === 'grid' ? "bg-zinc-800 text-white" : "text-zinc-500 hover:text-zinc-300")}><LayoutGrid size={14} /></button>
+                  <button onClick={() => setEpViewMode('list')} className={cn("p-1.5 rounded-md transition-all", epViewMode === 'list' ? "bg-zinc-800 text-white" : "text-zinc-500 hover:text-zinc-300")}><List size={14} /></button>
+                </div>
               </div>
-              <div className="flex items-center gap-1 bg-black/50 p-1 rounded-lg border border-white/5">
-                <button onClick={() => setEpViewMode('compact')} className={cn("p-1.5 rounded-md transition-all", epViewMode === 'compact' ? "bg-zinc-800 text-white" : "text-zinc-500 hover:text-zinc-300")}><Grid size={14} /></button>
-                <button onClick={() => setEpViewMode('grid')} className={cn("p-1.5 rounded-md transition-all", epViewMode === 'grid' ? "bg-zinc-800 text-white" : "text-zinc-500 hover:text-zinc-300")}><LayoutGrid size={14} /></button>
-                <button onClick={() => setEpViewMode('list')} className={cn("p-1.5 rounded-md transition-all", epViewMode === 'list' ? "bg-zinc-800 text-white" : "text-zinc-500 hover:text-zinc-300")}><List size={14} /></button>
-              </div>
+
+              {episodeChunks.length > 1 && (
+                <div className="flex items-center gap-2 px-4 py-3 border-b border-white/5 overflow-x-auto no-scrollbar">
+                  {episodeChunks.map((_, idx) => (
+                    <button key={idx} onClick={() => setEpChunkIndex(idx)} className={cn("flex-shrink-0 px-4 py-1.5 text-[10px] font-black rounded-full border shadow-sm uppercase tracking-wider transition-all", epChunkIndex === idx ? "bg-orange-600 text-white border-orange-500" : "bg-zinc-900 border-zinc-800 text-zinc-500 hover:text-zinc-300")}>
+                      {idx * chunkSize + 1}–{Math.min((idx + 1) * chunkSize, drama.episodes.length)}
+                    </button>
+                  ))}
+                </div>
+              )}
+
+              <ScrollArea className="flex-1 p-2">
+                <div className={cn("p-2 grid", epViewMode === 'grid' ? 'grid-cols-5 gap-2.5' : epViewMode === 'compact' ? 'grid-cols-10 gap-1.5' : 'grid-cols-1 gap-2')}>
+                  {episodeChunks[epChunkIndex]?.map((ep) => (
+                    <EpisodeButton key={ep.id} ep={ep} isCurrent={ep.id === currentEpId} percent={epProgress[ep.number] || 0} viewMode={epViewMode} onClick={handleEpClick} />
+                  ))}
+                </div>
+              </ScrollArea>
             </div>
 
-            {episodeChunks.length > 1 && (
-              <div className="flex items-center gap-2 px-4 py-3 border-b border-white/5 overflow-x-auto no-scrollbar">
-                {episodeChunks.map((_, idx) => (
-                  <button key={idx} onClick={() => setEpChunkIndex(idx)} className={cn("flex-shrink-0 px-4 py-1.5 text-[10px] font-black rounded-full border shadow-sm uppercase tracking-wider transition-all", epChunkIndex === idx ? "bg-orange-600 text-white border-orange-500" : "bg-zinc-900 border-zinc-800 text-zinc-500 hover:text-zinc-300")}>
-                    {idx * chunkSize + 1}–{Math.min((idx + 1) * chunkSize, drama.episodes.length)}
-                  </button>
-                ))}
+            {/* Recommendations (Moved to Sidebar) */}
+            {drama.recommendations.length > 0 && (
+              <div className="w-full bg-[#0a0a0a] rounded-[40px] border border-white/5 p-6 shadow-2xl">
+                <div className="flex items-center gap-3 mb-6"><Flame size={18} className="text-orange-600" /><h3 className="font-black text-white text-sm font-[Cinzel] tracking-widest uppercase">More Like This</h3></div>
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
+                  {drama.recommendations.slice(0, 9).map(rec => (
+                    <Link key={rec.id} href={`/drama-watch/${rec.id}`} className="group flex flex-col gap-2">
+                      <div className="aspect-[2/3] rounded-2xl overflow-hidden bg-zinc-900 relative shadow-md">
+                        <img src={rec.image || '/images/no-poster.png'} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" alt={rec.title} loading="lazy" />
+                        <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center"><Play size={20} className="text-white" /></div>
+                      </div>
+                      <p className="text-[10px] font-bold text-zinc-400 group-hover:text-white transition-colors line-clamp-2">{rec.title}</p>
+                    </Link>
+                  ))}
+                </div>
               </div>
             )}
-
-            <ScrollArea className="flex-1 p-2">
-              <div className={cn("p-2 grid", epViewMode === 'grid' ? 'grid-cols-5 gap-2.5' : epViewMode === 'compact' ? 'grid-cols-10 gap-1.5' : 'grid-cols-1 gap-2')}>
-                {episodeChunks[epChunkIndex]?.map((ep) => (
-                  <EpisodeButton key={ep.id} ep={ep} isCurrent={ep.id === currentEpId} percent={epProgress[ep.number] || 0} viewMode={epViewMode} onClick={handleEpClick} />
-                ))}
-              </div>
-            </ScrollArea>
           </div>
         </div>
       </motion.div>
@@ -309,23 +329,7 @@ function DramaWatchContent() {
               </div>
             </div>
 
-            {/* Recommendations */}
-            {drama.recommendations.length > 0 && (
-              <div className="p-8 border-t border-white/5">
-                <div className="flex items-center gap-3 mb-6"><Flame size={18} className="text-orange-600" /><h3 className="font-black text-white text-sm font-[Cinzel] tracking-widest uppercase">More Like This</h3></div>
-                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4">
-                  {drama.recommendations.slice(0, 6).map(rec => (
-                    <Link key={rec.id} href={`/drama-watch/${rec.id}`} className="group flex flex-col gap-2">
-                      <div className="aspect-[2/3] rounded-2xl overflow-hidden bg-zinc-900 relative shadow-md">
-                        <img src={rec.image || '/images/no-poster.png'} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" alt={rec.title} loading="lazy" />
-                        <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center"><Play size={20} className="text-white" /></div>
-                      </div>
-                      <p className="text-[10px] font-bold text-zinc-400 group-hover:text-white transition-colors line-clamp-2">{rec.title}</p>
-                    </Link>
-                  ))}
-                </div>
-              </div>
-            )}
+            {/* Recommendations were moved to the sidebar */}
           </motion.div>
         </div>
       </div>

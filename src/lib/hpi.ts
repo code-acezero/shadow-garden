@@ -363,10 +363,9 @@ class HPIClient {
       
       // Map sources from the API response
       const mappedServers = streamData?.sources ? streamData.sources.map((s: any, idx: number) => {
-        // If it's a massive MP4, we MUST use direct URL to bypass Vercel's 4.5MB proxy limit.
-        // If it's HLS (.m3u8/.tar), we MUST use the proxy to inject the Rumble Referer header.
+        // We now use Web Streams in the proxy, so we can proxy MP4s as well!
         const isMp4 = s.url && s.url.toLowerCase().includes('.mp4');
-        const bestUrl = isMp4 ? (s.url || s.proxyUrl) : (s.proxyUrl || s.m3u8 || s.url || '');
+        const bestUrl = s.proxyUrl || s.m3u8 || s.url || '';
         return {
           name: s.server || `Server ${idx + 1}`,
           url: bestUrl,

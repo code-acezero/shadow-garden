@@ -108,10 +108,7 @@ export async function GET(request: NextRequest) {
         }
 
         // --- PHASE D: VIDEO SEGMENTS / OTHERS ---
-        const arrayBuffer = await response.arrayBuffer();
-        const buffer = Buffer.from(arrayBuffer);
-
-        return new NextResponse(buffer, {
+        return new NextResponse(response.body, {
             status: 200,
             headers: {
                 "Content-Type": contentType || "application/octet-stream",

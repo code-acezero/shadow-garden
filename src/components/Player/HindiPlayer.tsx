@@ -296,7 +296,7 @@ const HindiPlayer = forwardRef<HindiPlayerRef, HindiPlayerProps>(({
 
     const isAlreadyProxied = url.includes('/api/proxy') || url.includes('anikoto') || url.includes('satoru');
     const isExplicitMp4 = url.toLowerCase().includes('.mp4');
-    const finalUrl = (url.startsWith('http') && !isAlreadyProxied && !isExplicitMp4)
+    const finalUrl = (url.startsWith('http') && !isAlreadyProxied)
         ? `/api/proxy?url=${encodeURIComponent(url)}${referer ? `&referer=${encodeURIComponent(referer)}` : ''}`
         : url;
 

@@ -1066,10 +1066,10 @@ function WatchContent() {
                             <WatchListButton animeId={anime.id} animeTitle={anime.title} animeImage={anime.poster} currentEp={currentEpisode?.number} />
                         </div>
                         <div className="flex items-center gap-3 flex-shrink-0">
-                            {streamUrl && (
-                                <a href={streamUrl} download target="_blank" className="flex items-center gap-2 px-4 h-8 rounded-full border border-white/10 bg-white/5 text-zinc-300 text-[10px] font-black uppercase tracking-widest transition-all hover:bg-primary-600 hover:border-primary-500 hover:text-white whitespace-nowrap shadow-md shadow-primary-900/5">
+                            {currentEpId && (
+                                <Link href={`/download/anime/${anime.id}?ep=${currentEpId}`} className="flex items-center gap-2 px-4 h-8 rounded-full border border-white/10 bg-white/5 text-zinc-300 text-[10px] font-black uppercase tracking-widest transition-all hover:bg-orange-600 hover:border-orange-500 hover:text-white whitespace-nowrap shadow-md shadow-orange-900/5">
                                     <Download size={12} />
-                                </a>
+                                </Link>
                             )}
                             <div className="flex bg-black/40 rounded-full p-1 border border-white/10 shadow-inner flex-shrink-0">{(['sub', 'dub', 'raw'] as const).map((cat) => { const isAvailable = (servers?.[cat]?.length || 0) > 0; return (<button key={cat} disabled={!isAvailable} onClick={() => updateSetting('category', cat)} className={cn("px-4 py-1 rounded-full text-[10px] font-black uppercase transition-all relative active:scale-95 shadow-sm", settings.category === cat ? "bg-primary-600 text-white shadow-lg" : "text-zinc-600 hover:text-zinc-300", !isAvailable && "opacity-10")}>{cat}{isAvailable && <span className="absolute -top-0.5 -right-0.5 w-1.5 h-1.5 bg-primary-600 rounded-full animate-pulse shadow-[0_0_5px_red]" />}</button>);})}</div>
                             <DropdownMenu modal={false}>
