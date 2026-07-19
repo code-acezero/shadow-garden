@@ -318,6 +318,9 @@ const AnimePlayer = forwardRef<AnimePlayerRef, AnimePlayerProps>(({
 
     const shouldUseNative = isExplicitMp4 || isM3U8 === false;
     
+    let nativeLoadedHandler: (() => void) | null = null;
+    let nativeErrorHandler: (() => void) | null = null;
+
     if (!shouldUseNative && Hls.isSupported()) {
       const hls = new Hls({ capLevelToPlayerSize: true, autoStartLoad: true, startLevel: -1, startPosition: startTime > 0 ? startTime : -1 });
       hls.loadSource(finalUrl);
@@ -345,16 +348,25 @@ const AnimePlayer = forwardRef<AnimePlayerRef, AnimePlayerProps>(({
       hlsRef.current = hls;
     } else if (shouldUseNative || video.canPlayType('application/vnd.apple.mpegurl')) {
       video.src = finalUrl;
-      video.addEventListener('loadedmetadata', () => { 
+      video.load();
+      
+      nativeLoadedHandler = () => { 
           if (startTime > 0 && !hasInitializedRef.current) {
               video.currentTime = startTime; 
               hasInitializedRef.current = true;
           }
-          if (autoPlay) video.play(); 
-      });
-      video.addEventListener('error', () => {
+          if (autoPlay) {
+              const playPromise = video.play();
+              if (playPromise !== undefined) playPromise.catch(() => setIsPlaying(false));
+          }
+      };
+      
+      nativeErrorHandler = () => {
           if (iframeUrl) setHlsFailed(true);
-      });
+      };
+      
+      video.addEventListener('loadedmetadata', nativeLoadedHandler);
+      video.addEventListener('error', nativeErrorHandler);
     } else {
         if (iframeUrl) setHlsFailed(true);
     }
@@ -369,6 +381,8 @@ const AnimePlayer = forwardRef<AnimePlayerRef, AnimePlayerProps>(({
       if (hlsRef.current) hlsRef.current.destroy();
       video.removeEventListener('enterpictureinpicture', onEnterPiP);
       video.removeEventListener('leavepictureinpicture', onLeavePiP);
+      if (nativeLoadedHandler) video.removeEventListener('loadedmetadata', nativeLoadedHandler);
+      if (nativeErrorHandler) video.removeEventListener('error', nativeErrorHandler);
     };
   }, [url]);
 
