@@ -35,7 +35,7 @@ const notifyWhisper = (message: string, type: 'success' | 'error' | 'info' = 'su
     }
 };
 
-interface AnimePlayerProps {
+interface HindiPlayerProps {
   url: string;
   title?: string;
   poster?: string;
@@ -66,14 +66,14 @@ interface AnimePlayerProps {
   onSettingsChange?: (key: string, value: any) => void;
 }
 
-export interface AnimePlayerRef {
+export interface HindiPlayerRef {
   getCurrentTime: () => number;
   getDuration: () => number;
   seekTo: (time: number) => void;
   focus: () => void;
 }
 
-const AnimePlayer = forwardRef<AnimePlayerRef, AnimePlayerProps>(({ 
+const HindiPlayer = forwardRef<HindiPlayerRef, HindiPlayerProps>(({ 
   url, iframeUrl, isEmbed, title, poster, intro, outro, referer, isM3U8, autoSkip = false, autoPlay = true, startTime = 0, subtitles = [],
   onEnded, onNext, onPlay, onSkipIntro, onProgress, onInteract, onPause, onBuffer, 
   controlsTimeout = 3000, onControlsChange, initialVolume = 1, initialSpeed = 1, onSettingsChange
@@ -311,7 +311,7 @@ const AnimePlayer = forwardRef<AnimePlayerRef, AnimePlayerProps>(({
         }
     };
 
-    const shouldUseNative = isExplicitMp4 || isM3U8 === false;
+    const shouldUseNative = isExplicitMp4 || (isM3U8 === undefined && !url.includes('.m3u8')) || isM3U8 === false;
     
     let nativeLoadedHandler: (() => void) | null = null;
     let nativeErrorHandler: (() => void) | null = null;
@@ -945,5 +945,5 @@ const AnimePlayer = forwardRef<AnimePlayerRef, AnimePlayerProps>(({
     </div>
   );
 });
-AnimePlayer.displayName = "AnimePlayer";
-export default AnimePlayer;
+HindiPlayer.displayName = "HindiPlayer";
+export default HindiPlayer;

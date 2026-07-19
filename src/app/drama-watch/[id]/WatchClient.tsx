@@ -4,7 +4,7 @@ import React, { useState, useEffect, useRef, useCallback, memo, Suspense } from 
 import { useParams, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { motion } from 'framer-motion';
-import { SkipForward, SkipBack, Server as ServerIcon, Layers, Clock, Play, Grid, List, LayoutGrid, ChevronDown, Flame, Info, Loader2, Check, X } from 'lucide-react';
+import { SkipForward, SkipBack, Server as ServerIcon, Layers, Clock, Play, Grid, List, LayoutGrid, ChevronDown, Flame, Info, Loader2, Check, X, Download } from 'lucide-react';
 import { omni, DramaDetail, DramaServer, DramaStream } from '@/lib/omni';
 import { cn } from '@/lib/utils';
 import DramaPlayer, { DramaPlayerRef } from '@/components/Player/DramaPlayer';
@@ -200,8 +200,14 @@ function DramaWatchContent() {
                 </div>
 
                 {/* Server Switcher */}
-                {stream && stream.servers.length > 0 && (
-                  <DropdownMenu modal={false}>
+                <div className="flex items-center gap-3">
+                  {currentServer?.url && (
+                    <a href={currentServer.url} download target="_blank" className="flex items-center gap-2 px-4 h-8 rounded-full border border-white/10 bg-white/5 text-zinc-300 text-[10px] font-black uppercase tracking-widest transition-all hover:bg-orange-600 hover:border-orange-500 hover:text-white whitespace-nowrap shadow-md shadow-orange-900/5">
+                        <Download size={12} />
+                    </a>
+                  )}
+                  {stream && stream.servers.length > 0 && (
+                    <DropdownMenu modal={false}>
                     <DropdownMenuTrigger asChild>
                       <Button variant="ghost" className="h-8 gap-2 text-[10px] font-black text-zinc-500 hover:text-white uppercase rounded-full border border-white/5 bg-white/5 px-4 whitespace-nowrap">
                         <ServerIcon size={12} />
@@ -222,6 +228,7 @@ function DramaWatchContent() {
                     </DropdownMenuContent>
                   </DropdownMenu>
                 )}
+                </div>
               </div>
 
               {/* Episode title */}

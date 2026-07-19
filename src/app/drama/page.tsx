@@ -2,12 +2,12 @@
 
 import React, { useState, useEffect, memo } from 'react';
 import Link from 'next/link';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import { Search, Globe, Play, ChevronRight, Loader2, Info } from 'lucide-react';
 import { omni, DramaSection, DramaCard } from '@/lib/omni';
 import { cn } from '@/lib/utils';
 import Footer from '@/components/Anime/Footer';
-import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area';
+import { ScrollArea } from '@/components/ui/scroll-area';
 
 // ── Search Bar ────────────────────────────────────────────────────────────────
 
@@ -107,7 +107,6 @@ const DramaRow = ({ section, isFirst }: { section: DramaSection, isFirst?: boole
             <div className="flex gap-2 pb-6 pt-2 pr-12 overflow-x-auto [&::-webkit-scrollbar]:hidden [-ms-overflow-style:'none'] [scrollbar-width:'none']">
               {section.items.map(item => <DCard key={item.id} item={item} />)}
             </div>
-            {/* The ScrollBar is visually hidden by tailwind, but functional */}
           </ScrollArea>
       </div>
     </div>
@@ -126,7 +125,7 @@ const HeroBanner = ({ item }: { item: DramaCard }) => {
   }, [item.id]);
 
   return (
-    <div className="relative w-full h-[75vh] md:h-[95vh] bg-[#050505]">
+    <div className="relative w-full h-[85vh] md:h-[100vh] bg-[#050505]">
       {/* Background Image */}
       <div className="absolute inset-0 w-full h-full">
         {item.image && (
@@ -135,7 +134,7 @@ const HeroBanner = ({ item }: { item: DramaCard }) => {
         {/* Netflix Edge Gradients */}
         <div className="absolute inset-0 bg-gradient-to-r from-[#050505] via-[#050505]/60 to-transparent w-full md:w-[60%]" />
         <div className="absolute inset-0 bg-gradient-to-t from-[#050505] via-[#050505]/20 to-transparent" />
-        <div className="absolute inset-0 bg-gradient-to-t from-[#050505] to-transparent h-40 bottom-0" />
+        <div className="absolute inset-0 bg-gradient-to-t from-[#050505] via-[#050505]/80 to-transparent h-64 bottom-0" />
       </div>
 
       {/* Floating Top Nav Search Override (Only for Desktop really, mobile gets it too) */}
@@ -144,7 +143,7 @@ const HeroBanner = ({ item }: { item: DramaCard }) => {
       </div>
 
       {/* Hero Content */}
-      <div className="absolute bottom-12 md:bottom-24 left-0 w-full px-4 md:px-12 flex flex-col justify-end z-10 pointer-events-none">
+      <div className="absolute bottom-24 md:bottom-32 left-0 w-full px-4 md:px-12 flex flex-col justify-end z-10 pointer-events-none">
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.8 }} className="max-w-2xl pointer-events-auto">
           {item.country && (
             <div className="flex items-center gap-2 mb-2 md:mb-4">
@@ -182,25 +181,64 @@ const HeroBanner = ({ item }: { item: DramaCard }) => {
   );
 };
 
+// ── Categories Filter ─────────────────────────────────────────────────────────
+
+const Categories = ({ onSelect }: { onSelect: (cat: string) => void }) => {
+  const categories = [
+    { name: 'K-Drama', query: 'korean' },
+    { name: 'C-Drama', query: 'chinese' },
+    { name: 'J-Drama', query: 'japanese' },
+    { name: 'T-Drama', query: 'taiwanese' },
+    { name: 'Thai', query: 'thai' }
+  ];
+
+  return (
+    <div className="w-full px-4 md:px-12 mb-8 -mt-8 relative z-20">
+      <div className="flex items-center gap-3 overflow-x-auto [&::-webkit-scrollbar]:hidden pb-2">
+        <span className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest mr-2 shrink-0">Explore By Region</span>
+        {categories.map(cat => (
+          <button 
+            key={cat.name}
+            onClick={() => onSelect(cat.query)}
+            className="px-4 py-1.5 rounded-full bg-white/5 hover:bg-white/15 border border-white/10 text-xs font-bold transition-all shrink-0 active:scale-95"
+          >
+            {cat.name}
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+};
+
 // ── Main Page Component ───────────────────────────────────────────────────────
 
 export default function DramaHomePage() {
   const [sections, setSections] = useState<DramaSection[]>([]);
   const [loading, setLoading] = useState(true);
+  const [filteredResults, setFilteredResults] = useState<DramaCard[] | null>(null);
+  const [filterTitle, setFilterTitle] = useState('');
+  const [loadingFilter, setLoadingFilter] = useState(false);
 
   useEffect(() => {
     (async () => {
       const home = await omni.drama.getHome();
       if (home && home.sections) {
-          // Remove empty sections just in case
           setSections(home.sections.filter((s:any) => s.items && s.items.length > 0));
       }
       setLoading(false);
     })();
   }, []);
 
+  const handleCategorySelect = async (query: string) => {
+    setLoadingFilter(true);
+    setFilterTitle(query.charAt(0).toUpperCase() + query.slice(1) + " Dramas");
+    const r = await omni.drama.search(query);
+    setFilteredResults(r.items);
+    setLoadingFilter(false);
+    window.scrollTo({ top: window.innerHeight * 0.7, behavior: 'smooth' });
+  };
+
   const hero = sections[0]?.items[0] || null;
-  // Prevent duplicating the hero item in the first row
   const displaySections = sections.map((s, i) => {
       if (i === 0 && hero) return { ...s, items: s.items.slice(1) };
       return s;
@@ -208,7 +246,6 @@ export default function DramaHomePage() {
 
   return (
     <div className="min-h-screen bg-[#050505] text-white pb-24 overflow-x-hidden">
-      {/* Loading State */}
       {loading ? (
         <div className="w-full min-h-screen flex flex-col items-center justify-center gap-4">
            <div className="w-14 h-14 border-4 border-red-600 border-t-transparent rounded-full animate-spin" />
@@ -217,10 +254,29 @@ export default function DramaHomePage() {
         <>
           {hero && <HeroBanner item={hero} />}
           
+          <Categories onSelect={handleCategorySelect} />
+
           <div className="flex flex-col gap-8 md:gap-10 relative z-20">
-            {displaySections.map((section, i) => (
-              <DramaRow key={section.title} section={section} isFirst={i === 0} />
-            ))}
+            {loadingFilter ? (
+              <div className="w-full flex justify-center py-20"><Loader2 className="animate-spin text-white opacity-50" /></div>
+            ) : filteredResults ? (
+              <div className="w-full">
+                <h2 className="text-[14px] md:text-[18px] font-bold text-white px-4 md:px-12 mb-4 tracking-wide flex items-center gap-2">
+                  {filterTitle}
+                  <button onClick={() => setFilteredResults(null)} className="text-[10px] text-red-500 hover:text-red-400 ml-4 font-black uppercase">Clear Filter</button>
+                </h2>
+                <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 gap-3 md:gap-4 px-4 md:px-12">
+                  {filteredResults.map(item => <DCard key={item.id} item={item} />)}
+                </div>
+                {filteredResults.length === 0 && (
+                  <p className="px-4 md:px-12 text-zinc-500 text-sm">No dramas found for this category.</p>
+                )}
+              </div>
+            ) : (
+              displaySections.map((section, i) => (
+                <DramaRow key={section.title} section={section} isFirst={i === 0} />
+              ))
+            )}
           </div>
 
           {sections.length === 0 && (
