@@ -14,11 +14,11 @@ export default function Footer() {
         
         {/* Left: Branding */}
         <div className="flex flex-col items-center md:items-start gap-1">
-          <Link href="/" className="flex items-center gap-2 text-white hover:text-orange-500 transition-colors">
-            <Crown size={20} className="text-orange-600" />
+          <Link href="/" className="flex items-center gap-3 text-white hover:text-orange-500 transition-colors group">
+            <img src="/images/favicon.jpg" alt="Logo" className="w-8 h-8 rounded-full border border-white/20 group-hover:border-orange-500 transition-colors" />
             <span className="text-xl font-[Cinzel] font-black tracking-widest">SHADOW GARDEN</span>
           </Link>
-          <p className="text-[10px] text-zinc-500 font-bold uppercase tracking-widest">
+          <p className="text-[10px] text-zinc-500 font-bold uppercase tracking-widest mt-1">
             Premium Anime & Drama Streaming
           </p>
         </div>

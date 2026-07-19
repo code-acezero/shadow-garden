@@ -30,23 +30,20 @@ const DramaSearch = () => {
 
   return (
     <div className={cn("relative transition-all duration-300 z-50", isFocused || query ? "w-64 md:w-80" : "w-10 md:w-64")}>
-      <div className="flex items-center gap-2 bg-black/40 backdrop-blur-md border border-white/20 hover:border-white/40 rounded-full px-3 py-2 focus-within:bg-black/80 focus-within:border-white/40 transition-all shadow-lg">
-        {loading ? <Loader2 size={16} className="text-white animate-spin shrink-0" /> : <Search size={16} className="text-white shrink-0" />}
+      <form onSubmit={(e) => { e.preventDefault(); if (query.trim()) window.location.href = `/drama/search?q=${encodeURIComponent(query.trim())}`; }} className="flex items-center gap-2 bg-black/40 backdrop-blur-md border border-white/20 hover:border-white/40 rounded-full px-3 py-2 focus-within:bg-black/80 focus-within:border-cyan-500/50 transition-all shadow-lg group">
+        <button type="submit" disabled={loading} className="shrink-0 outline-none hover:scale-110 transition-transform">
+            {loading ? <Loader2 size={16} className="text-cyan-500 animate-spin" /> : <Search size={16} className="text-zinc-400 group-focus-within:text-cyan-400 hover:text-cyan-300 transition-colors" />}
+        </button>
         <input
           type="text"
           value={query}
           onFocus={() => setIsFocused(true)}
           onBlur={() => setTimeout(() => setIsFocused(false), 200)}
           onChange={e => setQuery(e.target.value)}
-          onKeyDown={e => {
-            if (e.key === 'Enter' && query.trim()) {
-              window.location.href = `/drama/search?q=${encodeURIComponent(query.trim())}`;
-            }
-          }}
           placeholder="Titles, people, genres"
-          className={cn("bg-transparent text-white text-xs font-bold w-full outline-none placeholder:text-white/60 transition-all", !isFocused && !query && "md:block hidden")}
+          className={cn("bg-transparent text-white text-xs font-bold w-full outline-none placeholder:text-white/40 transition-all", !isFocused && !query && "md:block hidden")}
         />
-      </div>
+      </form>
       {results.length > 0 && (
         <div className="absolute top-full mt-2 left-0 right-0 bg-[#0a0a0a]/95 backdrop-blur-xl border border-white/10 rounded-2xl shadow-2xl z-50 p-2 flex flex-col gap-1 max-h-96 overflow-y-auto [&::-webkit-scrollbar]:hidden">
           {results.map(r => (
@@ -116,71 +113,116 @@ const DramaRow = ({ section, isFirst }: { section: DramaSection, isFirst?: boole
   );
 };
 
-// ── Netflix-Style Hero Banner ─────────────────────────────────────────────────
+// ── Hero Slider ────────────────────────────────────────────────────────────────
 
-const HeroBanner = ({ item }: { item: DramaCard }) => {
-  const [detail, setDetail] = useState<any>(null);
+const HeroSlider = ({ items }: { items: DramaCard[] }) => {
+  const [currentIndex, setCurrentIndex] = useState(0);
+  const [details, setDetails] = useState<Record<string, any>>({});
+  
+  useEffect(() => {
+      if (!items || items.length === 0) return;
+      const interval = setInterval(() => {
+          setCurrentIndex(prev => (prev + 1) % items.length);
+      }, 7000); // 7 seconds
+      return () => clearInterval(interval);
+  }, [items]);
 
   useEffect(() => {
-     omni.drama.getDetail(item.id).then(res => {
-         if (res) setDetail(res);
-     }).catch(() => {});
-  }, [item.id]);
+      // Preload details for the active item
+      const item = items[currentIndex];
+      if (item && !details[item.id]) {
+          omni.drama.getDetail(item.id).then(res => {
+              if (res) setDetails(prev => ({ ...prev, [item.id]: res }));
+          }).catch(() => {});
+      }
+  }, [currentIndex, items, details]);
+
+  if (!items || items.length === 0) return null;
+  const item = items[currentIndex];
+  const detail = details[item.id];
 
   return (
-    <div className="relative w-full h-[85vh] md:h-[100vh] bg-[#050505]">
-      {/* Background Image */}
-      <div className="absolute inset-0 w-full h-full">
-        {item.image && (
-          <img src={detail?.banner || item.image} alt={item.title} className="w-full h-full object-cover opacity-80 scale-105" loading="eager" />
-        )}
-        {/* Futuristic Gradients & Grid */}
-        <div className="absolute inset-0 bg-gradient-to-r from-[#050505] via-[#050505]/70 to-transparent w-full md:w-[65%]" />
-        <div className="absolute inset-0 bg-gradient-to-t from-[#050505] via-[#050505]/40 to-transparent" />
-        <div className="absolute inset-0 bg-gradient-to-t from-[#050505] via-[#050505]/90 to-transparent h-72 bottom-0" />
-        <div className="absolute inset-0 bg-[linear-gradient(to_right,#4f4f4f2e_1px,transparent_1px),linear-gradient(to_bottom,#4f4f4f2e_1px,transparent_1px)] bg-[size:32px_32px] opacity-30" />
-        <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-cyan-500 via-purple-500 to-orange-500 opacity-50" />
-      </div>
+    <div className="relative w-full h-[85vh] md:h-[100vh] bg-[#050505] overflow-hidden">
+      <AnimatePresence mode="wait">
+        <motion.div
+          key={item.id}
+          initial={{ opacity: 0, scale: 1.05 }}
+          animate={{ opacity: 1, scale: 1 }}
+          exit={{ opacity: 0 }}
+          transition={{ duration: 1.2, ease: "easeInOut" }}
+          className="absolute inset-0 w-full h-full"
+        >
+          {item.image && (
+            <img src={detail?.banner || item.image} alt={item.title} className="w-full h-full object-cover opacity-80" loading="eager" />
+          )}
+          {/* Futuristic Gradients & Grid */}
+          <div className="absolute inset-0 bg-gradient-to-r from-[#050505] via-[#050505]/70 to-transparent w-full md:w-[65%]" />
+          <div className="absolute inset-0 bg-gradient-to-t from-[#050505] via-[#050505]/40 to-transparent" />
+          <div className="absolute inset-0 bg-gradient-to-t from-[#050505] via-[#050505]/90 to-transparent h-72 bottom-0" />
+          <div className="absolute inset-0 bg-[linear-gradient(to_right,#4f4f4f2e_1px,transparent_1px),linear-gradient(to_bottom,#4f4f4f2e_1px,transparent_1px)] bg-[size:32px_32px] opacity-30" />
+          <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-cyan-500 via-purple-500 to-orange-500 opacity-50" />
+        </motion.div>
+      </AnimatePresence>
 
-      {/* Floating Top Nav Search Override (Only for Desktop really, mobile gets it too) */}
+      {/* Floating Top Nav Search Override */}
       <div className="absolute top-20 md:top-24 right-4 md:right-12 z-50">
          <DramaSearch />
       </div>
 
       {/* Hero Content */}
       <div className="absolute bottom-24 md:bottom-32 left-0 w-full px-4 md:px-12 flex flex-col justify-end z-10 pointer-events-none">
-        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.8 }} className="max-w-2xl pointer-events-auto">
-          {item.country && (
-            <div className="flex items-center gap-3 mb-3 md:mb-5">
-              <span className="w-2 h-2 rounded-full bg-cyan-500 shadow-[0_0_10px_#06b6d4] animate-pulse" />
-              <span className="text-[9px] md:text-[11px] font-black text-cyan-400 uppercase tracking-[0.5em]">{item.country} ORIGINAL</span>
-            </div>
-          )}
-          
-          <h1 className="text-4xl md:text-7xl font-black text-white leading-tight tracking-tighter mb-4 drop-shadow-2xl font-serif">
-            {item.title}
-          </h1>
+        <AnimatePresence mode="wait">
+            <motion.div 
+                key={`content-${item.id}`}
+                initial={{ opacity: 0, y: 30 }} 
+                animate={{ opacity: 1, y: 0 }} 
+                exit={{ opacity: 0, y: -20 }}
+                transition={{ duration: 0.8, delay: 0.2 }} 
+                className="max-w-2xl pointer-events-auto"
+            >
+              {item.country && (
+                <div className="flex items-center gap-3 mb-3 md:mb-5">
+                  <span className="w-2 h-2 rounded-full bg-cyan-500 shadow-[0_0_10px_#06b6d4] animate-pulse" />
+                  <span className="text-[9px] md:text-[11px] font-black text-cyan-400 uppercase tracking-[0.5em]">{item.country} ORIGINAL</span>
+                </div>
+              )}
+              
+              <h1 className="text-4xl md:text-7xl font-black text-white leading-tight tracking-tighter mb-4 drop-shadow-2xl font-serif">
+                {item.title}
+              </h1>
 
-          <div className="flex items-center gap-4 text-[10px] md:text-xs font-bold text-zinc-300 mb-5 drop-shadow-lg uppercase tracking-widest">
-              <span className="text-cyan-400 border border-cyan-400/30 bg-cyan-400/10 px-2 py-0.5 rounded shadow-[0_0_10px_rgba(34,211,238,0.2)]">99% SYNC</span>
-              {item.year && <span>{item.year}</span>}
-              {detail?.status && <span className="border border-purple-500/50 text-purple-400 bg-purple-500/10 px-2 py-0.5 rounded">{detail.status}</span>}
-              {item.episode && <span>{item.episode} EPS</span>}
-          </div>
+              <div className="flex items-center gap-4 text-[10px] md:text-xs font-bold text-zinc-300 mb-5 drop-shadow-lg uppercase tracking-widest">
+                  <span className="text-cyan-400 border border-cyan-400/30 bg-cyan-400/10 px-2 py-0.5 rounded-full shadow-[0_0_10px_rgba(34,211,238,0.2)]">99% SYNC</span>
+                  {item.year && <span>{item.year}</span>}
+                  {detail?.status && <span className="border border-purple-500/50 text-purple-400 bg-purple-500/10 px-2 py-0.5 rounded-full">{detail.status}</span>}
+                  {item.episode && <span>{item.episode} EPS</span>}
+              </div>
 
-          <p className="text-xs md:text-sm text-white/90 leading-relaxed mb-6 drop-shadow-lg line-clamp-3 md:line-clamp-4 font-medium max-w-xl">
-             {detail?.synopsis || "Loading synopsis details from the Shadow Garden archives..."}
-          </p>
-          
-          <div className="flex gap-3">
-            <Link href={`/drama-watch/${item.id}`} className="flex items-center gap-2 bg-white hover:bg-white/90 text-black font-black text-sm md:text-base px-6 py-2.5 rounded transition-all active:scale-95 shadow-xl">
-              <Play size={20} fill="black" /> Play
-            </Link>
-            <button onClick={() => window.location.href = `/drama-watch/${item.id}`} className="flex items-center gap-2 bg-zinc-500/40 hover:bg-zinc-500/60 text-white font-bold text-sm md:text-base px-6 py-2.5 rounded transition-all backdrop-blur-sm shadow-xl border border-white/10">
-              <Info size={20} /> More Info
-            </button>
-          </div>
-        </motion.div>
+              <p className="text-xs md:text-sm text-white/90 leading-relaxed mb-6 drop-shadow-lg line-clamp-3 md:line-clamp-4 font-medium max-w-xl">
+                 {detail?.synopsis || "Loading synopsis details from the Shadow Garden archives..."}
+              </p>
+              
+              <div className="flex gap-3">
+                <Link href={`/drama-watch/${item.id}`} className="flex items-center gap-2 bg-white hover:bg-white/90 text-black font-black text-sm md:text-base px-6 py-2.5 rounded-full transition-all active:scale-95 shadow-xl">
+                  <Play size={20} fill="black" /> Play
+                </Link>
+                <button onClick={() => window.location.href = `/drama-watch/${item.id}`} className="flex items-center gap-2 bg-zinc-500/40 hover:bg-zinc-500/60 text-white font-bold text-sm md:text-base px-6 py-2.5 rounded-full transition-all backdrop-blur-sm shadow-xl border border-white/10">
+                  <Info size={20} /> More Info
+                </button>
+              </div>
+            </motion.div>
+        </AnimatePresence>
+        
+        {/* Slider Indicators */}
+        <div className="flex items-center gap-2 mt-8 pointer-events-auto">
+            {items.map((_, i) => (
+                <button 
+                    key={i} 
+                    onClick={() => setCurrentIndex(i)} 
+                    className={cn("h-1.5 rounded-full transition-all duration-300", currentIndex === i ? "w-8 bg-cyan-500 shadow-[0_0_8px_#06b6d4]" : "w-3 bg-white/20 hover:bg-white/40")}
+                />
+            ))}
+        </div>
       </div>
     </div>
   );
@@ -227,9 +269,20 @@ export default function DramaHomePage() {
   useEffect(() => {
     (async () => {
       const home = await omni.drama.getHome();
-      if (home && home.sections) {
-          setSections(home.sections.filter((s:any) => s.items && s.items.length > 0));
+      let loadedSections = home?.sections?.filter((s:any) => s.items && s.items.length > 0) || [];
+      
+      // If we only have 1 or 2 sections, fetch more!
+      if (loadedSections.length < 3) {
+          const trending = await omni.drama.search('korean');
+          if (trending.items.length) {
+              loadedSections.push({ title: 'Trending K-Dramas', items: trending.items.slice(0, 15) });
+          }
+          const chinese = await omni.drama.search('chinese');
+          if (chinese.items.length) {
+              loadedSections.push({ title: 'Trending C-Dramas', items: chinese.items.slice(0, 15) });
+          }
       }
+      setSections(loadedSections);
       setLoading(false);
     })();
   }, []);
@@ -243,9 +296,9 @@ export default function DramaHomePage() {
     window.scrollTo({ top: window.innerHeight * 0.7, behavior: 'smooth' });
   };
 
-  const hero = sections[0]?.items[0] || null;
+  const heroItems = sections[0]?.items.slice(0, 5) || [];
   const displaySections = sections.map((s, i) => {
-      if (i === 0 && hero) return { ...s, items: s.items.slice(1) };
+      if (i === 0 && heroItems.length > 0) return { ...s, items: s.items.slice(5) };
       return s;
   });
 
@@ -253,11 +306,11 @@ export default function DramaHomePage() {
     <div className="min-h-screen bg-[#050505] text-white pb-24 overflow-x-hidden">
       {loading ? (
         <div className="w-full min-h-screen flex flex-col items-center justify-center gap-4">
-           <div className="w-14 h-14 border-4 border-red-600 border-t-transparent rounded-full animate-spin" />
+           <div className="w-14 h-14 border-4 border-cyan-500 border-t-transparent rounded-full animate-spin" />
         </div>
       ) : (
         <>
-          {hero && <HeroBanner item={hero} />}
+          {heroItems.length > 0 && <HeroSlider items={heroItems} />}
           
           <Categories onSelect={handleCategorySelect} />
 

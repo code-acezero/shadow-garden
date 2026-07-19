@@ -48,8 +48,8 @@ function DonghuaSection({ title, items }: { title: string, items: any[] }) {
         <section className="w-full px-4 md:px-8 max-w-[1350px] mx-auto">
             <div className="flex items-center justify-between mb-4 md:mb-6">
                 <div className="flex items-center gap-3">
-                    <div className="w-1.5 h-6 rounded-full bg-primary-500 shadow-[0_0_10px_rgba(220,38,38,0.5)]" />
-                    <h2 className="text-xl md:text-2xl font-black text-white uppercase tracking-wider">
+                    <div className="w-1.5 h-6 rounded-full bg-emerald-500 shadow-[0_0_10px_rgba(16,185,129,0.7)]" />
+                    <h2 className="text-xl md:text-2xl font-black text-emerald-50 uppercase tracking-wider font-serif">
                         {title}
                     </h2>
                 </div>
@@ -100,8 +100,9 @@ export default function DonghuaHomeClient() {
 
       <MobileContainer
         hasBottomNav
-        className="bg-[#050505] h-[100dvh] relative overflow-y-auto no-scrollbar scrolling-touch"
+        className="bg-gradient-to-br from-[#021008] via-[#041d13] to-[#010905] h-[100dvh] relative overflow-y-auto no-scrollbar scrolling-touch"
       >
+        <div className="absolute inset-0 bg-[url('/images/mystic-bg.png')] opacity-5 mix-blend-overlay pointer-events-none" />
         <div className="shadow-light-top" />
         <div className="shadow-light-bottom" />
 

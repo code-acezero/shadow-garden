@@ -294,6 +294,7 @@ const HindiPlayer = forwardRef<HindiPlayerRef, HindiPlayerProps>(({
     setIsBuffering(true); 
     if (hlsRef.current) hlsRef.current.destroy();
 
+    const isExplicitMp4 = url.toLowerCase().includes('.mp4');
     // The user explicitly requested to NOT route any proxies
     const finalUrl = url;
 
