@@ -415,6 +415,14 @@ function WhisperIslandContent() {
     const handleClickOutside = (e: MouseEvent) => { if (wrapperRef.current && !wrapperRef.current.contains(e.target as Node)) { setShowFilters(false); setIsMobileSearchExpanded(false); if (centerMode === 'ISLAND_DETAILS') setCenterMode('ISLAND_FOCUSED'); } };
     document.addEventListener("mousedown", handleClickOutside);
 
+    return () => { 
+        window.removeEventListener('resize', handleResize); 
+        document.removeEventListener("mousedown", handleClickOutside); 
+        clearTimeout(logoInterval); 
+    };
+  }, [logoState, centerMode]);
+
+  useEffect(() => {
     const handleWhisper = async (e: any) => {
         const newNotif = { 
             id: e.detail.id.toString(), type: e.detail.type, title: e.detail.title, content: e.detail.message, link: e.detail.link 
@@ -450,13 +458,10 @@ function WhisperIslandContent() {
     }
 
     return () => { 
-        window.removeEventListener('resize', handleResize); 
-        document.removeEventListener("mousedown", handleClickOutside); 
-        clearTimeout(logoInterval); 
         if (typeof window !== 'undefined') window.removeEventListener('shadow-whisper', handleWhisper);
         if (channel) supabase.removeChannel(channel);
     };
-  }, [profile, logoState]); 
+  }, [profile?.id]);
 
   // ✅ 2. WELCOME / GREETING LOGIC (With Cleanup)
   useEffect(() => {

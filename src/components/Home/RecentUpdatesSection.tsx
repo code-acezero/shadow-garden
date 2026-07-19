@@ -108,11 +108,15 @@ export default function RecentUpdatesSection({ initialData }: { initialData: any
                     const proxiedUrl = finalUrl ? `/api/proxy?url=${encodeURIComponent(finalUrl)}` : "/images/placeholder.jpg";
 
                     // --- Episode Processing ---
-                    const rawSub = (typeof anime.episodes === 'object' ? anime.episodes.sub : anime.sub) || 0;
-                    const rawDub = (typeof anime.episodes === 'object' ? anime.episodes.dub : anime.dub) || 0;
-                    const rawTotal = anime.totalEpisodes || anime.episodes || 0;
+                    const safeEpisodes = anime.episodes || {};
+                    const rawSub = (typeof safeEpisodes === 'object' && safeEpisodes !== null ? safeEpisodes.sub : anime.sub) || 0;
+                    const rawDub = (typeof safeEpisodes === 'object' && safeEpisodes !== null ? safeEpisodes.dub : anime.dub) || 0;
+                    const rawTotal = anime.totalEpisodes || (typeof safeEpisodes === 'object' && safeEpisodes !== null ? safeEpisodes.total : 0) || 0;
 
                     let epValue = anime.episode;
+                    if (typeof epValue === 'object' && epValue !== null) {
+                        epValue = epValue.total || epValue.sub || epValue.dub || 0;
+                    }
                     if (typeof epValue === 'string') {
                         const match = epValue.match(/\d+/);
                         epValue = match ? parseInt(match[0], 10) : 0;
@@ -128,13 +132,13 @@ export default function RecentUpdatesSection({ initialData }: { initialData: any
                         targetEp = rawDub;
                         if (targetEp > 0) watchParams = `?ep=${targetEp}&type=dub`;
                     } else if (filter === 'hindi') {
-                        targetEp = epValue || rawTotal || 0; 
+                        targetEp = Number(epValue) || rawTotal || 0; 
                         if (targetEp > 0) watchParams = `?ep=${targetEp}`;
                     } else if (filter === 'donghua') {
                         targetEp = rawSub || rawTotal || 0;
                         if (targetEp > 0) watchParams = `?ep=${targetEp}`;
                     } else {
-                        targetEp = rawSub || anime.episode || 0;
+                        targetEp = rawSub || Number(epValue) || 0;
                         if (targetEp > 0) watchParams = `?ep=${targetEp}`;
                     }
 
@@ -160,7 +164,7 @@ export default function RecentUpdatesSection({ initialData }: { initialData: any
                         },
                         sub: rawSub > 0 ? rawSub : null,
                         dub: rawDub > 0 ? rawDub : null,
-                        episode: (filter === 'hindi' || filter === 'donghua') ? targetEp : anime.episode, 
+                        episode: (filter === 'hindi' || filter === 'donghua') ? targetEp : (typeof anime.episode === 'object' ? (anime.episode?.total || anime.episode?.sub || 0) : anime.episode), 
                         targetRoute: `${baseRoute}${watchParams}` 
                     };
                 });
