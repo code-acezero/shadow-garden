@@ -384,7 +384,7 @@ export default function OtakuVerse({ user, onAuthRequired, highlightId }: OtakuV
   });
 
   return (
-    <div className="w-full min-h-screen bg-[#050505] flex justify-center pb-20 md:pb-0 pt-24 md:pt-24">
+    <div className="w-full h-full bg-[#050505] flex justify-center pb-20 md:pb-0 pt-20 md:pt-24">
       <style jsx global>{`
         body {
           overflow: auto !important;
@@ -396,10 +396,10 @@ export default function OtakuVerse({ user, onAuthRequired, highlightId }: OtakuV
 
       <ImageLightbox isOpen={lightbox.isOpen} src={lightbox.src} onClose={() => setLightbox({ ...lightbox, isOpen: false })} />
 
-      <div className="max-w-7xl w-full flex justify-center lg:justify-between px-0 md:px-4">
+      <div className="max-w-7xl w-full h-full flex justify-center lg:justify-between px-0 md:px-4">
         
         {/* LEFT SIDEBAR (Desktop) */}
-        <header className="hidden sm:flex w-20 lg:w-64 xl:w-72 flex-col justify-between sticky top-[96px] h-[calc(100vh-96px)] self-start pt-0 pb-20 px-2 lg:px-4">
+        <header className="hidden sm:flex w-20 lg:w-64 xl:w-72 flex-col justify-between h-full pt-0 pb-20 px-2 lg:px-4 overflow-y-auto custom-scrollbar">
            <div className="flex flex-col gap-1 w-full items-center lg:items-start">
               <div className="flex items-center justify-center lg:justify-start w-12 h-12 lg:w-auto lg:p-3 rounded-full hover:bg-white/10 cursor-pointer transition-colors mb-2 text-primary-500">
                  <Hash size={28} />
@@ -434,9 +434,9 @@ export default function OtakuVerse({ user, onAuthRequired, highlightId }: OtakuV
         </header>
 
         {/* MIDDLE COLUMN (Feed) */}
-        <main className="flex-1 max-w-[600px] w-full min-h-screen border-x border-white/10 pb-[100px] md:pb-0">
+        <main className="flex-1 max-w-[600px] w-full h-full overflow-y-auto custom-scrollbar border-x border-white/10 pb-[100px] md:pb-0">
            {/* Sticky Header */}
-           <div className="sticky top-[64px] md:top-[72px] z-20 bg-black/70 backdrop-blur-md border-b border-white/10">
+           <div className="relative z-20 bg-black/70 backdrop-blur-md border-b border-white/10">
               <h2 className="text-xl font-bold p-4 sm:hidden font-[Cinzel] text-primary-500 tracking-widest uppercase">OtakuVerse</h2>
               <div className="flex">
                  <button onClick={() => setActiveTab('feed')} className="flex-1 hover:bg-white/5 transition-colors pt-4 pb-0 relative flex justify-center">
@@ -529,7 +529,7 @@ export default function OtakuVerse({ user, onAuthRequired, highlightId }: OtakuV
         </main>
 
         {/* RIGHT SIDEBAR (Desktop Only) */}
-        <aside className="hidden lg:block w-[350px] pl-8 py-0 sticky top-[96px] h-[calc(100vh-96px)] self-start overflow-y-auto twitter-scrollbar">
+        <aside className="hidden lg:block w-[350px] pl-8 py-0 h-full overflow-y-auto twitter-scrollbar pb-20">
             {/* Search */}
             <div className="relative group mb-4">
                 <input type="text" placeholder="Search" value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} className="w-full bg-[#16181c] border border-transparent rounded-full py-3 px-12 text-white text-[15px] focus:outline-none focus:border-primary-500 focus:bg-black transition-colors" />
