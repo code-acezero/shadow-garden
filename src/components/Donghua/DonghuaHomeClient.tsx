@@ -55,9 +55,14 @@ function DonghuaSection({ title, items }: { title: string, items: any[] }) {
                 </div>
             </div>
 
-            <div className="grid grid-cols-2 xs:grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 xl:grid-cols-7 2xl:grid-cols-8 gap-3 md:gap-4 lg:gap-5">
-                {sanitizedResults.map((anime, index) => (
-                    <AnimeCard key={`${anime.id}-${index}`} anime={anime} />
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4 md:gap-6 relative">
+                {sanitizedResults.slice(0, 24).map((anime, index) => (
+                    <div 
+                        key={`${anime.id}-${index}`}
+                        className="group relative z-10 transition-all duration-300 hover:scale-[1.03] hover:z-50"
+                    >
+                        <AnimeCard anime={anime} />
+                    </div>
                 ))}
             </div>
         </section>
@@ -102,12 +107,12 @@ export default function DonghuaHomeClient() {
         hasBottomNav
         className="bg-gradient-to-br from-[#021008] via-[#041d13] to-[#010905] h-[100dvh] relative overflow-y-auto no-scrollbar scrolling-touch"
       >
-        <div className="absolute inset-0 bg-[url('/images/mystic-bg.png')] opacity-5 mix-blend-overlay pointer-events-none" />
+        <div className="absolute inset-0 bg-[url('/images/mystic-bg.png')] opacity-10 pointer-events-none" />
         <div className="shadow-light-top" />
         <div className="shadow-light-bottom" />
 
         <div className="min-h-full flex flex-col relative z-10">
-          <div className="h-20 md:h-14 w-full flex-shrink-0" />
+          <div className="h-28 md:h-24 w-full flex-shrink-0" />
 
           {/* Spotlight Slider */}
           <div className="w-full max-w-[1350px] mx-auto mb-6 md:mb-10 px-0 md:px-8">

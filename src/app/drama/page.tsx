@@ -29,12 +29,24 @@ const DramaSearch = () => {
   }, [query]);
 
   return (
-    <div className={cn("relative transition-all duration-300 z-50", isFocused || query ? "w-64 md:w-80" : "w-10 md:w-64")}>
-      <form onSubmit={(e) => { e.preventDefault(); if (query.trim()) window.location.href = `/drama/search?q=${encodeURIComponent(query.trim())}`; }} className="flex items-center gap-2 bg-[#0f172a]/80 backdrop-blur-md border border-cyan-500/20 hover:border-cyan-400/50 rounded-full px-3 py-2 focus-within:bg-[#0f172a] focus-within:border-cyan-400 focus-within:shadow-[0_0_15px_rgba(34,211,238,0.3)] transition-all group">
-        <button type="submit" disabled={loading} className="shrink-0 outline-none hover:scale-110 transition-transform">
+    <div className={cn("relative transition-all duration-300 z-[99]", isFocused || query ? "w-64 md:w-80" : "w-10 md:w-64")}>
+      <form onSubmit={(e) => { e.preventDefault(); if (query.trim()) window.location.href = `/search?library=drama&keyword=${encodeURIComponent(query.trim())}`; }} className="flex items-center gap-2 bg-[#0f172a]/80 backdrop-blur-md border border-cyan-500/20 hover:border-cyan-400/50 rounded-full px-3 py-2 focus-within:bg-[#0f172a] focus-within:border-cyan-400 focus-within:shadow-[0_0_15px_rgba(34,211,238,0.3)] transition-all group">
+        <button 
+          type="button" 
+          onClick={() => {
+            if (!isFocused && !query) {
+              document.getElementById('drama-search-input')?.focus();
+            } else if (query.trim()) {
+              window.location.href = `/search?library=drama&keyword=${encodeURIComponent(query.trim())}`;
+            }
+          }}
+          disabled={loading} 
+          className="shrink-0 outline-none hover:scale-110 transition-transform"
+        >
             {loading ? <Loader2 size={16} className="text-cyan-400 animate-spin" /> : <Search size={16} className="text-cyan-500 group-focus-within:text-cyan-300 transition-colors" />}
         </button>
         <input
+          id="drama-search-input"
           type="text"
           value={query}
           onFocus={() => setIsFocused(true)}
@@ -43,6 +55,16 @@ const DramaSearch = () => {
           placeholder="Search dramas..."
           className={cn("bg-transparent text-white text-xs font-bold w-full outline-none placeholder:text-cyan-200/50 transition-all", !isFocused && !query && "md:block hidden")}
         />
+        {query && (
+          <div className="flex items-center shrink-0">
+            <button type="button" onClick={() => setQuery('')} className="p-1 text-cyan-400 hover:text-cyan-300 transition-colors outline-none">
+               <Plus size={16} className="rotate-45" />
+            </button>
+            <button type="button" onClick={() => window.location.href = `/search?library=drama&keyword=${encodeURIComponent(query.trim())}`} className="p-1 text-cyan-400 hover:text-cyan-300 transition-colors outline-none border-l border-cyan-500/30 ml-1 pl-2">
+               <ChevronRight size={16} />
+            </button>
+          </div>
+        )}
       </form>
       {results.length > 0 && (
         <div className="absolute top-full mt-3 left-0 right-0 bg-[#0f172a]/95 backdrop-blur-xl border border-cyan-500/20 rounded-2xl shadow-[0_10px_40px_rgba(0,0,0,0.8)] z-50 p-2 flex flex-col gap-1 max-h-96 overflow-y-auto [&::-webkit-scrollbar]:hidden">
@@ -84,7 +106,7 @@ const DCard = memo(({ item }: { item: DramaCard }) => {
   else if (cLower.includes('thai')) flag = '🇹🇭';
 
   return (
-    <div className="group relative flex flex-col shrink-0 w-[140px] sm:w-[160px] md:w-[200px] transition-all duration-300 hover:z-50 hover:scale-110 origin-bottom touch-manipulation">
+    <Link href={`/drama-watch/${item.id}`} className="group relative flex flex-col shrink-0 w-[140px] sm:w-[160px] md:w-[200px] transition-all duration-300 hover:z-50 hover:scale-110 origin-bottom touch-manipulation block">
       <div className="aspect-[2/3] w-full overflow-hidden rounded-xl bg-[#0f172a] relative shadow-lg group-hover:shadow-[0_0_30px_rgba(34,211,238,0.2)] group-hover:ring-2 group-hover:ring-cyan-400/50 transition-all">
         {item.image ? (
           <img src={item.image} alt={item.title} className="w-full h-full object-cover group-hover:opacity-40 transition-opacity duration-300" loading="lazy" decoding="async" />
@@ -121,19 +143,19 @@ const DCard = memo(({ item }: { item: DramaCard }) => {
 
           {/* Action Buttons */}
           <div className="flex items-center gap-2">
-              <button onClick={() => window.location.href = `/drama-watch/${item.id}`} className="w-8 h-8 rounded-full bg-cyan-500 hover:bg-cyan-400 text-black flex items-center justify-center shadow-[0_0_15px_rgba(34,211,238,0.4)] transition-all">
+              <div className="w-8 h-8 rounded-full bg-cyan-500 hover:bg-cyan-400 text-black flex items-center justify-center shadow-[0_0_15px_rgba(34,211,238,0.4)] transition-all">
                   <Play size={14} fill="black" className="ml-0.5" />
-              </button>
-              <button onClick={() => window.location.href = `/drama-watch/${item.id}`} className="w-8 h-8 rounded-full bg-white/10 hover:bg-white/20 border border-white/20 text-white flex items-center justify-center backdrop-blur-sm transition-all">
+              </div>
+              <div className="w-8 h-8 rounded-full bg-white/10 hover:bg-white/20 border border-white/20 text-white flex items-center justify-center backdrop-blur-sm transition-all">
                   <Info size={14} />
-              </button>
-              <button className="w-8 h-8 rounded-full bg-white/10 hover:bg-white/20 border border-white/20 text-white flex items-center justify-center backdrop-blur-sm transition-all ml-auto">
+              </div>
+              <div className="w-8 h-8 rounded-full bg-white/10 hover:bg-white/20 border border-white/20 text-white flex items-center justify-center backdrop-blur-sm transition-all ml-auto" onClick={(e) => { e.preventDefault(); /* handle add to list */ }}>
                   <Plus size={14} />
-              </button>
+              </div>
           </div>
         </div>
       </div>
-    </div>
+    </Link>
   );
 });
 DCard.displayName = "DCard";
@@ -148,7 +170,7 @@ const DramaRow = ({ section, isFirst }: { section: DramaSection & { query?: stri
           <h2 className="text-[16px] md:text-[20px] font-black text-white tracking-tight flex items-center gap-2 group cursor-pointer w-fit drop-shadow-md">
              {section.title}
           </h2>
-          <Link href={section.query ? `/drama/search?q=${section.query}` : `/drama/search`} className="text-[10px] md:text-xs font-bold text-cyan-500 hover:text-cyan-400 flex items-center gap-1 uppercase tracking-widest transition-colors">
+          <Link href={section.query ? `/search?library=drama&keyword=${section.query}` : `/search?library=drama`} className="text-[10px] md:text-xs font-bold text-cyan-500 hover:text-cyan-400 flex items-center gap-1 uppercase tracking-widest transition-colors">
             View All <ChevronRight size={14} />
           </Link>
       </div>
@@ -171,7 +193,7 @@ const DramaGrid = ({ section }: { section: DramaSection & { query?: string } }) 
           <h2 className="text-[16px] md:text-[20px] font-black text-white tracking-tight flex items-center gap-2 w-fit drop-shadow-md">
              {section.title}
           </h2>
-          <Link href={section.query ? `/drama/search?q=${section.query}` : `/drama/search`} className="text-[10px] md:text-xs font-bold text-cyan-500 hover:text-cyan-400 flex items-center gap-1 uppercase tracking-widest transition-colors">
+          <Link href={section.query ? `/search?library=drama&keyword=${section.query}` : `/search?library=drama`} className="text-[10px] md:text-xs font-bold text-cyan-500 hover:text-cyan-400 flex items-center gap-1 uppercase tracking-widest transition-colors">
             View All <ChevronRight size={14} />
           </Link>
       </div>

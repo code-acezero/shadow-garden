@@ -396,7 +396,7 @@ export default function OtakuVerse({ user, onAuthRequired, highlightId }: OtakuV
 
       <ImageLightbox isOpen={lightbox.isOpen} src={lightbox.src} onClose={() => setLightbox({ ...lightbox, isOpen: false })} />
 
-      <div className="max-w-7xl w-full flex justify-center lg:justify-between px-0 md:px-4">
+      <div className="max-w-7xl w-full h-full flex justify-center lg:justify-between px-0 md:px-4">
         
         {/* LEFT SIDEBAR (Desktop) */}
         <header className="hidden sm:flex w-20 lg:w-64 xl:w-72 flex-col justify-between sticky top-0 h-full pt-4 pb-20 px-2 lg:px-4">

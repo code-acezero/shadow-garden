@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect, useRef, Suspense, useMemo } from 'react';
-import { useRouter, useSearchParams } from 'next/navigation';
+import { useRouter } from 'next/navigation';
 import { motion, AnimatePresence, LayoutGroup, Transition, Variants } from 'framer-motion';
 import { 
   Search, X, Loader2, Filter, Calendar, Tv, Layers, 
@@ -368,7 +368,6 @@ const SearchBarContent = ({ query, setQuery, searchMode, setSearchMode, showFilt
 // --- WHISPER ISLAND CONTENT (Inner) ---
 function WhisperIslandContent() {
   const router = useRouter();
-  const searchParams = useSearchParams(); 
   const wrapperRef = useRef<HTMLDivElement>(null);
   const voiceLock = useRef(false);
   const audioRef = useRef<HTMLAudioElement | null>(null); 
@@ -399,10 +398,13 @@ function WhisperIslandContent() {
   const [settingsOpen, setSettingsOpen] = useState(false); 
 
   useEffect(() => {
-    if (searchParams.has('guild-pass')) {
-        if (typeof window !== 'undefined') window.dispatchEvent(new CustomEvent('shadow-open-auth', { detail: { view: 'ENTER' } }));
+    if (typeof window !== 'undefined') {
+        const urlParams = new URLSearchParams(window.location.search);
+        if (urlParams.has('guild-pass')) {
+            window.dispatchEvent(new CustomEvent('shadow-open-auth', { detail: { view: 'ENTER' } }));
+        }
     }
-  }, [searchParams]);
+  }, []);
 
   // ✅ 1. STABLE LISTENER (INITIALIZE FIRST)
   const activeNotifRef = useRef(activeNotif);

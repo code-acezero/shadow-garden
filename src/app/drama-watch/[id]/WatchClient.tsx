@@ -80,6 +80,33 @@ function DramaWatchContent() {
     (async () => {
       setIsLoadingInfo(true);
       const data = await omni.drama.getDetail(slug);
+      
+      // Fetch Recommendations
+      if (data && (!data.recommendations || data.recommendations.length === 0)) {
+          try {
+              let relatedData = null;
+              if (data.country) {
+                  relatedData = await omni.drama.getByCountry(data.country, 1);
+              } else if (data.genres && data.genres.length > 0) {
+                  relatedData = await omni.drama.getByGenre(data.genres[0], 1);
+              }
+              
+              if (relatedData && relatedData.items && relatedData.items.length > 1) {
+                  data.recommendations = relatedData.items
+                      .filter(s => s.id !== data.id)
+                      .slice(0, 10);
+              } else {
+                  // Fallback
+                  const homeData = await omni.drama.getHome();
+                  if (homeData && homeData.sections && homeData.sections.length > 0) {
+                      data.recommendations = homeData.sections[0].items
+                          .filter(s => s.id !== data.id)
+                          .slice(0, 10);
+                  }
+              }
+          } catch(e) {}
+      }
+      
       setDrama(data);
       setIsLoadingInfo(false);
       if (data?.episodes?.length) {
@@ -161,8 +188,8 @@ function DramaWatchContent() {
   );
 
   return (
-    <div className="min-h-screen bg-[#050505] text-gray-100 pb-24 pt-[env(safe-area-inset-top)] pt-16 md:pt-24 font-sans overflow-x-hidden">
-      <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="w-full flex flex-col items-center bg-[#050505] relative z-40 px-4 md:px-8 mt-6">
+    <div className="min-h-screen bg-[#050505] text-gray-100 pb-24 pt-[env(safe-area-inset-top)] pt-4 md:pt-8 font-sans overflow-x-hidden">
+      <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="w-full flex flex-col items-center bg-[#050505] relative z-40 px-4 md:px-8 mt-2">
         <div className="w-full max-w-[1500px] flex flex-col xl:grid xl:grid-cols-12 gap-8 items-start">
 
           {/* Player Column */}
@@ -395,9 +422,16 @@ function DramaWatchContent() {
               <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.4 }} className="w-full bg-[#0a0a0a] rounded-[40px] border border-white/5 p-6 shadow-2xl sticky top-24">
                 <div className="flex items-center gap-3 mb-6"><Flame size={18} className="text-orange-600" /><h3 className="font-black text-white text-sm font-[Cinzel] tracking-widest uppercase">More Like This</h3></div>
                 <ScrollArea className="h-[600px] pr-4">
-                  <div className="grid grid-cols-2 gap-4">
+                  <div className="flex flex-col gap-3">
                     {drama.recommendations.map(rec => (
-                      <DCard key={rec.id} item={rec} />
+                      <Link key={rec.id} href={`/drama-watch/${rec.id}`} className="flex items-center gap-4 bg-white/5 border border-white/5 hover:border-orange-500/50 hover:bg-white/10 rounded-2xl p-2 transition-all">
+                        <img src={rec.image} alt={rec.title} className="w-16 h-24 object-cover rounded-xl shadow-md" loading="lazy" />
+                        <div className="flex flex-col min-w-0">
+                           <h4 className="text-sm font-bold text-white line-clamp-2 leading-tight">{rec.title}</h4>
+                           <p className="text-[10px] text-orange-500 font-bold uppercase tracking-widest mt-1">{rec.country} {rec.year && `· ${rec.year}`}</p>
+                           {rec.type && <span className="text-[9px] text-zinc-400 uppercase mt-1">{rec.type}</span>}
+                        </div>
+                      </Link>
                     ))}
                   </div>
                 </ScrollArea>
