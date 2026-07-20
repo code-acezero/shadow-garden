@@ -2,7 +2,7 @@
 
 import React, { useEffect, useRef, useState, useCallback, forwardRef, useImperativeHandle } from 'react';
 import Hls from 'hls.js';
-import { Play, Pause, Volume2, VolumeX, Settings, Maximize, Subtitles, Gauge, ChevronRight, ChevronLeft, ChevronsLeft, ChevronsRight, Loader2, PictureInPicture, Server as ServerIcon } from 'lucide-react';
+import { Play, Pause, Volume2, VolumeX, Settings, Maximize, Subtitles, Gauge, ChevronRight, ChevronLeft, ChevronsLeft, ChevronsRight, Loader2, PictureInPicture, Server as ServerIcon, SkipForward, ToggleLeft, ToggleRight } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 interface DramaPlayerProps {
@@ -24,6 +24,7 @@ interface DramaPlayerProps {
   episodes?: { id: string; number: number; title: string; }[];
   currentEpId?: string | null;
   onEpisodeSelect?: (id: string) => void;
+  isAutoNext?: boolean;
   servers?: { name: string; type: string; url?: string; }[];
   activeServerIdx?: number;
   onServerSelect?: (idx: number) => void;
@@ -39,7 +40,7 @@ export interface DramaPlayerRef {
 const DramaPlayer = forwardRef<DramaPlayerRef, DramaPlayerProps>(({
   url, iframeUrl, title, poster, referer, autoPlay = true, startTime = 0,
   onEnded, onPlay, onPause, onProgress, onInteract, initialVolume = 1,
-  episodes = [], currentEpId, onEpisodeSelect, servers = [], activeServerIdx = 0, onServerSelect
+  episodes = [], currentEpId, onEpisodeSelect, isAutoNext = true, servers = [], activeServerIdx = 0, onServerSelect
 }, ref) => {
   const videoRef = useRef<HTMLVideoElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -251,7 +252,15 @@ const DramaPlayer = forwardRef<DramaPlayerRef, DramaPlayerProps>(({
           if (canSaveRef.current) onProgress?.({ playedSeconds: v.currentTime });
         }}
         onLoadedMetadata={() => setDuration(videoRef.current?.duration || 0)}
-        onEnded={() => { onInteract?.(); onEnded?.(); }}
+        onEnded={() => { 
+          onInteract?.(); 
+          onEnded?.(); 
+          if (isAutoNext) {
+            const idx = episodes.findIndex(e => e.id === currentEpId);
+            const nextEp = idx >= 0 && idx < episodes.length - 1 ? episodes[idx + 1] : null;
+            if (nextEp && onEpisodeSelect) onEpisodeSelect(nextEp.id);
+          }
+        }}
         playsInline
       />
 
@@ -308,6 +317,16 @@ const DramaPlayer = forwardRef<DramaPlayerRef, DramaPlayerProps>(({
             <button onClick={(e) => { e.stopPropagation(); togglePlay(); }} className="hover:text-primary-500 transition-colors active:scale-90 text-white">
               {isPlaying ? <Pause size={24} /> : <Play size={24} />}
             </button>
+            {episodes && currentEpId && episodes.findIndex(e => e.id === currentEpId) < episodes.length - 1 && (
+              <button onClick={(e) => { 
+                e.stopPropagation(); 
+                const idx = episodes.findIndex(e => e.id === currentEpId);
+                const nextEp = episodes[idx + 1];
+                if (nextEp && onEpisodeSelect) onEpisodeSelect(nextEp.id);
+              }} className="hover:text-primary-500 transition-colors active:scale-90 text-white">
+                <SkipForward size={20} />
+              </button>
+            )}
             <div className="text-[11px] font-bold text-zinc-400 font-mono hidden md:block"><span className="text-white">{formatTime(currentTime)}</span> / {formatTime(duration)}</div>
             
             {/* Integrated Episodes Menu */}
@@ -352,6 +371,10 @@ const DramaPlayer = forwardRef<DramaPlayerRef, DramaPlayerProps>(({
           </div>
 
           <div className="flex items-center gap-2 md:gap-4 relative">
+            <button onClick={(e) => { e.stopPropagation(); setIsAutoNext(!isAutoNext); }} className="hover:text-primary-500 transition-colors active:scale-90 text-white flex items-center gap-1">
+              <span className="text-[10px] font-black uppercase hidden md:inline">Auto Next</span>
+              {isAutoNext ? <ToggleRight size={22} className="text-primary-500" /> : <ToggleLeft size={22} className="text-zinc-500" />}
+            </button>
             <div className="relative z-50">
               <button onClick={(e) => { e.stopPropagation(); setShowSettings(!showSettings); setShowEpisodes(false); setShowServers(false); }} className={cn("hover:text-primary-500 transition-colors active:scale-90 p-2 md:p-0 text-white", showSettings && "text-primary-500")}>
                 <Settings size={22} />

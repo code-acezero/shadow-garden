@@ -71,6 +71,7 @@ export interface DramaCard {
 export interface DramaSection {
   title: string;
   items: DramaCard[];
+  query?: string;
 }
 
 export interface DramaHome {
@@ -158,7 +159,7 @@ class OmniClient {
     },
 
     search: async (query: string, page = 1) => {
-      const res: any = await fetchOmni('/search', { q: query, page });
+      const res: any = await fetchOmni('/search', { keyword: query, page });
       const items = Array.isArray(res?.results)
         ? res.results.map(normalizeDramaCard)
         : Array.isArray(res) ? res.map(normalizeDramaCard) : [];
@@ -247,6 +248,45 @@ class OmniClient {
       const items = Array.isArray(res?.results)
         ? res.results.map(normalizeDramaCard)
         : Array.isArray(res) ? res.map(normalizeDramaCard) : [];
+      return {
+        items,
+        pagination: {
+          currentPage: res?.page || page,
+          hasNextPage: res?.hasNextPage ?? items.length >= 20,
+          totalPages: res?.totalPages ?? 1,
+        },
+      };
+    },
+
+    getByCountry: async (country: string, page = 1) => {
+      const res: any = await fetchOmni(`/country/${encodeURIComponent(country.toLowerCase())}`, { page });
+      const items = Array.isArray(res?.results) ? res.results.map(normalizeDramaCard) : [];
+      return {
+        items,
+        pagination: {
+          currentPage: res?.page || page,
+          hasNextPage: res?.hasNextPage ?? items.length >= 20,
+          totalPages: res?.totalPages ?? 1,
+        },
+      };
+    },
+
+    getByGenre: async (genre: string, page = 1) => {
+      const res: any = await fetchOmni(`/genre/${encodeURIComponent(genre.toLowerCase())}`, { page });
+      const items = Array.isArray(res?.results) ? res.results.map(normalizeDramaCard) : [];
+      return {
+        items,
+        pagination: {
+          currentPage: res?.page || page,
+          hasNextPage: res?.hasNextPage ?? items.length >= 20,
+          totalPages: res?.totalPages ?? 1,
+        },
+      };
+    },
+
+    getFilter: async (type: string, page = 1) => {
+      const res: any = await fetchOmni(`/filter/${encodeURIComponent(type.toLowerCase())}`, { page });
+      const items = Array.isArray(res?.results) ? res.results.map(normalizeDramaCard) : [];
       return {
         items,
         pagination: {

@@ -71,7 +71,7 @@ export default function HindiAnimeCard({ anime }: { anime: any }) {
     const cleanPoster = anime.poster ? anime.poster.replace(/([^:]\/)\/+/g, "$1") : "/images/placeholder-no-img.jpg";
     const title = anime.title || "Unknown Title";
     const type = anime.type || "HINDI";
-    const targetRoute = anime.targetRoute || `/watch/${anime.id}`; 
+    const targetRoute = anime.targetRoute || `/hindi-watch/${anime.id}`;
     const epCount = anime.episode || "?";
 
     return { poster: cleanPoster, title, type, targetRoute, epCount, dataId: anime.dataId };

@@ -156,12 +156,45 @@ export const dpi = {
       : Array.isArray(res?.sources)
         ? (res.sources as any[]).map((s: any, i: number) => ({ name: s.quality || `Server ${i + 1}`, url: s.url || '' }))
         : res?.url ? [{ name: 'Default', url: res.url }] : [];
+
+    let finalUrl = res?.iframe || res?.url || '';
+    let subtitles = res?.subtitles || [];
+
+    if (finalUrl && finalUrl.includes('donghuaplanet.com')) {
+      try {
+        const proxyUrl = `/api/proxy?url=${encodeURIComponent(finalUrl)}&referer=${encodeURIComponent('https://donghuaworld.com/')}`;
+        const htmlRes = await fetch(proxyUrl);
+        const html = await htmlRes.text();
+
+        const sourcesMatch = html.match(/sources:\s*(\[.*?\])/);
+        const tracksMatch = html.match(/const\s+tracks\s*=\s*(\[[\s\S]*?\]);/);
+
+        if (sourcesMatch) {
+          const sources = JSON.parse(sourcesMatch[1]);
+          const autoStream = sources.find((s: any) => s.label === 'Auto' || s.file?.includes('.m3u8')) || sources[0];
+          if (autoStream && autoStream.file) {
+            finalUrl = `/api/proxy?url=${encodeURIComponent(autoStream.file)}&referer=${encodeURIComponent('https://donghuaworld.com/')}`;
+          }
+        }
+
+        if (tracksMatch) {
+          const tracks = JSON.parse(tracksMatch[1]);
+          subtitles = tracks.filter((t: any) => t.label).map((t: any) => ({ 
+            lang: t.label, 
+            url: `/api/proxy?url=${encodeURIComponent(t.file)}&referer=${encodeURIComponent('https://donghuaworld.com/')}` 
+          }));
+        }
+      } catch (e) {
+        console.error('Failed to extract DonghuaPlanet stream:', e);
+      }
+    }
+
     return {
       servers: rawServers,
-      url: res?.iframe || res?.url || '',
-      iframe: res?.iframe || res?.url || '',
+      url: finalUrl,
+      iframe: finalUrl,
       nextEpDate: res?.nextEpDate || null,
-      subtitles: res?.subtitles || [],
+      subtitles: subtitles,
       intro: res?.intro || null,
       outro: res?.outro || null,
       referer: res?.referer || null

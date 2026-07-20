@@ -97,14 +97,14 @@ function DownloadContent() {
         let streamData: any;
 
         if (type === 'anime') {
-          details = await api.anime.info(id);
-          streamData = await api.anime.getStream(epId);
+          details = await AnimeService.getAnimeInfo(id);
+          streamData = await AnimeService.getStream(epId);
         } else if (type === 'hindi') {
           details = await hpi.hindi.getDetails(id);
           streamData = await hpi.hindi.getStream(epId);
         } else if (type === 'donghua') {
-          details = await dpi.donghua.getDetails(id);
-          streamData = await dpi.donghua.getStream(epId);
+          details = await dpi.bridge.getSmartDetails(id);
+          streamData = await dpi.getStream(epId);
         } else if (type === 'drama') {
           details = await omni.drama.getDetail(id);
           const ep = details?.episodes?.find((e: any) => e.id === epId || String(e.number) === epId);
@@ -229,9 +229,9 @@ function DownloadContent() {
 
       for (const ep of mediaEps) {
         let epStream: any;
-        if (type === 'anime') epStream = await api.anime.getStream(ep.id).catch(() => null);
+        if (type === 'anime') epStream = await AnimeService.getStream(ep.id).catch(() => null);
         else if (type === 'hindi') epStream = await hpi.hindi.getStream(ep.id).catch(() => null);
-        else if (type === 'donghua') epStream = await dpi.donghua.getStream(ep.id).catch(() => null);
+        else if (type === 'donghua') epStream = await dpi.getStream(ep.id).catch(() => null);
         else if (type === 'drama') epStream = await omni.drama.getStream(ep.embedUrl).catch(() => null);
 
         const target = getDirectSourceUrl(epStream);

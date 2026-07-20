@@ -376,6 +376,7 @@ class HPIClient {
       const mappedServers = streamData?.sources ? streamData.sources.map((s: any, idx: number) => {
         const rawUrl = s.url || s.m3u8 || '';
         if (rawUrl) seenRawUrls.add(rawUrl);
+        const isMp4 = rawUrl.toLowerCase().includes('.mp4');
         // Use the API-provided proxyUrl (omni-api), which is Edge-enabled and supports Range requests
         const bestUrl = s.proxyUrl || toPlayableUrl(rawUrl, s.referer);
         return {
@@ -394,10 +395,21 @@ class HPIClient {
         [...dubServers, ...subServers].forEach((s: any) => {
           if (s.url && !seenRawUrls.has(s.url)) {
             seenRawUrls.add(s.url);
-            mappedServers.push({ name: s.name || `Server ${mappedServers.length + 1}`, url: toPlayableUrl(s.url, s.referer), isEmbed: false });
+            const isMp4 = s.url.toLowerCase().includes('.mp4');
+            const isEmbed = !s.url.includes('.m3u8') && !isMp4;
+            mappedServers.push({ name: s.name || `Server ${mappedServers.length + 1}`, url: toPlayableUrl(s.url, s.referer), isEmbed });
           }
         });
       }
+
+      mappedServers.sort((a: any, b: any) => {
+        const getScore = (s: any) => {
+          if (s.url.toLowerCase().includes('.mp4')) return 3;
+          if (!s.isEmbed) return 2; // m3u8
+          return 1; // embed
+        };
+        return getScore(b) - getScore(a);
+      });
 
       const primaryUrl = mappedServers[0]?.url || toPlayableUrl(streamData?.url, defaultReferer);
       const referer = defaultReferer;

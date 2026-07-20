@@ -88,6 +88,7 @@ export default function AnimeCard({ anime, progress = 0, isHindi = false }: Anim
 
   // --- STATE ---
   const [isHovered, setIsHovered] = useState(false);
+  const [showQtip, setShowQtip] = useState(false);
   const [showMobileInfo, setShowMobileInfo] = useState(false);
   const [popupPosition, setPopupPosition] = useState<'left' | 'right'>('right');
   
@@ -96,6 +97,7 @@ export default function AnimeCard({ anime, progress = 0, isHindi = false }: Anim
   
   const fetchTimeout = useRef<NodeJS.Timeout | null>(null);
   const closeTimeout = useRef<NodeJS.Timeout | null>(null);
+  const hoverDelayTimeout = useRef<NodeJS.Timeout | null>(null);
 
   // --- 1. MEMOIZED NORMALIZATION ---
   const normalized = useMemo(() => {
@@ -202,16 +204,22 @@ export default function AnimeCard({ anime, progress = 0, isHindi = false }: Anim
   // --- HANDLERS ---
   const handleMouseEnter = () => {
     if (closeTimeout.current) clearTimeout(closeTimeout.current);
+    if (hoverDelayTimeout.current) clearTimeout(hoverDelayTimeout.current);
     if (cardRef.current) {
       const rect = cardRef.current.getBoundingClientRect();
       const spaceRight = window.innerWidth - rect.right;
       setPopupPosition(spaceRight < 340 ? 'left' : 'right');
     }
     setIsHovered(true);
+    hoverDelayTimeout.current = setTimeout(() => setShowQtip(true), 600);
   };
 
   const handleMouseLeave = () => {
-    closeTimeout.current = setTimeout(() => setIsHovered(false), 100);
+    closeTimeout.current = setTimeout(() => {
+        setIsHovered(false);
+        setShowQtip(false);
+    }, 100);
+    if (hoverDelayTimeout.current) clearTimeout(hoverDelayTimeout.current);
   };
 
   const handleMobileInfoToggle = (e: React.MouseEvent) => {
@@ -229,32 +237,64 @@ export default function AnimeCard({ anime, progress = 0, isHindi = false }: Anim
     if (qtip || loading || isHindi) return;
     setLoading(true);
     try {
-      const data = await AnimeService.getAnimeInfo(anime.id);
+      const isDonghua = normalized.targetRoute.includes('/donghua-watch/') || normalized.type.toLowerCase() === 'donghua';
+      
+      let data: any;
+      if (isDonghua) {
+          data = await import('@/lib/dpi').then(m => m.dpi.bridge.getSmartDetails(anime.id));
+      } else {
+          data = await AnimeService.getAnimeInfo(anime.id);
+      }
+      
       if (data) {
-        const statsRating = data.stats.rating || "";
-        const isAdult = data.info.genres?.includes('Hentai') || ["Rx", "RX", "Hentai"].some((t: string) => statsRating.toUpperCase().includes(t));
+        if (isDonghua) {
+            setQtip({
+                jname: data.nativeTitle || normalized.displayTitle,
+                rating: data.rating || "",
+                quality: "HD",
+                description: data.description || "Description unavailable.",
+                genres: data.genres || [],
+                studios: data.studios?.join(', ') || "",
+                duration: "Unknown",
+                synonyms: data.alternativeTitles?.join(', ') || "",
+                season: "DONGHUA",
+                isAdult: data.isAdult
+            });
+        } else {
+            const statsRating = data.stats.rating || "";
+            const isAdult = data.info.genres?.includes('Hentai') || ["Rx", "RX", "Hentai"].some((t: string) => statsRating.toUpperCase().includes(t));
 
-        setQtip({
-          jname: data.jname || data.info.japanese || normalized.displayTitle,
-          rating: data.stats.rating,
-          quality: data.stats.quality,
-          description: data.description || "Description unavailable.",
-          genres: data.info.genres || [],
-          studios: data.info.studios?.join(', '),
-          duration: data.stats.duration,
-          synonyms: data.info.synonyms,
-          season: data.info.premiered || "ANIME",
-          isAdult: isAdult
-        });
+            setQtip({
+              jname: data.jname || data.info.japanese || normalized.displayTitle,
+              rating: data.stats.rating,
+              quality: data.stats.quality,
+              description: data.description || "Description unavailable.",
+              genres: data.info.genres || [],
+              studios: data.info.studios?.join(', '),
+              duration: data.stats.duration,
+              synonyms: data.info.synonyms,
+              season: data.info.premiered || "ANIME",
+              isAdult: isAdult
+            });
+        }
       }
     } catch (e) { 
+        console.error("Failed to fetch qtip info", e);
         setQtip({
             jname: normalized.displayTitle,
+            rating: normalized.rawRating || "?",
+            quality: "N/A",
             description: "Details unavailable.",
-            genres: ["Anime"]
+            genres: [],
+            studios: "Unknown",
+            duration: "?m",
+            synonyms: "",
+            season: "UNKNOWN",
+            isAdult: normalized.isAdult
         });
+    } finally {
+        setLoading(false);
     }
-    setLoading(false);
   };
 
   useEffect(() => {
@@ -390,7 +430,7 @@ export default function AnimeCard({ anime, progress = 0, isHindi = false }: Anim
 
       {/* --- DESKTOP Q-TIP POPUP (HOVER) --- */}
       <AnimatePresence>
-        {isHovered && !isHindi && !showMobileInfo && (
+        {isHovered && showQtip && !isHindi && !showMobileInfo && qtip && !loading && (
           <motion.div
               custom={popupPosition}
               variants={qtipVariants}

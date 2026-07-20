@@ -136,7 +136,7 @@ async function getKey(keyUri: string, referer: string): Promise<Buffer> {
   if (cached) return cached;
   const res = await fetchUpstream(keyUri, referer);
   if (!res.ok) throw new Error('Failed to fetch decryption key');
-  const buf = Buffer.from(await res.arrayBuffer());
+  const buf = Buffer.from((await res.arrayBuffer()) as ArrayBuffer);
   keyCache.set(keyUri, buf);
   return buf;
 }
@@ -157,7 +157,7 @@ async function fetchSegmentBytes(seg: Segment, referer: string): Promise<Buffer>
   const range = seg.byteRange ? `bytes=${seg.byteRange.offset}-${seg.byteRange.offset + seg.byteRange.length - 1}` : undefined;
   const res = await fetchUpstream(seg.url, referer, range);
   if (!res.ok) throw new Error(`Segment fetch failed: ${res.status}`);
-  let buf = Buffer.from(await res.arrayBuffer());
+  let buf = Buffer.from((await res.arrayBuffer()) as ArrayBuffer);
   if (seg.keyUri) {
     const key = await getKey(seg.keyUri, referer);
     buf = decrypt(buf, key, seg.seq, seg.ivHex);

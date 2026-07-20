@@ -146,7 +146,7 @@ const HindiPlayer = forwardRef<HindiPlayerRef, HindiPlayerProps>(({
 
   const [canSave, setCanSave] = useState(false); 
   const [hlsFailed, setHlsFailed] = useState(false);
-  const useIframe = isEmbed || hlsFailed || !url;
+  const useIframe = isEmbed || !url;
 
   // Helper
   const formatTime = (t: number) => {

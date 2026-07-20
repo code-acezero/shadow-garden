@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>DM Test</title>
+</head>
+<body>
+    <iframe id="player" src="https://geo.dailymotion.com/player/x19frc.html?video=x8rnx8w&api=postMessage" width="640" height="360" frameborder="0" allow="autoplay; fullscreen" allowfullscreen></iframe>
+    <button onclick="seek(10)">+10s</button>
+    
+    <script>
+        const iframe = document.getElementById('player');
+        
+        window.addEventListener('message', (e) => {
+            console.log('MSG from iframe:', e.data);
+        });
+
+        function seek(time) {
+            console.log('Seeking to', time);
+            
+            // Try all DM formats
+            iframe.contentWindow.postMessage(`command=seek&parameters=${encodeURIComponent(JSON.stringify({time: time}))}`, '*');
+            iframe.contentWindow.postMessage(JSON.stringify({ command: 'seek', parameters: { time: time } }), '*');
+        }
+    </script>
+</body>
+</html>

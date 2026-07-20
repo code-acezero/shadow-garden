@@ -6,7 +6,7 @@ import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
 import { 
     Bold, Italic, EyeOff, Send, MoreVertical, Flag, ThumbsUp, ThumbsDown, 
-    MessageSquare, CornerDownRight, AlertTriangle, Trash2, Edit2, User, X
+    MessageSquare, CornerDownRight, AlertTriangle, Trash2, Edit2, User, X, ChevronDown, ChevronUp
 } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
@@ -16,9 +16,6 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import {
     DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { 
-    Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription 
-} from "@/components/ui/dialog";
 import Link from 'next/link'; 
 import { formatDistanceToNow } from 'date-fns';
 
@@ -72,6 +69,7 @@ const CommentItem = ({ comment, currentUserId, onReply, onReport, onDelete, onEd
     const [isEditing, setIsEditing] = useState(false);
     const [editContent, setEditContent] = useState(comment.content);
     const [showReply, setShowReply] = useState(false);
+    const [showRepliesToggle, setShowRepliesToggle] = useState(false);
 
     const handleSaveEdit = () => {
         if (!editContent.trim()) return;
@@ -101,80 +99,84 @@ const CommentItem = ({ comment, currentUserId, onReply, onReport, onDelete, onEd
     const hasReplies = allReplies.length > 0;
 
     return (
-        <div className="animate-in fade-in slide-in-from-bottom-2 duration-500">
-            <div className={cn("relative flex gap-3 group", isReply ? "pt-2" : "pt-3")}>
-                <div className="flex flex-col items-center">
-                    <Link href={`/profile/${comment.user_id}`} onClick={(e) => e.stopPropagation()}>
-                        <Avatar className={cn("border-2 border-zinc-800 shrink-0 cursor-pointer hover:border-primary-500 transition-colors z-10", isReply ? "w-8 h-8" : "w-10 h-10")}>
-                            <AvatarImage src={avatarUrl || undefined} />
-                            <AvatarFallback className="bg-zinc-900 text-zinc-500 text-xs font-black">{displayName[0]}</AvatarFallback>
-                        </Avatar>
-                    </Link>
-                    {(hasReplies && !isReply) && (
-                        <div className="w-[2px] flex-1 bg-white/10 mt-2 rounded-full" />
-                    )}
-                </div>
+        <div className="animate-in fade-in duration-300">
+            <div className={cn("relative flex gap-4 group", isReply ? "mt-2" : "mt-4")}>
+                {/* Avatar */}
+                <Link href={`/profile/${comment.user_id}`} onClick={(e) => e.stopPropagation()} className="shrink-0 mt-0.5">
+                    <Avatar className={cn("cursor-pointer hover:opacity-80 transition-opacity", isReply ? "w-6 h-6" : "w-10 h-10")}>
+                        <AvatarImage src={avatarUrl || undefined} />
+                        <AvatarFallback className="bg-zinc-800 text-white text-xs font-bold">{displayName[0]?.toUpperCase()}</AvatarFallback>
+                    </Avatar>
+                </Link>
                 
-                <div className="flex-1 pb-2">
-                    <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-1.5">
-                            <Link 
-                                href={`/profile/${comment.user_id}`} 
-                                onClick={(e) => e.stopPropagation()}
-                                className={cn("text-[15px] font-bold hover:underline cursor-pointer transition-colors", comment.user_id === currentUserId ? "text-primary-400" : "text-white")}
-                            >
-                                {comment.user_id === currentUserId ? "You" : displayName}
-                            </Link>
-                            {comment.is_edited && <span className="text-[10px] text-zinc-600 italic">(edited)</span>}
-                            <span className="text-zinc-500 text-[15px]">·</span>
-                            <span className="text-zinc-500 text-[15px] hover:underline cursor-default">
-                                {formatDistanceToNow(new Date(comment.created_at), { addSuffix: false }).replace('about ', '').replace(' minutes', 'm').replace(' hours', 'h')}
-                            </span>
+                {/* Main Content */}
+                <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 mb-0.5">
+                        <Link 
+                            href={`/profile/${comment.user_id}`} 
+                            onClick={(e) => e.stopPropagation()}
+                            className={cn("text-[13px] font-medium hover:underline cursor-pointer truncate", comment.user_id === currentUserId ? "text-primary-500" : "text-zinc-100")}
+                        >
+                            {displayName}
+                        </Link>
+                        <span className="text-[12px] text-zinc-400 hover:text-zinc-300 cursor-pointer">
+                            {formatDistanceToNow(new Date(comment.created_at), { addSuffix: false }).replace('about ', '').replace(' minutes', 'm').replace(' hours', 'h').replace(' days', 'd')}
+                        </span>
+                        {comment.is_edited && <span className="text-[11px] text-zinc-500 italic">(edited)</span>}
+                        
+                        {/* Options Menu */}
+                        <div className="ml-auto">
+                            <DropdownMenu>
+                                <DropdownMenuTrigger className="opacity-0 group-hover:opacity-100 transition-opacity p-1 hover:bg-white/10 rounded-full outline-none">
+                                    <MoreVertical size={16} className="text-zinc-400" />
+                                </DropdownMenuTrigger>
+                                <DropdownMenuContent align="end" className="bg-[#212121] border-none text-zinc-100 shadow-xl rounded-xl py-1 min-w-[120px]">
+                                    {currentUserId === comment.user_id ? (
+                                        <>
+                                            <DropdownMenuItem onClick={() => setIsEditing(true)} className="text-[13px] gap-3 cursor-pointer focus:bg-white/10 px-4 py-2"><Edit2 size={16}/> Edit</DropdownMenuItem>
+                                            <DropdownMenuItem onClick={() => onDelete(comment.id)} className="text-[13px] gap-3 cursor-pointer focus:bg-white/10 px-4 py-2"><Trash2 size={16}/> Delete</DropdownMenuItem>
+                                        </>
+                                    ) : (
+                                        <DropdownMenuItem onClick={() => onReport(comment.id, comment.user_id)} className="text-[13px] gap-3 cursor-pointer focus:bg-white/10 px-4 py-2"><Flag size={16}/> Report</DropdownMenuItem>
+                                    )}
+                                </DropdownMenuContent>
+                            </DropdownMenu>
                         </div>
-                        <DropdownMenu>
-                            <DropdownMenuTrigger className="opacity-0 group-hover:opacity-100 transition-opacity">
-                                <MoreVertical size={14} className="text-zinc-600 hover:text-white" />
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent align="end" className="bg-[#111] border-white/10">
-                                {currentUserId === comment.user_id ? (
-                                    <>
-                                        <DropdownMenuItem onClick={() => setIsEditing(true)} className="text-xs gap-2 cursor-pointer text-zinc-300 focus:text-white"><Edit2 size={12}/> Edit</DropdownMenuItem>
-                                        <DropdownMenuItem onClick={() => onDelete(comment.id)} className="text-xs text-primary-400 gap-2 cursor-pointer focus:text-primary-500"><Trash2 size={12}/> Delete</DropdownMenuItem>
-                                    </>
-                                ) : (
-                                    <DropdownMenuItem onClick={() => onReport(comment.id, comment.user_id)} className="text-xs text-primary-400 gap-2 cursor-pointer focus:text-primary-500"><Flag size={12}/> Report</DropdownMenuItem>
-                                )}
-                            </DropdownMenuContent>
-                        </DropdownMenu>
                     </div>
 
                     {isEditing ? (
-                        <div className="flex flex-col gap-2 mt-2">
-                            <Textarea 
-                                value={editContent} 
-                                onChange={(e) => setEditContent(e.target.value)} 
-                                className="bg-black/40 border-white/10 text-xs text-zinc-300 min-h-[80px]" 
-                            />
-                            <div className="flex gap-2 justify-end">
-                                <Button size="sm" variant="ghost" onClick={() => setIsEditing(false)} className="h-6 text-[10px] text-zinc-400">Cancel</Button>
-                                <Button size="sm" onClick={handleSaveEdit} className="h-6 text-[10px] bg-primary-600 hover:bg-primary-700 text-white">Save Changes</Button>
+                        <div className="flex flex-col gap-2 mt-1 mb-2">
+                            <div className="relative">
+                                <Textarea 
+                                    value={editContent} 
+                                    onChange={(e) => setEditContent(e.target.value)} 
+                                    className="bg-transparent border-0 border-b border-zinc-600 rounded-none focus-visible:ring-0 focus-visible:border-white px-0 py-1 text-[14px] text-white min-h-[40px] resize-none overflow-hidden" 
+                                />
+                            </div>
+                            <div className="flex gap-3 justify-end items-center mt-1">
+                                <button onClick={() => setIsEditing(false)} className="text-[13px] font-medium text-white hover:bg-white/10 px-4 py-1.5 rounded-full transition-colors">Cancel</button>
+                                <button onClick={handleSaveEdit} className={cn("text-[13px] font-medium px-4 py-1.5 rounded-full transition-colors", editContent.trim() ? "bg-primary-600 text-black hover:bg-primary-500" : "bg-zinc-800 text-zinc-500 cursor-not-allowed")}>Save</button>
                             </div>
                         </div>
                     ) : (
-                        <p className="text-[15px] text-zinc-300 leading-tight mt-0.5 font-medium whitespace-pre-wrap break-words overflow-hidden">
-                            {comment.replyingToName && <span className="text-primary-500 font-bold mr-1">@{comment.replyingToName}</span>}
+                        <p className="text-[14px] text-zinc-100 leading-snug whitespace-pre-wrap break-words">
+                            {comment.replyingToName && <span className="text-primary-500 font-medium mr-1">@{comment.replyingToName}</span>}
                             {comment.is_spoiler ? (
-                                <span className="text-zinc-600 italic bg-zinc-900/50 px-2 py-1 rounded border border-zinc-800 select-none">Spoiler Content (Hover to reveal)</span>
+                                <span className="text-zinc-500 italic bg-zinc-900 px-1.5 py-0.5 rounded cursor-pointer hover:bg-zinc-800 select-none">Spoiler Content (Hover to reveal)</span>
                             ) : formatText(comment.content)}
                         </p>
                     )}
 
-                    <div className="flex items-center gap-4 mt-2 mb-2 text-zinc-500">
-                        <button className="flex items-center gap-1.5 hover:bg-white/10 p-1.5 rounded-full transition-colors hover:text-pink-500 active:scale-95">
-                            <ThumbsUp size={16}/> <span className="text-[11px]">{comment.likes_count || 0 > 0 ? comment.likes_count : ''}</span>
+                    <div className="flex items-center gap-2 mt-1 -ml-2 text-zinc-400">
+                        <button className="flex items-center gap-1 hover:bg-white/10 px-2 py-1.5 rounded-full transition-colors active:scale-95 group/btn">
+                            <ThumbsUp size={16} className="group-hover/btn:text-white" />
+                            {comment.likes_count > 0 && <span className="text-[12px]">{comment.likes_count}</span>}
                         </button>
-                        <button onClick={() => setShowReply(!showReply)} className="flex items-center gap-1.5 hover:bg-white/10 p-1.5 rounded-full transition-colors hover:text-white active:scale-95">
-                            <MessageSquare size={16}/>
+                        <button className="flex items-center hover:bg-white/10 px-2 py-1.5 rounded-full transition-colors active:scale-95 group/btn">
+                            <ThumbsDown size={16} className="group-hover/btn:text-white" />
+                        </button>
+                        <button onClick={() => setShowReply(!showReply)} className="text-[12px] font-medium hover:bg-white/10 px-3 py-1.5 rounded-full transition-colors active:scale-95">
+                            Reply
                         </button>
                     </div>
 
@@ -192,12 +194,20 @@ const CommentItem = ({ comment, currentUserId, onReply, onReport, onDelete, onEd
                 </div>
             </div>
 
-            {/* Flat replies - all at the same indentation level under parent thread line */}
+            {/* Flat replies */}
             {!isReply && hasReplies && (
-                <div className="pl-6 border-l-2 border-white/5 ml-5 space-y-0">
-                    {allReplies.map((reply: any) => (
-                        <CommentItem key={reply.id} comment={{...reply, replies: []}} currentUserId={currentUserId} onReply={onReply} onReport={onReport} onDelete={onDelete} onEdit={onEdit} isReply={true} />
-                    ))}
+                <div className="ml-10 mt-1">
+                    <button onClick={() => setShowRepliesToggle(!showRepliesToggle)} className="flex items-center gap-2 text-primary-500 hover:bg-primary-500/10 px-4 py-2 rounded-full transition-colors text-[14px] font-medium active:scale-95">
+                        {showRepliesToggle ? <ChevronUp size={18}/> : <ChevronDown size={18}/>}
+                        {allReplies.length} {allReplies.length === 1 ? 'reply' : 'replies'}
+                    </button>
+                    {showRepliesToggle && (
+                        <div className="mt-2 space-y-1 mb-4">
+                            {allReplies.map((reply: any) => (
+                                <CommentItem key={reply.id} comment={{...reply, replies: []}} currentUserId={currentUserId} onReply={onReply} onReport={onReport} onDelete={onDelete} onEdit={onEdit} isReply={true} />
+                            ))}
+                        </div>
+                    )}
                 </div>
             )}
         </div>
@@ -222,39 +232,50 @@ const CommentInput = ({ episodeId, focusOnMount = false, replyingTo, onCancelRep
     };
 
     return (
-        <div className="flex flex-col gap-2 bg-black/20 p-3 rounded-xl border border-white/5 focus-within:border-primary-500/30 transition-all relative">
+        <div className="flex flex-col gap-2 w-full mt-2">
             {replyingTo && (
-                <div className="flex items-center justify-between bg-primary-900/10 px-3 py-1.5 rounded-lg border border-primary-500/20 mb-1">
-                    <span className="text-[10px] text-primary-400 font-bold">Replying to <span className="text-white">{replyingTo.username}</span></span>
-                    <button onClick={onCancelReply} className="text-primary-400 hover:text-white"><X size={10}/></button>
+                <div className="flex items-center gap-2 mb-1">
+                    <span className="text-[13px] text-zinc-500 font-medium flex items-center gap-1">
+                        <CornerDownRight size={14}/> Replying to <span className="text-zinc-300 font-medium">@{replyingTo.username}</span>
+                    </span>
+                    <button onClick={onCancelReply} className="text-zinc-500 hover:text-white p-1 rounded-full hover:bg-white/10 transition-colors"><X size={12}/></button>
                 </div>
             )}
             
-            <Textarea 
-                ref={textareaRef}
-                value={text} 
-                onChange={(e) => setText(e.target.value)} 
-                placeholder={replyingTo ? "Write your reply..." : "Transmit your thoughts..."} 
-                className="bg-transparent border-none text-xs focus-visible:ring-0 resize-none min-h-[60px] p-0 placeholder:text-zinc-600 text-zinc-300 leading-relaxed"
-            />
-            <div className="flex items-center justify-between border-t border-white/5 pt-2">
-                <div className="flex gap-1">
-                    <button onClick={() => handleFormat('bold')} className="p-1.5 rounded hover:bg-white/10 text-zinc-500 hover:text-white transition-colors" title="Bold"><Bold size={12}/></button>
-                    <button onClick={() => handleFormat('italic')} className="p-1.5 rounded hover:bg-white/10 text-zinc-500 hover:text-white transition-colors" title="Italic"><Italic size={12}/></button>
-                    <button onClick={() => handleFormat('spoiler')} className="p-1.5 rounded hover:bg-white/10 text-zinc-500 hover:text-primary-500 transition-colors" title="Spoiler Tag"><EyeOff size={12}/></button>
+            <div className="relative">
+                <Textarea 
+                    ref={textareaRef}
+                    value={text} 
+                    onChange={(e) => setText(e.target.value)} 
+                    placeholder={replyingTo ? "Add a reply..." : "Add a comment..."} 
+                    className="bg-transparent border-0 border-b border-zinc-600 rounded-none focus-visible:ring-0 focus-visible:border-white px-0 py-2 text-[14px] placeholder:text-zinc-500 text-white min-h-[30px] overflow-hidden resize-none transition-colors"
+                />
+            </div>
+            
+            {/* Action Bar (shows formatting options and send button) */}
+            <div className="flex items-center justify-between pt-1">
+                <div className="flex items-center gap-1">
+                    <button onClick={() => handleFormat('bold')} className="p-2 rounded-full hover:bg-white/10 text-zinc-400 hover:text-white transition-colors" title="Bold"><Bold size={16}/></button>
+                    <button onClick={() => handleFormat('italic')} className="p-2 rounded-full hover:bg-white/10 text-zinc-400 hover:text-white transition-colors" title="Italic"><Italic size={16}/></button>
+                    <button onClick={() => handleFormat('spoiler')} className={cn("p-2 rounded-full transition-colors", isSpoiler ? "bg-primary-500/20 text-primary-500" : "hover:bg-white/10 text-zinc-400 hover:text-white")} onClickCapture={() => setIsSpoiler(!isSpoiler)} title="Spoiler Tag">
+                        <EyeOff size={16}/>
+                    </button>
                 </div>
+                
                 <div className="flex items-center gap-3">
-                    <div className="flex items-center gap-2 cursor-pointer" onClick={() => setIsSpoiler(!isSpoiler)}>
-                        <div className={cn("w-3 h-3 rounded-full border transition-colors", isSpoiler ? "bg-primary-600 border-primary-600" : "border-zinc-600")} />
-                        <span className={cn("text-[9px] font-bold uppercase", isSpoiler ? "text-primary-500" : "text-zinc-600")}>Spoiler</span>
-                    </div>
-                    <Button 
-                        size="sm" 
-                        onClick={() => { if(text.trim()) { onPost(text, isSpoiler, replyingTo ? replyingTo.id : null); setText(""); } }} 
-                        className="h-6 px-4 bg-white/5 hover:bg-primary-600 text-white text-[10px] font-black uppercase tracking-widest rounded-full transition-all"
+                    <button 
+                        onClick={onCancelReply} 
+                        className={cn("text-[13px] font-medium text-white hover:bg-white/10 px-4 py-2 rounded-full transition-colors", !replyingTo && !text.trim() && "hidden")}
                     >
-                        Send <Send size={10} className="ml-2"/>
-                    </Button>
+                        Cancel
+                    </button>
+                    <button 
+                        onClick={() => { if(text.trim()) { onPost(text, isSpoiler, replyingTo ? replyingTo.id : null); setText(""); setIsSpoiler(false); } }} 
+                        className={cn("text-[13px] font-medium px-4 py-2 rounded-full transition-colors", text.trim() ? "bg-primary-600 hover:bg-primary-500 text-black" : "bg-zinc-800 text-zinc-500 cursor-not-allowed")}
+                        disabled={!text.trim()}
+                    >
+                        {replyingTo ? "Reply" : "Comment"}
+                    </button>
                 </div>
             </div>
         </div>
@@ -265,10 +286,8 @@ const CommentInput = ({ episodeId, focusOnMount = false, replyingTo, onCancelRep
 export default function ShadowComments({ episodeId }: { episodeId: string }) {
     const [comments, setComments] = useState<Comment[]>([]);
     const [userId, setUserId] = useState<string | null>(null);
-    const [isOpen, setIsOpen] = useState(false);
     
     // Interaction State
-    const [shouldFocusInput, setShouldFocusInput] = useState(false);
     const [replyingTo, setReplyingTo] = useState<{ id: string; username: string } | null>(null);
 
     // FETCH COMMENTS
@@ -300,12 +319,28 @@ export default function ShadowComments({ episodeId }: { episodeId: string }) {
 
         if (data) {
             const typedData = data as unknown as Comment[]; 
+            const commentMap = new Map<string, Comment>();
+            const roots: Comment[] = [];
             
-            const roots = typedData.filter((c) => !c.parent_id);
-            const replies = typedData.filter((c) => c.parent_id);
+            // First pass: add all comments to map and ensure replies array exists
+            typedData.forEach(c => {
+                c.replies = [];
+                commentMap.set(c.id, c);
+            });
             
-            roots.forEach((root) => {
-                root.replies = replies.filter((r) => r.parent_id === root.id);
+            // Second pass: attach children to parents, or push to roots
+            typedData.forEach(c => {
+                if (c.parent_id) {
+                    const parent = commentMap.get(c.parent_id);
+                    if (parent) {
+                        parent.replies!.push(c);
+                    } else {
+                        // Orphaned reply (parent deleted/missing)
+                        roots.push(c);
+                    }
+                } else {
+                    roots.push(c);
+                }
             });
             
             setComments(roots);
@@ -345,7 +380,6 @@ export default function ShadowComments({ episodeId }: { episodeId: string }) {
         if (!error) {
             toast.success("Signal transmitted.");
             setReplyingTo(null);
-            setShouldFocusInput(false); 
         } else {
             toast.error("Transmission failed.");
         }
@@ -376,127 +410,72 @@ export default function ShadowComments({ episodeId }: { episodeId: string }) {
         else toast.error("Already reported.");
     };
 
-    // --- CLICK HANDLERS ---
-    const handleContainerClick = () => {
-        setReplyingTo(null);
-        setShouldFocusInput(false); 
-        setIsOpen(true);
-    };
-
-    const handlePreviewCommentClick = (e: React.MouseEvent, commentId: string, username: string) => {
-        e.stopPropagation();
-        setReplyingTo({ id: commentId, username: username });
-        setShouldFocusInput(true);
-        setIsOpen(true);
-    };
-
-    const handleInputTriggerClick = (e: React.MouseEvent) => {
-        e.stopPropagation();
-        setReplyingTo(null);
-        setShouldFocusInput(true);
-        setIsOpen(true);
-    };
-
     return (
-        <div className="w-full">
-            {/* PREVIEW CARD */}
-            <div 
-                onClick={handleContainerClick}
-                className="bg-[#0a0a0a] rounded-[40px] border border-white/5 shadow-2xl shadow-primary-900/10 overflow-hidden mb-12 cursor-pointer hover:border-primary-500/20 hover:shadow-primary-900/20 transition-all duration-300 group/card"
-            >
-                 <div className="p-8 border-b border-white/5 bg-gradient-to-r from-primary-900/5 to-transparent flex items-center justify-between">
-                    <div className="flex items-center gap-3">
-                        <MessageSquare size={20} className="text-primary-600 group-hover/card:text-primary-500 transition-colors" />
-                        <h3 className="font-black text-white text-[11px] font-[Cinzel] tracking-[0.4em] uppercase">Community Transmission</h3>
-                    </div>
-                    <Badge variant="outline" className="text-[9px] border-primary-600/30 text-primary-500 font-bold">{comments.reduce((acc, c) => acc + 1 + (c.replies?.length || 0), 0)} Signals</Badge>
-                 </div>
-
-                 <div className="p-8 grid grid-cols-1 lg:grid-cols-3 gap-6">
-                     {comments.slice(0, 3).map((c) => {
-                        const displayName = c.profiles?.username || c.user_id.slice(0,4);
-                        return (
-                            <div 
-                                key={c.id} 
-                                onClick={(e) => handlePreviewCommentClick(e, c.id, displayName)} 
-                                className="bg-white/5 p-4 rounded-2xl border border-white/5 group-hover/card:bg-white/10 transition-colors shadow-sm relative overflow-hidden hover:border-primary-500/40"
-                            >
-                                <div className="flex items-center gap-3 mb-3 relative z-10">
-                                    <Avatar className="w-8 h-8 border border-white/10">
-                                            <AvatarImage src={c.profiles?.avatar_url || undefined} />
-                                            <AvatarFallback className="bg-zinc-800 text-[10px]">{displayName[0]}</AvatarFallback>
-                                    </Avatar>
-                                    <div className="flex flex-col">
-                                            <span className="text-[10px] font-bold text-zinc-200">{displayName}</span>
-                                            <span className="text-[8px] text-zinc-600">{formatDistanceToNow(new Date(c.created_at))} ago</span>
-                                    </div>
-                                </div>
-                                <p className="text-[10px] text-zinc-400 line-clamp-2 leading-relaxed mb-3 relative z-10">
-                                    {c.is_spoiler ? <span className="text-primary-800 blur-sm select-none">SPOILER</span> : c.content}
-                                </p>
-                                <div className="absolute inset-0 bg-gradient-to-t from-black/80 to-transparent opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                                    <span className="text-[9px] font-bold text-white uppercase tracking-widest flex items-center gap-2"><CornerDownRight size={10}/> Reply</span>
-                                </div>
-                            </div>
-                        );
-                     })}
-                     {comments.length === 0 && <div className="col-span-3 text-center text-zinc-600 text-[10px] font-mono py-4">No signals detected in this sector.</div>}
-                 </div>
-                 
-                 <div className="px-8 pb-8">
-                     <div 
-                        onClick={handleInputTriggerClick}
-                        className="flex items-center gap-4 bg-black/40 p-2 pl-4 rounded-full border border-white/10 cursor-text group-hover/card:border-primary-500/30 transition-all shadow-inner"
-                    >
-                        <div className="w-6 h-6 rounded-full bg-primary-600 flex items-center justify-center"><User size={12} className="text-white" /></div>
-                        <span className="text-[10px] text-zinc-500 font-bold group-hover/card:text-zinc-400">Transmit your thoughts...</span>
-                        <Button size="icon" className="rounded-full w-8 h-8 ml-auto bg-white/5 hover:bg-primary-600 text-white border border-white/5"><Send size={12} /></Button>
-                    </div>
-                 </div>
+        <div className="w-full mt-16 mb-12 animate-in fade-in duration-700">
+            {/* HEADER */}
+            <div className="flex items-center gap-3 mb-8 pb-4 border-b border-white/5">
+                <MessageSquare size={24} className="text-primary-600" />
+                <h3 className="font-black text-white text-xl md:text-2xl font-[Cinzel] tracking-[0.2em] uppercase">Community Transmission</h3>
+                <Badge variant="outline" className="text-[10px] md:text-xs border-primary-600/30 text-primary-500 font-bold ml-2">
+                    {comments.reduce((acc, c) => acc + 1 + (c.replies?.length || 0), 0)} Signals
+                </Badge>
             </div>
 
-            {/* FULL DIALOG OVERLAY */}
-            <Dialog open={isOpen} onOpenChange={setIsOpen}>
-                <DialogContent className="bg-[#0a0a0a] border-primary-500/20 max-w-5xl h-[85vh] flex flex-col p-0 gap-0 overflow-hidden shadow-2xl shadow-primary-900/20 rounded-[30px] outline-none">
-                    <DialogHeader className="p-6 border-b border-white/5 bg-black/40 backdrop-blur-xl z-20">
-                        <DialogTitle className="text-sm font-black uppercase tracking-[0.2em] flex items-center gap-2 text-white"><MessageSquare size={14} className="text-primary-600"/> Discussion Channel</DialogTitle>
-                        <DialogDescription className="text-xs text-zinc-500">Share your theories, avoid spoilers, respect the code.</DialogDescription>
-                    </DialogHeader>
+            {/* TWO-COLUMN LAYOUT */}
+            <div className="flex flex-col-reverse lg:grid lg:grid-cols-[1fr_350px] xl:grid-cols-[1fr_400px] gap-10 items-start">
+                
+                {/* LEFT: Comments Feed */}
+                <div className="w-full flex flex-col gap-6">
+                    {comments.length === 0 ? (
+                        <div className="w-full py-20 flex flex-col items-center justify-center border border-dashed border-white/10 bg-black/20 rounded-3xl">
+                            <span className="text-zinc-600 text-sm font-mono mb-2">No signals detected in this sector.</span>
+                            <span className="text-zinc-700 text-xs uppercase tracking-widest font-black">Be the first to transmit</span>
+                        </div>
+                    ) : (
+                        <div className="space-y-6">
+                            {comments.map(c => (
+                                <CommentItem 
+                                    key={c.id} 
+                                    comment={c} 
+                                    currentUserId={userId} 
+                                    onReply={(text:any, spoiler:any, pid:any) => handlePost(text, spoiler, pid)} 
+                                    onReport={handleReport} 
+                                    onDelete={handleDelete} 
+                                    onEdit={handleEdit} 
+                                />
+                            ))}
+                        </div>
+                    )}
+                </div>
 
-                    <div className="flex-1 flex flex-col md:flex-row overflow-hidden relative">
-                         {/* Comments Feed */}
-                         <div className="flex-1 overflow-hidden relative bg-gradient-to-b from-black/20 to-transparent">
-                            <ScrollArea className="h-full w-full p-6">
-                                <div className="space-y-6 pb-20">
-                                    {comments.map(c => (
-                                        <CommentItem key={c.id} comment={c} currentUserId={userId} onReply={(text:any, spoiler:any, pid:any) => handlePost(text, spoiler, pid)} onReport={handleReport} onDelete={handleDelete} onEdit={handleEdit} />
-                                    ))}
-                                    {comments.length === 0 && <div className="h-full flex items-center justify-center text-zinc-700 text-xs uppercase tracking-widest">Void Empty</div>}
-                                </div>
-                            </ScrollArea>
-                         </div>
-
-                         {/* Sidebar / Bottom Input */}
-                         <div className="w-full md:w-96 border-l border-white/5 bg-[#050505] p-6 flex flex-col gap-6 z-20 shadow-xl">
-                             <div className="flex items-center gap-2 text-zinc-400 text-xs font-bold uppercase tracking-wider"><AlertTriangle size={12} className="text-primary-600"/> Posting Rules</div>
-                             <ul className="text-[10px] text-zinc-500 space-y-2 list-disc pl-4 marker:text-primary-900">
-                                 <li>Do not post direct download links.</li>
-                                 <li>Use the <b>Spoiler</b> tool for plot details.</li>
-                                 <li>Respect other agents in the field.</li>
-                             </ul>
-                             <div className="flex-1" />
-                             
-                             <CommentInput 
-                                episodeId={episodeId} 
-                                focusOnMount={shouldFocusInput}
-                                replyingTo={replyingTo}
-                                onCancelReply={() => setReplyingTo(null)}
-                                onPost={handlePost} 
-                             />
-                         </div>
+                {/* RIGHT: Sticky Sidebar */}
+                <div className="flex flex-col gap-6 w-full lg:sticky lg:top-[120px] bg-[#0a0a0a] p-6 md:p-8 rounded-[32px] border border-white/5 shadow-2xl shadow-primary-900/5">
+                    
+                    {/* Rules */}
+                    <div className="flex items-center gap-2 text-zinc-400 text-xs font-black uppercase tracking-wider mb-2">
+                        <AlertTriangle size={14} className="text-primary-600"/> Posting Rules
                     </div>
-                </DialogContent>
-            </Dialog>
+                    <ul className="text-xs text-zinc-500 space-y-3 list-disc pl-4 marker:text-primary-900 leading-relaxed font-medium">
+                        <li>Do not post direct download links or malicious content.</li>
+                        <li>Use the <span className="text-primary-500 font-bold bg-primary-900/20 px-1.5 py-0.5 rounded">Spoiler</span> tool for important plot details.</li>
+                        <li>Respect other agents in the field. Violators will be purged.</li>
+                    </ul>
+                    
+                    <div className="w-full h-px bg-white/5 my-2" />
+                    
+                    {/* Input */}
+                    <div className="flex flex-col gap-2">
+                        <span className="text-xs font-black text-white uppercase tracking-widest mb-1">New Transmission</span>
+                        <CommentInput 
+                            episodeId={episodeId} 
+                            replyingTo={replyingTo}
+                            onCancelReply={() => setReplyingTo(null)}
+                            onPost={handlePost} 
+                        />
+                    </div>
+                </div>
+
+            </div>
         </div>
     );
 }

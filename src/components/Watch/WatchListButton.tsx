@@ -132,7 +132,7 @@ export default function WatchListButton({ animeId, animeTitle, animeImage, curre
                 <button 
                     disabled={loading || isAuthLoading}
                     className={cn(
-                        "flex items-center gap-2 rounded-full px-4 h-8 text-[10px] font-bold transition-all shadow-lg active:scale-95 border outline-none focus:outline-none focus:ring-0",
+                        "flex items-center justify-center gap-2 rounded-full px-4 h-8 text-[9px] sm:text-[10px] font-black transition-all shadow-lg active:scale-95 border outline-none focus:outline-none focus:ring-0 whitespace-nowrap flex-shrink-0",
                         activeConfig 
                             ? activeConfig.color 
                             : "bg-white/5 border-white/10 text-zinc-400 hover:bg-white/10 hover:text-white"

@@ -1,45 +1,35 @@
 "use client";
 
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
+import { useParams, useRouter } from 'next/navigation';
 import { useAuth } from '@/context/AuthContext';
 import { supabase } from '@/lib/supabase';
-import { ImageAPI } from '@/lib/api'; 
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Textarea } from '@/components/ui/textarea';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { 
-    Grid, Heart, Bookmark, Settings, Upload, Trash2, Link as LinkIcon, Camera, LayoutGrid, CheckCircle, MessageSquare, History
+    Grid, Heart, Bookmark, MoreHorizontal, Camera, Link as LinkIcon, MessageSquare, History
 } from 'lucide-react';
 import { toast } from 'sonner';
 import AuthModal from '@/components/Auth/AuthModal';
 import ShadowAvatar from '@/components/User/ShadowAvatar'; 
-import { motion, AnimatePresence } from 'framer-motion';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
 
-export default function ProfilePage() {
-    const { user, profile: rawProfile, refreshSession, isLoading } = useAuth();
-    const profile = rawProfile as any;
+export default function PublicProfilePage() {
+    const params = useParams();
     const router = useRouter();
-
+    const targetUserId = params.id as string;
+    
+    const { user, isLoading } = useAuth();
+    
     const [hasMounted, setHasMounted] = useState(false);
     useEffect(() => { setHasMounted(true); }, []);
 
-    const [isEditing, setIsEditing] = useState(false);
+    const [profile, setProfile] = useState<any>(null);
+    const [isFollowing, setIsFollowing] = useState(false);
     const [showAuthModal, setShowAuthModal] = useState(false);
-    const [showAvatarModal, setShowAvatarModal] = useState(false);
     
-    // Form State
-    const [fullName, setFullName] = useState("");
-    const [bio, setBio] = useState("");
-    const [website, setWebsite] = useState("");
-    const [gender, setGender] = useState("male");
-    const avatarInputRef = useRef<HTMLInputElement>(null);
-
     // Stats State
     const [followersCount, setFollowersCount] = useState(0);
     const [followingCount, setFollowingCount] = useState(0);
@@ -53,67 +43,64 @@ export default function ProfilePage() {
     const [showFollowingModal, setShowFollowingModal] = useState(false);
 
     useEffect(() => {
-        if (profile) {
-            setFullName(profile.full_name || "");
-            setBio(profile.bio || "");
-            setWebsite(profile.website || "");
-            setGender(profile.gender || "male");
+        if (!targetUserId) return;
+        if (user && user.id === targetUserId) {
+            router.push('/profile');
+            return;
         }
-    }, [profile]);
 
-    useEffect(() => {
-        if (!user) return;
-        const fetchData = async () => {
+        const fetchProfileData = async () => {
+            // Fetch Profile Info
+            const { data: pData } = await supabase.from('profiles').select('*').eq('id', targetUserId).single();
+            if (pData) setProfile(pData);
+            
             // Fetch Followers Count
-            const { count: f1 } = await supabase.from('follows').select('*', { count: 'exact', head: true }).eq('following_id', user.id);
+            const { count: f1 } = await supabase.from('follows').select('*', { count: 'exact', head: true }).eq('following_id', targetUserId);
             // Fetch Following Count
-            const { count: f2 } = await supabase.from('follows').select('*', { count: 'exact', head: true }).eq('follower_id', user.id);
+            const { count: f2 } = await supabase.from('follows').select('*', { count: 'exact', head: true }).eq('follower_id', targetUserId);
             // Fetch Posts
-            const { data: pData } = await supabase.from('social_posts').select('*').eq('user_id', user.id).order('created_at', { ascending: false });
+            const { data: postsData } = await supabase.from('social_posts').select('*').eq('user_id', targetUserId).order('created_at', { ascending: false });
             
             // Fetch Liked Posts
-            const { data: likesData } = await supabase.from('social_likes').select('post_id, social_posts(*)').eq('user_id', user.id);
+            const { data: likesData } = await supabase.from('social_likes').select('post_id, social_posts(*)').eq('user_id', targetUserId);
             
             // Fetch Watch History
-            const { data: historyData } = await supabase.from('user_continue_watching').select('*').eq('user_id', user.id).order('last_updated', { ascending: false });
+            const { data: historyData } = await supabase.from('user_continue_watching').select('*').eq('user_id', targetUserId).order('last_updated', { ascending: false });
 
             setFollowersCount(f1 || 0);
             setFollowingCount(f2 || 0);
-            setPosts(pData || []);
+            setPosts(postsData || []);
             if (likesData) setLikedPosts(likesData.map((l: any) => l.social_posts).filter(Boolean));
             if (historyData) setWatchHistory(historyData);
+
+            // Check if current user is following
+            if (user) {
+                const { data: followStatus } = await supabase.from('follows').select('id').eq('follower_id', user.id).eq('following_id', targetUserId).single();
+                setIsFollowing(!!followStatus);
+            }
         };
-        fetchData();
-    }, [user]);
+        
+        fetchProfileData();
+    }, [targetUserId, user, router]);
 
-    const handleUpdateProfile = async () => {
-        if (!user) return;
+    const handleFollowToggle = async () => {
+        if (!user) { setShowAuthModal(true); return; }
+        
         try {
-            const { error } = await supabase.from('profiles').update({ full_name: fullName, bio, website, gender }).eq('id', user.id);
-            if (error) throw error;
-            toast.success("Profile updated");
-            setIsEditing(false);
-            refreshSession();
-        } catch (e) { toast.error("Failed to update profile"); }
-    };
-
-    const handleImgBBUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-        if (!user) return;
-        const file = e.target.files?.[0];
-        if (!file) return;
-
-        const tid = toast.loading(`Uploading avatar...`);
-        try {
-            const url = await ImageAPI.uploadImage(file);
-            const newHistory = [url, ...(profile.pfp_history || [])].slice(0, 15);
-            await supabase.from('profiles').update({ avatar_url: url, pfp_history: newHistory }).eq('id', user.id);
-            toast.success("Avatar updated");
-            refreshSession();
-        } catch (err) { toast.error("Upload failed"); } finally { toast.dismiss(tid); }
+            if (isFollowing) {
+                await supabase.from('follows').delete().eq('follower_id', user.id).eq('following_id', targetUserId);
+                setFollowersCount(prev => Math.max(0, prev - 1));
+            } else {
+                await supabase.from('follows').insert({ follower_id: user.id, following_id: targetUserId });
+                setFollowersCount(prev => prev + 1);
+            }
+            setIsFollowing(!isFollowing);
+        } catch (error) {
+            toast.error("Failed to update follow status.");
+        }
     };
     
     const fetchFollowList = async (type: 'followers'|'following') => {
-        if (!user) return;
         const targetField = type === 'followers' ? 'following_id' : 'follower_id';
         const joinField = type === 'followers' ? 'follower_id' : 'following_id';
         
@@ -125,7 +112,7 @@ export default function ProfilePage() {
                     id, username, full_name, avatar_url
                 )
             `)
-            .eq(targetField, user.id);
+            .eq(targetField, targetUserId);
             
         if (data) {
             const list = data.map((d: any) => d.profiles);
@@ -134,16 +121,7 @@ export default function ProfilePage() {
         }
     };
 
-    if (!hasMounted || isLoading) return <div className="min-h-screen bg-black flex items-center justify-center"><div className="w-8 h-8 border-4 border-primary-500 border-t-transparent rounded-full animate-spin" /></div>;
-
-    if (!profile) return (
-        <div className="min-h-screen bg-black flex flex-col items-center justify-center gap-6 px-4">
-            <h2 className="text-2xl font-black text-white tracking-wide">Instagram Profile</h2>
-            <p className="text-sm text-zinc-500 text-center max-w-xs">Sign in to view your profile.</p>
-            <button onClick={() => setShowAuthModal(true)} className="px-8 py-3 bg-primary-600 hover:bg-primary-500 text-white rounded-xl font-bold text-sm transition-all shadow-lg">Sign In</button>
-            {showAuthModal && <AuthModal isOpen={showAuthModal} onClose={() => setShowAuthModal(false)} onAuthSuccess={() => setShowAuthModal(false)} />}
-        </div>
-    );
+    if (!hasMounted || isLoading || !profile) return <div className="min-h-screen bg-black flex items-center justify-center"><div className="w-8 h-8 border-4 border-primary-500 border-t-transparent rounded-full animate-spin" /></div>;
 
     return (
         <div className="min-h-screen bg-[#000] text-white pt-24 pb-32">
@@ -152,15 +130,12 @@ export default function ProfilePage() {
                 {/* INSTAGRAM HEADER */}
                 <div className="flex flex-col md:flex-row items-center md:items-start gap-8 mb-12">
                     {/* Avatar */}
-                    <div className="shrink-0 relative group">
+                    <div className="shrink-0 relative">
                         <div className="w-32 h-32 md:w-40 md:h-40 rounded-full p-1 bg-gradient-to-tr from-pink-500 via-red-500 to-yellow-500 overflow-hidden">
-                            <Avatar className="w-full h-full rounded-full border-4 border-black bg-zinc-900 cursor-pointer">
+                            <Avatar className="w-full h-full rounded-full border-4 border-black bg-zinc-900">
                                 <AvatarImage src={profile.avatar_url} className="object-cover" />
-                                <AvatarFallback><ShadowAvatar gender={gender}/></AvatarFallback>
+                                <AvatarFallback><ShadowAvatar gender={profile.gender || 'male'}/></AvatarFallback>
                             </Avatar>
-                        </div>
-                        <div onClick={() => setShowAvatarModal(true)} className="absolute inset-1 bg-black/50 rounded-full z-20 opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer flex items-center justify-center backdrop-blur-sm">
-                            <Camera className="text-white" size={32} />
                         </div>
                     </div>
 
@@ -169,9 +144,15 @@ export default function ProfilePage() {
                         <div className="flex flex-col md:flex-row items-center gap-4 mb-5 w-full">
                             <h1 className="text-2xl md:text-xl font-medium text-white">{profile.username}</h1>
                             <div className="flex gap-2">
-                                <Button onClick={() => setIsEditing(true)} variant="secondary" className="bg-zinc-800 hover:bg-zinc-700 text-white h-8 px-4 font-bold text-sm rounded-lg">Edit profile</Button>
-                                <Button onClick={() => router.push('/watchlist')} variant="secondary" className="bg-zinc-800 hover:bg-zinc-700 text-white h-8 px-4 font-bold text-sm rounded-lg">View archive</Button>
-                                <Button onClick={() => router.push('/settings')} variant="ghost" className="h-8 w-8 p-0 rounded-lg text-white hover:bg-zinc-800"><Settings size={20}/></Button>
+                                <Button 
+                                    onClick={handleFollowToggle} 
+                                    variant={isFollowing ? "secondary" : "default"} 
+                                    className={isFollowing ? "bg-zinc-800 hover:bg-zinc-700 text-white h-8 px-6 font-bold text-sm rounded-lg" : "bg-blue-500 hover:bg-blue-600 text-white h-8 px-6 font-bold text-sm rounded-lg"}
+                                >
+                                    {isFollowing ? "Following" : "Follow"}
+                                </Button>
+                                <Button variant="secondary" className="bg-zinc-800 hover:bg-zinc-700 text-white h-8 px-4 font-bold text-sm rounded-lg">Message</Button>
+                                <Button variant="ghost" className="h-8 w-8 p-0 rounded-lg text-white hover:bg-zinc-800"><MoreHorizontal size={20}/></Button>
                             </div>
                         </div>
 
@@ -220,8 +201,7 @@ export default function ProfilePage() {
                                 <div className="w-24 h-24 rounded-full border-2 border-zinc-800 flex items-center justify-center mb-6">
                                     <Camera size={40} className="text-zinc-700"/>
                                 </div>
-                                <h2 className="text-3xl font-black text-white mb-4 tracking-tighter">Share Photos</h2>
-                                <p className="text-sm text-zinc-400">When you share photos, they will appear on your profile.</p>
+                                <h2 className="text-3xl font-black text-white mb-4 tracking-tighter">No Posts Yet</h2>
                             </div>
                         ) : (
                             <div className="grid grid-cols-3 gap-1 md:gap-4">
@@ -244,7 +224,7 @@ export default function ProfilePage() {
                             </div>
                         )}
                     </TabsContent>
-
+                    
                     {/* LIKED POSTS / FAVORITES */}
                     <TabsContent value="favorites" className="mt-4 outline-none">
                         {likedPosts.length === 0 ? (
@@ -253,7 +233,6 @@ export default function ProfilePage() {
                                     <Heart size={40} className="text-zinc-700"/>
                                 </div>
                                 <h2 className="text-3xl font-black text-white mb-4 tracking-tighter">No Favorites Yet</h2>
-                                <p className="text-sm text-zinc-400">Posts you like will appear here.</p>
                             </div>
                         ) : (
                             <div className="grid grid-cols-3 gap-1 md:gap-4">
@@ -285,7 +264,6 @@ export default function ProfilePage() {
                                     <History size={40} className="text-zinc-700"/>
                                 </div>
                                 <h2 className="text-3xl font-black text-white mb-4 tracking-tighter">Watch History Empty</h2>
-                                <p className="text-sm text-zinc-400">Shows you've watched will appear here.</p>
                             </div>
                         ) : (
                             <div className="grid grid-cols-3 gap-1 md:gap-4">
@@ -304,59 +282,6 @@ export default function ProfilePage() {
                 </Tabs>
             </div>
 
-            {/* EDIT PROFILE MODAL */}
-            <Dialog open={isEditing} onOpenChange={setIsEditing}>
-                <DialogContent className="bg-[#262626] border-none text-white max-w-md rounded-xl p-0 overflow-hidden" aria-describedby={undefined}>
-                    <DialogHeader className="p-4 border-b border-zinc-700">
-                        <DialogTitle className="text-center font-bold text-base">Edit Profile</DialogTitle>
-                    </DialogHeader>
-                    <div className="p-4 space-y-4">
-                        <div className="flex flex-col gap-1">
-                            <label className="text-xs font-bold text-zinc-400">Name</label>
-                            <Input value={fullName} onChange={(e) => setFullName(e.target.value)} className="bg-transparent border-zinc-700 text-white h-12" placeholder="Full Name" />
-                        </div>
-                        <div className="flex flex-col gap-1">
-                            <label className="text-xs font-bold text-zinc-400">Website</label>
-                            <Input value={website} onChange={(e) => setWebsite(e.target.value)} className="bg-transparent border-zinc-700 text-white h-12" placeholder="Website" />
-                        </div>
-                        <div className="flex flex-col gap-1">
-                            <label className="text-xs font-bold text-zinc-400">Bio</label>
-                            <Textarea value={bio} onChange={(e) => setBio(e.target.value)} className="bg-transparent border-zinc-700 text-white resize-none" placeholder="Bio" />
-                        </div>
-                        <div className="flex flex-col gap-1">
-                            <label className="text-xs font-bold text-zinc-400">Gender</label>
-                            <Select value={gender} onValueChange={setGender}>
-                                <SelectTrigger className="bg-transparent border-zinc-700 text-white"><SelectValue /></SelectTrigger>
-                                <SelectContent className="bg-[#262626] border-zinc-700 text-white">
-                                    <SelectItem value="male">Male</SelectItem>
-                                    <SelectItem value="female">Female</SelectItem>
-                                    <SelectItem value="other">Prefer not to say</SelectItem>
-                                </SelectContent>
-                            </Select>
-                        </div>
-                    </div>
-                    <div className="p-4 border-t border-zinc-700 flex justify-end gap-3">
-                        <Button variant="ghost" onClick={() => setIsEditing(false)} className="hover:bg-zinc-800">Cancel</Button>
-                        <Button onClick={handleUpdateProfile} className="bg-blue-500 hover:bg-blue-600 text-white font-bold">Done</Button>
-                    </div>
-                </DialogContent>
-            </Dialog>
-
-            {/* AVATAR UPLOAD MODAL */}
-            <Dialog open={showAvatarModal} onOpenChange={setShowAvatarModal}>
-                <DialogContent className="bg-[#262626] border-none text-white max-w-sm rounded-xl p-0 overflow-hidden" aria-describedby={undefined}>
-                    <DialogHeader className="p-6 pb-4">
-                        <DialogTitle className="text-center font-bold text-xl">Change Profile Photo</DialogTitle>
-                    </DialogHeader>
-                    <div className="flex flex-col">
-                        <button onClick={() => avatarInputRef.current?.click()} className="py-3 border-t border-zinc-700 text-blue-500 font-bold hover:bg-white/5 transition-colors">Upload Photo</button>
-                        <button onClick={async () => { if(!user)return; await supabase.from('profiles').update({avatar_url: null}).eq('id', user.id); refreshSession(); setShowAvatarModal(false); }} className="py-3 border-t border-zinc-700 text-red-500 font-bold hover:bg-white/5 transition-colors">Remove Current Photo</button>
-                        <button onClick={() => setShowAvatarModal(false)} className="py-3 border-t border-zinc-700 text-zinc-300 hover:bg-white/5 transition-colors">Cancel</button>
-                    </div>
-                    <input type="file" ref={avatarInputRef} hidden accept="image/*" onChange={handleImgBBUpload} />
-                </DialogContent>
-            </Dialog>
-
             {/* FOLLOWERS MODAL */}
             <Dialog open={showFollowersModal} onOpenChange={setShowFollowersModal}>
                 <DialogContent className="bg-[#262626] border-none text-white max-w-sm rounded-xl p-0 overflow-hidden" aria-describedby={undefined}>
@@ -367,7 +292,7 @@ export default function ProfilePage() {
                         {followersList.length === 0 ? (
                             <div className="text-center py-10 text-zinc-500">No followers yet.</div>
                         ) : followersList.map(u => (
-                            <Link key={u.id} href={`/profile/${u.id}`} className="flex items-center justify-between p-2 hover:bg-white/5 rounded-lg transition-colors">
+                            <a key={u.id} href={`/profile/${u.id}`} className="flex items-center justify-between p-2 hover:bg-white/5 rounded-lg transition-colors">
                                 <div className="flex items-center gap-3">
                                     <Avatar className="w-10 h-10"><AvatarImage src={u.avatar_url}/><AvatarFallback className="bg-zinc-800 text-white text-xs">{u.username?.[0]}</AvatarFallback></Avatar>
                                     <div className="flex flex-col">
@@ -375,7 +300,7 @@ export default function ProfilePage() {
                                         <span className="text-xs text-zinc-400">{u.full_name}</span>
                                     </div>
                                 </div>
-                            </Link>
+                            </a>
                         ))}
                     </div>
                 </DialogContent>
@@ -391,7 +316,7 @@ export default function ProfilePage() {
                         {followingList.length === 0 ? (
                             <div className="text-center py-10 text-zinc-500">Not following anyone yet.</div>
                         ) : followingList.map(u => (
-                            <Link key={u.id} href={`/profile/${u.id}`} className="flex items-center justify-between p-2 hover:bg-white/5 rounded-lg transition-colors">
+                            <a key={u.id} href={`/profile/${u.id}`} className="flex items-center justify-between p-2 hover:bg-white/5 rounded-lg transition-colors">
                                 <div className="flex items-center gap-3">
                                     <Avatar className="w-10 h-10"><AvatarImage src={u.avatar_url}/><AvatarFallback className="bg-zinc-800 text-white text-xs">{u.username?.[0]}</AvatarFallback></Avatar>
                                     <div className="flex flex-col">
@@ -399,12 +324,13 @@ export default function ProfilePage() {
                                         <span className="text-xs text-zinc-400">{u.full_name}</span>
                                     </div>
                                 </div>
-                            </Link>
+                            </a>
                         ))}
                     </div>
                 </DialogContent>
             </Dialog>
-
+            
+            <AuthModal isOpen={showAuthModal} onClose={() => setShowAuthModal(false)} onAuthSuccess={() => setShowAuthModal(false)} />
         </div>
     );
 }

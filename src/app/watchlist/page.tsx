@@ -140,7 +140,7 @@ function WatchlistContent() {
     };
 
     const isContinueItem = (item: any): item is ContinueItem => {
-        return (item as ContinueItem).poster !== undefined;
+        return (item as ContinueItem).episodeId !== undefined;
     };
 
     useEffect(() => {
@@ -193,7 +193,7 @@ function WatchlistContent() {
         { id: 'plan_to_watch', label: 'Planned', icon: <Calendar size={14} />, count: library.filter(i => i.status === 'plan_to_watch').length },
         { id: 'completed', label: 'Done', icon: <CheckCircle size={14} />, count: library.filter(i => i.status === 'completed').length },
         { id: 'on_hold', label: 'Paused', icon: <Clock size={14} />, count: library.filter(i => i.status === 'on_hold').length },
-        { id: 'continue', label: 'History', icon: <History size={14} />, count: continueData.length, highlight: true },
+        { id: 'continue', label: 'Continue Watching', icon: <History size={14} />, count: continueData.length, highlight: true },
     ];
 
     if (authLoading) return <div className="min-h-screen bg-[#050505]" />;
@@ -347,13 +347,13 @@ function WatchlistContent() {
                                                     }} />
                                                 )}
                                                 {/* QUICK ACTIONS OVERLAY */}
-                                                <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col gap-1 z-20">
+                                                <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col gap-1 z-[60]">
                                                     {!isContinueItem(item) && (
                                                         <Select value={item.status} onValueChange={(v) => handleStatusChange(item.anime_id, v)}>
-                                                            <SelectTrigger className="w-8 h-8 rounded-full bg-black/80 border-white/20 text-white p-0 flex items-center justify-center [&>svg]:hidden focus:ring-0 shadow-xl backdrop-blur-md hover:scale-110 transition-transform">
-                                                                <Clock size={14} className="text-zinc-300"/>
+                                                            <SelectTrigger className="w-8 h-8 rounded-full bg-white/10 hover:bg-primary-600 border border-white/20 text-white p-0 flex items-center justify-center [&>svg]:hidden focus:ring-0 shadow-xl backdrop-blur-md hover:scale-110 transition-all">
+                                                                <div className="flex items-center justify-center w-full h-full"><Clock size={14} className="text-white"/></div>
                                                             </SelectTrigger>
-                                                            <SelectContent className="bg-[#0a0a0a] border-white/10 text-white">
+                                                            <SelectContent className="bg-[#0a0a0a] border-white/10 text-white z-[70]">
                                                                 <SelectItem value="watching">Watching</SelectItem>
                                                                 <SelectItem value="completed">Completed</SelectItem>
                                                                 <SelectItem value="plan_to_watch">Plan to Watch</SelectItem>
@@ -362,7 +362,7 @@ function WatchlistContent() {
                                                             </SelectContent>
                                                         </Select>
                                                     )}
-                                                    <button onClick={() => handleRemove(isContinueItem(item) ? item.anime_id : item.anime_id, isContinueItem(item))} className="w-8 h-8 rounded-full bg-black/80 border border-white/20 text-red-400 flex items-center justify-center hover:bg-red-500/20 shadow-xl backdrop-blur-md hover:scale-110 transition-transform"><Trash2 size={14}/></button>
+                                                    <button onClick={() => handleRemove(isContinueItem(item) ? item.anime_id : item.anime_id, isContinueItem(item))} className="w-8 h-8 rounded-full bg-white/10 hover:bg-red-500 hover:text-white border border-white/20 text-red-400 flex items-center justify-center shadow-xl backdrop-blur-md hover:scale-110 transition-all"><Trash2 size={14}/></button>
                                                 </div>
                                             </div>
                                         </motion.div>

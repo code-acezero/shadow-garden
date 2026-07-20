@@ -179,10 +179,10 @@ function SearchContent() {
             data = { results: res.items || [], hasNextPage: res.pagination?.hasNextPage, currentPage: res.pagination?.currentPage };
         } else if (selectedGenres.length > 0) {
             // We use 'selectedGenres' to store the Drama Category (e.g. korean-drama)
-            const res = await omni.drama.getCategory(selectedGenres[0], currentPage);
+            const res = await omni.drama.getByCountry(selectedGenres[0].replace('-drama', ''), currentPage);
             data = { results: res.items || [], hasNextPage: res.pagination?.hasNextPage, currentPage: res.pagination?.currentPage };
         } else {
-            const res = await omni.drama.getCategory('korean-drama', currentPage);
+            const res = await omni.drama.getByCountry('korean', currentPage);
             data = { results: res.items || [], hasNextPage: res.pagination?.hasNextPage, currentPage: res.pagination?.currentPage };
         }
       } else {

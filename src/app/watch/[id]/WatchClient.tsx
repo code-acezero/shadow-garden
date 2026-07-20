@@ -11,12 +11,12 @@ import {
   ChevronDown, Heart, CheckCircle, XCircle,
   FastForward, Star, Info, MessageSquare, User,
   Loader2, Globe, Flame, Calendar, Copyright, Check, Mic, X,
-  ChevronLeft, ChevronRight, Pause, ArrowLeft, ArrowRight, Download
+  ChevronLeft, ChevronRight, Pause, ArrowLeft, ArrowRight, Download, Wand2
 } from 'lucide-react';
 
 import { AnimeService, UniversalAnime } from '@/lib/api';
 import { supabase } from '@/lib/supabase';
-import { cn } from '@/lib/utils';
+import { cn, getSimilarity, isRelatedAnime, getChunkLabel } from '@/lib/utils';
 import { toast } from 'sonner';
 import { useAuth } from '@/context/AuthContext';
 
@@ -94,7 +94,7 @@ const useWatchSettings = () => {
 
   useEffect(() => {
       if (typeof window !== 'undefined') {
-          const saved = localStorage.getItem('shadow_watch_settings');
+          const saved = localStorage.getItem('shadow_watch_settings_anime');
           if (saved) {
              setSettings(prev => ({ ...prev, ...JSON.parse(saved) }));
           }
@@ -105,7 +105,7 @@ const useWatchSettings = () => {
   const updateSetting = useCallback((key: string, value: any) => {
       setSettings(prev => {
           const newSettings = { ...prev, [key]: value };
-          localStorage.setItem('shadow_watch_settings', JSON.stringify(newSettings));
+          localStorage.setItem('shadow_watch_settings_anime', JSON.stringify(newSettings));
           return newSettings;
       });
   }, []);
@@ -618,6 +618,7 @@ function WatchContent() {
   const interfaceTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const [showSkipNotification, setShowSkipNotification] = useState(false);
   const isSkipToastLocked = useRef(false);
+  const isProgrammaticServerUpdate = useRef(false);
   const [epViewMode, setEpViewMode] = useState<'grid' | 'list' | 'compact'>('grid');
   const [epChunkIndex, setEpChunkIndex] = useState(0);
   const [epProgress, setEpProgress] = useState<EpisodeProgress>({});
@@ -637,8 +638,20 @@ function WatchContent() {
   // --- HANDLERS (Hoisted) ---
 
   const handleServerChange = useCallback((srvName: string) => {
-      updateSetting('server', srvName);
-  }, [updateSetting]);
+      setServers((prev: any) => {
+          if (!prev) { updateSetting('server', srvName); return prev; }
+          const srv = prev[settings.category]?.find((s: any) => s.serverName === srvName);
+          if (srv && srv.url) {
+              setStreamUrl(srv.url);
+              isProgrammaticServerUpdate.current = true;
+              updateSetting('server', srvName);
+              setTimeout(() => { isProgrammaticServerUpdate.current = false; }, 100);
+          } else {
+              updateSetting('server', srvName);
+          }
+          return prev;
+      });
+  }, [settings.category, updateSetting]);
 
   const flushSyncBuffer = useCallback(async () => {
       if (!user || !supabase || !isBufferDirty.current) return;
@@ -783,6 +796,28 @@ function WatchContent() {
                     universalData.episodes = epData;
                 }
             }
+            
+            if ((!universalData.recommendations || universalData.recommendations.length === 0) && universalData.info?.genres && universalData.info.genres.length > 0) {
+                try {
+                    const genreData = await AnimeService.getGenre(universalData.info.genres[0]);
+                    universalData.recommendations = genreData.filter((item: any) => item.id !== universalData.id);
+                } catch(e) {}
+            }
+
+            // Advanced Family Lineage matching
+            if (!universalData.related || universalData.related.length === 0) {
+                try {
+                    const baseTitle = universalData.title.split(/season|part|\d+/i)[0].trim();
+                    const searchData = await AnimeService.search(baseTitle, 1);
+                    if (searchData && searchData.animes) {
+                        universalData.related = searchData.animes.filter((s: any) => {
+                            if (universalData.related?.some((r: any) => r.id === s.id)) return false;
+                            return isRelatedAnime(universalData.id, universalData.title, s.id, s.title || s.name);
+                        }).slice(0, 8);
+                    }
+                } catch(e) {}
+            }
+
             setAnime(universalData);
             // No next-episode-schedule endpoint on the new source; nextEpSchedule
             // stays null and the countdown UI degrades gracefully (as it already
@@ -953,7 +988,9 @@ function WatchContent() {
                     setOutro(streamData.outro);
                     
                     if (streamData.server && streamData.server.toLowerCase() !== settings.server.toLowerCase()) {
-                        setTimeout(() => updateSetting('server', streamData.server), 0);
+                        isProgrammaticServerUpdate.current = true;
+                        updateSetting('server', streamData.server);
+                        setTimeout(() => { isProgrammaticServerUpdate.current = false; }, 100);
                     }
                 } else {
                     throw new Error("No Stream Found");
@@ -977,6 +1014,8 @@ function WatchContent() {
           initialSettingsMount.current = false;
           return;
       }
+      if (isProgrammaticServerUpdate.current) return;
+      
       if (isSettingsLoaded && currentEpId) {
           setFetchTrigger(prev => prev + 1);
       }
@@ -1013,7 +1052,7 @@ function WatchContent() {
   if (!anime) return (<div className="min-h-screen bg-[#050505] flex items-center justify-center"><div className="w-12 h-12 border-4 border-primary-600 border-t-transparent rounded-full animate-spin" /></div>);
 
   return (
-    <div className="min-h-screen bg-[#050505] text-gray-100 pb-24 md:pb-20 pt-[env(safe-area-inset-top)] relative font-sans overflow-x-hidden">
+    <div className="min-h-screen bg-[#050505] text-gray-100 pb-24 md:pb-20 pt-[calc(env(safe-area-inset-top)+80px)] md:pt-[calc(env(safe-area-inset-top)+100px)] relative font-sans overflow-x-hidden">
       <style jsx global>{`
           .custom-scrollbar::-webkit-scrollbar { width: 6px; height: 6px; display: block; }
           .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
@@ -1142,8 +1181,8 @@ function WatchContent() {
                 </div>
                 <div className="w-full border-b border-white/5 bg-black/20 flex-shrink-0 py-3 px-4 relative group/chunks">
                     <div ref={chunksRef} className="flex items-center gap-2 w-full overflow-x-auto no-scrollbar cursor-grab active:cursor-grabbing">
-                        {episodeChunks.map((_, idx) => (
-                            <button key={idx} onClick={() => setEpChunkIndex(idx)} className={cn("flex-shrink-0 px-4 py-1.5 text-[10px] font-black rounded-full transition-all border shadow-sm uppercase tracking-wider", epChunkIndex === idx ? "bg-primary-600 text-white border-primary-500 shadow-primary-900/20" : "bg-zinc-900 border-zinc-800 text-zinc-500 hover:text-zinc-300 hover:border-zinc-700")}>{(idx * chunkSize) + 1}-{Math.min((idx + 1) * chunkSize, anime.episodes.length)}</button>
+                        {episodeChunks.map((chunk, idx) => (
+                            <button key={idx} onClick={() => setEpChunkIndex(idx)} className={cn("flex-shrink-0 px-4 py-1.5 text-[10px] font-black rounded-full transition-all border shadow-sm uppercase tracking-wider", epChunkIndex === idx ? "bg-primary-600 text-white border-primary-500 shadow-primary-900/20" : "bg-zinc-900 border-zinc-800 text-zinc-500 hover:text-zinc-300 hover:border-zinc-700")}>{getChunkLabel(chunk, (idx * chunkSize) + 1, Math.min((idx + 1) * chunkSize, anime.episodes.length))}</button>
                         ))}
                     </div>
                 </div>
@@ -1254,7 +1293,7 @@ function WatchContent() {
                   </motion.div>
                   
                   <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} transition={{ duration: 0.6, delay: 0.5 }} className="xl:col-span-4 w-full h-auto xl:h-[650px] bg-[#0a0a0a] rounded-[40px] border border-white/5 overflow-hidden flex flex-col shadow-2xl relative shadow-primary-900/10 mt-8 xl:mt-0">
-                     <div className="p-6 bg-white/5 border-b border-white/5 flex items-center gap-3 shrink-0"><Flame size={18} className="text-primary-600"/><h3 className="font-black text-white text-sm font-[Cinzel] tracking-widest uppercase">More Like This</h3></div>
+                     <div className="p-6 bg-white/5 border-b border-white/5 flex items-center gap-3 shrink-0"><Wand2 size={18} className="text-primary-600"/><h3 className="font-black text-white text-sm font-[Cinzel] tracking-widest uppercase">Suggestions</h3></div>
                      <ScrollArea className="flex-1 custom-scrollbar">
                          <div className="p-4 flex flex-col gap-3">
                              {anime.recommendations && anime.recommendations.length > 0 ? (
@@ -1284,7 +1323,7 @@ function WatchContent() {
                   <div className="w-full mt-8 bg-[#0a0a0a] rounded-[40px] border border-white/5 p-6 md:p-8 shadow-2xl relative shadow-primary-900/10">
                       <div className="flex items-center gap-3 mb-6">
                           <Layers size={18} className="text-primary-600"/>
-                          <h3 className="font-black text-white text-sm font-[Cinzel] tracking-widest uppercase">Related Franchise</h3>
+                          <h3 className="font-black text-white text-sm font-[Cinzel] tracking-widest uppercase">Family Lineage</h3>
                       </div>
                       <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4 md:gap-6">
                           {anime.related.map((rel: any) => (
