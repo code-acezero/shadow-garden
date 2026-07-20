@@ -56,7 +56,7 @@ function DonghuaSection({ title, items }: { title: string, items: any[] }) {
             </div>
 
             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4 md:gap-6 relative">
-                {sanitizedResults.slice(0, 24).map((anime, index) => (
+                {sanitizedResults.slice(0, 12).map((anime, index) => (
                     <div 
                         key={`${anime.id}-${index}`}
                         className="group relative z-10 transition-all duration-300 hover:scale-[1.03] hover:z-50"
@@ -112,7 +112,7 @@ export default function DonghuaHomeClient() {
         <div className="shadow-light-bottom" />
 
         <div className="min-h-full flex flex-col relative z-10">
-          <div className="h-28 md:h-24 w-full flex-shrink-0" />
+          <div className="h-20 md:h-14 w-full flex-shrink-0" />
 
           {/* Spotlight Slider */}
           <div className="w-full max-w-[1350px] mx-auto mb-6 md:mb-10 px-0 md:px-8">

@@ -10,7 +10,7 @@ export default function SocialPage() {
   const [showAuthModal, setShowAuthModal] = useState(false);
 
   return (
-    <div className="h-[100dvh] overflow-hidden bg-[#050505] text-white pt-[env(safe-area-inset-top)] pb-[env(safe-area-inset-bottom)] md:pb-0">
+    <div className="min-h-screen bg-[#050505] text-white pt-[env(safe-area-inset-top)] pb-[env(safe-area-inset-bottom)] md:pb-0">
       {/* Background Ambience */}
       <div className="fixed inset-0 pointer-events-none">
         <div className="absolute top-0 left-0 w-[500px] h-[500px] bg-primary-900/10 rounded-full blur-[120px] opacity-50" />
