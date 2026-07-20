@@ -18,7 +18,7 @@ export default function SocialPage() {
       </div>
 
       {/* Main Social Interface */}
-      <div className="relative z-10">
+      <div className="relative z-10 h-full">
         <OtakuVerse 
           user={user} 
           onAuthRequired={() => setShowAuthModal(true)} 

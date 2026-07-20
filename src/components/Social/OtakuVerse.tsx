@@ -384,7 +384,7 @@ export default function OtakuVerse({ user, onAuthRequired, highlightId }: OtakuV
   });
 
   return (
-    <div className="w-full h-full bg-[#050505] flex justify-center pb-20 md:pb-0 pt-20 md:pt-24">
+    <div className="w-full h-full bg-[#050505] flex justify-center pb-20 md:pb-0 pt-20 md:pt-[72px]">
       <style jsx global>{`
         body {
           overflow: auto !important;
@@ -680,7 +680,10 @@ const PostItem = React.forwardRef<HTMLDivElement, any>(({ post, highlightId, onL
              onComment();
           }
       }}>
-         <Avatar className="w-10 h-10 shrink-0 cursor-pointer hover:opacity-80 transition-opacity">
+         <Avatar 
+            className="w-10 h-10 shrink-0 cursor-pointer hover:opacity-80 transition-opacity"
+            onClick={(e) => { e.stopPropagation(); window.location.href = `/profile/${post.user?.username}`; }}
+         >
             <AvatarImage src={post.user?.avatar_url} />
             <AvatarFallback>?</AvatarFallback>
          </Avatar>
@@ -688,7 +691,10 @@ const PostItem = React.forwardRef<HTMLDivElement, any>(({ post, highlightId, onL
          <div className="flex-1 min-w-0">
             <div className="flex items-center justify-between">
                <div className="flex items-center gap-1.5 truncate">
-                  <span className="font-bold text-[15px] text-white hover:underline cursor-pointer truncate">{post.user?.username}</span>
+                  <span 
+                      className="font-bold text-[15px] text-white hover:underline cursor-pointer truncate"
+                      onClick={(e) => { e.stopPropagation(); window.location.href = `/profile/${post.user?.username}`; }}
+                  >{post.user?.username}</span>
                   {post.user?.role === 'admin' && <ShieldCheck size={14} className="text-primary-500 shrink-0" />}
                   <span className="text-zinc-500 text-[15px] truncate">@{post.user?.username?.toLowerCase().replace(/\s/g, '')}</span>
                   <span className="text-zinc-500 text-[15px]">·</span>
