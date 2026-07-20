@@ -50,22 +50,42 @@ export default function PublicProfilePage() {
         }
 
         const fetchProfileData = async () => {
-            // Fetch Profile Info
-            const { data: pData } = await supabase.from('profiles').select('*').eq('id', targetUserId).single();
-            if (pData) setProfile(pData);
+            // Detect if param is a UUID or a username
+            const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(targetUserId);
+
+            let pData: any = null;
+            if (isUUID) {
+                const { data } = await supabase.from('profiles').select('*').eq('id', targetUserId).single();
+                pData = data;
+            } else {
+                // Lookup by username
+                const { data } = await supabase.from('profiles').select('*').eq('username', targetUserId).single();
+                pData = data;
+            }
+
+            if (!pData) return; // Profile not found
+            setProfile(pData);
+
+            // Redirect if this is own profile
+            if (user && user.id === pData.id) {
+                router.push('/profile');
+                return;
+            }
+
+            const resolvedId = pData.id;
             
             // Fetch Followers Count
-            const { count: f1 } = await supabase.from('follows').select('*', { count: 'exact', head: true }).eq('following_id', targetUserId);
+            const { count: f1 } = await supabase.from('follows').select('*', { count: 'exact', head: true }).eq('following_id', resolvedId);
             // Fetch Following Count
-            const { count: f2 } = await supabase.from('follows').select('*', { count: 'exact', head: true }).eq('follower_id', targetUserId);
+            const { count: f2 } = await supabase.from('follows').select('*', { count: 'exact', head: true }).eq('follower_id', resolvedId);
             // Fetch Posts
-            const { data: postsData } = await supabase.from('social_posts').select('*').eq('user_id', targetUserId).order('created_at', { ascending: false });
+            const { data: postsData } = await supabase.from('social_posts').select('*').eq('user_id', resolvedId).order('created_at', { ascending: false });
             
             // Fetch Liked Posts
-            const { data: likesData } = await supabase.from('social_likes').select('post_id, social_posts(*)').eq('user_id', targetUserId);
+            const { data: likesData } = await supabase.from('social_likes').select('post_id, social_posts(*)').eq('user_id', resolvedId);
             
             // Fetch Watch History
-            const { data: historyData } = await supabase.from('user_continue_watching').select('*').eq('user_id', targetUserId).order('last_updated', { ascending: false });
+            const { data: historyData } = await supabase.from('user_continue_watching').select('*').eq('user_id', resolvedId).order('last_updated', { ascending: false });
 
             setFollowersCount(f1 || 0);
             setFollowingCount(f2 || 0);
@@ -75,7 +95,7 @@ export default function PublicProfilePage() {
 
             // Check if current user is following
             if (user) {
-                const { data: followStatus } = await supabase.from('follows').select('id').eq('follower_id', user.id).eq('following_id', targetUserId).single();
+                const { data: followStatus } = await supabase.from('follows').select('id').eq('follower_id', user.id).eq('following_id', resolvedId).single();
                 setIsFollowing(!!followStatus);
             }
         };
