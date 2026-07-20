@@ -399,7 +399,7 @@ export default function OtakuVerse({ user, onAuthRequired, highlightId }: OtakuV
       <div className="max-w-7xl w-full flex justify-center lg:justify-between px-0 md:px-4">
         
         {/* LEFT SIDEBAR (Desktop) */}
-        <header className="hidden sm:flex w-20 lg:w-64 xl:w-72 flex-col justify-between sticky top-[96px] h-[calc(100vh-96px)] pt-0 pb-20 px-2 lg:px-4">
+        <header className="hidden sm:flex w-20 lg:w-64 xl:w-72 flex-col justify-between sticky top-[96px] h-[calc(100vh-96px)] self-start pt-0 pb-20 px-2 lg:px-4">
            <div className="flex flex-col gap-1 w-full items-center lg:items-start">
               <div className="flex items-center justify-center lg:justify-start w-12 h-12 lg:w-auto lg:p-3 rounded-full hover:bg-white/10 cursor-pointer transition-colors mb-2 text-primary-500">
                  <Hash size={28} />
@@ -529,7 +529,7 @@ export default function OtakuVerse({ user, onAuthRequired, highlightId }: OtakuV
         </main>
 
         {/* RIGHT SIDEBAR (Desktop Only) */}
-        <aside className="hidden lg:block w-[350px] pl-8 py-0 sticky top-[96px] h-[calc(100vh-96px)] overflow-y-auto twitter-scrollbar">
+        <aside className="hidden lg:block w-[350px] pl-8 py-0 sticky top-[96px] h-[calc(100vh-96px)] self-start overflow-y-auto twitter-scrollbar">
             {/* Search */}
             <div className="relative group mb-4">
                 <input type="text" placeholder="Search" value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} className="w-full bg-[#16181c] border border-transparent rounded-full py-3 px-12 text-white text-[15px] focus:outline-none focus:border-primary-500 focus:bg-black transition-colors" />
