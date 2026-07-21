@@ -196,7 +196,7 @@ export default function ProfilePage() {
                         </div>
 
                         <div className="flex flex-col items-center md:items-start text-sm">
-                            <span className="font-bold text-white">{profile.full_name || profile.username}</span>
+                            {profile.full_name && <span className="font-bold text-white">{profile.full_name}</span>}
                             <span className="text-zinc-300 whitespace-pre-wrap text-center md:text-left mt-1">{profile.bio}</span>
                             {profile.website && (
                                 <a href={profile.website.startsWith('http') ? profile.website : `https://${profile.website}`} target="_blank" rel="noreferrer" className="text-[#E0F2FE] font-bold hover:underline flex items-center gap-1 mt-1">
