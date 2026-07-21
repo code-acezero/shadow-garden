@@ -1,11 +1,12 @@
 "use client";
 
 import React, { useState, useEffect } from 'react';
-import { Shield, Plus, Users, Lock, Globe, MessageSquare, ChevronRight, X } from 'lucide-react';
+import { Shield, Plus, Users, Lock, Globe, MessageSquare, ChevronRight, X, Compass, List } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/context/AuthContext';
 import { toast } from '@/lib/toast';
+import ClanDetails from './ClanDetails';
 
 export interface Clan {
   id: string;
@@ -26,6 +27,7 @@ export default function ClanSystem() {
   const [userClanIds, setUserClanIds] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
   const [createModalOpen, setCreateModalOpen] = useState(false);
+  const [activeTab, setActiveTab] = useState<'discover' | 'myclans'>('discover');
   const [selectedClan, setSelectedClan] = useState<Clan | null>(null);
 
   // Form states
@@ -140,6 +142,10 @@ export default function ClanSystem() {
     }
   };
 
+  if (selectedClan) {
+    return <ClanDetails clan={selectedClan} onBack={() => setSelectedClan(null)} onUpdate={fetchClans} />;
+  }
+
   const handleJoinClan = async (clanId: string) => {
     if (!user || !supabase) {
       toast.error('Log in to join a Clan');
@@ -185,12 +191,16 @@ export default function ClanSystem() {
           <p className="text-[10px] text-zinc-500 mt-0.5">Form alliances, post clan feeds, and group chat.</p>
         </div>
 
-        <button
-          onClick={() => setCreateModalOpen(true)}
-          className="px-4 py-2 bg-primary-600 hover:bg-primary-500 text-white rounded-full text-xs font-bold uppercase tracking-wider flex items-center gap-1.5 transition-all shadow-md"
-        >
-          <Plus size={14} /> Create Clan
-        </button>
+        <div className="flex gap-4 items-center">
+            <button onClick={() => setActiveTab('discover')} className={`text-xs font-bold uppercase tracking-wider flex items-center gap-1 ${activeTab === 'discover' ? 'text-primary-500' : 'text-zinc-500 hover:text-white'}`}><Compass size={14}/> Discover</button>
+            <button onClick={() => setActiveTab('myclans')} className={`text-xs font-bold uppercase tracking-wider flex items-center gap-1 ${activeTab === 'discover' ? 'text-zinc-500 hover:text-white' : 'text-primary-500'}`}><List size={14}/> My Clans</button>
+            <button
+            onClick={() => setCreateModalOpen(true)}
+            className="px-4 py-2 bg-primary-600 hover:bg-primary-500 text-white rounded-full text-xs font-bold uppercase tracking-wider flex items-center gap-1.5 transition-all shadow-md ml-4"
+            >
+            <Plus size={14} /> Create Clan
+            </button>
+        </div>
       </div>
 
       {/* Clan Grid */}
@@ -202,11 +212,11 @@ export default function ClanSystem() {
         </div>
       ) : clans.length === 0 ? (
         <div className="p-12 text-center bg-[#0a0a0a] border border-white/5 rounded-3xl text-zinc-500 text-xs">
-          No Clans formed yet. Be the first to establish a Clan!
+          No Clans found.
         </div>
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          {clans.map(clan => {
+          {clans.filter(c => activeTab === 'discover' ? true : userClanIds.includes(c.id)).map(clan => {
             const isMember = userClanIds.includes(clan.id);
             return (
               <div
@@ -242,11 +252,14 @@ export default function ClanSystem() {
                   <span className="text-[9px] font-bold text-zinc-500 uppercase tracking-wider">
                     Leader: <strong className="text-white">{clan.owner?.username || 'Owner'}</strong>
                   </span>
-
+                  
                   {isMember ? (
-                    <span className="px-3 py-1 bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 rounded-full text-[10px] font-bold uppercase tracking-wider">
-                      Joined Clan
-                    </span>
+                    <button 
+                      onClick={(e) => { e.stopPropagation(); setSelectedClan(clan); }}
+                      className="w-full mt-4 bg-white/5 hover:bg-white/10 text-white py-2 rounded-xl text-xs font-bold uppercase tracking-widest transition-colors flex items-center justify-center gap-2"
+                    >
+                      Enter Clan <ChevronRight size={14} />
+                    </button>
                   ) : (
                     <button
                       onClick={() => handleJoinClan(clan.id)}
