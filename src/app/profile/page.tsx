@@ -12,11 +12,12 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { 
-    Grid, Heart, Bookmark, Settings, Upload, Trash2, Link as LinkIcon, Camera, LayoutGrid, CheckCircle, MessageSquare, History
+    Grid, Heart, Bookmark, Settings, Upload, Trash2, Link as LinkIcon, Camera, LayoutGrid, CheckCircle, MessageSquare, History, Users, Award, Star, Lock
 } from 'lucide-react';
-import { toast } from 'sonner';
+import { toast } from '@/lib/toast';
 import AuthModal from '@/components/Auth/AuthModal';
 import ShadowAvatar from '@/components/User/ShadowAvatar'; 
+import Footer from '@/components/Anime/Footer';
 import { motion, AnimatePresence } from 'framer-motion';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
@@ -168,10 +169,11 @@ export default function ProfilePage() {
                     <div className="flex-1 flex flex-col items-center md:items-start w-full">
                         <div className="flex flex-col md:flex-row items-center gap-4 mb-5 w-full">
                             <h1 className="text-2xl md:text-xl font-medium text-white">{profile.username}</h1>
-                            <div className="flex gap-2">
-                                <Button onClick={() => setIsEditing(true)} variant="secondary" className="bg-zinc-800 hover:bg-zinc-700 text-white h-8 px-4 font-bold text-sm rounded-lg">Edit profile</Button>
-                                <Button onClick={() => router.push('/watchlist')} variant="secondary" className="bg-zinc-800 hover:bg-zinc-700 text-white h-8 px-4 font-bold text-sm rounded-lg">View archive</Button>
-                                <Button onClick={() => router.push('/settings')} variant="ghost" className="h-8 w-8 p-0 rounded-lg text-white hover:bg-zinc-800"><Settings size={20}/></Button>
+                            <div className="flex gap-2 flex-wrap justify-center md:justify-start">
+                                <Button onClick={() => setIsEditing(true)} variant="secondary" className="bg-zinc-800 hover:bg-zinc-700 text-white h-8 px-4 font-bold text-xs rounded-lg">Edit profile</Button>
+                                <Button onClick={() => router.push('/rooms')} variant="secondary" className="bg-primary-600/20 border border-primary-500/30 hover:bg-primary-600 text-primary-400 hover:text-white h-8 px-4 font-bold text-xs rounded-lg flex items-center gap-1.5"><Users size={14} /> Watch Rooms</Button>
+                                <Button onClick={() => router.push('/watchlist')} variant="secondary" className="bg-zinc-800 hover:bg-zinc-700 text-white h-8 px-4 font-bold text-xs rounded-lg">Archive</Button>
+                                <Button onClick={() => router.push('/settings')} variant="ghost" className="h-8 w-8 p-0 rounded-lg text-white hover:bg-zinc-800"><Settings size={18}/></Button>
                             </div>
                         </div>
 
@@ -197,20 +199,49 @@ export default function ProfilePage() {
                             <div onClick={()=>fetchFollowList('followers')} className="flex flex-col items-center cursor-pointer"><span className="font-bold text-white">{followersCount}</span> <span className="text-zinc-500">followers</span></div>
                             <div onClick={()=>fetchFollowList('following')} className="flex flex-col items-center cursor-pointer"><span className="font-bold text-white">{followingCount}</span> <span className="text-zinc-500">following</span></div>
                         </div>
+                        {/* Level & XP Display */}
+                        {(() => {
+                            const level = profile.level || 1;
+                            const xp = profile.xp || 0;
+                            const xpForNext = level * 100;
+                            const xpProgress = Math.min((xp % xpForNext) / xpForNext * 100, 100);
+                            return (
+                                <div className="mt-4 w-full md:max-w-xs">
+                                    <div className="flex items-center justify-between mb-1">
+                                        <div className="flex items-center gap-1.5">
+                                            <div className="w-5 h-5 rounded-full bg-gradient-to-br from-yellow-400 to-orange-500 flex items-center justify-center shadow-lg">
+                                                <Star size={11} className="text-white fill-white" />
+                                            </div>
+                                            <span className="text-xs font-black text-white tracking-wider">Lvl {level}</span>
+                                        </div>
+                                        <span className="text-[10px] text-zinc-500">{xp % xpForNext} / {xpForNext} XP</span>
+                                    </div>
+                                    <div className="h-1.5 w-full bg-zinc-800 rounded-full overflow-hidden">
+                                        <div 
+                                            className="h-full bg-gradient-to-r from-yellow-400 via-orange-400 to-red-500 rounded-full transition-all duration-1000"
+                                            style={{ width: `${xpProgress}%` }}
+                                        />
+                                    </div>
+                                </div>
+                            );
+                        })()}
                     </div>
                 </div>
 
                 {/* TABS (POSTS, FAVORITES, WATCH HISTORY) */}
                 <Tabs defaultValue="posts" className="w-full border-t border-zinc-800">
-                    <TabsList className="bg-transparent w-full justify-center h-auto p-0 rounded-none flex">
-                        <TabsTrigger value="posts" className="data-[state=active]:bg-transparent data-[state=active]:border-t-[1px] data-[state=active]:border-white data-[state=active]:text-white rounded-none px-6 py-4 text-xs font-bold text-zinc-500 hover:text-zinc-300 uppercase tracking-widest flex items-center gap-2 -mt-[1px]">
+                    <TabsList className="bg-transparent w-full justify-center h-auto p-0 rounded-none flex overflow-x-auto">
+                        <TabsTrigger value="posts" className="data-[state=active]:bg-transparent data-[state=active]:border-t-[1px] data-[state=active]:border-white data-[state=active]:text-white rounded-none px-4 md:px-6 py-4 text-xs font-bold text-zinc-500 hover:text-zinc-300 uppercase tracking-widest flex items-center gap-2 -mt-[1px] shrink-0">
                             <Grid size={14}/> Posts
                         </TabsTrigger>
-                        <TabsTrigger value="favorites" className="data-[state=active]:bg-transparent data-[state=active]:border-t-[1px] data-[state=active]:border-white data-[state=active]:text-white rounded-none px-6 py-4 text-xs font-bold text-zinc-500 hover:text-zinc-300 uppercase tracking-widest flex items-center gap-2 -mt-[1px]">
+                        <TabsTrigger value="favorites" className="data-[state=active]:bg-transparent data-[state=active]:border-t-[1px] data-[state=active]:border-white data-[state=active]:text-white rounded-none px-4 md:px-6 py-4 text-xs font-bold text-zinc-500 hover:text-zinc-300 uppercase tracking-widest flex items-center gap-2 -mt-[1px] shrink-0">
                             <Heart size={14}/> Favorites
                         </TabsTrigger>
-                        <TabsTrigger value="watchlist" className="data-[state=active]:bg-transparent data-[state=active]:border-t-[1px] data-[state=active]:border-white data-[state=active]:text-white rounded-none px-6 py-4 text-xs font-bold text-zinc-500 hover:text-zinc-300 uppercase tracking-widest flex items-center gap-2 -mt-[1px]">
+                        <TabsTrigger value="watchlist" className="data-[state=active]:bg-transparent data-[state=active]:border-t-[1px] data-[state=active]:border-white data-[state=active]:text-white rounded-none px-4 md:px-6 py-4 text-xs font-bold text-zinc-500 hover:text-zinc-300 uppercase tracking-widest flex items-center gap-2 -mt-[1px] shrink-0">
                             <History size={14}/> Watch History
+                        </TabsTrigger>
+                        <TabsTrigger value="frames" className="data-[state=active]:bg-transparent data-[state=active]:border-t-[1px] data-[state=active]:border-white data-[state=active]:text-white rounded-none px-4 md:px-6 py-4 text-xs font-bold text-zinc-500 hover:text-zinc-300 uppercase tracking-widest flex items-center gap-2 -mt-[1px] shrink-0">
+                            <Award size={14}/> Frames
                         </TabsTrigger>
                     </TabsList>
 
@@ -300,6 +331,64 @@ export default function ProfilePage() {
                                 ))}
                             </div>
                         )}
+                    </TabsContent>
+
+                    {/* PROFILE FRAMES TAB */}
+                    <TabsContent value="frames" className="mt-6 outline-none">
+                        {(() => {
+                            const currentLevel = profile.level || 1;
+                            const activeFrame = profile.frame_id || 'none';
+                            const FRAMES = [
+                                { id: 'none', name: 'No Frame', minLevel: 0, gradient: '', description: 'Clean look, no frame' },
+                                { id: 'starter', name: 'Starter Ring', minLevel: 1, gradient: 'from-zinc-400 to-zinc-600', description: 'Your first frame' },
+                                { id: 'crimson', name: 'Crimson Seal', minLevel: 5, gradient: 'from-red-500 to-red-700', description: 'For the passionate' },
+                                { id: 'sapphire', name: 'Sapphire Crest', minLevel: 10, gradient: 'from-blue-500 to-indigo-700', description: 'Cool and collected' },
+                                { id: 'emerald', name: 'Emerald Mantle', minLevel: 15, gradient: 'from-emerald-400 to-green-700', description: 'Nature\'s champion' },
+                                { id: 'golden', name: 'Golden Halo', minLevel: 25, gradient: 'from-yellow-400 to-amber-600', description: 'Glory and prestige' },
+                                { id: 'shadow', name: 'Shadow Aura', minLevel: 40, gradient: 'from-violet-600 to-black', description: 'Power from darkness' },
+                                { id: 'celestial', name: 'Celestial Ring', minLevel: 60, gradient: 'from-cyan-400 via-purple-500 to-pink-500', description: 'Among the stars' },
+                                { id: 'divine', name: 'Divine Throne', minLevel: 99, gradient: 'from-pink-400 via-yellow-400 to-red-500', description: 'The pinnacle' },
+                            ];
+                            const handleEquipFrame = async (frameId: string) => {
+                                if (!user) return;
+                                try {
+                                    await supabase.from('profiles').update({ frame_id: frameId }).eq('id', user.id);
+                                    toast.success(frameId === 'none' ? 'Frame removed' : 'Frame equipped!');
+                                    refreshSession();
+                                } catch { toast.error('Failed to equip frame'); }
+                            };
+                            return (
+                                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
+                                    {FRAMES.map(frame => {
+                                        const unlocked = currentLevel >= frame.minLevel;
+                                        const isActive = activeFrame === frame.id;
+                                        return (
+                                            <div
+                                                key={frame.id}
+                                                onClick={() => unlocked && handleEquipFrame(frame.id)}
+                                                className={`relative flex flex-col items-center gap-3 p-4 rounded-2xl border transition-all ${
+                                                    isActive ? 'border-primary-500 bg-primary-600/10' :
+                                                    unlocked ? 'border-white/10 bg-zinc-900/50 hover:border-white/30 cursor-pointer' :
+                                                    'border-white/5 bg-zinc-900/20 opacity-50'
+                                                }`}
+                                            >
+                                                {!unlocked && <div className="absolute top-2 right-2"><Lock size={10} className="text-zinc-500" /></div>}
+                                                {isActive && <div className="absolute top-2 right-2"><CheckCircle size={12} className="text-primary-400" /></div>}
+                                                <div className={`w-14 h-14 rounded-full p-1 ${ frame.gradient ? `bg-gradient-to-br ${frame.gradient}` : 'bg-zinc-800 border border-white/10' }`}>
+                                                    <div className="w-full h-full rounded-full bg-zinc-900 flex items-center justify-center">
+                                                        <Star size={18} className={unlocked ? 'text-white' : 'text-zinc-600'} />
+                                                    </div>
+                                                </div>
+                                                <div className="text-center">
+                                                    <p className="text-xs font-bold text-white">{frame.name}</p>
+                                                    <p className="text-[9px] text-zinc-500 mt-0.5">{unlocked ? frame.description : `Unlocks at Lv.${frame.minLevel}`}</p>
+                                                </div>
+                                            </div>
+                                        );
+                                    })}
+                                </div>
+                            );
+                        })()}
                     </TabsContent>
                 </Tabs>
             </div>
@@ -405,6 +494,7 @@ export default function ProfilePage() {
                 </DialogContent>
             </Dialog>
 
+            <Footer />
         </div>
     );
 }

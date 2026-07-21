@@ -18,7 +18,7 @@ import { AnimeService, UniversalAnime } from '@/lib/api';
 import { dpi } from '@/lib/dpi';
 import { supabase } from '@/lib/supabase';
 import { cn, isRelatedAnime, getChunkLabel } from '@/lib/utils';
-import { toast } from 'sonner';
+import { toast } from '@/lib/toast';
 import { useAuth } from '@/context/AuthContext';
 
 import AnimePlayer, { AnimePlayerRef } from '@/components/Player/AnimePlayer';
@@ -1180,7 +1180,7 @@ function WatchContent() {
                         <button onClick={() => updateSetting('autoNext', !settings.autoNext)} className={cn("flex items-center justify-center gap-2 px-6 h-8 rounded-full border text-[9px] sm:text-[10px] font-black uppercase tracking-widest transition-all whitespace-nowrap flex-shrink-0", settings.autoNext ? "bg-emerald-600/20 border-emerald-500/50 text-emerald-500" : "bg-white/5 border-white/10 text-zinc-500 hover:bg-white/10 hover:text-zinc-300")}>
                             <SkipForward size={14} /> AUTO-NEXT
                         </button>
-                        <WatchListButton animeId={anime.id} animeTitle={anime.title} animeImage={anime.poster} currentEp={currentEpisode?.number} />
+                        <WatchListButton animeId={anime.id} animeTitle={anime.title} animeImage={anime.poster} currentEp={currentEpisode?.number} mediaType="donghua" />
                     </div>
 
                     {/* Right: Actions, Sub/Dub, Server */}
@@ -1221,7 +1221,7 @@ function WatchContent() {
                         <button onClick={() => updateSetting('autoNext', !settings.autoNext)} className={cn("w-full flex items-center justify-center gap-2 h-10 rounded-full border text-[10px] sm:text-[11px] font-black uppercase tracking-widest transition-all whitespace-nowrap", settings.autoNext ? "bg-emerald-600/20 border-emerald-500/50 text-emerald-500" : "bg-white/5 border-white/10 text-zinc-500")}>
                             <SkipForward size={14} /> AUTO-NEXT
                         </button>
-                        <WatchListButton animeId={anime.id} animeTitle={anime.title} animeImage={anime.poster} currentEp={currentEpisode?.number} />
+                        <WatchListButton animeId={anime.id} animeTitle={anime.title} animeImage={anime.poster} currentEp={currentEpisode?.number} mediaType="donghua" />
                     </div>
                     <div className="flex w-full justify-between items-center gap-2 border-t border-white/5 pt-3">
                         <button disabled={!prevEpisode} onClick={() => prevEpisode && handleEpisodeClick(prevEpisode.id)} className="flex-1 bg-white/5 h-8 rounded-full border border-white/5 flex items-center justify-center text-zinc-400 hover:text-white active:bg-white/10"><SkipBack size={14}/> PREV</button>

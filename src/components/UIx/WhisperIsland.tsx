@@ -5,11 +5,11 @@ import { useRouter } from 'next/navigation';
 import { motion, AnimatePresence, LayoutGroup, Transition, Variants } from 'framer-motion';
 import { 
   Search, X, Loader2, Filter, Calendar, Tv, Layers, 
-  Bot, LogIn, LogOut, Settings, User, ChevronDown, ArrowRight, Dices, Sparkles,
+  Bot, LogIn, LogOut, Settings, User, ChevronDown, ArrowRight, Dices, Wand2,
   Bell, CheckCircle, Info, Languages, Flag, Heart, AlertOctagon, 
   ArrowDownAZ, LayoutGrid, RotateCcw, ScanSearch, Users, Plus,
   ShieldAlert, MessageSquareWarning, Volume2, Mic2, Radio, Check, 
-  Trash2, Play, Pause, AudioWaveform, Flame, Globe
+  Trash2, Play, Pause, AudioWaveform, Flame, Globe, AtSign, Hash
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { DragonIcon } from '@/components/UIx/DragonIcon';
@@ -360,18 +360,27 @@ const SearchBarContent = ({ query, setQuery, searchMode, setSearchMode, showFilt
                          </div>
                      </motion.div>
                  )}
-                 {query.length > 1 && suggestions.length > 0 && !showFilters && (
+                 {query.length > 0 && suggestions.length > 0 && !showFilters && (
                      <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 10 }} className="absolute top-[120%] left-0 right-0 bg-[#0a0a0a]/95 border border-white/10 rounded-2xl shadow-2xl p-1 z-[100]">
-                         {suggestions.map((s: SearchResult) => (
-                             <div key={s.id} onClick={() => handleSuggestionClick(s.id)} className="flex items-center gap-3 p-1.5 hover:bg-white/10 rounded-xl cursor-pointer group transition-all">
-                                 <img src={s.image || s.poster || '/images/no-poster.png'} className="w-9 h-12 object-cover rounded-lg bg-zinc-800 shadow-md" alt="" />
+                         {/* Prefix hint */}
+                         {query.startsWith('@') && <div className="px-3 py-1.5 text-[9px] font-bold text-zinc-500 uppercase tracking-widest flex items-center gap-1"><AtSign size={9}/> Users & Clans</div>}
+                         {query.startsWith('/') && <div className="px-3 py-1.5 text-[9px] font-bold text-zinc-500 uppercase tracking-widest flex items-center gap-1"><Hash size={9}/> Posts</div>}
+                         {suggestions.map((s: SearchResult & { _kind?: string }) => (
+                             <div key={s.id} onClick={() => handleSuggestionClick(s.id, s._kind)} className="flex items-center gap-3 p-1.5 hover:bg-white/10 rounded-xl cursor-pointer group transition-all">
+                                 {s.image ? (
+                                     <img src={s.image || '/images/no-poster.png'} className={cn("object-cover rounded-lg bg-zinc-800 shadow-md", s._kind === 'post' ? 'w-7 h-7 rounded-full' : 'w-9 h-12')} alt="" />
+                                 ) : (
+                                     <div className={cn("flex items-center justify-center bg-zinc-800 rounded-lg", s._kind === 'post' ? 'w-7 h-7 rounded-full' : 'w-9 h-12')}>
+                                         {s._kind === 'user' ? <User size={14} className="text-zinc-500" /> : s._kind === 'clan' ? <Users size={14} className="text-zinc-500" /> : <Hash size={14} className="text-zinc-500" />}
+                                     </div>
+                                 )}
                                  <div className="min-w-0 flex-1">
                                      <div className="text-xs font-bold text-white truncate group-hover:text-primary-500">{s.title}</div>
-                                     <div className="text-[9px] text-zinc-500 font-medium uppercase mt-0.5">{s.duration || '?'} • {s.type} • {s.releaseDate || '?'}</div>
+                                     <div className="text-[9px] text-zinc-500 font-medium uppercase mt-0.5">{s.duration || s.type} {s.releaseDate ? `• ${s.releaseDate}` : ''}</div>
                                  </div>
                              </div>
                          ))}
-                         <div onClick={() => handleSearchSubmit()} className="p-2 mt-1 border-t border-white/5 text-center text-[9px] font-bold text-zinc-500 hover:text-white cursor-pointer uppercase tracking-widest">See All Results</div>
+                         {!query.startsWith('@') && !query.startsWith('/') && <div onClick={() => handleSearchSubmit()} className="p-2 mt-1 border-t border-white/5 text-center text-[9px] font-bold text-zinc-500 hover:text-white cursor-pointer uppercase tracking-widest">See All Results</div>}
                      </motion.div>
                  )}
              </AnimatePresence>
@@ -584,20 +593,50 @@ function WhisperIslandContent() {
       }, {});
   }, [voices]);
 
-  // --- MISSING GLOBAL SEARCH EFFECT RESTORED ---
+  // --- SEARCH EFFECT: handles @user, /posts, or anime search ---
   useEffect(() => {
-    if (searchMode !== 'anime') return; 
     const delay = setTimeout(async () => {
-      if (query.trim().length > 1) {
+      const q = query.trim();
+      if (q.startsWith('@')) {
+        // @ prefix: search users AND clans
+        const term = q.slice(1);
+        if (term.length < 1) { setSuggestions([]); return; }
         setIsLoadingSearch(true);
         try {
-          const results = await AnimeService.getSearchSuggestions(query);
+          const [{ data: users }, { data: clans }] = await Promise.all([
+            supabase.from('profiles').select('id, username, avatar_url, role').ilike('username', `%${term}%`).limit(4),
+            supabase.from('clans').select('id, name, avatar_url').ilike('name', `%${term}%`).limit(3),
+          ]);
+          const userResults = (users || []).map((u: any) => ({ id: u.id, title: u.username, image: u.avatar_url, type: u.role === 'admin' ? 'Admin' : 'User', _kind: 'user' }));
+          const clanResults = (clans || []).map((c: any) => ({ id: c.id, title: c.name, image: c.avatar_url, type: 'Clan', _kind: 'clan' }));
+          setSuggestions([...userResults, ...clanResults]);
+        } catch { setSuggestions([]); } finally { setIsLoadingSearch(false); }
+        return;
+      }
+      if (q.startsWith('/')) {
+        // / prefix: search posts
+        const term = q.slice(1);
+        if (term.length < 2) { setSuggestions([]); return; }
+        setIsLoadingSearch(true);
+        try {
+          const { data: posts } = await supabase
+            .from('social_posts')
+            .select('id, content, user:profiles(username, avatar_url)')
+            .ilike('content', `%${term}%`)
+            .limit(5);
+          const postResults = (posts || []).map((p: any) => ({ id: p.id, title: (p.content || '').slice(0, 60) + ((p.content || '').length > 60 ? '...' : ''), image: p.user?.avatar_url, type: `By @${p.user?.username || 'Unknown'}`, _kind: 'post' }));
+          setSuggestions(postResults);
+        } catch { setSuggestions([]); } finally { setIsLoadingSearch(false); }
+        return;
+      }
+      // Default: anime search
+      if (searchMode !== 'anime') return;
+      if (q.length > 1) {
+        setIsLoadingSearch(true);
+        try {
+          const results = await AnimeService.getSearchSuggestions(q);
           setSuggestions(results || []);
-        } catch (e) {
-          setSuggestions([]);
-        } finally {
-          setIsLoadingSearch(false);
-        }
+        } catch { setSuggestions([]); } finally { setIsLoadingSearch(false); }
       } else {
         setSuggestions([]);
       }
@@ -614,7 +653,13 @@ function WhisperIslandContent() {
 
   const handleSearchSubmit = (e?: React.FormEvent) => { if(e) e.preventDefault(); const params = new URLSearchParams(); if (query) params.set('keyword', query); if (filters.genre.length > 0) params.set('genres', filters.genre.join(',').toLowerCase()); if (filters.sort) params.set('sort', filters.sort); if (filters.language) params.set('lang', filters.language.toLowerCase()); const route = searchMode === 'hindi' ? '/search/hindi' : searchMode === 'donghua' ? '/search/donghua' : '/search'; router.push(`${route}?${params.toString()}`); setShowFilters(false); };
   const toggleGenre = (g: string) => setFilters(prev => ({ ...prev, genre: prev.genre.includes(g) ? prev.genre.filter(i => i !== g) : [...prev.genre, g] }));
-  const handleSuggestionClick = (id: string) => { setQuery(''); router.push(`/watch/${id}`); };
+  const handleSuggestionClick = (id: string, kind?: string) => {
+    setQuery('');
+    if (kind === 'user') { router.push(`/profile/${id}`); return; }
+    if (kind === 'clan') { router.push(`/social?clan=${id}`); return; }
+    if (kind === 'post') { router.push(`/social?post=${id}`); return; }
+    router.push(`/watch/${id}`);
+  };
   const activateSearchFocus = (e: React.MouseEvent) => { e.stopPropagation(); setCenterMode('SEARCH_FOCUSED'); };
   const activateIslandFocus = (e: React.MouseEvent) => { e.stopPropagation(); setCenterMode('ISLAND_FOCUSED'); };
   const activateIslandDetails = (e: React.MouseEvent) => { e.stopPropagation(); if(centerMode === 'ISLAND_DETAILS') setCenterMode('ISLAND_FOCUSED'); else setCenterMode('ISLAND_DETAILS'); };

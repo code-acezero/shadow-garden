@@ -3,7 +3,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { 
   Search, X, Loader2, PlayCircle, Clock, Image as ImageIcon, 
-  Sparkles, Filter, Calendar, Layers, Tag, Tv, Dices, RotateCcw
+  Sparkles, Filter, Calendar, Layers, Tag, Tv, Dices, RotateCcw, Wand2
 } from 'lucide-react';
 import { useRouter } from 'next/navigation'; 
 import { motion, AnimatePresence } from 'framer-motion';
@@ -225,7 +225,7 @@ export default function SearchBar() {
 
                     <button type="button" onClick={() => router.push('/ai/imagesearch')} className="group/ai relative flex items-center justify-center w-8 h-8 rounded-full hover:bg-white/5 transition-all">
                           <ImageIcon className="w-4 h-4 text-gray-400 group-hover/ai:text-blue-400 transition-colors" />
-                          <Sparkles className="w-2 h-2 text-yellow-400 absolute top-1.5 right-1.5 animate-pulse" />
+                          <Wand2 className="w-2 h-2 text-yellow-400 absolute top-1.5 right-1.5 animate-pulse" />
                     </button>
                 </div>
             </div>

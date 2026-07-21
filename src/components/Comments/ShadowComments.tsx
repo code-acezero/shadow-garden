@@ -3,7 +3,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { supabase } from '@/lib/supabase'; // ✅ IMPORT SINGLETON
 import { cn } from '@/lib/utils';
-import { toast } from 'sonner';
+import { toast } from '@/lib/toast';
 import { 
     Bold, Italic, EyeOff, Send, MoreVertical, Flag, ThumbsUp, ThumbsDown, 
     MessageSquare, CornerDownRight, AlertTriangle, Trash2, Edit2, User, X, ChevronDown, ChevronUp

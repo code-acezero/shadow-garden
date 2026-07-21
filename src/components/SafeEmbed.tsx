@@ -1,6 +1,6 @@
 "use client";
 import { useState } from "react";
-import { Play } from "lucide-react";
+import { Play, Loader2 } from "lucide-react";
 
 interface SafeEmbedProps {
   url: string;
@@ -8,6 +8,7 @@ interface SafeEmbedProps {
 
 export default function SafeEmbed({ url }: SafeEmbedProps) {
   const [hasStarted, setHasStarted] = useState(false);
+  const [iframeLoading, setIframeLoading] = useState(true);
 
   // No sandbox attribute = No restrictions.
   // The player has full control, so ads will show, but the video will definitely play.
@@ -15,8 +16,17 @@ export default function SafeEmbed({ url }: SafeEmbedProps) {
   return (
     <div className="relative w-full aspect-video bg-black rounded-xl overflow-hidden shadow-2xl border border-gray-800">
       
+      {hasStarted && iframeLoading && (
+          <div className="absolute inset-0 z-50 flex items-center justify-center pointer-events-none">
+              <div className="bg-black/40 backdrop-blur-[2px] p-4 rounded-full shadow-xl animate-in fade-in zoom-in-90 duration-300">
+                <Loader2 className="w-10 h-10 text-white animate-spin" />
+              </div>
+          </div>
+      )}
+
       <iframe
         src={url}
+        onLoad={() => setIframeLoading(false)}
         className={`w-full h-full object-cover transition-opacity duration-500 ${
            hasStarted ? "opacity-100" : "opacity-0"
         }`}

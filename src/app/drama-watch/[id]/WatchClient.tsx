@@ -265,7 +265,7 @@ function DramaWatchContent() {
                     <Download size={12} /> DOWNLOAD
                   </Link>
                 )}
-                <WatchListButton animeId={drama.id} animeTitle={drama.title} animeImage={drama.image} currentEp={currentEp?.number} />
+                <WatchListButton animeId={drama.id} animeTitle={drama.title} animeImage={drama.image} currentEp={currentEp?.number} mediaType="drama" />
                 {stream && stream.servers.length > 0 && (
                   <DropdownMenu modal={false}>
                     <DropdownMenuTrigger asChild>
@@ -303,7 +303,7 @@ function DramaWatchContent() {
                 <button onClick={() => setIsAutoNext(v => !v)} className={cn("w-full flex items-center justify-center gap-2 h-10 rounded-full border text-[10px] font-black uppercase tracking-widest transition-all whitespace-nowrap", isAutoNext ? "bg-orange-600/20 border-orange-500/50 text-orange-500" : "bg-white/5 border-white/10 text-zinc-500")}>
                   <SkipForward size={14} /> AUTO
                 </button>
-                <WatchListButton animeId={drama.id} animeTitle={drama.title} animeImage={drama.image} currentEp={currentEp?.number} />
+                <WatchListButton animeId={drama.id} animeTitle={drama.title} animeImage={drama.image} currentEp={currentEp?.number} mediaType="drama" />
               </div>
               {/* Row 3: PREV / NEXT */}
               <div className="flex w-full justify-between items-center gap-2 border-t border-white/5 pt-3">

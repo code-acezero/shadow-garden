@@ -3,6 +3,7 @@
 import React, { useState } from 'react';
 import OtakuVerse from '@/components/Social/OtakuVerse';
 import AuthModal from '@/components/Auth/AuthModal';
+import Footer from '@/components/Anime/Footer';
 import { useAuth } from '@/context/AuthContext';
 
 export default function SocialPage() {
@@ -31,6 +32,7 @@ export default function SocialPage() {
         onClose={() => setShowAuthModal(false)}
         onAuthSuccess={() => setShowAuthModal(false)}
       />
+      <Footer />
     </div>
   );
 }

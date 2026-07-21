@@ -166,7 +166,7 @@ const MoviesRow = ({ section, isFirst }: { section: DramaSection & { query?: str
           <h2 className="text-[16px] md:text-[20px] font-black text-white tracking-tight flex items-center gap-2 group cursor-pointer w-fit drop-shadow-md">
              {section.title}
           </h2>
-          <Link href={section.query ? `/search?library=movies&keyword=${section.query}` : `/search?library=movies`} className="text-[10px] md:text-xs font-bold text-emerald-500 hover:text-emerald-400 flex items-center gap-1 uppercase tracking-widest transition-colors">
+          <Link href={section.query ? `/search?library=movies&genres=${section.query}` : `/search?library=movies`} className="text-[10px] md:text-xs font-bold text-emerald-500 hover:text-emerald-400 flex items-center gap-1 uppercase tracking-widest transition-colors">
             View All <ChevronRight size={14} />
           </Link>
       </div>
@@ -189,7 +189,7 @@ const MoviesGrid = ({ section }: { section: DramaSection & { query?: string } })
           <h2 className="text-[16px] md:text-[20px] font-black text-white tracking-tight flex items-center gap-2 w-fit drop-shadow-md">
              {section.title}
           </h2>
-          <Link href={section.query ? `/search?library=movies&keyword=${section.query}` : `/search?library=movies`} className="text-[10px] md:text-xs font-bold text-emerald-500 hover:text-emerald-400 flex items-center gap-1 uppercase tracking-widest transition-colors">
+          <Link href={section.query ? `/search?library=movies&genres=${section.query}` : `/search?library=movies`} className="text-[10px] md:text-xs font-bold text-emerald-500 hover:text-emerald-400 flex items-center gap-1 uppercase tracking-widest transition-colors">
             View All <ChevronRight size={14} />
           </Link>
       </div>
@@ -358,7 +358,7 @@ export default function MoviesHomePage() {
   });
 
   return (
-    <div className="min-h-screen bg-[#020617] text-white pb-24 overflow-x-hidden selection:bg-emerald-500/30 pt-16 md:pt-0">
+    <div className="min-h-screen bg-[#020617] text-white pb-24 overflow-x-hidden selection:bg-emerald-500/30 pt-[calc(env(safe-area-inset-top)+80px)] md:pt-[calc(env(safe-area-inset-top)+56px)]">
       {loading ? (
         <div className="w-full min-h-screen flex flex-col items-center justify-center bg-[#020617]">
            <div className="w-16 h-16 border-4 border-emerald-500/20 border-t-emerald-500 rounded-full animate-spin drop-shadow-[0_0_15px_rgba(16,185,129,0.5)]" />

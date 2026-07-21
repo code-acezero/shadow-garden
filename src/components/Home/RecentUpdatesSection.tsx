@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect, useRef } from 'react';
-import { ChevronRight, Sparkles, Loader2, Zap } from 'lucide-react';
+import { ChevronRight, Zap, Loader2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import AnimeCard from '@/components/Anime/AnimeCard';
 import HindiAnimeCard from '@/components/Anime/HindiAnimeCard'; 
@@ -192,7 +192,7 @@ export default function RecentUpdatesSection({ initialData }: { initialData: any
             <div className="flex flex-wrap md:flex-nowrap items-center justify-between mb-6 gap-y-4 md:gap-4 relative">
                 <div className="flex items-center gap-2 md:gap-3 min-w-0 order-1">
                     <div className="p-1.5 md:p-2 bg-primary-600/10 rounded-lg md:rounded-xl border border-primary-500/20 backdrop-blur-md flex-shrink-0">
-                        <Sparkles className="w-3.5 h-3.5 md:w-4 md:h-4 text-primary-500" />
+                        <Zap className="w-3.5 h-3.5 md:w-4 md:h-4 text-primary-500 fill-current" />
                     </div>
                     <h2 className="text-sm md:text-lg font-black tracking-[0.15em] md:tracking-[0.2em] uppercase font-sans drop-shadow-md bg-gradient-to-r from-primary-500 via-violet-500 to-violet-600 bg-clip-text text-transparent truncate">
                         Recent Updates

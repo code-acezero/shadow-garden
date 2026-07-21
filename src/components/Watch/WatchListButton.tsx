@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabase'; // ✅ IMPORT SINGLETON
 import { cn } from '@/lib/utils';
-import { toast } from 'sonner';
+import { toast } from '@/lib/toast';
 import { Plus, Eye, CheckCircle, XCircle, Clock, Loader2, Trash2 } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import {
@@ -19,9 +19,10 @@ interface WatchListButtonProps {
     animeTitle: string;
     animeImage: string;
     currentEp?: number; 
+    mediaType?: string;
 }
 
-export default function WatchListButton({ animeId, animeTitle, animeImage, currentEp }: WatchListButtonProps) {
+export default function WatchListButton({ animeId, animeTitle, animeImage, currentEp, mediaType = 'anime' }: WatchListButtonProps) {
     const { user, isLoading: isAuthLoading } = useAuth();
     const [status, setStatus] = useState<string | null>(null);
     const [loading, setLoading] = useState(false);
@@ -84,6 +85,7 @@ export default function WatchListButton({ animeId, animeTitle, animeImage, curre
                     status: newStatus,
                     anime_title: animeTitle,
                     anime_image: animeImage,
+                    media_type: mediaType,
                     last_episode_number: currentEp || 1, 
                     updated_at: new Date().toISOString()
                 }, { onConflict: 'user_id, anime_id' });

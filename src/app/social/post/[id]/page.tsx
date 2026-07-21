@@ -8,7 +8,8 @@ import { ArrowLeft, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge'; 
 import OtakuVerse from '@/components/Social/OtakuVerse';
-import { toast } from 'sonner';
+import Footer from '@/components/Anime/Footer';
+import { toast } from '@/lib/toast';
 
 export default function SinglePostPage() {
   const params = useParams();
@@ -128,6 +129,7 @@ export default function SinglePostPage() {
           highlightId={params.id as string}
         />
       </main>
+      <Footer />
     </div>
   );
 }

@@ -353,7 +353,7 @@ export default function DramaHomePage() {
   });
 
   return (
-    <div className="min-h-screen bg-[#020617] text-white pb-24 overflow-x-hidden selection:bg-cyan-500/30 pt-16 md:pt-0">
+    <div className="min-h-screen bg-[#020617] text-white pb-24 overflow-x-hidden selection:bg-cyan-500/30 pt-[calc(env(safe-area-inset-top)+80px)] md:pt-[calc(env(safe-area-inset-top)+56px)]">
       {loading ? (
         <div className="w-full min-h-screen flex flex-col items-center justify-center bg-[#020617]">
            <div className="w-16 h-16 border-4 border-cyan-500/20 border-t-cyan-500 rounded-full animate-spin drop-shadow-[0_0_15px_rgba(34,211,238,0.5)]" />

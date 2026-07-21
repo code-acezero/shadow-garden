@@ -3,7 +3,7 @@
 import React, { useState, useRef } from 'react';
 import { MoeAPI } from '@/lib/moeApi';
 import { AnimeService } from '@/lib/api';
-import { Upload, Search, X, Loader2, Play, ScanSearch, Sparkles, ChevronRight, Info, Crop } from 'lucide-react';
+import { Upload, Search, X, Loader2, Play, ScanSearch, Zap, ChevronRight, Info, Crop } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
 import Footer from '@/components/Anime/Footer';
@@ -202,7 +202,7 @@ export default function ImageSearchPage() {
                                     {loading ? (
                                         <><Loader2 className="animate-spin" size={18} /> Processing Data...</>
                                     ) : (
-                                        <><Sparkles size={18} /> Execute Scan</>
+                                        <><Zap size={18} /> Execute Scan</>
                                     )}
                                 </button>
                                 

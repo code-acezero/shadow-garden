@@ -9,6 +9,7 @@ import { dpi } from '@/lib/dpi';
 import { hpi } from '@/lib/hpi';
 import { omni } from '@/lib/omni';
 import { cn } from '@/lib/utils';
+import Footer from '@/components/Anime/Footer';
 
 import { motion, AnimatePresence } from 'framer-motion';
 import {
@@ -205,7 +206,7 @@ function SearchContent() {
       } else if (selectedLibrary === 'hindi') {
         if (keyword) {
             const res = await hpi.hindi.search(keyword, currentPage);
-            data = { results: res.items || [], hasNextPage: res.pagination?.hasNextPage, currentPage: res.pagination?.currentPage };
+            data = { results: res.items || [], hasNextPage: res.pagination?.hasNextPage, currentPage: res.pagination?.currentPage, maxPage: res.pagination?.totalPages };
         } else if (selectedGenres.length > 0 || selectedType || selectedStatus || selectedSort !== 'newest') {
             const params: Record<string, any> = { page: currentPage };
             if (selectedGenres.length) params.genre = selectedGenres.join(',');
@@ -213,34 +214,34 @@ function SearchContent() {
             if (selectedStatus) params.status = selectedStatus;
             if (selectedSort !== 'newest') params.sort = selectedSort;
             const res = await hpi.hindi.filter(params);
-            data = { results: res.items || [], hasNextPage: res.pagination?.hasNextPage, currentPage: res.pagination?.currentPage };
+            data = { results: res.items || [], hasNextPage: res.pagination?.hasNextPage, currentPage: res.pagination?.currentPage, maxPage: res.pagination?.totalPages };
         } else {
             const res = await hpi.hindi.filter({ sort: 'updated_at', page: currentPage });
-            data = { results: res.items || [], hasNextPage: res.pagination?.hasNextPage, currentPage: res.pagination?.currentPage };
+            data = { results: res.items || [], hasNextPage: res.pagination?.hasNextPage, currentPage: res.pagination?.currentPage, maxPage: res.pagination?.totalPages };
         }
       } else if (selectedLibrary === 'drama') {
         if (keyword) {
             const res = await omni.drama.search(keyword, currentPage);
-            data = { results: res.items || [], hasNextPage: res.pagination?.hasNextPage, currentPage: res.pagination?.currentPage };
+            data = { results: res.items || [], hasNextPage: res.pagination?.hasNextPage, currentPage: res.pagination?.currentPage, maxPage: res.pagination?.totalPages };
         } else if (selectedGenres.length > 0) {
             const res = await omni.drama.getByCountry(selectedGenres[0].replace('-drama', ''), currentPage);
-            data = { results: res.items || [], hasNextPage: res.pagination?.hasNextPage, currentPage: res.pagination?.currentPage };
+            data = { results: res.items || [], hasNextPage: res.pagination?.hasNextPage, currentPage: res.pagination?.currentPage, maxPage: res.pagination?.totalPages };
         } else {
             const res = await omni.drama.getByCountry('korean', currentPage);
-            data = { results: res.items || [], hasNextPage: res.pagination?.hasNextPage, currentPage: res.pagination?.currentPage };
+            data = { results: res.items || [], hasNextPage: res.pagination?.hasNextPage, currentPage: res.pagination?.currentPage, maxPage: res.pagination?.totalPages };
         }
       } else if (selectedLibrary === 'movies') {
         if (keyword) {
             const res = await omni.movies.search(keyword, currentPage);
-            data = { results: res.items || [], hasNextPage: res.pagination?.hasNextPage, currentPage: res.pagination?.currentPage };
+            data = { results: res.items || [], hasNextPage: res.pagination?.hasNextPage, currentPage: res.pagination?.currentPage, maxPage: res.pagination?.totalPages };
         } else if (selectedGenres.length > 0) {
             const cat = selectedGenres[0];
             if (MOVIES_COUNTRIES.includes(cat)) {
                 const res = await omni.movies.getByCountry(cat, currentPage);
-                data = { results: res.items || [], hasNextPage: res.pagination?.hasNextPage, currentPage: res.pagination?.currentPage };
+                data = { results: res.items || [], hasNextPage: res.pagination?.hasNextPage, currentPage: res.pagination?.currentPage, maxPage: res.pagination?.totalPages };
             } else {
                 const res = await omni.movies.getByGenre(cat, currentPage);
-                data = { results: res.items || [], hasNextPage: res.pagination?.hasNextPage, currentPage: res.pagination?.currentPage };
+                data = { results: res.items || [], hasNextPage: res.pagination?.hasNextPage, currentPage: res.pagination?.currentPage, maxPage: res.pagination?.totalPages };
             }
         } else {
             const res = await omni.movies.getHome();
@@ -342,12 +343,12 @@ function SearchContent() {
   ];
 
   return (
-    <div className="min-h-screen bg-[#020202] text-white selection:bg-white/20">
+    <div className="min-h-screen bg-[#020202] text-white selection:bg-white/20 pb-24">
       {/* 
         PREMIUM HERO HEADER 
         Uses glassmorphism, dynamic glowing blobs, and sleek typography 
       */}
-      <div className="relative pt-24 pb-12 px-4 overflow-hidden border-b border-white/5">
+      <div className="relative pt-[calc(env(safe-area-inset-top)+80px)] md:pt-[calc(env(safe-area-inset-top)+56px)] pb-12 px-4 overflow-hidden border-b border-white/5">
         <div className="absolute inset-0 bg-gradient-to-b from-white/[0.02] to-transparent pointer-events-none" />
         
         {/* Animated glowing blob matching the theme */}
@@ -669,6 +670,7 @@ function SearchContent() {
             </div>
         )}
       </div>
+      <Footer />
     </div>
   );
 }

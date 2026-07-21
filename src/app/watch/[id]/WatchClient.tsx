@@ -17,7 +17,7 @@ import {
 import { AnimeService, UniversalAnime } from '@/lib/api';
 import { supabase } from '@/lib/supabase';
 import { cn, getSimilarity, isRelatedAnime, getChunkLabel } from '@/lib/utils';
-import { toast } from 'sonner';
+import { toast } from '@/lib/toast';
 import { useAuth } from '@/context/AuthContext';
 
 import AnimePlayer, { AnimePlayerRef } from '@/components/Player/AnimePlayer';

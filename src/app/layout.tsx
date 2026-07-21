@@ -2,7 +2,6 @@ import { Metadata, Viewport } from "next";
 import PageTransition from "@/components/Transitions/PageTransition";
 import "./globals.css";
 import Navigation from "@/components/Layout/Navigation"; 
-import { Toaster } from 'sonner'; 
 import { AuthProvider } from '@/context/AuthContext';
 import { SettingsProvider } from "@/hooks/useSettings";
 import CustomLoader from "@/components/UIx/CustomLoader"; 
@@ -189,7 +188,6 @@ export default function RootLayout({
               </main>
 
               <AlphaWidget />
-              <Toaster position="bottom-right" theme="dark" />
             </SettingsProvider>
           </UserDataProvider>
         </AuthProvider>

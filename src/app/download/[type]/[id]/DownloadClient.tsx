@@ -9,7 +9,7 @@ import { dpi } from '@/lib/dpi';
 import { omni } from '@/lib/omni';
 import { useDownloadEngine, formatBytes, formatSpeed, DownloadItem } from '@/lib/downloadEngine';
 import { cn } from '@/lib/utils';
-import { toast } from 'sonner';
+import { toast } from '@/lib/toast';
 import JSZip from 'jszip';
 import Footer from '@/components/Anime/Footer';
 

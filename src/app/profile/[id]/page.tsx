@@ -11,8 +11,10 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { 
     Grid, Heart, Bookmark, MoreHorizontal, Camera, Link as LinkIcon, MessageSquare, History
 } from 'lucide-react';
-import { toast } from 'sonner';
+import { toast } from '@/lib/toast';
 import AuthModal from '@/components/Auth/AuthModal';
+import Footer from '@/components/Anime/Footer';
+import { motion, AnimatePresence } from 'framer-motion';
 import ShadowAvatar from '@/components/User/ShadowAvatar'; 
 import Link from 'next/link';
 
@@ -351,6 +353,8 @@ export default function PublicProfilePage() {
             </Dialog>
             
             <AuthModal isOpen={showAuthModal} onClose={() => setShowAuthModal(false)} onAuthSuccess={() => setShowAuthModal(false)} />
+            
+            <Footer />
         </div>
     );
 }

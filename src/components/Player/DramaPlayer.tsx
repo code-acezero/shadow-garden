@@ -51,6 +51,7 @@ const DramaPlayer = forwardRef<DramaPlayerRef, DramaPlayerProps>(({
   const ctTimerRef = useRef<NodeJS.Timeout | null>(null);
 
   const [useIframe, setUseIframe] = useState(!url);
+  const [iframeLoading, setIframeLoading] = useState(true);
   const [isPlaying, setIsPlaying] = useState(false);
   const [hasStarted, setHasStarted] = useState(false);
   const [isBuffering, setIsBuffering] = useState(true);
@@ -215,9 +216,17 @@ const DramaPlayer = forwardRef<DramaPlayerRef, DramaPlayerProps>(({
   if (useIframe && iframeUrl) {
     return (
       <div className="relative w-full aspect-video bg-black rounded-2xl overflow-hidden ring-1 ring-white/10">
+        {iframeLoading && (
+            <div className="absolute inset-0 z-50 flex items-center justify-center pointer-events-none">
+                <div className="bg-black/40 backdrop-blur-[2px] p-4 rounded-full shadow-xl animate-in fade-in zoom-in-90 duration-300">
+                  <Loader2 className="w-10 h-10 text-white animate-spin" />
+                </div>
+            </div>
+        )}
         <iframe
           src={iframeUrl}
-          className="w-full h-full border-0"
+          onLoad={() => setIframeLoading(false)}
+          className="absolute inset-0 w-full h-full border-0"
           allowFullScreen
           allow="autoplay; fullscreen; encrypted-media"
           title={title || 'Drama Player'}

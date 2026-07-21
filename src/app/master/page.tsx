@@ -7,6 +7,7 @@ import { useAuth } from '@/context/AuthContext';
 import { supabase } from '@/lib/supabase';
 import { ImageAPI, BASE_URL } from '@/lib/api'; 
 import { SITE_CONFIG } from '@/lib/site-config'; 
+import { COLOR_PALETTES, applyColorPalette } from '@/lib/theme'; 
 import { 
   Shield, Mic2, Save, Upload, Loader2, 
   Users, Globe, Activity, Search, AlertTriangle, 
@@ -14,7 +15,7 @@ import {
   HardDrive, Plus, Image as ImageIcon,
   AlertCircle, MessageSquareWarning, Folder, FileAudio, Eye,
   Scroll, Sword, BookOpen, Link2, Feather, Play, Pause,
-  Bold, Italic, Type, UserCheck, X, LayoutDashboard,
+  Bold, Italic, Type, UserCheck, X, LayoutDashboard, Palette,
   Filter, ArrowDownCircle
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -37,7 +38,7 @@ const notify = (title: string, message: string, type: 'success' | 'error' | 'sys
     }
 };
 
-type Tab = 'GUILD_DESK' | 'GUILD_INFO' | 'ADVENTURERS' | 'MAGIC_NET' | 'VOICES' | 'NOTICE';
+type Tab = 'GUILD_DESK' | 'GUILD_INFO' | 'ADVENTURERS' | 'PALETTES' | 'MOD_APPS' | 'MAGIC_NET' | 'VOICES' | 'NOTICE';
 
 export default function GuildMasterDashboard() {
   const [activeTab, setActiveTab] = useState<Tab>('GUILD_DESK');
@@ -108,6 +109,8 @@ export default function GuildMasterDashboard() {
                <TabBtn id="GUILD_DESK" icon={LayoutDashboard} label="Desk" active={activeTab} onClick={switchTab} />
                <TabBtn id="GUILD_INFO" icon={BookOpen} label="Info" active={activeTab} onClick={switchTab} />
                <TabBtn id="ADVENTURERS" icon={Sword} label="Adventurers" active={activeTab} onClick={switchTab} />
+               <TabBtn id="PALETTES" icon={Palette} label="Theme Palettes" active={activeTab} onClick={switchTab} />
+               <TabBtn id="MOD_APPS" icon={UserCheck} label="Mod Apps" active={activeTab} onClick={switchTab} />
                <TabBtn id="MAGIC_NET" icon={Globe} label="Magic Net" active={activeTab} onClick={switchTab} />
                <TabBtn id="VOICES" icon={Mic2} label="Echoes" active={activeTab} onClick={switchTab} />
                <TabBtn id="NOTICE" icon={Feather} label="Notices" active={activeTab} onClick={switchTab} />
@@ -119,6 +122,8 @@ export default function GuildMasterDashboard() {
               <div className={activeTab === 'GUILD_DESK' ? 'block' : 'hidden'}><OverviewTab changeTab={switchTab} /></div>
               <div className={activeTab === 'GUILD_INFO' ? 'block' : 'hidden'}><IdentityTab /></div>
               <div className={activeTab === 'ADVENTURERS' ? 'block' : 'hidden'}><RosterTab /></div>
+              <div className={activeTab === 'PALETTES' ? 'block' : 'hidden'}><ThemePaletteTab /></div>
+              <div className={activeTab === 'MOD_APPS' ? 'block' : 'hidden'}><ModApplicationsTab /></div>
               <div className={activeTab === 'MAGIC_NET' ? 'block' : 'hidden'}><NetworkTab /></div>
               <div className={activeTab === 'VOICES' ? 'block' : 'hidden'}><VoiceTab /></div>
               <div className={activeTab === 'NOTICE' ? 'block' : 'hidden'}><BroadcastTab /></div>
@@ -689,6 +694,150 @@ const BroadcastTab = memo(() => {
   );
 });
 BroadcastTab.displayName = 'BroadcastTab';
+
+// ==========================================
+//  TAB 7: SOLID 4-SHADE THEME PALETTES
+// ==========================================
+const ThemePaletteTab = memo(() => {
+  const [currentPalette, setCurrentPalette] = useState('void-obsidian');
+
+  useEffect(() => {
+    const saved = localStorage.getItem('shadow_color_palette');
+    if (saved) setCurrentPalette(saved);
+  }, []);
+
+  const handleSelectPalette = (id: string) => {
+    setCurrentPalette(id);
+    applyColorPalette(id);
+    notify("Palette Updated", `Applied ${id} theme`, 'success');
+  };
+
+  return (
+    <div className="space-y-6">
+      <div className="bg-zinc-900/30 border border-white/5 p-6 rounded-[2rem]">
+        <h3 className="font-bold text-white text-lg flex items-center gap-2 mb-2">
+          <Palette className="text-primary-500" size={20} /> 10 Solid 4-Shade Color Palettes
+        </h3>
+        <p className="text-zinc-400 text-xs">
+          Select a solid 4-shade color palette for the entire site interface. Replaces old text gradients with clean solid UI layers.
+        </p>
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        {COLOR_PALETTES.map(p => {
+          const isActive = currentPalette === p.id;
+          return (
+            <div
+              key={p.id}
+              onClick={() => handleSelectPalette(p.id)}
+              className={`p-5 rounded-3xl border cursor-pointer transition-all ${
+                isActive ? 'border-primary-500 ring-2 ring-primary-500/30 scale-105 bg-zinc-900/60' : 'bg-zinc-900/20 border-white/5 hover:border-white/20'
+              }`}
+            >
+              <div className="flex items-center justify-between mb-4">
+                <h4 className="font-bold text-white text-sm">{p.name}</h4>
+                {isActive && <Badge className="bg-primary-600 text-white text-[9px]">ACTIVE</Badge>}
+              </div>
+
+              {/* 4 Shade Preview Bar */}
+              <div className="grid grid-cols-4 gap-2 h-12 rounded-xl overflow-hidden border border-white/10 p-1 bg-black/40">
+                <div className="rounded-lg h-full" style={{ backgroundColor: p.shades.bg }} title="Layer 0: Background Surface" />
+                <div className="rounded-lg h-full" style={{ backgroundColor: p.shades.card }} title="Layer 1: Card Surface" />
+                <div className="rounded-lg h-full" style={{ backgroundColor: p.shades.border }} title="Layer 2: Border Highlight" />
+                <div className="rounded-lg h-full" style={{ backgroundColor: p.shades.accent }} title="Layer 3: Primary Accent" />
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+});
+ThemePaletteTab.displayName = 'ThemePaletteTab';
+
+// ==========================================
+//  TAB 8: MODERATOR APPLICATIONS
+// ==========================================
+const ModApplicationsTab = memo(() => {
+  const [apps, setApps] = useState<any[]>([]);
+
+  const fetchApps = async () => {
+    const { data } = await supabase
+      .from('mod_applications')
+      .select(`*, user:profiles(username, avatar_url, role)`)
+      .order('created_at', { ascending: false });
+    if (data) setApps(data);
+  };
+
+  useEffect(() => {
+    fetchApps();
+  }, []);
+
+  const handleApprove = async (app: any) => {
+    await supabase.from('profiles').update({ role: 'moderator' }).eq('id', app.user_id);
+    await supabase.from('mod_applications').update({ status: 'approved' }).eq('id', app.id);
+    notify("Approved", `Promoted ${app.user?.username || 'user'} to Moderator`, 'success');
+    fetchApps();
+  };
+
+  const handleReject = async (appId: string) => {
+    await supabase.from('mod_applications').update({ status: 'rejected' }).eq('id', appId);
+    notify("Rejected", "Application declined", 'system');
+    fetchApps();
+  };
+
+  return (
+    <div className="space-y-6">
+      <div className="bg-zinc-900/30 border border-white/5 p-6 rounded-[2rem]">
+        <h3 className="font-bold text-white text-lg flex items-center gap-2 mb-2">
+          <UserCheck className="text-primary-500" size={20} /> Moderator Applications
+        </h3>
+        <p className="text-zinc-400 text-xs">
+          Review and approve moderator requests from high-level adventurers.
+        </p>
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        {apps.length === 0 ? (
+          <div className="col-span-2 p-12 text-center text-zinc-500 text-xs">
+            No moderator applications submitted yet.
+          </div>
+        ) : (
+          apps.map(app => (
+            <div key={app.id} className="bg-zinc-900/30 border border-white/10 p-5 rounded-3xl space-y-4">
+              <div className="flex items-center gap-3">
+                <Avatar className="w-10 h-10 border border-white/10">
+                  <AvatarImage src={app.user?.avatar_url} />
+                  <AvatarFallback>?</AvatarFallback>
+                </Avatar>
+                <div>
+                  <h4 className="font-bold text-white text-sm">{app.user?.username || 'User'}</h4>
+                  <span className="text-[10px] text-zinc-500 block">Status: {app.status}</span>
+                </div>
+              </div>
+
+              <p className="text-xs text-zinc-300 bg-black/40 p-3 rounded-2xl border border-white/5">
+                "{app.reason}"
+              </p>
+
+              {app.status === 'pending' && (
+                <div className="flex gap-2 pt-2">
+                  <Button onClick={() => handleApprove(app)} className="flex-1 bg-emerald-600 hover:bg-emerald-500 text-white rounded-full text-xs font-bold">
+                    Approve & Promote
+                  </Button>
+                  <Button onClick={() => handleReject(app.id)} variant="ghost" className="flex-1 text-red-400 hover:bg-red-950/30 rounded-full text-xs font-bold">
+                    Decline
+                  </Button>
+                </div>
+              )}
+            </div>
+          ))
+        )}
+      </div>
+    </div>
+  );
+});
+ModApplicationsTab.displayName = 'ModApplicationsTab';
 
 // --- HELPERS ---
 const TabBtn = memo(({ id, icon: Icon, label, active, onClick }: any) => { return (<button onClick={() => onClick(id)} className={`flex items-center gap-2 px-5 py-2.5 rounded-full text-sm font-bold transition-all whitespace-nowrap ${active === id ? 'bg-primary-600 text-white shadow-lg shadow-primary-900/20 scale-105' : 'text-zinc-400 hover:text-white hover:bg-white/5'}`}><Icon size={16} />{label}</button>); }); 

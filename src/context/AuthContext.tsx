@@ -3,6 +3,7 @@
 import { createContext, useContext, useEffect, useState, useRef, useCallback, useMemo } from "react";
 import { supabase } from "@/lib/supabase"; 
 import { Session, User, AuthChangeEvent } from "@supabase/supabase-js"; 
+import { getRandomAvatar, getRandomGuestName } from "@/components/User/AvatarSelectorModal"; 
 
 export interface SavedAccount {
   id: string;
@@ -48,12 +49,21 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const fetchProfile = useCallback(async (userId: string, userEmail?: string, userMeta?: any) => {
     try {
         const { data } = await supabase.from("profiles").select("*").eq("id", userId).single();
-        if (data) return data;
+        if (data) {
+          // If avatar or username is missing, update with random generated values
+          if (!data.avatar_url || !data.username) {
+            const updatedName = data.username || userMeta?.full_name || userEmail?.split('@')[0] || getRandomGuestName();
+            const updatedAvatar = data.avatar_url || userMeta?.avatar_url || getRandomAvatar(false);
+            await supabase.from("profiles").update({ username: updatedName, avatar_url: updatedAvatar }).eq("id", userId);
+            return { ...data, username: updatedName, avatar_url: updatedAvatar };
+          }
+          return data;
+        }
         return {
             id: userId,
-            username: userMeta?.full_name || userEmail?.split('@')[0] || "Adventurer",
+            username: userMeta?.full_name || userEmail?.split('@')[0] || getRandomGuestName(),
             email: userEmail,
-            avatar_url: userMeta?.avatar_url,
+            avatar_url: userMeta?.avatar_url || getRandomAvatar(false),
             role: 'user',
             is_guest: false
         };
@@ -108,8 +118,14 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event: AuthChangeEvent, session: Session | null) => {
         if (!isMounted.current) return;
+        // Ignore silent token refreshes — these happen on tab focus and should NOT trigger a data reload
+        if (event === 'TOKEN_REFRESHED') {
+            if (session?.user) setUser(session.user); // silently update user ref only
+            return;
+        }
         if (session?.user) {
             setUser(session.user);
+            // Only re-fetch profile if user actually changed (account switch / fresh sign in)
             if (currentProfileId.current !== session.user.id) {
                 const profileData = await fetchProfile(session.user.id, session.user.email, session.user.user_metadata);
                 if (isMounted.current && profileData) {

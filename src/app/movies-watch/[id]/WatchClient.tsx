@@ -7,7 +7,7 @@ import { motion } from 'framer-motion';
 import {
   Server as ServerIcon, Play, Download, AlertTriangle, Layers,
   Check, ChevronDown, Grid, LayoutGrid, List, Star, Film, Clapperboard, X,
-  SkipBack, SkipForward, Repeat1, Globe
+  SkipBack, SkipForward, Repeat1, Globe, Users
 } from 'lucide-react';
 import { omni, MovieDetail } from '@/lib/omni';
 import { supabase } from '@/lib/supabase';
@@ -21,7 +21,7 @@ import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuIte
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import ShadowComments from '@/components/Comments/ShadowComments';
-import { toast } from 'sonner';
+import { toast } from '@/lib/toast';
 
 // ── Star Rating (same as anime watch page) ───────────────────────────────────
 
@@ -166,7 +166,6 @@ export default function WatchClient() {
   const [epViewMode, setEpViewMode] = useState<EpViewMode>('compact');
   const [autoNext, setAutoNext] = useState(true);
   const [autoNextCountdown, setAutoNextCountdown] = useState<number | null>(null);
-  const [activeLanguage, setActiveLanguage] = useState<string>('All');
 
   useEffect(() => {
     if (!slug) return;
@@ -193,9 +192,6 @@ export default function WatchClient() {
         }
 
         setMovie(data);
-        if (data.languages && data.languages.length > 0) {
-          setActiveLanguage(data.languages[0]);
-        }
         if (data.streams && data.streams.length > 0) {
           setActiveServerUrl(data.streams[0].url);
           setActiveServerName(data.streams[0].name);
@@ -392,9 +388,7 @@ export default function WatchClient() {
                       </Button>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="start" className="bg-[#020617] border border-emerald-900/30 rounded-2xl shadow-2xl z-[80] p-1.5 min-w-[150px]">
-                      {movie.streams
-                        .filter((server: any) => activeLanguage === 'All' || !server.lang || server.lang === activeLanguage)
-                        .map((server: any) => {
+                      {movie.streams.map((server: any) => {
                         const serverUrl = isSeries
                           ? (() => {
                               const sd = movie.seasons!.find(s => s.seasonNumber === activeSeason);
@@ -412,46 +406,6 @@ export default function WatchClient() {
                       })}
                     </DropdownMenuContent>
                   </DropdownMenu>
-
-                  {/* Audio Language Selector (Right side of Server selector) */}
-                  {movie.languages && movie.languages.length > 0 && (
-                    <DropdownMenu modal={false}>
-                      <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" className="flex-1 sm:flex-initial h-8 gap-1.5 text-[10px] font-black text-emerald-300 hover:text-white uppercase rounded-full border border-emerald-500/40 bg-emerald-950/40 px-2.5 sm:px-3 min-w-0">
-                          <Globe size={11} className="shrink-0 text-emerald-400" />
-                          <span className="truncate">{activeLanguage}</span>
-                          <ChevronDown size={10} className="shrink-0" />
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="start" className="bg-[#020617] border border-emerald-900/30 rounded-2xl shadow-2xl z-[80] p-1.5 min-w-[130px]">
-                        <DropdownMenuItem
-                          onClick={() => setActiveLanguage('All')}
-                          className={cn("cursor-pointer px-3 py-1.5 rounded-xl text-[10px] uppercase font-bold tracking-wider mb-0.5 transition-all",
-                            activeLanguage === 'All' ? "bg-emerald-500 text-black" : "text-emerald-100/60 hover:text-emerald-300")}
-                        >
-                          All Audio
-                        </DropdownMenuItem>
-                        {movie.languages.map((lang) => (
-                          <DropdownMenuItem
-                            key={lang}
-                            onClick={() => {
-                              setActiveLanguage(lang);
-                              // Auto switch to first stream matching language
-                              const match = movie.streams.find((s: any) => s.lang === lang);
-                              if (match && match.url) {
-                                setActiveServerUrl(match.url);
-                                setActiveServerName(match.name);
-                              }
-                            }}
-                            className={cn("cursor-pointer px-3 py-1.5 rounded-xl text-[10px] uppercase font-bold tracking-wider mb-0.5 transition-all",
-                              activeLanguage === lang ? "bg-emerald-500 text-black" : "text-emerald-100/60 hover:text-emerald-300")}
-                          >
-                            {lang} Audio
-                          </DropdownMenuItem>
-                        ))}
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                  )}
 
                   {/* Season picker */}
                   {isSeries && (
@@ -523,8 +477,14 @@ export default function WatchClient() {
                     className="flex-1 sm:flex-initial flex items-center justify-center gap-1.5 px-2 sm:px-3 h-8 rounded-full border border-emerald-500/20 bg-[#0a0f1c] hover:bg-emerald-500/20 text-emerald-300 text-[10px] font-black uppercase tracking-widest transition-all hover:text-white whitespace-nowrap min-w-0">
                     <Download size={11} className="shrink-0" /> <span className="sm:inline hidden">Download</span>
                   </Link>
-                  <div className="flex-1 sm:flex-initial flex min-w-0 justify-end">
-                    <WatchListButton animeId={movie.id} animeTitle={movie.title} animeImage={movie.image} />
+                  <div className="flex-1 sm:flex-initial flex min-w-0 justify-end items-center gap-2">
+                    <Link
+                      href={`/rooms`}
+                      className="px-3 h-8 rounded-full bg-primary-600/20 border border-primary-500/30 text-primary-400 hover:bg-primary-600 hover:text-white text-[9px] sm:text-[10px] font-black uppercase tracking-widest flex items-center gap-1.5 transition-all"
+                    >
+                      <Users size={13} /> Room
+                    </Link>
+                    <WatchListButton animeId={movie.id} animeTitle={movie.title} animeImage={movie.image} mediaType="movie" />
                   </div>
                 </div>
               </div>

@@ -18,7 +18,7 @@ import { AnimeService, UniversalAnime } from '@/lib/api';
 import { hpi } from '@/lib/hpi';
 import { cn, getSimilarity, isRelatedAnime, getChunkLabel } from '@/lib/utils';
 import { supabase } from '@/lib/supabase';
-import { toast } from 'sonner';
+import { toast } from '@/lib/toast';
 import { useAuth } from '@/context/AuthContext';
 
 import HindiPlayer, { HindiPlayerRef } from '@/components/Player/HindiPlayer';
@@ -1242,7 +1242,7 @@ function WatchContent() {
                         <div className="flex-1 min-w-0 flex items-center gap-4 overflow-hidden">
                             <MarqueeTitle text={currentEpisode?.title || `Episode ${currentEpisode?.number}`} />
                             <div className="hidden sm:block"><NextEpisodeTimer schedule={nextEpSchedule} status={anime.info.status} /></div>
-                            <WatchListButton animeId={anime.id} animeTitle={anime.title} animeImage={anime.poster} currentEp={currentEpisode?.number} />
+                            <WatchListButton animeId={anime.id} animeTitle={anime.title} animeImage={anime.poster} currentEp={currentEpisode?.number} mediaType="hindi" />
                         </div>
                         <div className="flex items-center gap-3 flex-shrink-0">
                             {currentEpId && (
@@ -1287,7 +1287,7 @@ function WatchContent() {
                     <div className="grid grid-cols-[1fr_auto_auto] gap-3 w-full items-center">
                         <div className="min-w-0"><MarqueeTitle text={currentEpisode?.title || `Episode ${currentEpisode?.number}`} /></div>
                         <NextEpisodeTimer schedule={nextEpSchedule} status={anime.info.status} />
-                        <WatchListButton animeId={anime.id} animeTitle={anime.title} animeImage={anime.poster} currentEp={currentEpisode?.number} />
+                        <WatchListButton animeId={anime.id} animeTitle={anime.title} animeImage={anime.poster} currentEp={currentEpisode?.number} mediaType="hindi" />
                     </div>
                     <div className="flex w-full justify-between items-center gap-2">
                         <Button onClick={() => updateSetting('dimMode', !settings.dimMode)} variant="ghost" size="icon" className={cn("rounded-full w-8 h-8", settings.dimMode ? "text-yellow-500 bg-yellow-500/10" : "text-zinc-600 bg-white/5")}><Lightbulb size={16} /></Button>

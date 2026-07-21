@@ -27,11 +27,13 @@ export default function Footer() {
         </div>
 
         {/* Center: Links */}
-        <div className="flex items-center gap-6 text-xs font-bold text-zinc-400 uppercase tracking-widest">
+        <div className="flex flex-wrap items-center justify-center gap-4 md:gap-6 text-xs font-bold text-zinc-400 uppercase tracking-widest">
           <Link href="/" className="hover:text-white transition-colors">Home</Link>
           <Link href="/hindi" className="hover:text-white transition-colors">Hindi Dub</Link>
           <Link href="/donghua" className="hover:text-white transition-colors">Donghua</Link>
           <Link href="/drama" className="hover:text-white transition-colors">Drama</Link>
+          <Link href="/movies" className="hover:text-white transition-colors">Movies &amp; Series</Link>
+          <Link href="/schedule" className="hover:text-white transition-colors">Schedule</Link>
         </div>
 
         {/* Right: Copyright & Creator */}

@@ -528,7 +528,7 @@ export default function AlphaWidget() {
                         <DesktopFireflies />
 
                         {/* Character Sprite (Mobile & Desktop: 2nd highest z-index z-[60], below input box z-[70]) */}
-                        <div className="absolute bottom-10 sm:bottom-12 lg:bottom-0 left-0 sm:left-2 lg:left-1/2 lg:-translate-x-1/2 lg:right-auto h-[52vh] sm:h-[62vh] lg:h-[95vh] xl:h-[100vh] z-[60] flex items-end justify-start lg:justify-center scale-100 lg:scale-[1.0] origin-bottom-left lg:origin-bottom pointer-events-none">
+                        <div className="absolute bottom-24 sm:bottom-28 lg:bottom-0 left-0 sm:left-2 lg:left-1/2 lg:-translate-x-1/2 lg:right-auto h-[45vh] sm:h-[50vh] lg:h-[95vh] xl:h-[100vh] z-[60] flex items-end justify-start lg:justify-center scale-100 lg:scale-[1.0] origin-bottom-left lg:origin-bottom pointer-events-none">
                             {ALL_STATES.map(st => (
                                 <img
                                     key={st}
