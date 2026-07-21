@@ -3,13 +3,14 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { 
   MessageSquare, Send, Users, User, Image as ImageIcon, Search, Shield, 
-  Loader2, MessageSquarePlus, Heart, ArrowLeft, Plus, Check, CheckCheck, X, Circle
+  Loader2, MessageSquarePlus, Heart, ArrowLeft, Plus, Check, CheckCheck, X, Circle, MoreVertical, Trash2
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/context/AuthContext';
 import { toast } from '@/lib/toast';
 import { formatDistanceToNow } from 'date-fns';
+import { ImageAPI } from '@/lib/api';
 
 export interface ChatMessage {
   id: string;
@@ -38,6 +39,8 @@ export default function ChatSystem() {
   const [activeUsers, setActiveUsers] = useState<Record<string, any>>({});
   const [typingUsers, setTypingUsers] = useState<Record<string, boolean>>({});
   const [chatChannel, setChatChannel] = useState<any>(null);
+  const [showOptions, setShowOptions] = useState(false);
+  const [uploadingImage, setUploadingImage] = useState(false);
 
   // 1. Fetch User Conversations
   const fetchConversations = useCallback(async () => {
@@ -50,7 +53,7 @@ export default function ChatSystem() {
         .eq('user_id', user.id);
 
       if (error) throw error;
-      const convs = (data || []).map((p: any) => p.conversation).filter(Boolean);
+      const convs = (data || []).map((p: any) => p.conversation).filter(Boolean).sort((a: any, b: any) => new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime());
       setConversations(convs);
       if (convs.length > 0 && !activeConv && typeof window !== 'undefined' && window.innerWidth >= 768) {
         setActiveConv(convs[0]);
@@ -81,7 +84,16 @@ export default function ChatSystem() {
 
   useEffect(() => {
     fetchConversations();
-  }, [user]);
+    
+    if (supabase) {
+      const channel = supabase.channel('public:chat_conversations')
+        .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'chat_conversations' }, () => {
+           fetchConversations();
+        })
+        .subscribe();
+      return () => { supabase.removeChannel(channel); };
+    }
+  }, [user, fetchConversations]);
 
   useEffect(() => {
     if (activeConv) {
@@ -200,7 +212,13 @@ export default function ChatSystem() {
 
       setShowNewChatModal(false);
       fetchConversations();
-      setActiveConv(conv);
+      setActiveConv({
+          ...conv,
+          participants: [
+              { user: { id: user.id, username: user.user_metadata?.username, avatar_url: user.user_metadata?.avatar_url } },
+              { user: { id: targetUser.id, username: targetUser.username, avatar_url: targetUser.avatar_url } }
+          ]
+      });
       toast.success(`Chat started with @${targetUser.username}`);
     } catch (err: any) {
       toast.error(err.message || 'Failed to start chat');
@@ -226,6 +244,30 @@ export default function ChatSystem() {
     } catch (err) {
       console.error('Send message error:', err);
     }
+  };
+
+  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setUploadingImage(true);
+    try {
+      const url = await ImageAPI.uploadImage(file);
+      setImageUrl(url);
+    } catch (err) {
+      toast.error('Failed to upload image');
+    } finally {
+      setUploadingImage(false);
+    }
+  };
+
+  const handleClearChat = async () => {
+    if (!activeConv || !user || !confirm("Clear chat for you?")) return;
+    // For DMs, removing participant hides it
+    await supabase.from('chat_participants').delete().eq('conversation_id', activeConv.id).eq('user_id', user.id);
+    setActiveConv(null);
+    setShowOptions(false);
+    fetchConversations();
+    toast.success('Chat cleared');
   };
 
   if (!user) {
@@ -304,7 +346,7 @@ export default function ChatSystem() {
                   />
                   <div className="min-w-0 flex-1">
                     <h4 className="text-xs font-bold text-white truncate">{title}</h4>
-                    <span className="text-[9px] text-zinc-500 uppercase tracking-wider block mt-0.5">{c.type} chat</span>
+                    <span className="text-[9px] text-zinc-500 uppercase tracking-wider block mt-0.5 truncate">{c.last_message_preview || `${c.type} chat`}</span>
                   </div>
                 </div>
               );
@@ -318,62 +360,80 @@ export default function ChatSystem() {
         {activeConv ? (
           <>
             {/* Chat Top Bar */}
-            <div className="p-3.5 px-5 border-b border-white/10 bg-[#0a0a0d] flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <button
-                  onClick={() => setActiveConv(null)}
-                  className="md:hidden p-1.5 text-zinc-400 hover:text-white"
-                >
-                  <ArrowLeft size={18} />
-                </button>
-                {(() => {
-                  const isClan = activeConv.type === 'clan';
-                  let headerTitle = isClan ? activeConv.clan?.name : 'Direct Message';
-                  let headerAvatar = isClan ? activeConv.clan?.avatar_url : '';
-                  
-                  if (!isClan) {
-                    const otherParticipant = activeConv.participants?.find((p: any) => p.user?.id !== user.id)?.user;
-                    if (otherParticipant) {
-                      headerTitle = otherParticipant.username;
-                      headerAvatar = otherParticipant.avatar_url || `https://api.dicebear.com/7.x/bottts/svg?seed=${otherParticipant.id}`;
+              <div className="p-3.5 px-5 border-b border-white/10 bg-[#0a0a0d] flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <button
+                    onClick={() => setActiveConv(null)}
+                    className="md:hidden p-1.5 text-zinc-400 hover:text-white"
+                  >
+                    <ArrowLeft size={18} />
+                  </button>
+                  {(() => {
+                    const isClan = activeConv.type === 'clan';
+                    let headerTitle = isClan ? activeConv.clan?.name : 'Direct Message';
+                    let headerAvatar = isClan ? activeConv.clan?.avatar_url : '';
+                    
+                    if (!isClan) {
+                      const otherParticipant = activeConv.participants?.find((p: any) => p.user?.id !== user.id)?.user;
+                      if (otherParticipant) {
+                        headerTitle = otherParticipant.username;
+                        headerAvatar = otherParticipant.avatar_url || `https://api.dicebear.com/7.x/bottts/svg?seed=${otherParticipant.id}`;
+                      }
                     }
-                  }
-                  
-                  return (
-                    <>
-                      <img 
-                        src={headerAvatar || `https://api.dicebear.com/7.x/bottts/svg?seed=${activeConv.id}`} 
-                        alt="" 
-                        className="w-10 h-10 rounded-full object-cover border border-white/10 shrink-0" 
-                      />
-                      <div className="min-w-0">
-                        <h3 className="text-sm font-bold text-white leading-tight truncate">{headerTitle}</h3>
-                        <div className="flex items-center gap-1.5 mt-0.5">
-                          {isClan ? (
-                            <span className="text-[10px] text-primary-400">Clan Group Chat</span>
-                          ) : (
-                            <>
-                              {Object.keys(activeUsers).length > 0 ? (
-                                <>
-                                  <Circle size={8} className="fill-green-500 text-green-500" />
-                                  <span className="text-[10px] text-green-500 font-bold">Online</span>
-                                </>
-                              ) : (
-                                <span className="text-[10px] text-zinc-500">
-                                  {activeConv.participants?.find((p: any) => p.user?.id !== user.id)?.user?.last_seen_at 
-                                    ? `Active ${formatDistanceToNow(new Date(activeConv.participants?.find((p: any) => p.user?.id !== user.id)?.user?.last_seen_at))} ago` 
-                                    : 'Offline'}
-                                </span>
-                              )}
-                            </>
-                          )}
+                    
+                    return (
+                      <>
+                        <img 
+                          src={headerAvatar || `https://api.dicebear.com/7.x/bottts/svg?seed=${activeConv.id}`} 
+                          alt="" 
+                          className="w-10 h-10 rounded-full object-cover border border-white/10 shrink-0" 
+                        />
+                        <div className="min-w-0">
+                          <h3 className="text-sm font-bold text-white leading-tight truncate">{headerTitle}</h3>
+                          <div className="flex items-center gap-1.5 mt-0.5">
+                            {isClan ? (
+                              <span className="text-[10px] text-primary-400">Clan Group Chat</span>
+                            ) : (
+                              <>
+                                {Object.keys(activeUsers).length > 0 ? (
+                                  <>
+                                    <Circle size={8} className="fill-green-500 text-green-500" />
+                                    <span className="text-[10px] text-green-500 font-bold">Online</span>
+                                  </>
+                                ) : (
+                                  <span className="text-[10px] text-zinc-500">
+                                    {activeConv.participants?.find((p: any) => p.user?.id !== user.id)?.user?.last_seen_at 
+                                      ? `Active ${formatDistanceToNow(new Date(activeConv.participants?.find((p: any) => p.user?.id !== user.id)?.user?.last_seen_at))} ago` 
+                                      : 'Offline'}
+                                  </span>
+                                )}
+                              </>
+                            )}
+                          </div>
                         </div>
-                      </div>
-                    </>
-                  );
-                })()}
+                      </>
+                    );
+                  })()}
+                </div>
+                
+                {/* Options Menu */}
+                <div className="relative">
+                  <button onClick={() => setShowOptions(!showOptions)} className="p-2 text-zinc-400 hover:text-white transition-colors">
+                    <MoreVertical size={18} />
+                  </button>
+                  {showOptions && (
+                    <div className="absolute right-0 mt-2 w-48 bg-[#18181c] border border-white/10 rounded-xl shadow-2xl py-1 z-50">
+                      <button className="w-full text-left px-4 py-2.5 text-xs text-white hover:bg-white/5 flex items-center gap-2">
+                        <User size={14} /> View Profile
+                      </button>
+                      <div className="h-px bg-white/10 my-1"></div>
+                      <button onClick={handleClearChat} className="w-full text-left px-4 py-2.5 text-xs text-red-500 hover:bg-red-500/10 flex items-center gap-2">
+                        <Trash2 size={14} /> Clear Chat
+                      </button>
+                    </div>
+                  )}
+                </div>
               </div>
-            </div>
 
             {/* Messages Stream */}
             <div className="flex-1 overflow-y-auto no-scrollbar p-4 md:p-6 space-y-3">
@@ -440,13 +500,29 @@ export default function ChatSystem() {
 
             {/* Input Bar */}
             <form onSubmit={handleSendMessage} className="p-3.5 border-t border-white/10 bg-[#0a0a0d] flex items-center gap-2">
-              <input
-                type="text"
-                value={inputMsg}
-                onChange={e => setInputMsg(e.target.value)}
-                placeholder="Message..."
-                className="flex-1 bg-black/60 border border-white/10 rounded-full px-4 py-2.5 text-xs text-white placeholder-zinc-600 focus:outline-none focus:border-primary-500"
-              />
+              
+              <div className="relative">
+                <button type="button" onClick={() => document.getElementById('chat-image-upload')?.click()} className="p-2 text-zinc-400 hover:text-white hover:bg-white/5 rounded-full transition-colors">
+                  {uploadingImage ? <Loader2 size={18} className="animate-spin" /> : <ImageIcon size={18} />}
+                </button>
+                <input id="chat-image-upload" type="file" accept="image/*" className="hidden" onChange={handleImageUpload} />
+              </div>
+
+              <div className="flex-1 relative">
+                {imageUrl && (
+                  <div className="absolute -top-12 left-0 w-10 h-10 bg-zinc-800 rounded-lg border border-white/10 overflow-hidden group">
+                    <img src={imageUrl} alt="upload" className="w-full h-full object-cover" />
+                    <button type="button" onClick={() => setImageUrl('')} className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 flex items-center justify-center text-white"><X size={12}/></button>
+                  </div>
+                )}
+                <input
+                  type="text"
+                  value={inputMsg}
+                  onChange={e => setInputMsg(e.target.value)}
+                  placeholder="Message..."
+                  className="w-full bg-black/60 border border-white/10 rounded-full px-4 py-2.5 text-xs text-white placeholder-zinc-600 focus:outline-none focus:border-primary-500"
+                />
+              </div>
               <button
                 type="submit"
                 disabled={!inputMsg.trim() && !imageUrl}
