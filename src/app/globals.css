@@ -21,8 +21,10 @@
     --primary-900: #7f1d1d;
     --primary-950: #450a0a;  /* Deep Backgrounds */
 
-    /* 2. Legacy Variables (For non-tailwind styles) */
+    /* 2. Legacy Variables & Nav Safe Areas */
     --primary-color: #dc2626; 
+    --nav-height-top: 60px;
+    --nav-height-bottom: 70px;
     
     /* 3. Fonts */
     --font-primary: var(--font-hunters); 
@@ -94,6 +96,13 @@
   html {
     font-size: 14px;
     scroll-behavior: smooth;
+  }
+
+  @media (max-width: 767px) {
+    :root {
+      --nav-height-top: max(env(safe-area-inset-top, 0px), 60px);
+      --nav-height-bottom: max(env(safe-area-inset-bottom, 0px), 70px);
+    }
   }
 
   @media (min-width: 768px) {
@@ -177,11 +186,16 @@ h1, h2, h3, h4, h5, h6,
   -webkit-overflow-scrolling: touch;
 }
 
-/* 2. Safe area padding for notched phones */
+/* 2. Safe area padding for notched phones and Nav Menus */
 .safe-top    { padding-top: max(env(safe-area-inset-top), 1rem); }
 .safe-bottom { padding-bottom: max(env(safe-area-inset-bottom), 1rem); }
 .safe-left   { padding-left: env(safe-area-inset-left); }
 .safe-right  { padding-right: env(safe-area-inset-right); }
+
+.page-safe-area {
+  padding-top: var(--nav-height-top);
+  padding-bottom: var(--nav-height-bottom);
+}
 
 /* 3. Prevent text size adjustments on mobile */
 html {

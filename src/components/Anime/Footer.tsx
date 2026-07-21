@@ -10,16 +10,16 @@ export default function Footer() {
   const currentYear = new Date().getFullYear();
 
   return (
-    <footer className="w-full bg-[#050505] border-t border-white/5 py-8 mt-12">
-      <div className="max-w-[1200px] mx-auto px-6 flex flex-col md:flex-row items-center justify-between gap-6">
+    <footer className="w-full bg-[#050505] border-t border-white/5 py-4 md:py-8 mt-6 md:mt-12">
+      <div className="max-w-[1200px] mx-auto px-4 md:px-6 flex flex-col md:flex-row items-center justify-between gap-4 md:gap-6">
         
         {/* Left: Branding */}
         <div className="flex flex-col items-center md:items-start gap-1">
-          <Link href="/" className="flex items-center gap-3 text-white hover:text-orange-500 transition-colors group">
-            <div className="w-8 h-8 rounded-full border border-white/20 group-hover:border-orange-500 transition-colors flex items-center justify-center bg-[#0a0a0a]">
-              <ShadowLogo size="w-6 h-6" />
+          <Link href="/" className="flex items-center gap-2 md:gap-3 text-white hover:text-orange-500 transition-colors group">
+            <div className="w-6 h-6 md:w-8 md:h-8 rounded-full border border-white/20 group-hover:border-orange-500 transition-colors flex items-center justify-center bg-[#0a0a0a]">
+              <ShadowLogo size="w-4 h-4 md:w-6 md:h-6" />
             </div>
-            <span className="text-xl font-lemon font-black tracking-widest">SHADOW GARDEN</span>
+            <span className="text-lg md:text-xl font-lemon font-black tracking-widest">SHADOW GARDEN</span>
           </Link>
           <p className="text-[10px] text-zinc-500 font-bold uppercase tracking-widest mt-1">
             Premium Anime & Drama Streaming

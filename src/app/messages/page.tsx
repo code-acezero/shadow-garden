@@ -8,7 +8,7 @@ import Link from 'next/link';
 
 export default function MessagesPage() {
   return (
-    <div className="min-h-[100dvh] bg-[#050505] text-white flex flex-col pt-20 pb-24 md:pb-0">
+    <div className="bg-[#050505] text-white flex flex-col w-full overflow-y-auto custom-scrollbar" style={{ height: "calc(100dvh - var(--nav-height-top) - var(--nav-height-bottom))" }}>
       <div className="w-full max-w-[1400px] mx-auto px-4 sm:px-6 flex-1 flex flex-col py-6">
         
         {/* Header Bar */}
@@ -39,8 +39,9 @@ export default function MessagesPage() {
           <ChatSystem />
         </div>
       </div>
-
-      <Footer />
+      <div>
+        <Footer />
+      </div>
     </div>
   );
 }

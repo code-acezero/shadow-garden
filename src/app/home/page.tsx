@@ -96,7 +96,7 @@ export default function Home() {
 
       <MobileContainer
         hasBottomNav
-        className="bg-[#050505] h-[100dvh] relative overflow-y-auto no-scrollbar scrolling-touch"
+        className="bg-[#050505] relative w-full"
       >
         {/* Background effects */}
         <div className="shadow-light-top" />

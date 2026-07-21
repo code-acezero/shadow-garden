@@ -322,7 +322,7 @@ export default function AuthModal({ isOpen, onClose, onAuthSuccess, initialView 
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="sm:max-w-[340px] w-[90%] bg-black/40 backdrop-blur-xl border border-white/5 text-white p-0 overflow-hidden rounded-[2.5rem] shadow-[0_0_60px_-15px_rgba(0,0,0,0.8)] my-auto max-h-[85vh] outline-none focus:outline-none ring-0">
+      <DialogContent className="sm:max-w-[340px] w-[90%] bg-black/40 backdrop-blur-xl border border-white/5 text-white p-0 overflow-hidden rounded-[2.5rem] shadow-[0_0_60px_-15px_rgba(0,0,0,0.8)] my-auto outline-none focus:outline-none ring-0" style={{ maxHeight: "calc(100dvh - var(--nav-height-top) - var(--nav-height-bottom) - 30px)" }}>
         <div className="relative p-6 pt-8">
             <div className="text-center space-y-2 mb-6">
                 <div className="flex items-center justify-center gap-3"><YinYangIcon /><DialogTitle className={`text-2xl text-white font-lemon tracking-wider pt-1 drop-shadow-md`}>SHADOW <span className="text-primary-600">GARDEN</span></DialogTitle></div>

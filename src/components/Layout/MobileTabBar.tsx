@@ -14,8 +14,6 @@ export default function MobileTabBar() {
     { id: 'donghua', icon: Flame, label: 'Donghua', path: '/donghua' },
     { id: 'search', icon: Search, label: 'Search', path: '/search' },
     { id: 'social', icon: MessageCircle, label: 'Social', path: '/social' },
-    { id: 'messages', icon: MessageSquare, label: 'Messages', path: '/messages' },
-    { id: 'rooms', icon: Users, label: 'Rooms', path: '/rooms' },
     { id: 'schedule', icon: CalendarDays, label: 'Schedule', path: '/schedule' },
     { id: 'drama', icon: Clapperboard, label: 'Drama', path: '/drama' },
     { id: 'movies', icon: Film, label: 'Movies', path: '/movies' },

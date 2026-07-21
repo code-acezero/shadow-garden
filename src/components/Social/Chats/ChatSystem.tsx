@@ -3,12 +3,13 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { 
   MessageSquare, Send, Users, User, Image as ImageIcon, Search, Shield, 
-  Loader2, MessageSquarePlus, Heart, ArrowLeft, Plus, Check, CheckCheck, X 
+  Loader2, MessageSquarePlus, Heart, ArrowLeft, Plus, Check, CheckCheck, X, Circle
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/context/AuthContext';
 import { toast } from '@/lib/toast';
+import { formatDistanceToNow } from 'date-fns';
 
 export interface ChatMessage {
   id: string;
@@ -32,6 +33,11 @@ export default function ChatSystem() {
   const [searchResults, setSearchResults] = useState<any[]>([]);
   const [isSearching, setIsSearching] = useState(false);
   const [showNewChatModal, setShowNewChatModal] = useState(false);
+  
+  // Realtime Presence State
+  const [activeUsers, setActiveUsers] = useState<Record<string, any>>({});
+  const [typingUsers, setTypingUsers] = useState<Record<string, boolean>>({});
+  const [chatChannel, setChatChannel] = useState<any>(null);
 
   // 1. Fetch User Conversations
   const fetchConversations = useCallback(async () => {
@@ -40,7 +46,7 @@ export default function ChatSystem() {
     try {
       const { data, error } = await supabase
         .from('chat_participants')
-        .select(`*, conversation:chat_conversations(*, clan:clans(name, avatar_url))`)
+        .select(`*, conversation:chat_conversations(*, clan:clans(name, avatar_url), participants:chat_participants(user:profiles(id, username, avatar_url, last_seen_at)))`)
         .eq('user_id', user.id);
 
       if (error) throw error;
@@ -81,20 +87,75 @@ export default function ChatSystem() {
     if (activeConv) {
       fetchMessages();
 
-      const channel = supabase
-        .channel(`chat-${activeConv.id}`)
+      const channel = supabase.channel(`chat-${activeConv.id}`);
+      setChatChannel(channel);
+
+      channel
+        .on('presence', { event: 'sync' }, () => {
+          const newState = channel.presenceState();
+          const online: Record<string, any> = {};
+          const typing: Record<string, boolean> = {};
+          
+          for (const id in newState) {
+            // @ts-ignore
+            const presences = newState[id] as any[];
+            if (presences && presences.length > 0) {
+              const p = presences[0];
+              if (p.user_id !== user?.id) {
+                online[p.user_id] = p;
+                if (p.typing) typing[p.user_id] = true;
+              }
+            }
+          }
+          setActiveUsers(online);
+          setTypingUsers(typing);
+        })
         .on(
           'postgres_changes',
           { event: 'INSERT', schema: 'public', table: 'chat_messages', filter: `conversation_id=eq.${activeConv.id}` },
           () => fetchMessages()
         )
-        .subscribe();
+        .subscribe(async (status) => {
+          if (status === 'SUBSCRIBED' && user) {
+            await channel.track({
+              user_id: user.id,
+              username: user.user_metadata?.username,
+              typing: false,
+              online_at: new Date().toISOString()
+            });
+          }
+        });
 
       return () => {
+        channel.untrack();
         supabase.removeChannel(channel);
+        setChatChannel(null);
       };
     }
-  }, [activeConv, fetchMessages]);
+  }, [activeConv, fetchMessages, user]);
+
+  // Update last_seen_at
+  useEffect(() => {
+    if (user && supabase) {
+      supabase.from('profiles').update({ last_seen_at: new Date().toISOString() }).eq('id', user.id).then();
+    }
+  }, [user]);
+
+  // Handle typing indicator
+  useEffect(() => {
+    if (!chatChannel || !user) return;
+    
+    const handleTyping = setTimeout(async () => {
+      await chatChannel.track({
+        user_id: user.id,
+        username: user.user_metadata?.username,
+        typing: inputMsg.trim().length > 0,
+        online_at: new Date().toISOString()
+      });
+    }, 300);
+
+    return () => clearTimeout(handleTyping);
+  }, [inputMsg, chatChannel, user]);
 
   // Search user to start DM
   const handleSearchUsers = async (query: string) => {
@@ -176,7 +237,7 @@ export default function ChatSystem() {
   }
 
   return (
-    <div className="bg-[#0c0c0e] border border-white/10 rounded-3xl overflow-hidden h-[75vh] min-h-[550px] flex flex-col md:flex-row shadow-2xl relative">
+    <div className="bg-[#0c0c0e] border border-white/10 rounded-3xl overflow-hidden flex flex-col md:flex-row shadow-2xl relative" style={{ height: "calc(100dvh - var(--nav-height-top) - var(--nav-height-bottom) - 100px)", minHeight: "450px" }}>
       
       {/* Conversations List Sidebar (Hidden on mobile if chat is active) */}
       <div className={`w-full md:w-80 border-b md:border-b-0 md:border-r border-white/10 flex flex-col bg-[#08080a] ${activeConv ? 'hidden md:flex' : 'flex'}`}>
@@ -211,8 +272,19 @@ export default function ChatSystem() {
           ) : (
             conversations.map(c => {
               const isSelected = activeConv?.id === c.id;
-              const title = c.type === 'clan' ? `Clan: ${c.clan?.name}` : 'Direct Message';
-              const avatar = c.clan?.avatar_url || `https://api.dicebear.com/7.x/bottts/svg?seed=${c.id}`;
+              let title = 'Direct Message';
+              let avatar = `https://api.dicebear.com/7.x/bottts/svg?seed=${c.id}`;
+              
+              if (c.type === 'clan') {
+                title = `Clan: ${c.clan?.name}`;
+                avatar = c.clan?.avatar_url || avatar;
+              } else if (c.type === 'direct') {
+                const otherParticipant = c.participants?.find((p: any) => p.user?.id !== user.id)?.user;
+                if (otherParticipant) {
+                  title = otherParticipant.username;
+                  avatar = otherParticipant.avatar_url || `https://api.dicebear.com/7.x/bottts/svg?seed=${otherParticipant.id}`;
+                }
+              }
 
               return (
                 <div
@@ -254,17 +326,52 @@ export default function ChatSystem() {
                 >
                   <ArrowLeft size={18} />
                 </button>
-                <img
-                  src={activeConv.clan?.avatar_url || `https://api.dicebear.com/7.x/bottts/svg?seed=${activeConv.id}`}
-                  alt=""
-                  className="w-8 h-8 rounded-full object-cover border border-white/10"
-                />
-                <div>
-                  <h3 className="text-xs font-black text-white uppercase tracking-wider">
-                    {activeConv.type === 'clan' ? `Clan: ${activeConv.clan?.name}` : 'Direct Conversation'}
-                  </h3>
-                  <span className="text-[9px] text-emerald-400 flex items-center gap-1">● Active now</span>
-                </div>
+                {(() => {
+                  const isClan = activeConv.type === 'clan';
+                  let headerTitle = isClan ? activeConv.clan?.name : 'Direct Message';
+                  let headerAvatar = isClan ? activeConv.clan?.avatar_url : '';
+                  
+                  if (!isClan) {
+                    const otherParticipant = activeConv.participants?.find((p: any) => p.user?.id !== user.id)?.user;
+                    if (otherParticipant) {
+                      headerTitle = otherParticipant.username;
+                      headerAvatar = otherParticipant.avatar_url || `https://api.dicebear.com/7.x/bottts/svg?seed=${otherParticipant.id}`;
+                    }
+                  }
+                  
+                  return (
+                    <>
+                      <img 
+                        src={headerAvatar || `https://api.dicebear.com/7.x/bottts/svg?seed=${activeConv.id}`} 
+                        alt="" 
+                        className="w-10 h-10 rounded-full object-cover border border-white/10 shrink-0" 
+                      />
+                      <div className="min-w-0">
+                        <h3 className="text-sm font-bold text-white leading-tight truncate">{headerTitle}</h3>
+                        <div className="flex items-center gap-1.5 mt-0.5">
+                          {isClan ? (
+                            <span className="text-[10px] text-primary-400">Clan Group Chat</span>
+                          ) : (
+                            <>
+                              {Object.keys(activeUsers).length > 0 ? (
+                                <>
+                                  <Circle size={8} className="fill-green-500 text-green-500" />
+                                  <span className="text-[10px] text-green-500 font-bold">Online</span>
+                                </>
+                              ) : (
+                                <span className="text-[10px] text-zinc-500">
+                                  {activeConv.participants?.find((p: any) => p.user?.id !== user.id)?.user?.last_seen_at 
+                                    ? `Active ${formatDistanceToNow(new Date(activeConv.participants?.find((p: any) => p.user?.id !== user.id)?.user?.last_seen_at))} ago` 
+                                    : 'Offline'}
+                                </span>
+                              )}
+                            </>
+                          )}
+                        </div>
+                      </div>
+                    </>
+                  );
+                })()}
               </div>
             </div>
 
@@ -313,6 +420,21 @@ export default function ChatSystem() {
                     </div>
                   );
                 })
+              )}
+              
+              {/* Typing Indicator */}
+              {Object.keys(typingUsers).length > 0 && (
+                <div className="flex items-end gap-2.5">
+                  <div className="w-7 h-7 rounded-full bg-white/5 border border-white/10 shrink-0 mb-1 flex items-center justify-center">
+                    <User size={12} className="text-zinc-500" />
+                  </div>
+                  <div className="bg-[#18181c] text-zinc-400 border border-white/10 rounded-2xl rounded-bl-sm px-4 py-3 shadow-md flex items-center gap-1.5 w-fit">
+                    <span className="text-[9px] font-bold uppercase tracking-wider text-zinc-500 mr-1">Typing</span>
+                    <motion.div className="w-1.5 h-1.5 bg-primary-500 rounded-full" animate={{ y: [0, -4, 0] }} transition={{ repeat: Infinity, duration: 0.8, delay: 0 }} />
+                    <motion.div className="w-1.5 h-1.5 bg-primary-500 rounded-full" animate={{ y: [0, -4, 0] }} transition={{ repeat: Infinity, duration: 0.8, delay: 0.15 }} />
+                    <motion.div className="w-1.5 h-1.5 bg-primary-500 rounded-full" animate={{ y: [0, -4, 0] }} transition={{ repeat: Infinity, duration: 0.8, delay: 0.3 }} />
+                  </div>
+                </div>
               )}
             </div>
 

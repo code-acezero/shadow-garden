@@ -10,6 +10,15 @@ export default function PageTransition({
 }) {
   const pathname = usePathname();
 
+  // Pages that render edge-to-edge and ignore safe areas
+  const isEdgeToEdge = 
+    pathname === '/' || 
+    pathname.startsWith('/watch') || 
+    pathname.startsWith('/donghua-watch') || 
+    pathname.startsWith('/drama-watch') ||
+    pathname.startsWith('/hindi-watch') ||
+    pathname.startsWith('/movies-watch');
+
   return (
     <motion.div
       key={pathname}
@@ -20,7 +29,13 @@ export default function PageTransition({
         duration: 0.35,
         ease: "easeOut",
       }}
-      className="will-change-transform"
+      onAnimationComplete={(definition) => {
+        const el = document.querySelector('.page-transition-wrapper') as HTMLElement;
+        if (el) {
+          el.style.transform = 'none';
+        }
+      }}
+      className={`page-transition-wrapper min-h-screen ${!isEdgeToEdge ? 'page-safe-area' : ''}`}
     >
       {children}
     </motion.div>

@@ -33,9 +33,35 @@ export const getSupabaseBrowserClient = () => {
       }
     }
 
+    // Custom fetch with retry logic to prevent transient connection drops
+    const customFetch = async (input: RequestInfo | URL, init?: RequestInit) => {
+      let retries = 3;
+      let delay = 1000;
+      while (retries > 0) {
+        try {
+          const response = await fetch(input, init);
+          if (response.ok || (response.status >= 400 && response.status < 500)) {
+            return response;
+          }
+          throw new Error(`Server returned ${response.status}`);
+        } catch (error) {
+          retries--;
+          if (retries === 0) throw error;
+          await new Promise(resolve => setTimeout(resolve, delay));
+          delay *= 2; // Exponential backoff
+        }
+      }
+      return fetch(input, init);
+    };
+
     supabaseInstance = createBrowserClient(
-      url || '', // Provide fallback empty string to prevent crash
-      key || ''
+      url || '', 
+      key || '',
+      {
+        global: {
+          fetch: customFetch
+        }
+      }
     );
   }
   return supabaseInstance;

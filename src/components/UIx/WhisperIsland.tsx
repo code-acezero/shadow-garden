@@ -364,7 +364,7 @@ const SearchBarContent = ({ query, setQuery, searchMode, setSearchMode, showFilt
                      <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 10 }} className="absolute top-[120%] left-0 right-0 bg-[#0a0a0a]/95 border border-white/10 rounded-2xl shadow-2xl p-1 z-[100]">
                          {/* Prefix hint */}
                          {query.startsWith('@') && <div className="px-3 py-1.5 text-[9px] font-bold text-zinc-500 uppercase tracking-widest flex items-center gap-1"><AtSign size={9}/> Users & Clans</div>}
-                         {query.startsWith('/') && <div className="px-3 py-1.5 text-[9px] font-bold text-zinc-500 uppercase tracking-widest flex items-center gap-1"><Hash size={9}/> Posts</div>}
+                         {query.startsWith('/') && <div className="px-3 py-1.5 text-[9px] font-bold text-zinc-500 uppercase tracking-widest flex items-center gap-1"><Hash size={9}/> Posts & News</div>}
                          {suggestions.map((s: SearchResult & { _kind?: string }) => (
                              <div key={s.id} onClick={() => handleSuggestionClick(s.id, s._kind)} className="flex items-center gap-3 p-1.5 hover:bg-white/10 rounded-xl cursor-pointer group transition-all">
                                  {s.image ? (
@@ -727,7 +727,7 @@ function WhisperIslandContent() {
     if (kind === 'user') { router.push(`/profile/${id}`); return; }
     if (kind === 'clan') { router.push(`/social?clan=${id}`); return; }
     if (kind === 'post') { router.push(`/social?post=${id}`); return; }
-    if (kind === 'news') { router.push(`/social`); return; }
+    if (kind === 'news') { router.push(`/social?news=${id}`); return; }
     router.push(`/watch/${id}`);
   };
   const activateSearchFocus = (e: React.MouseEvent) => { e.stopPropagation(); setCenterMode('SEARCH_FOCUSED'); };

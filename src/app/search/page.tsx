@@ -343,7 +343,7 @@ function SearchContent() {
   ];
 
   return (
-    <div className="min-h-screen bg-[#020202] text-white selection:bg-white/20 pb-24">
+    <div className="w-full h-full bg-[#020202] text-white selection:bg-white/20">
       {/* 
         PREMIUM HERO HEADER 
         Uses glassmorphism, dynamic glowing blobs, and sleek typography 

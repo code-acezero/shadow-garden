@@ -199,7 +199,7 @@ function WatchlistContent() {
     if (authLoading) return <div className="min-h-screen bg-[#050505]" />;
 
     return (
-        <div className="flex-1 pt-24 pb-20">
+        <div className="flex-1 pb-4">
             <div className="max-w-[1350px] mx-auto w-full">
                 
                 {/* --- HEADER --- */}

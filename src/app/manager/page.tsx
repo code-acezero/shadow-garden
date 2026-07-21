@@ -14,7 +14,7 @@ import {
   AlertCircle, MessageSquareWarning, BookOpen, 
   Scroll, Sword, Feather, 
   Bold, Italic, Type, UserCheck, LayoutDashboard,
-  Filter, ArrowDownCircle, Crown
+  Filter, ArrowDownCircle, Crown, Plus, Upload, Loader2
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -389,7 +389,13 @@ RosterTab.displayName = 'RosterTab';
 const VoiceTab = memo(() => {
   const [voices, setVoices] = useState<any[]>([]);
   const [playing, setPlaying] = useState<string | null>(null);
+  const [uploading, setUploading] = useState(false);
+  const [newVoice, setNewVoice] = useState({ name: '', lang: 'en', type: 'welcome' });
+  const [customLang, setCustomLang] = useState('');
   const audioRef = useRef<HTMLAudioElement | null>(null);
+  const fileInput = useRef<HTMLInputElement>(null);
+  
+  const targets = ['welcome', 'register', 'greet-master', 'greet-adventurer', 'greet-traveler', 'bye-master', 'bye-adventurer'];
 
   const fetchVoices = async () => { 
       const { data } = await supabase.from('voice_packs').select('*').order('created_at', { ascending: false }); 
@@ -415,6 +421,39 @@ const VoiceTab = memo(() => {
       }
   };
 
+  const handleUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+      const file = e.target.files?.[0]; 
+      if (!file || !newVoice.name) { notify("Error", "Name required", 'error'); return; }
+      setUploading(true);
+      const finalLang = customLang || newVoice.lang;
+      
+      try {
+          const path = `voices/${finalLang}/${newVoice.name}-${newVoice.type}.${file.name.split('.').pop()}`;
+          const { data, error } = await supabase.storage.from('voice-foundry').upload(path, file);
+          if (error) throw error;
+          
+          const { data: { publicUrl } } = supabase.storage.from('voice-foundry').getPublicUrl(path);
+          await supabase.from('voice_packs').insert({
+              name: newVoice.name,
+              character: newVoice.name,
+              language: finalLang,
+              event_trigger: newVoice.type.toUpperCase(),
+              file_url: publicUrl,
+              source: 'DB'
+          });
+          
+          notify("Success", "Echo Crystallized", 'success');
+          fetchVoices();
+      } catch(err: any) { notify("Error", err.message, 'error'); }
+      setUploading(false);
+  };
+
+  const handleDelete = async (id: string) => {
+      await supabase.from('voice_packs').delete().eq('id', id);
+      notify("Success", "Echo Shattered", 'success');
+      fetchVoices();
+  };
+
   const grouped = useMemo(() => voices.reduce((acc: any, v: any) => {
       const lang = v.language || 'en';
       if (!acc[lang]) acc[lang] = {};
@@ -426,7 +465,7 @@ const VoiceTab = memo(() => {
 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-       <div className="lg:col-span-3 space-y-6">
+       <div className="lg:col-span-2 space-y-6">
            <Tabs defaultValue="en" className="w-full">
                <TabsList className="bg-zinc-900/50 p-1 rounded-full border border-white/5 mb-4 h-auto flex flex-wrap gap-1">
                    {Object.keys(grouped).concat(['en']).filter((v,i,a)=>a.indexOf(v)===i).map(lang => (
@@ -451,6 +490,7 @@ const VoiceTab = memo(() => {
                                                    <span className="text-xs text-zinc-400 font-mono uppercase flex items-center gap-2">{v.event_trigger || v.type} {v.source === 'FILE' && <Badge variant="secondary" className="text-[8px] h-4">FILE</Badge>}</span>
                                                    <div className="flex gap-2">
                                                        <Button size="icon" variant="ghost" onClick={() => toggleAudio(v.file_url || v.path, v.id)} className={`h-6 w-6 rounded-full ${playing === v.id ? 'text-fuchsia-500' : 'text-green-400'}`}>{playing === v.id ? <Pause size={10}/> : <Play size={10}/>}</Button>
+                                                       {v.source !== 'FILE' && <Button size="icon" variant="ghost" onClick={() => handleDelete(v.id)} className="h-6 w-6 text-fuchsia-400 rounded-full hover:bg-fuchsia-500/20"><Trash2 size={10}/></Button>}
                                                    </div>
                                                </div>
                                            ))}
@@ -461,6 +501,34 @@ const VoiceTab = memo(() => {
                    </TabsContent>
                ))}
            </Tabs>
+       </div>
+       
+       {/* UPLOAD SECTION (Now available for Managers) */}
+       <div className="bg-zinc-900/30 border border-white/5 p-6 rounded-[2rem] h-fit">
+           <h3 className="font-bold text-white mb-6 flex items-center gap-2"><Plus size={18}/> Synthesize Echo</h3>
+           <div className="space-y-4">
+               <div className="space-y-2">
+                   <label className="text-xs uppercase text-zinc-500 font-bold tracking-wider ml-1">Language Folder</label>
+                   <Select onValueChange={(v)=>{if(v==='new')setCustomLang('');else{setNewVoice({...newVoice,lang:v});setCustomLang('');}}} defaultValue="en">
+                       <SelectTrigger className="bg-black/40 border-white/10 h-12 rounded-xl focus:border-fuchsia-500"><SelectValue placeholder="Lang"/></SelectTrigger>
+                       <SelectContent><SelectItem value="en">English</SelectItem><SelectItem value="jp">Japanese</SelectItem><SelectItem value="new">+ New Folder</SelectItem></SelectContent>
+                   </Select>
+                   {customLang!==''&&<Input placeholder="Folder (e.g. fr)" value={customLang} onChange={e=>setCustomLang(e.target.value)} className="bg-black/40 border-white/10 mt-2 rounded-xl focus:border-fuchsia-500"/>}
+               </div>
+               <InputGroup label="Pack Name" value={newVoice.name} onChange={(v:string)=>setNewVoice({...newVoice,name:v})} placeholder="e.g. Hana" />
+               <div className="space-y-2">
+                   <label className="text-xs uppercase text-zinc-500 font-bold tracking-wider ml-1">Target Event</label>
+                   <Select onValueChange={(v)=>setNewVoice({...newVoice,type:v})} defaultValue="welcome">
+                       <SelectTrigger className="bg-black/40 border-white/10 h-12 rounded-xl focus:border-fuchsia-500"><SelectValue placeholder="Type"/></SelectTrigger>
+                       <SelectContent>{targets.map(t => <SelectItem key={t} value={t}>{t}</SelectItem>)}</SelectContent>
+                   </Select>
+               </div>
+               <div onClick={()=>fileInput.current?.click()} className="mt-4 border-2 border-dashed border-white/10 rounded-2xl p-6 text-center hover:bg-white/5 cursor-pointer">
+                   {uploading ? <Loader2 className="animate-spin mx-auto text-fuchsia-500"/> : <Upload className="mx-auto text-zinc-500 mb-2"/>}
+                   <p className="text-xs text-zinc-400">Select Audio File</p>
+               </div>
+               <input type="file" ref={fileInput} className="hidden" accept="audio/*" onChange={handleUpload}/>
+           </div>
        </div>
     </div>
   );

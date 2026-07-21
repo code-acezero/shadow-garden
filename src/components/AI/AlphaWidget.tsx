@@ -528,7 +528,7 @@ export default function AlphaWidget() {
                         <DesktopFireflies />
 
                         {/* Character Sprite (Mobile & Desktop: 2nd highest z-index z-[60], below input box z-[70]) */}
-                        <div className="absolute bottom-24 sm:bottom-28 lg:bottom-0 left-0 sm:left-2 lg:left-1/2 lg:-translate-x-1/2 lg:right-auto h-[45vh] sm:h-[50vh] lg:h-[95vh] xl:h-[100vh] z-[60] flex items-end justify-start lg:justify-center scale-100 lg:scale-[1.0] origin-bottom-left lg:origin-bottom pointer-events-none">
+                        <div className="absolute bottom-0 sm:bottom-0 lg:bottom-0 left-0 sm:left-2 lg:left-1/2 lg:-translate-x-1/2 lg:right-auto h-[45vh] sm:h-[50vh] lg:h-[95vh] xl:h-[100vh] z-[60] flex items-end justify-start lg:justify-center scale-[0.95] lg:scale-[0.95] origin-bottom-left lg:origin-bottom pointer-events-none">
                             {ALL_STATES.map(st => (
                                 <img
                                     key={st}
@@ -591,10 +591,10 @@ export default function AlphaWidget() {
                                 {/* Speech Bubble */}
                                 <div className="w-full px-2 sm:px-4 lg:px-0 flex justify-end lg:justify-start pb-4 sm:pb-6 lg:pb-4 mb-4 sm:mb-6 lg:mb-4 z-30 pointer-events-auto shrink-0 relative mt-auto lg:mt-0">
                                     {/* Spacer for mobile character on left */}
-                                    <div className="w-[34%] sm:w-[36%] lg:hidden shrink-0" />
+                                    <div className="w-[42%] sm:w-[45%] lg:hidden shrink-0" />
 
                                     {/* Adaptive Mobile & Responsive Desktop Speech Bubble */}
-                                    <div className="w-[64%] sm:w-[62%] lg:w-full max-w-[calc(100vw-100px)] md:max-w-[480px] lg:max-w-[38vw] xl:max-w-[440px] shrink-0 ml-auto lg:ml-0">
+                                    <div className="w-[58%] sm:w-[55%] lg:w-full max-w-[calc(100vw-120px)] md:max-w-[480px] lg:max-w-[38vw] xl:max-w-[440px] shrink-0 ml-auto lg:ml-0">
                                         <AnimatePresence mode="wait">
                                             <motion.div
                                                 key={currentMessageContent}
@@ -613,7 +613,7 @@ export default function AlphaWidget() {
                                                     </div>
                                                 </div>
 
-                                                <div className="relative bg-[#0a0a0a]/95 backdrop-blur-md border-[2px] border-orange-600/50 rounded-2xl p-4 lg:p-6 min-h-[150px] lg:min-h-[170px] shadow-[0_10px_40px_rgba(0,0,0,0.8)] shadow-orange-900/20">
+                                                <div className="relative bg-[#0a0a0a]/95 backdrop-blur-md border-[2px] border-orange-600/50 rounded-2xl p-4 lg:p-6 min-h-[190px] lg:min-h-[170px] max-h-[300px] overflow-y-auto custom-scrollbar shadow-[0_10px_40px_rgba(0,0,0,0.8)] shadow-orange-900/20">
                                                     {loading ? (
                                                         <div className="flex items-center gap-3 text-orange-500 font-bold h-full">
                                                             <Loader2 className="w-5 h-5 animate-spin" /> Typing...

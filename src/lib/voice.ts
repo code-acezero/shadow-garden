@@ -1,4 +1,4 @@
-import { createBrowserClient } from '@supabase/ssr';
+import { supabase } from '@/lib/supabase';
 
 // --- WHISPER HELPER ---
 const notifyIsland = (title: string, message: string) => {
@@ -45,7 +45,6 @@ let dynamicVoiceCache: any[] = [];
 
 export const refreshVoiceCache = async () => {
     try {
-        const supabase = createBrowserClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!);
         const { data } = await supabase.from('voice_packs').select('*');
         if (data) dynamicVoiceCache = data;
     } catch (e) {
@@ -112,13 +111,13 @@ export const playVoice = (event: VoiceEvent) => {
     if (fileUrl) {
         console.log(`🔊 [ShadowVoice] Playing: ${fileUrl}`);
         const audio = new Audio(fileUrl);
-        audio.volume = 1.0; 
+        // Default to 1.0 if not set, or use settings.volume
+        audio.volume = (settings as any).volume !== undefined ? (settings as any).volume : 1.0; 
         audio.play().catch(e => console.warn("Autoplay blocked/missing:", e));
     }
 };
 
 export const syncVoiceProfile = async (userId: string) => {
-    const supabase = createBrowserClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!);
     const localSettings = getVoiceSettings();
     if (supabase) {
         await supabase.from('profiles').update({ voice_pack: localSettings.pack }).eq('id', userId);
@@ -126,7 +125,6 @@ export const syncVoiceProfile = async (userId: string) => {
 };
 
 export const loadVoiceProfile = async (userId: string) => {
-    const supabase = createBrowserClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!);
     if (!supabase) return;
     const { data } = await supabase.from('profiles').select('voice_pack').eq('id', userId).single();
     if (data && data.voice_pack) {

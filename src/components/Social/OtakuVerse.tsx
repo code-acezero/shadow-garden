@@ -27,6 +27,7 @@ import ImageLightbox from './ImageLightbox';
 import ClanSystem from './Clans/ClanSystem';
 import ShadowComments from '@/components/Comments/ShadowComments';
 import Link from 'next/link';
+import Footer from '@/components/Anime/Footer';
 
 // --- TYPES ---
 interface Comment {
@@ -63,9 +64,10 @@ interface OtakuVerseProps {
   user: AppUser | null;
   onAuthRequired: () => void;
   highlightId?: string;
+  initialNewsId?: string;
 }
 
-export default function OtakuVerse({ user, onAuthRequired, highlightId }: OtakuVerseProps) {
+export default function OtakuVerse({ user, onAuthRequired, highlightId, initialNewsId }: OtakuVerseProps) {
   const [posts, setPosts] = useState<SocialPost[]>([]);
   const [newPost, setNewPost] = useState('');
   const [selectedImages, setSelectedImages] = useState<File[]>([]);
@@ -80,6 +82,12 @@ export default function OtakuVerse({ user, onAuthRequired, highlightId }: OtakuV
   const [comments, setComments] = useState<Comment[]>([]);
   const [commentText, setCommentText] = useState('');
   const [replyTarget, setReplyTarget] = useState<{ id: string; name: string } | null>(null);
+  
+  // News Comment States
+  const [newsComments, setNewsComments] = useState<Comment[]>([]);
+  const [newsCommentText, setNewsCommentText] = useState('');
+  const [newsReplyTarget, setNewsReplyTarget] = useState<{ id: string; name: string } | null>(null);
+
   const [lightbox, setLightbox] = useState<{ isOpen: boolean; src: string }>({ isOpen: false, src: '' });
   const [searchQuery, setSearchQuery] = useState('');
   const [trendingTags, setTrendingTags] = useState<{tag: string, count: number, cat: string}[]>([]);
@@ -142,6 +150,35 @@ export default function OtakuVerse({ user, onAuthRequired, highlightId }: OtakuV
     fetchAniListNews();
   }, []);
 
+  // --- HANDLE INITIAL NEWS ID ---
+  useEffect(() => {
+    if (initialNewsId && aniListNews.length > 0 && !activeNewsItem) {
+      const thread = aniListNews.find(t => t.id.toString() === initialNewsId);
+      if (thread) {
+        setActiveNewsItem(thread);
+        fetchNewsComments(thread.id);
+      } else {
+        // If it's an older news item not in the first 8, we might need to fetch it specifically.
+        // For now, just fetch the specific thread if not found.
+        fetch('https://graphql.anilist.co', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+          body: JSON.stringify({
+            query: `query { Thread(id: ${initialNewsId}) { id title body createdAt user { name avatar { large } } } }`
+          })
+        })
+        .then(res => res.json())
+        .then(data => {
+          if (data.data?.Thread) {
+            setActiveNewsItem(data.data.Thread);
+            fetchNewsComments(data.data.Thread.id);
+          }
+        })
+        .catch(console.error);
+      }
+    }
+  }, [initialNewsId, aniListNews]);
+
   // --- FETCH POSTS LOGIC ---
   const fetchPosts = useCallback(async (showLoading = false) => {
     if (!supabase) return;
@@ -200,7 +237,7 @@ export default function OtakuVerse({ user, onAuthRequired, highlightId }: OtakuV
     } finally {
       setIsLoading(false);
     }
-  }, [user, activeTab]);
+  }, [user?.id, activeTab]);
 
   useEffect(() => {
     fetchPosts(true);
@@ -353,6 +390,71 @@ export default function OtakuVerse({ user, onAuthRequired, highlightId }: OtakuV
     }
   };
 
+  // Fetch News Comments (using general comments table with episode_id)
+  const fetchNewsComments = async (newsId: string) => {
+    if (!supabase) return;
+    try {
+      const { data, error } = await supabase
+        .from('comments')
+        .select(`*, user:profiles(username, avatar_url, role)`)
+        .eq('episode_id', `news_${newsId}`)
+        .order('created_at', { ascending: true });
+
+      if (error) throw error;
+
+      const commentMap = new Map<string, Comment>();
+      const rootComments: Comment[] = [];
+
+      (data || []).forEach((c: any) => {
+        const item: Comment = { 
+          ...c, 
+          replies: [],
+          user: c.user || { username: 'Adventurer', avatar_url: `https://api.dicebear.com/7.x/bottts/svg?seed=${c.user_id}` } 
+        };
+        commentMap.set(c.id, item);
+      });
+
+      commentMap.forEach(item => {
+        if (item.parent_id && commentMap.has(item.parent_id)) {
+          commentMap.get(item.parent_id)!.replies!.push(item);
+        } else {
+          rootComments.push(item);
+        }
+      });
+
+      setNewsComments(rootComments);
+    } catch (err) {
+      console.error('Fetch news comments error:', err);
+    }
+  };
+
+  const handlePostNewsComment = async () => {
+    if (!user) {
+      onAuthRequired();
+      return;
+    }
+    if (!newsCommentText.trim() || !activeNewsItem) return;
+
+    try {
+      const { error } = await supabase.from('comments').insert({
+        episode_id: `news_${activeNewsItem.id}`,
+        user_id: user.id,
+        parent_id: newsReplyTarget?.id || null,
+        content: newsCommentText
+      });
+
+      if (error) throw error;
+
+      setNewsCommentText('');
+      setNewsReplyTarget(null);
+      fetchNewsComments(activeNewsItem.id);
+      toast.success("Comment posted");
+    } catch (err) {
+      toast.error("Failed to post comment");
+    }
+  };
+
+
   const filteredPosts = posts.filter(p => {
     if (!searchQuery) return true;
     return p.content.toLowerCase().includes(searchQuery.toLowerCase()) || 
@@ -360,11 +462,11 @@ export default function OtakuVerse({ user, onAuthRequired, highlightId }: OtakuV
   });
 
   return (
-    <div className="w-full h-full bg-[#050505] text-white flex justify-center selection:bg-primary-500 selection:text-white">
-      <div className="max-w-7xl w-full h-full flex justify-center lg:justify-between px-0 md:px-2 pt-16 md:pt-20">
+    <div className="w-full bg-[#050505] text-white flex justify-center selection:bg-primary-500 selection:text-white overflow-y-auto custom-scrollbar" style={{ height: "calc(100dvh - var(--nav-height-top) - var(--nav-height-bottom))" }}>
+      <div className="max-w-7xl w-full flex justify-center lg:justify-between px-0 md:px-2">
         
         {/* LEFT SIDEBAR (Desktop) */}
-        <header className="hidden sm:flex w-20 lg:w-64 xl:w-72 flex-col justify-between h-full pt-0 pb-20 px-2 lg:px-4 overflow-y-auto custom-scrollbar">
+        <header className="hidden sm:flex w-20 lg:w-64 xl:w-72 flex-col justify-between h-[calc(100vh-160px)] sticky top-4 pt-0 px-2 lg:px-4 overflow-y-auto custom-scrollbar">
            <div className="flex flex-col gap-1 w-full items-center lg:items-start">
               <div className="flex items-center justify-center lg:justify-start w-12 h-12 lg:w-auto lg:p-3 rounded-full hover:bg-white/10 cursor-pointer transition-colors mb-2 text-primary-500">
                  <Hash size={28} />
@@ -404,10 +506,10 @@ export default function OtakuVerse({ user, onAuthRequired, highlightId }: OtakuV
         </header>
 
         {/* MIDDLE COLUMN (Feed & Mobile Header) */}
-        <main className="flex-1 max-w-[620px] w-full h-full overflow-y-auto custom-scrollbar border-x border-white/10 pb-[120px] md:pb-20">
+        <main className="flex-1 max-w-[620px] w-full min-h-screen border-x border-white/10 pb-4">
            
            {/* Sticky Top Header */}
-           <div className="sticky top-[60px] md:top-20 z-40 bg-[#050505]/95 backdrop-blur-xl border-b border-white/10 shadow-lg">
+           <div className="sticky top-0 z-40 bg-[#050505]/95 backdrop-blur-xl border-b border-white/10 shadow-lg">
               <div className="flex items-center justify-between p-3.5 sm:hidden border-b border-white/5">
                 <button
                   onClick={() => setIsMobileMenuOpen(true)}
@@ -556,8 +658,8 @@ export default function OtakuVerse({ user, onAuthRequired, highlightId }: OtakuV
         </main>
 
         {/* RIGHT SIDEBAR — News (Desktop only, always visible) */}
-        <aside className="hidden lg:flex flex-col w-80 xl:w-96 h-full pt-4 pb-20 px-4 overflow-y-auto custom-scrollbar shrink-0">
-          <div className="sticky top-0 pb-3 bg-[#050505] z-10">
+        <aside className="hidden lg:flex flex-col w-80 xl:w-96 h-[calc(100vh-5rem)] sticky top-20 pt-4 pb-20 px-4 overflow-y-auto custom-scrollbar shrink-0">
+          <div className="pb-3 bg-[#050505] z-10">
             <h3 className="text-[10px] font-black uppercase tracking-widest text-zinc-400 flex items-center gap-2">
               <Newspaper size={14} className="text-primary-500" /> Anime Industry News
             </h3>
@@ -573,7 +675,7 @@ export default function OtakuVerse({ user, onAuthRequired, highlightId }: OtakuV
               ))
             ) : (
               aniListNews.map(thread => (
-                <div key={thread.id} onClick={() => setActiveNewsItem(thread)} className="p-4 bg-[#0a0a0d] border border-white/5 rounded-2xl space-y-2 hover:border-primary-500/30 transition-all cursor-pointer group">
+                <div key={thread.id} onClick={() => { setActiveNewsItem(thread); fetchNewsComments(thread.id); }} className="p-4 bg-[#0a0a0d] border border-white/5 rounded-2xl space-y-2 hover:border-primary-500/30 transition-all cursor-pointer group">
                   <div className="flex items-center gap-2">
                     <img src={thread.user?.avatar?.large} alt="" className="w-6 h-6 rounded-full border border-white/10 object-cover" />
                     <div className="min-w-0">
@@ -644,7 +746,7 @@ export default function OtakuVerse({ user, onAuthRequired, highlightId }: OtakuV
 
       {/* Facebook-Style Comments Dialog Modal */}
       <Dialog open={!!activePostForComments} onOpenChange={() => setActivePostForComments(null)}>
-        <DialogContent className="max-w-xl bg-[#0d0d10] border border-white/10 text-white rounded-3xl p-6 shadow-2xl max-h-[85vh] flex flex-col">
+        <DialogContent className="max-w-xl bg-[#0d0d10] border border-white/10 text-white rounded-3xl p-4 sm:p-6 shadow-2xl flex flex-col" style={{ maxHeight: "calc(100dvh - var(--nav-height-top) - var(--nav-height-bottom) - 30px)" }}>
           <DialogHeader className="border-b border-white/10 pb-3 flex flex-row items-center justify-between">
             <DialogTitle className="text-xs font-black uppercase tracking-widest text-zinc-300">
               Comments ({comments.length})
@@ -703,14 +805,14 @@ export default function OtakuVerse({ user, onAuthRequired, highlightId }: OtakuV
 
       {/* News View Dialog Modal */}
       <Dialog open={!!activeNewsItem} onOpenChange={() => setActiveNewsItem(null)}>
-        <DialogContent className="max-w-2xl bg-[#0d0d10] border border-white/10 text-white rounded-3xl p-0 shadow-2xl h-[85vh] max-h-[85vh] flex flex-col overflow-hidden [&>button]:right-6 [&>button]:top-6 [&>button]:text-zinc-400 hover:[&>button]:text-white">
+        <DialogContent className="max-w-2xl bg-[#0d0d10] border border-white/10 text-white rounded-3xl p-0 shadow-2xl flex flex-col overflow-hidden [&>button]:right-6 [&>button]:top-6 [&>button]:text-zinc-400 hover:[&>button]:text-white" style={{ maxHeight: "calc(100dvh - var(--nav-height-top) - var(--nav-height-bottom) - 30px)" }}>
           {activeNewsItem && (
             <>
               <DialogHeader className="border-b border-white/10 p-6 pb-4 shrink-0 bg-[#0a0a0d] z-10">
                 <div className="flex items-center gap-3 pr-8">
                   <img src={activeNewsItem.user?.avatar?.large} alt="" className="w-10 h-10 rounded-full border border-white/10 object-cover shrink-0" />
                   <div className="min-w-0">
-                    <h3 className="text-sm font-bold text-white leading-tight line-clamp-2">{activeNewsItem.title}</h3>
+                    <DialogTitle className="text-sm font-bold text-white leading-tight line-clamp-2">{activeNewsItem.title}</DialogTitle>
                     <span className="text-[10px] text-zinc-500 block mt-1">By {activeNewsItem.user?.name} on {new Date(activeNewsItem.createdAt * 1000).toLocaleDateString()}</span>
                   </div>
                 </div>
@@ -721,11 +823,57 @@ export default function OtakuVerse({ user, onAuthRequired, highlightId }: OtakuV
                   dangerouslySetInnerHTML={{ __html: activeNewsItem.body }} 
                 />
                 
-                <div className="pt-6 border-t border-white/10">
-                  <h4 className="text-xs font-black uppercase tracking-widest text-primary-500 mb-4 flex items-center gap-2">
+                <div className="pt-6 border-t border-white/10 flex flex-col h-full flex-1 min-h-[300px]">
+                  <h4 className="text-xs font-black uppercase tracking-widest text-primary-500 mb-4 flex items-center gap-2 shrink-0">
                     <MessageSquare size={14} /> Comments
                   </h4>
-                  <ShadowComments episodeId={`news_${activeNewsItem.id}`} />
+                  
+                  {/* News Comment Threads */}
+                  <div className="flex-1 overflow-y-auto no-scrollbar py-2 space-y-4">
+                    {newsComments.length === 0 ? (
+                      <div className="text-center py-10 text-zinc-500 text-xs">Be the first to comment!</div>
+                    ) : (
+                      newsComments.map(c => (
+                        <FacebookCommentBubble
+                          key={c.id}
+                          comment={c}
+                          onReply={(id, name) => setNewsReplyTarget({ id, name })}
+                        />
+                      ))
+                    )}
+                  </div>
+
+                  {/* Comment Input */}
+                  <div className="pt-3 border-t border-white/10 space-y-2 shrink-0 bg-[#0d0d10] pb-2">
+                    {newsReplyTarget && (
+                      <div className="text-[10px] text-primary-400 flex items-center justify-between bg-primary-600/10 p-2 rounded-xl border border-primary-500/20">
+                        <span>Replying to <strong>@{newsReplyTarget.name}</strong></span>
+                        <button onClick={() => setNewsReplyTarget(null)} className="text-zinc-400 hover:text-white"><X size={12} /></button>
+                      </div>
+                    )}
+                    <div className="flex gap-2.5">
+                      <img
+                        src={user?.user_metadata?.avatar_url || `https://api.dicebear.com/7.x/bottts/svg?seed=${user?.id || 'guest'}`}
+                        alt=""
+                        className="w-8 h-8 rounded-full object-cover border border-white/10 shrink-0 mt-0.5"
+                        onError={(e) => { (e.target as HTMLElement).setAttribute('src', `https://api.dicebear.com/7.x/bottts/svg?seed=${user?.id || 'guest'}`); }}
+                      />
+                      <input
+                        type="text"
+                        value={newsCommentText}
+                        onChange={e => setNewsCommentText(e.target.value)}
+                        placeholder="Write a comment..."
+                        className="flex-1 bg-black/50 border border-white/10 rounded-full px-4 py-2 text-xs text-white placeholder-zinc-600 focus:outline-none focus:border-primary-500"
+                      />
+                      <button
+                        onClick={handlePostNewsComment}
+                        disabled={!newsCommentText.trim()}
+                        className="px-4 py-2 bg-primary-600 hover:bg-primary-500 disabled:opacity-40 text-white rounded-full text-xs font-bold uppercase transition-all shrink-0"
+                      >
+                        Send
+                      </button>
+                    </div>
+                  </div>
                 </div>
               </div>
             </>

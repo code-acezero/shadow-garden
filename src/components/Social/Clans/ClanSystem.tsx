@@ -40,11 +40,16 @@ export default function ClanSystem() {
     try {
       const { data, error } = await supabase
         .from('clans')
-        .select(`*, owner:profiles(username, avatar_url)`)
+        .select(`*, profiles!clans_owner_id_fkey(username, avatar_url)`)
         .order('created_at', { ascending: false });
 
       if (error) throw error;
-      setClans(data || []);
+      
+      const mappedData = (data || []).map(clan => ({
+        ...clan,
+        owner: clan.profiles
+      }));
+      setClans(mappedData);
 
       if (user) {
         const { data: memData } = await supabase
@@ -54,7 +59,7 @@ export default function ClanSystem() {
         setUserClanIds((memData || []).map((m: any) => m.clan_id));
       }
     } catch (err) {
-      console.error('Fetch clans error:', err);
+      console.error('Fetch clans error:', JSON.stringify(err));
     } finally {
       setLoading(false);
     }
@@ -62,6 +67,18 @@ export default function ClanSystem() {
 
   useEffect(() => {
     fetchClans();
+
+    if (supabase) {
+      const channel = supabase
+        .channel('public:clans_and_members')
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'clans' }, () => fetchClans())
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'clan_members' }, () => fetchClans())
+        .subscribe();
+
+      return () => {
+        supabase.removeChannel(channel);
+      };
+    }
   }, [user]);
 
   const handleCreateClan = async () => {

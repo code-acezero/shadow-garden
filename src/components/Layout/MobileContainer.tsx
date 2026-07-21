@@ -18,12 +18,7 @@ export default function MobileContainer({
     <div 
       className={cn(
         // Base Layout
-        "w-full min-h-screen flex flex-col",
-        // Mobile Optimization:
-        // 1. pb-safe: Adds padding for iPhone bottom swipe bar
-        "pt-[env(safe-area-inset-top)] pb-[env(safe-area-inset-bottom)]", 
-        // 3. Spacing for Bottom Nav (if exists) - Increased for new iOS Tab Bar
-        hasBottomNav ? "pb-24 md:pb-20" : "", 
+        "w-full min-h-full flex flex-col",
         className
       )}
     >

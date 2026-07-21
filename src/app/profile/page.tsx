@@ -54,14 +54,20 @@ export default function ProfilePage() {
     const [showFollowersModal, setShowFollowersModal] = useState(false);
     const [showFollowingModal, setShowFollowingModal] = useState(false);
 
+    // Frame State
+    const [activeFrame, setActiveFrame] = useState('none');
+
     useEffect(() => {
         if (profile) {
             setFullName(profile.full_name || "");
             setBio(profile.bio || "");
             setWebsite(profile.website || "");
             setGender(profile.gender || "male");
+            if (profile.frame_id) setActiveFrame(profile.frame_id);
         }
     }, [profile]);
+
+
 
     useEffect(() => {
         if (!user) return;
@@ -148,7 +154,7 @@ export default function ProfilePage() {
     );
 
     return (
-        <div className="min-h-screen bg-[#000] text-white pt-24 pb-32">
+        <div className="bg-[#000] text-white w-full h-full pb-8">
             <div className="max-w-4xl mx-auto px-4 md:px-8">
                 
                 {/* INSTAGRAM HEADER */}
@@ -156,7 +162,7 @@ export default function ProfilePage() {
                     {/* Avatar */}
                     <div className="shrink-0 relative group">
                         <FantasyFrame 
-                            frameId={profile.frame_id} 
+                            frameId={activeFrame || profile.frame_id} 
                             level={profile.level || 1} 
                             showLevelTag={profile.show_level !== false}
                             className="w-32 h-32 md:w-40 md:h-40"
@@ -349,7 +355,7 @@ export default function ProfilePage() {
                     <TabsContent value="frames" className="mt-6 outline-none">
                         {(() => {
                             const currentLevel = profile.level || 1;
-                            const activeFrame = profile.frame_id || 'none';
+                            
                             const FRAMES = [
                                 { id: 'none', name: 'No Frame', minLevel: 0, gradient: '', description: 'Clean look, no frame' },
                                 { id: 'starter', name: 'Starter Ring', minLevel: 1, gradient: 'from-zinc-400 to-zinc-600', description: 'Your first frame' },
@@ -363,11 +369,17 @@ export default function ProfilePage() {
                             ];
                             const handleEquipFrame = async (frameId: string) => {
                                 if (!user) return;
+                                // Immediately update local state to avoid needing two clicks
+                                setActiveFrame(frameId); 
                                 try {
-                                    await supabase.from('profiles').update({ frame_id: frameId }).eq('id', user.id);
+                                    const { error } = await supabase.from('profiles').update({ frame_id: frameId }).eq('id', user.id);
+                                    if (error) throw error;
                                     toast.success(frameId === 'none' ? 'Frame removed' : 'Frame equipped!');
                                     refreshSession();
-                                } catch { toast.error('Failed to equip frame'); }
+                                } catch { 
+                                    toast.error('Failed to equip frame'); 
+                                    setActiveFrame(profile.frame_id || 'none'); // Revert on failure
+                                }
                             };
                             return (
                                 <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
