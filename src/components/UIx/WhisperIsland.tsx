@@ -614,18 +614,51 @@ function WhisperIslandContent() {
         return;
       }
       if (q.startsWith('/')) {
-        // / prefix: search posts
+        // / prefix: search posts and AniList news
         const term = q.slice(1);
         if (term.length < 2) { setSuggestions([]); return; }
         setIsLoadingSearch(true);
         try {
-          const { data: posts } = await supabase
-            .from('social_posts')
-            .select('id, content, user:profiles(username, avatar_url)')
-            .ilike('content', `%${term}%`)
-            .limit(5);
-          const postResults = (posts || []).map((p: any) => ({ id: p.id, title: (p.content || '').slice(0, 60) + ((p.content || '').length > 60 ? '...' : ''), image: p.user?.avatar_url, type: `By @${p.user?.username || 'Unknown'}`, _kind: 'post' }));
-          setSuggestions(postResults);
+          // Parallel fetch for social posts and AniList news threads
+          const anilistQuery = `
+            query {
+              Page(page: 1, perPage: 3) {
+                threads(search: "${term}", sort: ID_DESC) {
+                  id
+                  title
+                  user { name avatar { large } }
+                }
+              }
+            }
+          `;
+
+          const [postsRes, aniRes] = await Promise.all([
+            supabase.from('social_posts').select('id, content, user:profiles(username, avatar_url)').ilike('content', `%${term}%`).limit(3),
+            fetch('https://graphql.anilist.co', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+              body: JSON.stringify({ query: anilistQuery })
+            }).then(res => res.json())
+          ]);
+
+          const postResults = (postsRes.data || []).map((p: any) => ({ 
+             id: p.id, 
+             title: (p.content || '').slice(0, 60) + ((p.content || '').length > 60 ? '...' : ''), 
+             image: p.user?.avatar_url, 
+             type: `By @${p.user?.username || 'Unknown'}`, 
+             _kind: 'post' 
+          }));
+
+          const newsData = aniRes.data?.Page?.threads || [];
+          const newsResults = newsData.map((t: any) => ({
+             id: t.id,
+             title: t.title,
+             image: t.user?.avatar?.large,
+             type: 'Anime News',
+             _kind: 'news'
+          }));
+
+          setSuggestions([...postResults, ...newsResults]);
         } catch { setSuggestions([]); } finally { setIsLoadingSearch(false); }
         return;
       }
@@ -658,6 +691,7 @@ function WhisperIslandContent() {
     if (kind === 'user') { router.push(`/profile/${id}`); return; }
     if (kind === 'clan') { router.push(`/social?clan=${id}`); return; }
     if (kind === 'post') { router.push(`/social?post=${id}`); return; }
+    if (kind === 'news') { router.push(`/social`); return; }
     router.push(`/watch/${id}`);
   };
   const activateSearchFocus = (e: React.MouseEvent) => { e.stopPropagation(); setCenterMode('SEARCH_FOCUSED'); };

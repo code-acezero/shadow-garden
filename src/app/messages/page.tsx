@@ -8,7 +8,7 @@ import Link from 'next/link';
 
 export default function MessagesPage() {
   return (
-    <div className="min-h-screen bg-[#050505] text-white flex flex-col pt-20">
+    <div className="min-h-[100dvh] bg-[#050505] text-white flex flex-col pt-20 pb-24 md:pb-0">
       <div className="w-full max-w-[1400px] mx-auto px-4 sm:px-6 flex-1 flex flex-col py-6">
         
         {/* Header Bar */}

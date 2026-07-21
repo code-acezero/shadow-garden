@@ -25,6 +25,7 @@ import { toast } from '@/lib/toast';
 import { formatDistanceToNow } from 'date-fns';
 import ImageLightbox from './ImageLightbox';
 import ClanSystem from './Clans/ClanSystem';
+import ShadowComments from '@/components/Comments/ShadowComments';
 import Link from 'next/link';
 
 // --- TYPES ---
@@ -75,6 +76,7 @@ export default function OtakuVerse({ user, onAuthRequired, highlightId }: OtakuV
   
   // Feature States
   const [activePostForComments, setActivePostForComments] = useState<SocialPost | null>(null);
+  const [activeNewsItem, setActiveNewsItem] = useState<any | null>(null);
   const [comments, setComments] = useState<Comment[]>([]);
   const [commentText, setCommentText] = useState('');
   const [replyTarget, setReplyTarget] = useState<{ id: string; name: string } | null>(null);
@@ -371,7 +373,7 @@ export default function OtakuVerse({ user, onAuthRequired, highlightId }: OtakuV
               
               <NavButton icon={<Home size={24} />} label="Home" active={activeTab === 'feed'} onClick={() => setActiveTab('feed')} />
               <NavButton icon={<Users size={24} />} label="Following" active={activeTab === 'following'} onClick={() => setActiveTab('following')} />
-              <NavButton icon={<Newspaper size={24} />} label="News" active={activeTab === 'news'} onClick={() => setActiveTab('news')} />
+              <div className="lg:hidden"><NavButton icon={<Newspaper size={24} />} label="News" active={activeTab === 'news'} onClick={() => setActiveTab('news')} /></div>
               <NavButton icon={<MessageSquare size={24} />} label="Messages" onClick={() => window.location.href = '/messages'} />
               <NavButton icon={<Users size={24} />} label="Watch Rooms" onClick={() => window.location.href = '/rooms'} />
               <NavButton icon={<UserIcon size={24} />} label="Profile" onClick={() => user ? (window.location.href='/profile') : onAuthRequired()} />
@@ -405,7 +407,7 @@ export default function OtakuVerse({ user, onAuthRequired, highlightId }: OtakuV
         <main className="flex-1 max-w-[620px] w-full h-full overflow-y-auto custom-scrollbar border-x border-white/10 pb-[120px] md:pb-20">
            
            {/* Sticky Top Header */}
-           <div className="relative z-20 bg-black/80 backdrop-blur-xl border-b border-white/10">
+           <div className="sticky top-[60px] md:top-20 z-40 bg-[#050505]/95 backdrop-blur-xl border-b border-white/10 shadow-lg">
               <div className="flex items-center justify-between p-3.5 sm:hidden border-b border-white/5">
                 <button
                   onClick={() => setIsMobileMenuOpen(true)}
@@ -507,7 +509,7 @@ export default function OtakuVerse({ user, onAuthRequired, highlightId }: OtakuV
                     <div className="text-center py-12 text-zinc-500 text-xs">Loading anime news...</div>
                   ) : (
                     aniListNews.map(thread => (
-                      <div key={thread.id} className="p-5 bg-[#0a0a0d] border border-white/10 rounded-3xl space-y-3 hover:border-primary-500/40 transition-all shadow-lg">
+                      <div key={thread.id} onClick={() => setActiveNewsItem(thread)} className="p-5 bg-[#0a0a0d] border border-white/10 rounded-3xl space-y-3 hover:border-primary-500/40 transition-all shadow-lg cursor-pointer">
                         <div className="flex items-center gap-3">
                           <img src={thread.user?.avatar?.large} alt="" className="w-8 h-8 rounded-full border border-white/10 object-cover" />
                           <div>
@@ -571,7 +573,7 @@ export default function OtakuVerse({ user, onAuthRequired, highlightId }: OtakuV
               ))
             ) : (
               aniListNews.map(thread => (
-                <div key={thread.id} className="p-4 bg-[#0a0a0d] border border-white/5 rounded-2xl space-y-2 hover:border-primary-500/30 transition-all cursor-pointer group">
+                <div key={thread.id} onClick={() => setActiveNewsItem(thread)} className="p-4 bg-[#0a0a0d] border border-white/5 rounded-2xl space-y-2 hover:border-primary-500/30 transition-all cursor-pointer group">
                   <div className="flex items-center gap-2">
                     <img src={thread.user?.avatar?.large} alt="" className="w-6 h-6 rounded-full border border-white/10 object-cover" />
                     <div className="min-w-0">
@@ -696,6 +698,38 @@ export default function OtakuVerse({ user, onAuthRequired, highlightId }: OtakuV
               </button>
             </div>
           </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* News View Dialog Modal */}
+      <Dialog open={!!activeNewsItem} onOpenChange={() => setActiveNewsItem(null)}>
+        <DialogContent className="max-w-2xl bg-[#0d0d10] border border-white/10 text-white rounded-3xl p-0 shadow-2xl h-[85vh] max-h-[85vh] flex flex-col overflow-hidden [&>button]:right-6 [&>button]:top-6 [&>button]:text-zinc-400 hover:[&>button]:text-white">
+          {activeNewsItem && (
+            <>
+              <DialogHeader className="border-b border-white/10 p-6 pb-4 shrink-0 bg-[#0a0a0d] z-10">
+                <div className="flex items-center gap-3 pr-8">
+                  <img src={activeNewsItem.user?.avatar?.large} alt="" className="w-10 h-10 rounded-full border border-white/10 object-cover shrink-0" />
+                  <div className="min-w-0">
+                    <h3 className="text-sm font-bold text-white leading-tight line-clamp-2">{activeNewsItem.title}</h3>
+                    <span className="text-[10px] text-zinc-500 block mt-1">By {activeNewsItem.user?.name} on {new Date(activeNewsItem.createdAt * 1000).toLocaleDateString()}</span>
+                  </div>
+                </div>
+              </DialogHeader>
+              <div className="flex-1 overflow-y-auto custom-scrollbar p-6 space-y-8">
+                <div 
+                  className="prose prose-invert prose-sm max-w-none prose-a:text-primary-400 prose-img:rounded-xl prose-img:border prose-img:border-white/10 leading-relaxed text-zinc-300"
+                  dangerouslySetInnerHTML={{ __html: activeNewsItem.body }} 
+                />
+                
+                <div className="pt-6 border-t border-white/10">
+                  <h4 className="text-xs font-black uppercase tracking-widest text-primary-500 mb-4 flex items-center gap-2">
+                    <MessageSquare size={14} /> Comments
+                  </h4>
+                  <ShadowComments episodeId={`news_${activeNewsItem.id}`} />
+                </div>
+              </div>
+            </>
+          )}
         </DialogContent>
       </Dialog>
 
