@@ -21,6 +21,15 @@ const nextConfig: NextConfig = {
       },
     ],
   },
+  async redirects() {
+    return [
+      {
+        source: '/admin',
+        destination: '/master',
+        permanent: true,
+      },
+    ];
+  },
   // Add this to fix the @consumet/extensions issue
   transpilePackages: ['@consumet/extensions'],
 

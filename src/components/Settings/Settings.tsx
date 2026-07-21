@@ -497,6 +497,11 @@ export default function Settings() {
                             <span className={`flex items-center gap-1.5 px-3 py-1 rounded-full border text-[9px] font-black uppercase tracking-wider ${profile?.role === 'admin' ? 'bg-red-500/10 border-red-500/30 text-red-400' : 'bg-blue-500/10 border-blue-500/30 text-blue-400'}`}>
                                 <Crown size={10} /> {profile?.role === 'admin' ? 'Guild Master' : 'Adventurer'}
                             </span>
+                            {(profile?.role === 'admin' || profile?.role === 'moderator') && (
+                                <Link href="/master" className="flex items-center gap-1.5 px-4 py-1.5 rounded-full border bg-primary-600/20 border-primary-500/50 text-primary-400 text-[10px] font-black uppercase tracking-wider hover:bg-primary-600 hover:text-white transition-all">
+                                    <ShieldCheck size={12} /> Admin Panel
+                                </Link>
+                            )}
                         </div>
                     </div>
                 </div>
