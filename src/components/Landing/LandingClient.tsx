@@ -198,8 +198,25 @@ export default function LandingClient() {
   }, [router]);
 
   // Handlers
+  const initializeAudio = useCallback(() => {
+    try {
+      const AudioContext = window.AudioContext || (window as any).webkitAudioContext;
+      if (AudioContext) {
+        const ctx = new AudioContext();
+        ctx.resume();
+        localStorage.setItem('shadow_audio_permitted', 'true');
+      }
+    } catch (e) {
+      console.warn("Audio Context init failed:", e);
+    }
+  }, []);
+
   const handleSceneReady = useCallback(() => { setShowLandingUI(true); }, []);
-  const handleEnterClick = useCallback(() => { setShowLandingUI(false); setTriggerEntry(true); }, []);
+  const handleEnterClick = useCallback(() => { 
+    initializeAudio();
+    setShowLandingUI(false); 
+    setTriggerEntry(true); 
+  }, [initializeAudio]);
   const handlePortalComplete = useCallback(() => { router.push('/home'); }, [router]);
 
   // Prevent Flash
@@ -281,7 +298,7 @@ export default function LandingClient() {
                    </div>
 
                    <div className="flex flex-col sm:flex-row gap-5 justify-center items-center relative z-20">
-                      <Button onClick={() => setShowAuth(true)} className="h-14 px-8 rounded-full bg-primary-800 hover:bg-primary-700 text-white font-bold text-lg shadow-[0_0_35px_rgba(220,38,38,0.4)] border border-primary-500/50 backdrop-blur-md font-above tracking-wider">
+                      <Button onClick={() => { initializeAudio(); setShowAuth(true); }} className="h-14 px-8 rounded-full bg-primary-800 hover:bg-primary-700 text-white font-bold text-lg shadow-[0_0_35px_rgba(220,38,38,0.4)] border border-primary-500/50 backdrop-blur-md font-above tracking-wider">
                         <Crown className="mr-3 h-5 w-5" /> Join The Guild
                       </Button>
                       <Button onClick={handleEnterClick} variant="ghost" className="h-14 px-8 rounded-full text-white/70 hover:text-white hover:bg-white/10 border border-white/10 text-lg hover:border-primary-500/50 backdrop-blur-md transition-all font-above tracking-wider">

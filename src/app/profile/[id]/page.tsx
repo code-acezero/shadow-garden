@@ -16,6 +16,7 @@ import AuthModal from '@/components/Auth/AuthModal';
 import Footer from '@/components/Anime/Footer';
 import { motion, AnimatePresence } from 'framer-motion';
 import ShadowAvatar from '@/components/User/ShadowAvatar'; 
+import FantasyFrame from '@/components/User/FantasyFrame';
 import Link from 'next/link';
 
 export default function PublicProfilePage() {
@@ -153,12 +154,17 @@ export default function PublicProfilePage() {
                 <div className="flex flex-col md:flex-row items-center md:items-start gap-8 mb-12">
                     {/* Avatar */}
                     <div className="shrink-0 relative">
-                        <div className="w-32 h-32 md:w-40 md:h-40 rounded-full p-1 bg-gradient-to-tr from-pink-500 via-red-500 to-yellow-500 overflow-hidden">
+                        <FantasyFrame 
+                            frameId={profile.frame_id} 
+                            level={profile.level || 1} 
+                            showLevelTag={profile.show_level !== false}
+                            className="w-32 h-32 md:w-40 md:h-40"
+                        >
                             <Avatar className="w-full h-full rounded-full border-4 border-black bg-zinc-900">
                                 <AvatarImage src={profile.avatar_url} className="object-cover" />
                                 <AvatarFallback><ShadowAvatar gender={profile.gender || 'male'}/></AvatarFallback>
                             </Avatar>
-                        </div>
+                        </FantasyFrame>
                     </div>
 
                     {/* Info & Stats */}
@@ -173,7 +179,7 @@ export default function PublicProfilePage() {
                                 >
                                     {isFollowing ? "Following" : "Follow"}
                                 </Button>
-                                <Button variant="secondary" className="bg-zinc-800 hover:bg-zinc-700 text-white h-8 px-4 font-bold text-sm rounded-lg">Message</Button>
+                                <Button onClick={() => user ? router.push(`/messages?user=${profile.id}`) : setShowAuthModal(true)} variant="secondary" className="bg-zinc-800 hover:bg-zinc-700 text-white h-8 px-4 font-bold text-sm rounded-lg">Message</Button>
                                 <Button variant="ghost" className="h-8 w-8 p-0 rounded-lg text-white hover:bg-zinc-800"><MoreHorizontal size={20}/></Button>
                             </div>
                         </div>

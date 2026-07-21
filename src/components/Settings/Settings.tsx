@@ -16,7 +16,10 @@ import Footer from '@/components/Anime/Footer';
 
 const MENU_ITEMS = [
   { id: 'account', label: 'Identity & Account', icon: User },
+  { id: 'player', label: 'Player Settings', icon: Smartphone },
+  { id: 'voice', label: 'Voice Assistant', icon: Bell },
   { id: 'notifications', label: 'Missives & Alerts', icon: Bell },
+  { id: 'privacy', label: 'Privacy Settings', icon: Shield },
   { id: 'anilist', label: 'AniList Sync', icon: RefreshCw },
   { id: 'data', label: 'Vault Export & Import', icon: Database },
 ];
@@ -36,6 +39,8 @@ export default function Settings() {
   const [username, setUsername] = useState('');
   const [bio, setBio] = useState('');
   const [avatarUrl, setAvatarUrl] = useState('');
+  const [gender, setGender] = useState('male');
+  const [website, setWebsite] = useState('');
   const [anilistUsername, setAnilistUsername] = useState('');
   const [isSyncing, setIsSyncing] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
@@ -45,6 +50,8 @@ export default function Settings() {
       setUsername(profile.username || '');
       setBio(profile.bio || '');
       setAvatarUrl(profile.avatar_url || '');
+      setGender(profile.gender || 'male');
+      setWebsite(profile.website || '');
     }
   }, [profile]);
 
@@ -58,6 +65,8 @@ export default function Settings() {
         .update({
           username,
           bio,
+          gender,
+          website,
           avatar_url: avatarUrl,
           updated_at: new Date().toISOString(),
         })
@@ -335,6 +344,29 @@ export default function Settings() {
                       />
                     </div>
 
+                    <div>
+                      <label className="text-xs font-bold text-zinc-300 uppercase tracking-wider block mb-2">Instagram / Website</label>
+                      <input
+                        type="text"
+                        value={website}
+                        onChange={e => setWebsite(e.target.value)}
+                        placeholder="https://instagram.com/username"
+                        className="w-full bg-black/50 border border-white/10 rounded-2xl px-4 py-3 text-xs text-white placeholder-zinc-600 focus:outline-none focus:border-primary-500"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-xs font-bold text-zinc-300 uppercase tracking-wider block mb-2">Gender / Designation</label>
+                      <select
+                        value={gender}
+                        onChange={e => setGender(e.target.value)}
+                        className="w-full bg-black/50 border border-white/10 rounded-2xl px-4 py-3 text-xs text-white placeholder-zinc-600 focus:outline-none focus:border-primary-500 appearance-none"
+                      >
+                        <option value="male">Male</option>
+                        <option value="female">Female</option>
+                        <option value="other">Prefer not to say</option>
+                      </select>
+                    </div>
+
                     {!isGuestUser && (
                       <button
                         onClick={handleSaveAccount}
@@ -348,7 +380,109 @@ export default function Settings() {
                 </div>
               )}
 
-              {/* TAB 2: MISSIVES & ALERTS */}
+              {/* TAB: PLAYER SETTINGS */}
+              {activeTab === 'player' && (
+                <div className="space-y-6">
+                  <div>
+                    <h2 className="text-xl font-black uppercase tracking-widest text-white flex items-center gap-2">
+                      <Smartphone className="text-primary-500" /> Player Settings
+                    </h2>
+                    <p className="text-xs text-zinc-400 mt-1">Configure your viewing experience.</p>
+                  </div>
+                  <div className="space-y-3">
+                    <div className="flex items-center justify-between p-4 bg-black/40 border border-white/5 rounded-2xl">
+                      <div>
+                        <h4 className="text-xs font-bold text-white">Auto-Play Next Episode</h4>
+                        <p className="text-[10px] text-zinc-500">Automatically start the next episode when the current one ends.</p>
+                      </div>
+                      <button
+                        onClick={() => updateSetting('autoPlay', !settings.autoPlay)}
+                        className={`w-12 h-6 rounded-full transition-colors relative ${settings.autoPlay ? 'bg-primary-600' : 'bg-zinc-800'}`}
+                      >
+                        <div className={`w-4 h-4 bg-white rounded-full absolute top-1 transition-transform ${settings.autoPlay ? 'right-1' : 'left-1'}`} />
+                      </button>
+                    </div>
+                    <div className="flex items-center justify-between p-4 bg-black/40 border border-white/5 rounded-2xl">
+                      <div>
+                        <h4 className="text-xs font-bold text-white">Auto-Skip Opening/Ending</h4>
+                        <p className="text-[10px] text-zinc-500">Automatically skip anime openings and endings if available.</p>
+                      </div>
+                      <button
+                        onClick={() => updateSetting('autoSkipOpEd', !settings.autoSkipOpEd)}
+                        className={`w-12 h-6 rounded-full transition-colors relative ${settings.autoSkipOpEd ? 'bg-primary-600' : 'bg-zinc-800'}`}
+                      >
+                        <div className={`w-4 h-4 bg-white rounded-full absolute top-1 transition-transform ${settings.autoSkipOpEd ? 'right-1' : 'left-1'}`} />
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* TAB: VOICE ASSISTANT */}
+              {activeTab === 'voice' && (
+                <div className="space-y-6">
+                  <div>
+                    <h2 className="text-xl font-black uppercase tracking-widest text-white flex items-center gap-2">
+                      <Bell className="text-primary-500" /> Voice Assistant
+                    </h2>
+                    <p className="text-xs text-zinc-400 mt-1">Choose your system welcome voice.</p>
+                  </div>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {['sys-alpha', 'sys-beta', 'sys-shadow', 'sys-delta', 'sys-zeta', 'sys-alpha-jp'].map(voiceId => (
+                      <div key={voiceId} className="flex items-center justify-between p-4 bg-black/40 border border-white/5 rounded-2xl">
+                        <div>
+                          <h4 className="text-xs font-bold text-white capitalize">{voiceId.replace('sys-', '').replace('-', ' ')}</h4>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <button
+                            onClick={() => {
+                              const audio = new Audio(`/audio/${voiceId.replace('sys-', '').replace('-', '_')}_preview.mp3`);
+                              audio.play().catch(e => console.log('Audio preview failed', e));
+                            }}
+                            className="px-3 py-1 bg-zinc-800 hover:bg-zinc-700 text-white rounded-full text-xs font-bold"
+                          >
+                            Preview
+                          </button>
+                          <button
+                            onClick={() => updateSetting('whisperVoice', voiceId)}
+                            className={`w-5 h-5 rounded-full border-2 flex items-center justify-center ${settings.whisperVoice === voiceId ? 'border-primary-500' : 'border-zinc-600'}`}
+                          >
+                            {settings.whisperVoice === voiceId && <div className="w-2.5 h-2.5 bg-primary-500 rounded-full" />}
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* TAB: PRIVACY SETTINGS */}
+              {activeTab === 'privacy' && (
+                <div className="space-y-6">
+                  <div>
+                    <h2 className="text-xl font-black uppercase tracking-widest text-white flex items-center gap-2">
+                      <Shield className="text-primary-500" /> Privacy Settings
+                    </h2>
+                    <p className="text-xs text-zinc-400 mt-1">Manage your visibility and data.</p>
+                  </div>
+                  <div className="space-y-3">
+                    <div className="flex items-center justify-between p-4 bg-black/40 border border-white/5 rounded-2xl">
+                      <div>
+                        <h4 className="text-xs font-bold text-white">Hide Online Status</h4>
+                        <p className="text-[10px] text-zinc-500">Do not show when I am active in the guild.</p>
+                      </div>
+                      <button
+                        onClick={() => updateSetting('hideOnlineStatus', !settings.hideOnlineStatus)}
+                        className={`w-12 h-6 rounded-full transition-colors relative ${settings.hideOnlineStatus ? 'bg-primary-600' : 'bg-zinc-800'}`}
+                      >
+                        <div className={`w-4 h-4 bg-white rounded-full absolute top-1 transition-transform ${settings.hideOnlineStatus ? 'right-1' : 'left-1'}`} />
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* TAB: MISSIVES & ALERTS */}
               {activeTab === 'notifications' && (
                 <div className="space-y-6">
                   <div>

@@ -12,11 +12,12 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { 
-    Grid, Heart, Bookmark, Settings, Upload, Trash2, Link as LinkIcon, Camera, LayoutGrid, CheckCircle, MessageSquare, History, Users, Award, Star, Lock
+    Grid, Heart, Bookmark, Settings, Upload, Trash2, Link as LinkIcon, Camera, LayoutGrid, CheckCircle, MessageSquare, History, Users, Award, Star, Lock, ShieldAlert
 } from 'lucide-react';
 import { toast } from '@/lib/toast';
 import AuthModal from '@/components/Auth/AuthModal';
 import ShadowAvatar from '@/components/User/ShadowAvatar'; 
+import FantasyFrame from '@/components/User/FantasyFrame';
 import Footer from '@/components/Anime/Footer';
 import { motion, AnimatePresence } from 'framer-motion';
 import Link from 'next/link';
@@ -154,12 +155,17 @@ export default function ProfilePage() {
                 <div className="flex flex-col md:flex-row items-center md:items-start gap-8 mb-12">
                     {/* Avatar */}
                     <div className="shrink-0 relative group">
-                        <div className="w-32 h-32 md:w-40 md:h-40 rounded-full p-1 bg-gradient-to-tr from-pink-500 via-red-500 to-yellow-500 overflow-hidden">
+                        <FantasyFrame 
+                            frameId={profile.frame_id} 
+                            level={profile.level || 1} 
+                            showLevelTag={profile.show_level !== false}
+                            className="w-32 h-32 md:w-40 md:h-40"
+                        >
                             <Avatar className="w-full h-full rounded-full border-4 border-black bg-zinc-900 cursor-pointer">
                                 <AvatarImage src={profile.avatar_url} className="object-cover" />
                                 <AvatarFallback><ShadowAvatar gender={gender}/></AvatarFallback>
                             </Avatar>
-                        </div>
+                        </FantasyFrame>
                         <div onClick={() => setShowAvatarModal(true)} className="absolute inset-1 bg-black/50 rounded-full z-20 opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer flex items-center justify-center backdrop-blur-sm">
                             <Camera className="text-white" size={32} />
                         </div>
@@ -171,8 +177,14 @@ export default function ProfilePage() {
                             <h1 className="text-2xl md:text-xl font-medium text-white">{profile.username}</h1>
                             <div className="flex gap-2 flex-wrap justify-center md:justify-start">
                                 <Button onClick={() => setIsEditing(true)} variant="secondary" className="bg-zinc-800 hover:bg-zinc-700 text-white h-8 px-4 font-bold text-xs rounded-lg">Edit profile</Button>
-                                <Button onClick={() => router.push('/rooms')} variant="secondary" className="bg-primary-600/20 border border-primary-500/30 hover:bg-primary-600 text-primary-400 hover:text-white h-8 px-4 font-bold text-xs rounded-lg flex items-center gap-1.5"><Users size={14} /> Watch Rooms</Button>
-                                <Button onClick={() => router.push('/watchlist')} variant="secondary" className="bg-zinc-800 hover:bg-zinc-700 text-white h-8 px-4 font-bold text-xs rounded-lg">Archive</Button>
+                                <Button onClick={() => router.push('/messages')} variant="secondary" className="bg-primary-600/20 border border-primary-500/30 hover:bg-primary-600 text-primary-400 hover:text-white h-8 px-4 font-bold text-xs rounded-lg flex items-center gap-1.5"><MessageSquare size={14} /> Messages</Button>
+                                {(profile.role === 'admin' || profile.role === 'moderator') && (
+                                    <Button onClick={() => router.push('/manager')} variant="secondary" className="bg-red-600/20 border border-red-500/30 hover:bg-red-600 text-red-400 hover:text-white h-8 px-4 font-bold text-xs rounded-lg flex items-center gap-1.5"><ShieldAlert size={14} /> Admin Panel</Button>
+                                )}
+                                {profile.level >= 100 && profile.role !== 'admin' && profile.role !== 'moderator' && (
+                                    <Button onClick={() => toast.success("Mod Application submitted! We will review your profile.")} variant="secondary" className="bg-yellow-600/20 border border-yellow-500/30 hover:bg-yellow-600 text-yellow-400 hover:text-white h-8 px-4 font-bold text-xs rounded-lg flex items-center gap-1.5"><Award size={14} /> Apply for Mod</Button>
+                                )}
+                                <Button onClick={() => router.push('/watchlist')} variant="secondary" className="bg-zinc-800 hover:bg-zinc-700 text-white h-8 px-4 font-bold text-xs rounded-lg hidden md:flex">Archive</Button>
                                 <Button onClick={() => router.push('/settings')} variant="ghost" className="h-8 w-8 p-0 rounded-lg text-white hover:bg-zinc-800"><Settings size={18}/></Button>
                             </div>
                         </div>

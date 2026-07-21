@@ -544,6 +544,42 @@ function WhisperIslandContent() {
     };
   }, [profile, isLoading]);
 
+  // UNREAD MESSAGES NOTIFICATION
+  useEffect(() => {
+      const fetchUnread = async () => {
+          if (!profile?.id) return;
+          try {
+              const { data, error } = await supabase
+                 .from('messages')
+                 .select('sender_id, profiles!messages_sender_id_fkey(username)')
+                 .eq('receiver_id', profile.id)
+                 .is('read_at', null);
+                 
+              if (data && data.length > 0) {
+                  const grouped = data.reduce((acc: any, msg: any) => {
+                      // fallback to sender_id if profiles join fails
+                      const sender = msg.profiles?.username || 'a user';
+                      acc[sender] = (acc[sender] || 0) + 1;
+                      return acc;
+                  }, {});
+
+                  Object.entries(grouped).forEach(([sender, count]) => {
+                      setTimeout(() => {
+                          dispatchWhisper('Unread Messages', `${count} unread from @${sender}`);
+                      }, 2000); // delay so it doesn't overlap immediately with welcome
+                  });
+              }
+          } catch (e) {
+              console.error('Failed to fetch unread messages', e);
+          }
+      };
+
+      // Only fetch unread messages if user is not currently in the messages page
+      if (profile?.id && typeof window !== 'undefined' && !window.location.pathname.includes('/messages')) {
+          fetchUnread();
+      }
+  }, [profile?.id]);
+
   useEffect(() => { setMounted(true); refreshVoiceCache(); }, []);
   
   // Voice Fetching

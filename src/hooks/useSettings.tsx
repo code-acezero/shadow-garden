@@ -61,6 +61,9 @@ export interface AppSettings {
   // Data
   autoBackup: boolean;
   bandwidthSaver: boolean;
+
+  // Privacy
+  hideOnlineStatus: boolean;
 }
 
 export const DEFAULT_SETTINGS: AppSettings = {
@@ -81,6 +84,8 @@ export const DEFAULT_SETTINGS: AppSettings = {
   enableWhisper: true, 
 
   autoBackup: true, bandwidthSaver: false,
+  
+  hideOnlineStatus: false,
 };
 
 interface SettingsContextType {
