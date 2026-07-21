@@ -904,8 +904,7 @@ export class UserAPI {
 
 export class ImageAPI {
     static async uploadImage(file: File): Promise<string> {
-        const env = typeof globalThis !== 'undefined' ? (globalThis as any) : undefined;
-        const API_KEY = env?.process?.env?.NEXT_PUBLIC_IMGBB_API_KEY;
+        const API_KEY = process.env.NEXT_PUBLIC_IMGBB_API_KEY;
         if (!API_KEY) {
             console.error('⚠️ IMGBB_API_KEY not found in environment variables');
             throw new Error('Image upload service is not configured');

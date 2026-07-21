@@ -193,7 +193,7 @@ export default function ClanSettings({ clan, onUpdate, members }: { clan: Clan, 
                 <h3 className="font-bold text-white mb-4">Manage Members</h3>
                 <div className="space-y-2 max-h-[300px] overflow-y-auto pr-2">
                     {members.map(m => (
-                        <div key={m.id} className="flex justify-between items-center bg-black/40 p-3 rounded-xl border border-white/5">
+                        <div key={m.user_id} className="flex justify-between items-center bg-black/40 p-3 rounded-xl border border-white/5">
                             <div className="flex items-center gap-3">
                                 <img src={m.profiles?.avatar_url} className="w-8 h-8 rounded-full" />
                                 <div>
