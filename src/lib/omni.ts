@@ -138,6 +138,7 @@ export interface MovieDetail {
   runtime?: string;
   cast?: string[];
   type?: string;           // 'Movie' | 'TV Series' etc.
+  languages?: string[];
   downloadLinks: { name: string; url: string; quality?: string; size?: string }[];
   streams: { name: string; url: string }[];
   related?: DramaCard[];
