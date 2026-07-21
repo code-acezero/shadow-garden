@@ -1,62 +1,64 @@
 import localFont from 'next/font/local';
+import { Poppins } from 'next/font/google';
 
 // ==========================================
 // THE FONT ARMORY
-// Optimization: preload: false ensures lazy loading
+// Optimization: preload: false ensures lazy loading for local fonts
 // ==========================================
 
-export const badUnicorn = localFont({
-  src: '../assets/fonts/BadUnicornDemoRegular.ttf',
-  variable: '--font-bad-unicorn',
+export const poppins = Poppins({
+  subsets: ['latin'],
+  weight: ['300', '400', '500', '600', '700', '800', '900'],
+  variable: '--font-poppins',
+  display: 'swap',
+});
+
+export const lemonMilk = localFont({
+  src: [
+    {
+      path: '../assets/fonts/LemonMilkRegular-X3XE2.otf',
+      weight: '400',
+      style: 'normal',
+    },
+    {
+      path: '../assets/fonts/LemonMilkBold-gx2B3.otf',
+      weight: '700',
+      style: 'normal',
+    }
+  ],
+  variable: '--font-lemon-milk',
   display: 'swap',
   preload: false, 
 });
 
-export const demoness = localFont({
-  src: '../assets/fonts/Demoness-1GlYj.ttf',
-  variable: '--font-demoness',
+export const gradvis = localFont({
+  src: '../assets/fonts/GradvisRegular-lxoyd.ttf',
+  variable: '--font-gradvis',
   display: 'swap',
   preload: false,
 });
 
-export const horrorshow = localFont({
-  src: '../assets/fonts/Horrorshow-dp1E.ttf',
-  variable: '--font-horrorshow',
+export const above = localFont({
+  src: '../assets/fonts/AboveDemoRegular-lJMd.ttf',
+  variable: '--font-above',
   display: 'swap',
   preload: false,
 });
 
-export const hunters = localFont({
-  src: '../assets/fonts/HuntersKPop.ttf',
-  variable: '--font-hunters',
-  display: 'swap',
-  preload: false,
-});
-
-export const kareudon = localFont({
-  src: '../assets/fonts/Kareudon.otf',
-  variable: '--font-kareudon',
-  display: 'swap',
-  preload: false,
-});
-
-export const monas = localFont({
-  src: '../assets/fonts/Monas.ttf',
-  variable: '--font-monas',
-  display: 'swap',
-  preload: false,
-});
-
-export const nyctophobia = localFont({
-  src: '../assets/fonts/Nyctophobia-RnMM.ttf',
-  variable: '--font-nyctophobia',
-  display: 'swap',
-  preload: false,
-});
-
-export const onePiece = localFont({
-  src: '../assets/fonts/OnePiece.ttf',
-  variable: '--font-one-piece',
+export const minomu = localFont({
+  src: [
+    {
+      path: '../assets/fonts/MinomuRegular-4BV0B.otf',
+      weight: '400',
+      style: 'normal',
+    },
+    {
+      path: '../assets/fonts/MinomuBold-rgXoO.otf',
+      weight: '700',
+      style: 'normal',
+    }
+  ],
+  variable: '--font-minomu',
   display: 'swap',
   preload: false,
 });

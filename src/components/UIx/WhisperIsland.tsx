@@ -22,7 +22,7 @@ import Link from 'next/link';
 import Notifications from '@/components/Anime/Notifications'; 
 import ShadowAvatar from '@/components/User/ShadowAvatar';
 import ShadowLogo from '@/components/UIx/ShadowLogo';
-import { demoness, hunters } from '@/lib/fonts';
+
 import { playVoice, refreshVoiceCache } from '@/lib/voice'; 
 import { useSettings } from '@/hooks/useSettings'; 
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -59,10 +59,16 @@ const LightWave = ({ delay = 0, trigger }: { delay?: number, trigger: any }) => 
 const GENRES = ["Action", "Adventure", "Comedy", "Drama", "Ecchi", "Fantasy", "Horror", "Isekai", "Mecha", "Mystery", "Psychological", "Romance", "Sci-Fi", "Seinen", "Shoujo", "Shounen", "Slice of Life", "Sports", "Supernatural", "Thriller"];
 const SEASONS = ["spring", "summer", "fall", "winter"];
 const TYPES = ["tv", "movie", "ova", "ona", "special"];
-const STATUS = ["currently_airing", "finished_airing", "not_yet_aired"];
-const HINDI_GENRES = ["Action", "Adventure", "Comedy", "Drama", "Fantasy", "Horror", "Romance", "Sci-Fi", "Thriller"];
-const HINDI_LANGUAGES = ["Hindi", "Tamil", "Telugu", "English"];
+const STATUS = ["currently-airing", "finished-airing", "not-yet-aired"];
 const YEARS = Array.from({ length: 2027 - 2000 }, (_, i) => (2027 - i).toString());
+
+const HINDI_GENRES = ["Action", "Adventure", "Animation", "Comedy", "Crime", "Documentary", "Drama", "Family", "Fantasy", "History", "Horror", "Music", "Mystery", "Romance", "Science Fiction", "TV Movie", "Thriller", "War", "Western"];
+const HINDI_LANGUAGES = ["Hindi", "Tamil", "Telugu", "English"];
+const HINDI_TYPES = ["Movie", "Series", "Drama"];
+const HINDI_STATUS = ["Ongoing", "Completed"];
+
+const DONGHUA_GENRES = ["Action", "Adventure", "Comedy", "Drama", "Ecchi", "Fantasy", "Harem", "Historical", "Martial Arts", "Mecha", "Mystery", "Romance", "Sci-Fi", "Shounen", "Slice of Life"];
+const DONGHUA_STATUS = ["ongoing", "completed"];
 
 // --- MOCK LOCAL DATA FOR VOICES ---
 const LOCAL_VOICE_PACKS = [
@@ -186,7 +192,7 @@ const SpecialSearchBar = ({ mode, onClose, isActive, setIsActive }: { mode: 'hin
           onClick={() => !isActive && setIsActive(true)}
       >
         <div className={cn("h-full w-10 flex items-center justify-center shrink-0", mode === 'hindi' ? "text-orange-500" : "text-red-500")}>
-          {isLoading ? <Loader2 className="w-3.5 h-3.5 animate-spin"/> : (mode === 'hindi' ? <Languages className="w-4 h-4" /> : <DragonIcon className="w-4 h-4 fill-current" />)}
+          {isLoading ? <Loader2 className="w-3.5 h-3.5 animate-spin"/> : (mode === 'hindi' ? <Languages className="w-4 h-4" /> : <Flame className="w-4 h-4 fill-current" />)}
         </div>
   
         <form onSubmit={handleSubmit} className="flex-1 h-full flex items-center relative">
@@ -306,18 +312,26 @@ const SearchBarContent = ({ query, setQuery, searchMode, setSearchMode, showFilt
                                      <div>
                                          <span className="text-[9px] font-bold text-zinc-500 uppercase mb-2 block ml-1">Genres</span>
                                          <div className="flex flex-wrap gap-1.5 max-h-28 overflow-y-auto pr-1 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:'none'] [scrollbar-width:'none']">
-                                             {HINDI_GENRES.map(g => (<button key={g} onClick={() => toggleGenre(g)} className={cn("px-2.5 py-1 rounded-md text-[9px] font-bold border transition-all", filters.genre.includes(g) ? "bg-orange-600 border-orange-500 text-white" : "bg-white/5 border-white/5 text-zinc-400")}>{g}</button>))}
+                                             {(searchMode === 'hindi' ? HINDI_GENRES : DONGHUA_GENRES).map(g => (<button key={g} onClick={() => toggleGenre(g)} className={cn("px-2.5 py-1 rounded-md text-[9px] font-bold border transition-all", filters.genre.includes(g) ? (searchMode === 'hindi' ? "bg-orange-600 border-orange-500 text-white" : "bg-red-600 border-red-500 text-white") : "bg-white/5 border-white/5 text-zinc-400")}>{g}</button>))}
                                          </div>
                                      </div>
-                                     <div>
-                                         <span className="text-[9px] font-bold text-zinc-500 uppercase mb-2 block ml-1">Audio</span>
-                                         <div className="flex flex-wrap gap-2">
-                                             {HINDI_LANGUAGES.map(lang => (
-                                                 <button key={lang} onClick={() => setFilters((p:any) => ({...p, language: p.language === lang ? "" : lang}))} className={cn("flex items-center justify-between px-3 py-1.5 rounded-lg border text-[10px] font-bold uppercase", filters.language === lang ? "border-orange-500/50 bg-orange-500/10 text-orange-400" : "border-white/10 bg-white/5 text-zinc-400")}>
-                                                     {lang} {filters.language === lang && <CheckCircle size={10} />}
-                                                 </button>
-                                             ))}
+                                     
+                                     {searchMode === 'hindi' && (
+                                         <div>
+                                             <span className="text-[9px] font-bold text-zinc-500 uppercase mb-2 block ml-1">Audio</span>
+                                             <div className="flex flex-wrap gap-2">
+                                                 {HINDI_LANGUAGES.map(lang => (
+                                                     <button key={lang} onClick={() => setFilters((p:any) => ({...p, language: p.language === lang ? "" : lang}))} className={cn("flex items-center justify-between px-3 py-1.5 rounded-lg border text-[10px] font-bold uppercase", filters.language === lang ? "border-orange-500/50 bg-orange-500/10 text-orange-400" : "border-white/10 bg-white/5 text-zinc-400")}>
+                                                         {lang} {filters.language === lang && <CheckCircle size={10} />}
+                                                     </button>
+                                                 ))}
+                                             </div>
                                          </div>
+                                     )}
+
+                                     <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mt-2">
+                                         <CustomSelect label="Type" icon={Tv} options={searchMode === 'hindi' ? HINDI_TYPES : TYPES} value={filters.type} onChange={(v: string) => setFilters((p:any) => ({...p, type: v}))} />
+                                         <CustomSelect label="Status" icon={Info} options={searchMode === 'hindi' ? HINDI_STATUS : DONGHUA_STATUS} value={filters.status} onChange={(v: string) => setFilters((p:any) => ({...p, status: v}))} />
                                      </div>
                                  </>
                              ) : (
@@ -627,16 +641,37 @@ function WhisperIslandContent() {
             
             {/* LOGO */}
             <motion.div className="pointer-events-auto z-40 shrink-0">
-               <motion.div layout initial={false} animate={{ width: shouldHideExtras ? 48 : (isMobile ? 120 : 230) }} transition={FLUID_TRANSITION} className={cn(`bg-black/40 backdrop-blur-xl border border-white/10 rounded-full ${ISLAND_HEIGHT} flex items-center shadow-lg overflow-hidden cursor-pointer hover:bg-black/50 relative`)} onClick={() => router.push('/home')}>
+               <motion.div layout initial={false} animate={{ width: shouldHideExtras ? 48 : (isMobile ? (logoState === 2 ? 150 : 115) : (logoState === 2 ? 230 : 180)) }} transition={FLUID_TRANSITION} className={cn(`bg-black/40 backdrop-blur-xl border border-white/10 rounded-full ${ISLAND_HEIGHT} flex items-center shadow-lg overflow-hidden cursor-pointer hover:bg-black/50 relative`)} onClick={() => router.push('/home')}>
                     <div className="absolute inset-0 overflow-hidden rounded-full pointer-events-none"><LightWave trigger={logoState} delay={0} /></div>
                     <div className="absolute left-1.5 top-1/2 -translate-y-1/2 w-9 h-9 flex items-center justify-center z-50 bg-[#0a0a0a] rounded-full border border-white/10"><ShadowLogo size="w-8 h-8" /></div>
                     <div className="w-full h-full flex items-center justify-center pl-11 pr-2 relative z-10 overflow-hidden">
                         <AnimatePresence mode="popLayout">
-                            <motion.div key={logoState} variants={glitchVariants} initial="initial" animate="animate" exit="exit" className="flex items-center gap-1.5 whitespace-nowrap">
+                            <motion.div key={logoState} variants={glitchVariants} initial="initial" animate="animate" exit="exit" className="flex items-center gap-1.5 whitespace-nowrap justify-center">
                                 {shouldHideExtras ? null : ( 
                                     <>
-                                        <div className="hidden md:flex items-center gap-1.5">{logoState === 0 && <span className={`text-xl tracking-widest bg-clip-text text-transparent bg-gradient-to-r from-primary-500 to-primary-800 ${demoness.className}`}>SHADOW</span>}{logoState === 1 && <span className={`text-2xl tracking-widest text-white drop-shadow-primary-glow ${hunters.className}`}>GARDEN</span>}{logoState === 2 && <><span className={`text-lg text-primary-600 ${demoness.className}`}>SHADOW</span><span className={`text-lg text-white ${hunters.className}`}>GARDEN</span></>}</div>
-                                        <div className="md:hidden flex items-center">{logoState === 2 ? <span className={`text-sm tracking-widest text-primary-600 ${demoness.className}`}>SHADOW</span> : <>{logoState === 0 && <span className={`text-sm tracking-widest text-primary-600 ${demoness.className}`}>SHADOW</span>}{logoState === 1 && <span className={`text-base tracking-widest text-white ${hunters.className}`}>GARDEN</span>}</>}</div>
+                                        {/* Desktop Logo Text */}
+                                        <div className="hidden md:flex items-center gap-1.5 font-lemon font-black text-sm tracking-[0.22em] uppercase">
+                                            {logoState === 0 && <span className="text-primary-500 drop-shadow-[0_0_12px_rgba(220,38,38,0.6)]">SHADOW</span>}
+                                            {logoState === 1 && <span className="text-white drop-shadow-[0_0_12px_rgba(255,255,255,0.6)]">GARDEN</span>}
+                                            {logoState === 2 && (
+                                                <div className="flex items-center gap-1.5">
+                                                    <span className="text-primary-500 drop-shadow-[0_0_12px_rgba(220,38,38,0.6)]">SHADOW</span>
+                                                    <span className="text-white drop-shadow-[0_0_12px_rgba(255,255,255,0.6)]">GARDEN</span>
+                                                </div>
+                                            )}
+                                        </div>
+
+                                        {/* Mobile Logo Text */}
+                                        <div className="md:hidden flex items-center gap-1 font-lemon font-black text-[11px] tracking-[0.18em] uppercase">
+                                            {logoState === 0 && <span className="text-primary-500">SHADOW</span>}
+                                            {logoState === 1 && <span className="text-white">GARDEN</span>}
+                                            {logoState === 2 && (
+                                                <div className="flex items-center gap-1">
+                                                    <span className="text-primary-500">SHADOW</span>
+                                                    <span className="text-white">GARDEN</span>
+                                                </div>
+                                            )}
+                                        </div>
                                     </>
                                 )}
                             </motion.div>
@@ -655,7 +690,7 @@ function WhisperIslandContent() {
                                 <motion.div layoutId="search-bubble" transition={FLUID_TRANSITION} onClick={activateSearchFocus} className={cn(`flex items-center justify-center rounded-full bg-black/40 backdrop-blur-xl border border-white/10 hover:bg-white/10 shadow-[0_0_15px_-5px_rgba(255,255,255,0.1)] ${ISLAND_HEIGHT} w-10 md:w-12 shrink-0 cursor-pointer z-40`)}><Search size={16} className="text-zinc-300" /></motion.div>
                                 <motion.div layoutId="main-capsule" transition={FLUID_TRANSITION} onClick={activateIslandDetails} className={cn("relative overflow-hidden bg-[#0a0a0a]/95 border-primary-500/30 shadow-[0_0_20px_-5px_rgba(220,38,38,0.5)] rounded-[2rem] cursor-pointer z-50", isSwitchingNotif ? `${ISLAND_HEIGHT} w-10 md:w-12 flex items-center justify-center` : centerMode === 'ISLAND_DETAILS' ? "w-[95vw] max-w-lg p-5 flex flex-col gap-3 h-auto" : `${ISLAND_HEIGHT} px-4 w-fit min-w-[250px] max-w-full flex items-center justify-center`)}>
                                     <AnimatePresence mode="wait">
-                                        {isSwitchingNotif ? <motion.div key="switch-icon" initial={{scale:0.8, opacity:0}} animate={{scale:1, opacity:1}} exit={{scale:0.8, opacity:0}}>{getNotifIcon(activeNotif.type)}</motion.div> : centerMode === 'ISLAND_DETAILS' ? (<motion.div key="details" layout="position" initial={{opacity:0, y:10}} animate={{opacity:1, y:0}} exit={{opacity:0, y:-5}} className="w-full"><div className="flex justify-between items-start w-full mb-3"><div className="flex items-center gap-3"><div className="p-2 rounded-full bg-white/5 border border-white/10">{getNotifIcon(activeNotif.type)}</div><span className={`text-lg text-white ${hunters.className} tracking-wide`}>{activeNotif.title}</span></div><div role="button" onClick={dismissNotification} className="p-2 hover:bg-white/10 rounded-full bg-white/5 border border-white/5 transition-colors"><X size={16} className="text-white/70 hover:text-white"/></div></div><p className="text-sm text-zinc-300 leading-relaxed mb-4 font-normal normal-case text-center">{activeNotif.content}</p>{activeNotif.link && <Button size="sm" onClick={(e)=>{e.stopPropagation(); router.push(activeNotif.link!)}} className="w-full h-9 bg-primary-600/20 text-primary-400 hover:bg-primary-600 hover:text-white border border-primary-500/20 font-bold uppercase tracking-wider text-xs">View Intel</Button>}</motion.div>) : (<motion.div key="compact" layout="position" initial={{opacity:0}} animate={{opacity:1}} exit={{opacity:0}} className="flex items-center justify-center gap-3 w-full whitespace-nowrap"><div className="shrink-0">{getNotifIcon(activeNotif.type)}</div><div className="flex flex-col min-w-0 flex-1 overflow-hidden items-center"><span className={`text-xs text-white truncate ${hunters.className} tracking-wider`}>{activeNotif.title}</span><span className="text-[10px] text-zinc-400 truncate normal-case">{activeNotif.content}</span></div></motion.div>)}
+                                        {isSwitchingNotif ? <motion.div key="switch-icon" initial={{scale:0.8, opacity:0}} animate={{scale:1, opacity:1}} exit={{scale:0.8, opacity:0}}>{getNotifIcon(activeNotif.type)}</motion.div> : centerMode === 'ISLAND_DETAILS' ? (<motion.div key="details" layout="position" initial={{opacity:0, y:10}} animate={{opacity:1, y:0}} exit={{opacity:0, y:-5}} className="w-full"><div className="flex justify-between items-start w-full mb-3"><div className="flex items-center gap-3"><div className="p-2 rounded-full bg-white/5 border border-white/10">{getNotifIcon(activeNotif.type)}</div><span className={`text-lg text-white font-lemon tracking-wide`}>{activeNotif.title}</span></div><div role="button" onClick={dismissNotification} className="p-2 hover:bg-white/10 rounded-full bg-white/5 border border-white/5 transition-colors"><X size={16} className="text-white/70 hover:text-white"/></div></div><p className="text-sm text-zinc-300 leading-relaxed mb-4 font-normal normal-case text-center">{activeNotif.content}</p>{activeNotif.link && <Button size="sm" onClick={(e)=>{e.stopPropagation(); router.push(activeNotif.link!)}} className="w-full h-9 bg-primary-600/20 text-primary-400 hover:bg-primary-600 hover:text-white border border-primary-500/20 font-bold uppercase tracking-wider text-xs">View Intel</Button>}</motion.div>) : (<motion.div key="compact" layout="position" initial={{opacity:0}} animate={{opacity:1}} exit={{opacity:0}} className="flex items-center justify-center gap-3 w-full whitespace-nowrap"><div className="shrink-0">{getNotifIcon(activeNotif.type)}</div><div className="flex flex-col min-w-0 flex-1 overflow-hidden items-center"><span className={`text-xs text-white truncate font-lemon tracking-wider`}>{activeNotif.title}</span><span className="text-[10px] text-zinc-400 truncate normal-case">{activeNotif.content}</span></div></motion.div>)}
                                     </AnimatePresence>
                                 </motion.div>
                             </>
@@ -681,7 +716,7 @@ function WhisperIslandContent() {
                             {/* Alpha Button */}
                             <button onClick={() => window.dispatchEvent(new CustomEvent('shadow-toggle-alpha'))} className={cn(`relative overflow-hidden flex items-center justify-center bg-gradient-to-r from-primary-950/80 to-black border border-primary-500/30 hover:border-primary-500 text-white font-bold rounded-full shadow-lg transition-all ${ISLAND_HEIGHT} px-3 gap-2 shrink-0`)}>
                                 <div className="absolute inset-0 overflow-hidden pointer-events-none rounded-full"><LightWave trigger={logoState} delay={0.6} /></div>
-                                <img src="/images/alpha/alpha-av.png" alt="Alpha" className="w-5 h-5 rounded-full object-cover border border-primary-500/50" onError={(e) => { e.currentTarget.style.display = 'none'; e.currentTarget.nextElementSibling?.classList.remove('hidden'); }} />
+                                <img src="/images/alpha/alpha-av.png" alt="Alpha" className="w-7 h-7 rounded-full object-cover border border-primary-500/50" onError={(e) => { e.currentTarget.style.display = 'none'; e.currentTarget.nextElementSibling?.classList.remove('hidden'); }} />
                                 <span className="hidden sm:inline text-[9px] tracking-widest uppercase">ALPHA</span>
                             </button>
                             
@@ -733,7 +768,8 @@ function WhisperIslandContent() {
                                     <DropdownMenuSeparator className="bg-white/5" />
                                     <div className="space-y-1">
                                         <DropdownMenuItem asChild><Link href="/profile" className="flex items-center w-full text-xs py-2 cursor-pointer hover:bg-white/10 rounded-lg transition-colors font-bold"><User size={14} className="mr-3 text-zinc-400" /> Profile</Link></DropdownMenuItem>
-                                        <DropdownMenuItem asChild><Link href="/watchlist" className="flex items-center w-full text-xs py-2 cursor-pointer hover:bg-white/10 rounded-lg transition-colors font-bold"><LayoutGrid size={14} className="mr-3 text-zinc-400" /> Avatar</Link></DropdownMenuItem>
+                                        <DropdownMenuItem asChild><Link href="/watchlist" className="flex items-center w-full text-xs py-2 cursor-pointer hover:bg-white/10 rounded-lg transition-colors font-bold"><Flag size={14} className="mr-3 text-zinc-400" /> Watchlist</Link></DropdownMenuItem>
+                                        <DropdownMenuItem asChild><Link href="/avatar" className="flex items-center w-full text-xs py-2 cursor-pointer hover:bg-white/10 rounded-lg transition-colors font-bold"><LayoutGrid size={14} className="mr-3 text-zinc-400" /> Avatar</Link></DropdownMenuItem>
                                         <DropdownMenuItem asChild><Link href="/settings" className="flex items-center w-full text-xs py-2 cursor-pointer hover:bg-white/10 rounded-lg transition-colors font-bold"><Settings size={14} className="mr-3 text-zinc-400" /> Settings</Link></DropdownMenuItem>
                                     </div>
 

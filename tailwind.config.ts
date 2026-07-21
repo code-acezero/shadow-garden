@@ -79,20 +79,12 @@ const config: Config = {
         sm: "calc(var(--radius) - 4px)",
       },
       fontFamily: {
-        primary: ["var(--font-primary)", "sans-serif"], 
-        cinzel: ["var(--font-hunters)", "serif"],       
-        inter: ["var(--font-inter)", "sans-serif"],  
-        
-        // Use the CSS variables injected by Next.js
-        hunters: ["var(--font-hunters)"],
-        badUnicorn: ["var(--font-bad-unicorn)"],
-        demoness: ["var(--font-demoness)"],
-        horrorshow: ["var(--font-horrorshow)"],
-        kareudon: ["var(--font-kareudon)"],
-        monas: ["var(--font-monas)"],
-        nyctophobia: ["var(--font-nyctophobia)"],
-        onePiece: ["var(--font-one-piece)"],
-  
+        sans: ["var(--font-poppins)", "sans-serif"],
+        poppins: ["var(--font-poppins)", "sans-serif"],
+        lemon: ["var(--font-lemon-milk)", "sans-serif"],
+        gradvis: ["var(--font-gradvis)", "sans-serif"],
+        above: ["var(--font-above)", "sans-serif"],
+        minomu: ["var(--font-minomu)", "sans-serif"],
       },
       keyframes: {
         "accordion-down": {

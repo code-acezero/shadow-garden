@@ -40,7 +40,7 @@ export default function RoleGuard({ children, allowedRoles }: RoleGuardProps) {
     return (
       <div className="h-screen w-full flex flex-col items-center justify-center bg-[#050505] text-primary-600 space-y-4">
         <ShieldAlert className="w-16 h-16 animate-pulse" />
-        <h2 className="text-2xl font-[Cinzel] font-bold">Restricted Area</h2>
+        <h2 className="text-2xl font-lemon font-bold">Restricted Area</h2>
         <p className="text-zinc-500 font-mono text-sm uppercase tracking-widest">Only Guild Masters Allowed</p>
       </div>
     );

@@ -17,13 +17,15 @@ const SUB_COLORS = {
     White: '#ffffff', Yellow: '#fbbf24', Cyan: '#22d3ee', Red: '#f87171', 
     Green: '#4ade80', Purple: '#c084fc', Black: '#000000' 
 };
-const SUB_SIZES = { Small: '14px', Normal: '20px', Large: '28px', Huge: '36px' };
+const SUB_SIZES = { Small: '0.8em', Medium: '1.15em', Large: '1.5em', Huge: '2.0em' };
 const SUB_FONTS = { 
     Sans: '"Inter", sans-serif', Serif: '"Merriweather", serif', 
     Mono: '"JetBrains Mono", monospace', Hand: '"BadUnicorn", sans-serif', Anime: '"Monas", sans-serif' 
 };
 const SUB_LIFTS = { Bottom: '0px', Middle: '-5vh', High: '-12vh' }; 
-const SUB_BACKGROUNDS = { None: 'transparent', Outline: 'text-shadow', Box: 'smart', Blur: 'smart-blur' };
+const SUB_BACKGROUNDS = { None: 'transparent', Outline: 'text-shadow', Box: 'smart', Blur: 'smart-blur', Bar: 'bar' };
+
+const DEFAULT_SUB_STYLE = { color: 'White', size: 'Medium', bg: 'Box', font: 'Sans', lift: 'Middle', opacity: 75 };
 
 // --- WHISPER HELPER ---
 const notifyWhisper = (message: string, type: 'success' | 'error' | 'info' = 'success') => {
@@ -138,7 +140,7 @@ const AnimePlayer = forwardRef<AnimePlayerRef, AnimePlayerProps>(({
   const [trackSubtitles, setTrackSubtitles] = useState<any[]>([]);
   
   // Preferences
-  const [subStyle, setSubStyle] = useState({ color: 'White', size: 'Normal', bg: 'Box', font: 'Sans', lift: 'Middle' });
+  const [subStyle, setSubStyle] = useState(DEFAULT_SUB_STYLE);
   const [doubleTapMode, setDoubleTapMode] = useState<'seek' | 'playpause' | 'fullscreen'>('seek');
   const [verticalGesture, setVerticalGesture] = useState<'vol_bright' | 'fullscreen' | 'none'>('vol_bright');
   const [horizontalGesture, setHorizontalGesture] = useState<'seek' | 'nav' | 'volume' | 'none'>('seek');
@@ -175,7 +177,12 @@ const AnimePlayer = forwardRef<AnimePlayerRef, AnimePlayerProps>(({
           const savedPrefs = localStorage.getItem('shadow_player_prefs');
           if (savedPrefs) {
               const parsed = JSON.parse(savedPrefs);
-              if (parsed.subStyle) setSubStyle(parsed.subStyle);
+              if (parsed.subStyle) {
+                  setSubStyle({
+                      ...DEFAULT_SUB_STYLE,
+                      ...parsed.subStyle
+                  });
+              }
               if (parsed.doubleTapMode) setDoubleTapMode(parsed.doubleTapMode);
               if (parsed.verticalGesture) setVerticalGesture(parsed.verticalGesture);
               if (parsed.horizontalGesture) setHorizontalGesture(parsed.horizontalGesture);
@@ -198,7 +205,13 @@ const AnimePlayer = forwardRef<AnimePlayerRef, AnimePlayerProps>(({
       
       const current = JSON.parse(localStorage.getItem('shadow_player_prefs') || '{}');
       const newState = { ...current, ...updates };
-      if (updates.subStyle) newState.subStyle = { ...current.subStyle, ...updates.subStyle };
+      if (updates.subStyle) {
+          newState.subStyle = { 
+              ...DEFAULT_SUB_STYLE,
+              ...(current.subStyle || {}), 
+              ...updates.subStyle 
+          };
+      }
       localStorage.setItem('shadow_player_prefs', JSON.stringify(newState));
   };
 
@@ -211,42 +224,11 @@ const AnimePlayer = forwardRef<AnimePlayerRef, AnimePlayerProps>(({
         styleTag.id = styleId;
         document.head.appendChild(styleTag);
     }
-    
-    const color = SUB_COLORS[subStyle.color as keyof typeof SUB_COLORS];
-    const size = SUB_SIZES[subStyle.size as keyof typeof SUB_SIZES];
-    const font = SUB_FONTS[subStyle.font as keyof typeof SUB_FONTS];
-    const baseLift = SUB_LIFTS[subStyle.lift as keyof typeof SUB_LIFTS];
-    const uiOffset = showControls ? 'var(--ui-lift)' : '0px';
-
-    const isDarkText = subStyle.color === 'Black';
-    const smartBgColor = isDarkText ? 'rgba(255,255,255,0.7)' : 'rgba(0,0,0,0.7)';
-    const smartBlurColor = isDarkText ? 'rgba(255,255,255,0.3)' : 'rgba(0,0,0,0.3)';
-    const outlineColor = isDarkText ? '#ffffff' : '#000000'; 
-
-    let bgRule = '';
-    let shadowRule = 'text-shadow: none !important;';
-    
-    if (subStyle.bg === 'Outline') {
-        bgRule = 'background-color: transparent !important;';
-        shadowRule = `text-shadow: 2px 0 0 ${outlineColor}, -2px 0 0 ${outlineColor}, 0 2px 0 ${outlineColor}, 0 -2px 0 ${outlineColor}, 1px 1px 0 ${outlineColor}, -1px -1px 0 ${outlineColor} !important;`;
-    } else if (subStyle.bg === 'Box') {
-        bgRule = `background-color: ${smartBgColor} !important;`;
-    } else if (subStyle.bg === 'Blur') {
-        bgRule = `background-color: ${smartBlurColor} !important;`;
-    } else {
-        bgRule = 'background-color: transparent !important;';
-    }
-    
     styleTag.textContent = `
         @font-face { font-family: 'BadUnicorn'; src: '/fonts/BadUnicornDemoRegular.ttf' format('truetype'); }
         @font-face { font-family: 'Monas'; src: '/fonts/Monas.ttf' format('truetype'); }
-        :root { --ui-lift: -45px; }
-        @media (min-width: 768px) { :root { --ui-lift: -80px; } }
-        video::-webkit-media-text-track-display { transform: translateY(calc(${baseLift} + ${uiOffset})); transition: transform 0.3s ease-in-out; }
-        video::cue { color: ${color} !important; font-size: ${size} !important; font-family: ${font} !important; ${bgRule} ${shadowRule} }
-        @media (max-width: 768px) { video::cue { font-size: calc(${size} * 0.75) !important; } }
     `;
-  }, [subStyle, showControls]);
+  }, []);
 
   // --- PLAYER SETUP ---
   useEffect(() => {
@@ -381,6 +363,8 @@ const AnimePlayer = forwardRef<AnimePlayerRef, AnimePlayerProps>(({
     };
   }, [url]);
 
+  const [activeCueText, setActiveCueText] = useState<string | null>(null);
+
   // --- CC SYNC ---
   useEffect(() => {
      if (trackSubtitles.length > 0 && videoRef.current) {
@@ -390,10 +374,45 @@ const AnimePlayer = forwardRef<AnimePlayerRef, AnimePlayerProps>(({
          const targetIndex = engIndex !== -1 ? engIndex : -1;
          if (targetIndex !== -1) {
              setCurrentSubtitle(targetIndex);
-             setTimeout(() => { if (videoRef.current?.textTracks[targetIndex]) { videoRef.current.textTracks[targetIndex].mode = 'showing'; } }, 50);
+             setTimeout(() => { if (videoRef.current?.textTracks[targetIndex]) { videoRef.current.textTracks[targetIndex].mode = 'hidden'; } }, 50);
          } else { setCurrentSubtitle(-1); }
      } else { setCurrentSubtitle(-1); }
   }, [trackSubtitles]); 
+
+  useEffect(() => {
+      const video = videoRef.current;
+      if (!video) return;
+
+      const handleCueChange = () => {
+          if (currentSubtitle !== -1) {
+              const track = video.textTracks[currentSubtitle];
+              if (track && (track.mode === 'hidden' || track.mode === 'showing')) {
+                  const cues = track.activeCues;
+                  if (cues && cues.length > 0) {
+                      const texts = [];
+                      for (let i = 0; i < cues.length; i++) {
+                          const cue = cues[i] as any;
+                          if (cue.text) texts.push(cue.text);
+                      }
+                      setActiveCueText(texts.join('\n'));
+                      return;
+                  }
+              }
+          }
+          setActiveCueText(null);
+      };
+
+      const tracks = video.textTracks;
+      for (let i = 0; i < tracks.length; i++) {
+          tracks[i].addEventListener('cuechange', handleCueChange);
+      }
+
+      return () => {
+          for (let i = 0; i < tracks.length; i++) {
+              tracks[i].removeEventListener('cuechange', handleCueChange);
+          }
+      };
+  }, [currentSubtitle, trackSubtitles]);
 
   // --- HANDLERS ---
   const togglePlay = useCallback(() => {
@@ -524,13 +543,19 @@ const AnimePlayer = forwardRef<AnimePlayerRef, AnimePlayerProps>(({
       if (hlsRef.current) hlsRef.current.audioTrack = index; 
       setCurrentAudio(index); if(canSave) onInteract?.(); 
   };
-  const changeSubtitle = (index: number) => { 
+  const changeSubtitle = (index: number) => {
+      setCurrentSubtitle(index);
       if (videoRef.current) {
           const tracks = videoRef.current.textTracks;
-          for (let i = 0; i < tracks.length; i++) { tracks[i].mode = 'disabled'; }
-          if (index !== -1 && tracks[index]) { tracks[index].mode = 'showing'; }
+          for (let i = 0; i < tracks.length; i++) {
+              tracks[i].mode = 'disabled';
+          }
+          if (index !== -1 && tracks[index]) {
+              tracks[index].mode = 'hidden';
+          }
       }
-      setCurrentSubtitle(index); if(canSave) onInteract?.(); 
+      setActiveMenu('none');
+      if(canSave) onInteract?.(); 
   };
 
   // --- TOUCH & GESTURE LOGIC ---
@@ -551,6 +576,8 @@ const AnimePlayer = forwardRef<AnimePlayerRef, AnimePlayerProps>(({
   };
 
   const handleTouchStart = (e: React.TouchEvent) => {
+      const target = e.target as HTMLElement;
+      if (target.closest('button') || target.closest('input') || target.closest('[role="menu"]') || target.closest('.absolute.bottom-12') || target.closest('.absolute.bottom-16') || target.closest('.group\\/seek') || target.closest('.bg-black\\/60')) return;
       if (!videoRef.current || !containerRef.current) return;
       const rect = containerRef.current.getBoundingClientRect();
       touchStartRef.current = { 
@@ -646,7 +673,7 @@ const AnimePlayer = forwardRef<AnimePlayerRef, AnimePlayerProps>(({
   const handleMouseUp = () => endLongPress();
 
   const handleGesture = (e: React.MouseEvent) => {
-    if ((e.target as HTMLElement).closest('button') || (e.target as HTMLElement).closest('input')) return;
+    if ((e.target as HTMLElement).closest('button') || (e.target as HTMLElement).closest('input') || (e.target as HTMLElement).closest('.absolute.bottom-12') || (e.target as HTMLElement).closest('.absolute.bottom-16') || (e.target as HTMLElement).closest('.group/seek') || (e.target as HTMLElement).closest('.bg-black/60')) return;
     if (activeMenu !== 'none') { setActiveMenu('none'); return; }
 
     const now = Date.now();
@@ -779,6 +806,43 @@ const AnimePlayer = forwardRef<AnimePlayerRef, AnimePlayerProps>(({
             <track key={i} kind="captions" src={sub.url || sub.file} label={sub.label} srcLang={sub.lang} default={false} />
         ))}
       </video>
+
+      {activeCueText && currentSubtitle !== -1 && (
+          <div 
+            className={cn(
+                "absolute z-30 pointer-events-none text-center select-none whitespace-pre-line",
+                subStyle.bg === 'Bar' ? "left-0 right-0 w-full" : "left-1/2 -translate-x-1/2 w-[85%]"
+            )}
+            style={{
+                bottom: showControls ? '70px' : '30px',
+                transform: subStyle.bg === 'Bar' 
+                    ? `translateY(${subStyle.lift === 'High' ? '-100px' : subStyle.lift === 'Middle' ? '-40px' : '0px'})`
+                    : `translateX(-50%) translateY(${subStyle.lift === 'High' ? '-100px' : subStyle.lift === 'Middle' ? '-40px' : '0px'})`,
+                transition: 'bottom 0.3s ease-in-out, transform 0.3s ease-in-out',
+                backgroundColor: subStyle.bg === 'Bar' ? `rgba(0,0,0, ${(subStyle.opacity ?? 75) / 100})` : 'transparent',
+                padding: subStyle.bg === 'Bar' ? '8px 0' : '0',
+            }}
+          >
+              <span
+                className={cn(
+                    "px-4 py-1.5 rounded-lg inline-block leading-relaxed"
+                )}
+                style={{
+                    color: SUB_COLORS[subStyle.color as keyof typeof SUB_COLORS],
+                    fontSize: subStyle.size === 'Small' ? 'calc(10px + 0.8vw)' : subStyle.size === 'Medium' ? 'calc(14px + 1.2vw)' : subStyle.size === 'Large' ? 'calc(18px + 1.6vw)' : 'calc(22px + 2vw)',
+                    fontFamily: SUB_FONTS[subStyle.font as keyof typeof SUB_FONTS],
+                    backgroundColor: subStyle.bg === 'Box' ? `rgba(0,0,0, ${(subStyle.opacity ?? 75) / 100})` : subStyle.bg === 'Blur' ? `rgba(0,0,0, ${(subStyle.opacity ?? 45) / 100})` : 'transparent',
+                    backdropFilter: subStyle.bg === 'Blur' ? 'blur(8px)' : 'none',
+                    textShadow: subStyle.bg === 'Outline' 
+                        ? `2px 2px 0px #000, -2px -2px 0px #000, 2px -2px 0px #000, -2px 2px 0px #000, 0px 2px 0px #000, 0px -2px 0px #000, 2px 0px 0px #000, -2px 0px 0px #000` 
+                        : 'none',
+                    border: subStyle.bg === 'Blur' ? '1px solid rgba(255,255,255,0.05)' : 'none',
+                }}
+              >
+                  {activeCueText.replace(/<[^>]+>/g, '')}
+              </span>
+          </div>
+      )}
       
       {isLongPressing && (
           <div className="absolute top-8 left-1/2 -translate-x-1/2 bg-black/60 backdrop-blur-md px-4 py-1.5 rounded-full flex items-center gap-2 text-white z-50 animate-in fade-in zoom-in-95">
@@ -796,7 +860,7 @@ const AnimePlayer = forwardRef<AnimePlayerRef, AnimePlayerProps>(({
                   <img src="/run-happy.gif" alt="Loading..." className="w-32 h-32 object-contain relative z-10" />
                   <div className="absolute bottom-4 w-full h-1 bg-gradient-to-r from-transparent via-primary-600/50 to-transparent animate-slide-fast" />
               </div>
-              <p className="mt-4 font-[Cinzel] text-primary-500 animate-pulse tracking-[0.4em] text-[10px] font-bold uppercase">Loading Reality...</p>
+              <p className="mt-4 font-lemon text-primary-500 animate-pulse tracking-[0.4em] text-[10px] font-bold uppercase">Loading Reality...</p>
           </div>
       )}
 
@@ -858,77 +922,94 @@ const AnimePlayer = forwardRef<AnimePlayerRef, AnimePlayerProps>(({
                   <button onClick={(e) => { e.stopPropagation(); setActiveMenu(activeMenu === 'main' ? 'none' : 'main'); }} className={cn("hover:text-primary-500 transition-colors active:scale-90 group p-2 md:p-0", activeMenu !== 'none' && activeMenu !== 'audio' && activeMenu !== 'subs' && "text-primary-500")}><Settings size={20} className="md:w-5 md:h-5 group-hover:rotate-90 transition-transform duration-500" /></button>
                   
                   {activeMenu === 'main' && (
-                      <div className="absolute bottom-12 right-0 bg-black/80 backdrop-blur-md border border-white/10 rounded-2xl p-2 w-56 md:w-80 max-h-[50vh] md:max-h-[60vh] overflow-y-auto scrollbar-hide shadow-2xl z-50 flex flex-col gap-1 animate-in slide-in-from-bottom-2">
-                         <button onClick={(e)=>{e.stopPropagation(); setActiveMenu('quality')}} className="flex items-center justify-between w-full px-3 py-3 rounded-xl hover:bg-white/10 text-left text-[11px] font-bold transition-all"><div className="flex items-center gap-2"><Settings size={14}/> Quality</div><span className="text-zinc-400 text-[9px] truncate ml-2 max-w-[80px]">{currentQuality === -1 ? autoResolutionText : `${qualities.find(q => q.index === currentQuality)?.height}p`}</span></button>
-                         <button onClick={(e)=>{e.stopPropagation(); setActiveMenu('speed')}} className="flex items-center justify-between w-full px-3 py-3 rounded-xl hover:bg-white/10 text-left text-[11px] font-bold transition-all"><div className="flex items-center gap-2"><Gauge size={14}/> Speed</div><span className="text-zinc-400">{speed}x</span></button>
-                         <button onClick={(e)=>{e.stopPropagation(); setActiveMenu('gestures')}} className="flex items-center justify-between w-full px-3 py-3 rounded-xl hover:bg-white/10 text-left text-[11px] font-bold transition-all"><div className="flex items-center gap-2"><MousePointerClick size={14}/> Gestures</div><span className="text-zinc-400 uppercase text-[9px]">{doubleTapMode}</span></button>
-                         {castAvailable && (
-                            <button onClick={(e)=>{e.stopPropagation(); handleCast(); setActiveMenu('none')}} className="lg:hidden flex items-center justify-between w-full px-3 py-3 rounded-xl hover:bg-white/10 text-left text-[11px] font-bold transition-all"><div className="flex items-center gap-2"><Cast size={14}/> Cast</div></button>
-                         )}
-                         <div className="lg:hidden border-t border-white/10 mt-1 pt-1">
-                            <button onClick={(e)=>{e.stopPropagation(); setActiveMenu('vGesture')}} className="flex items-center justify-between w-full px-3 py-3 rounded-xl hover:bg-white/10 text-left text-[11px] font-bold transition-all"><div className="flex items-center gap-2"><MoveVertical size={14}/> V-Swipe</div><span className="text-zinc-400 text-[8px] uppercase">{verticalGesture === 'vol_bright' ? 'Vol/Bri' : verticalGesture}</span></button>
-                            <button onClick={(e)=>{e.stopPropagation(); setActiveMenu('hGesture')}} className="flex items-center justify-between w-full px-3 py-3 rounded-xl hover:bg-white/10 text-left text-[11px] font-bold transition-all"><div className="flex items-center gap-2"><MoveHorizontal size={14}/> H-Swipe</div><span className="text-zinc-400 text-[9px] uppercase">{horizontalGesture === 'nav' ? 'Next/Prev' : horizontalGesture}</span></button>
-                         </div>
-                      </div>
-                  )}
-                  {activeMenu === 'vGesture' && (
-                      <div className="absolute bottom-12 right-0 bg-black/80 backdrop-blur-md border border-white/10 rounded-2xl p-2 w-56 max-h-[50vh] overflow-y-auto scrollbar-hide shadow-2xl z-50 flex flex-col gap-1 animate-in slide-in-from-bottom-2">
-                          <button onClick={(e)=>{e.stopPropagation(); setActiveMenu('main')}} className="flex items-center gap-2 text-[11px] px-3 py-2 font-black text-zinc-400 border-b border-white/10 mb-1"><ChevronLeft size={14}/> BACK</button>
-                          {['vol_bright', 'fullscreen', 'none'].map(m=>(<button key={m} onClick={(e)=>{e.stopPropagation(); updateLocalPrefs({verticalGesture: m}); setActiveMenu('main')}} className={cn("text-[11px] px-3 py-2 rounded-full text-left font-bold uppercase transition-all", verticalGesture===m?"bg-primary-600 text-white":"hover:bg-white/10")}>{m === 'vol_bright' ? 'Vol/Bri' : m}</button>))}
-                      </div>
-                  )}
-                  {activeMenu === 'hGesture' && (
-                      <div className="absolute bottom-12 right-0 bg-black/80 backdrop-blur-md border border-white/10 rounded-2xl p-2 w-56 max-h-[50vh] overflow-y-auto scrollbar-hide shadow-2xl z-50 flex flex-col gap-1 animate-in slide-in-from-bottom-2">
-                          <button onClick={(e)=>{e.stopPropagation(); setActiveMenu('main')}} className="flex items-center gap-2 text-[11px] px-3 py-2 font-black text-zinc-400 border-b border-white/10 mb-1"><ChevronLeft size={14}/> BACK</button>
-                          {['seek', 'nav', 'volume', 'none'].map(m=>(<button key={m} onClick={(e)=>{e.stopPropagation(); updateLocalPrefs({horizontalGesture: m}); setActiveMenu('main')}} className={cn("text-[11px] px-3 py-2 rounded-full text-left font-bold uppercase transition-all", horizontalGesture===m?"bg-primary-600 text-white":"hover:bg-white/10")}>{m === 'nav' ? 'Next / Prev' : m}</button>))}
-                      </div>
-                  )}
+                       <div className="absolute bottom-12 right-0 bg-black/85 backdrop-blur-md border border-white/10 rounded-2xl p-1.5 w-48 md:w-80 max-h-[180px] md:max-h-[300px] overflow-y-auto scrollbar-hide shadow-2xl z-50 flex flex-col gap-0.5 animate-in slide-in-from-bottom-2">
+                          <button onClick={(e)=>{e.stopPropagation(); setActiveMenu('quality')}} className="flex items-center justify-between w-full px-2.5 py-2 rounded-xl hover:bg-white/10 text-left text-[9px] md:text-[11px] font-bold transition-all"><div className="flex items-center gap-1.5"><Settings size={12} className="md:w-[14px]"/> Quality</div><span className="text-zinc-400 text-[8px] md:text-[9px] truncate ml-2 max-w-[80px]">{currentQuality === -1 ? autoResolutionText : `${qualities.find(q => q.index === currentQuality)?.height}p`}</span></button>
+                          <button onClick={(e)=>{e.stopPropagation(); setActiveMenu('speed')}} className="flex items-center justify-between w-full px-2.5 py-2 rounded-xl hover:bg-white/10 text-left text-[9px] md:text-[11px] font-bold transition-all"><div className="flex items-center gap-1.5"><Gauge size={12} className="md:w-[14px]"/> Speed</div><span className="text-zinc-400 text-[8px] md:text-[10px]">{speed}x</span></button>
+                          <button onClick={(e)=>{e.stopPropagation(); setActiveMenu('gestures')}} className="flex items-center justify-between w-full px-2.5 py-2 rounded-xl hover:bg-white/10 text-left text-[9px] md:text-[11px] font-bold transition-all"><div className="flex items-center gap-1.5"><MousePointerClick size={12} className="md:w-[14px]"/> Gestures</div><span className="text-zinc-400 uppercase text-[8px] md:text-[9px]">{doubleTapMode}</span></button>
+                          {castAvailable && (
+                             <button onClick={(e)=>{e.stopPropagation(); handleCast(); setActiveMenu('none')}} className="lg:hidden flex items-center justify-between w-full px-2.5 py-2 rounded-xl hover:bg-white/10 text-left text-[9px] md:text-[11px] font-bold transition-all"><div className="flex items-center gap-1.5"><Cast size={12} className="md:w-[14px]"/> Cast</div></button>
+                          )}
+                          <div className="lg:hidden border-t border-white/10 mt-0.5 pt-0.5">
+                             <button onClick={(e)=>{e.stopPropagation(); setActiveMenu('vGesture')}} className="flex items-center justify-between w-full px-2.5 py-2 rounded-xl hover:bg-white/10 text-left text-[9px] md:text-[11px] font-bold transition-all"><div className="flex items-center gap-1.5"><MoveVertical size={12} className="md:w-[14px]"/> V-Swipe</div><span className="text-zinc-400 text-[8px] uppercase">{verticalGesture === 'vol_bright' ? 'Vol/Bri' : verticalGesture}</span></button>
+                             <button onClick={(e)=>{e.stopPropagation(); setActiveMenu('hGesture')}} className="flex items-center justify-between w-full px-2.5 py-2 rounded-xl hover:bg-white/10 text-left text-[9px] md:text-[11px] font-bold transition-all"><div className="flex items-center gap-1.5"><MoveHorizontal size={12} className="md:w-[14px]"/> H-Swipe</div><span className="text-zinc-400 text-[8px] md:text-[9px] uppercase">{horizontalGesture === 'nav' ? 'Next/Prev' : horizontalGesture}</span></button>
+                          </div>
+                       </div>
+                   )}
+                   {activeMenu === 'vGesture' && (
+                       <div className="absolute bottom-12 right-0 bg-black/85 backdrop-blur-md border border-white/10 rounded-2xl p-1.5 w-44 md:w-56 max-h-[180px] md:max-h-[300px] overflow-y-auto scrollbar-hide shadow-2xl z-50 flex flex-col gap-0.5 animate-in slide-in-from-bottom-2">
+                           <button onClick={(e)=>{e.stopPropagation(); setActiveMenu('main')}} className="flex items-center gap-1.5 text-[9px] md:text-[11px] px-2.5 py-1.5 font-black text-zinc-400 border-b border-white/10 mb-0.5"><ChevronLeft size={12}/> BACK</button>
+                           {['vol_bright', 'fullscreen', 'none'].map(m=>(<button key={m} onClick={(e)=>{e.stopPropagation(); updateLocalPrefs({verticalGesture: m}); setActiveMenu('main')}} className={cn("text-[9px] md:text-[11px] px-2.5 py-1.5 rounded-full text-left font-bold uppercase transition-all", verticalGesture===m?"bg-primary-600 text-white":"hover:bg-white/10")}>{m === 'vol_bright' ? 'Vol/Bri' : m}</button>))}
+                       </div>
+                   )}
+                   {activeMenu === 'hGesture' && (
+                       <div className="absolute bottom-12 right-0 bg-black/85 backdrop-blur-md border border-white/10 rounded-2xl p-1.5 w-44 md:w-56 max-h-[180px] md:max-h-[300px] overflow-y-auto scrollbar-hide shadow-2xl z-50 flex flex-col gap-0.5 animate-in slide-in-from-bottom-2">
+                           <button onClick={(e)=>{e.stopPropagation(); setActiveMenu('main')}} className="flex items-center gap-1.5 text-[9px] md:text-[11px] px-2.5 py-1.5 font-black text-zinc-400 border-b border-white/10 mb-0.5"><ChevronLeft size={12}/> BACK</button>
+                           {['seek', 'nav', 'volume', 'none'].map(m=>(<button key={m} onClick={(e)=>{e.stopPropagation(); updateLocalPrefs({horizontalGesture: m}); setActiveMenu('main')}} className={cn("text-[9px] md:text-[11px] px-2.5 py-1.5 rounded-full text-left font-bold uppercase transition-all", horizontalGesture===m?"bg-primary-600 text-white":"hover:bg-white/10")}>{m === 'nav' ? 'Next / Prev' : m}</button>))}
+                       </div>
+                   )}
                   
-                  {activeMenu === 'quality' && (
-                      <div className="absolute bottom-12 right-0 bg-black/80 backdrop-blur-md border border-white/10 rounded-2xl p-2 w-40 max-h-[50vh] overflow-y-auto scrollbar-hide shadow-2xl z-50 flex flex-col gap-1 animate-in slide-in-from-bottom-2">
-                          <button onClick={(e)=>{e.stopPropagation(); setActiveMenu('main')}} className="flex items-center gap-2 text-[11px] px-3 py-2 font-black text-zinc-400 border-b border-white/10 mb-1"><ChevronLeft size={14}/> BACK</button>
-                          <button onClick={(e)=>{e.stopPropagation(); changeQuality(-1)}} className={cn("text-[11px] px-3 py-2 rounded-full text-left font-bold transition-all", currentQuality===-1?"bg-primary-600 text-white":"hover:bg-white/10")}>Auto</button>
-                          {qualities.map(q=>(<button key={q.index} onClick={(e)=>{e.stopPropagation(); changeQuality(q.index)}} className={cn("text-[11px] px-3 py-2 rounded-full text-left font-bold transition-all", currentQuality===q.index?"bg-primary-600 text-white":"hover:bg-white/10")}>{q.height}p</button>))}
-                      </div>
-                  )}
-                  {activeMenu === 'speed' && (
-                      <div className="absolute bottom-12 right-0 bg-black/80 backdrop-blur-md border border-white/10 rounded-2xl p-2 w-36 max-h-[50vh] overflow-y-auto scrollbar-hide shadow-2xl z-50 flex flex-col gap-1 animate-in slide-in-from-bottom-2">
-                          <button onClick={(e)=>{e.stopPropagation(); setActiveMenu('main')}} className="flex items-center gap-2 text-[11px] px-3 py-2 font-black text-zinc-400 border-b border-white/10 mb-1"><ChevronLeft size={14}/> BACK</button>
-                          {[0.5, 1, 1.25, 1.5, 2].map(r=>(<button key={r} onClick={(e)=>{e.stopPropagation(); changeSpeed(r)}} className={cn("text-[11px] px-3 py-2 rounded-full text-left font-bold transition-all", speed===r?"bg-primary-600 text-white":"hover:bg-white/10")}>{r}x</button>))}
-                      </div>
-                  )}
-                  {activeMenu === 'gestures' && (
-                      <div className="absolute bottom-12 right-0 bg-black/80 backdrop-blur-md border border-white/10 rounded-2xl p-2 w-56 max-h-[50vh] overflow-y-auto scrollbar-hide shadow-2xl z-50 flex flex-col gap-1 animate-in slide-in-from-bottom-2">
-                          <button onClick={(e)=>{e.stopPropagation(); setActiveMenu('main')}} className="flex items-center gap-2 text-[11px] px-3 py-2 font-black text-zinc-400 border-b border-white/10 mb-1"><ChevronLeft size={14}/> BACK</button>
-                          {['seek', 'playpause', 'fullscreen'].map(m=>(<button key={m} onClick={(e)=>{e.stopPropagation(); updateLocalPrefs({doubleTapMode: m}); setActiveMenu('none')}} className={cn("text-[11px] px-3 py-2 rounded-full text-left font-bold uppercase transition-all", doubleTapMode===m?"bg-primary-600 text-white":"hover:bg-white/10")}>{m}</button>))}
-                      </div>
-                  )}
+                   {activeMenu === 'quality' && (
+                       <div className="absolute bottom-12 right-0 bg-black/85 backdrop-blur-md border border-white/10 rounded-2xl p-1.5 w-32 md:w-40 max-h-[180px] md:max-h-[300px] overflow-y-auto scrollbar-hide shadow-2xl z-50 flex flex-col gap-0.5 animate-in slide-in-from-bottom-2">
+                           <button onClick={(e)=>{e.stopPropagation(); setActiveMenu('main')}} className="flex items-center gap-1.5 text-[9px] md:text-[11px] px-2.5 py-1.5 font-black text-zinc-400 border-b border-white/10 mb-0.5"><ChevronLeft size={12}/> BACK</button>
+                           <button onClick={(e)=>{e.stopPropagation(); changeQuality(-1)}} className={cn("text-[9px] md:text-[11px] px-2.5 py-1.5 rounded-full text-left font-bold transition-all", currentQuality===-1?"bg-primary-600 text-white":"hover:bg-white/10")}>Auto</button>
+                           {qualities.map(q=>(<button key={q.index} onClick={(e)=>{e.stopPropagation(); changeQuality(q.index)}} className={cn("text-[9px] md:text-[11px] px-2.5 py-1.5 rounded-full text-left font-bold transition-all", currentQuality===q.index?"bg-primary-600 text-white":"hover:bg-white/10")}>{q.height}p</button>))}
+                       </div>
+                   )}
+                   {activeMenu === 'speed' && (
+                       <div className="absolute bottom-12 right-0 bg-black/85 backdrop-blur-md border border-white/10 rounded-2xl p-1.5 w-28 md:w-36 max-h-[180px] md:max-h-[300px] overflow-y-auto scrollbar-hide shadow-2xl z-50 flex flex-col gap-0.5 animate-in slide-in-from-bottom-2">
+                           <button onClick={(e)=>{e.stopPropagation(); setActiveMenu('main')}} className="flex items-center gap-1.5 text-[9px] md:text-[11px] px-2.5 py-1.5 font-black text-zinc-400 border-b border-white/10 mb-0.5"><ChevronLeft size={12}/> BACK</button>
+                           {[0.5, 1, 1.25, 1.5, 2].map(r=>(<button key={r} onClick={(e)=>{e.stopPropagation(); changeSpeed(r)}} className={cn("text-[9px] md:text-[11px] px-2.5 py-1.5 rounded-full text-left font-bold transition-all", speed===r?"bg-primary-600 text-white":"hover:bg-white/10")}>{r}x</button>))}
+                       </div>
+                   )}
+                   {activeMenu === 'gestures' && (
+                       <div className="absolute bottom-12 right-0 bg-black/85 backdrop-blur-md border border-white/10 rounded-2xl p-1.5 w-44 md:w-56 max-h-[180px] md:max-h-[300px] overflow-y-auto scrollbar-hide shadow-2xl z-50 flex flex-col gap-0.5 animate-in slide-in-from-bottom-2">
+                           <button onClick={(e)=>{e.stopPropagation(); setActiveMenu('main')}} className="flex items-center gap-1.5 text-[9px] md:text-[11px] px-2.5 py-1.5 font-black text-zinc-400 border-b border-white/10 mb-0.5"><ChevronLeft size={12}/> BACK</button>
+                           {['seek', 'playpause', 'fullscreen'].map(m=>(<button key={m} onClick={(e)=>{e.stopPropagation(); updateLocalPrefs({doubleTapMode: m}); setActiveMenu('none')}} className={cn("text-[9px] md:text-[11px] px-2.5 py-1.5 rounded-full text-left font-bold uppercase transition-all", doubleTapMode===m?"bg-primary-600 text-white":"hover:bg-white/10")}>{m}</button>))}
+                       </div>
+                   )}
               </div>
 
-              {audioTracks.length > 1 && (<div className="relative"><button onClick={(e) => { e.stopPropagation(); setActiveMenu(activeMenu === 'audio' ? 'none' : 'audio'); }} className={cn("hover:text-primary-500 transition-colors active:scale-90 p-2 md:p-0", activeMenu === 'audio' && "text-primary-500")}><AudioWaveform size={20} className="md:w-5 md:h-5" /></button>{activeMenu === 'audio' && (<div className="absolute bottom-12 right-0 bg-black/80 backdrop-blur-xl border border-white/10 rounded-2xl p-2 w-52 max-h-[50vh] overflow-y-auto scrollbar-hide shadow-2xl z-50 flex flex-col gap-1 animate-in slide-in-from-bottom-2">{audioTracks.map((t, i) => (<button key={i} onClick={(e) => { e.stopPropagation(); changeAudio(i); }} className={cn("text-[11px] px-3 py-2 rounded-full text-left font-bold transition-all truncate active:scale-95", currentAudio === i ? "bg-primary-600 text-white" : "hover:bg-white/10 text-zinc-400")}>{t.name || `Audio ${i+1}`}</button>))}</div>)}</div>)}
+              {audioTracks.length > 1 && (<div className="relative"><button onClick={(e) => { e.stopPropagation(); setActiveMenu(activeMenu === 'audio' ? 'none' : 'audio'); }} className={cn("hover:text-primary-500 transition-colors active:scale-90 p-2 md:p-0", activeMenu === 'audio' && "text-primary-500")}><AudioWaveform size={20} className="md:w-5 md:h-5" /></button>{activeMenu === 'audio' && (<div className="absolute bottom-12 right-0 bg-black/85 backdrop-blur-xl border border-white/10 rounded-2xl p-1.5 w-44 md:w-52 max-h-[180px] md:max-h-[300px] overflow-y-auto scrollbar-hide shadow-2xl z-50 flex flex-col gap-0.5 animate-in slide-in-from-bottom-2">{audioTracks.map((t, i) => (<button key={i} onClick={(e) => { e.stopPropagation(); changeAudio(i); }} className={cn("text-[9px] md:text-[11px] px-2.5 py-1.5 rounded-full text-left font-bold transition-all truncate active:scale-95", currentAudio === i ? "bg-primary-600 text-white" : "hover:bg-white/10 text-zinc-400")}>{t.name || `Audio ${i+1}`}</button>))}</div>)}</div>)}
 
               {trackSubtitles.length > 0 && (
                 <div className="relative">
                     <button onClick={(e) => { e.stopPropagation(); setActiveMenu(activeMenu === 'subs' ? 'none' : 'subs'); }} className={cn("hover:text-primary-500 transition-colors active:scale-90 p-2 md:p-0", (activeMenu === 'subs' || currentSubtitle !== -1) ? "text-primary-500 fill-red-500" : "text-white")}><Subtitles size={20} className="md:w-5 md:h-5" /></button>
                     {activeMenu === 'subs' && (
-                        <div className="absolute bottom-12 right-0 bg-black/80 backdrop-blur-md border border-white/10 rounded-2xl p-2 w-56 max-h-[40vh] overflow-hidden shadow-2xl z-50 flex flex-col animate-in slide-in-from-bottom-2">
-                             <button onClick={(e) => { e.stopPropagation(); setActiveMenu('subSettings'); }} className="flex items-center gap-2 text-[11px] px-3 py-2 rounded-full text-left font-black text-primary-500 hover:bg-white/5 transition-all mb-1 border-b border-white/10 shrink-0"><Settings size={12}/> CAPTION SETTINGS</button>
-                             <div className="overflow-y-auto flex-1 flex flex-col gap-1 scrollbar-hide">
-                               <button onClick={(e) => { e.stopPropagation(); changeSubtitle(-1); }} className={cn("text-[11px] px-3 py-2 rounded-full text-left font-bold transition-all active:scale-95 shrink-0", currentSubtitle === -1 ? "bg-primary-600 text-white" : "hover:bg-white/10 text-zinc-400")}>Off</button>
+                        <div className="absolute bottom-12 right-0 bg-black/85 backdrop-blur-md border border-white/10 rounded-2xl p-1.5 w-44 md:w-56 max-h-[180px] md:max-h-[300px] overflow-hidden shadow-2xl z-50 flex flex-col animate-in slide-in-from-bottom-2">
+                             <button onClick={(e) => { e.stopPropagation(); setActiveMenu('subSettings'); }} className="flex items-center gap-1.5 text-[9px] md:text-[11px] px-2.5 py-1.5 rounded-full text-left font-black text-primary-500 hover:bg-white/5 transition-all mb-0.5 border-b border-white/10 shrink-0"><Settings size={10} className="md:w-3 md:h-3"/> CAPTION SETTINGS</button>
+                             <div className="overflow-y-auto flex-1 flex flex-col gap-0.5 scrollbar-hide">
+                               <button onClick={(e) => { e.stopPropagation(); changeSubtitle(-1); }} className={cn("text-[9px] md:text-[11px] px-2.5 py-1.5 rounded-full text-left font-bold transition-all active:scale-95 shrink-0", currentSubtitle === -1 ? "bg-primary-600 text-white" : "hover:bg-white/10 text-zinc-400")}>Off</button>
                                {trackSubtitles.map((t, i) => (
-                                   <button key={i} onClick={(e) => { e.stopPropagation(); changeSubtitle(i); }} className={cn("text-[11px] px-3 py-2 rounded-full text-left font-bold transition-all truncate active:scale-95 shrink-0", currentSubtitle === i ? "bg-primary-600 text-white" : "hover:bg-white/10 text-zinc-400")}>{t.label || t.name || t.lang}</button>
+                                   <button key={i} onClick={(e) => { e.stopPropagation(); changeSubtitle(i); }} className={cn("text-[9px] md:text-[11px] px-2.5 py-1.5 rounded-full text-left font-bold transition-all truncate active:scale-95 shrink-0", currentSubtitle === i ? "bg-primary-600 text-white" : "hover:bg-white/10 text-zinc-400")}>{t.label || t.name || t.lang}</button>
                                ))}
                              </div>
                         </div>
                     )}
                     {activeMenu === 'subSettings' && (
-                        <div className="absolute bottom-12 right-0 bg-black/80 backdrop-blur-md border border-white/10 rounded-2xl p-3 w-56 md:w-72 max-h-[50vh] md:max-h-[50vh] overflow-y-auto scrollbar-hide shadow-2xl z-50 flex flex-col gap-2 animate-in slide-in-from-bottom-2">
-                             <div className="flex items-center gap-2 text-[11px] font-black text-zinc-400 border-b border-white/10 pb-2"><button onClick={(e)=>{e.stopPropagation(); setActiveMenu('subs')}} className="hover:text-white"><ChevronLeft size={14}/></button> STYLE</div>
-                             <div className="space-y-2"><span className="text-[10px] font-bold text-zinc-500 uppercase">Color</span><div className="flex gap-2 flex-wrap">{Object.keys(SUB_COLORS).map((c) => (<button key={c} onClick={(e) => {e.stopPropagation(); updateLocalPrefs({subStyle: { color: c }})}} className={cn("w-6 h-6 rounded-full border transition-all active:scale-90", subStyle.color === c ? "border-white scale-110" : "border-transparent opacity-50")} style={{background: SUB_COLORS[c as keyof typeof SUB_COLORS]}} />))}</div></div>
-                             <div className="space-y-2"><span className="text-[10px] font-bold text-zinc-500 uppercase">Size</span><div className="flex gap-1 bg-white/5 rounded-full p-1">{Object.keys(SUB_SIZES).map((s) => (<button key={s} onClick={(e) => {e.stopPropagation(); updateLocalPrefs({subStyle: { size: s }})}} className={cn("flex-1 py-1 rounded-full text-[9px] font-bold transition-all active:scale-90", subStyle.size === s ? "bg-white text-black" : "text-zinc-500 hover:text-zinc-300")}>{s}</button>))}</div></div>
-                             <div className="space-y-2"><span className="text-[10px] font-bold text-zinc-500 uppercase">Background</span><div className="flex gap-1 bg-white/5 rounded-full p-1">{Object.keys(SUB_BACKGROUNDS).map((b) => (<button key={b} onClick={(e) => {e.stopPropagation(); updateLocalPrefs({subStyle: { bg: b }})}} className={cn("flex-1 py-1 rounded-full text-[9px] font-bold transition-all active:scale-90", subStyle.bg === b ? "bg-white text-black" : "text-zinc-500 hover:text-zinc-300")}>{b}</button>))}</div></div>
-                             <div className="space-y-2"><span className="text-[10px] font-bold text-zinc-500 uppercase">Position</span><div className="flex gap-1 bg-white/5 rounded-full p-1">{Object.keys(SUB_LIFTS).map((l) => (<button key={l} onClick={(e) => {e.stopPropagation(); updateLocalPrefs({subStyle: { lift: l }})}} className={cn("flex-1 py-1 rounded-full text-[9px] font-bold transition-all active:scale-90", subStyle.lift === l ? "bg-white text-black" : "text-zinc-500 hover:text-zinc-300")}>{l}</button>))}</div></div>
-                             <div className="space-y-2"><span className="text-[10px] font-bold text-zinc-500 uppercase">Font</span><div className="flex gap-1 bg-white/5 rounded-full p-1 overflow-x-auto scrollbar-hide">{Object.keys(SUB_FONTS).map((f) => (<button key={f} onClick={(e) => {e.stopPropagation(); updateLocalPrefs({subStyle: { font: f }})}} className={cn("px-3 py-1.5 rounded-full text-[9px] font-bold transition-all active:scale-90 whitespace-nowrap", subStyle.font === f ? "bg-white text-black" : "text-zinc-500 hover:text-zinc-300")}>{f}</button>))}</div></div>
+                        <div className="absolute bottom-12 right-0 bg-black/85 backdrop-blur-md border border-white/10 rounded-2xl p-2 w-48 md:w-72 max-h-[180px] md:max-h-[300px] overflow-y-auto scrollbar-hide shadow-2xl z-50 flex flex-col gap-1.5 animate-in slide-in-from-bottom-2" onClick={(e) => e.stopPropagation()}>
+                             <div className="flex items-center gap-1.5 text-[9px] md:text-[11px] font-black text-zinc-400 border-b border-white/10 pb-1.5"><button onClick={(e)=>{e.stopPropagation(); setActiveMenu('subs')}} className="hover:text-white"><ChevronLeft size={12}/></button> STYLE</div>
+                             <div className="space-y-1"><span className="text-[8px] md:text-[10px] font-bold text-zinc-500 uppercase">Color</span><div className="flex gap-1.5 flex-wrap">{Object.keys(SUB_COLORS).map((c) => (<button key={c} onClick={(e) => {e.stopPropagation(); updateLocalPrefs({subStyle: { color: c }})}} className={cn("w-5 h-5 md:w-6 md:h-6 rounded-full border transition-all active:scale-90", subStyle.color === c ? "border-white scale-110" : "border-transparent opacity-50")} style={{background: SUB_COLORS[c as keyof typeof SUB_COLORS]}} />))}</div></div>
+                             <div className="space-y-1"><span className="text-[8px] md:text-[10px] font-bold text-zinc-500 uppercase">Size</span><div className="flex gap-0.5 bg-white/5 rounded-full p-0.5">{Object.keys(SUB_SIZES).map((s) => (<button key={s} onClick={(e) => {e.stopPropagation(); updateLocalPrefs({subStyle: { size: s }})}} className={cn("flex-1 py-0.5 md:py-1 rounded-full text-[8px] md:text-[9px] font-bold transition-all active:scale-90", subStyle.size === s ? "bg-white text-black" : "text-zinc-500 hover:text-zinc-300")}>{s}</button>))}</div></div>
+                             <div className="space-y-1"><span className="text-[8px] md:text-[10px] font-bold text-zinc-500 uppercase">Background</span><div className="flex gap-0.5 bg-white/5 rounded-full p-0.5 overflow-x-auto scrollbar-hide">{Object.keys(SUB_BACKGROUNDS).map((b) => (<button key={b} onClick={(e) => {e.stopPropagation(); updateLocalPrefs({subStyle: { bg: b }})}} className={cn("px-2 py-0.5 md:py-1 rounded-full text-[8px] md:text-[9px] font-bold transition-all active:scale-90 whitespace-nowrap", subStyle.bg === b ? "bg-white text-black" : "text-zinc-500 hover:text-zinc-300")}>{b}</button>))}</div></div>
+                             
+                             {/* Opacity Slider */}
+                             <div className="space-y-1 mt-0.5">
+                                 <span className="text-[8px] md:text-[10px] font-bold text-zinc-500 uppercase flex justify-between">Opacity <span>{subStyle.opacity ?? 75}%</span></span>
+                                 <input 
+                                     type="range" 
+                                     min="10" 
+                                     max="100" 
+                                     value={subStyle.opacity ?? 75} 
+                                     onChange={(e) => { e.stopPropagation(); updateLocalPrefs({subStyle: { opacity: parseInt(e.target.value) }}) }}
+                                     className="w-full accent-primary-500 bg-white/10 rounded-full h-1 cursor-pointer pointer-events-auto"
+                                     onClick={(e) => e.stopPropagation()}
+                                     onTouchStart={(e) => e.stopPropagation()}
+                                     onTouchMove={(e) => e.stopPropagation()}
+                                 />
+                             </div>
+
+                             <div className="space-y-1"><span className="text-[8px] md:text-[10px] font-bold text-zinc-500 uppercase">Position</span><div className="flex gap-0.5 bg-white/5 rounded-full p-0.5">{Object.keys(SUB_LIFTS).map((l) => (<button key={l} onClick={(e) => {e.stopPropagation(); updateLocalPrefs({subStyle: { lift: l }})}} className={cn("flex-1 py-0.5 md:py-1 rounded-full text-[8px] md:text-[9px] font-bold transition-all active:scale-90", subStyle.lift === l ? "bg-white text-black" : "text-zinc-500 hover:text-zinc-300")}>{l}</button>))}</div></div>
+                             <div className="space-y-1"><span className="text-[8px] md:text-[10px] font-bold text-zinc-500 uppercase">Font</span><div className="flex gap-0.5 bg-white/5 rounded-full p-0.5 overflow-x-auto scrollbar-hide">{Object.keys(SUB_FONTS).map((f) => (<button key={f} onClick={(e) => {e.stopPropagation(); updateLocalPrefs({subStyle: { font: f }})}} className={cn("px-2 py-1 rounded-full text-[8px] md:text-[9px] font-bold transition-all active:scale-90 whitespace-nowrap", subStyle.font === f ? "bg-white text-black" : "text-zinc-500 hover:text-zinc-300")}>{f}</button>))}</div></div>
                         </div>
                     )}
                 </div>

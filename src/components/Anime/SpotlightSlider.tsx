@@ -399,7 +399,7 @@ export default function SpotlightSlider({ animes }: { animes: SpotlightAnime[] }
                     custom={1} 
                     variants={liquidTextVariants}
                     transition={{ delay: 0.15 + (1 * 0.06) }}
-                    className="text-xl sm:text-3xl md:text-6xl lg:text-7xl font-black text-white mb-1.5 md:mb-4 leading-[0.9] uppercase tracking-tighter line-clamp-2 drop-shadow-2xl text-shadow-lg font-[Poppins]"
+                    className="text-xl sm:text-3xl md:text-6xl lg:text-7xl font-black text-white mb-1.5 md:mb-4 leading-[0.9] uppercase tracking-tighter line-clamp-2 drop-shadow-2xl text-shadow-lg font-sans"
                   >
                       {displayTitle}
                   </motion.h1>

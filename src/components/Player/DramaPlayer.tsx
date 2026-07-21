@@ -28,6 +28,7 @@ interface DramaPlayerProps {
   servers?: { name: string; type: string; url?: string; }[];
   activeServerIdx?: number;
   onServerSelect?: (idx: number) => void;
+  setIsAutoNext?: (val: boolean) => void;
 }
 
 export interface DramaPlayerRef {
@@ -40,7 +41,7 @@ export interface DramaPlayerRef {
 const DramaPlayer = forwardRef<DramaPlayerRef, DramaPlayerProps>(({
   url, iframeUrl, title, poster, referer, autoPlay = true, startTime = 0,
   onEnded, onPlay, onPause, onProgress, onInteract, initialVolume = 1,
-  episodes = [], currentEpId, onEpisodeSelect, isAutoNext = true, servers = [], activeServerIdx = 0, onServerSelect
+  episodes = [], currentEpId, onEpisodeSelect, isAutoNext = true, servers = [], activeServerIdx = 0, onServerSelect, setIsAutoNext
 }, ref) => {
   const videoRef = useRef<HTMLVideoElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -175,8 +176,32 @@ const DramaPlayer = forwardRef<DramaPlayerRef, DramaPlayerProps>(({
   };
 
   const toggleFullscreen = async () => {
-    if (!document.fullscreenElement) await containerRef.current?.requestFullscreen();
-    else await document.exitFullscreen();
+    if (!containerRef.current) return;
+    try {
+        if (!document.fullscreenElement) {
+            if (containerRef.current.requestFullscreen) {
+                await containerRef.current.requestFullscreen();
+            } else if ((containerRef.current as any).webkitRequestFullscreen) {
+                await (containerRef.current as any).webkitRequestFullscreen();
+            } else if ((containerRef.current as any).mozRequestFullScreen) {
+                await (containerRef.current as any).mozRequestFullScreen();
+            } else if ((containerRef.current as any).msRequestFullscreen) {
+                await (containerRef.current as any).msRequestFullscreen();
+            }
+        } else {
+            if (document.exitFullscreen) {
+                await document.exitFullscreen();
+            } else if ((document as any).webkitExitFullscreen) {
+                await (document as any).webkitExitFullscreen();
+            } else if ((document as any).mozCancelFullScreen) {
+                await (document as any).mozCancelFullScreen();
+            } else if ((document as any).msExitFullscreen) {
+                await (document as any).msExitFullscreen();
+            }
+        }
+    } catch (e) {
+        console.error("Fullscreen error", e);
+    }
   };
 
   const togglePiP = async () => {
@@ -268,7 +293,7 @@ const DramaPlayer = forwardRef<DramaPlayerRef, DramaPlayerProps>(({
       {isBuffering && !hasStarted && (
         <div className="absolute inset-0 z-50 flex flex-col items-center justify-center bg-black/70 backdrop-blur-sm">
           <img src="/run-happy.gif" alt="Loading" className="w-24 h-24 object-contain" />
-          <p className="mt-3 font-[Cinzel] text-primary-500 animate-pulse tracking-[0.4em] text-[10px] uppercase">Loading Drama...</p>
+          <p className="mt-3 font-lemon text-primary-500 animate-pulse tracking-[0.4em] text-[10px] uppercase">Loading Drama...</p>
         </div>
       )}
       {isBuffering && hasStarted && (
@@ -336,7 +361,7 @@ const DramaPlayer = forwardRef<DramaPlayerRef, DramaPlayerProps>(({
                   Episodes
                 </button>
                 {showEpisodes && (
-                  <div className="absolute bottom-full mb-4 left-0 bg-black/90 backdrop-blur-md border border-white/10 rounded-2xl p-2 w-64 shadow-2xl z-50 flex flex-col gap-1 animate-in slide-in-from-bottom-2 max-h-64 overflow-y-auto no-scrollbar" onClick={(e) => e.stopPropagation()}>
+                  <div className="absolute bottom-full mb-4 left-0 bg-black/90 backdrop-blur-md border border-white/10 rounded-2xl p-2 w-64 shadow-2xl z-50 flex flex-col gap-1 animate-in slide-in-from-bottom-2 max-h-[180px] md:max-h-[300px] overflow-y-auto no-scrollbar" onClick={(e) => e.stopPropagation()}>
                     <p className="text-[10px] font-black text-zinc-500 uppercase px-3 pb-2 pt-1 sticky top-0 bg-black/90 z-10 border-b border-white/10">Select Episode</p>
                     {episodes.map(ep => (
                       <button key={ep.id} onClick={() => { onEpisodeSelect?.(ep.id); setShowEpisodes(false); }} className={cn("text-[11px] px-3 py-2 rounded-xl text-left font-bold transition-all flex items-center justify-between group", currentEpId === ep.id ? "bg-primary-600 text-white" : "text-zinc-400 hover:text-white hover:bg-white/10")}>
@@ -356,7 +381,7 @@ const DramaPlayer = forwardRef<DramaPlayerRef, DramaPlayerProps>(({
                   <ServerIcon size={12} className="hidden md:block" /> {servers[activeServerIdx]?.name || 'Server'}
                 </button>
                 {showServers && (
-                  <div className="absolute bottom-full mb-4 left-0 bg-black/90 backdrop-blur-md border border-white/10 rounded-2xl p-2 w-56 shadow-2xl z-50 flex flex-col gap-1 animate-in slide-in-from-bottom-2" onClick={(e) => e.stopPropagation()}>
+                  <div className="absolute bottom-full mb-4 left-0 bg-black/90 backdrop-blur-md border border-white/10 rounded-2xl p-2 w-56 shadow-2xl z-50 flex flex-col gap-1 animate-in slide-in-from-bottom-2 max-h-[180px] md:max-h-[300px] overflow-y-auto no-scrollbar" onClick={(e) => e.stopPropagation()}>
                     <p className="text-[10px] font-black text-zinc-500 uppercase px-3 pb-2 pt-1 border-b border-white/10">Audio / Server</p>
                     {servers.map((srv, idx) => (
                       <button key={idx} onClick={() => { onServerSelect?.(idx); setShowServers(false); }} className={cn("text-[11px] px-3 py-2 rounded-xl text-left font-bold transition-all flex items-center justify-between", activeServerIdx === idx ? "bg-primary-600 text-white" : "text-zinc-400 hover:text-white hover:bg-white/10")}>
@@ -371,7 +396,7 @@ const DramaPlayer = forwardRef<DramaPlayerRef, DramaPlayerProps>(({
           </div>
 
           <div className="flex items-center gap-2 md:gap-4 relative">
-            <button onClick={(e) => { e.stopPropagation(); setIsAutoNext(!isAutoNext); }} className="hover:text-primary-500 transition-colors active:scale-90 text-white flex items-center gap-1">
+            <button onClick={(e) => { e.stopPropagation(); setIsAutoNext?.(!isAutoNext); }} className="hover:text-primary-500 transition-colors active:scale-90 text-white flex items-center gap-1">
               <span className="text-[10px] font-black uppercase hidden md:inline">Auto Next</span>
               {isAutoNext ? <ToggleRight size={22} className="text-primary-500" /> : <ToggleLeft size={22} className="text-zinc-500" />}
             </button>
@@ -380,7 +405,7 @@ const DramaPlayer = forwardRef<DramaPlayerRef, DramaPlayerProps>(({
                 <Settings size={22} />
               </button>
               {showSettings && (
-                <div className="absolute bottom-12 right-0 bg-black/85 backdrop-blur-md border border-white/10 rounded-2xl p-2 w-48 shadow-2xl z-50 flex flex-col gap-1 animate-in slide-in-from-bottom-2" onClick={(e) => e.stopPropagation()}>
+                <div className="absolute bottom-12 right-0 bg-black/85 backdrop-blur-md border border-white/10 rounded-2xl p-2 w-48 max-h-[180px] md:max-h-[300px] overflow-y-auto scrollbar-hide shadow-2xl z-50 flex flex-col gap-1 animate-in slide-in-from-bottom-2" onClick={(e) => e.stopPropagation()}>
                   <p className="text-[10px] font-black text-zinc-500 uppercase px-3 pb-1 border-b border-white/10">Quality</p>
                   <button onClick={() => { if (hlsRef.current) hlsRef.current.currentLevel = -1; setCurrentQuality(-1); }} className={cn("text-[11px] px-3 py-2 rounded-full text-left font-bold transition-all", currentQuality === -1 ? "bg-primary-600 text-white" : "hover:bg-white/10")}>Auto</button>
                   {qualities.map(q => <button key={q.index} onClick={() => { if (hlsRef.current) hlsRef.current.currentLevel = q.index; setCurrentQuality(q.index); }} className={cn("text-[11px] px-3 py-2 rounded-full text-left font-bold transition-all", currentQuality === q.index ? "bg-primary-600 text-white" : "hover:bg-white/10")}>{q.height}p</button>)}

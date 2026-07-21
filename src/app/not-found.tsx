@@ -4,7 +4,7 @@ import React from 'react';
 import { useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
 import { ArrowLeft, Ghost, ShieldAlert } from 'lucide-react';
-import { demoness, hunters } from '@/lib/fonts';
+
 
 export default function NotFound() {
     const router = useRouter();
@@ -45,7 +45,7 @@ export default function NotFound() {
                 </motion.div>
 
                 {/* --- 404 Text --- */}
-                <h1 className={`${demoness.className} text-[10rem] md:text-[12rem] leading-[0.8] text-transparent bg-clip-text bg-gradient-to-b from-white via-zinc-200 to-zinc-600 tracking-tighter drop-shadow-2xl select-none`}>
+                <h1 className={`font-gradvis text-[10rem] md:text-[12rem] leading-[0.8] text-transparent bg-clip-text bg-gradient-to-b from-white via-zinc-200 to-zinc-600 tracking-tighter drop-shadow-2xl select-none`}>
                     404
                 </h1>
 
@@ -53,7 +53,7 @@ export default function NotFound() {
                 <div className="space-y-4 max-w-lg mx-auto mt-6">
                     <div className="flex items-center justify-center gap-3 text-primary-500/80">
                         <ShieldAlert size={14} />
-                        <h2 className={`${hunters.className} text-xl md:text-2xl tracking-[0.2em] uppercase text-primary-500`}>
+                        <h2 className={`font-lemon text-xl md:text-2xl tracking-[0.2em] uppercase text-primary-500`}>
                             Signal Severed
                         </h2>
                         <ShieldAlert size={14} />
@@ -84,7 +84,7 @@ export default function NotFound() {
 
             {/* --- Footer Decoration --- */}
             <div className="absolute bottom-8 left-0 right-0 text-center opacity-20 pointer-events-none">
-                <span className={`${demoness.className} text-xl text-zinc-500 tracking-widest`}>
+                <span className={`font-gradvis text-xl text-zinc-500 tracking-widest`}>
                     SHADOW GARDEN
                 </span>
             </div>

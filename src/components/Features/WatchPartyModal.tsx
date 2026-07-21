@@ -29,7 +29,7 @@ export default function WatchPartyModal() {
       </DialogTrigger>
       <DialogContent className="bg-black/95 border-white/10 text-white sm:max-w-md">
         <DialogHeader>
-          <DialogTitle className="text-center font-[Cinzel] text-2xl text-blue-400">Summon Friends</DialogTitle>
+          <DialogTitle className="text-center font-lemon text-2xl text-blue-400">Summon Friends</DialogTitle>
         </DialogHeader>
         <div className="space-y-4 py-4">
           {!roomId ? (

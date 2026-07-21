@@ -14,7 +14,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { AppUser, UserAPI } from '@/lib/api'; 
 import { supabase } from '@/lib/supabase'; 
 import { motion, AnimatePresence } from 'framer-motion';
-import { hunters } from '@/lib/fonts'; 
+ 
 import { playVoice, syncVoiceProfile } from '@/lib/voice'; 
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/context/AuthContext'; 
@@ -325,7 +325,7 @@ export default function AuthModal({ isOpen, onClose, onAuthSuccess, initialView 
       <DialogContent className="sm:max-w-[340px] w-[90%] bg-black/40 backdrop-blur-xl border border-white/5 text-white p-0 overflow-hidden rounded-[2.5rem] shadow-[0_0_60px_-15px_rgba(0,0,0,0.8)] my-auto max-h-[85vh] outline-none focus:outline-none ring-0">
         <div className="relative p-6 pt-8">
             <div className="text-center space-y-2 mb-6">
-                <div className="flex items-center justify-center gap-3"><YinYangIcon /><DialogTitle className={`text-2xl text-white ${hunters.className} tracking-wider pt-1 drop-shadow-md`}>SHADOW <span className="text-primary-600">GARDEN</span></DialogTitle></div>
+                <div className="flex items-center justify-center gap-3"><YinYangIcon /><DialogTitle className={`text-2xl text-white font-lemon tracking-wider pt-1 drop-shadow-md`}>SHADOW <span className="text-primary-600">GARDEN</span></DialogTitle></div>
                 <p className="text-zinc-500 text-[9px] uppercase tracking-[0.3em] font-bold">Official Guild Access</p>
             </div>
             

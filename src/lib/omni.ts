@@ -5,6 +5,7 @@
 import { ApiManager } from './api';
 
 const getOmniBase = () => `${ApiManager.getBaseUrl()}/hindidrama`;
+const getMoviesBase = () => `${ApiManager.getBaseUrl()}/hdmovies`;
 
 async function fetchOmni<T = any>(
   endpoint: string,
@@ -15,7 +16,9 @@ async function fetchOmni<T = any>(
     .filter(([, v]) => v !== undefined && v !== null && v !== '')
     .map(([k, v]) => `${encodeURIComponent(k)}=${encodeURIComponent(String(v))}`);
   const queryString = queryParts.length > 0 ? `?${queryParts.join('&')}` : '';
-  const targetUrl = `${getOmniBase()}${endpoint}${queryString}`;
+  const base = endpoint.startsWith('http') ? '' : (endpoint.includes('hdmovies') ? getMoviesBase() : getOmniBase());
+  let targetUrl = endpoint.startsWith('http') ? endpoint : `${base}${endpoint.replace('/hdmovies', '')}${queryString}`;
+  
   const proxyUrl =
     typeof window !== 'undefined'
       ? `/api/proxy?url=${encodeURIComponent(targetUrl)}`
@@ -115,6 +118,40 @@ export interface DramaStream {
   servers: DramaServer[];
   hlsUrl?: string;     // first HLS url if available
   iframeUrl?: string;  // first iframe url as fallback
+}
+
+export interface MovieDetail {
+  id: string;
+  slug: string;
+  title: string;
+  image: string;
+  cover?: string;
+  description: string;
+  synopsis?: string;
+  imdbId: string;
+  genres?: string[];
+  country?: string;
+  year?: string;
+  rating?: string;
+  contentRating?: string;
+  releaseDate?: string;
+  runtime?: string;
+  cast?: string[];
+  type?: string;           // 'Movie' | 'TV Series' etc.
+  downloadLinks: { name: string; url: string; quality?: string; size?: string }[];
+  streams: { name: string; url: string }[];
+  related?: DramaCard[];
+  seasons?: {
+    seasonNumber: number;
+    sources: { name: string; url: string }[];
+    episodes?: {
+      episodeNumber: number;
+      title: string;
+      image?: string | null;
+      summary?: string | null;
+      airdate?: string | null;
+    }[];
+  }[];
 }
 
 // ─── NORMALIZER ──────────────────────────────────────────────────────────────
@@ -293,6 +330,111 @@ class OmniClient {
           currentPage: res?.page || page,
           hasNextPage: res?.hasNextPage ?? items.length >= 20,
           totalPages: res?.totalPages ?? 1,
+        },
+      };
+    },
+  };
+
+  movies = {
+    getHome: async (): Promise<DramaHome> => {
+      const res: any = await fetchOmni('/hdmovies/home');
+      const sections: DramaSection[] = [];
+
+      if (res && Array.isArray(res.sections)) {
+        res.sections.forEach((section: any) => {
+          if (section.title && Array.isArray(section.items) && section.items.length > 0) {
+            sections.push({
+              title: section.title,
+              items: section.items.map(normalizeDramaCard)
+            });
+          }
+        });
+      }
+
+      if (sections.length === 0) {
+        sections.push({ title: 'Movies & Series', items: [] });
+      }
+
+      return { sections };
+    },
+
+    search: async (query: string, page = 1) => {
+      const res: any = await fetchOmni('/hdmovies/search', { q: query, page });
+      const items = Array.isArray(res?.results)
+        ? res.results.map(normalizeDramaCard)
+        : Array.isArray(res) ? res.map(normalizeDramaCard) : [];
+      return {
+        items,
+        pagination: {
+          currentPage: res?.currentPage || page,
+          hasNextPage: res?.hasNextPage ?? false,
+          totalPages: 1,
+        },
+      };
+    },
+
+    getDetail: async (id: string): Promise<MovieDetail | null> => {
+      const res: any = await fetchOmni('/hdmovies/watch', { id });
+      if (!res || !res.title) return null;
+
+      // Only fetch seasons if the API confirmed the item is a TV series
+      const typeStr: string = (res.type || '').toLowerCase();
+      const isConfirmedSeries = typeStr === 'series';
+
+      let seasons = res.seasons || [];
+      if (isConfirmedSeries && res.imdbId && (!seasons || seasons.length === 0)) {
+        const seasonRes: any = await fetchOmni('/hdmovies/seasons', { id });
+        if (seasonRes && seasonRes.seasons) {
+            seasons = seasonRes.seasons;
+        }
+      } else if (!isConfirmedSeries) {
+        // Ensure movies never have seasons attached
+        seasons = [];
+      }
+
+      return {
+          ...res,
+          type: res.type,
+          related: Array.isArray(res.related) ? res.related.map(normalizeDramaCard) : [],
+          seasons
+      } as MovieDetail;
+    },
+
+    getCategory: async (category: string, page = 1) => {
+      const res: any = await fetchOmni('/hdmovies/category', { category, page });
+      const items = Array.isArray(res?.results) ? res.results.map(normalizeDramaCard) : [];
+      return {
+        items,
+        pagination: {
+          currentPage: res?.currentPage || page,
+          hasNextPage: res?.hasNextPage ?? false,
+          totalPages: 1,
+        },
+      };
+    },
+
+    getByGenre: async (genre: string, page = 1) => {
+      const res: any = await fetchOmni('/hdmovies/genre', { genre, page });
+      const items = Array.isArray(res?.results) ? res.results.map(normalizeDramaCard) : [];
+      return {
+        items,
+        pagination: {
+          currentPage: res?.currentPage || page,
+          hasNextPage: res?.hasNextPage ?? false,
+          totalPages: 1,
+        },
+      };
+    },
+
+    getByCountry: async (country: string, page = 1) => {
+      const res: any = await fetchOmni('/hdmovies/country', { country, page });
+      const items = Array.isArray(res?.results) ? res.results.map(normalizeDramaCard) : [];
+      return {
+        items,
+        pagination: {
+          currentPage: res?.currentPage || page,
+          hasNextPage: res?.hasNextPage ?? false,
+          totalPages: 1,
         },
       };
     },

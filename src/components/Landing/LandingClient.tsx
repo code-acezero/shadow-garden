@@ -17,7 +17,7 @@ import { supabase } from '@/lib/supabase'; // ✅ CRITICAL: Import Singleton dir
 import AuthModal from '@/components/Auth/AuthModal';
 import SearchBar from '@/components/Anime/SearchBar';
 import ShadowGardenPortal from '@/components/Portal/ShadowGardenPortal';
-import { demoness, nyctophobia, horrorshow } from '@/lib/fonts';
+
 
 // --- ASSETS ---
 const WAIFU_BG_LIST = [
@@ -90,7 +90,7 @@ const StatCard = React.memo(({ icon: Icon, label, value, sub, isLive }: any) => 
       <Icon className={`w-6 h-6 ${isLive ? 'text-green-500' : 'text-primary-500'}`} />
     </div>
     <div>
-      <div className="text-2xl font-bold font-demoness text-white flex items-center gap-2">
+      <div className="text-2xl font-bold font-gradvis text-white flex items-center gap-2">
         {value}
         {isLive && <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />}
       </div>
@@ -125,7 +125,7 @@ const FeatureCard = React.memo(({ icon: Icon, title, desc }: { icon: any, title:
     <div className="w-14 h-14 rounded-lg bg-black flex items-center justify-center mb-6 border border-white/10 group-hover:border-primary-500/50 group-hover:shadow-[0_0_15px_rgba(220,38,38,0.3)] transition-all">
       <Icon className="w-7 h-7 text-primary-700 group-hover:text-primary-500 transition-colors" />
     </div>
-    <h3 className="text-xl font-bold text-white mb-3 group-hover:text-primary-100 font-horrorshow tracking-wide">{title}</h3>
+    <h3 className="text-xl font-bold text-white mb-3 group-hover:text-primary-100 font-above tracking-wide">{title}</h3>
     <p className="text-sm text-gray-400 font-light leading-relaxed">{desc}</p>
   </div>
 ));
@@ -140,6 +140,7 @@ export default function LandingClient() {
   const [showLandingUI, setShowLandingUI] = useState(false);   
   const [triggerEntry, setTriggerEntry] = useState(false);     
   const [bgImage, setBgImage] = useState(WAIFU_BG_LIST[0]);
+  const [isMobile, setIsMobile] = useState(false);
   
   const [trending, setTrending] = useState<UniversalAnimeBase[]>([]); 
   const [isLoadingTrending, setIsLoadingTrending] = useState(true);
@@ -149,6 +150,11 @@ export default function LandingClient() {
   const heroScale = useTransform(scrollY, [0, 400], [1, 1.1]);
 
   useEffect(() => {
+    const mobileCheck = window.innerWidth < 768;
+    setIsMobile(mobileCheck);
+    if (mobileCheck) {
+      setShowLandingUI(true);
+    }
     // 1. Random BG (Client-side only)
     const randomIdx = Math.floor(Math.random() * WAIFU_BG_LIST.length);
     setBgImage(WAIFU_BG_LIST[randomIdx]);
@@ -200,16 +206,18 @@ export default function LandingClient() {
   if (isCheckingAuth) return <div className="min-h-screen bg-[#050505]" />;
 
   return (
-    <main className={`relative min-h-screen w-full bg-[#050505] text-white overflow-x-hidden selection:bg-primary-900/50 ${demoness.variable} ${nyctophobia.variable} ${horrorshow.variable}`}>
+    <main className={`relative min-h-screen w-full bg-[#050505] text-white overflow-x-hidden selection:bg-primary-900/50   `}>
       
       {/* 1. PORTAL BACKGROUND */}
-      <div className="fixed inset-0 z-0">
-        <ShadowGardenPortal 
-          startTransition={triggerEntry}
-          onComplete={handlePortalComplete}
-          onSceneReady={handleSceneReady}
-        />
-      </div>
+      {!isMobile && (
+        <div className="fixed inset-0 z-0">
+          <ShadowGardenPortal 
+            startTransition={triggerEntry}
+            onComplete={handlePortalComplete}
+            onSceneReady={handleSceneReady}
+          />
+        </div>
+      )}
 
       {/* 2. OVERLAY */}
       <AnimatePresence mode="wait">
@@ -255,13 +263,13 @@ export default function LandingClient() {
                         <span className="w-1.5 h-1.5 rounded-full bg-primary-500 shadow-[0_0_8px_red]" />
                         <span className="text-primary-200 text-[10px] font-bold tracking-widest uppercase font-mono">Guild System Online • v0.1 (beta)</span>
                      </div>
-                     <h1 className="text-5xl md:text-8xl font-normal tracking-wide font-demoness text-primary-600 drop-shadow-[0_0_30px_rgba(220,38,38,0.6)] relative z-10" style={{ fontFamily: 'var(--font-demoness), serif' }}>SHADOW GARDEN</h1>
+                     <h1 className="text-5xl md:text-8xl font-normal tracking-wide font-gradvis text-primary-600 drop-shadow-[0_0_30px_rgba(220,38,38,0.6)] relative z-10" style={{ fontFamily: 'var(--font-gradvis), serif' }}>SHADOW GARDEN</h1>
                      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[120%] h-[120%] opacity-50 z-0 pointer-events-none mix-blend-screen">
                         <div className="w-full h-full bg-primary-500/20 blur-[60px] rounded-full animate-pulse" />
                      </div>
                    </div>
                    
-                   <p className="text-base md:text-xl text-gray-400 font-light max-w-2xl mx-auto mb-10 leading-relaxed font-nyctophobia tracking-wide">
+                   <p className="text-base md:text-xl text-gray-400 font-light max-w-2xl mx-auto mb-10 leading-relaxed font-above tracking-wide">
                       The ultimate sanctuary for the awakened. <br/>
                       Join the guild. Access the archives. Become legend.
                    </p>
@@ -273,10 +281,10 @@ export default function LandingClient() {
                    </div>
 
                    <div className="flex flex-col sm:flex-row gap-5 justify-center items-center relative z-20">
-                      <Button onClick={() => setShowAuth(true)} className="h-14 px-8 rounded-full bg-primary-800 hover:bg-primary-700 text-white font-bold text-lg shadow-[0_0_35px_rgba(220,38,38,0.4)] border border-primary-500/50 backdrop-blur-md font-horrorshow tracking-wider">
+                      <Button onClick={() => setShowAuth(true)} className="h-14 px-8 rounded-full bg-primary-800 hover:bg-primary-700 text-white font-bold text-lg shadow-[0_0_35px_rgba(220,38,38,0.4)] border border-primary-500/50 backdrop-blur-md font-above tracking-wider">
                         <Crown className="mr-3 h-5 w-5" /> Join The Guild
                       </Button>
-                      <Button onClick={handleEnterClick} variant="ghost" className="h-14 px-8 rounded-full text-white/70 hover:text-white hover:bg-white/10 border border-white/10 text-lg hover:border-primary-500/50 backdrop-blur-md transition-all font-horrorshow tracking-wider">
+                      <Button onClick={handleEnterClick} variant="ghost" className="h-14 px-8 rounded-full text-white/70 hover:text-white hover:bg-white/10 border border-white/10 text-lg hover:border-primary-500/50 backdrop-blur-md transition-all font-above tracking-wider">
                         Enter as Visitor <ArrowRight className="ml-3 w-5 h-5" />
                       </Button>
                    </div>
@@ -294,7 +302,7 @@ export default function LandingClient() {
                   <div className="max-w-7xl mx-auto px-6">
                      <div className="flex items-center gap-3 mb-8 border-b border-white/10 pb-4">
                         <Flame className="w-6 h-6 text-primary-600" />
-                        <h3 className="text-3xl font-normal font-demoness text-white tracking-widest">TOP BOUNTIES</h3>
+                        <h3 className="text-3xl font-normal font-gradvis text-white tracking-widest">TOP BOUNTIES</h3>
                      </div>
                      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-3">
                         {isLoadingTrending ? (
@@ -319,8 +327,8 @@ export default function LandingClient() {
                <section className="py-20 relative overflow-hidden">
                   <div className="max-w-6xl mx-auto px-6 flex flex-col md:flex-row items-center gap-12 relative z-10">
                      <div className="flex-1 space-y-8">
-                        <h3 className="text-4xl font-normal text-primary-600 font-demoness border-l-4 border-primary-600 pl-6" style={{ fontFamily: 'var(--font-nyctophobia), serif' }}>THE FORBIDDEN LIBRARY</h3>
-                        <p className="text-gray-400 text-lg leading-relaxed font-nyctophobia tracking-wide">
+                        <h3 className="text-4xl font-normal text-primary-600 font-gradvis border-l-4 border-primary-600 pl-6" style={{ fontFamily: 'var(--font-above), serif' }}>THE FORBIDDEN LIBRARY</h3>
+                        <p className="text-gray-400 text-lg leading-relaxed font-above tracking-wide">
                            Shadow Garden isn't just a website; it's a repository of otaku culture. 
                            We index over 15,000 series, automatically sync with MyAnimeList and AniList.
                         </p>
@@ -347,7 +355,7 @@ export default function LandingClient() {
                <section className="px-6 relative z-10">
                  <div className="max-w-7xl mx-auto">
                    <div className="text-center mb-16">
-                      <h2 className="text-4xl md:text-5xl font-normal text-white mb-4 font-demoness text-primary-600" style={{ fontFamily: 'var(--font-nyctophobia), serif' }}>GUILD PERKS</h2>
+                      <h2 className="text-4xl md:text-5xl font-normal text-white mb-4 font-gradvis text-primary-600" style={{ fontFamily: 'var(--font-above), serif' }}>GUILD PERKS</h2>
                       <div className="w-24 h-1.5 bg-primary-600 mx-auto rounded-full shadow-[0_0_15px_red]" />
                    </div>
                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -366,8 +374,8 @@ export default function LandingClient() {
                   <div className="relative rounded-3xl overflow-hidden border border-primary-900/30 bg-gradient-to-br from-primary-950/20 to-black p-12 text-center md:text-left flex flex-col md:flex-row items-center gap-12 group">
                      <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-20 mix-blend-overlay" />
                      <div className="flex-1 relative z-10">
-                        <h3 className="text-3xl font-normal text-white mb-4 font-demoness text-primary-500" style={{ fontFamily: 'var(--font-nyctophobia), serif' }}>VISIT THE GARDEN LOBBY</h3>
-                        <p className="text-gray-400 mb-8 leading-relaxed font-nyctophobia">
+                        <h3 className="text-3xl font-normal text-white mb-4 font-gradvis text-primary-500" style={{ fontFamily: 'var(--font-above), serif' }}>VISIT THE GARDEN LOBBY</h3>
+                        <p className="text-gray-400 mb-8 leading-relaxed font-above">
                            Connect with thousands of other agents. Discuss theories, get recommendation, and participate in weekly watch parties.
                         </p>
                         <div className="flex flex-wrap gap-4 justify-center md:justify-start">
@@ -393,7 +401,7 @@ export default function LandingClient() {
                {/* FOOTER */}
                <footer className="py-12 border-t border-white/5 text-center relative overflow-hidden bg-black">
                   <div className="relative z-20">
-                      <h4 className="text-2xl font-demoness text-primary-600 font-normal mb-3" style={{ fontFamily: 'var(--font-demoness), serif' }}>SHADOW GARDEN</h4>
+                      <h4 className="text-2xl font-gradvis text-primary-600 font-normal mb-3" style={{ fontFamily: 'var(--font-gradvis), serif' }}>SHADOW GARDEN</h4>
                       <p className="text-gray-600 text-xs uppercase tracking-widest mb-8">Created by Ace Zero • Est. 2026</p>
                       <div className="flex justify-center gap-8 text-xs text-gray-500 font-medium uppercase tracking-wider">
                          <Link href="#" className="hover:text-primary-500 transition-colors">Terms of Service</Link>

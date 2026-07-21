@@ -4,7 +4,6 @@ import React, { useState, useEffect, Suspense, useCallback } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import AnimeCard from '@/components/Anime/AnimeCard';
 import { dpi } from '@/lib/dpi';
-import { demoness, hunters } from '@/lib/fonts';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Search, Loader2, ChevronLeft, ChevronRight, X, Flame,
@@ -93,13 +92,13 @@ function DonghuaSearchContent() {
         <div className="max-w-7xl mx-auto relative z-10">
           <div className="flex items-center gap-3 mb-2">
             <div className="h-px w-8 bg-red-500" />
-            <span className={`text-red-400 text-[10px] tracking-[0.3em] font-bold uppercase ${hunters.className}`}>
+            <span className={`text-red-400 text-[10px] tracking-[0.3em] font-bold uppercase font-lemon`}>
               <Flame size={12} className="inline mr-2" />
               Donghua
             </span>
           </div>
           
-          <h1 className={`text-4xl md:text-6xl text-white mb-2 ${demoness.className}`}>
+          <h1 className={`text-4xl md:text-6xl text-white mb-2 font-gradvis`}>
             {keyword ? (
               <>DONGHUA <span className="text-red-500">RESULTS</span></>
             ) : (

@@ -360,14 +360,14 @@ export default function AnimeCard({ anime, progress = 0, isHindi = false }: Anim
                 <div className="flex-shrink-0 flex items-center gap-1 h-5 md:h-6 px-1.5 md:px-2.5 rounded-md md:rounded-full bg-white/10 backdrop-blur-md border border-white/10 shadow-sm min-w-0">
                    {(normalized.subCount || normalized.dubCount) ? (
                        <>
-                           {normalized.subCount && (
+                           {Number(normalized.subCount) > 0 && (
                              <div className="flex items-center gap-0.5 text-[8px] md:text-[9px] font-bold text-white">
                                <Captions size={8} className="text-zinc-300 md:w-3 md:h-3" /> 
                                <span>{normalized.subCount}</span>
                              </div>
                            )}
-                           {normalized.subCount && normalized.dubCount && <div className="w-px h-2 bg-white/20" />}
-                           {normalized.dubCount && (
+                           {Number(normalized.subCount) > 0 && Number(normalized.dubCount) > 0 && <div className="w-px h-2 bg-white/20" />}
+                           {Number(normalized.dubCount) > 0 && (
                              <div className="flex items-center gap-0.5 text-[8px] md:text-[9px] font-bold text-white">
                                <Mic size={8} className="text-zinc-300 md:w-3 md:h-3" /> 
                                <span>{normalized.dubCount}</span>

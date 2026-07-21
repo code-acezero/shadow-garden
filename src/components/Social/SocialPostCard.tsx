@@ -183,7 +183,7 @@ export default function SocialPostCard({
       <Dialog open={isCommentOpen} onOpenChange={setIsCommentOpen}>
         <DialogContent className="bg-[#0a0a0a] border-white/10 text-white sm:max-w-md">
           <DialogHeader>
-            <DialogTitle className="font-cinzel text-center">Reply to Agent</DialogTitle>
+            <DialogTitle className="font-lemon text-center">Reply to Agent</DialogTitle>
           </DialogHeader>
           <div className="space-y-4 py-2">
             {/* Original Post Snippet */}

@@ -135,3 +135,35 @@
   background: var(--primary-600); /* Uses the active theme color */
   color: #ffffff;
 }
+
+/* ─── Premium Title Spacing Overrides ─── */
+/* Ensure headings and custom display fonts have clear letter and word separation */
+h1, h2, h3, h4, h5, h6,
+.font-gradvis,
+.font-lemon,
+.font-above,
+.font-minomu,
+[class*="font-gradvis"],
+[class*="font-above"],
+[class*="font-minomu"],
+[class*="font-lemon"] {
+  letter-spacing: 0.03em !important; 
+  word-spacing: 0.18em !important;
+}
+
+/* De-congest utility classes like tracking-tighter/tracking-tight for display text */
+.tracking-tighter {
+  letter-spacing: -0.01em !important;
+  word-spacing: 0.12em !important;
+}
+.tracking-tight {
+  letter-spacing: 0.01em !important;
+  word-spacing: 0.14em !important;
+}
+
+/* Keep tracking-wide and tracking-widest intact if specifically declared */
+.tracking-wide,
+.tracking-widest {
+  letter-spacing: inherit !important;
+  word-spacing: inherit !important;
+}

@@ -19,7 +19,7 @@ export default function Footer() {
             <div className="w-8 h-8 rounded-full border border-white/20 group-hover:border-orange-500 transition-colors flex items-center justify-center bg-[#0a0a0a]">
               <ShadowLogo size="w-6 h-6" />
             </div>
-            <span className="text-xl font-[Cinzel] font-black tracking-widest">SHADOW GARDEN</span>
+            <span className="text-xl font-lemon font-black tracking-widest">SHADOW GARDEN</span>
           </Link>
           <p className="text-[10px] text-zinc-500 font-bold uppercase tracking-widest mt-1">
             Premium Anime & Drama Streaming

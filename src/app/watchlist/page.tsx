@@ -38,7 +38,7 @@ import AnimeCard from '@/components/Anime/AnimeCard';
 import ContinueAnimeCard from '@/components/Anime/ContinueAnimeCard';
 import Footer from '@/components/Anime/Footer';
 import AuthModal from '@/components/Auth/AuthModal';
-import { demoness, hunters } from '@/lib/fonts';
+
 
 // --- TYPES ---
 interface LibraryItem {
@@ -209,9 +209,9 @@ function WatchlistContent() {
                             <div>
                                 <div className="flex items-center gap-2 mb-1">
                                     <div className="h-px w-6 bg-primary-600" />
-                                    <span className={`text-primary-600 text-[10px] tracking-[0.2em] font-bold uppercase ${hunters.className}`}>Archives</span>
+                                    <span className={`text-primary-600 text-[10px] tracking-[0.2em] font-bold uppercase font-lemon`}>Archives</span>
                                 </div>
-                                <h1 className={`text-2xl md:text-5xl text-white ${demoness.className}`}>
+                                <h1 className={`text-2xl md:text-5xl text-white font-gradvis`}>
                                     SHADOW <span className="text-primary-600">LIBRARY</span>
                                 </h1>
                             </div>

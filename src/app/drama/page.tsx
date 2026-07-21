@@ -3,11 +3,10 @@
 import React, { useState, useEffect, memo } from 'react';
 import Link from 'next/link';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Search, Play, ChevronRight, Loader2, Info, Plus, Check } from 'lucide-react';
+import { Search, Play, ChevronRight, Loader2, Info, Plus, Check, Star } from 'lucide-react';
 import { omni, DramaSection, DramaCard } from '@/lib/omni';
 import { cn } from '@/lib/utils';
 import Footer from '@/components/Anime/Footer';
-import { demoness, hunters } from '@/lib/fonts';
 
 // ── Search Bar ────────────────────────────────────────────────────────────────
 
@@ -129,27 +128,23 @@ const DCard = memo(({ item }: { item: DramaCard }) => {
           </div>
         )}
 
-        {/* Prime Video style hover overlay */}
-        <div className="absolute inset-0 p-3 md:p-4 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex flex-col justify-end bg-gradient-to-t from-[#020617] via-[#020617]/90 to-transparent pb-4">
-          
-          {/* Top Info */}
-          <div className="mb-3">
-              <h3 className="text-xs md:text-sm font-black text-white line-clamp-2 leading-tight drop-shadow-md mb-1">{item.title}</h3>
+        {/* Permanent Bottom Info Overlay */}
+        <div className="absolute inset-x-0 bottom-0 p-3 md:p-4 flex flex-col justify-end bg-gradient-to-t from-[#020617] via-[#020617]/90 to-transparent h-2/3 md:h-1/2 transition-all">
+          <div className="mt-auto group-hover:-translate-y-2 transition-transform duration-300">
+              <h3 className="text-[11px] md:text-sm font-black text-white line-clamp-2 leading-tight drop-shadow-md mb-1.5 font-gradvis">{item.title}</h3>
               <div className="flex flex-wrap items-center gap-1.5 text-[8px] md:text-[9px] font-bold text-cyan-200/80 uppercase tracking-widest">
-                  {item.year && <span className="bg-white/10 px-1 rounded">{item.year}</span>}
-                  {item.type && !item.type.includes(countryTag) && <span>{item.type}</span>}
+                  {item.year && <span className="bg-white/10 px-1.5 py-0.5 rounded border border-white/5">{item.year}</span>}
+                  {item.type && !item.type.includes(countryTag) && <span className="bg-cyan-500/20 text-cyan-300 px-1.5 py-0.5 rounded">{item.type}</span>}
+                  <span className="text-yellow-400 flex items-center gap-0.5"><Star size={8} fill="currentColor"/> 8.5</span>
               </div>
           </div>
 
-          {/* Action Buttons */}
-          <div className="flex items-center gap-2">
+          {/* Action Buttons (Only visible on Hover, sliding up) */}
+          <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-all duration-300 translate-y-4 group-hover:translate-y-0 absolute bottom-3 md:bottom-4 left-3 right-3 md:left-4 md:right-4">
               <div className="w-8 h-8 rounded-full bg-cyan-500 hover:bg-cyan-400 text-black flex items-center justify-center shadow-[0_0_15px_rgba(34,211,238,0.4)] transition-all">
                   <Play size={14} fill="black" className="ml-0.5" />
               </div>
-              <div className="w-8 h-8 rounded-full bg-white/10 hover:bg-white/20 border border-white/20 text-white flex items-center justify-center backdrop-blur-sm transition-all">
-                  <Info size={14} />
-              </div>
-              <div className="w-8 h-8 rounded-full bg-white/10 hover:bg-white/20 border border-white/20 text-white flex items-center justify-center backdrop-blur-sm transition-all ml-auto" onClick={(e) => { e.preventDefault(); /* handle add to list */ }}>
+              <div className="w-8 h-8 rounded-full bg-white/10 hover:bg-white/20 border border-white/20 text-white flex items-center justify-center backdrop-blur-sm transition-all ml-auto" onClick={(e) => { e.preventDefault(); }}>
                   <Plus size={14} />
               </div>
           </div>
@@ -276,10 +271,10 @@ const HeroSlider = ({ items }: { items: DramaCard[] }) => {
             >
               <div className="flex items-center gap-2 mb-2 md:mb-4">
                   <Check size={16} className="text-cyan-400 p-0.5 bg-cyan-400/20 rounded-full" />
-                  <span className={`text-[10px] md:text-xs font-bold text-cyan-200 tracking-[0.2em] uppercase ${hunters.className}`}>Included with Prime Shadow</span>
+                  <span className={`text-[10px] md:text-xs font-bold text-cyan-200 tracking-[0.2em] uppercase font-lemon`}>Included with Prime Shadow</span>
               </div>
               
-              <h1 className={`text-4xl md:text-7xl font-bold text-white leading-[1.1] tracking-tighter mb-4 drop-shadow-[0_0_30px_rgba(34,211,238,0.3)] ${demoness.className}`}>
+              <h1 className={`text-4xl md:text-7xl font-bold text-white leading-[1.1] tracking-tighter mb-4 drop-shadow-[0_0_30px_rgba(34,211,238,0.3)] font-gradvis`}>
                 {item.title}
               </h1>
 

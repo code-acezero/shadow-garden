@@ -415,19 +415,19 @@ export default function ShadowComments({ episodeId }: { episodeId: string }) {
             {/* HEADER */}
             <div className="flex items-center gap-3 mb-8 pb-4 border-b border-white/5">
                 <MessageSquare size={24} className="text-primary-600" />
-                <h3 className="font-black text-white text-xl md:text-2xl font-[Cinzel] tracking-[0.2em] uppercase">Community Transmission</h3>
+                <h3 className="font-black text-white text-xl md:text-2xl font-lemon tracking-[0.2em] uppercase">Community Transmission</h3>
                 <Badge variant="outline" className="text-[10px] md:text-xs border-primary-600/30 text-primary-500 font-bold ml-2">
                     {comments.reduce((acc, c) => acc + 1 + (c.replies?.length || 0), 0)} Signals
                 </Badge>
             </div>
 
             {/* TWO-COLUMN LAYOUT */}
-            <div className="flex flex-col-reverse lg:grid lg:grid-cols-[1fr_350px] xl:grid-cols-[1fr_400px] gap-10 items-start">
+            <div className="flex flex-col-reverse lg:grid lg:grid-cols-[1fr_350px] xl:grid-cols-[1fr_400px] gap-8 items-stretch">
                 
                 {/* LEFT: Comments Feed */}
                 <div className="w-full flex flex-col gap-6">
                     {comments.length === 0 ? (
-                        <div className="w-full py-20 flex flex-col items-center justify-center border border-dashed border-white/10 bg-black/20 rounded-3xl">
+                        <div className="w-full h-full min-h-[350px] py-16 flex flex-col items-center justify-center border border-dashed border-white/10 bg-black/20 rounded-[32px]">
                             <span className="text-zinc-600 text-sm font-mono mb-2">No signals detected in this sector.</span>
                             <span className="text-zinc-700 text-xs uppercase tracking-widest font-black">Be the first to transmit</span>
                         </div>
@@ -448,8 +448,8 @@ export default function ShadowComments({ episodeId }: { episodeId: string }) {
                     )}
                 </div>
 
-                {/* RIGHT: Sticky Sidebar */}
-                <div className="flex flex-col gap-6 w-full lg:sticky lg:top-[120px] bg-[#0a0a0a] p-6 md:p-8 rounded-[32px] border border-white/5 shadow-2xl shadow-primary-900/5">
+                {/* RIGHT: Input & Rules Sidebar */}
+                <div className="flex flex-col gap-6 w-full h-full bg-[#0a0a0a] p-6 md:p-8 rounded-[32px] border border-white/5 shadow-2xl shadow-primary-900/5">
                     
                     {/* Rules */}
                     <div className="flex items-center gap-2 text-zinc-400 text-xs font-black uppercase tracking-wider mb-2">

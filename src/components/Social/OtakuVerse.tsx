@@ -403,7 +403,7 @@ export default function OtakuVerse({ user, onAuthRequired, highlightId }: OtakuV
            <div className="flex flex-col gap-1 w-full items-center lg:items-start">
               <div className="flex items-center justify-center lg:justify-start w-12 h-12 lg:w-auto lg:p-3 rounded-full hover:bg-white/10 cursor-pointer transition-colors mb-2 text-primary-500">
                  <Hash size={28} />
-                 <span className="hidden lg:block font-bold text-xl ml-4 font-[Cinzel] tracking-widest uppercase">OtakuVerse</span>
+                 <span className="hidden lg:block font-bold text-xl ml-4 font-lemon tracking-widest uppercase">OtakuVerse</span>
               </div>
               
               <NavButton icon={<Home size={26} />} label="Home" active={activeTab === 'feed'} onClick={() => setActiveTab('feed')} />
@@ -437,7 +437,7 @@ export default function OtakuVerse({ user, onAuthRequired, highlightId }: OtakuV
         <main className="flex-1 max-w-[600px] w-full h-full overflow-y-auto custom-scrollbar border-x border-white/10 pb-[100px] md:pb-0">
            {/* Sticky Header */}
            <div className="relative z-20 bg-black/70 backdrop-blur-md border-b border-white/10">
-              <h2 className="text-xl font-bold p-4 sm:hidden font-[Cinzel] text-primary-500 tracking-widest uppercase">OtakuVerse</h2>
+              <h2 className="text-xl font-bold p-4 sm:hidden font-lemon text-primary-500 tracking-widest uppercase">OtakuVerse</h2>
               <div className="flex">
                  <button onClick={() => setActiveTab('feed')} className="flex-1 hover:bg-white/5 transition-colors pt-4 pb-0 relative flex justify-center">
                     <div className={`pb-4 font-bold text-[15px] ${activeTab === 'feed' ? 'text-white' : 'text-zinc-500'}`}>

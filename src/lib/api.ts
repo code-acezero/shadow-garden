@@ -46,14 +46,11 @@ import { supabase } from "@/lib/supabase";
 
 export class ApiManager {
     private static urls = [
+        'http://localhost:3000/api',
         'https://omni-api-v1.vercel.app/api',
-        // Add additional API mirrors here for rotation
         'https://omni-api-v2.vercel.app/api',
-
         'https://omni-api-v3.vercel.app/api',
-
-        'https://omni-api-v4.vercel.app/api',
-
+        'https://omni-api-v4.vercel.app/api'
     ];
     private static currentIndex = 0;
 

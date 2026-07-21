@@ -1,6 +1,5 @@
-import type { Metadata, Viewport } from "next";
+import { Metadata, Viewport } from "next";
 import PageTransition from "@/components/Transitions/PageTransition";
-import { Inter } from "next/font/google";
 import "./globals.css";
 import Navigation from "@/components/Layout/Navigation"; 
 import { Toaster } from 'sonner'; 
@@ -15,16 +14,8 @@ import AlphaWidget from '@/components/AI/AlphaWidget';
 
 // Import fonts from your library (Optimized: These are just variable definitions now)
 import { 
-  badUnicorn, demoness, horrorshow, hunters, 
-  kareudon, monas, nyctophobia, onePiece 
+  poppins, lemonMilk, gradvis, above, minomu 
 } from '@/lib/fonts';
-
-// Keep Inter preloaded as the default UI font for speed
-const inter = Inter({ 
-  subsets: ["latin"],
-  variable: '--font-inter',
-  display: 'swap', 
-});
 
 export const viewport: Viewport = {
   themeColor: '#050505',
@@ -125,15 +116,11 @@ export default function RootLayout({
   // 1. Combine all font variable definitions
   // Since we set preload: false in fonts.ts, this barely adds any size to the initial load
   const fontVariables = [
-    inter.variable, 
-    badUnicorn.variable, 
-    demoness.variable, 
-    horrorshow.variable, 
-    hunters.variable, 
-    kareudon.variable, 
-    monas.variable, 
-    nyctophobia.variable, 
-    onePiece.variable
+    poppins.variable,
+    lemonMilk.variable,
+    gradvis.variable,
+    above.variable,
+    minomu.variable
   ].join(' ');
 
   const jsonLd = {

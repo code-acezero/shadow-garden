@@ -60,7 +60,7 @@ export default function SinglePostPage() {
       <div className="min-h-screen flex items-center justify-center bg-black">
         <div className="flex flex-col items-center gap-4">
           <Loader2 className="w-10 h-10 text-primary-600 animate-spin" />
-          <p className="text-zinc-500 font-[Cinzel] tracking-widest animate-pulse text-xs">
+          <p className="text-zinc-500 font-lemon tracking-widest animate-pulse text-xs">
             DECRYPTING_SIGNAL...
           </p>
         </div>
@@ -72,7 +72,7 @@ export default function SinglePostPage() {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center bg-black text-white p-4">
         <div className="absolute inset-0 bg-[url('/noise.png')] opacity-5 pointer-events-none" />
-        <h1 className="text-4xl font-black mb-4 font-[Cinzel] text-primary-600 tracking-tighter">
+        <h1 className="text-4xl font-black mb-4 font-lemon text-primary-600 tracking-tighter">
           SIGNAL_DISRUPTED
         </h1>
         <p className="text-zinc-500 mb-8 max-w-md text-center text-sm uppercase tracking-widest leading-relaxed">
@@ -103,7 +103,7 @@ export default function SinglePostPage() {
               <ArrowLeft />
             </Button>
             <div>
-              <h2 className="font-[Cinzel] text-sm md:text-lg tracking-[0.2em] text-primary-500 uppercase leading-none">
+              <h2 className="font-lemon text-sm md:text-lg tracking-[0.2em] text-primary-500 uppercase leading-none">
                 Transmission_Log
               </h2>
               <p className="text-[10px] text-zinc-600 font-bold uppercase tracking-tighter mt-1">

@@ -45,7 +45,7 @@ const SUB_STYLES = {
 };
 
 const APP_FONTS: Record<string, string> = {
-    hunters: 'var(--font-hunters)', badUnicorn: 'BadUnicorn', demoness: 'Demoness', horrorshow: 'Horrorshow', kareudon: 'Kareudon', monas: 'Monas', nyctophobia: 'Nyctophobia', onePiece: 'One Piece', inter: '"Inter", sans-serif'
+    hunters: 'var(--font-minomu)', badUnicorn: 'BadUnicorn', demoness: 'Demoness', horrorshow: 'Horrorshow', kareudon: 'Kareudon', monas: 'Monas', nyctophobia: 'Nyctophobia', onePiece: 'One Piece', inter: '"Inter", sans-serif'
 };
 
 const MENU_ITEMS = [
@@ -290,7 +290,7 @@ export default function Settings() {
     notifyWhisper("Config Exported", "success");
   };
 
-  const currentFont = APP_FONTS[settings.fontFamily || 'hunters'] || 'var(--font-hunters)';
+  const currentFont = APP_FONTS[settings.fontFamily || 'hunters'] || 'var(--font-minomu)';
 
   const renderContent = () => {
     switch (activeTab) {

@@ -118,7 +118,7 @@ const useWatchSettings = () => {
 const FantasyLoader = memo(({ text = "SUMMONING..." }: { text?: string }) => (
   <div className="w-full h-full min-h-[500px] flex flex-col items-center justify-center relative bg-[#050505]">
     <div className="w-16 h-16 border-4 border-orange-600 border-t-transparent rounded-full animate-spin mb-4 shadow-orange-500/20" />
-    <h2 className="text-xl font-[Cinzel] text-orange-500 animate-pulse tracking-[0.3em]">{text}</h2>
+    <h2 className="text-xl font-lemon text-orange-500 animate-pulse tracking-[0.3em]">{text}</h2>
   </div>
 ));
 FantasyLoader.displayName = "FantasyLoader";
@@ -398,7 +398,7 @@ const CharacterDetailsDialog = ({
                         <img src={data.profile || data.image || '/images/non-non.png'} className="w-full h-full object-cover opacity-90 transition-transform duration-700 group-hover:scale-105" alt={data.name} loading="lazy" decoding="async"/>
                         <div className="absolute inset-0 bg-gradient-to-t from-black via-transparent to-transparent md:bg-gradient-to-r" />
                         <div className="absolute bottom-6 left-6 z-10">
-                            <h2 className="text-2xl md:text-3xl font-black text-white font-[Cinzel] leading-none tracking-tighter drop-shadow-lg">{data.name}</h2>
+                            <h2 className="text-2xl md:text-3xl font-black text-white font-lemon leading-none tracking-tighter drop-shadow-lg">{data.name}</h2>
                             <p className="text-orange-500 font-bold uppercase tracking-[0.2em] text-[10px] mt-1">{data.japaneseName}</p>
                         </div>
                     </div>
@@ -514,7 +514,7 @@ const VoiceActorDetailsDialog = ({
                         <img src={data.profile || '/images/non-non.png'} className="w-full h-full object-cover opacity-90 transition-transform duration-700 group-hover:scale-105" alt={data.name} loading="lazy" decoding="async"/>
                         <div className="absolute inset-0 bg-gradient-to-t from-black via-transparent to-transparent md:bg-gradient-to-r" />
                         <div className="absolute bottom-6 left-6 z-10">
-                            <h2 className="text-2xl md:text-3xl font-black text-white font-[Cinzel] leading-none tracking-tighter drop-shadow-lg">{data.name}</h2>
+                            <h2 className="text-2xl md:text-3xl font-black text-white font-lemon leading-none tracking-tighter drop-shadow-lg">{data.name}</h2>
                             <p className="text-orange-500 font-bold uppercase tracking-[0.3em] text-[10px] mt-1">{data.japaneseName}</p>
                         </div>
                     </div>
@@ -828,7 +828,7 @@ function WatchContent() {
                 })),
                 trailers: [],
                 seasons: [],
-                recommendations: details.recommendations.map(r => ({
+                recommendations: details.recommendations.map((r: any) => ({
                     id: r.id,
                     title: r.title,
                     poster: r.image,
@@ -846,12 +846,12 @@ function WatchContent() {
                     const searchData = await hpi.hindi.search(baseTitle, 1);
                     if (searchData && searchData.items) {
                         universalData.related = searchData.items
-                            .filter(s => {
+                            .filter((s: any) => {
                                 if (universalData.related?.some((r: any) => r.id === s.id)) return false;
                                 return isRelatedAnime(details.id, details.title, s.id, s.title);
                             })
                             .slice(0, 8)
-                            .map(r => ({
+                            .map((r: any) => ({
                                 id: r.id,
                                 title: r.title,
                                 poster: r.image,
@@ -868,9 +868,9 @@ function WatchContent() {
                     const genreSearch = await hpi.hindi.search(details.genres[0], 1);
                     if (genreSearch && genreSearch.items) {
                         universalData.recommendations = genreSearch.items
-                            .filter(s => s.id !== details.id)
+                            .filter((s: any) => s.id !== details.id)
                             .slice(0, 10)
-                            .map(r => ({
+                            .map((r: any) => ({
                                 id: r.id,
                                 title: r.title,
                                 poster: r.image,
@@ -1187,8 +1187,8 @@ function WatchContent() {
       <div className={cn("fixed inset-0 bg-black/90 z-[39] transition-opacity duration-700 pointer-events-none will-change-[opacity]", settings.dimMode ? 'opacity-100' : 'opacity-0')} />
 
             <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.8 }} className="w-full flex flex-col items-center bg-[#050505] relative z-40 px-4 md:px-8 mt-6">
-        <div className="w-full max-w-[1500px] flex flex-col xl:grid xl:grid-cols-12 gap-8 items-start">
-            <div className="xl:col-span-8 w-full flex flex-col gap-2">
+        <div className="w-full max-w-[1500px] flex flex-col xl:grid xl:grid-cols-12 gap-8 items-start pb-12">
+            <div className="xl:col-span-8 w-full flex flex-col gap-2 order-1">
                 <div ref={playerContainerRef} tabIndex={0} className="w-full aspect-video bg-black rounded-[30px] overflow-hidden border border-white/5 shadow-2xl relative shadow-orange-900/10 outline-none focus:ring-1 focus:ring-white/10" onClick={handlePlayerClick} onKeyDown={(e) => { if (e.code === 'Space') { e.preventDefault(); } }}>
                 <AnimatePresence>
                     {showSkipNotification && (
@@ -1310,9 +1310,9 @@ function WatchContent() {
             </motion.div>
             </div>
             
-            <div className="xl:col-span-4 w-full h-[650px] bg-[#0a0a0a] rounded-[40px] border border-white/5 overflow-hidden flex flex-col shadow-2xl relative z-20">
+            <div className="xl:col-span-4 w-full xl:h-[650px] h-auto bg-[#0a0a0a] rounded-[40px] border border-white/5 overflow-hidden flex flex-col shadow-2xl relative z-20 order-2">
                 <div className="p-6 bg-white/5 border-b border-white/5 flex justify-between items-center shrink-0">
-                    <div className="flex items-center gap-3"><h3 className="font-black text-white flex items-center gap-2 uppercase text-sm font-[Cinzel] tracking-widest"><Layers size={18} className="text-orange-600"/> Episodes</h3><Badge className="bg-white/10 backdrop-blur-md border border-white/10 text-white font-black text-[10px] px-3 h-5 rounded-full shadow-lg">{anime.episodes.length}</Badge></div>
+                    <div className="flex items-center gap-3"><h3 className="font-black text-white flex items-center gap-2 uppercase text-sm font-lemon tracking-widest"><Layers size={18} className="text-orange-600"/> Episodes</h3><Badge className="bg-white/10 backdrop-blur-md border border-white/10 text-white font-black text-[10px] px-3 h-5 rounded-full shadow-lg">{anime.episodes.length}</Badge></div>
                     <div className="flex items-center gap-1 bg-black/50 p-1 rounded-lg border border-white/5">
                         <button onClick={() => setEpViewMode('compact')} className={cn("p-1.5 rounded-md transition-all", epViewMode === 'compact' ? "bg-zinc-800 text-white shadow-sm" : "text-zinc-500 hover:text-zinc-300")}><Grid size={14}/></button>
                         <button onClick={() => setEpViewMode('grid')} className={cn("p-1.5 rounded-md transition-all", epViewMode === 'grid' ? "bg-zinc-800 text-white shadow-sm" : "text-zinc-500 hover:text-zinc-300")}><LayoutGrid size={14}/></button>
@@ -1326,7 +1326,7 @@ function WatchContent() {
                         ))}
                     </div>
                 </div>
-                <ScrollArea className="flex-1 p-2 shadow-inner custom-scrollbar overflow-x-hidden">
+                <div className="xl:flex-1 xl:overflow-y-auto h-auto p-2 shadow-inner custom-scrollbar overflow-x-hidden">
                     <LayoutGroup>
                         <motion.div layout className={cn("p-2 transition-all duration-500 ease-in-out grid", epViewMode === 'grid' ? 'grid-cols-5 gap-2.5' : epViewMode === 'compact' ? 'grid-cols-10 gap-1.5' : 'grid-cols-1 gap-2')}>
                             <AnimatePresence mode="popLayout">
@@ -1341,15 +1341,10 @@ function WatchContent() {
                             </AnimatePresence>
                         </motion.div>
                     </LayoutGroup>
-                </ScrollArea>
+                </div>
             </div>
-        </div>
-      </motion.div>
-
-      <div className="w-full flex justify-center mt-8 px-4 md:px-8 pb-12">
-          <div className="w-full flex flex-col gap-8 max-w-[1500px]">
-              <div className="w-full xl:grid xl:grid-cols-12 gap-8 items-start">
-                  <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} transition={{ duration: 0.6, delay: 0.4 }} className="xl:col-span-8 w-full h-auto xl:h-[650px] bg-[#0a0a0a] rounded-[40px] border border-white/5 overflow-hidden flex flex-col shadow-2xl relative shadow-orange-900/20">
+            
+            <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} transition={{ duration: 0.6, delay: 0.4 }} className="xl:col-span-8 w-full h-auto xl:h-[650px] bg-[#0a0a0a] rounded-[40px] border border-white/5 overflow-hidden flex flex-col shadow-2xl relative shadow-orange-900/20 order-3">
                     <div className="flex-shrink-0 relative p-8 pt-16 flex flex-col sm:flex-row gap-10 bg-gradient-to-b from-orange-600/5 to-transparent">
                         <div className="relative shrink-0 mx-auto lg:mx-0 flex flex-col gap-6 w-full lg:w-auto items-center lg:items-start text-center lg:text-left">
                             <div className="relative p-[3px] rounded-3xl overflow-hidden group/poster shadow-[0_0_40px_rgba(220,38,38,0.2)] mx-auto sm:mx-0 w-fit">
@@ -1357,7 +1352,7 @@ function WatchContent() {
                                 <img src={anime.poster} className="w-44 h-60 rounded-3xl border border-white/10 object-cover relative z-10 shadow-2xl shadow-black" alt={anime.title} loading="lazy" decoding="async"/>
                             </div>
                             <div className="flex lg:hidden flex-col gap-3 w-full items-center text-center">
-                                <h1 className="text-2xl font-black text-white font-[Cinzel] leading-none tracking-tighter drop-shadow-2xl shadow-black scale-[0.85] origin-center">{anime.title}</h1>
+                                <h1 className="text-2xl font-black text-white font-lemon leading-none tracking-tighter drop-shadow-2xl shadow-black scale-[0.85] origin-center">{anime.title}</h1>
                                 <div className="flex flex-wrap gap-3 mt-3 justify-center items-center">
                                     <div className="flex items-center flex-wrap justify-center gap-4 text-[11px] text-zinc-400 font-black bg-white/5 border border-white/5 px-5 py-2 rounded-full uppercase tracking-widest shadow-inner shadow-black/20 max-w-full">
                                              {formatRating(anime.stats.rating) && (<><span className={cn(formatRating(anime.stats.rating)?.includes('18') || formatRating(anime.stats.rating)?.includes('R') ? "text-orange-500" : "text-zinc-400")}>{formatRating(anime.stats.rating)}</span><span className="w-1.5 h-1.5 bg-zinc-800 rounded-full"/></>)}
@@ -1373,7 +1368,7 @@ function WatchContent() {
                             <div className="hidden lg:flex justify-center w-full"><TrailerSection videos={anime.trailers} /></div>
                         </div>
                         <div className="hidden lg:flex flex-1 pt-2 text-left z-10 flex-col h-full w-full">
-                            <h1 className="text-3xl md:text-5xl font-black text-white font-[Cinzel] leading-none mb-2 tracking-tighter drop-shadow-2xl shadow-black scale-[0.85] origin-left">{anime.title}</h1>
+                            <h1 className="text-3xl md:text-5xl font-black text-white font-lemon leading-none mb-2 tracking-tighter drop-shadow-2xl shadow-black scale-[0.85] origin-left">{anime.title}</h1>
                             {anime.jname && <p className="text-[10px] text-zinc-600 font-black uppercase tracking-[0.4em] mb-6 opacity-60 drop-shadow-sm">{anime.jname}</p>}
                             <div className="flex flex-wrap gap-4 mt-3 justify-start items-center">
                                 <div className="flex items-center gap-4 text-[11px] text-zinc-400 font-black bg-white/5 border border-white/5 px-5 py-2 rounded-full uppercase tracking-widest shadow-inner shadow-black/20">
@@ -1430,10 +1425,10 @@ function WatchContent() {
                             </DropdownMenu>
                         </div>
                     </div>
-                  </motion.div>
+            </motion.div>
                   
-                  <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} transition={{ duration: 0.6, delay: 0.5 }} className="xl:col-span-4 w-full h-auto xl:h-[650px] bg-[#0a0a0a] rounded-[40px] border border-white/5 overflow-hidden flex flex-col shadow-2xl relative shadow-orange-900/10 mt-8 xl:mt-0">
-                     <div className="p-6 bg-white/5 border-b border-white/5 flex items-center gap-3 shrink-0"><Wand2 size={18} className="text-orange-600"/><h3 className="font-black text-white text-sm font-[Cinzel] tracking-widest uppercase">Suggestions</h3></div>
+            <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} transition={{ duration: 0.6, delay: 0.5 }} className="xl:col-span-4 w-full h-auto xl:h-[650px] bg-[#0a0a0a] rounded-[40px] border border-white/5 overflow-hidden flex flex-col shadow-2xl relative shadow-orange-900/10 mt-8 xl:mt-0 order-5 xl:order-4">
+                     <div className="p-6 bg-white/5 border-b border-white/5 flex items-center gap-3 shrink-0"><Wand2 size={18} className="text-orange-600"/><h3 className="font-black text-white text-sm font-lemon tracking-widest uppercase">Suggestions</h3></div>
                      <ScrollArea className="flex-1 custom-scrollbar">
                          <div className="p-4 flex flex-col gap-3">
                              {anime.recommendations && anime.recommendations.length > 0 ? (
@@ -1455,15 +1450,14 @@ function WatchContent() {
                              )}
                          </div>
                      </ScrollArea>
-                  </motion.div>
-              </div>
+            </motion.div>
               
-              {/* RESTORED RELATED SECTION */}
-              {anime.related && anime.related.length > 0 && (
-                  <div className="w-full mt-8 bg-[#0a0a0a] rounded-[40px] border border-white/5 p-6 md:p-8 shadow-2xl relative shadow-orange-900/10">
+            {/* RELATED SECTION */}
+            {anime.related && anime.related.length > 0 && (
+                <div className="xl:col-span-12 w-full mt-4 bg-[#0a0a0a] rounded-[40px] border border-white/5 p-6 md:p-8 shadow-2xl relative shadow-orange-900/10 order-4 xl:order-5">
                       <div className="flex items-center gap-3 mb-6">
                           <Layers size={18} className="text-orange-600"/>
-                          <h3 className="font-black text-white text-sm font-[Cinzel] tracking-widest uppercase">Family Lineage</h3>
+                          <h3 className="font-black text-white text-sm font-lemon tracking-widest uppercase">Family Lineage</h3>
                       </div>
                       <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4 md:gap-6">
                           {anime.related.map((rel: any) => (
@@ -1471,13 +1465,14 @@ function WatchContent() {
                           ))}
                       </div>
                   </div>
-              )}
+            )}
 
-              <div className="w-full mt-8">
-                  <ShadowComments key={user?.id || 'guest'} episodeId={currentEpId || "general"} />
-              </div>
-          </div>
-      </div>
+            {/* COMMENTS SECTION */}
+            <div className="xl:col-span-12 w-full mt-4 order-6">
+                <ShadowComments key={user?.id || 'guest'} episodeId={currentEpId || "general"} />
+            </div>
+        </div>
+      </motion.div>
 
       <Footer />
     </div>

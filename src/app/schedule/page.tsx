@@ -16,7 +16,7 @@ import { AnimeService } from '@/lib/api';
 import Footer from '@/components/Anime/Footer';
 import { HoverCard, HoverCardContent, HoverCardTrigger } from "@/components/ui/hover-card";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { demoness, hunters } from '@/lib/fonts';
+
 
 // --- ANIMATION VARIANTS (Fixed TS Errors) ---
 const containerVariants: Variants = {
@@ -37,7 +37,7 @@ const SectionHeader = ({ title, icon: Icon, subtitle }: { title: string, icon: a
             <div className="p-2 bg-primary-600/10 rounded-lg border border-primary-500/20 shadow-[0_0_15px_rgba(220,38,38,0.2)]">
                 <Icon size={18} className="text-primary-500" />
             </div>
-            <h3 className={`text-xl md:text-2xl text-white tracking-widest ${hunters.className}`}>
+            <h3 className={`text-xl md:text-2xl text-white tracking-widest font-lemon`}>
                 {title}
             </h3>
         </div>
@@ -294,7 +294,7 @@ const TopChartCard = ({ anime, rank, index, mobileActiveIndex, onMobileClick }: 
                 className={cn(
                     "absolute -top-8 -right-4 z-50 text-5xl md:text-8xl leading-none select-none pointer-events-none transition-transform duration-300",
                     isMobileActive ? "scale-110 -translate-y-4 rotate-0" : "group-hover:scale-110 group-hover:-translate-y-4 group-hover:rotate-0",
-                    demoness.className
+                    "font-gradvis"
                 )}
                 style={{
                     transform: `rotate(${numberRotation}deg)`,
@@ -360,7 +360,7 @@ const DaySelector = ({ selectedDate, onSelect }: { selectedDate: Date, onSelect:
                         return (
                             <button key={i} onClick={() => onSelect(date)} className={cn("flex flex-col items-center justify-center min-w-[50px] md:min-w-[56px] h-[56px] md:h-[60px] rounded-xl border transition-all duration-300 snap-center shrink-0 relative overflow-hidden group", isSelected ? "bg-white text-black border-white scale-100 z-10 font-bold shadow-lg shadow-white/10" : "bg-white/5 border-white/5 text-zinc-500 hover:bg-white/10 hover:text-zinc-300")}>
                                 <span className="text-[8px] font-bold uppercase tracking-wider opacity-80">{format(date, 'EEE')}</span>
-                                <span className={cn("text-lg md:text-xl font-black font-[Cinzel] leading-none mt-0.5", isSelected ? "text-black" : "text-zinc-400 group-hover:text-white")}>{format(date, 'dd')}</span>
+                                <span className={cn("text-lg md:text-xl font-black font-lemon leading-none mt-0.5", isSelected ? "text-black" : "text-zinc-400 group-hover:text-white")}>{format(date, 'dd')}</span>
                                 {isToday && !isSelected && <span className="absolute top-1 right-1 w-1.5 h-1.5 bg-primary-500 rounded-full" />}
                             </button>
                         );
@@ -447,16 +447,16 @@ export default function SchedulePage() {
               <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}>
                   <div className="flex items-center gap-3 mb-3">
                       <div className="h-px w-8 bg-primary-600" />
-                      <span className={`text-primary-600 text-xs tracking-[0.3em] font-bold uppercase ${hunters.className}`}>Guild Operations</span>
+                      <span className={`text-primary-600 text-xs tracking-[0.3em] font-bold uppercase font-lemon`}>Guild Operations</span>
                   </div>
-                  <h1 className={`text-4xl md:text-6xl text-white ${demoness.className} leading-none`}>
+                  <h1 className={`text-4xl md:text-6xl text-white font-gradvis leading-none`}>
                       CHRONO<span className="text-transparent bg-clip-text bg-gradient-to-br from-primary-500 to-primary-900">SPHERE</span>
                   </h1>
               </motion.div>
               <div className="hidden md:block text-right">
                   <span className="block text-[10px] text-zinc-600 uppercase tracking-widest font-bold mb-1">Current Cycle</span>
                   <div className="flex items-baseline gap-2 justify-end">
-                      <span className="text-3xl font-black text-white font-[Cinzel]">{format(new Date(), 'dd')}</span>
+                      <span className="text-3xl font-black text-white font-lemon">{format(new Date(), 'dd')}</span>
                       <span className="text-sm text-zinc-400 uppercase font-medium">{format(new Date(), 'MMMM yyyy')}</span>
                   </div>
               </div>
@@ -533,19 +533,19 @@ export default function SchedulePage() {
               <section>
                   <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6">
                       <div className="bg-[#0a0a0a] border border-white/5 rounded-3xl p-6 shadow-xl">
-                          <div className="flex items-center gap-3 mb-6"><div className="p-2 bg-green-900/20 rounded-lg text-green-500"><CheckCircle size={16} /></div><h4 className={`text-lg text-white ${hunters.className}`}>COMPLETED</h4></div>
+                          <div className="flex items-center gap-3 mb-6"><div className="p-2 bg-green-900/20 rounded-lg text-green-500"><CheckCircle size={16} /></div><h4 className={`text-lg text-white font-lemon`}>COMPLETED</h4></div>
                           <div className="space-y-3">{dashboard ? dashboard.completed.map((a: any, i: number) => <CompactAnimeCard key={i} anime={a} rank={i+1}/>) : <div className="h-40 bg-white/5 animate-pulse rounded-xl"/>}</div>
                       </div>
                       <div className="bg-[#0a0a0a] border border-white/5 rounded-3xl p-6 shadow-xl">
-                          <div className="flex items-center gap-3 mb-6"><div className="p-2 bg-blue-900/20 rounded-lg text-blue-500"><PlusCircle size={16} /></div><h4 className={`text-lg text-white ${hunters.className}`}>NEWLY ADDED</h4></div>
+                          <div className="flex items-center gap-3 mb-6"><div className="p-2 bg-blue-900/20 rounded-lg text-blue-500"><PlusCircle size={16} /></div><h4 className={`text-lg text-white font-lemon`}>NEWLY ADDED</h4></div>
                           <div className="space-y-3">{dashboard ? dashboard.newAdded.map((a: any, i: number) => <CompactAnimeCard key={i} anime={a}/>) : <div className="h-40 bg-white/5 animate-pulse rounded-xl"/>}</div>
                       </div>
                       <div className="bg-[#0a0a0a] border border-white/5 rounded-3xl p-6 shadow-xl">
-                          <div className="flex items-center gap-3 mb-6"><div className="p-2 bg-purple-900/20 rounded-lg text-purple-500"><Layers size={16} /></div><h4 className={`text-lg text-white ${hunters.className}`}>JUST UPDATED</h4></div>
+                          <div className="flex items-center gap-3 mb-6"><div className="p-2 bg-purple-900/20 rounded-lg text-purple-500"><Layers size={16} /></div><h4 className={`text-lg text-white font-lemon`}>JUST UPDATED</h4></div>
                           <div className="space-y-3">{dashboard ? dashboard.released.map((a: any, i: number) => <CompactAnimeCard key={i} anime={a}/>) : <div className="h-40 bg-white/5 animate-pulse rounded-xl"/>}</div>
                       </div>
                       <div className="bg-[#0a0a0a] border border-white/5 rounded-3xl p-6 shadow-xl">
-                          <div className="flex items-center gap-3 mb-6"><div className="p-2 bg-yellow-900/20 rounded-lg text-yellow-500"><Star size={16} /></div><h4 className={`text-lg text-white ${hunters.className}`}>FAN FAVORITES</h4></div>
+                          <div className="flex items-center gap-3 mb-6"><div className="p-2 bg-yellow-900/20 rounded-lg text-yellow-500"><Star size={16} /></div><h4 className={`text-lg text-white font-lemon`}>FAN FAVORITES</h4></div>
                           <div className="space-y-3">{dashboard ? dashboard.popular.map((a: any, i: number) => <CompactAnimeCard key={i} anime={a} rank={i+1}/>) : <div className="h-40 bg-white/5 animate-pulse rounded-xl"/>}</div>
                       </div>
                   </div>

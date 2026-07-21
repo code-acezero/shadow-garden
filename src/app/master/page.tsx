@@ -61,7 +61,7 @@ export default function GuildMasterDashboard() {
         ::-webkit-scrollbar { display: none; }
         * { -ms-overflow-style: none; scrollbar-width: none; outline: none !important; -webkit-tap-highlight-color: transparent; }
         input:focus, textarea:focus, select:focus, button:focus { box-shadow: none !important; ring: 0 !important; border-color: rgba(220, 38, 38, 0.5) !important; }
-        .font-hunters { font-family: var(--font-hunters), sans-serif; }
+        .font-minomu { font-family: var(--font-minomu), sans-serif; }
       `}</style>
 
       <div className="min-h-screen bg-[#050505] text-white font-sans relative overflow-y-auto pb-8 transform-gpu will-change-transform">
@@ -81,7 +81,7 @@ export default function GuildMasterDashboard() {
                  </div>
               </div>
               <div>
-                <h1 className="text-3xl md:text-4xl font-hunters tracking-wider text-white leading-none drop-shadow-md">
+                <h1 className="text-3xl md:text-4xl font-minomu tracking-wider text-white leading-none drop-shadow-md">
                   GUILD MASTER
                 </h1>
                 <p className="text-[10px] text-primary-500 font-mono tracking-[0.3em] uppercase mt-1 flex items-center gap-2">
@@ -130,7 +130,7 @@ export default function GuildMasterDashboard() {
           <div className="max-w-[1350px] mx-auto px-4 text-center space-y-4">
             <div className="flex justify-center items-center gap-3 opacity-80 hover:opacity-100 transition-opacity">
                <img src="/icon.svg" className="w-8 h-8 drop-shadow-lg" alt="Guild Seal"/>
-               <h4 className="font-hunters font-bold text-lg text-white tracking-widest">SHADOW GARDEN</h4>
+               <h4 className="font-minomu font-bold text-lg text-white tracking-widest">SHADOW GARDEN</h4>
             </div>
             <p className="text-zinc-600 text-[10px] font-mono uppercase tracking-widest">
               Guild-Master Console • V0.1.2 (Beta) • {user?.email}
@@ -265,7 +265,7 @@ const IdentityTab = memo(() => {
         <Section title="Guild Identity" icon={Shield}>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <InputGroup label="Guild Name" value={formData.siteName} onChange={(v: string) => handleChange('siteName', v)} />
-            <InputGroup label="Logo Text" value={formData.logoText} onChange={(v: string) => handleChange('logoText', v)} font="font-hunters" />
+            <InputGroup label="Logo Text" value={formData.logoText} onChange={(v: string) => handleChange('logoText', v)} font="font-minomu" />
             <InputGroup label="Emblem URL" value={formData.logoUrl} onChange={(v: string) => handleChange('logoUrl', v)} className="md:col-span-2" />
           </div>
         </Section>

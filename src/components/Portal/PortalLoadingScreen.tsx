@@ -28,7 +28,7 @@ export default function PortalLoadingScreen({ progress }: Props) {
             {/* TITLE */}
             <h2 
                 className="text-4xl md:text-5xl mb-2 tracking-widest text-transparent bg-clip-text bg-gradient-to-b from-primary-500 to-primary-900 drop-shadow-[0_0_10px_rgba(220,38,38,0.8)]"
-                style={{ fontFamily: 'var(--font-demoness), serif' }}
+                style={{ fontFamily: 'var(--font-gradvis), serif' }}
             >
                 SHADOW GARDEN
             </h2>
@@ -38,7 +38,7 @@ export default function PortalLoadingScreen({ progress }: Props) {
                 <Terminal className="w-4 h-4" />
                 <span 
                     className="text-sm tracking-[0.2em] uppercase"
-                    style={{ fontFamily: 'var(--font-nyctophobia), monospace' }}
+                    style={{ fontFamily: 'var(--font-above), monospace' }}
                 >
                     System Initialization... {Math.round(safeProgress)}%
                 </span>

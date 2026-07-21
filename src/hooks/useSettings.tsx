@@ -134,18 +134,18 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
     root.style.setProperty('--primary-color', activePalette[600]);
 
     const fontMap: Record<string, string> = {
-        'inter': 'var(--font-inter)',
+        'inter': 'var(--font-sans)',
         'badUnicorn': 'var(--font-bad-unicorn)',
-        'demoness': 'var(--font-demoness)',
-        'horrorshow': 'var(--font-horrorshow)',
-        'hunters': 'var(--font-hunters)',
+        'demoness': 'var(--font-gradvis)',
+        'horrorshow': 'var(--font-above)',
+        'hunters': 'var(--font-minomu)',
         'kareudon': 'var(--font-kareudon)',
         'monas': 'var(--font-monas)',
-        'nyctophobia': 'var(--font-nyctophobia)',
+        'nyctophobia': 'var(--font-above)',
         'onePiece': 'var(--font-one-piece)',
     };
 
-    const selectedFont = fontMap[s.fontFamily] || 'var(--font-inter)';
+    const selectedFont = fontMap[s.fontFamily] || 'var(--font-sans)';
 
     root.style.setProperty('--font-primary', selectedFont);
     root.style.setProperty('--font-sans', selectedFont);
