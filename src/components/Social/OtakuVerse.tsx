@@ -1,15 +1,17 @@
 "use client";
 
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
+import { createPortal } from 'react-dom';
 import { 
   Heart, MessageCircle, Share2, MoreHorizontal, Image as ImageIcon, 
   Smile, Send, Bookmark, Flag, Trash2, X, Repeat2, Menu,
   ShieldCheck, Eye, Flame, Link as LinkIcon, Home, Hash, Users, Bell, User as UserIcon, Settings,
-  Facebook, MessageSquare, SendHorizontal, MessageCircleMore, Loader2, ThumbsUp, Newspaper
+  Facebook, MessageSquare, SendHorizontal, MessageCircleMore, Loader2, ThumbsUp, Newspaper, Shield, ArrowUp
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Textarea } from '@/components/ui/textarea';
+import ProfileAvatar from '@/components/User/ProfileAvatar';
 import { 
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger 
 } from '@/components/ui/dropdown-menu';
@@ -28,6 +30,10 @@ import ClanSystem from './Clans/ClanSystem';
 import ShadowComments from '@/components/Comments/ShadowComments';
 import Link from 'next/link';
 import Footer from '@/components/Anime/Footer';
+import { useAuth } from '@/context/AuthContext';
+import InstagramPostCard from './InstagramPostCard';
+import InstagramPostComposer from './InstagramPostComposer';
+import InstagramCommentsModal from './InstagramCommentsModal';
 
 // --- TYPES ---
 interface Comment {
@@ -68,14 +74,70 @@ interface OtakuVerseProps {
 }
 
 export default function OtakuVerse({ user, onAuthRequired, highlightId, initialNewsId }: OtakuVerseProps) {
+  const { profile } = useAuth();
   const [posts, setPosts] = useState<SocialPost[]>([]);
   const [newPost, setNewPost] = useState('');
   const [selectedImages, setSelectedImages] = useState<File[]>([]);
   const [isUploading, setIsUploading] = useState(false);
-  const [activeTab, setActiveTab] = useState('feed'); // 'feed' | 'news' | 'clans' | 'following'
+  const [isTrendingLoading, setIsTrendingLoading] = useState(true);
+
+  // Layout states
+  const [isInClan, setIsInClan] = useState(false);
+
+  useEffect(() => {
+     const handleEnter = () => setIsInClan(true);
+     const handleExit = () => setIsInClan(false);
+     window.addEventListener('shadow-clan-enter', handleEnter);
+     window.addEventListener('shadow-clan-exit', handleExit);
+     return () => {
+       window.removeEventListener('shadow-clan-enter', handleEnter);
+       window.removeEventListener('shadow-clan-exit', handleExit);
+     }
+  }, []);
+
+  const [activeTab, setActiveTab] = useState<'feed' | 'following' | 'news' | 'clans'>('feed');
   const [isLoading, setIsLoading] = useState(true);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [hasUnreadMessages, setHasUnreadMessages] = useState(false);
+  const [showScrollTop, setShowScrollTop] = useState(false);
+
+  useEffect(() => {
+    const handleScroll = () => {
+      const scrollY = window.scrollY || document.documentElement.scrollTop || document.body.scrollTop || 0;
+      setShowScrollTop(scrollY > 150);
+    };
+    window.addEventListener('scroll', handleScroll, { passive: true });
+    document.addEventListener('scroll', handleScroll, { passive: true });
+    return () => {
+      window.removeEventListener('scroll', handleScroll);
+      document.removeEventListener('scroll', handleScroll);
+    };
+  }, []);
   
+  useEffect(() => {
+    if (user && supabase) {
+      const checkUnread = async () => {
+        const { data, error } = await supabase.from('chat_participants').select('conversation_id, last_read_at').eq('user_id', user.id);
+        if (data && !error) {
+           const convIds = data.map((d: any) => d.conversation_id);
+           if (convIds.length === 0) return;
+           const { data: convData } = await supabase.from('chat_conversations').select('id, updated_at').in('id', convIds);
+           let unread = false;
+           if (convData) {
+              data.forEach((p: any) => {
+                 const c = convData.find((x: any) => x.id === p.conversation_id);
+                 if (c && c.updated_at && (!p.last_read_at || new Date(c.updated_at) > new Date(p.last_read_at))) {
+                    unread = true;
+                 }
+              });
+           }
+           setHasUnreadMessages(unread);
+        }
+      };
+      checkUnread();
+    }
+  }, [user]);
+
   // Feature States
   const [activePostForComments, setActivePostForComments] = useState<SocialPost | null>(null);
   const [activeNewsItem, setActiveNewsItem] = useState<any | null>(null);
@@ -189,7 +251,7 @@ export default function OtakuVerse({ user, onAuthRequired, highlightId, initialN
         .from('social_posts')
         .select(`
           *,
-          user:profiles(username, avatar_url, role)
+          user:profiles(username, avatar_url, role, level, frame_id, show_level)
         `)
         .order('created_at', { ascending: false });
 
@@ -221,12 +283,20 @@ export default function OtakuVerse({ user, onAuthRequired, highlightId, initialN
           isBookmarked = !!bmData;
         }
 
+        const { data: latestComment } = await supabase.from('social_comments')
+          .select('content, user:profiles(username)')
+          .eq('post_id', post.id)
+          .order('created_at', { ascending: false })
+          .limit(1)
+          .maybeSingle();
+
         return {
           ...post,
           likes_count: lCount,
           comments_count: cCount,
           is_liked_by_user: isLiked,
           is_bookmarked: isBookmarked,
+          latest_comment: latestComment || null,
           user: post.user || { username: 'Otaku Explorer', avatar_url: `https://api.dicebear.com/7.x/bottts/svg?seed=${post.user_id}` }
         };
       }));
@@ -279,7 +349,7 @@ export default function OtakuVerse({ user, onAuthRequired, highlightId, initialN
           images: uploadedUrls,
           tags: []
         })
-        .select(`*, user:profiles(username, avatar_url, role)`)
+        .select(`*, user:profiles(username, avatar_url, role, level, frame_id, show_level)`)
         .single();
 
       if (error) throw error;
@@ -330,7 +400,7 @@ export default function OtakuVerse({ user, onAuthRequired, highlightId, initialN
     try {
       const { data, error } = await supabase
         .from('social_comments')
-        .select(`*, user:profiles(username, avatar_url, role)`)
+        .select(`*, user:profiles(username, avatar_url, role, level, frame_id, show_level)`)
         .eq('post_id', postId)
         .order('created_at', { ascending: true });
 
@@ -396,7 +466,7 @@ export default function OtakuVerse({ user, onAuthRequired, highlightId, initialN
     try {
       const { data, error } = await supabase
         .from('comments')
-        .select(`*, user:profiles(username, avatar_url, role)`)
+        .select(`*, user:profiles(username, avatar_url, role, level, frame_id, show_level)`)
         .eq('episode_id', `news_${newsId}`)
         .order('created_at', { ascending: true });
 
@@ -462,7 +532,7 @@ export default function OtakuVerse({ user, onAuthRequired, highlightId, initialN
   });
 
   return (
-    <div className="w-full bg-[#050505] text-white flex justify-center selection:bg-primary-500 selection:text-white overflow-y-auto custom-scrollbar" style={{ height: "calc(100dvh - var(--nav-height-top) - var(--nav-height-bottom))" }}>
+    <div className="w-full bg-[#050505] text-white flex justify-center selection:bg-primary-500 selection:text-white min-h-screen">
       <div className="max-w-7xl w-full flex justify-center lg:justify-between px-0 md:px-2">
         
         {/* LEFT SIDEBAR (Desktop) */}
@@ -476,26 +546,25 @@ export default function OtakuVerse({ user, onAuthRequired, highlightId, initialN
               <NavButton icon={<Home size={24} />} label="Home" active={activeTab === 'feed'} onClick={() => setActiveTab('feed')} />
               <NavButton icon={<Users size={24} />} label="Following" active={activeTab === 'following'} onClick={() => setActiveTab('following')} />
               <div className="lg:hidden"><NavButton icon={<Newspaper size={24} />} label="News" active={activeTab === 'news'} onClick={() => setActiveTab('news')} /></div>
-              <NavButton icon={<MessageSquare size={24} />} label="Messages" onClick={() => window.location.href = '/messages'} />
+              <NavButton icon={<MessageSquare size={24} />} label="Messages" onClick={() => window.location.href = '/messages'} badge={hasUnreadMessages} />
               <NavButton icon={<Users size={24} />} label="Watch Rooms" onClick={() => window.location.href = '/rooms'} />
               <NavButton icon={<UserIcon size={24} />} label="Profile" onClick={() => user ? (window.location.href='/profile') : onAuthRequired()} />
 
-              <Button 
+              <button 
+                type="button"
                 onClick={() => user ? document.getElementById('composer-input')?.focus() : onAuthRequired()} 
-                className="mt-4 w-12 h-12 lg:w-[90%] lg:h-14 rounded-full bg-primary-600 hover:bg-primary-500 text-white font-bold text-[0px] lg:text-base transition-all p-0 shadow-lg shadow-primary-900/30 mx-auto lg:mx-0"
+                className="mt-4 w-12 h-12 lg:w-[90%] lg:h-14 rounded-full bg-primary-600 hover:bg-primary-500 text-white font-bold text-[0px] lg:text-base transition-all shadow-lg shadow-primary-900/30 mx-auto lg:mx-0 flex items-center justify-center cursor-pointer"
               >
                  <span className="hidden lg:inline uppercase tracking-wider">Post</span>
                  <SendHorizontal size={22} className="lg:hidden" />
-              </Button>
+              </button>
            </div>
 
            {user && (
               <div className="flex items-center justify-center lg:justify-between gap-3 p-3 rounded-full hover:bg-white/10 cursor-pointer transition-colors mb-4 w-full border border-white/5">
-                 <img 
-                   src={user.user_metadata?.avatar_url || `https://api.dicebear.com/7.x/bottts/svg?seed=${user.id}`} 
-                   alt="" 
-                   className="w-10 h-10 rounded-full object-cover border border-white/10 shrink-0" 
-                   onError={(e) => { (e.target as HTMLElement).setAttribute('src', `https://api.dicebear.com/7.x/bottts/svg?seed=${user.id}`); }}
+                 <ProfileAvatar 
+                     profile={profile} 
+                     className="w-10 h-10" 
                  />
                  <div className="hidden lg:block overflow-hidden flex-1">
                     <p className="font-bold text-white text-sm truncate leading-tight">{user.user_metadata?.full_name || 'User'}</p>
@@ -506,7 +575,7 @@ export default function OtakuVerse({ user, onAuthRequired, highlightId, initialN
         </header>
 
         {/* MIDDLE COLUMN (Feed & Mobile Header) */}
-        <main className="flex-1 max-w-[620px] w-full min-h-screen border-x border-white/10 pb-4">
+        <main className={`flex-1 ${activeTab === 'clans' ? 'w-full' : 'max-w-[580px]'} w-full min-h-screen border-x border-white/10 pb-4`}>
            
            {/* Sticky Top Header */}
            <div className="sticky top-0 z-40 bg-[#050505]/95 backdrop-blur-xl border-b border-white/10 shadow-lg">
@@ -525,83 +594,86 @@ export default function OtakuVerse({ user, onAuthRequired, highlightId, initialN
                 </Link>
               </div>
 
-              {/* Tab Selector — Feed & Clans (News moved to right sidebar on desktop) */}
-              <div className="flex">
-                  <button onClick={() => setActiveTab('feed')} className="flex-1 hover:bg-white/5 transition-colors pt-3.5 pb-0 relative flex justify-center">
-                     <div className={`pb-3 font-bold text-xs uppercase tracking-wider ${activeTab === 'feed' ? 'text-white' : 'text-zinc-500'}`}>
-                        Otaku Feed
-                        {activeTab === 'feed' && <div className="absolute bottom-0 left-0 w-full h-1 bg-primary-500 rounded-t-full" />}
-                     </div>
+              {/* iOS Segmented Tab Switcher */}
+              <div className="p-2">
+                <div className="bg-[#121218]/90 border border-white/10 p-1 rounded-2xl flex relative shadow-inner">
+                  <button
+                    onClick={() => setActiveTab('feed')}
+                    className={`flex-1 py-2 text-xs font-black uppercase tracking-wider relative z-10 transition-colors ${
+                      activeTab === 'feed' ? 'text-white' : 'text-zinc-400 hover:text-white'
+                    }`}
+                  >
+                    {activeTab === 'feed' && (
+                      <motion.div
+                        layoutId="ios-active-tab"
+                        className="absolute inset-0 bg-primary-600 rounded-xl shadow-md -z-10"
+                        transition={{ type: "spring", stiffness: 400, damping: 30 }}
+                      />
+                    )}
+                    Feed
                   </button>
-                  {/* News tab only on mobile — on desktop it's in the right sidebar */}
-                  <button onClick={() => setActiveTab('news')} className="flex-1 hover:bg-white/5 transition-colors pt-3.5 pb-0 relative flex justify-center lg:hidden">
-                     <div className={`pb-3 font-bold text-xs uppercase tracking-wider ${activeTab === 'news' ? 'text-white' : 'text-zinc-500'}`}>
-                        News
-                        {activeTab === 'news' && <div className="absolute bottom-0 left-0 w-full h-1 bg-primary-500 rounded-t-full" />}
-                     </div>
+
+                  <button
+                    onClick={() => setActiveTab('news')}
+                    className={`flex-1 py-2 text-xs font-black uppercase tracking-wider relative z-10 transition-colors lg:hidden ${
+                      activeTab === 'news' ? 'text-white' : 'text-zinc-400 hover:text-white'
+                    }`}
+                  >
+                    {activeTab === 'news' && (
+                      <motion.div
+                        layoutId="ios-active-tab"
+                        className="absolute inset-0 bg-primary-600 rounded-xl shadow-md -z-10"
+                        transition={{ type: "spring", stiffness: 400, damping: 30 }}
+                      />
+                    )}
+                    News
                   </button>
-                  <button onClick={() => setActiveTab('clans')} className="flex-1 hover:bg-white/5 transition-colors pt-3.5 pb-0 relative flex justify-center">
-                     <div className={`pb-3 font-bold text-xs uppercase tracking-wider ${activeTab === 'clans' ? 'text-white' : 'text-zinc-500'}`}>
-                        Clans
-                        {activeTab === 'clans' && <div className="absolute bottom-0 left-0 w-full h-1 bg-primary-500 rounded-t-full" />}
-                     </div>
+
+                  <button
+                    onClick={() => setActiveTab('clans')}
+                    className={`flex-1 py-2 text-xs font-black uppercase tracking-wider relative z-10 transition-colors ${
+                      activeTab === 'clans' ? 'text-white' : 'text-zinc-400 hover:text-white'
+                    }`}
+                  >
+                    {activeTab === 'clans' && (
+                      <motion.div
+                        layoutId="ios-active-tab"
+                        className="absolute inset-0 bg-primary-600 rounded-xl shadow-md -z-10"
+                        transition={{ type: "spring", stiffness: 400, damping: 30 }}
+                      />
+                    )}
+                    Clans
                   </button>
+                </div>
               </div>
            </div>
 
-           {/* Inline Composer (Only in feed tab) */}
+           {/* Inline Instagram Composer (Only in feed tab) */}
            {activeTab === 'feed' && (
-             <div className="p-4 border-b border-white/10 flex gap-3.5 bg-black/40">
-                <img 
-                  src={user?.user_metadata?.avatar_url || `https://api.dicebear.com/7.x/bottts/svg?seed=${user?.id || 'guest'}`} 
-                  alt="" 
-                  className="w-10 h-10 rounded-full object-cover border border-white/10 shrink-0 cursor-pointer"
-                  onError={(e) => { (e.target as HTMLElement).setAttribute('src', `https://api.dicebear.com/7.x/bottts/svg?seed=${user?.id || 'guest'}`); }}
-                />
-                <div className="flex-1">
-                   <Textarea 
-                     id="composer-input"
-                     placeholder="What's on your mind, Otaku?" 
-                     value={newPost}
-                     onChange={(e) => setNewPost(e.target.value)}
-                     className="min-h-[60px] max-h-[300px] w-full bg-transparent border-none text-base text-white resize-none focus-visible:ring-0 placeholder:text-zinc-600 p-1 twitter-scrollbar"
-                     onClick={() => !user && onAuthRequired()}
-                   />
-                   
-                   {selectedImages.length > 0 && (
-                       <div className="flex gap-2 overflow-x-auto pb-3 mt-2">
-                           {selectedImages.map((image, index) => (
-                               <div key={index} className="relative group rounded-2xl overflow-hidden border border-white/10 shrink-0 w-28 h-28">
-                                 <img src={URL.createObjectURL(image)} className="w-full h-full object-cover" alt="Preview" />
-                                 <button onClick={() => setSelectedImages(prev => prev.filter((_, i) => i !== index))} className="absolute top-1 right-1 bg-black/70 backdrop-blur-md rounded-full text-white p-1 hover:bg-black transition-colors"><X size={12} /></button>
-                               </div>
-                           ))}
-                       </div>
-                   )}
-
-                   <div className="flex justify-between items-center mt-2 border-t border-white/10 pt-3">
-                      <div className="flex gap-1 text-primary-500">
-                         <Button variant="ghost" size="icon" className="rounded-full hover:bg-primary-500/10 w-8 h-8 text-primary-400" onClick={() => document.getElementById('img-upload-inline')?.click()}>
-                            <ImageIcon size={18} />
-                         </Button>
-                         <input id="img-upload-inline" type="file" hidden multiple accept="image/*" onChange={handleImageUpload} />
-                      </div>
-
-                      <Button 
-                        onClick={handleCreatePost} 
-                        disabled={isUploading || (!newPost.trim() && selectedImages.length === 0)}
-                        className="bg-primary-600 hover:bg-primary-500 text-white font-bold rounded-full px-5 py-1.5 h-8 text-xs uppercase tracking-wider shadow-md disabled:opacity-40 transition-all"
-                      >
-                         {isUploading ? <Loader2 className="w-4 h-4 animate-spin" /> : "Post"}
-                      </Button>
-                   </div>
-                </div>
+             <div className="p-2 sm:p-4">
+               <InstagramPostComposer
+                 user={user}
+                 profile={profile}
+                 onAuthRequired={onAuthRequired}
+                 onPostCreated={async ({ content, images, pollData }) => {
+                   const { error } = await supabase
+                     .from('social_posts')
+                     .insert({
+                       user_id: user!.id,
+                       content,
+                       images,
+                       tags: []
+                     });
+                   if (error) throw error;
+                   fetchPosts();
+                 }}
+               />
              </div>
            )}
 
            {/* View Switching */}
            {activeTab === 'clans' ? (
-                <div className="p-4"><ClanSystem /></div>
+                <div className="p-4"><ClanSystem onClanOpen={setIsInClan} /></div>
             ) : activeTab === 'news' ? (
                 <div className="p-4 space-y-4">
                   <h3 className="text-xs font-black uppercase tracking-widest text-zinc-400 flex items-center gap-2 mb-4">
@@ -630,22 +702,21 @@ export default function OtakuVerse({ user, onAuthRequired, highlightId, initialN
             ) : filteredPosts.length === 0 ? (
                 <div className="p-12 text-center text-zinc-500 text-xs font-bold">{searchQuery ? "No results found." : "No posts published yet."}</div>
             ) : (
-                <div className="pb-[30vh]">
+                <div className="pb-[30vh] space-y-2 px-0 sm:px-3">
                    {filteredPosts.map((post) => (
-                      <PostItem 
+                      <InstagramPostCard 
                          key={post.id} 
                          post={post} 
                          highlightId={highlightId}
-                         ref={(el: any) => { postRefs.current[post.id] = el; }}
                          onLike={() => handleLike(post)}
                          onComment={() => { setActivePostForComments(post); fetchComments(post.id); }}
-                         onShare={(platform: string) => {
+                         onShare={(platform?: string) => {
                             if (typeof window !== 'undefined') {
-                              navigator.clipboard.writeText(window.location.href);
-                              toast.success("Post link copied");
+                               navigator.clipboard.writeText(window.location.href);
+                               toast.success("Post link copied");
                             }
                          }}
-                         onBookmark={() => toast.success("Post bookmarked")}
+                         onBookmark={() => toast.success("Post saved")}
                          onDelete={() => {
                             supabase.from('social_posts').delete().eq('id', post.id).then(() => fetchPosts());
                          }}
@@ -657,9 +728,14 @@ export default function OtakuVerse({ user, onAuthRequired, highlightId, initialN
             )}
         </main>
 
-        {/* RIGHT SIDEBAR — News (Desktop only, always visible) */}
-        <aside className="hidden lg:flex flex-col w-80 xl:w-96 h-[calc(100vh-5rem)] sticky top-20 pt-4 pb-20 px-4 overflow-y-auto custom-scrollbar shrink-0">
-          <div className="pb-3 bg-[#050505] z-10">
+        {/* RIGHT SIDEBAR — News or Clan Sidebar */}
+        {activeTab === 'clans' && isInClan ? (
+          <aside id="clan-sidebar-portal" className="hidden lg:flex flex-col w-80 xl:w-[400px] h-[calc(100vh-5rem)] sticky top-20 shrink-0 border-l border-white/5">
+             {/* Portal Target for Clan Management */}
+          </aside>
+        ) : (
+          <aside className="hidden lg:flex flex-col w-80 xl:w-96 h-[calc(100vh-5rem)] sticky top-20 pt-4 pb-20 px-4 overflow-y-auto custom-scrollbar shrink-0">
+            <div className="pb-3 bg-[#050505] z-10">
             <h3 className="text-[10px] font-black uppercase tracking-widest text-zinc-400 flex items-center gap-2">
               <Newspaper size={14} className="text-primary-500" /> Anime Industry News
             </h3>
@@ -689,119 +765,192 @@ export default function OtakuVerse({ user, onAuthRequired, highlightId, initialN
               ))
             )}
           </div>
-        </aside>
+          </aside>
+        )}
       </div>
 
-      {/* Mobile Drawer Navigation */}
-      <AnimatePresence>
-        {isMobileMenuOpen && (
-          <div className="fixed inset-0 z-50 flex bg-black/80 backdrop-blur-md">
+      {/* Mobile Left Drawer Navigation */}
+      {typeof window !== 'undefined' && isMobileMenuOpen && createPortal(
+        <AnimatePresence>
+          <div className="fixed inset-0 z-[20000] flex bg-black/90 backdrop-blur-2xl">
+            {/* Backdrop click to close */}
+            <div className="absolute inset-0" onClick={() => setIsMobileMenuOpen(false)} />
+
             <motion.div
-              initial={{ x: '-100%' }}
-              animate={{ x: 0 }}
-              exit={{ x: '-100%' }}
-              className="w-72 bg-[#0c0c0e] border-r border-white/10 h-full p-6 flex flex-col justify-between shadow-2xl"
+              initial={{ x: '-100%', opacity: 0 }}
+              animate={{ x: 0, opacity: 1 }}
+              exit={{ x: '-100%', opacity: 0 }}
+              transition={{ type: 'spring', damping: 25, stiffness: 280 }}
+              className="w-80 max-w-[85vw] bg-[#0c0c12] border-r border-white/15 h-full p-5 sm:p-6 flex flex-col justify-between shadow-2xl relative z-10 rounded-r-[2.5rem] overflow-y-auto custom-scrollbar"
             >
-              <div className="space-y-6">
+              <div className="space-y-5">
+                {/* Header */}
                 <div className="flex items-center justify-between border-b border-white/10 pb-4">
-                  <span className="font-black text-lg text-primary-500 uppercase tracking-widest">OtakuVerse</span>
-                  <button onClick={() => setIsMobileMenuOpen(false)} className="text-zinc-400 hover:text-white">
-                    <X size={20} />
+                  <div className="flex items-center gap-2.5">
+                    <div className="p-2 bg-primary-600/20 border border-primary-500/30 rounded-xl text-primary-400">
+                      <Hash size={20} />
+                    </div>
+                    <div>
+                      <span className="font-black text-sm text-white uppercase tracking-widest block leading-tight">OtakuVerse</span>
+                      <span className="text-[9px] text-zinc-500 font-mono">Social Realm Navigation</span>
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => setIsMobileMenuOpen(false)}
+                    className="p-2 rounded-full hover:bg-white/10 text-zinc-400 hover:text-white transition-colors"
+                  >
+                    <X size={18} />
                   </button>
                 </div>
 
-                <div className="space-y-2">
-                  <Link href="/home" className="flex items-center gap-3 p-3 rounded-2xl text-xs font-bold text-zinc-300 hover:bg-white/5">
-                    <Home size={18} /> Home
+                {/* Profile Card if Logged In */}
+                {user ? (
+                  <div className="bg-[#14141c] border border-white/10 p-3 rounded-2xl flex items-center gap-3 shadow-md">
+                    <ProfileAvatar profile={user.user_metadata || user} className="w-11 h-11" />
+                    <div className="min-w-0 flex-1">
+                      <p className="font-bold text-white text-xs truncate leading-tight">{user.user_metadata?.full_name || 'Agent'}</p>
+                      <p className="text-[10px] text-zinc-400 truncate mt-0.5">@{user.user_metadata?.preferred_username || 'shadow'}</p>
+                      <span className="inline-block mt-1 text-[9px] font-mono font-bold text-primary-400 bg-primary-600/20 px-2 py-0.5 rounded-full border border-primary-500/30">
+                        Lv. {user.user_metadata?.level || 1}
+                      </span>
+                    </div>
+                  </div>
+                ) : (
+                  <button
+                    onClick={() => { setIsMobileMenuOpen(false); onAuthRequired(); }}
+                    className="w-full py-2.5 bg-primary-600 hover:bg-primary-500 text-white rounded-2xl font-bold text-xs uppercase tracking-wider transition-all shadow-md"
+                  >
+                    Sign In / Register
+                  </button>
+                )}
+
+                {/* Overhauled Navigation List */}
+                <div className="space-y-1 pt-1">
+                  <button
+                    onClick={() => { setActiveTab('feed'); setIsMobileMenuOpen(false); }}
+                    className={`w-full flex items-center gap-3.5 p-3 rounded-2xl text-xs font-bold transition-all ${
+                      activeTab === 'feed'
+                        ? 'bg-primary-600/20 text-white border border-primary-500/40 shadow-sm'
+                        : 'text-zinc-300 hover:bg-white/5 hover:text-white'
+                    }`}
+                  >
+                    <Home size={18} className={activeTab === 'feed' ? 'text-primary-400' : 'text-zinc-400'} />
+                    <span>Otaku Feed</span>
+                  </button>
+
+                  <button
+                    onClick={() => { setActiveTab('clans'); setIsMobileMenuOpen(false); }}
+                    className={`w-full flex items-center gap-3.5 p-3 rounded-2xl text-xs font-bold transition-all ${
+                      activeTab === 'clans'
+                        ? 'bg-primary-600/20 text-white border border-primary-500/40 shadow-sm'
+                        : 'text-zinc-300 hover:bg-white/5 hover:text-white'
+                    }`}
+                  >
+                    <Shield size={18} className={activeTab === 'clans' ? 'text-primary-400' : 'text-zinc-400'} />
+                    <span>Guild Clans</span>
+                  </button>
+
+                  <button
+                    onClick={() => { setActiveTab('news'); setIsMobileMenuOpen(false); }}
+                    className={`w-full flex items-center gap-3.5 p-3 rounded-2xl text-xs font-bold transition-all ${
+                      activeTab === 'news'
+                        ? 'bg-primary-600/20 text-white border border-primary-500/40 shadow-sm'
+                        : 'text-zinc-300 hover:bg-white/5 hover:text-white'
+                    }`}
+                  >
+                    <Newspaper size={18} className={activeTab === 'news' ? 'text-primary-400' : 'text-zinc-400'} />
+                    <span>Industry News</span>
+                  </button>
+
+                  <Link
+                    href="/messages"
+                    onClick={() => setIsMobileMenuOpen(false)}
+                    className="w-full flex items-center justify-between p-3 rounded-2xl text-xs font-bold text-zinc-300 hover:bg-white/5 hover:text-white transition-all"
+                  >
+                    <div className="flex items-center gap-3.5">
+                      <MessageSquare size={18} className="text-zinc-400" />
+                      <span>Direct Messages</span>
+                    </div>
+                    {hasUnreadMessages && (
+                      <span className="w-2.5 h-2.5 bg-primary-500 rounded-full animate-ping" />
+                    )}
                   </Link>
-                  <Link href="/messages" className="flex items-center gap-3 p-3 rounded-2xl text-xs font-bold text-primary-400 bg-primary-600/10 border border-primary-500/20">
-                    <MessageSquare size={18} /> Direct Messages
+
+                  <Link
+                    href="/rooms"
+                    onClick={() => setIsMobileMenuOpen(false)}
+                    className="w-full flex items-center gap-3.5 p-3 rounded-2xl text-xs font-bold text-zinc-300 hover:bg-white/5 hover:text-white transition-all"
+                  >
+                    <Users size={18} className="text-zinc-400" />
+                    <span>Watch Rooms</span>
                   </Link>
-                  <Link href="/rooms" className="flex items-center gap-3 p-3 rounded-2xl text-xs font-bold text-zinc-300 hover:bg-white/5">
-                    <Users size={18} /> Watch Rooms
+
+                  <Link
+                    href={user ? "/profile" : "#"}
+                    onClick={() => {
+                      setIsMobileMenuOpen(false);
+                      if (!user) onAuthRequired();
+                    }}
+                    className="w-full flex items-center gap-3.5 p-3 rounded-2xl text-xs font-bold text-zinc-300 hover:bg-white/5 hover:text-white transition-all"
+                  >
+                    <UserIcon size={18} className="text-zinc-400" />
+                    <span>Profile & Frames</span>
                   </Link>
-                  <Link href="/profile" className="flex items-center gap-3 p-3 rounded-2xl text-xs font-bold text-zinc-300 hover:bg-white/5">
-                    <UserIcon size={18} /> Profile
+
+                  <Link
+                    href="/settings"
+                    onClick={() => setIsMobileMenuOpen(false)}
+                    className="w-full flex items-center gap-3.5 p-3 rounded-2xl text-xs font-bold text-zinc-300 hover:bg-white/5 hover:text-white transition-all"
+                  >
+                    <Settings size={18} className="text-zinc-400" />
+                    <span>Settings</span>
                   </Link>
                 </div>
               </div>
 
-              {user && (
-                <div className="flex items-center gap-3 pt-4 border-t border-white/10">
-                  <img
-                    src={user.user_metadata?.avatar_url || `https://api.dicebear.com/7.x/bottts/svg?seed=${user.id}`}
-                    alt=""
-                    className="w-9 h-9 rounded-full object-cover border border-white/10"
-                  />
-                  <div className="min-w-0 flex-1">
-                    <p className="font-bold text-white text-xs truncate">{user.user_metadata?.full_name || 'User'}</p>
-                    <p className="text-[10px] text-zinc-500 truncate">@{user.user_metadata?.preferred_username}</p>
-                  </div>
-                </div>
-              )}
+              {/* Bottom Quick Action */}
+              <div className="pt-4 border-t border-white/10">
+                <Button
+                  onClick={() => {
+                    setIsMobileMenuOpen(false);
+                    if (user) document.getElementById('composer-input')?.focus();
+                    else onAuthRequired();
+                  }}
+                  className="w-full py-3 bg-primary-600 hover:bg-primary-500 text-white rounded-2xl font-black text-xs uppercase tracking-wider shadow-lg flex items-center justify-center gap-2"
+                >
+                  <SendHorizontal size={16} />
+                  <span>Create Post</span>
+                </Button>
+              </div>
             </motion.div>
           </div>
-        )}
-      </AnimatePresence>
+        </AnimatePresence>,
+        document.body
+      )}
 
-      {/* Facebook-Style Comments Dialog Modal */}
-      <Dialog open={!!activePostForComments} onOpenChange={() => setActivePostForComments(null)}>
-        <DialogContent className="max-w-xl bg-[#0d0d10] border border-white/10 text-white rounded-3xl p-4 sm:p-6 shadow-2xl flex flex-col" style={{ maxHeight: "calc(100dvh - var(--nav-height-top) - var(--nav-height-bottom) - 30px)" }}>
-          <DialogHeader className="border-b border-white/10 pb-3 flex flex-row items-center justify-between">
-            <DialogTitle className="text-xs font-black uppercase tracking-widest text-zinc-300">
-              Comments ({comments.length})
-            </DialogTitle>
-          </DialogHeader>
-
-          {/* Facebook-Style Comment Threads Stream */}
-          <div className="flex-1 overflow-y-auto no-scrollbar py-4 space-y-4">
-            {comments.length === 0 ? (
-              <div className="text-center py-10 text-zinc-500 text-xs">Be the first to comment!</div>
-            ) : (
-              comments.map(c => (
-                <FacebookCommentBubble
-                  key={c.id}
-                  comment={c}
-                  onReply={(id, name) => setReplyTarget({ id, name })}
-                />
-              ))
-            )}
-          </div>
-
-          {/* Comment Input */}
-          <div className="pt-3 border-t border-white/10 space-y-2">
-            {replyTarget && (
-              <div className="text-[10px] text-primary-400 flex items-center justify-between bg-primary-600/10 p-2 rounded-xl border border-primary-500/20">
-                <span>Replying to <strong>@{replyTarget.name}</strong></span>
-                <button onClick={() => setReplyTarget(null)} className="text-zinc-400 hover:text-white"><X size={12} /></button>
-              </div>
-            )}
-
-            <div className="flex gap-2.5">
-              <img
-                src={user?.user_metadata?.avatar_url || `https://api.dicebear.com/7.x/bottts/svg?seed=${user?.id || 'guest'}`}
-                alt=""
-                className="w-8 h-8 rounded-full object-cover border border-white/10 shrink-0 mt-0.5"
-                onError={(e) => { (e.target as HTMLElement).setAttribute('src', `https://api.dicebear.com/7.x/bottts/svg?seed=${user?.id || 'guest'}`); }}
-              />
-              <input
-                type="text"
-                value={commentText}
-                onChange={e => setCommentText(e.target.value)}
-                placeholder="Write a comment..."
-                className="flex-1 bg-black/50 border border-white/10 rounded-full px-4 py-2 text-xs text-white placeholder-zinc-600 focus:outline-none focus:border-primary-500"
-              />
-              <button
-                onClick={handlePostComment}
-                disabled={!commentText.trim()}
-                className="px-4 py-2 bg-primary-600 hover:bg-primary-500 disabled:opacity-40 text-white rounded-full text-xs font-bold uppercase transition-all shrink-0"
-              >
-                Send
-              </button>
-            </div>
-          </div>
-        </DialogContent>
-      </Dialog>
+      {/* Instagram-Style Comments Modal & Drawer */}
+      <InstagramCommentsModal
+        post={activePostForComments}
+        comments={comments}
+        onClose={() => setActivePostForComments(null)}
+        onPostComment={async (text, parentId) => {
+          if (!user) {
+            onAuthRequired();
+            return;
+          }
+          const { error } = await supabase.from('social_comments').insert({
+            post_id: activePostForComments!.id,
+            user_id: user.id,
+            parent_id: parentId || null,
+            content: text
+          });
+          if (error) throw error;
+          fetchComments(activePostForComments!.id);
+          fetchPosts();
+          toast.success("Comment posted");
+        }}
+        user={user}
+      />
 
       {/* News View Dialog Modal */}
       <Dialog open={!!activeNewsItem} onOpenChange={() => setActiveNewsItem(null)}>
@@ -809,12 +958,22 @@ export default function OtakuVerse({ user, onAuthRequired, highlightId, initialN
           {activeNewsItem && (
             <>
               <DialogHeader className="border-b border-white/10 p-6 pb-4 shrink-0 bg-[#0a0a0d] z-10">
-                <div className="flex items-center gap-3 pr-8">
-                  <img src={activeNewsItem.user?.avatar?.large} alt="" className="w-10 h-10 rounded-full border border-white/10 object-cover shrink-0" />
-                  <div className="min-w-0">
-                    <DialogTitle className="text-sm font-bold text-white leading-tight line-clamp-2">{activeNewsItem.title}</DialogTitle>
-                    <span className="text-[10px] text-zinc-500 block mt-1">By {activeNewsItem.user?.name} on {new Date(activeNewsItem.createdAt * 1000).toLocaleDateString()}</span>
+                <div className="flex items-center justify-between gap-3">
+                  <div className="flex items-center gap-3 pr-4 min-w-0 flex-1">
+                    <img src={activeNewsItem.user?.avatar?.large} alt="" className="w-10 h-10 rounded-full border border-white/10 object-cover shrink-0" />
+                    <div className="min-w-0">
+                      <DialogTitle className="text-sm font-bold text-white leading-tight line-clamp-2">{activeNewsItem.title}</DialogTitle>
+                      <span className="text-[10px] text-zinc-500 block mt-1">By {activeNewsItem.user?.name} on {new Date(activeNewsItem.createdAt * 1000).toLocaleDateString()}</span>
+                    </div>
                   </div>
+                  <button
+                    type="button"
+                    onClick={() => setActiveNewsItem(null)}
+                    className="p-2 rounded-full bg-white/10 hover:bg-white/20 text-zinc-300 hover:text-white border border-white/15 backdrop-blur-md transition-colors cursor-pointer shrink-0"
+                    title="Close news thread"
+                  >
+                    <X size={16} />
+                  </button>
                 </div>
               </DialogHeader>
               <div className="flex-1 overflow-y-auto custom-scrollbar p-6 space-y-8">
@@ -824,9 +983,18 @@ export default function OtakuVerse({ user, onAuthRequired, highlightId, initialN
                 />
                 
                 <div className="pt-6 border-t border-white/10 flex flex-col h-full flex-1 min-h-[300px]">
-                  <h4 className="text-xs font-black uppercase tracking-widest text-primary-500 mb-4 flex items-center gap-2 shrink-0">
-                    <MessageSquare size={14} /> Comments
-                  </h4>
+                  <div className="flex items-center justify-between mb-4 shrink-0">
+                    <h4 className="text-xs font-black uppercase tracking-widest text-primary-500 flex items-center gap-2">
+                      <MessageSquare size={14} /> Comments ({newsComments.length})
+                    </h4>
+                    <button
+                      type="button"
+                      onClick={() => setActiveNewsItem(null)}
+                      className="px-3 py-1 rounded-full bg-white/10 hover:bg-white/20 text-zinc-300 hover:text-white border border-white/15 text-[10px] font-bold uppercase tracking-wider flex items-center gap-1 transition-all cursor-pointer backdrop-blur-md"
+                    >
+                      <X size={12} /> Close
+                    </button>
+                  </div>
                   
                   {/* News Comment Threads */}
                   <div className="flex-1 overflow-y-auto no-scrollbar py-2 space-y-4">
@@ -852,12 +1020,7 @@ export default function OtakuVerse({ user, onAuthRequired, highlightId, initialN
                       </div>
                     )}
                     <div className="flex gap-2.5">
-                      <img
-                        src={user?.user_metadata?.avatar_url || `https://api.dicebear.com/7.x/bottts/svg?seed=${user?.id || 'guest'}`}
-                        alt=""
-                        className="w-8 h-8 rounded-full object-cover border border-white/10 shrink-0 mt-0.5"
-                        onError={(e) => { (e.target as HTMLElement).setAttribute('src', `https://api.dicebear.com/7.x/bottts/svg?seed=${user?.id || 'guest'}`); }}
-                      />
+                      <ProfileAvatar profile={user?.user_metadata || user} className="w-8 h-8" />
                       <input
                         type="text"
                         value={newsCommentText}
@@ -881,27 +1044,54 @@ export default function OtakuVerse({ user, onAuthRequired, highlightId, initialN
         </DialogContent>
       </Dialog>
 
+
+
       <ImageLightbox isOpen={lightbox.isOpen} src={lightbox.src} onClose={() => setLightbox({ isOpen: false, src: '' })} />
+
+      {/* Floating Glowing Arrow To Top (Portal to body for max z-index, hides when any modal/lightbox is active) */}
+      {typeof window !== 'undefined' && createPortal(
+        <AnimatePresence>
+          {showScrollTop && !activeNewsItem && !activePostForComments && !lightbox.isOpen && (
+            <motion.button
+              initial={{ opacity: 0, scale: 0.5, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.5, y: 20 }}
+              onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
+              className="fixed bottom-24 right-5 sm:bottom-20 sm:right-7 z-[999999] p-2 text-primary-400 hover:text-white drop-shadow-[0_0_15px_rgba(99,102,241,0.9)] active:scale-90 transition-all cursor-pointer flex items-center justify-center pointer-events-auto filter"
+              title="Scroll to top"
+            >
+              <ArrowUp size={28} strokeWidth={2.5} />
+            </motion.button>
+          )}
+        </AnimatePresence>,
+        document.body
+      )}
     </div>
   );
 }
 
 // --- SUB COMPONENTS ---
 
-function NavButton({ icon, label, active, onClick }: { icon: React.ReactNode, label: string, active?: boolean, onClick?: () => void }) {
+function NavButton({ icon, label, active, onClick, badge }: { icon: React.ReactNode, label: string, active?: boolean, onClick?: () => void, badge?: number | boolean }) {
    return (
-      <div onClick={onClick} className="flex items-center justify-center lg:justify-start gap-3.5 p-3 rounded-full hover:bg-white/10 cursor-pointer transition-colors w-12 h-12 lg:w-auto lg:h-auto mx-auto lg:mx-0 group">
+      <div onClick={onClick} className="flex items-center justify-center lg:justify-start gap-3.5 p-3 rounded-full hover:bg-white/10 cursor-pointer transition-colors w-12 h-12 lg:w-auto lg:h-auto mx-auto lg:mx-0 group relative">
          <div className={`${active ? 'text-primary-500' : 'text-zinc-400 group-hover:text-white'}`}>
             {icon}
+            {!!badge && (
+               <span className="absolute top-2 right-2 lg:top-auto lg:right-auto lg:-mt-2 lg:-mr-2 flex h-3 w-3">
+                 <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
+                 <span className="relative inline-flex rounded-full h-3 w-3 bg-red-500 border-2 border-[#050505]"></span>
+               </span>
+            )}
          </div>
-         <span className={`hidden lg:block text-sm uppercase tracking-wider ${active ? 'font-black text-white' : 'font-bold text-zinc-400 group-hover:text-white'}`}>{label}</span>
+         <span className={`hidden lg:flex items-center gap-2 text-sm uppercase tracking-wider ${active ? 'font-black text-white' : 'font-bold text-zinc-400 group-hover:text-white'}`}>
+            {label}
+         </span>
       </div>
    );
 }
 
 const PostItem = React.forwardRef<HTMLDivElement, any>(({ post, highlightId, onLike, onComment, onShare, onBookmark, onDelete, onImageClick, currentUserId }, ref) => {
-   const avatarUrl = post.user?.avatar_url || `https://api.dicebear.com/7.x/bottts/svg?seed=${post.user?.username || post.user_id}`;
-
    return (
       <div ref={ref} className={`flex gap-3.5 p-4 border-b border-white/10 hover:bg-white/5 transition-colors cursor-pointer ${highlightId === post.id ? 'bg-white/10' : ''}`} onClick={(e) => {
           const target = e.target as HTMLElement;
@@ -909,13 +1099,9 @@ const PostItem = React.forwardRef<HTMLDivElement, any>(({ post, highlightId, onL
              onComment();
           }
       }}>
-         <img 
-            src={avatarUrl}
-            alt=""
-            className="w-10 h-10 rounded-full object-cover border border-white/10 shrink-0 cursor-pointer hover:opacity-80 transition-opacity"
-            onError={(e) => { (e.target as HTMLElement).setAttribute('src', `https://api.dicebear.com/7.x/bottts/svg?seed=${post.user_id}`); }}
-            onClick={(e) => { e.stopPropagation(); window.location.href = `/profile/${post.user?.username}`; }}
-         />
+         <div className="w-10 h-10 shrink-0">
+             <ProfileAvatar profile={post.user} className="w-10 h-10 cursor-pointer" />
+         </div>
 
          <div className="flex-1 min-w-0">
             <div className="flex items-center justify-between">
@@ -962,24 +1148,41 @@ const PostItem = React.forwardRef<HTMLDivElement, any>(({ post, highlightId, onL
    );
 });
 
+function flattenReplies(replies: any[], parentUsername?: string): any[] {
+  let flat: any[] = [];
+  if (!replies || replies.length === 0) return flat;
+  
+  for (const r of replies) {
+    const item = {
+      ...r,
+      replyToUser: parentUsername || r.reply_to_username || r.parent_username
+    };
+    flat.push(item);
+    if (r.replies && r.replies.length > 0) {
+      flat = flat.concat(flattenReplies(r.replies, r.user?.username || r.user?.name || 'User'));
+    }
+  }
+  return flat;
+}
+
 // --- FACEBOOK-STYLE COMMENT BUBBLE COMPONENT ---
-function FacebookCommentBubble({ comment, onReply }: { comment: Comment; onReply: (id: string, name: string) => void }) {
+function FacebookCommentBubble({ comment, onReply, isReply = false }: { comment: Comment; onReply: (id: string, name: string) => void; isReply?: boolean }) {
   const [likesCount, setLikesCount] = useState(0);
   const [hasLiked, setHasLiked] = useState(false);
 
-  const avatarUrl = comment.user?.avatar_url || `https://api.dicebear.com/7.x/bottts/svg?seed=${comment.user?.username || comment.user_id}`;
+  const flatChildReplies = useMemo(() => {
+    if (isReply) return [];
+    return flattenReplies(comment.replies || [], comment.user?.username || 'User');
+  }, [comment.replies, comment.user?.username, isReply]);
 
   return (
     <div className="flex gap-2.5 items-start group">
-      <img
-        src={avatarUrl}
-        alt=""
-        className="w-8 h-8 rounded-full object-cover border border-white/10 shrink-0 mt-1"
-        onError={(e) => { (e.target as HTMLElement).setAttribute('src', `https://api.dicebear.com/7.x/bottts/svg?seed=${comment.user_id}`); }}
-      />
+      <div className={`${isReply ? 'w-6 h-6' : 'w-8 h-8'} shrink-0 relative mt-1`}>
+        <ProfileAvatar profile={comment.user} className={`${isReply ? 'w-6 h-6' : 'w-8 h-8'} cursor-pointer mt-0.5`} />
+      </div>
 
       <div className="flex-1 min-w-0 space-y-1">
-        {/* Facebook Gray Comment Bubble */}
+        {/* Gray Comment Bubble */}
         <div className="bg-[#18191c] border border-white/5 p-3 rounded-2xl rounded-tl-xs shadow-md inline-block max-w-full">
           <div className="flex items-center gap-1.5">
             <span className="font-bold text-xs text-white hover:underline cursor-pointer">
@@ -988,11 +1191,16 @@ function FacebookCommentBubble({ comment, onReply }: { comment: Comment; onReply
             {comment.user?.role === 'admin' && <ShieldCheck size={12} className="text-primary-500" />}
           </div>
           <p className="text-xs text-zinc-200 mt-1 whitespace-pre-wrap leading-relaxed">
+            {isReply && (comment as any).replyToUser && (
+              <span className="text-primary-400 font-semibold mr-1.5 hover:underline cursor-pointer">
+                @{(comment as any).replyToUser}
+              </span>
+            )}
             {comment.content}
           </p>
         </div>
 
-        {/* Facebook Style Action Buttons Below Bubble */}
+        {/* Action Buttons Below Bubble */}
         <div className="flex items-center gap-4 text-[10px] text-zinc-400 pl-2 font-bold">
           <button
             onClick={() => {
@@ -1016,11 +1224,11 @@ function FacebookCommentBubble({ comment, onReply }: { comment: Comment; onReply
           </span>
         </div>
 
-        {/* Nested Child Replies */}
-        {comment.replies && comment.replies.length > 0 && (
-          <div className="pl-4 border-l border-white/10 mt-2 space-y-3">
-            {comment.replies.map(reply => (
-              <FacebookCommentBubble key={reply.id} comment={reply} onReply={onReply} />
+        {/* Single Flat Linear Column for ALL Descendant Replies */}
+        {!isReply && flatChildReplies.length > 0 && (
+          <div className="pl-6 sm:pl-8 border-l border-white/10 mt-2.5 space-y-3">
+            {flatChildReplies.map((reply: any) => (
+              <FacebookCommentBubble key={reply.id} comment={reply} onReply={onReply} isReply={true} />
             ))}
           </div>
         )}

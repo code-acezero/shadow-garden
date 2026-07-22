@@ -17,6 +17,7 @@ import {
 } from '@/components/ui/dialog';
 import { formatDistanceToNow } from 'date-fns';
 import { motion } from 'framer-motion';
+import ProfileAvatar from '@/components/User/ProfileAvatar';
 
 // Types (You can also move this to a types.ts file later)
 interface SocialPostCardProps {
@@ -58,17 +59,12 @@ export default function SocialPostCard({
         animate={{ opacity: 1, y: 0 }}
         exit={{ opacity: 0 }}
       >
-        <Card className="bg-[#0a0a0a] border-white/5 hover:border-white/10 transition-colors overflow-hidden">
+        <Card className="bg-[#0c0c10] border-white/10 hover:border-primary-500/30 transition-all overflow-hidden rounded-3xl shadow-md hover:shadow-xl">
           
           {/* HEADER */}
           <CardHeader className="flex flex-row items-start justify-between pb-2">
             <div className="flex gap-3">
-              <Avatar className="cursor-pointer border border-white/10">
-                <AvatarImage src={post.user?.avatar_url} />
-                <AvatarFallback className="bg-zinc-900 text-zinc-500">
-                  {post.user?.username?.[0] || "?"}
-                </AvatarFallback>
-              </Avatar>
+              <ProfileAvatar profile={post.user} className="w-10 h-10 shrink-0 cursor-pointer" />
               <div>
                 <p className="text-sm font-bold text-white hover:text-primary-500 cursor-pointer transition-colors">
                   {post.user?.username || "Unknown Agent"}

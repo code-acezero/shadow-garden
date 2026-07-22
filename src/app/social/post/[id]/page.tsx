@@ -33,7 +33,7 @@ export default function SinglePostPage() {
             .from('social_posts')
             .select(`
               *,
-              user:profiles(username, avatar_url, role)
+              user:profiles(username, avatar_url, role, level, frame_id, show_level)
             `)
             .eq('id', params.id)
             .single();

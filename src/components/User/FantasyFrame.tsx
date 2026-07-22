@@ -1,6 +1,6 @@
 import React from 'react';
 import { motion } from 'framer-motion';
-import { Star } from 'lucide-react';
+import { useSettings } from '@/hooks/useSettings';
 
 interface FantasyFrameProps {
     frameId?: string;
@@ -45,12 +45,55 @@ export const FRAMES = {
     },
 };
 
+export function getLevelColors(lvl: number) {
+  if (lvl < 10) return { stroke: '#d1d5db', from: '#9ca3af', via: '#4b5563', to: '#1f2937', shadow: 'rgba(156,163,175,0.8)' }; // Gray
+  if (lvl < 25) return { stroke: '#86efac', from: '#4ade80', via: '#16a34a', to: '#14532d', shadow: 'rgba(74,222,128,0.8)' }; // Green
+  if (lvl < 50) return { stroke: '#93c5fd', from: '#3b82f6', via: '#2563eb', to: '#1e3a8a', shadow: 'rgba(59,130,246,0.8)' }; // Blue
+  if (lvl < 75) return { stroke: '#e9d5ff', from: '#a855f7', via: '#7e22ce', to: '#3b0764', shadow: 'rgba(168,85,247,0.8)' }; // Purple
+  if (lvl < 100) return { stroke: '#fde047', from: '#eab308', via: '#ca8a04', to: '#713f12', shadow: 'rgba(234,179,8,0.8)' }; // Gold
+  return { stroke: '#fca5a5', from: '#ef4444', via: '#b91c1c', to: '#7f1d1d', shadow: 'rgba(239,68,68,0.8)' }; // Red
+}
+
+function UserLevelPyramidBadge({ level, className = "w-4 h-4" }: { level: number | string; className?: string }) {
+  const numLvl = typeof level === 'string' ? parseInt(level) || 1 : level;
+  const colors = getLevelColors(numLvl);
+  const gradId = `user_lvl_grad_${numLvl}_${Math.random().toString(36).substr(2, 5)}`;
+  
+  return (
+    <div className={`relative flex items-center justify-center shrink-0 ${className}`}>
+      <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" className="w-full h-full" style={{ filter: `drop-shadow(0 0 4px ${colors.shadow})` }}>
+        <path
+          d="M1 2L23 2L12 22L1 2Z"
+          fill={`url(#${gradId})`}
+          stroke={colors.stroke}
+          strokeWidth="1.5"
+          strokeLinejoin="round"
+        />
+        <defs>
+          <linearGradient id={gradId} x1="12" y1="2" x2="12" y2="22" gradientUnits="userSpaceOnUse">
+            <stop stopColor={colors.from} />
+            <stop offset="0.5" stopColor={colors.via} />
+            <stop offset="1" stopColor={colors.to} />
+          </linearGradient>
+        </defs>
+      </svg>
+      <span className="absolute inset-0 flex items-center justify-center text-[7px] font-black text-white leading-none pb-1.5 tracking-tighter">
+        {level}
+      </span>
+    </div>
+  );
+}
+
 export default function FantasyFrame({ frameId = 'none', level, showLevelTag = true, children, className = '' }: FantasyFrameProps) {
     const frame = FRAMES[frameId as keyof typeof FRAMES] || FRAMES.none;
+    const settingsContext = useSettings();
+    const isHiddenBySetting = settingsContext?.settings?.hideLevelBadge;
+
+    const shouldShowTag = level !== undefined && showLevelTag && !isHiddenBySetting;
 
     return (
         <div className={`relative flex flex-col items-center justify-center ${className}`}>
-            <div className={`relative p-1 rounded-full w-full h-full ${frame.effects || ''} ${frameId === 'none' ? '' : 'overflow-visible'}`}>
+            <div className={`relative p-0.5 rounded-full w-full h-full ${frame.effects || ''} ${frameId === 'none' ? '' : 'overflow-visible'}`}>
                 
                 {/* Advanced Frame CSS Layer */}
                 {frameId !== 'none' && (
@@ -65,13 +108,10 @@ export default function FantasyFrame({ frameId = 'none', level, showLevelTag = t
                 </div>
             </div>
 
-            {/* Level Tag (Fantasy Style) */}
-            {level !== undefined && showLevelTag && (
-                <div className="absolute -bottom-2 z-30 flex items-center justify-center">
-                    <div className="bg-gradient-to-r from-zinc-900 via-zinc-800 to-zinc-900 border border-white/20 px-2 py-0.5 rounded-full shadow-xl flex items-center gap-1 min-w-[3rem] justify-center backdrop-blur-md">
-                        <Star size={10} className="text-yellow-500 fill-yellow-500 drop-shadow-[0_0_5px_rgba(234,179,8,1)]" />
-                        <span className="text-[10px] font-black text-white">{level}</span>
-                    </div>
+            {/* Ultra-Small & Sleek Level Badge (Bottom Center) */}
+            {shouldShowTag && (
+                <div className="absolute -bottom-1.5 left-1/2 -translate-x-1/2 z-30 flex items-center justify-center pointer-events-none">
+                    <UserLevelPyramidBadge level={level} className="w-[14px] h-[14px]" />
                 </div>
             )}
         </div>

@@ -22,6 +22,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Switch } from '@/components/ui/switch';
 import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
+import ProfileAvatar from '@/components/User/ProfileAvatar';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from '@/components/ui/dialog';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -352,7 +353,7 @@ const RosterTab = memo(() => {
              <div key={user.id} className={`bg-zinc-900/30 border p-4 rounded-2xl flex flex-col gap-4 group transition-all ${isMe ? 'border-fuchsia-500/50 bg-fuchsia-950/10' : isAdmin ? 'border-yellow-500/30' : isMod ? 'border-fuchsia-500/30' : 'border-white/5 hover:border-white/10'}`}>
                 <div className="flex items-start justify-between">
                     <div className="flex items-center gap-4">
-                        <Avatar className="w-12 h-12 border-2 border-white/5"><AvatarImage src={user.avatar_url} /><AvatarFallback className="bg-zinc-800">{user.username?.[0]}</AvatarFallback></Avatar>
+                        <ProfileAvatar profile={user} className="w-12 h-12" />
                         <div>
                             <h4 className="font-bold text-white flex items-center gap-2">{user.username} {isMe && <Badge className="text-[8px] bg-fuchsia-600 h-4 px-1 rounded-sm">YOU</Badge>}</h4>
                             <div className="flex items-center gap-2 mt-1"><Badge variant="secondary" className="text-[10px] bg-white/5 hover:bg-white/10 text-zinc-400 border-none rounded-full">{user.role.toUpperCase()}</Badge>{user.is_banned && <Badge variant="destructive" className="text-[10px] h-5 rounded-full">EXILED</Badge>}</div>

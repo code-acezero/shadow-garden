@@ -9,6 +9,7 @@ import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/context/AuthContext';
 import { toast } from '@/lib/toast';
 import Footer from '@/components/Anime/Footer';
+import ProfileAvatar from '@/components/User/ProfileAvatar';
 
 export interface WatchRoom {
   id: string;
@@ -46,7 +47,7 @@ export default function RoomsHubPage() {
     try {
       const { data, error } = await supabase
         .from('watch_rooms')
-        .select(`*, host:profiles(username, avatar_url)`)
+        .select(`*, host:profiles(username, avatar_url, level, frame_id, show_level)`)
         .order('created_at', { ascending: false });
 
       if (error) throw error;
@@ -182,11 +183,9 @@ export default function RoomsHubPage() {
                   </h3>
 
                   <div className="flex items-center gap-3 mt-4">
-                    <img
-                      src={room.host?.avatar_url || 'https://api.dicebear.com/7.x/bottts/svg?seed=Host'}
-                      alt=""
-                      className="w-8 h-8 rounded-full border border-white/10 object-cover"
-                    />
+                    <div className="w-8 h-8 shrink-0">
+                      <ProfileAvatar profile={room.host} className="w-8 h-8" />
+                    </div>
                     <div className="text-xs">
                       <span className="text-zinc-500 text-[10px] block">Hosted by</span>
                       <span className="font-bold text-zinc-200">{room.host?.username || 'Host'}</span>

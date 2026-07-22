@@ -11,8 +11,9 @@ import {
   Volume2, Settings as SettingsIcon,
   LayoutTemplate, Brush, Sun, Moon, Sparkles, Sidebar,
   Mic2, Radio, Menu, ArrowLeft, ChevronRight, Zap,
-  Globe, Pause, PanelLeftClose, PanelLeftOpen, AudioWaveform, Upload, CheckCircle
+  Globe, Pause, PanelLeftClose, PanelLeftOpen, AudioWaveform, Upload, CheckCircle, ShieldCheck
 } from 'lucide-react';
+import Link from 'next/link';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useSettings } from '@/hooks/useSettings';
 import { useAuth } from '@/context/AuthContext';
@@ -580,8 +581,9 @@ export default function Settings() {
                         </div>
 
                         <div className="bg-[#0f0f0f] rounded-[32px] border border-white/5 p-8 shadow-lg">
-                            <h3 className="text-xs font-black text-zinc-500 uppercase tracking-widest flex items-center gap-2 mb-4"><Lock size={14} className="text-primary"/> Security</h3>
+                            <h3 className="text-xs font-black text-zinc-500 uppercase tracking-widest flex items-center gap-2 mb-4"><Lock size={14} className="text-primary"/> Security & Privacy</h3>
                             <ToggleRow title="Two-Factor Auth" desc="Secure via Authenticator" checked={settings.twoFactor} onChange={(v: boolean) => updateSetting('twoFactor', v)} />
+                            <ToggleRow title="Hide Level Badge" desc="Hide level badge overlay on your avatar" checked={settings.hideLevelBadge || false} onChange={(v: boolean) => updateSetting('hideLevelBadge', v)} />
                             <div className="pt-4 border-t border-white/5 space-y-3 mt-4">
                                 <label className="text-[10px] font-bold text-zinc-500 uppercase">Change Password</label>
                                 <input type="password" placeholder="New Password" value={passData.newPass} onChange={e => setPassData({...passData, newPass: e.target.value})} className="w-full bg-black/40 border border-white/5 rounded-xl px-4 py-3 text-sm text-white focus:border-primary/50 outline-none" />

@@ -17,7 +17,7 @@ import {
 import { toast } from '@/lib/toast';
 import AuthModal from '@/components/Auth/AuthModal';
 import ShadowAvatar from '@/components/User/ShadowAvatar'; 
-import FantasyFrame from '@/components/User/FantasyFrame';
+import ProfileAvatar from '@/components/User/ProfileAvatar';
 import Footer from '@/components/Anime/Footer';
 import { motion, AnimatePresence } from 'framer-motion';
 import Link from 'next/link';
@@ -130,7 +130,7 @@ export default function ProfilePage() {
             .select(`
                 ${joinField},
                 profiles!follows_${joinField}_fkey (
-                    id, username, full_name, avatar_url
+                    id, username, full_name, avatar_url, level, frame_id, show_level
                 )
             `)
             .eq(targetField, user.id);
@@ -161,17 +161,10 @@ export default function ProfilePage() {
                 <div className="flex flex-col md:flex-row items-center md:items-start gap-8 mb-12">
                     {/* Avatar */}
                     <div className="shrink-0 relative group">
-                        <FantasyFrame 
-                            frameId={activeFrame || profile.frame_id} 
-                            level={profile.level || 1} 
-                            showLevelTag={profile.show_level !== false}
-                            className="w-32 h-32 md:w-40 md:h-40"
-                        >
-                            <Avatar className="w-full h-full rounded-full border-4 border-black bg-zinc-900 cursor-pointer">
-                                <AvatarImage src={profile.avatar_url} className="object-cover" />
-                                <AvatarFallback><ShadowAvatar gender={gender}/></AvatarFallback>
-                            </Avatar>
-                        </FantasyFrame>
+                        <ProfileAvatar 
+                            profile={{...profile, frame_id: activeFrame || profile.frame_id}} 
+                            className="w-32 h-32 md:w-40 md:h-40 cursor-pointer"
+                        />
                         <div onClick={() => setShowAvatarModal(true)} className="absolute inset-1 bg-black/50 rounded-full z-20 opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer flex items-center justify-center backdrop-blur-sm">
                             <Camera className="text-white" size={32} />
                         </div>
@@ -482,7 +475,9 @@ export default function ProfilePage() {
                         ) : followersList.map(u => (
                             <Link key={u.id} href={`/profile/${u.id}`} className="flex items-center justify-between p-2 hover:bg-white/5 rounded-lg transition-colors">
                                 <div className="flex items-center gap-3">
-                                    <Avatar className="w-10 h-10"><AvatarImage src={u.avatar_url}/><AvatarFallback className="bg-zinc-800 text-white text-xs">{u.username?.[0]}</AvatarFallback></Avatar>
+                                    <div className="w-10 h-10">
+                                      <ProfileAvatar profile={u} className="w-10 h-10" />
+                                    </div>
                                     <div className="flex flex-col">
                                         <span className="font-bold text-sm text-white">{u.username}</span>
                                         <span className="text-xs text-zinc-400">{u.full_name}</span>
@@ -506,7 +501,9 @@ export default function ProfilePage() {
                         ) : followingList.map(u => (
                             <Link key={u.id} href={`/profile/${u.id}`} className="flex items-center justify-between p-2 hover:bg-white/5 rounded-lg transition-colors">
                                 <div className="flex items-center gap-3">
-                                    <Avatar className="w-10 h-10"><AvatarImage src={u.avatar_url}/><AvatarFallback className="bg-zinc-800 text-white text-xs">{u.username?.[0]}</AvatarFallback></Avatar>
+                                    <div className="w-10 h-10">
+                                      <ProfileAvatar profile={u} className="w-10 h-10" />
+                                    </div>
                                     <div className="flex flex-col">
                                         <span className="font-bold text-sm text-white">{u.username}</span>
                                         <span className="text-xs text-zinc-400">{u.full_name}</span>

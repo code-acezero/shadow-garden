@@ -20,6 +20,7 @@ import { useRouter } from 'next/navigation';
 import { useAuth } from '@/context/AuthContext'; 
 import { Avatar, AvatarImage } from '@/components/ui/avatar';
 import ShadowAvatar from '@/components/User/ShadowAvatar';
+import ProfileAvatar from '@/components/User/ProfileAvatar';
 
 // --- TYPES & ICONS ---
 interface AuthModalProps { isOpen: boolean; onClose: () => void; onAuthSuccess: (user: AppUser) => void; initialView?: string; }
@@ -339,9 +340,7 @@ export default function AuthModal({ isOpen, onClose, onAuthSuccess, initialView 
                                     className={`flex items-center justify-between p-2 rounded-xl border transition-all outline-none focus:outline-none ring-0 ${currentUser?.id === account.id ? 'bg-primary-900/20 border-primary-500/50' : 'bg-zinc-900/50 border-white/5 hover:border-white/20'}`}
                                 >
                                     <div className="flex items-center gap-3 cursor-pointer flex-1 outline-none" onClick={() => handleSwitchAccount(account.id)}>
-                                        <Avatar className="w-10 h-10 border border-white/10">
-                                            {account.avatar_url ? <AvatarImage src={account.avatar_url} /> : <ShadowAvatar />}
-                                        </Avatar>
+                                        <ProfileAvatar profile={account} className="w-10 h-10" />
                                         <div className="text-left">
                                             <div className={`text-xs font-bold ${currentUser?.id === account.id ? 'text-primary-400' : 'text-white'}`}>{account.username}</div>
                                             <div className="text-[9px] text-zinc-500 flex items-center gap-1">

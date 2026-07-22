@@ -1,18 +1,17 @@
 "use client";
 
-import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { useParams, useRouter } from 'next/navigation';
+import React, { useState, useEffect, useCallback } from 'react';
+import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/context/AuthContext';
-import { 
-  Users, Play, Pause, Send, Shield, Lock, Trash2, LogOut, MessageSquare, 
-  Crown, UserX, Volume2, VolumeX, Radio, Loader2 
-} from 'lucide-react';
+import { Play, Pause, X, Users, MessageSquare, ArrowLeft, Loader2, MonitorPlay, Send, Shield, Lock, Trash2, LogOut, Crown, UserX, Volume2, VolumeX, Radio } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import Link from 'next/link';
+import ProfileAvatar from '@/components/User/ProfileAvatar';
 import { motion, AnimatePresence } from 'framer-motion';
 import { toast } from '@/lib/toast';
 
-export default function SingleRoomPage() {
-  const params = useParams();
+export default function WatchRoomPage({ params }: { params: { code: string } }) {
   const router = useRouter();
   const roomCode = params.code as string;
   const { user } = useAuth();
@@ -52,14 +51,14 @@ export default function SingleRoomPage() {
       // Fetch members
       const { data: memData } = await supabase
         .from('room_members')
-        .select(`*, user:profiles(username, avatar_url)`)
+        .select(`*, user:profiles(username, avatar_url, level, frame_id, show_level)`)
         .eq('room_id', data.id);
       setMembers(memData || []);
 
       // Fetch ephemeral messages
       const { data: msgData } = await supabase
         .from('room_messages')
-        .select(`*, user:profiles(username, avatar_url)`)
+        .select(`*, user:profiles(username, avatar_url, level, frame_id, show_level)`)
         .eq('room_id', data.id)
         .order('created_at', { ascending: true });
       setMessages(msgData || []);
@@ -232,11 +231,9 @@ export default function SingleRoomPage() {
             ) : (
               messages.map(msg => (
                 <div key={msg.id} className="flex items-start gap-2.5">
-                  <img
-                    src={msg.user?.avatar_url || 'https://api.dicebear.com/7.x/bottts/svg?seed=User'}
-                    alt=""
-                    className="w-7 h-7 rounded-full border border-white/10 object-cover shrink-0 mt-0.5"
-                  />
+                  <div className="w-7 h-7 shrink-0 mt-0.5 relative">
+                    <ProfileAvatar profile={msg.user} className="w-7 h-7" />
+                  </div>
                   <div>
                     <div className="flex items-center gap-2">
                       <span className="text-[10px] font-bold text-zinc-400">{msg.user?.username || 'Viewer'}</span>

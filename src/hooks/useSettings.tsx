@@ -64,6 +64,7 @@ export interface AppSettings {
 
   // Privacy
   hideOnlineStatus: boolean;
+  hideLevelBadge: boolean;
 }
 
 export const DEFAULT_SETTINGS: AppSettings = {
@@ -86,6 +87,7 @@ export const DEFAULT_SETTINGS: AppSettings = {
   autoBackup: true, bandwidthSaver: false,
   
   hideOnlineStatus: false,
+  hideLevelBadge: false,
 };
 
 interface SettingsContextType {

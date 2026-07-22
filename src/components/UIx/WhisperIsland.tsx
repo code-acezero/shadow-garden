@@ -9,7 +9,7 @@ import {
   Bell, CheckCircle, Info, Languages, Flag, Heart, AlertOctagon, 
   ArrowDownAZ, LayoutGrid, RotateCcw, ScanSearch, Users, Plus,
   ShieldAlert, MessageSquareWarning, Volume2, Mic2, Radio, Check, 
-  Trash2, Play, Pause, AudioWaveform, Flame, Globe, AtSign, Hash
+  Trash2, Play, Pause, AudioWaveform, Flame, Globe, AtSign, Hash, Shield
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { DragonIcon } from '@/components/UIx/DragonIcon';
@@ -22,6 +22,7 @@ import Link from 'next/link';
 import Notifications from '@/components/Anime/Notifications'; 
 import ShadowAvatar from '@/components/User/ShadowAvatar';
 import ShadowLogo from '@/components/UIx/ShadowLogo';
+import ProfileAvatar from '@/components/User/ProfileAvatar';
 
 import { playVoice, refreshVoiceCache } from '@/lib/voice'; 
 import { useSettings } from '@/hooks/useSettings'; 
@@ -640,10 +641,10 @@ function WhisperIslandContent() {
         setIsLoadingSearch(true);
         try {
           const [{ data: users }, { data: clans }] = await Promise.all([
-            supabase.from('profiles').select('id, username, avatar_url, role').ilike('username', `%${term}%`).limit(4),
+            supabase.from('profiles').select('id, username, avatar_url, role, frame_id, level, show_level').ilike('username', `%${term}%`).limit(4),
             supabase.from('clans').select('id, name, avatar_url').ilike('name', `%${term}%`).limit(3),
           ]);
-          const userResults = (users || []).map((u: any) => ({ id: u.id, title: u.username, image: u.avatar_url, type: u.role === 'admin' ? 'Admin' : 'User', _kind: 'user' }));
+          const userResults = (users || []).map((u: any) => ({ id: u.id, title: u.username, image: u.avatar_url, type: u.role === 'admin' ? 'Admin' : 'User', _kind: 'user', frame_id: u.frame_id, level: u.level, show_level: u.show_level }));
           const clanResults = (clans || []).map((c: any) => ({ id: c.id, title: c.name, image: c.avatar_url, type: 'Clan', _kind: 'clan' }));
           setSuggestions([...userResults, ...clanResults]);
         } catch { setSuggestions([]); } finally { setIsLoadingSearch(false); }
@@ -669,7 +670,7 @@ function WhisperIslandContent() {
           `;
 
           const [postsRes, aniRes] = await Promise.all([
-            supabase.from('social_posts').select('id, content, user:profiles(username, avatar_url)').ilike('content', `%${term}%`).limit(3),
+            supabase.from('social_posts').select('id, content, user:profiles(username, avatar_url, frame_id, level, show_level)').ilike('content', `%${term}%`).limit(3),
             fetch('https://graphql.anilist.co', {
               method: 'POST',
               headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
@@ -680,7 +681,10 @@ function WhisperIslandContent() {
           const postResults = (postsRes.data || []).map((p: any) => ({ 
              id: p.id, 
              title: (p.content || '').slice(0, 60) + ((p.content || '').length > 60 ? '...' : ''), 
-             image: p.user?.avatar_url, 
+             image: p.user?.avatar_url,
+             frame_id: p.user?.frame_id,
+             level: p.user?.level,
+             show_level: p.user?.show_level, 
              type: `By @${p.user?.username || 'Unknown'}`, 
              _kind: 'post' 
           }));
@@ -854,13 +858,7 @@ function WhisperIslandContent() {
                         <DropdownMenuTrigger asChild>
                             <button className="outline-none">
                                 <div className={cn(`${ISLAND_HEIGHT} w-10 md:w-12 rounded-full p-[2px] bg-black/40 backdrop-blur-xl border border-white/10 flex items-center justify-center`)}>
-                                    <Avatar className="w-full h-full rounded-full border border-white/10 p-0.5">
-                                        {profile?.avatar_url ? (
-                                            <AvatarImage src={profile.avatar_url} className="object-cover rounded-full" />
-                                        ) : (
-                                            <ShadowAvatar gender={profile?.gender || 'male'} />
-                                        )}
-                                    </Avatar>
+                                        <ProfileAvatar profile={profile} className="w-full h-full" />
                                 </div>
                             </button>
                         </DropdownMenuTrigger>
@@ -869,11 +867,7 @@ function WhisperIslandContent() {
                                 <div className="space-y-3">
                                     <div className="flex items-center gap-3 px-2 py-1">
                                         <div className="relative">
-                                            <Avatar className="w-10 h-10 border border-white/10">
-                                                <AvatarImage src={profile?.avatar_url} className="object-cover" />
-                                                <ShadowAvatar gender={profile?.gender || 'male'} />
-                                            </Avatar>
-                                            <div className="absolute -bottom-1 -right-1 w-3 h-3 bg-green-500 rounded-full border-2 border-[#0a0a0a]" />
+                                            <ProfileAvatar profile={profile} className="w-10 h-10" />
                                         </div>
                                         <div className="flex flex-col">
                                             <span className="text-xs font-black text-white uppercase tracking-widest">{profile?.username || 'Shadow Agent'}</span>
@@ -886,6 +880,9 @@ function WhisperIslandContent() {
                                         <DropdownMenuItem asChild><Link href="/watchlist" className="flex items-center w-full text-xs py-2 cursor-pointer hover:bg-white/10 rounded-lg transition-colors font-bold"><Flag size={14} className="mr-3 text-zinc-400" /> Watchlist</Link></DropdownMenuItem>
                                         <DropdownMenuItem asChild><Link href="/avatar" className="flex items-center w-full text-xs py-2 cursor-pointer hover:bg-white/10 rounded-lg transition-colors font-bold"><LayoutGrid size={14} className="mr-3 text-zinc-400" /> Avatar</Link></DropdownMenuItem>
                                         <DropdownMenuItem asChild><Link href="/settings" className="flex items-center w-full text-xs py-2 cursor-pointer hover:bg-white/10 rounded-lg transition-colors font-bold"><Settings size={14} className="mr-3 text-zinc-400" /> Settings</Link></DropdownMenuItem>
+                                        {(profile?.role === 'admin' || profile?.role === 'moderator') && (
+                                            <DropdownMenuItem asChild><Link href="/master" className="flex items-center w-full text-xs py-2 cursor-pointer hover:bg-white/10 rounded-lg transition-colors font-bold text-red-500"><Shield size={14} className="mr-3" /> Admin Panel</Link></DropdownMenuItem>
+                                        )}
                                     </div>
 
                                     <DropdownMenuSeparator className="bg-white/5" />

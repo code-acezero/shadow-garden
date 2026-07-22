@@ -18,6 +18,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import Link from 'next/link'; 
 import { formatDistanceToNow } from 'date-fns';
+import ProfileAvatar from '@/components/User/ProfileAvatar';
 
 // --- TYPES ---
 interface UserProfile {
@@ -103,10 +104,7 @@ const CommentItem = ({ comment, currentUserId, onReply, onReport, onDelete, onEd
             <div className={cn("relative flex gap-4 group", isReply ? "mt-2" : "mt-4")}>
                 {/* Avatar */}
                 <Link href={`/profile/${comment.user_id}`} onClick={(e) => e.stopPropagation()} className="shrink-0 mt-0.5">
-                    <Avatar className={cn("cursor-pointer hover:opacity-80 transition-opacity", isReply ? "w-6 h-6" : "w-10 h-10")}>
-                        <AvatarImage src={avatarUrl || undefined} />
-                        <AvatarFallback className="bg-zinc-800 text-white text-xs font-bold">{displayName[0]?.toUpperCase()}</AvatarFallback>
-                    </Avatar>
+                    <ProfileAvatar profile={comment.user} className={isReply ? "w-6 h-6" : "w-10 h-10"} />
                 </Link>
                 
                 {/* Main Content */}

@@ -7,20 +7,20 @@ import { supabase } from '@/lib/supabase';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem } from '@/components/ui/dropdown-menu';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { 
-    Grid, Heart, Bookmark, MoreHorizontal, Camera, Link as LinkIcon, MessageSquare, History
+    Grid, Heart, Bookmark, MoreHorizontal, Camera, Link as LinkIcon, MessageSquare, History, ArrowLeft, Send, Shield, AlertTriangle, MoreVertical, Flag, Ban, UserMinus, ShieldAlert
 } from 'lucide-react';
 import { toast } from '@/lib/toast';
 import AuthModal from '@/components/Auth/AuthModal';
 import Footer from '@/components/Anime/Footer';
 import { motion, AnimatePresence } from 'framer-motion';
 import ShadowAvatar from '@/components/User/ShadowAvatar'; 
-import FantasyFrame from '@/components/User/FantasyFrame';
+import ProfileAvatar from '@/components/User/ProfileAvatar';
 import Link from 'next/link';
 
-export default function PublicProfilePage() {
-    const params = useParams();
+export default function PublicProfilePage({ params }: { params: { id: string } }) {
     const router = useRouter();
     const targetUserId = params.id as string;
     
@@ -31,7 +31,10 @@ export default function PublicProfilePage() {
 
     const [profile, setProfile] = useState<any>(null);
     const [isFollowing, setIsFollowing] = useState(false);
+    const [isPartner, setIsPartner] = useState(false);
     const [showAuthModal, setShowAuthModal] = useState(false);
+    const [showProfileOptions, setShowProfileOptions] = useState(false);
+    const [unreadCount, setUnreadCount] = useState(0);
     
     // Stats State
     const [followersCount, setFollowersCount] = useState(0);
@@ -100,6 +103,23 @@ export default function PublicProfilePage() {
             if (user) {
                 const { data: followStatus } = await supabase.from('follows').select('id').eq('follower_id', user.id).eq('following_id', resolvedId).single();
                 setIsFollowing(!!followStatus);
+
+                const { data: followBackStatus } = await supabase.from('follows').select('id').eq('follower_id', resolvedId).eq('following_id', user.id).single();
+                setIsPartner(!!followStatus && !!followBackStatus);
+
+                const { data: existingConvs } = await supabase.from('chat_participants').select('conversation_id, last_read_at').eq('user_id', user.id);
+                if (existingConvs && existingConvs.length > 0) {
+                    const convIds = existingConvs.map((c: any) => c.conversation_id);
+                    const { data: mutuals } = await supabase.from('chat_participants').select('conversation_id').in('conversation_id', convIds).eq('user_id', resolvedId);
+                    if (mutuals && mutuals.length > 0) {
+                        const mutualConvId = mutuals[0].conversation_id;
+                        const myParticipant = existingConvs.find((c:any) => c.conversation_id === mutualConvId);
+                        if (myParticipant) {
+                            const { count } = await supabase.from('chat_messages').select('*', { count: 'exact', head: true }).eq('conversation_id', mutualConvId).gt('created_at', myParticipant.last_read_at || '1970-01-01T00:00:00Z');
+                            setUnreadCount(count || 0);
+                        }
+                    }
+                }
             }
         };
         
@@ -107,15 +127,41 @@ export default function PublicProfilePage() {
     }, [targetUserId, user, router]);
 
     const handleFollowToggle = async () => {
-        if (!user) { setShowAuthModal(true); return; }
+        if (!user || !profile) { setShowAuthModal(true); return; }
         
         try {
             if (isFollowing) {
-                await supabase.from('follows').delete().eq('follower_id', user.id).eq('following_id', targetUserId);
+                await supabase.from('follows').delete().eq('follower_id', user.id).eq('following_id', profile.id);
                 setFollowersCount(prev => Math.max(0, prev - 1));
+                setIsPartner(false);
             } else {
-                await supabase.from('follows').insert({ follower_id: user.id, following_id: targetUserId });
+                await supabase.from('follows').insert({ follower_id: user.id, following_id: profile.id });
                 setFollowersCount(prev => prev + 1);
+
+                const { data: followBack } = await supabase.from('follows').select('id').eq('follower_id', profile.id).eq('following_id', user.id).single();
+                if (followBack) {
+                    setIsPartner(true);
+                    toast.success(`You and ${profile.username} are now Partners!`);
+
+                    const { data: existingConvs } = await supabase.from('chat_participants').select('conversation_id').eq('user_id', user.id);
+                    const convIds = existingConvs?.map((c: any) => c.conversation_id) || [];
+                    
+                    let mutualConv = null;
+                    if (convIds.length > 0) {
+                        const { data: matches } = await supabase.from('chat_participants').select('conversation_id').in('conversation_id', convIds).eq('user_id', profile.id);
+                        mutualConv = matches;
+                    }
+
+                    if (!mutualConv || mutualConv.length === 0) {
+                        const { data: newConv } = await supabase.from('chat_conversations').insert({ type: 'direct' }).select().single();
+                        if (newConv) {
+                            await supabase.from('chat_participants').insert([
+                                { conversation_id: newConv.id, user_id: user.id },
+                                { conversation_id: newConv.id, user_id: profile.id }
+                            ]);
+                        }
+                    }
+                }
             }
             setIsFollowing(!isFollowing);
         } catch (error) {
@@ -132,7 +178,7 @@ export default function PublicProfilePage() {
             .select(`
                 ${joinField},
                 profiles!follows_${joinField}_fkey (
-                    id, username, full_name, avatar_url
+                    id, username, full_name, avatar_url, level, frame_id, show_level
                 )
             `)
             .eq(targetField, targetUserId);
@@ -141,6 +187,48 @@ export default function PublicProfilePage() {
             const list = data.map((d: any) => d.profiles);
             if (type === 'followers') { setFollowersList(list); setShowFollowersModal(true); }
             else { setFollowingList(list); setShowFollowingModal(true); }
+        }
+    };
+
+    const handleMessageClick = async () => {
+        if (!user) {
+            setShowAuthModal(true);
+            return;
+        }
+        
+        try {
+            // Check for existing direct conversation
+            const { data: existingConvs } = await supabase
+                .from('chat_participants')
+                .select(`conversation_id, chat_conversations!inner(type)`)
+                .eq('user_id', user.id)
+                .eq('chat_conversations.type', 'direct');
+            
+            const convIds = existingConvs?.map((c: any) => c.conversation_id) || [];
+            
+            let mutualConv = null;
+            if (convIds.length > 0) {
+                const { data: matches } = await supabase.from('chat_participants').select('conversation_id').in('conversation_id', convIds).eq('user_id', profile.id);
+                if (matches && matches.length > 0) {
+                    mutualConv = matches[0];
+                }
+            }
+
+            if (mutualConv) {
+                router.push(`/messages?chatId=${mutualConv.conversation_id}`);
+            } else {
+                // Create new one
+                const { data: newConv } = await supabase.from('chat_conversations').insert({ type: 'direct' }).select().single();
+                if (newConv) {
+                    await supabase.from('chat_participants').insert([
+                        { conversation_id: newConv.id, user_id: user.id },
+                        { conversation_id: newConv.id, user_id: profile.id }
+                    ]);
+                    router.push(`/messages?chatId=${newConv.id}`);
+                }
+            }
+        } catch (error) {
+            toast.error("Failed to start chat.");
         }
     };
 
@@ -154,17 +242,10 @@ export default function PublicProfilePage() {
                 <div className="flex flex-col md:flex-row items-center md:items-start gap-8 mb-12">
                     {/* Avatar */}
                     <div className="shrink-0 relative">
-                        <FantasyFrame 
-                            frameId={profile.frame_id} 
-                            level={profile.level || 1} 
-                            showLevelTag={profile.show_level !== false}
-                            className="w-32 h-32 md:w-40 md:h-40"
-                        >
-                            <Avatar className="w-full h-full rounded-full border-4 border-black bg-zinc-900">
-                                <AvatarImage src={profile.avatar_url} className="object-cover" />
-                                <AvatarFallback><ShadowAvatar gender={profile.gender || 'male'}/></AvatarFallback>
-                            </Avatar>
-                        </FantasyFrame>
+                        <ProfileAvatar 
+                            profile={profile} 
+                            className="w-32 h-32 md:w-40 md:h-40 cursor-pointer"
+                        />
                     </div>
 
                     {/* Info & Stats */}
@@ -174,13 +255,41 @@ export default function PublicProfilePage() {
                             <div className="flex gap-2">
                                 <Button 
                                     onClick={handleFollowToggle} 
-                                    variant={isFollowing ? "secondary" : "default"} 
-                                    className={isFollowing ? "bg-zinc-800 hover:bg-zinc-700 text-white h-8 px-6 font-bold text-sm rounded-lg" : "bg-blue-500 hover:bg-blue-600 text-white h-8 px-6 font-bold text-sm rounded-lg"}
+                                    variant={isPartner ? "secondary" : isFollowing ? "secondary" : "default"} 
+                                    className={
+                                        isPartner ? "bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 border border-amber-500/50 h-8 px-6 font-bold text-sm rounded-lg" : 
+                                        isFollowing ? "bg-zinc-800 hover:bg-zinc-700 text-white h-8 px-6 font-bold text-sm rounded-lg" : 
+                                        "bg-blue-500 hover:bg-blue-600 text-white h-8 px-6 font-bold text-sm rounded-lg"
+                                    }
                                 >
-                                    {isFollowing ? "Following" : "Follow"}
+                                    {isPartner ? "Partner" : isFollowing ? "Following" : "Follow"}
                                 </Button>
-                                <Button onClick={() => user ? router.push(`/messages?user=${profile.id}`) : setShowAuthModal(true)} variant="secondary" className="bg-zinc-800 hover:bg-zinc-700 text-white h-8 px-4 font-bold text-sm rounded-lg">Message</Button>
-                                <Button variant="ghost" className="h-8 w-8 p-0 rounded-lg text-white hover:bg-zinc-800"><MoreHorizontal size={20}/></Button>
+                                <div className="relative">
+                                    <Button onClick={handleMessageClick} variant="secondary" className="bg-zinc-800 hover:bg-zinc-700 text-white h-8 px-4 font-bold text-sm rounded-lg">Message</Button>
+                                    {unreadCount > 0 && (
+                                        <span className="absolute -top-2 -right-2 bg-primary-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full shadow-sm shadow-primary-500/50">
+                                            {unreadCount > 99 ? '99+' : unreadCount}
+                                        </span>
+                                    )}
+                                </div>
+                                <DropdownMenu>
+                                    <DropdownMenuTrigger asChild>
+                                        <Button variant="ghost" className="h-8 w-8 p-0 rounded-lg text-white hover:bg-zinc-800"><MoreHorizontal size={20}/></Button>
+                                    </DropdownMenuTrigger>
+                                    <DropdownMenuContent align="end" className="bg-[#14141a] border-white/10 text-white rounded-xl shadow-2xl py-1 z-[100]">
+                                        {isFollowing && (
+                                            <DropdownMenuItem onClick={handleFollowToggle} className="cursor-pointer hover:bg-white/5 focus:bg-white/5 font-medium text-xs">
+                                                <UserMinus size={14} className="mr-2" /> Unfollow
+                                            </DropdownMenuItem>
+                                        )}
+                                        <DropdownMenuItem onClick={() => toast.success("User blocked")} className="cursor-pointer text-red-400 hover:text-red-500 focus:text-red-500 hover:bg-red-500/10 focus:bg-red-500/10 font-medium text-xs">
+                                            <Ban size={14} className="mr-2" /> Block
+                                        </DropdownMenuItem>
+                                        <DropdownMenuItem onClick={() => toast.success("User reported")} className="cursor-pointer text-red-400 hover:text-red-500 focus:text-red-500 hover:bg-red-500/10 focus:bg-red-500/10 font-medium text-xs">
+                                            <Flag size={14} className="mr-2" /> Report
+                                        </DropdownMenuItem>
+                                    </DropdownMenuContent>
+                                </DropdownMenu>
                             </div>
                         </div>
 
@@ -191,7 +300,7 @@ export default function PublicProfilePage() {
                         </div>
 
                         <div className="flex flex-col items-center md:items-start text-sm">
-                            {profile.full_name && <span className="font-bold text-white">{profile.full_name}</span>}
+                            {profile.full_name && profile.full_name.toLowerCase() !== profile.username.toLowerCase() && <span className="font-bold text-white">{profile.full_name}</span>}
                             <span className="text-zinc-300 whitespace-pre-wrap text-center md:text-left mt-1">{profile.bio}</span>
                             {profile.website && (
                                 <a href={profile.website.startsWith('http') ? profile.website : `https://${profile.website}`} target="_blank" rel="noreferrer" className="text-[#E0F2FE] font-bold hover:underline flex items-center gap-1 mt-1">
@@ -322,7 +431,9 @@ export default function PublicProfilePage() {
                         ) : followersList.map(u => (
                             <a key={u.id} href={`/profile/${u.id}`} className="flex items-center justify-between p-2 hover:bg-white/5 rounded-lg transition-colors">
                                 <div className="flex items-center gap-3">
-                                    <Avatar className="w-10 h-10"><AvatarImage src={u.avatar_url}/><AvatarFallback className="bg-zinc-800 text-white text-xs">{u.username?.[0]}</AvatarFallback></Avatar>
+                                    <div className="w-10 h-10">
+                                      <ProfileAvatar profile={u} className="w-10 h-10" />
+                                    </div>
                                     <div className="flex flex-col">
                                         <span className="font-bold text-sm text-white">{u.username}</span>
                                         <span className="text-xs text-zinc-400">{u.full_name}</span>
@@ -346,7 +457,9 @@ export default function PublicProfilePage() {
                         ) : followingList.map(u => (
                             <a key={u.id} href={`/profile/${u.id}`} className="flex items-center justify-between p-2 hover:bg-white/5 rounded-lg transition-colors">
                                 <div className="flex items-center gap-3">
-                                    <Avatar className="w-10 h-10"><AvatarImage src={u.avatar_url}/><AvatarFallback className="bg-zinc-800 text-white text-xs">{u.username?.[0]}</AvatarFallback></Avatar>
+                                    <div className="w-10 h-10">
+                                      <ProfileAvatar profile={u} className="w-10 h-10" />
+                                    </div>
                                     <div className="flex flex-col">
                                         <span className="font-bold text-sm text-white">{u.username}</span>
                                         <span className="text-xs text-zinc-400">{u.full_name}</span>
