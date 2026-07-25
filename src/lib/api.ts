@@ -46,7 +46,6 @@ import { supabase } from "@/lib/supabase";
 
 export class ApiManager {
     private static urls = [
-        'http://localhost:3000/api',
         'https://omni-api-v1.vercel.app/api',
         'https://omni-api-v2.vercel.app/api',
         'https://omni-api-v3.vercel.app/api',
@@ -274,12 +273,22 @@ async function fetchAnikotoSSE(endpoint: string, params: Record<string, any> = {
     }
 }
 
+export const ANIKOTO_GENRE_MAP: Record<string, string> = {
+  "action": "1", "adventure": "2", "boys love": "2330", "cars": "538", "comedy": "8",
+  "dementia": "453", "demons": "119", "drama": "62", "ecchi": "214", "erotica": "2322",
+  "fantasy": "3", "game": "180", "girls love": "2328", "gourmet": "2326", "harem": "215",
+  "historical": "70", "horror": "222", "isekai": "74", "josei": "404", "kids": "46",
+  "magic": "203", "mahou shoujo": "2310", "martial arts": "114", "mecha": "123", "military": "125",
+  "music": "242", "mystery": "57", "parody": "162", "police": "136", "psychological": "73",
+  "romance": "28", "samurai": "163", "school": "14", "sci-fi": "12", "seinen": "50",
+  "shoujo": "252", "shoujo ai": "235", "shounen": "15", "shounen ai": "233", "slice of life": "35",
+  "space": "124", "sports": "29", "super power": "16", "supernatural": "9", "suspense": "2316",
+  "thriller": "54", "unknown": "32", "vampire": "58"
+};
+
 /**
- * Defensive unwrapper for the listing endpoints (genre/type/latest/status/
- * filter). Live testing showed these actually return
- * `{ results, topRated?, currentPage, hasNextPage, hasPreviousPage,
- * minPage, maxPage }`, but the docs claim a bare array for /latest and
- * /status — so this accepts either.
+ * Defensive unwrapper for listing endpoints (genre/type/latest/status/filter/az-list).
+ * Ensures pagination flags and result arrays are cleanly populated.
  */
 function extractPaged(data: any): {
     results: any[];
@@ -291,15 +300,24 @@ function extractPaged(data: any): {
     maxPage?: number;
 } {
     if (!data) return { results: [] };
-    if (Array.isArray(data)) return { results: data };
+    if (Array.isArray(data)) return { results: data, currentPage: 1, hasNextPage: false };
+    
+    const results = Array.isArray(data.results) 
+        ? data.results 
+        : (Array.isArray(data.items) ? data.items : (Array.isArray(data.data) ? data.data : []));
+
+    const currentPage = data.currentPage ?? data.page ?? 1;
+    const hasNextPage = data.hasNextPage ?? (data.maxPage ? currentPage < data.maxPage : results.length >= 18);
+    const hasPreviousPage = data.hasPreviousPage ?? (currentPage > 1);
+
     return {
-        results: Array.isArray(data.results) ? data.results : [],
+        results,
         topRated: data.topRated,
-        currentPage: data.currentPage,
-        hasNextPage: data.hasNextPage,
-        hasPreviousPage: data.hasPreviousPage,
-        minPage: data.minPage,
-        maxPage: data.maxPage
+        currentPage,
+        hasNextPage,
+        hasPreviousPage,
+        minPage: data.minPage ?? 1,
+        maxPage: data.maxPage ?? (hasNextPage ? currentPage + 1 : currentPage)
     };
 }
 
@@ -409,9 +427,22 @@ export class AnimeAPI_Anikoto {
     }
 
     static async filter(params: Record<string, any>) {
-        const { type, ...rest } = params;
+        const { type, genres, genre, genre_exclude, genres_exclude, ...rest } = params;
         const query: Record<string, any> = { ...rest };
-        if (type !== undefined) query.term_type = type;
+        if (type !== undefined) query['term_type[]'] = Array.isArray(type) ? type : [type];
+        
+        const gList = genres || genre;
+        if (gList !== undefined) {
+            const rawG = Array.isArray(gList) ? gList : String(gList).split(',');
+            query['genre[]'] = rawG.map(g => ANIKOTO_GENRE_MAP[g.trim().toLowerCase()] || g.trim());
+        }
+
+        const geList = genres_exclude || genre_exclude;
+        if (geList !== undefined) {
+            const rawGE = Array.isArray(geList) ? geList : String(geList).split(',');
+            query['genre_exclude[]'] = rawGE.map(g => ANIKOTO_GENRE_MAP[g.trim().toLowerCase()] || g.trim());
+        }
+
         return fetchAnikoto('/filter', query);
     }
 
@@ -439,12 +470,36 @@ export class AnimeAPI_Anikoto {
         return fetchAnikoto('/home/latest', { type, page });
     }
 
+    static async getLatestUpdated(page = 1) {
+        const res = await fetchAnikoto('/latest-updated', { page });
+        if (res && (Array.isArray(res) ? res.length > 0 : res.results?.length > 0)) return res;
+        return fetchAnikoto('/latest', { type: 'latest-updated', page });
+    }
+
+    static async getNewRelease(page = 1) {
+        const res = await fetchAnikoto('/new-release', { page });
+        if (res && (Array.isArray(res) ? res.length > 0 : res.results?.length > 0)) return res;
+        return fetchAnikoto('/latest', { type: 'new-release', page });
+    }
+
+    static async getMostViewed(page = 1) {
+        const res = await fetchAnikoto('/most-viewed', { page });
+        if (res && (Array.isArray(res) ? res.length > 0 : res.results?.length > 0)) return res;
+        return fetchAnikoto('/latest', { type: 'most-viewed', page });
+    }
+
     static async getLatest(type: 'latest-updated' | 'new-release' | 'most-viewed' = 'latest-updated', page = 1) {
         return fetchAnikoto('/latest', { type, page });
     }
 
     static async getStatus(type: 'currently-airing' | 'finished-airing' | 'not-yet-aired' = 'currently-airing', page = 1) {
+        const directRes = await fetchAnikoto(`/status/${type}`, { page });
+        if (directRes && (Array.isArray(directRes) ? directRes.length > 0 : directRes.results?.length > 0)) return directRes;
         return fetchAnikoto('/status', { type, page });
+    }
+
+    static async getAZList(page = 1, letter?: string) {
+        return fetchAnikoto('/az-list', { page, letter });
     }
 
     static async getGenre(genre: string, page = 1) {
@@ -469,6 +524,8 @@ export class AnimeAPI_Anikoto {
 // ==========================================
 
 function normalizeCard(item: any): UniversalAnimeBase {
+    const rawRating = item?.rating || item?.rated || item?.ageRating || item?.rating_name || '';
+    const isAdult = item?.isAdult === true || item?.adult === true || ["Rx", "RX", "Hentai", "18+", "R+"].some((t: string) => String(rawRating).toUpperCase().includes(t));
     return {
         id: item?.slug || item?.id || '',
         title: item?.title || 'Unknown Title',
@@ -477,13 +534,13 @@ function normalizeCard(item: any): UniversalAnimeBase {
         type: item?.type || 'TV',
         duration: item?.date,
         episodes: {
-            sub: item?.episodes?.sub ?? 0,
-            dub: item?.episodes?.dub ?? 0,
-            eps: item?.episodes?.total
+            sub: item?.episodes?.sub ?? item?.sub ?? 0,
+            dub: item?.episodes?.dub ?? item?.dub ?? 0,
+            eps: item?.episodes?.total ?? item?.episodes?.eps
         },
         rank: item?.rank,
-        isAdult: false,
-        rating: item?.rating
+        isAdult,
+        rating: rawRating
     };
 }
 
@@ -513,13 +570,15 @@ export class AnimeService {
 
     private static normalizeDetail(data: any): UniversalAnime {
         const slug = data?.slug || data?.id || '';
+        const rawRating = data?.rating || data?.rated || data?.ageRating || '';
+        const isAdult = data?.isAdult === true || data?.adult === true || ["Rx", "RX", "Hentai", "18+", "R+", "18"].some((t: string) => String(rawRating).toUpperCase().includes(t)) || (Array.isArray(data?.genres) && data.genres.some((g: string) => ["hentai", "ecchi", "erotica"].includes(String(g).toLowerCase())));
         return {
             id: slug,
             title: data?.title || 'Unknown Title',
             jname: data?.titleJp || '',
             poster: data?.image || '',
             description: data?.synopsis || '',
-            isAdult: false,
+            isAdult: isAdult,
             stats: {
                 rating: data?.rating || '?',
                 quality: data?.quality || 'HD',
@@ -551,15 +610,13 @@ export class AnimeService {
     }
 
     static async getUniversalRecent() {
-        const data: any = await AnimeAPI_Anikoto.getHomeLatest('updated-all', 1);
+        const data: any = await AnimeAPI_Anikoto.getLatestUpdated(1);
         return extractPaged(data).results.map(normalizeCard);
     }
 
     static async getHomeSections() {
         const home: any = await AnimeAPI_Anikoto.getHome();
-
-        // Fetch the updated-all list (24 items) to show the correct recent updates
-        const recentData: any = await AnimeAPI_Anikoto.getHomeLatest('updated-all', 1);
+        const recentData: any = await AnimeAPI_Anikoto.getLatestUpdated(1);
         const recent = extractPaged(recentData).results.map(normalizeCard);
 
         if (!home) return { spotlight: [], recent };
@@ -587,13 +644,44 @@ export class AnimeService {
         return Array.isArray(home?.topDay) ? home.topDay.map(normalizeCard) : [];
     }
 
-    static async getRandomAnime(): Promise<UniversalAnime | null> {
-        const home: any = await AnimeAPI_Anikoto.getHome();
-        const pool = [...(home?.spotlight || []), ...(home?.topDay || [])];
-        if (!pool.length) return null;
-        const pick = pool[Math.floor(Math.random() * pool.length)];
-        const slug = pick?.slug || pick?.id;
-        return slug ? this.getAnimeInfo(slug) : null;
+    static async getRandomAnime() {
+        const sources = [
+            async () => {
+                const randomPage = Math.floor(Math.random() * 5) + 1;
+                return await AnimeAPI_Anikoto.getHomeLatest('random', randomPage);
+            },
+            async () => {
+                const randomPage = Math.floor(Math.random() * 10) + 1;
+                return await AnimeAPI_Anikoto.getLatestUpdated(randomPage);
+            },
+            async () => {
+                const randomPage = Math.floor(Math.random() * 15) + 1;
+                return await AnimeAPI_Anikoto.getAZList(randomPage);
+            },
+            async () => {
+                return await AnimeAPI_Anikoto.getHome();
+            }
+        ];
+
+        for (const fetcher of sources) {
+            try {
+                const data: any = await fetcher();
+                const paged = extractPaged(data);
+                if (paged.results && paged.results.length > 0) {
+                    const validItems = paged.results.filter((i: any) => i && (i.slug || i.id));
+                    if (validItems.length > 0) {
+                        const randomIndex = Math.floor(Math.random() * validItems.length);
+                        const card = normalizeCard(validItems[randomIndex]);
+                        if (card && card.id) {
+                            return card;
+                        }
+                    }
+                }
+            } catch (e) {
+                console.error("getRandomAnime attempt failed", e);
+            }
+        }
+        return null;
     }
 
     static async getTopUpcoming(page = 1) {
@@ -602,12 +690,12 @@ export class AnimeService {
     }
 
     static async getRecentlyUpdated(page = 1) {
-        const data: any = await AnimeAPI_Anikoto.getHomeLatest('updated-all', page);
+        const data: any = await AnimeAPI_Anikoto.getLatestUpdated(page);
         return extractPaged(data).results.map(normalizeCard);
     }
 
     static async getRecentlyAdded(page = 1) {
-        const data: any = await AnimeAPI_Anikoto.getLatest('new-release', page);
+        const data: any = await AnimeAPI_Anikoto.getNewRelease(page);
         return extractPaged(data).results.map(normalizeCard);
     }
 
@@ -617,12 +705,12 @@ export class AnimeService {
     }
 
     static async getMostFavorite(page = 1) {
-        const data: any = await AnimeAPI_Anikoto.getLatest('most-viewed', page);
+        const data: any = await AnimeAPI_Anikoto.getMostViewed(page);
         return extractPaged(data).results.map(normalizeCard);
     }
 
     static async getMostPopular(page = 1) {
-        const data: any = await AnimeAPI_Anikoto.getLatest('most-viewed', page);
+        const data: any = await AnimeAPI_Anikoto.getMostViewed(page);
         return extractPaged(data).results.map(normalizeCard);
     }
 
@@ -632,12 +720,12 @@ export class AnimeService {
     }
 
     static async getSubbedAnime(page = 1) {
-        const data: any = await AnimeAPI_Anikoto.getHomeLatest('updated-sub', page);
+        const data: any = await AnimeAPI_Anikoto.filter({ 'language[]': 'sub', page, sort: 'default' });
         return extractPaged(data).results.map(normalizeCard);
     }
 
     static async getDubbedAnime(page = 1) {
-        const data: any = await AnimeAPI_Anikoto.getHomeLatest('updated-dub', page);
+        const data: any = await AnimeAPI_Anikoto.filter({ 'language[]': 'dub', page, sort: 'default' });
         return extractPaged(data).results.map(normalizeCard);
     }
 
@@ -646,29 +734,52 @@ export class AnimeService {
 
         switch (category) {
             case 'sub':
-                rawData = await AnimeAPI_Anikoto.getHomeLatest('updated-sub', page);
+                rawData = await AnimeAPI_Anikoto.filter({ language: ['sub'], page, sort: 'default' });
+                if (!rawData || (Array.isArray(rawData) ? !rawData.length : !rawData.results?.length)) {
+                    rawData = await AnimeAPI_Anikoto.getHomeLatest('updated-sub', page);
+                }
                 break;
             case 'dub':
-                rawData = await AnimeAPI_Anikoto.getHomeLatest('updated-dub', page);
+                rawData = await AnimeAPI_Anikoto.filter({ language: ['dub'], page, sort: 'default' });
+                if (!rawData || (Array.isArray(rawData) ? !rawData.length : !rawData.results?.length)) {
+                    rawData = await AnimeAPI_Anikoto.getHomeLatest('updated-dub', page);
+                }
                 break;
-            case 'trending':
-                rawData = await AnimeAPI_Anikoto.getHomeLatest('trending', page);
-                break;
-            case 'random':
-                rawData = await AnimeAPI_Anikoto.getHomeLatest('random', page);
-                break;
-            case 'popular':
-                rawData = await AnimeAPI_Anikoto.getLatest('most-viewed', page);
-                break;
+            case 'latest-updated':
             case 'recent':
-                rawData = await AnimeAPI_Anikoto.getHomeLatest('updated-all', page);
+            case 'updated-all':
+            case 'all':
+                rawData = await AnimeAPI_Anikoto.getLatestUpdated(page);
+                if (!rawData || (Array.isArray(rawData) ? !rawData.length : !rawData.results?.length)) {
+                    rawData = await AnimeAPI_Anikoto.getHomeLatest('updated-all', page);
+                }
+                break;
+            case 'new-release':
+            case 'added':
+                rawData = await AnimeAPI_Anikoto.getNewRelease(page);
+                break;
+            case 'most-viewed':
+            case 'popular':
+            case 'trending':
+                rawData = await AnimeAPI_Anikoto.getMostViewed(page);
+                break;
+            case 'upcoming':
+            case 'not-yet-aired':
+                rawData = await AnimeAPI_Anikoto.getStatus('not-yet-aired', page);
+                break;
+            case 'ongoing':
+            case 'currently-airing':
+                rawData = await AnimeAPI_Anikoto.getStatus('currently-airing', page);
                 break;
             case 'completed':
+            case 'finished-airing':
                 rawData = await AnimeAPI_Anikoto.getStatus('finished-airing', page);
                 break;
+            case 'az-list':
+                rawData = await AnimeAPI_Anikoto.getAZList(page);
+                break;
             default:
-                // Default to all/recent if category is unknown or "all"
-                rawData = await AnimeAPI_Anikoto.getHomeLatest('updated-all', page);
+                rawData = await AnimeAPI_Anikoto.getLatestUpdated(page);
                 break;
         }
 
@@ -676,10 +787,10 @@ export class AnimeService {
         return {
             results: paged.results.map(normalizeCard),
             currentPage: paged.currentPage ?? page,
-            hasNextPage: paged.hasNextPage ?? false,
-            hasPreviousPage: paged.hasPreviousPage ?? false,
-            maxPage: paged.maxPage,
-            minPage: paged.minPage
+            hasNextPage: paged.hasNextPage ?? (paged.results.length >= 18),
+            hasPreviousPage: paged.hasPreviousPage ?? (page > 1),
+            maxPage: paged.maxPage || (paged.hasNextPage ? (page + 1) : page),
+            minPage: paged.minPage || 1
         };
     }
 
@@ -887,8 +998,8 @@ export class UserAPI {
         return supabase ? await supabase.auth.signInWithPassword({ email, password }) : { data: null, error: null };
     }
 
-    static async signUp(email: string, password: string, username: string) {
-        return supabase ? await supabase.auth.signUp({ email, password, options: { data: { username, full_name: username } } }) : { data: null, error: null };
+    static async signUp(email: string, password: string, username: string, avatarUrl?: string, gender?: string) {
+        return supabase ? await supabase.auth.signUp({ email, password, options: { data: { username, full_name: username, avatar_url: avatarUrl, gender } } }) : { data: null, error: null };
     }
 
     static async signOut() {

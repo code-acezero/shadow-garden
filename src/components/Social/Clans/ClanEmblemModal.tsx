@@ -1,8 +1,8 @@
 "use client";
 
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { createPortal } from 'react-dom';
-import { X, Search, Check, Shield, ShieldAlert } from 'lucide-react';
+import { X, Search, Check, Shield, ShieldAlert, Sparkles, Folder, Upload, Crop, ZoomIn, RefreshCw, Image as ImageIcon } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
 export interface ClanEmblem {
@@ -12,317 +12,119 @@ export interface ClanEmblem {
   url: string;
 }
 
-const svgToDataUri = (svgString: string) => {
-  return `data:image/svg+xml;utf8,${encodeURIComponent(svgString.trim())}`;
-};
-
 export const ANIME_CLAN_EMBLEMS: ClanEmblem[] = [
-  // --- SHADOW GARDEN & DARK FANTASY ---
-  {
-    id: 'sg1',
-    name: 'Shadow Garden Insignia',
-    category: 'Shadow Garden',
-    url: svgToDataUri(`
-      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
-        <rect width="100" height="100" rx="20" fill="#050508"/>
-        <circle cx="50" cy="50" r="36" fill="none" stroke="#9333ea" stroke-width="2" stroke-dasharray="4 2"/>
-        <path d="M50 20 A30 30 0 1 1 30 70 A25 25 0 1 0 50 20 Z" fill="#c084fc"/>
-        <path d="M50 15 L54 50 L50 85 L46 50 Z" fill="#e9d5ff"/>
-        <circle cx="50" cy="50" r="6" fill="#a855f7"/>
-      </svg>
-    `)
-  },
-  {
-    id: 'sg2',
-    name: 'Seven Shadows Crest',
-    category: 'Shadow Garden',
-    url: svgToDataUri(`
-      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
-        <rect width="100" height="100" rx="20" fill="#180b2d"/>
-        <polygon points="50,15 58,35 80,35 62,48 68,70 50,56 32,70 38,48 20,35 42,35" fill="#f59e0b" stroke="#fef08a" stroke-width="2"/>
-        <circle cx="50" cy="46" r="10" fill="#a855f7"/>
-      </svg>
-    `)
-  },
-  {
-    id: 'sg3',
-    name: 'Ancient Eclipse Emblem',
-    category: 'Shadow Garden',
-    url: svgToDataUri(`
-      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
-        <rect width="100" height="100" rx="20" fill="#030712"/>
-        <circle cx="50" cy="50" r="32" fill="#fbbf24" opacity="0.3"/>
-        <circle cx="50" cy="50" r="28" fill="#111827"/>
-        <circle cx="46" cy="46" r="26" fill="#030712"/>
-        <path d="M50 15 Q65 35 50 85 Q35 35 50 15 Z" fill="#a855f7" opacity="0.6"/>
-      </svg>
-    `)
-  },
+  // --- SHADOW GARDEN ---
+  { id: 'sg-eminence', name: 'Shadow Garden Sigil', category: 'Shadow Garden', url: '/emblems/sg_emblem.png' },
+  { id: 'sg-atomic', name: 'I Am Atomic Burst', category: 'Shadow Garden', url: 'https://api.iconify.design/game-icons:atomic-slashes.svg?color=%23c084fc' },
+  { id: 'sg-sevenshadows', name: 'Seven Shadows Order', category: 'Shadow Garden', url: 'https://api.iconify.design/game-icons:hooded-figure.svg?color=%23a855f7' },
+  { id: 'sg-mitsugoshi', name: 'Mitsugoshi Corporation', category: 'Shadow Garden', url: 'https://api.iconify.design/game-icons:coins.svg?color=%23eab308' },
+  { id: 'sg-slimeblade', name: 'Shadow Slime Blade', category: 'Shadow Garden', url: 'https://api.iconify.design/game-icons:katana.svg?color=%23c084fc' },
+  { id: 'sg-diablos', name: 'Cult of Diablos Seal', category: 'Shadow Garden', url: 'https://api.iconify.design/game-icons:evil-comet.svg?color=%23dc2626' },
+  { id: 'sg-sanctuary', name: 'Sanctuary Gateway', category: 'Shadow Garden', url: 'https://api.iconify.design/game-icons:magic-gate.svg?color=%2306b6d4' },
+  { id: 'sg-alexandria', name: 'Alexandria Base', category: 'Shadow Garden', url: 'https://api.iconify.design/game-icons:castle.svg?color=%2310b981' },
+  { id: 'sg-johnsmith', name: 'John Smith Steel Threads', category: 'Shadow Garden', url: 'https://api.iconify.design/game-icons:marionette.svg?color=%23eab308' },
+  { id: 'sg-alexia', name: 'Midgar Royal Crest', category: 'Shadow Garden', url: 'https://api.iconify.design/game-icons:crowned-shield.svg?color=%2338bdf8' },
+  { id: 'sg-lawless', name: 'Red Tower Lawless', category: 'Shadow Garden', url: 'https://api.iconify.design/game-icons:tower-flag.svg?color=%23ef4444' },
 
-  // --- NARUTO / SHINOBI ORGANIZATIONS ---
-  {
-    id: 'nar1',
-    name: 'Akatsuki Cloud Emblem',
-    category: 'Naruto',
-    url: svgToDataUri(`
-      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
-        <rect width="100" height="100" rx="20" fill="#09090b"/>
-        <path d="M25 60 C20 60, 15 50, 25 42 C25 32, 40 25, 55 32 C65 25, 80 32, 80 42 C88 50, 80 60, 75 60 Z" fill="#dc2626" stroke="#ffffff" stroke-width="4" stroke-linejoin="round"/>
-        <circle cx="35" cy="48" r="4" fill="#ffffff" opacity="0.3"/>
-      </svg>
-    `)
-  },
-  {
-    id: 'nar2',
-    name: 'Uchiha Clan Crest',
-    category: 'Naruto',
-    url: svgToDataUri(`
-      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
-        <rect width="100" height="100" rx="20" fill="#09090b"/>
-        <path d="M50 20 C25 20 20 45 50 55 C80 45 75 20 50 20 Z" fill="#dc2626"/>
-        <path d="M50 55 C20 45 25 70 50 70 C75 70 80 45 50 55 Z" fill="#f8fafc"/>
-        <rect x="47" y="70" width="6" height="12" fill="#94a3b8" rx="2"/>
-      </svg>
-    `)
-  },
-  {
-    id: 'nar3',
-    name: 'Leaf Village Crest',
-    category: 'Naruto',
-    url: svgToDataUri(`
-      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
-        <rect width="100" height="100" rx="20" fill="#064e3b"/>
-        <circle cx="50" cy="50" r="30" fill="none" stroke="#10b981" stroke-width="6"/>
-        <path d="M50 20 A30 30 0 1 1 35 70 A15 15 0 1 0 50 50" fill="none" stroke="#34d399" stroke-width="6" stroke-linecap="round"/>
-        <path d="M35 70 L25 80" stroke="#34d399" stroke-width="6" stroke-linecap="round"/>
-      </svg>
-    `)
-  },
-  {
-    id: 'nar4',
-    name: 'Anbu Black Ops Mask',
-    category: 'Naruto',
-    url: svgToDataUri(`
-      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
-        <rect width="100" height="100" rx="20" fill="#0f172a"/>
-        <ellipse cx="50" cy="52" rx="22" ry="28" fill="#f8fafc" stroke="#94a3b8" stroke-width="2"/>
-        <path d="M35 35 Q40 45 32 55" stroke="#dc2626" stroke-width="4" fill="none"/>
-        <path d="M65 35 Q60 45 68 55" stroke="#dc2626" stroke-width="4" fill="none"/>
-        <ellipse cx="42" cy="48" rx="4" ry="7" fill="#09090b"/>
-        <ellipse cx="58" cy="48" rx="4" ry="7" fill="#09090b"/>
-      </svg>
-    `)
-  },
+  // --- NARUTO ---
+  { id: 'nar-akatsuki', name: 'Akatsuki Cloud', category: 'Naruto', url: '/emblems/akatsuki_emblem.png' },
+  { id: 'nar-leaf', name: 'Konoha Hidden Leaf', category: 'Naruto', url: 'https://api.iconify.design/game-icons:shuriken.svg?color=%2322c55e' },
+  { id: 'nar-uchiha', name: 'Uchiha Clan Crest', category: 'Naruto', url: 'https://api.iconify.design/game-icons:fire-tail.svg?color=%23ef4444' },
+  { id: 'nar-uzumaki', name: 'Uzumaki Spiral Seal', category: 'Naruto', url: 'https://api.iconify.design/ph:circle-notch-bold.svg?color=%23f97316' },
+  { id: 'nar-anbu', name: 'Anbu Ops Mask', category: 'Naruto', url: 'https://api.iconify.design/game-icons:fox-mask.svg?color=%23a855f7' },
+  { id: 'nar-sand', name: 'Sunagakure Sand Gourd', category: 'Naruto', url: 'https://api.iconify.design/game-icons:sand-snake.svg?color=%23eab308' },
+  { id: 'nar-rinnegan', name: 'Rinnegan Eye Domain', category: 'Naruto', url: 'https://api.iconify.design/game-icons:eyeball.svg?color=%23a855f7' },
 
-  // --- ONE PIECE / PIRATE FLEETS ---
-  {
-    id: 'op1',
-    name: 'Straw Hat Jolly Roger',
-    category: 'One Piece',
-    url: svgToDataUri(`
-      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
-        <rect width="100" height="100" rx="20" fill="#0c0a09"/>
-        <path d="M25 25 L75 75 M75 25 L25 75" stroke="#e7e5e4" stroke-width="8" stroke-linecap="round"/>
-        <circle cx="50" cy="48" r="22" fill="#f5f5f4"/>
-        <circle cx="42" cy="48" r="6" fill="#0c0a09"/>
-        <circle cx="58" cy="48" r="6" fill="#0c0a09"/>
-        <path d="M22 42 Q50 35 78 42" stroke="#eab308" stroke-width="6" stroke-linecap="round"/>
-        <path d="M35 40 C35 25, 65 25, 65 40 Z" fill="#eab308"/>
-        <path d="M35 38 Q50 35 65 38" stroke="#dc2626" stroke-width="4"/>
-      </svg>
-    `)
-  },
-  {
-    id: 'op2',
-    name: 'Heart Pirates Crest',
-    category: 'One Piece',
-    url: svgToDataUri(`
-      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
-        <rect width="100" height="100" rx="20" fill="#ca8a04"/>
-        <circle cx="50" cy="50" r="32" fill="#09090b"/>
-        <path d="M32 55 Q50 70 68 55" stroke="#ca8a04" stroke-width="5" fill="none" stroke-linecap="round"/>
-        <circle cx="38" cy="42" r="5" fill="#ca8a04"/>
-        <circle cx="62" cy="42" r="5" fill="#ca8a04"/>
-      </svg>
-    `)
-  },
-  {
-    id: 'op3',
-    name: 'Red Hair Pirates Emblem',
-    category: 'One Piece',
-    url: svgToDataUri(`
-      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
-        <rect width="100" height="100" rx="20" fill="#450a0a"/>
-        <path d="M20 20 L80 80 M80 20 L20 80" stroke="#991b1b" stroke-width="8" stroke-linecap="round"/>
-        <circle cx="50" cy="50" r="22" fill="#f8fafc"/>
-        <path d="M56 32 L64 60" stroke="#dc2626" stroke-width="4"/>
-        <circle cx="42" cy="50" r="5" fill="#09090b"/>
-        <circle cx="58" cy="50" r="5" fill="#09090b"/>
-      </svg>
-    `)
-  },
-  {
-    id: 'op4',
-    name: 'Whitebeard Pirates Seal',
-    category: 'One Piece',
-    url: svgToDataUri(`
-      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
-        <rect width="100" height="100" rx="20" fill="#3b0764"/>
-        <path d="M20 20 L80 80 M80 20 L20 80" stroke="#a855f7" stroke-width="6"/>
-        <circle cx="50" cy="48" r="20" fill="#f8fafc"/>
-        <path d="M25 45 Q50 65 75 45 Q50 55 25 45 Z" fill="#f8fafc" stroke="#18181b" stroke-width="2"/>
-      </svg>
-    `)
-  },
+  // --- ATTACK ON TITAN ---
+  { id: 'aot-survey', name: 'Wings of Freedom', category: 'Attack on Titan', url: '/emblems/aot_emblem.png' },
+  { id: 'aot-garrison', name: 'Garrison Roses', category: 'Attack on Titan', url: 'https://api.iconify.design/game-icons:rose.svg?color=%2322c55e' },
+  { id: 'aot-police', name: 'Military Police Unicorn', category: 'Attack on Titan', url: 'https://api.iconify.design/game-icons:unicorn.svg?color=%233b82f6' },
+  { id: 'aot-scout', name: 'Scout Regiment Shield', category: 'Attack on Titan', url: 'https://api.iconify.design/game-icons:feathered-wing.svg?color=%2306b6d4' },
+  { id: 'aot-marley', name: 'Marley Warrior Unit', category: 'Attack on Titan', url: 'https://api.iconify.design/game-icons:spartan-helmet.svg?color=%23eab308' },
 
-  // --- ATTACK ON TITAN / REGIMENTS ---
-  {
-    id: 'aot1',
-    name: 'Wings of Freedom (Survey Corps)',
-    category: 'Attack on Titan',
-    url: svgToDataUri(`
-      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
-        <rect width="100" height="100" rx="20" fill="#0284c7"/>
-        <path d="M50 15 L80 30 V60 C80 75 50 88 50 88 C50 88 20 75 20 60 V30 Z" fill="#0f172a" stroke="#f8fafc" stroke-width="3"/>
-        <path d="M30 35 C35 45 42 50 48 65 C40 60 35 55 30 35 Z" fill="#f8fafc"/>
-        <path d="M35 30 C42 40 46 48 50 68 C42 62 38 52 35 30 Z" fill="#f8fafc"/>
-        <path d="M70 35 C65 45 58 50 52 65 C60 60 65 55 70 35 Z" fill="#38bdf8"/>
-        <path d="M65 30 C58 40 54 48 50 68 C58 62 62 52 65 30 Z" fill="#38bdf8"/>
-      </svg>
-    `)
-  },
-  {
-    id: 'aot2',
-    name: 'Garrison Regiment Rose',
-    category: 'Attack on Titan',
-    url: svgToDataUri(`
-      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
-        <rect width="100" height="100" rx="20" fill="#881337"/>
-        <path d="M50 15 L80 30 V60 C80 75 50 88 50 88 C50 88 20 75 20 60 V30 Z" fill="#1c1917" stroke="#f43f5e" stroke-width="3"/>
-        <circle cx="42" cy="45" r="12" fill="#f43f5e"/>
-        <circle cx="58" cy="52" r="12" fill="#e11d48"/>
-        <path d="M42 45 Q50 35 58 52" stroke="#fda4af" stroke-width="3" fill="none"/>
-      </svg>
-    `)
-  },
-  {
-    id: 'aot3',
-    name: 'Military Police Unicorn',
-    category: 'Attack on Titan',
-    url: svgToDataUri(`
-      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
-        <rect width="100" height="100" rx="20" fill="#064e3b"/>
-        <path d="M50 15 L80 30 V60 C80 75 50 88 50 88 C50 88 20 75 20 60 V30 Z" fill="#022c22" stroke="#10b981" stroke-width="3"/>
-        <path d="M40 65 L45 40 L60 30 L55 50 L65 55 Z" fill="#f8fafc"/>
-        <path d="M60 30 L75 15 L62 26" stroke="#fbbf24" stroke-width="4" stroke-linecap="round"/>
-      </svg>
-    `)
-  },
+  // --- DEMON SLAYER ---
+  { id: 'ds-corps', name: 'Demon Slayer Corps', category: 'Demon Slayer', url: '/emblems/ds_emblem.png' },
+  { id: 'ds-flame', name: 'Flame Hashira Rengoku', category: 'Demon Slayer', url: 'https://api.iconify.design/game-icons:flamer.svg?color=%23f97316' },
+  { id: 'ds-water', name: 'Water Hashira Tomioka', category: 'Demon Slayer', url: 'https://api.iconify.design/game-icons:water-drop.svg?color=%2306b6d4' },
+  { id: 'ds-sun', name: 'Sun Breathing Hanafuda', category: 'Demon Slayer', url: 'https://api.iconify.design/game-icons:sunbeams.svg?color=%23ef4444' },
+  { id: 'ds-thunder', name: 'Thunder Hashira Zenitsu', category: 'Demon Slayer', url: 'https://api.iconify.design/game-icons:lightning-trio.svg?color=%23eab308' },
 
-  // --- HUNTER X HUNTER / TROUPE ---
-  {
-    id: 'hxh1',
-    name: 'Phantom Troupe Spider',
-    category: 'Hunter x Hunter',
-    url: svgToDataUri(`
-      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
-        <rect width="100" height="100" rx="20" fill="#1e1b4b"/>
-        <path d="M50 45 L15 25 M50 45 L85 25 M50 50 L10 45 M50 50 L90 45 M50 55 L15 70 M50 55 L85 70 M50 60 L25 85 M50 60 L75 85" stroke="#e0e7ff" stroke-width="4" stroke-linecap="round"/>
-        <ellipse cx="50" cy="40" rx="8" ry="6" fill="#e0e7ff"/>
-        <ellipse cx="50" cy="58" rx="14" ry="18" fill="#e0e7ff"/>
-        <text x="50" y="63" text-anchor="middle" fill="#1e1b4b" font-size="14" font-weight="900" font-family="sans-serif">12</text>
-      </svg>
-    `)
-  },
-  {
-    id: 'hxh2',
-    name: 'Hunter Association Seal',
-    category: 'Hunter x Hunter',
-    url: svgToDataUri(`
-      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
-        <rect width="100" height="100" rx="20" fill="#78350f"/>
-        <circle cx="50" cy="50" r="32" fill="#1c1917" stroke="#fbbf24" stroke-width="4"/>
-        <text x="50" y="62" text-anchor="middle" fill="#fbbf24" font-size="32" font-weight="900" font-family="sans-serif">H</text>
-      </svg>
-    `)
-  },
+  // --- ONE PIECE ---
+  { id: 'op-strawhat', name: 'Straw Hat Pirates', category: 'One Piece', url: 'https://api.iconify.design/game-icons:pirate-flag.svg?color=%23eab308' },
+  { id: 'op-heart', name: 'Heart Pirates (Law)', category: 'One Piece', url: 'https://api.iconify.design/game-icons:heart-emblem.svg?color=%23ef4444' },
+  { id: 'op-whitebeard', name: 'Whitebeard Armada', category: 'One Piece', url: 'https://api.iconify.design/game-icons:mustache.svg?color=%2338bdf8' },
+  { id: 'op-marines', name: 'World Navy Marines', category: 'One Piece', url: 'https://api.iconify.design/game-icons:anchor.svg?color=%232563eb' },
+  { id: 'op-beast', name: 'Beast Pirates Kaido', category: 'One Piece', url: 'https://api.iconify.design/game-icons:horned-skull.svg?color=%23a855f7' },
+  { id: 'op-redhair', name: 'Red Hair Shanks Fleet', category: 'One Piece', url: 'https://api.iconify.design/game-icons:crossed-swords.svg?color=%23ef4444' },
 
-  // --- BLEACH / GOTEI 13 ---
-  {
-    id: 'bl1',
-    name: 'Substitute Shinigami Badge',
-    category: 'Bleach',
-    url: svgToDataUri(`
-      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
-        <rect width="100" height="100" rx="20" fill="#18181b"/>
-        <polygon points="50,15 82,32 82,68 50,85 18,68 18,32" fill="#09090b" stroke="#71717a" stroke-width="4"/>
-        <circle cx="50" cy="45" r="14" fill="#f8fafc"/>
-        <circle cx="44" cy="45" r="3" fill="#09090b"/>
-        <circle cx="56" cy="45" r="3" fill="#09090b"/>
-        <path d="M50 58 L45 72 L50 68 L55 72 Z" fill="#ef4444"/>
-      </svg>
-    `)
-  },
-  {
-    id: 'bl2',
-    name: 'Gotei 13 Insignia',
-    category: 'Bleach',
-    url: svgToDataUri(`
-      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
-        <rect width="100" height="100" rx="20" fill="#09090b"/>
-        <polygon points="50,15 85,50 50,85 15,50" fill="#18181b" stroke="#e4e4e7" stroke-width="3"/>
-        <circle cx="50" cy="50" r="16" fill="#09090b" stroke="#e4e4e7" stroke-width="2"/>
-        <text x="50" y="56" text-anchor="middle" fill="#f43f5e" font-size="18" font-weight="900" font-family="serif">三</text>
-      </svg>
-    `)
-  },
+  // --- JUJUTSU KAISEN ---
+  { id: 'jjk-high', name: 'Jujutsu High Insignia', category: 'Jujutsu Kaisen', url: 'https://api.iconify.design/game-icons:yin-yang.svg?color=%23a855f7' },
+  { id: 'jjk-gojo', name: 'Six Eyes Limitless', category: 'Jujutsu Kaisen', url: 'https://api.iconify.design/game-icons:eye-shield.svg?color=%2338bdf8' },
+  { id: 'jjk-sukuna', name: 'Malevolent Shrine', category: 'Jujutsu Kaisen', url: 'https://api.iconify.design/game-icons:horned-helm.svg?color=%23dc2626' },
+  { id: 'jjk-shadows', name: 'Ten Shadows Divine Dog', category: 'Jujutsu Kaisen', url: 'https://api.iconify.design/game-icons:wolf-head.svg?color=%23a855f7' },
 
-  // --- FAIRY TAIL & BLACK CLOVER & JJK ---
-  {
-    id: 'ft1',
-    name: 'Fairy Tail Guild Mark',
-    category: 'Guilds',
-    url: svgToDataUri(`
-      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
-        <rect width="100" height="100" rx="20" fill="#7f1d1d"/>
-        <path d="M30 75 C30 50, 45 40, 45 25 C55 35, 65 30, 75 20 C70 40, 55 45, 65 60 C50 55, 45 65, 30 75 Z" fill="#fef08a" stroke="#f59e0b" stroke-width="3"/>
-        <path d="M45 40 Q60 50 65 60" stroke="#dc2626" stroke-width="3" fill="none"/>
-      </svg>
-    `)
-  },
-  {
-    id: 'bc1',
-    name: 'Black Bulls Crest',
-    category: 'Guilds',
-    url: svgToDataUri(`
-      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
-        <rect width="100" height="100" rx="20" fill="#171717"/>
-        <path d="M20 30 Q35 15 45 40 Q50 45 55 40 Q65 15 80 30 Q65 45 50 78 Q35 45 20 30 Z" fill="#fbbf24" stroke="#f59e0b" stroke-width="2"/>
-        <polygon points="50,45 38,32 62,32" fill="#171717"/>
-        <circle cx="44" cy="38" r="3" fill="#ef4444"/>
-        <circle cx="56" cy="38" r="3" fill="#ef4444"/>
-      </svg>
-    `)
-  },
-  {
-    id: 'jjk1',
-    name: 'Jujutsu High Crest',
-    category: 'Guilds',
-    url: svgToDataUri(`
-      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
-        <rect width="100" height="100" rx="20" fill="#1e1b4b"/>
-        <circle cx="50" cy="50" r="32" fill="none" stroke="#6366f1" stroke-width="4"/>
-        <path d="M35 35 L65 65 M65 35 L35 65" stroke="#818cf8" stroke-width="4"/>
-        <circle cx="50" cy="50" r="12" fill="#312e81" stroke="#a5b4fc" stroke-width="3"/>
-      </svg>
-    `)
-  },
+  // --- FAIRY TAIL ---
+  { id: 'ft-fairy', name: 'Fairy Tail Guild Mark', category: 'Fairy Tail', url: 'https://api.iconify.design/game-icons:fairy.svg?color=%23ec4899' },
+  { id: 'ft-sabertooth', name: 'Sabertooth Guild', category: 'Fairy Tail', url: 'https://api.iconify.design/game-icons:saber-toothed-cat-head.svg?color=%23eab308' },
+  { id: 'ft-dragon', name: 'Dragon Slayer Igneel', category: 'Fairy Tail', url: 'https://api.iconify.design/game-icons:dragon-breath.svg?color=%23f97316' },
+
+  // --- BLEACH ---
+  { id: 'bl-gotei', name: 'Gotei 13 Soul Society', category: 'Bleach', url: 'https://api.iconify.design/game-icons:daito.svg?color=%23e2e8f0' },
+  { id: 'bl-badge', name: 'Substitute Shinigami', category: 'Bleach', url: 'https://api.iconify.design/game-icons:skull-shield.svg?color=%23f97316' },
+  { id: 'bl-quincy', name: 'Wandenreich Quincy Cross', category: 'Bleach', url: 'https://api.iconify.design/game-icons:sparkles.svg?color=%2338bdf8' },
+  { id: 'bl-espada', name: 'Espada Hollow Crown', category: 'Bleach', url: 'https://api.iconify.design/game-icons:hollow-cat.svg?color=%23a855f7' },
+
+  // --- MY HERO ACADEMIA ---
+  { id: 'mha-ua', name: 'UA High School Shield', category: 'My Hero Academia', url: 'https://api.iconify.design/game-icons:shield-impact.svg?color=%23eab308' },
+  { id: 'mha-ofa', name: 'One For All Flame', category: 'My Hero Academia', url: 'https://api.iconify.design/game-icons:lightning-helix.svg?color=%23ef4444' },
+
+  // --- HUNTER X HUNTER ---
+  { id: 'hxh-hunter', name: 'Hunter License Crest', category: 'Hunter x Hunter', url: 'https://api.iconify.design/game-icons:target-prize.svg?color=%2322c55e' },
+  { id: 'hxh-spider', name: 'Phantom Troupe Spider', category: 'Hunter x Hunter', url: 'https://api.iconify.design/game-icons:spider-alt.svg?color=%23a855f7' },
+  { id: 'hxh-zoldyck', name: 'Zoldyck Assassin Seal', category: 'Hunter x Hunter', url: 'https://api.iconify.design/game-icons:daggers-head.svg?color=%23a855f7' },
+
+  // --- BLACK CLOVER ---
+  { id: 'bc-bulls', name: 'Black Bulls Squad', category: 'Black Clover', url: 'https://api.iconify.design/game-icons:bull-head.svg?color=%23ef4444' },
+  { id: 'bc-dawn', name: 'Golden Dawn Squad', category: 'Black Clover', url: 'https://api.iconify.design/game-icons:sun.svg?color=%23eab308' },
+
+  // --- FULLMETAL ALCHEMIST ---
+  { id: 'fma-flamel', name: 'Flamel Alchemy Snake', category: 'Fullmetal Alchemist', url: 'https://api.iconify.design/game-icons:caduceus.svg?color=%23dc2626' },
+  { id: 'fma-ouroboros', name: 'Ouroboros Homunculus', category: 'Fullmetal Alchemist', url: 'https://api.iconify.design/game-icons:ouroboros.svg?color=%23ef4444' },
+
+  // --- DRAGON BALL ---
+  { id: 'db-capsule', name: 'Capsule Corporation', category: 'Dragon Ball', url: 'https://api.iconify.design/game-icons:atomic-slashes.svg?color=%233b82f6' },
+  { id: 'db-redribbon', name: 'Red Ribbon Army', category: 'Dragon Ball', url: 'https://api.iconify.design/game-icons:ribbon-shield.svg?color=%23dc2626' },
+  { id: 'db-kame', name: 'Kame Turtle Kanji', category: 'Dragon Ball', url: 'https://api.iconify.design/game-icons:turtle.svg?color=%23f97316' },
+
+  // --- SOLO LEVELING & ISEKAI ---
+  { id: 'sl-monarch', name: 'Shadow Monarch Crown', category: 'Solo Leveling', url: 'https://api.iconify.design/game-icons:crown.svg?color=%238b5cf6' },
+  { id: 'sl-gate', name: 'S-Rank Gate Portal', category: 'Solo Leveling', url: 'https://api.iconify.design/game-icons:portal.svg?color=%233b82f6' },
+  { id: 'ov-ainz', name: 'Ainz Ooal Gown', category: 'Overlord', url: 'https://api.iconify.design/game-icons:crown-coin.svg?color=%23eab308' },
+  { id: 'eva-nerv', name: 'NERV Command Leaf', category: 'Evangelion', url: 'https://api.iconify.design/game-icons:maple-leaf.svg?color=%23dc2626' }
 ];
 
-export function getRandomClanEmblem(): string {
-  const randomIndex = Math.floor(Math.random() * ANIME_CLAN_EMBLEMS.length);
-  return ANIME_CLAN_EMBLEMS[randomIndex].url;
-}
+export const CATEGORIES = [
+  'All',
+  'Shadow Garden',
+  'Naruto',
+  'Attack on Titan',
+  'Demon Slayer',
+  'One Piece',
+  'Jujutsu Kaisen',
+  'Fairy Tail',
+  'Bleach',
+  'My Hero Academia',
+  'Hunter x Hunter',
+  'Black Clover',
+  'Fullmetal Alchemist',
+  'Dragon Ball',
+  'Solo Leveling',
+  'Overlord'
+];
+
+export const getRandomClanEmblem = () => {
+  return ANIME_CLAN_EMBLEMS[Math.floor(Math.random() * ANIME_CLAN_EMBLEMS.length)].url;
+};
 
 interface ClanEmblemModalProps {
   isOpen: boolean;
@@ -332,133 +134,354 @@ interface ClanEmblemModalProps {
 }
 
 export default function ClanEmblemModal({ isOpen, onClose, onSelectEmblem, currentUrl }: ClanEmblemModalProps) {
+  const [activeTab, setActiveTab] = useState<'preset' | 'upload'>('preset');
   const [selectedCategory, setSelectedCategory] = useState<string>('All');
   const [searchQuery, setSearchQuery] = useState<string>('');
 
-  const categories = ['All', 'Shadow Garden', 'Naruto', 'One Piece', 'Attack on Titan', 'Hunter x Hunter', 'Bleach', 'Guilds'];
+  // Upload & Crop State
+  const [uploadedImageSrc, setUploadedImageSrc] = useState<string | null>(null);
+  const [zoom, setZoom] = useState<number>(1);
+  const [pan, setPan] = useState<{ x: number; y: number }>({ x: 0, y: 0 });
+  const [isDragging, setIsDragging] = useState<boolean>(false);
+  const [dragStart, setDragStart] = useState<{ x: number; y: number }>({ x: 0, y: 0 });
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const imageRef = useRef<HTMLImageElement>(null);
 
   const filteredEmblems = ANIME_CLAN_EMBLEMS.filter(item => {
     const matchesCategory = selectedCategory === 'All' || item.category === selectedCategory;
-    const matchesSearch = item.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
+    const matchesSearch = item.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
                           item.category.toLowerCase().includes(searchQuery.toLowerCase());
     return matchesCategory && matchesSearch;
   });
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onload = () => {
+        setUploadedImageSrc(reader.result as string);
+        setZoom(1);
+        setPan({ x: 0, y: 0 });
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const handleMouseDown = (e: React.MouseEvent) => {
+    if (!uploadedImageSrc) return;
+    setIsDragging(true);
+    setDragStart({ x: e.clientX - pan.x, y: e.clientY - pan.y });
+  };
+
+  const handleMouseMove = (e: React.MouseEvent) => {
+    if (!isDragging) return;
+    setPan({
+      x: e.clientX - dragStart.x,
+      y: e.clientY - dragStart.y
+    });
+  };
+
+  const handleMouseUp = () => {
+    setIsDragging(false);
+  };
+
+  const handleApplyCrop = () => {
+    if (!uploadedImageSrc) return;
+    
+    const canvas = document.createElement('canvas');
+    const size = 300;
+    canvas.width = size;
+    canvas.height = size;
+    const ctx = canvas.getContext('2d');
+
+    if (!ctx) return;
+
+    const img = new Image();
+    img.crossOrigin = 'anonymous';
+    img.onload = () => {
+      ctx.clearRect(0, 0, size, size);
+
+      // Draw circular mask clip
+      ctx.beginPath();
+      ctx.arc(size / 2, size / 2, size / 2, 0, Math.PI * 2);
+      ctx.clip();
+
+      const baseWidth = size * zoom;
+      const aspectRatio = img.height / img.width;
+      const baseHeight = baseWidth * aspectRatio;
+
+      const drawX = (size - baseWidth) / 2 + pan.x;
+      const drawY = (size - baseHeight) / 2 + pan.y;
+
+      ctx.drawImage(img, drawX, drawY, baseWidth, baseHeight);
+
+      const croppedDataUrl = canvas.toDataURL('image/png');
+      onSelectEmblem(croppedDataUrl);
+      onClose();
+    };
+    img.src = uploadedImageSrc;
+  };
 
   if (!isOpen) return null;
 
   const modalContent = (
     <AnimatePresence>
-      <div className="fixed inset-0 z-[20000] flex items-end sm:items-center justify-center p-0 sm:p-6 bg-black/90 backdrop-blur-xl">
+      <div className="fixed inset-0 z-[20000] flex items-center justify-center p-4 sm:p-6 bg-black/75 backdrop-blur-xl font-sans">
         <motion.div
-          initial={{ y: "100%", opacity: 0 }}
-          animate={{ y: 0, opacity: 1 }}
-          exit={{ y: "100%", opacity: 0 }}
-          transition={{ type: "spring", damping: 25, stiffness: 280 }}
-          style={{ maxHeight: "calc(100dvh - var(--nav-height-top, 64px) - var(--nav-height-bottom, 64px) - 10px)" }}
-          className="w-full max-w-2xl bg-[#0c0c10] border-t sm:border border-white/15 rounded-t-[2.5rem] sm:rounded-3xl p-4 sm:p-6 shadow-2xl flex flex-col my-0 sm:my-auto relative overflow-hidden"
+          initial={{ scale: 0.95, opacity: 0, y: 15 }}
+          animate={{ scale: 1, opacity: 1, y: 0 }}
+          exit={{ scale: 0.95, opacity: 0, y: 15 }}
+          transition={{ duration: 0.3, ease: [0.23, 1, 0.32, 1] }}
+          className="w-full max-w-4xl bg-[#09090d]/90 border border-white/10 rounded-[28px] shadow-[0_25px_60px_rgba(0,0,0,0.8)] flex flex-col relative overflow-hidden h-[85vh] max-h-[720px] ring-1 ring-white/10 backdrop-blur-2xl"
         >
-          {/* iOS Top Drag Indicator Bar */}
-          <div className="w-12 h-1.5 bg-white/25 rounded-full mx-auto mb-3 shrink-0" />
-
-          {/* Top glow decoration */}
-          <div className="absolute -top-20 left-1/2 -translate-x-1/2 w-80 h-32 bg-primary-600/15 rounded-full blur-3xl pointer-events-none" />
+          {/* Ambient Glow */}
+          <div className="absolute top-0 left-1/3 w-1/2 h-64 bg-primary-600/15 rounded-full blur-[110px] pointer-events-none" />
 
           {/* Header */}
-          <div className="flex items-center justify-between pb-3 border-b border-white/10 shrink-0 relative z-10 bg-[#0c0c10]">
-            <div className="flex items-center gap-2.5">
-              <div className="p-2 bg-primary-600/20 border border-primary-500/30 rounded-xl text-primary-400">
-                <Shield size={18} />
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between p-6 pr-16 shrink-0 border-b border-white/5 relative z-10 gap-4">
+            <div className="flex items-center gap-4">
+              <div className="w-12 h-12 flex items-center justify-center rounded-2xl bg-gradient-to-br from-primary-500/20 to-primary-900/30 border border-primary-500/40 text-primary-400 shadow-md">
+                <Shield size={24} />
               </div>
               <div>
-                <h3 className="text-sm font-black uppercase tracking-widest text-white leading-tight">Clan Emblem Vault</h3>
-                <p className="text-[10px] text-zinc-400">Select an official insignia or anime organization crest for your clan.</p>
+                <h3 className="text-lg font-bold text-white tracking-wide flex items-center gap-2">
+                  Emblem Library & Studio
+                </h3>
+                <p className="text-xs text-zinc-400 mt-0.5">Select a verified sigil or crop a custom upload</p>
               </div>
             </div>
-            <button onClick={onClose} className="p-1.5 rounded-full hover:bg-white/10 text-zinc-400 hover:text-white transition-colors">
+
+            {/* Modal Navigation Tabs */}
+            <div className="flex items-center gap-2 bg-black/40 border border-white/10 p-1 rounded-2xl self-stretch sm:self-auto">
+              <button
+                onClick={() => setActiveTab('preset')}
+                className={`flex-1 sm:flex-none px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
+                  activeTab === 'preset' ? 'bg-primary-600 text-white shadow-md' : 'text-zinc-400 hover:text-white'
+                }`}
+              >
+                Presets
+              </button>
+              <button
+                onClick={() => setActiveTab('upload')}
+                className={`flex-1 sm:flex-none px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
+                  activeTab === 'upload' ? 'bg-primary-600 text-white shadow-md' : 'text-zinc-400 hover:text-white'
+                }`}
+              >
+                <Crop size={14} /> Custom Upload & Crop
+              </button>
+            </div>
+
+            <button
+              onClick={onClose}
+              className="absolute top-5 right-5 p-2.5 rounded-full bg-white/5 hover:bg-white/15 text-zinc-400 hover:text-white transition-all cursor-pointer border border-white/5 z-30"
+              title="Close"
+            >
               <X size={18} />
             </button>
           </div>
 
-          {/* Controls: Search & Categories */}
-          <div className="py-3 space-y-2.5 shrink-0 relative z-10 bg-[#0e0e12]">
-            <div className="relative">
-              <Search className="absolute left-3.5 top-2.5 text-zinc-400 w-4 h-4" />
-              <input
-                type="text"
-                value={searchQuery}
-                onChange={e => setSearchQuery(e.target.value)}
-                placeholder="Search emblems, factions, anime..."
-                className="w-full bg-[#16161d] border border-white/15 rounded-2xl pl-10 pr-4 py-2 text-xs text-white placeholder-zinc-500 focus:outline-none focus:border-primary-500 transition-colors shadow-inner"
-              />
-              {searchQuery && (
-                <button onClick={() => setSearchQuery('')} className="absolute right-3.5 top-2.5 text-zinc-400 hover:text-white">
-                  <X size={14} />
-                </button>
-              )}
-            </div>
+          {/* Body */}
+          <div className="flex-1 flex flex-col md:flex-row overflow-hidden relative z-10">
+            {activeTab === 'preset' ? (
+              <>
+                {/* Sidebar Categories */}
+                <div className="w-full md:w-64 shrink-0 border-r border-white/5 bg-black/30 p-4 overflow-y-auto custom-scrollbar flex flex-col gap-1.5">
+                  <div className="text-[10px] font-black text-zinc-500 uppercase tracking-widest mb-2 px-3">
+                    Collections
+                  </div>
+                  {CATEGORIES.map(cat => {
+                    const isSelected = selectedCategory === cat;
+                    const count = cat === 'All' ? ANIME_CLAN_EMBLEMS.length : ANIME_CLAN_EMBLEMS.filter(e => e.category === cat).length;
+                    return (
+                      <button
+                        key={cat}
+                        onClick={() => setSelectedCategory(cat)}
+                        className={`relative w-full text-left px-3.5 py-2.5 rounded-xl text-xs font-bold transition-all flex items-center justify-between group cursor-pointer ${
+                          isSelected ? 'text-white' : 'text-zinc-400 hover:text-white hover:bg-white/5'
+                        }`}
+                      >
+                        {isSelected && (
+                          <motion.div
+                            layoutId="active-category"
+                            className="absolute inset-0 bg-primary-600/20 border border-primary-500/30 rounded-xl"
+                            transition={{ type: "spring", bounce: 0.2, duration: 0.5 }}
+                          />
+                        )}
+                        <span className="flex items-center gap-2.5 relative z-10">
+                          {cat === 'Shadow Garden' ? (
+                            <Sparkles size={15} className={isSelected ? 'text-primary-400' : 'text-zinc-500 group-hover:text-primary-400'} />
+                          ) : (
+                            <Folder size={15} className={isSelected ? 'text-primary-400' : 'text-zinc-500 group-hover:text-primary-400'} />
+                          )}
+                          {cat}
+                        </span>
+                        <span className={`text-[10px] font-mono px-2 py-0.5 rounded-md relative z-10 ${isSelected ? 'bg-primary-500/30 text-primary-300' : 'bg-white/5 text-zinc-500'}`}>
+                          {count}
+                        </span>
+                      </button>
+                    );
+                  })}
+                </div>
 
-            {/* Category Pills */}
-            <div className="flex gap-1.5 overflow-x-auto pb-1 custom-scrollbar text-[11px]">
-              {categories.map(cat => (
-                <button
-                  key={cat}
-                  onClick={() => setSelectedCategory(cat)}
-                  className={`px-3.5 py-1 rounded-full font-bold uppercase tracking-wider whitespace-nowrap transition-all ${
-                    selectedCategory === cat
-                      ? 'bg-primary-600 text-white shadow-md shadow-primary-900/40 border border-primary-400/40'
-                      : 'bg-[#181822] text-zinc-300 hover:bg-[#222230] hover:text-white border border-white/10'
-                  }`}
-                >
-                  {cat}
-                </button>
-              ))}
-            </div>
-          </div>
+                {/* Main Content Area */}
+                <div className="flex-1 flex flex-col bg-black/50 p-4 sm:p-6 overflow-hidden">
+                  <div className="relative mb-6">
+                    <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-zinc-400 w-4 h-4" />
+                    <input
+                      type="text"
+                      value={searchQuery}
+                      onChange={e => setSearchQuery(e.target.value)}
+                      placeholder="Search emblems..."
+                      className="w-full bg-white/5 border border-white/10 rounded-2xl pl-11 pr-11 py-3 text-xs text-white placeholder-zinc-500 focus:outline-none focus:border-primary-500/50 focus:bg-white/10 transition-all font-medium"
+                    />
+                    {searchQuery && (
+                      <button onClick={() => setSearchQuery('')} className="absolute right-4 top-1/2 -translate-y-1/2 text-zinc-400 hover:text-white">
+                        <X size={16} />
+                      </button>
+                    )}
+                  </div>
 
-          {/* Emblem Grid */}
-          <div className="flex-1 overflow-y-auto custom-scrollbar pr-1 py-2 grid grid-cols-3 sm:grid-cols-4 gap-3 min-h-[250px] relative z-10">
-            {filteredEmblems.length === 0 ? (
-              <div className="col-span-full flex flex-col items-center justify-center py-12 text-zinc-500 text-xs">
-                <ShieldAlert className="w-8 h-8 mb-2 opacity-40 text-primary-400" />
-                No emblems found matching your search.
-              </div>
+                  <div className="flex-1 overflow-y-auto custom-scrollbar pr-1">
+                    {filteredEmblems.length === 0 ? (
+                      <div className="h-full flex flex-col items-center justify-center text-zinc-500">
+                        <ShieldAlert className="w-12 h-12 mb-3 opacity-20" />
+                        <p className="text-xs font-medium">No emblems found matching your criteria.</p>
+                      </div>
+                    ) : (
+                      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4 pb-4">
+                        {filteredEmblems.map(emblem => {
+                          const isSelected = currentUrl === emblem.url;
+                          return (
+                            <button
+                              key={emblem.id}
+                              onClick={() => { onSelectEmblem(emblem.url); onClose(); }}
+                              className={`group relative aspect-square rounded-2xl border flex flex-col items-center justify-center p-4 transition-all duration-300 overflow-hidden cursor-pointer ${
+                                isSelected 
+                                  ? 'border-primary-500 bg-primary-900/25 shadow-[0_0_25px_rgba(220,38,38,0.2)]' 
+                                  : 'border-white/10 bg-white/[0.02] hover:bg-white/[0.06] hover:border-white/20'
+                              }`}
+                            >
+                              <img 
+                                src={emblem.url} 
+                                alt={emblem.name}
+                                className="w-24 h-24 object-contain filter drop-shadow-2xl group-hover:scale-110 transition-transform duration-500 ease-out relative z-10"
+                              />
+
+                              {isSelected && (
+                                <div className="absolute top-3 right-3 z-20 bg-primary-500 rounded-full p-1 shadow-lg">
+                                  <Check className="w-3.5 h-3.5 text-white stroke-[3]" />
+                                </div>
+                              )}
+
+                              <div className="absolute bottom-0 left-0 right-0 p-3 bg-gradient-to-t from-black to-transparent translate-y-full group-hover:translate-y-0 transition-transform duration-300 z-20">
+                                <div className="text-[11px] font-bold text-white truncate text-center w-full">
+                                  {emblem.name}
+                                </div>
+                              </div>
+                            </button>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </>
             ) : (
-              filteredEmblems.map(emblem => {
-                const isSelected = currentUrl === emblem.url;
-                return (
-                  <button
-                    key={emblem.id}
-                    onClick={() => {
-                      onSelectEmblem(emblem.url);
-                      onClose();
-                    }}
-                    className={`group relative rounded-2xl border p-2.5 flex flex-col items-center text-center transition-all bg-[#121218] hover:scale-[1.03] ${
-                      isSelected
-                        ? 'border-primary-500 bg-primary-500/20 shadow-xl shadow-primary-500/30 ring-2 ring-primary-500'
-                        : 'border-white/10 hover:border-primary-500/50 hover:bg-[#1a1a24]'
-                    }`}
+              /* Custom Emblem Upload & Crop Studio */
+              <div className="flex-1 flex flex-col lg:flex-row items-center justify-center p-6 bg-black/60 gap-8 overflow-y-auto custom-scrollbar">
+                <input
+                  type="file"
+                  ref={fileInputRef}
+                  onChange={handleFileChange}
+                  accept="image/*"
+                  className="hidden"
+                />
+
+                {!uploadedImageSrc ? (
+                  <div 
+                    onClick={() => fileInputRef.current?.click()}
+                    className="w-full max-w-md h-72 rounded-3xl border-2 border-dashed border-white/15 hover:border-primary-500/50 bg-white/[0.02] hover:bg-primary-500/5 transition-all flex flex-col items-center justify-center p-6 cursor-pointer text-center group"
                   >
-                    <div className="w-16 h-16 rounded-2xl overflow-hidden mb-2 border border-white/10 bg-zinc-900 relative shadow-md shrink-0">
-                      <img
-                        src={emblem.url}
-                        alt={emblem.name}
-                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-                      />
-                      {isSelected && (
-                        <div className="absolute inset-0 bg-primary-600/70 backdrop-blur-[1px] flex items-center justify-center">
-                          <Check className="w-6 h-6 text-white stroke-[3]" />
-                        </div>
-                      )}
+                    <div className="w-16 h-16 rounded-2xl bg-white/5 border border-white/10 group-hover:border-primary-500/40 flex items-center justify-center text-zinc-400 group-hover:text-primary-400 transition-all mb-4">
+                      <Upload size={28} />
                     </div>
-                    <span className="text-[10px] font-bold text-zinc-200 group-hover:text-white line-clamp-1 leading-tight">
-                      {emblem.name}
-                    </span>
-                    <span className="text-[8px] text-zinc-400 font-mono mt-0.5 uppercase tracking-wider">
-                      {emblem.category}
-                    </span>
-                  </button>
-                );
-              })
+                    <h4 className="font-bold text-white text-sm mb-1">Click to Upload Emblem Image</h4>
+                    <p className="text-xs text-zinc-400 max-w-xs">Supports PNG, JPG, WEBP or SVG. You can crop and pan afterwards.</p>
+                  </div>
+                ) : (
+                  <>
+                    {/* Interactive Crop Canvas Viewport */}
+                    <div className="flex flex-col items-center gap-4">
+                      <div className="text-xs font-bold text-zinc-400 uppercase tracking-widest flex items-center gap-2">
+                        <Crop size={14} className="text-primary-400" /> Pan & Position (Drag image to position)
+                      </div>
+
+                      <div 
+                        onMouseDown={handleMouseDown}
+                        onMouseMove={handleMouseMove}
+                        onMouseUp={handleMouseUp}
+                        onMouseLeave={handleMouseUp}
+                        className="relative w-64 h-64 rounded-full border-2 border-primary-500/60 shadow-[0_0_40px_rgba(220,38,38,0.2)] overflow-hidden bg-black/80 cursor-grab active:cursor-grabbing select-none"
+                      >
+                        <img
+                          ref={imageRef}
+                          src={uploadedImageSrc}
+                          alt="Crop preview"
+                          draggable={false}
+                          style={{
+                            transform: `translate(${pan.x}px, ${pan.y}px) scale(${zoom})`,
+                            transformOrigin: 'center',
+                            maxWidth: 'none',
+                          }}
+                          className="w-full h-full object-contain pointer-events-none transition-transform duration-75"
+                        />
+                        {/* Overlay Grid */}
+                        <div className="absolute inset-0 border-2 border-white/20 rounded-full pointer-events-none" />
+                      </div>
+
+                      {/* Controls */}
+                      <div className="w-full max-w-xs space-y-3 bg-white/5 border border-white/10 p-4 rounded-2xl backdrop-blur-md">
+                        <div className="flex items-center justify-between text-xs font-bold text-zinc-300">
+                          <span className="flex items-center gap-1.5"><ZoomIn size={14} className="text-primary-400" /> Zoom Scale</span>
+                          <span className="font-mono text-primary-400">{zoom.toFixed(1)}x</span>
+                        </div>
+                        <input
+                          type="range"
+                          min="0.5"
+                          max="3"
+                          step="0.05"
+                          value={zoom}
+                          onChange={e => setZoom(parseFloat(e.target.value))}
+                          className="w-full accent-primary-500 cursor-pointer"
+                        />
+                        <button
+                          onClick={() => { setZoom(1); setPan({ x: 0, y: 0 }); }}
+                          className="w-full py-1.5 text-[10px] font-bold text-zinc-400 hover:text-white flex items-center justify-center gap-1 transition-colors cursor-pointer"
+                        >
+                          <RefreshCw size={12} /> Reset Position
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* Actions */}
+                    <div className="flex flex-col gap-3 w-full max-w-xs">
+                      <button
+                        onClick={handleApplyCrop}
+                        className="w-full py-3.5 bg-gradient-to-r from-primary-600 to-primary-800 hover:from-primary-500 hover:to-primary-700 text-white font-black text-xs uppercase tracking-wider rounded-2xl shadow-xl border border-white/10 transition-all cursor-pointer flex items-center justify-center gap-2"
+                      >
+                        <Check size={16} strokeWidth={3} /> Apply & Save Emblem
+                      </button>
+
+                      <button
+                        onClick={() => fileInputRef.current?.click()}
+                        className="w-full py-3 bg-white/10 hover:bg-white/15 text-white font-bold text-xs uppercase tracking-wider rounded-2xl border border-white/10 transition-all cursor-pointer flex items-center justify-center gap-2"
+                      >
+                        <Upload size={14} /> Choose Different Image
+                      </button>
+                    </div>
+                  </>
+                )}
+              </div>
             )}
           </div>
         </motion.div>

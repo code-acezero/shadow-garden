@@ -92,3 +92,28 @@ export const DEFAULT_SETTINGS: AppSettings = {
   autoBackup: true,
   bandwidthSaver: false,
 };
+
+export interface UserProfile {
+  id: string;
+  username: string;
+  email: string;
+  avatar_url?: string;
+  role: 'user' | 'moderator' | 'admin' | 'leader';
+  admin_title?: string;
+  created_at?: string;
+}
+
+export interface Report {
+  id: string;
+  reporter_id: string;
+  reported_id: string;
+  target_type: 'user' | 'post' | 'comment';
+  target_id: string;
+  reason: string;
+  details?: string;
+  status: 'pending' | 'reviewed' | 'resolved' | 'dismissed';
+  created_at: string;
+  updated_at: string;
+  reported_user?: UserProfile;
+  reporter_user?: UserProfile;
+}

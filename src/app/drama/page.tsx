@@ -1,12 +1,14 @@
 "use client";
 
-import React, { useState, useEffect, memo } from 'react';
+import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Search, Play, ChevronRight, Loader2, Info, Plus, Check, Star } from 'lucide-react';
 import { omni, DramaSection, DramaCard } from '@/lib/omni';
 import { cn } from '@/lib/utils';
 import Footer from '@/components/Anime/Footer';
+import DCard from '@/components/Drama/DCard';
+import CountryBadge from '@/components/Drama/CountryBadge';
 
 // ── Search Bar ────────────────────────────────────────────────────────────────
 
@@ -28,8 +30,8 @@ const DramaSearch = () => {
   }, [query]);
 
   return (
-    <div className={cn("relative transition-all duration-300 z-[99]", isFocused || query ? "w-64 md:w-80" : "w-10 md:w-64")}>
-      <form onSubmit={(e) => { e.preventDefault(); if (query.trim()) window.location.href = `/search?library=drama&keyword=${encodeURIComponent(query.trim())}`; }} className="flex items-center gap-2 bg-[#0f172a]/80 backdrop-blur-md border border-cyan-500/20 hover:border-cyan-400/50 rounded-full px-3 py-2 focus-within:bg-[#0f172a] focus-within:border-cyan-400 focus-within:shadow-[0_0_15px_rgba(34,211,238,0.3)] transition-all group">
+    <div className={cn("relative transition-all duration-300 z-30", isFocused || query ? "w-64 md:w-80" : "w-10 md:w-64")}>
+      <form onSubmit={(e) => { e.preventDefault(); if (query.trim()) window.location.href = `/search?library=drama&keyword=${encodeURIComponent(query.trim())}`; }} className="flex items-center gap-2 bg-[#0f172a]/90 backdrop-blur-xl border border-cyan-500/30 hover:border-cyan-400/60 rounded-full px-3.5 py-2 focus-within:bg-[#0f172a] focus-within:border-cyan-400 focus-within:shadow-[0_0_20px_rgba(34,211,238,0.35)] transition-all group">
         <button 
           type="button" 
           onClick={() => {
@@ -42,7 +44,7 @@ const DramaSearch = () => {
           disabled={loading} 
           className="shrink-0 outline-none hover:scale-110 transition-transform"
         >
-            {loading ? <Loader2 size={16} className="text-cyan-400 animate-spin" /> : <Search size={16} className="text-cyan-500 group-focus-within:text-cyan-300 transition-colors" />}
+            {loading ? <Loader2 size={16} className="text-cyan-400 animate-spin" /> : <Search size={16} className="text-cyan-400 group-focus-within:text-cyan-300 transition-colors" />}
         </button>
         <input
           id="drama-search-input"
@@ -82,96 +84,23 @@ const DramaSearch = () => {
   );
 };
 
-// ── Prime-Style Drama Card ────────────────────────────────────────────────────
-
-const DCard = memo(({ item }: { item: DramaCard }) => {
-  // Determine a country tag
-  let countryTag = item.country || '';
-  if (!countryTag && item.type) {
-    if (item.type.toLowerCase().includes('korea')) countryTag = 'South Korea';
-    else if (item.type.toLowerCase().includes('china') || item.type.toLowerCase().includes('chinese')) countryTag = 'China';
-    else if (item.type.toLowerCase().includes('japan')) countryTag = 'Japan';
-    else if (item.type.toLowerCase().includes('turkey') || item.type.toLowerCase().includes('turkish')) countryTag = 'Turkey';
-    else if (item.type.toLowerCase().includes('thai')) countryTag = 'Thailand';
-  }
-
-  // Choose flag based on country
-  let flag = '🌍';
-  const cLower = countryTag.toLowerCase();
-  if (cLower.includes('korea')) flag = '🇰🇷';
-  else if (cLower.includes('china')) flag = '🇨🇳';
-  else if (cLower.includes('japan')) flag = '🇯🇵';
-  else if (cLower.includes('turkey')) flag = '🇹🇷';
-  else if (cLower.includes('thai')) flag = '🇹🇭';
-
-  return (
-    <Link href={`/drama-watch/${item.id}`} className="group relative flex flex-col shrink-0 w-[140px] sm:w-[160px] md:w-[200px] transition-all duration-300 hover:z-50 hover:scale-110 origin-bottom touch-manipulation block">
-      <div className="aspect-[2/3] w-full overflow-hidden rounded-xl bg-[#0f172a] relative shadow-lg group-hover:shadow-[0_0_30px_rgba(34,211,238,0.2)] group-hover:ring-2 group-hover:ring-cyan-400/50 transition-all">
-        {item.image ? (
-          <img src={item.image} alt={item.title} className="w-full h-full object-cover group-hover:opacity-40 transition-opacity duration-300" loading="lazy" decoding="async" />
-        ) : (
-          <div className="w-full h-full flex items-center justify-center text-cyan-900"><Play size={24} /></div>
-        )}
-        
-        {/* Country Badge */}
-        {countryTag && (
-          <div className="absolute top-2 left-2 bg-black/60 backdrop-blur-md px-2 py-0.5 rounded flex items-center gap-1 border border-white/10 z-10">
-            <span className="text-[10px]">{flag}</span>
-            <span className="text-[9px] font-black text-white uppercase tracking-wider">{countryTag}</span>
-          </div>
-        )}
-
-        {/* Episode Badge (Top Right) */}
-        {item.episode && (
-          <div className="absolute top-2 right-2 bg-cyan-500 text-black px-1.5 py-0.5 rounded font-black text-[9px] z-10 shadow-md">
-            EP {item.episode}
-          </div>
-        )}
-
-        {/* Permanent Bottom Info Overlay */}
-        <div className="absolute inset-x-0 bottom-0 p-3 md:p-4 flex flex-col justify-end bg-gradient-to-t from-[#020617] via-[#020617]/90 to-transparent h-2/3 md:h-1/2 transition-all">
-          <div className="mt-auto group-hover:-translate-y-2 transition-transform duration-300">
-              <h3 className="text-[11px] md:text-sm font-black text-white line-clamp-2 leading-tight drop-shadow-md mb-1.5 font-gradvis">{item.title}</h3>
-              <div className="flex flex-wrap items-center gap-1.5 text-[8px] md:text-[9px] font-bold text-cyan-200/80 uppercase tracking-widest">
-                  {item.year && <span className="bg-white/10 px-1.5 py-0.5 rounded border border-white/5">{item.year}</span>}
-                  {item.type && !item.type.includes(countryTag) && <span className="bg-cyan-500/20 text-cyan-300 px-1.5 py-0.5 rounded">{item.type}</span>}
-                  <span className="text-yellow-400 flex items-center gap-0.5"><Star size={8} fill="currentColor"/> 8.5</span>
-              </div>
-          </div>
-
-          {/* Action Buttons (Only visible on Hover, sliding up) */}
-          <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-all duration-300 translate-y-4 group-hover:translate-y-0 absolute bottom-3 md:bottom-4 left-3 right-3 md:left-4 md:right-4">
-              <div className="w-8 h-8 rounded-full bg-cyan-500 hover:bg-cyan-400 text-black flex items-center justify-center shadow-[0_0_15px_rgba(34,211,238,0.4)] transition-all">
-                  <Play size={14} fill="black" className="ml-0.5" />
-              </div>
-              <div className="w-8 h-8 rounded-full bg-white/10 hover:bg-white/20 border border-white/20 text-white flex items-center justify-center backdrop-blur-sm transition-all ml-auto" onClick={(e) => { e.preventDefault(); }}>
-                  <Plus size={14} />
-              </div>
-          </div>
-        </div>
-      </div>
-    </Link>
-  );
-});
-DCard.displayName = "DCard";
-
 // ── Section Row ───────────────────────────────────────────────────────────────
 
 const DramaRow = ({ section, isFirst }: { section: DramaSection & { query?: string }, isFirst?: boolean }) => {
   if (!section.items.length) return null;
   return (
-    <div className={cn("w-full relative z-20", isFirst ? "-mt-6 md:-mt-12" : "mt-8")}>
-      <div className="px-4 md:px-12 mb-3 flex items-center justify-between">
-          <h2 className="text-[16px] md:text-[20px] font-black text-white tracking-tight flex items-center gap-2 group cursor-pointer w-fit drop-shadow-md">
+    <div className={cn("w-full relative z-20 px-4 md:px-8", isFirst ? "-mt-6 md:-mt-12" : "mt-8")}>
+      <div className="mb-3 flex items-center justify-between w-full">
+          <h2 className="text-[16px] md:text-[22px] font-black text-white tracking-tight flex items-center gap-2 group cursor-pointer w-fit drop-shadow-md">
              {section.title}
           </h2>
-          <Link href={section.query ? `/search?library=drama&keyword=${section.query}` : `/search?library=drama`} className="text-[10px] md:text-xs font-bold text-cyan-500 hover:text-cyan-400 flex items-center gap-1 uppercase tracking-widest transition-colors">
+          <Link href={section.query ? `/search?library=drama&keyword=${section.query}` : `/search?library=drama`} className="text-[10px] md:text-xs font-bold text-cyan-400 hover:text-cyan-300 flex items-center gap-1 uppercase tracking-widest transition-colors bg-cyan-500/10 px-3 py-1 rounded-full border border-cyan-500/20">
             View All <ChevronRight size={14} />
           </Link>
       </div>
-      <div className="px-4 md:px-12 w-full pb-4 relative group/row">
-          <div className="flex gap-4 md:gap-5 pb-6 pt-2 pr-12 overflow-x-auto no-scrollbar scroll-smooth snap-x snap-mandatory">
-            {section.items.map(item => <div key={item.id} className="snap-start shrink-0"><DCard item={item} /></div>)}
+      <div className="w-full relative group/row">
+          <div className="flex gap-4 md:gap-5 pb-6 pt-2 overflow-x-auto no-scrollbar scroll-smooth snap-x snap-mandatory">
+            {section.items.map(item => <div key={item.id} className="snap-start shrink-0 w-[140px] sm:w-[160px] md:w-[190px]"><DCard item={item} /></div>)}
           </div>
       </div>
     </div>
@@ -183,16 +112,16 @@ const DramaRow = ({ section, isFirst }: { section: DramaSection & { query?: stri
 const DramaGrid = ({ section }: { section: DramaSection & { query?: string } }) => {
   if (!section.items.length) return null;
   return (
-    <div className="w-full relative z-20 mt-8 mb-8">
-      <div className="px-4 md:px-12 mb-4 flex items-center justify-between">
-          <h2 className="text-[16px] md:text-[20px] font-black text-white tracking-tight flex items-center gap-2 w-fit drop-shadow-md">
+    <div className="w-full relative z-20 mt-8 mb-8 px-4 md:px-8">
+      <div className="mb-4 flex items-center justify-between w-full">
+          <h2 className="text-[16px] md:text-[22px] font-black text-white tracking-tight flex items-center gap-2 w-fit drop-shadow-md">
              {section.title}
           </h2>
-          <Link href={section.query ? `/search?library=drama&keyword=${section.query}` : `/search?library=drama`} className="text-[10px] md:text-xs font-bold text-cyan-500 hover:text-cyan-400 flex items-center gap-1 uppercase tracking-widest transition-colors">
+          <Link href={section.query ? `/search?library=drama&keyword=${section.query}` : `/search?library=drama`} className="text-[10px] md:text-xs font-bold text-cyan-400 hover:text-cyan-300 flex items-center gap-1 uppercase tracking-widest transition-colors bg-cyan-500/10 px-3 py-1 rounded-full border border-cyan-500/20">
             View All <ChevronRight size={14} />
           </Link>
       </div>
-      <div className="px-4 md:px-12 w-full">
+      <div className="w-full">
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4 md:gap-6">
             {section.items.map(item => <DCard key={item.id} item={item} />)}
           </div>
@@ -229,7 +158,7 @@ const HeroSlider = ({ items }: { items: DramaCard[] }) => {
   const detail = details[item.id];
 
   return (
-    <div className="relative w-full h-[80vh] md:h-[95vh] bg-[#020617] overflow-hidden">
+    <div className="relative w-full h-[85vh] md:h-[95vh] bg-[#020617] overflow-hidden">
       <AnimatePresence mode="wait">
         <motion.div
           key={item.id}
@@ -242,24 +171,24 @@ const HeroSlider = ({ items }: { items: DramaCard[] }) => {
           {item.image && (
             <img src={detail?.banner || item.image} alt={item.title} className="w-full h-full object-cover opacity-60 md:opacity-80 mix-blend-screen" loading="eager" />
           )}
-          {/* Prime Video Blue/Dark Gradients */}
-          <div className="absolute inset-0 bg-gradient-to-r from-[#020617] via-[#020617]/90 to-transparent w-full md:w-[70%]" />
+          {/* Gradients */}
+          <div className="absolute inset-0 bg-gradient-to-r from-[#020617] via-[#020617]/85 to-transparent w-full md:w-[70%]" />
           <div className="absolute inset-0 bg-gradient-to-t from-[#020617] via-[#020617]/50 to-transparent bottom-0" />
-          <div className="absolute inset-0 bg-gradient-to-t from-[#020617] via-transparent to-[#020617]/80 h-40 top-0" />
+          <div className="absolute inset-0 bg-gradient-to-t from-[#020617] via-transparent to-[#020617]/80 h-32 top-0" />
           
-          {/* Magical Flare */}
+          {/* Magical Flares */}
           <div className="absolute top-1/4 -left-32 w-96 h-96 bg-cyan-600/20 blur-[120px] rounded-full pointer-events-none" />
           <div className="absolute bottom-0 right-0 w-[500px] h-[500px] bg-purple-900/10 blur-[150px] rounded-full pointer-events-none" />
         </motion.div>
       </AnimatePresence>
 
-      {/* Top Nav Overlay */}
-      <div className="absolute top-24 right-4 md:right-12 z-50 flex items-center gap-4">
+      {/* Drama Search Bar positioned cleanly in Hero header area without overlapping top nav */}
+      <div className="absolute top-28 right-4 md:right-8 z-30 flex items-center gap-4">
          <DramaSearch />
       </div>
 
       {/* Hero Content */}
-      <div className="absolute bottom-20 md:bottom-32 left-0 w-full px-4 md:px-12 flex flex-col justify-end z-10 pointer-events-none">
+      <div className="absolute bottom-20 md:bottom-28 left-0 w-full px-4 md:px-12 flex flex-col justify-end z-10 pointer-events-none">
         <AnimatePresence mode="wait">
             <motion.div 
                 key={`content-${item.id}`}
@@ -267,45 +196,46 @@ const HeroSlider = ({ items }: { items: DramaCard[] }) => {
                 animate={{ opacity: 1, x: 0 }} 
                 exit={{ opacity: 0, x: 30 }}
                 transition={{ duration: 0.6, delay: 0.2 }} 
-                className="max-w-2xl pointer-events-auto"
+                className="pointer-events-auto max-w-3xl w-full"
             >
-              <div className="flex items-center gap-2 mb-2 md:mb-4">
-                  <Check size={16} className="text-cyan-400 p-0.5 bg-cyan-400/20 rounded-full" />
-                  <span className={`text-[10px] md:text-xs font-bold text-cyan-200 tracking-[0.2em] uppercase font-lemon`}>Included with Prime Shadow</span>
+              <div className="flex items-center gap-2 mb-3">
+                  <Check size={14} className="text-cyan-400 p-0.5 bg-cyan-400/20 rounded-full" />
+                  <span className="text-[10px] md:text-xs font-black text-cyan-300 tracking-[0.2em] uppercase">Included with Shadow Prime</span>
               </div>
               
-              <h1 className={`text-4xl md:text-7xl font-bold text-white leading-[1.1] tracking-tighter mb-4 drop-shadow-[0_0_30px_rgba(34,211,238,0.3)] font-gradvis`}>
+              <h1 className="text-3xl sm:text-4xl md:text-6xl font-black text-white leading-[1.15] tracking-tight mb-4 drop-shadow-[0_0_30px_rgba(34,211,238,0.3)]">
                 {item.title}
               </h1>
 
-              <div className="flex items-center gap-3 text-[10px] md:text-[11px] font-black text-cyan-100/80 mb-5 uppercase tracking-widest">
-                  <span className="text-black bg-cyan-400 px-2 py-0.5 rounded shadow-[0_0_10px_rgba(34,211,238,0.4)]">Top Rated</span>
-                  {item.year && <span>{item.year}</span>}
-                  {item.country && <span>{item.country}</span>}
-                  {item.episode && <span className="border border-white/20 px-1.5 py-0.5 rounded">{item.episode} Episodes</span>}
-                  <span className="border border-white/20 px-1.5 py-0.5 rounded">HD</span>
+              <div className="flex flex-wrap items-center gap-2.5 text-[10px] md:text-[11px] font-black text-cyan-100/80 mb-5 uppercase tracking-widest">
+                  <span className="text-black bg-cyan-400 px-2.5 py-0.5 rounded-full font-black shadow-[0_0_10px_rgba(34,211,238,0.4)]">Top Rated</span>
+                  <CountryBadge country={item.country} type={item.type} showFullname />
+                  {item.year && <span className="bg-white/10 px-2 py-0.5 rounded-full border border-white/10">{item.year}</span>}
+                  {item.episode && <span className="border border-white/20 px-2 py-0.5 rounded-full">{item.episode} Episodes</span>}
+                  <span className="border border-white/20 px-2 py-0.5 rounded-full">HD</span>
               </div>
 
-              <p className="text-xs md:text-sm text-cyan-50/80 leading-relaxed mb-8 line-clamp-3 md:line-clamp-4 font-medium max-w-xl">
+              <p className="text-xs md:text-sm text-cyan-50/80 leading-relaxed mb-7 line-clamp-3 md:line-clamp-4 font-medium max-w-2xl">
                  {detail?.synopsis || "Unveil the mysteries hidden within the shadows. Discover a world of magic, politics, and romance in this exclusive drama."}
               </p>
               
-              <div className="flex flex-wrap gap-3">
-                <Link href={`/drama-watch/${item.id}`} className="flex items-center gap-2 bg-cyan-500 hover:bg-cyan-400 text-black font-black text-sm md:text-base px-8 py-3.5 rounded-lg transition-all active:scale-95 shadow-[0_0_20px_rgba(34,211,238,0.4)]">
-                  <Play size={20} fill="black" /> Resume
+              {/* Rounded Buttons with proper padding & Play label */}
+              <div className="flex items-center flex-wrap gap-3">
+                <Link href={`/drama-watch/${item.id}`} className="flex items-center justify-center gap-2.5 bg-cyan-500 hover:bg-cyan-400 text-black font-black text-sm md:text-base px-7 py-3 rounded-full transition-all active:scale-95 shadow-[0_0_25px_rgba(34,211,238,0.5)]">
+                  <Play size={18} fill="black" /> Play
                 </Link>
-                <button onClick={() => window.location.href = `/drama-watch/${item.id}`} className="flex items-center gap-2 bg-white/10 hover:bg-white/20 text-white font-bold text-sm md:text-base px-8 py-3.5 rounded-lg transition-all backdrop-blur-md shadow-xl border border-white/20">
-                  <Info size={20} /> Details
-                </button>
-                <button className="flex items-center justify-center w-12 md:w-14 bg-white/10 hover:bg-white/20 text-white rounded-lg transition-all backdrop-blur-md border border-white/20">
-                  <Plus size={24} />
+                <Link href={`/drama-watch/${item.id}`} className="flex items-center justify-center gap-2 bg-white/10 hover:bg-white/20 text-white font-bold text-sm md:text-base px-6 py-3 rounded-full transition-all backdrop-blur-md shadow-xl border border-white/20 active:scale-95">
+                  <Info size={18} /> Details
+                </Link>
+                <button className="flex items-center justify-center w-11 h-11 rounded-full bg-white/10 hover:bg-white/20 text-white transition-all backdrop-blur-md border border-white/20 active:scale-95">
+                  <Plus size={20} />
                 </button>
               </div>
             </motion.div>
         </AnimatePresence>
         
         {/* Indicators */}
-        <div className="flex items-center gap-2 mt-12 pointer-events-auto w-fit bg-black/40 backdrop-blur-md px-3 py-2 rounded-full border border-white/10">
+        <div className="flex items-center gap-2 mt-8 pointer-events-auto w-fit bg-black/40 backdrop-blur-md px-3.5 py-2 rounded-full border border-white/10">
             {items.map((_, i) => (
                 <button 
                     key={i} 
@@ -353,7 +283,7 @@ export default function DramaHomePage() {
   });
 
   return (
-    <div className="min-h-screen bg-[#020617] text-white pb-24 overflow-x-hidden selection:bg-cyan-500/30 pt-[calc(env(safe-area-inset-top)+80px)] md:pt-[calc(env(safe-area-inset-top)+56px)]">
+    <div className="min-h-screen bg-[#020617] text-white overflow-x-hidden selection:bg-cyan-500/30">
       {loading ? (
         <div className="w-full min-h-screen flex flex-col items-center justify-center bg-[#020617]">
            <div className="w-16 h-16 border-4 border-cyan-500/20 border-t-cyan-500 rounded-full animate-spin drop-shadow-[0_0_15px_rgba(34,211,238,0.5)]" />

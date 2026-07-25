@@ -124,12 +124,12 @@ export default function ImageSearchPage() {
   };
 
   return (
-    <div className="min-h-screen bg-[#050505] text-white pt-24 pb-4 px-4 relative overflow-hidden font-poppins selection:bg-orange-500/30 flex flex-col justify-between">
+    <div className="min-h-screen bg-[#050505] text-white relative overflow-hidden font-poppins selection:bg-orange-500/30 flex flex-col justify-between">
         {/* Dynamic Background Orbs */}
         <div className="absolute top-[-10%] left-[-10%] w-[500px] h-[500px] bg-orange-600/10 rounded-full blur-[120px] pointer-events-none mix-blend-screen" />
         <div className="absolute bottom-[-10%] right-[-10%] w-[600px] h-[600px] bg-red-900/5 rounded-full blur-[150px] pointer-events-none mix-blend-screen" />
         
-        <div className="max-w-7xl mx-auto w-full relative z-10 flex-1 flex flex-col justify-start">
+        <div className="w-full relative z-10 flex-1 flex flex-col justify-start">
             
             {/* Split layout: Fixed/Sticky left, scrollable right on Desktop */}
             <div className="flex flex-col lg:flex-row gap-8 lg:gap-12 items-start w-full relative mb-12">
@@ -308,7 +308,7 @@ export default function ImageSearchPage() {
                                             
                                             <div className="mt-4">
                                                 {res.targetUrl ? (
-                                                    <button onClick={() => router.push(res.targetUrl)} className="w-full sm:w-auto px-6 py-2.5 bg-white/5 hover:bg-orange-500 text-white font-bold uppercase tracking-[0.15em] text-[10px] rounded-lg transition-all duration-300 flex items-center justify-center gap-1.5 group-hover:shadow-[0_0_20px_rgba(234,88,12,0.2)]">
+                                                    <button onClick={() => router.push(res.targetUrl)} className="w-full sm:w-auto py-2.5 bg-white/5 hover:bg-orange-500 text-white font-bold uppercase tracking-[0.15em] text-[10px] rounded-lg transition-all duration-300 flex items-center justify-center gap-1.5 group-hover:shadow-[0_0_20px_rgba(234,88,12,0.2)]">
                                                         Play Episode <ChevronRight size={14} />
                                                     </button>
                                                 ) : (
@@ -330,7 +330,7 @@ export default function ImageSearchPage() {
     </div>
 
         {/* Footer component */}
-        <div className="w-full mt-auto relative z-10 border-t border-white/5 pt-6">
+        <div className="w-full mt-auto relative z-10 border-t border-white/5">
             <Footer />
         </div>
     </div>

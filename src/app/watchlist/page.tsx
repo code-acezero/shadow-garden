@@ -5,7 +5,7 @@ import { supabase } from '@/lib/supabase'; // ✅ IMPORT SINGLETON
 import { AnimeService } from '@/lib/api';
 import { useAuth } from '@/context/AuthContext';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { cn } from '@/lib/utils';
+import { cn, getWatchRoute } from '@/lib/utils';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
     Play, Clock, CheckCircle, XCircle, 
@@ -94,7 +94,7 @@ const notifyWhisper = (message: string, type: 'success' | 'error' = 'success') =
 
 // --- SKELETON / LOADING UI ---
 const WatchlistSkeleton = () => (
-    <div className="w-full grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4 md:gap-6 animate-pulse px-4 md:px-8">
+    <div className="w-full grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4 md:gap-6 animate-pulse px-4">
         {[...Array(12)].map((_, i) => (
             <div key={i} className="aspect-[2/3] bg-white/5 rounded-2xl border border-white/5" />
         ))}
@@ -128,11 +128,20 @@ function WatchlistContent() {
     };
 
     const handleRemove = async (animeId: string, isContinue: boolean = false) => {
-        if (!user) return;
         if (isContinue) {
-            const { error } = await supabase.from('user_continue_watching').delete().eq('user_id', user.id).eq('anime_id', animeId);
-            if (!error) removeFromContinue(animeId);
+            if (user) {
+                const { error } = await supabase.from('user_continue_watching').delete().eq('user_id', user.id).eq('anime_id', animeId);
+                if (!error) removeFromContinue(animeId);
+            } else {
+                try {
+                    const localData = JSON.parse(localStorage.getItem('shadow_continue_watching') || '{}');
+                    delete localData[animeId];
+                    localStorage.setItem('shadow_continue_watching', JSON.stringify(localData));
+                    removeFromContinue(animeId);
+                } catch (e) {}
+            }
         } else {
+            if (!user) return;
             const { error } = await supabase.from('watchlist').delete().eq('user_id', user.id).eq('anime_id', animeId);
             if (!error) removeFromLibrary(animeId);
         }
@@ -200,10 +209,10 @@ function WatchlistContent() {
 
     return (
         <div className="flex-1 pb-4">
-            <div className="max-w-[1350px] mx-auto w-full">
+            <div className="w-full">
                 
                 {/* --- HEADER --- */}
-                <div className="flex flex-col gap-6 mb-10 px-4 md:px-8">
+                <div className="flex flex-col gap-6 mb-10 px-4 w-full">
                     <div className="flex flex-col md:flex-row justify-between items-center gap-6">
                         <div className="w-full md:w-auto flex justify-between items-center">
                             <div>
@@ -243,7 +252,7 @@ function WatchlistContent() {
                                 </div>
                             )}
                             
-                            <div className="relative flex-1 max-w-md">
+                            <div className="relative flex-1">
                                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-500" size={14} />
                                 <Input 
                                     placeholder="Search archives..." 
@@ -271,7 +280,7 @@ function WatchlistContent() {
                 </div>
 
                 {/* --- TABS --- */}
-                <div className="sticky top-16 md:top-20 z-40 bg-[#050505]/95 backdrop-blur-xl border-y border-white/5 py-3 mb-10 w-full flex items-center justify-between px-4 md:px-8">
+                <div className="sticky top-16 md:top-20 z-40 bg-[#050505]/95 backdrop-blur-xl border-y border-white/5 py-3 mb-10 w-full flex items-center justify-between px-4">
                     <div className="flex overflow-x-auto no-scrollbar gap-2 items-center w-full">
                         {tabs.map((tab) => (
                             <button
@@ -314,7 +323,7 @@ function WatchlistContent() {
                 </div>
 
                 {/* --- CONTENT --- */}
-                <div className="min-h-[500px] px-4 md:px-8">
+                <div className="min-h-[500px] px-4 w-full">
                     {loadingData ? (
                         <WatchlistSkeleton />
                     ) : filteredData.length > 0 ? (
@@ -335,14 +344,14 @@ function WatchlistContent() {
                                                     <ContinueAnimeCard 
                                                         anime={item}
                                                         className="w-full h-full"
-                                                        onClick={(id, episodeId) => router.push(`/watch/${id}?ep=${episodeId}`)}
+                                                        onClick={(id, episodeId, type) => router.push(getWatchRoute(id, episodeId, type))}
                                                     />
                                                 ) : (
                                                     <AnimeCard anime={{ 
                                                         id: item.anime_id, 
                                                         title: item.anime_title, 
                                                         poster: item.anime_image, 
-                                                        type: "TV", 
+                                                        type: (item as any).type || "TV", 
                                                         totalEpisodes: item.total_episodes
                                                     }} />
                                                 )}
@@ -384,8 +393,8 @@ function WatchlistContent() {
                                             <div 
                                                 className="w-16 h-20 md:w-20 md:h-28 shrink-0 rounded-xl overflow-hidden bg-zinc-900 relative cursor-pointer"
                                                 onClick={() => {
-                                                    if (isContinueItem(item)) router.push(`/watch/${item.anime_id}?ep=${item.episodeId}`);
-                                                    else router.push(`/watch/${item.anime_id}`);
+                                                    if (isContinueItem(item)) router.push(getWatchRoute(item.anime_id, item.episodeId, item.type));
+                                                    else router.push(getWatchRoute(item.anime_id, undefined, (item as any).type));
                                                 }}
                                             >
                                                 <img src={isContinueItem(item) ? item.poster : item.anime_image} alt="poster" className="w-full h-full object-cover" />
@@ -396,8 +405,8 @@ function WatchlistContent() {
                                                 )}
                                             </div>
                                             <div className="flex-1 min-w-0 flex flex-col justify-center cursor-pointer" onClick={() => {
-                                                    if (isContinueItem(item)) router.push(`/watch/${item.anime_id}?ep=${item.episodeId}`);
-                                                    else router.push(`/watch/${item.anime_id}`);
+                                                    if (isContinueItem(item)) router.push(getWatchRoute(item.anime_id, item.episodeId, item.type));
+                                                    else router.push(getWatchRoute(item.anime_id, undefined, (item as any).type));
                                             }}>
                                                 <h3 className="font-bold text-white text-sm md:text-lg truncate">{isContinueItem(item) ? item.title : item.anime_title}</h3>
                                                 {isContinueItem(item) ? (
@@ -453,7 +462,7 @@ export default function WatchlistPage() {
                 body::-webkit-scrollbar { display: none; }
             `}</style>
             
-            <Suspense fallback={<div className="min-h-screen bg-[#050505] pt-24"><WatchlistSkeleton /></div>}>
+            <Suspense fallback={<div className="min-h-screen bg-[#050505]"><WatchlistSkeleton /></div>}>
                 <WatchlistContent />
             </Suspense>
 

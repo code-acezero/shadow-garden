@@ -17,6 +17,7 @@ import { supabase } from '@/lib/supabase'; // ✅ CRITICAL: Import Singleton dir
 import AuthModal from '@/components/Auth/AuthModal';
 import SearchBar from '@/components/Anime/SearchBar';
 import ShadowGardenPortal from '@/components/Portal/ShadowGardenPortal';
+import { getRandomAvatar, getRandomGuestName } from '@/components/User/AvatarSelectorModal';
 
 
 // --- ASSETS ---
@@ -33,6 +34,27 @@ const FLOATING_STICKERS = [
   { src: "/images/index/sticker-1.gif", x: "85%", y: "15%", delay: 1 },
   { src: "/images/index/sticker-2.gif", x: "5%", y: "60%", delay: 2 },
   { src: "/images/index/sticker-3.gif", x: "80%", y: "70%", delay: 3 },
+];
+
+const BOARD_OF_DARKNESS = [
+  { title: "Shadow", role: "Leader" },
+  { title: "The Mask", role: "Admin" },
+  { title: "Viking", role: "Admin" },
+  { title: "Assassin", role: "Admin" },
+  { title: "Phantom", role: "Admin" }
+];
+
+const COUNCIL_OF_SHADOWS = [
+  { title: "First Shadow", role: "Alpha" },
+  { title: "Second Shadow", role: "Moderator" },
+  { title: "Third Shadow", role: "Moderator" },
+  { title: "Fourth Shadow", role: "Moderator" },
+  { title: "Fifth Shadow", role: "Moderator" },
+  { title: "Sixth Shadow", role: "Moderator" },
+  { title: "Seventh Shadow", role: "Moderator" },
+  { title: "Eighth Shadow", role: "Moderator" },
+  { title: "Ninth Shadow", role: "Moderator" },
+  { title: "Tenth Shadow", role: "Moderator" }
 ];
 
 // --- COMPONENTS ---
@@ -75,7 +97,7 @@ const GuildStats = React.memo(() => {
   }, []);
 
   return (
-    <div className="grid grid-cols-1 md:grid-cols-3 gap-4 w-full max-w-4xl mx-auto mt-12 px-4">
+    <div className="grid grid-cols-1 md:grid-cols-3 gap-4 w-full mt-12 px-4">
       <StatCard icon={Users} label="Awakened Agents" value={stats.users.toLocaleString()} sub="Total Registered" />
       <StatCard icon={Activity} label="Souls Online" value={liveUsers.toLocaleString()} sub="Currently Active" isLive />
       <StatCard icon={ScrollIcon} label="Intel Reports" value={stats.posts.toLocaleString()} sub="Community Posts" />
@@ -141,6 +163,7 @@ export default function LandingClient() {
   const [triggerEntry, setTriggerEntry] = useState(false);     
   const [bgImage, setBgImage] = useState(WAIFU_BG_LIST[0]);
   const [isMobile, setIsMobile] = useState(false);
+  const [selectedGender, setSelectedGender] = useState<'boy' | 'girl' | 'neutral' | null>(null);
   
   const [trending, setTrending] = useState<UniversalAnimeBase[]>([]); 
   const [isLoadingTrending, setIsLoadingTrending] = useState(true);
@@ -212,11 +235,29 @@ export default function LandingClient() {
   }, []);
 
   const handleSceneReady = useCallback(() => { setShowLandingUI(true); }, []);
+  const processGenderSelection = useCallback(() => {
+    if (selectedGender) {
+      localStorage.setItem('shadow_traveller_gender', selectedGender);
+      const genderArg = selectedGender === 'neutral' ? undefined : selectedGender;
+      const avatar = getRandomAvatar(true, genderArg);
+      localStorage.setItem('shadow_traveller_avatar', avatar);
+      localStorage.setItem('shadow_traveller_name', getRandomGuestName());
+    }
+  }, [selectedGender]);
+
   const handleEnterClick = useCallback(() => { 
     initializeAudio();
+    processGenderSelection();
     setShowLandingUI(false); 
     setTriggerEntry(true); 
-  }, [initializeAudio]);
+  }, [initializeAudio, processGenderSelection]);
+  
+  const handleJoinGuildClick = useCallback(() => {
+    initializeAudio();
+    processGenderSelection();
+    setShowAuth(true);
+  }, [initializeAudio, processGenderSelection]);
+
   const handlePortalComplete = useCallback(() => { router.push('/home'); }, [router]);
 
   // Prevent Flash
@@ -272,7 +313,7 @@ export default function LandingClient() {
                  />
                ))}
 
-               <div className="relative z-20 text-center px-4 max-w-6xl w-full">
+               <div className="relative z-20 text-center px-4 w-full">
                  <motion.div initial={{ y: 30, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ duration: 1, delay: 0.5 }}>
                    
                    <div className="relative inline-block mb-6">
@@ -286,22 +327,31 @@ export default function LandingClient() {
                      </div>
                    </div>
                    
-                   <p className="text-base md:text-xl text-gray-400 font-light max-w-2xl mx-auto mb-10 leading-relaxed font-above tracking-wide">
+                   <p className="text-base md:text-xl text-gray-400 font-light mb-10 leading-relaxed font-above tracking-wide w-full">
                       The ultimate sanctuary for the awakened. <br/>
                       Join the guild. Access the archives. Become legend.
                    </p>
 
-                   <div className="w-full max-w-lg mx-auto mb-10 transform hover:scale-105 transition-transform duration-300 relative z-20">
+                   <div className="w-full mb-10 transform hover:scale-105 transition-transform duration-300 relative z-20">
                       <div className="relative p-1 rounded-full bg-gradient-to-r from-primary-900/50 via-primary-600/50 to-primary-900/50 shadow-[0_0_30px_rgba(220,38,38,0.3)]">
                         <div className="bg-black/90 backdrop-blur-xl rounded-full"><SearchBar /></div>
                       </div>
                    </div>
 
+                   <div className="flex justify-center items-center gap-4 mb-6 relative z-20">
+                     <span className="text-gray-400 font-above tracking-wider text-sm uppercase">Select Form:</span>
+                     <div className="flex items-center bg-white/5 border border-white/10 rounded-full p-1">
+                       <button onClick={() => setSelectedGender('boy')} className={`px-4 py-1.5 rounded-full text-xs font-bold uppercase transition-all ${selectedGender === 'boy' ? 'bg-blue-600/50 text-white shadow-[0_0_15px_rgba(37,99,235,0.4)]' : 'text-gray-500 hover:text-white'}`}>Boy</button>
+                       <button onClick={() => setSelectedGender('girl')} className={`px-4 py-1.5 rounded-full text-xs font-bold uppercase transition-all ${selectedGender === 'girl' ? 'bg-pink-600/50 text-white shadow-[0_0_15px_rgba(219,39,119,0.4)]' : 'text-gray-500 hover:text-white'}`}>Girl</button>
+                       <button onClick={() => setSelectedGender('neutral')} className={`px-4 py-1.5 rounded-full text-xs font-bold uppercase transition-all ${selectedGender === 'neutral' ? 'bg-purple-600/50 text-white shadow-[0_0_15px_rgba(147,51,234,0.4)]' : 'text-gray-500 hover:text-white'}`}>Random</button>
+                     </div>
+                   </div>
+
                    <div className="flex flex-col sm:flex-row gap-5 justify-center items-center relative z-20">
-                      <Button onClick={() => { initializeAudio(); setShowAuth(true); }} className="h-14 px-8 rounded-full bg-primary-800 hover:bg-primary-700 text-white font-bold text-lg shadow-[0_0_35px_rgba(220,38,38,0.4)] border border-primary-500/50 backdrop-blur-md font-above tracking-wider">
+                      <Button onClick={handleJoinGuildClick} className="h-14 rounded-full bg-primary-800 hover:bg-primary-700 text-white font-bold text-lg shadow-[0_0_35px_rgba(220,38,38,0.4)] border border-primary-500/50 backdrop-blur-md font-above tracking-wider">
                         <Crown className="mr-3 h-5 w-5" /> Join The Guild
                       </Button>
-                      <Button onClick={handleEnterClick} variant="ghost" className="h-14 px-8 rounded-full text-white/70 hover:text-white hover:bg-white/10 border border-white/10 text-lg hover:border-primary-500/50 backdrop-blur-md transition-all font-above tracking-wider">
+                      <Button onClick={handleEnterClick} variant="ghost" className="h-14 rounded-full text-white/70 hover:text-white hover:bg-white/10 border border-white/10 text-lg hover:border-primary-500/50 backdrop-blur-md transition-all font-above tracking-wider w-full">
                         Enter as Visitor <ArrowRight className="ml-3 w-5 h-5" />
                       </Button>
                    </div>
@@ -312,11 +362,11 @@ export default function LandingClient() {
             </section>
 
             {/* EXTENDED CONTENT */}
-            <div className="relative bg-gradient-to-b from-transparent via-[#050505] to-[#050505] pt-12 pb-24 space-y-32 z-10">
+            <div className="relative bg-gradient-to-b from-transparent via-[#050505] to-[#050505] pt-12 space-y-32 z-10">
                
                {/* TOP RANKING */}
                <section className="w-full py-4">
-                  <div className="max-w-7xl mx-auto px-6">
+                  <div className=" w-full">
                      <div className="flex items-center gap-3 mb-8 border-b border-white/10 pb-4">
                         <Flame className="w-6 h-6 text-primary-600" />
                         <h3 className="text-3xl font-normal font-gradvis text-white tracking-widest">TOP BOUNTIES</h3>
@@ -342,7 +392,7 @@ export default function LandingClient() {
 
                {/* ARCHIVES */}
                <section className="py-20 relative overflow-hidden">
-                  <div className="max-w-6xl mx-auto px-6 flex flex-col md:flex-row items-center gap-12 relative z-10">
+                  <div className="flex flex-col md:flex-row items-center gap-12 relative z-10 w-full">
                      <div className="flex-1 space-y-8">
                         <h3 className="text-4xl font-normal text-primary-600 font-gradvis border-l-4 border-primary-600 pl-6" style={{ fontFamily: 'var(--font-above), serif' }}>THE FORBIDDEN LIBRARY</h3>
                         <p className="text-gray-400 text-lg leading-relaxed font-above tracking-wide">
@@ -369,11 +419,11 @@ export default function LandingClient() {
                </section>
 
                {/* ADVANTAGE */}
-               <section className="px-6 relative z-10">
-                 <div className="max-w-7xl mx-auto">
+               <section className="relative z-10 w-full">
+                 <div className=" w-full">
                    <div className="text-center mb-16">
                       <h2 className="text-4xl md:text-5xl font-normal text-white mb-4 font-gradvis text-primary-600" style={{ fontFamily: 'var(--font-above), serif' }}>GUILD PERKS</h2>
-                      <div className="w-24 h-1.5 bg-primary-600 mx-auto rounded-full shadow-[0_0_15px_red]" />
+                      <div className="w-24 h-1.5 bg-primary-600 rounded-full shadow-[0_0_15px_red]" />
                    </div>
                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                       <FeatureCard icon={Zap} title="Hyper Velocity" desc="Built on Next.js 15 Turbo. Intel loads instantly." />
@@ -386,8 +436,59 @@ export default function LandingClient() {
                  </div>
                </section>
 
+               {/* COMMUNITY HIERARCHY */}
+               <section className="py-20 relative overflow-hidden bg-black/40 border-y border-white/5">
+                 <div className="absolute inset-0 bg-gradient-to-b from-transparent via-primary-950/10 to-transparent" />
+                 <div className="relative z-10 w-full">
+                   <div className="text-center mb-16">
+                     <h2 className="text-4xl md:text-5xl font-normal text-white mb-4 font-gradvis text-primary-600 tracking-wider">GUILD HIERARCHY</h2>
+                     <p className="text-gray-400 text-lg font-above w-full">The structure of the sanctuary. Ascend the ranks and earn your title among the elites.</p>
+                   </div>
+
+                   <div className="grid grid-cols-1 lg:grid-cols-2 gap-12">
+                     {/* Board of Darkness */}
+                     <div className="p-8 rounded-3xl bg-primary-950/20 border border-primary-500/20 backdrop-blur-md">
+                       <div className="flex items-center gap-4 mb-8">
+                         <div className="p-3 bg-primary-900/40 rounded-xl border border-primary-500/50"><Crown className="w-8 h-8 text-primary-500" /></div>
+                         <div>
+                           <h3 className="text-2xl font-gradvis text-primary-500 tracking-widest">BOARD OF DARKNESS</h3>
+                           <p className="text-xs text-primary-400/80 font-mono uppercase tracking-widest">The Administrators</p>
+                         </div>
+                       </div>
+                       <div className="flex flex-wrap gap-3">
+                         {BOARD_OF_DARKNESS.map((member, i) => (
+                           <div key={i} className={`px-4 py-3 rounded-xl border ${i === 0 ? 'bg-primary-900/40 border-primary-500 text-white' : 'bg-black/50 border-white/10 text-gray-300'} flex flex-col`}>
+                             <span className="font-bold text-sm tracking-wider">{member.title}</span>
+                             <span className={`text-[10px] uppercase tracking-widest ${i === 0 ? 'text-primary-300' : 'text-gray-500'}`}>{member.role}</span>
+                           </div>
+                         ))}
+                       </div>
+                     </div>
+
+                     {/* Council of Shadows */}
+                     <div className="p-8 rounded-3xl bg-black/40 border border-white/10 backdrop-blur-md">
+                       <div className="flex items-center gap-4 mb-8">
+                         <div className="p-3 bg-zinc-900/80 rounded-xl border border-white/20"><ShieldCheck className="w-8 h-8 text-zinc-400" /></div>
+                         <div>
+                           <h3 className="text-2xl font-gradvis text-zinc-300 tracking-widest">COUNCIL OF SHADOWS</h3>
+                           <p className="text-xs text-zinc-500 font-mono uppercase tracking-widest">The Moderators</p>
+                         </div>
+                       </div>
+                       <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                         {COUNCIL_OF_SHADOWS.map((member, i) => (
+                           <div key={i} className="px-3 py-2 rounded-lg bg-zinc-900/50 border border-white/5 flex flex-col">
+                             <span className="font-bold text-sm text-zinc-200">{member.title}</span>
+                             <span className="text-[10px] text-zinc-500 uppercase tracking-wider">{member.role}</span>
+                           </div>
+                         ))}
+                       </div>
+                     </div>
+                   </div>
+                 </div>
+               </section>
+
                {/* COMMUNITY CTA */}
-               <section className="max-w-5xl mx-auto px-6">
+               <section className=" w-full">
                   <div className="relative rounded-3xl overflow-hidden border border-primary-900/30 bg-gradient-to-br from-primary-950/20 to-black p-12 text-center md:text-left flex flex-col md:flex-row items-center gap-12 group">
                      <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-20 mix-blend-overlay" />
                      <div className="flex-1 relative z-10">
@@ -397,12 +498,12 @@ export default function LandingClient() {
                         </p>
                         <div className="flex flex-wrap gap-4 justify-center md:justify-start">
                           <a href="https://discord.gg/YOUR_INVITE_CODE" target="_blank" rel="noopener noreferrer">
-                            <Button className="bg-[#5865F2] hover:bg-[#4752C4] text-white border-0 h-12 px-6 shadow-lg shadow-indigo-500/20">
+                            <Button className="bg-[#5865F2] hover:bg-[#4752C4] text-white border-0 h-12 shadow-lg shadow-indigo-500/20">
                               <MessageCircle className="mr-2 w-5 h-5" /> Join Discord
                             </Button>
                           </a>
                           <a href="https://github.com/code-acezero/shadow-garden" target="_blank" rel="noopener noreferrer">
-                            <Button variant="outline" className="border-white/10 text-white hover:bg-white/10 h-12 px-6">
+                            <Button variant="outline" className="border-white/10 text-white hover:bg-white/10 h-12 w-full">
                               <Terminal className="mr-2 w-5 h-5" /> View Changelog
                             </Button>
                           </a>

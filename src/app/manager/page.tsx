@@ -37,7 +37,9 @@ const notify = (title: string, message: string, type: 'success' | 'error' | 'sys
     }
 };
 
-type Tab = 'GUILD_DESK' | 'GUILD_INFO' | 'ADVENTURERS' | 'VOICES' | 'NOTICE';
+import RoleTitleManager from '@/components/Admin/RoleTitleManager';
+
+type Tab = 'GUILD_DESK' | 'GUILD_INFO' | 'ADVENTURERS' | 'TITLES_HIERARCHY' | 'VOICES' | 'NOTICE';
 
 export default function GuildManagerDashboard() {
   const [activeTab, setActiveTab] = useState<Tab>('GUILD_DESK');
@@ -56,7 +58,7 @@ export default function GuildManagerDashboard() {
   };
 
   return (
-    <RoleGuard allowedRoles={['moderator']}>
+    <RoleGuard allowedRoles={['admin', 'moderator']}>
       <style jsx global>{`
         ::-webkit-scrollbar { display: none; }
         * { -ms-overflow-style: none; scrollbar-width: none; outline: none !important; -webkit-tap-highlight-color: transparent; }
@@ -64,13 +66,13 @@ export default function GuildManagerDashboard() {
         .font-minomu { font-family: var(--font-minomu), sans-serif; }
       `}</style>
 
-      <div className="min-h-screen bg-[#050505] text-white font-sans relative overflow-y-auto pb-8 transform-gpu will-change-transform">
+      <div className="min-h-screen bg-[#050505] text-white font-sans relative overflow-y-auto transform-gpu will-change-transform">
         
         {/* Ambient Background (Red-Violet) */}
         <div className="fixed top-0 left-0 w-full h-96 bg-fuchsia-900/10 blur-[100px] pointer-events-none translate-z-0" />
         <div className="h-24 w-full" />
 
-        <div className="w-full max-w-[1350px] mx-auto px-4 md:px-8 pb-4 relative z-10">
+        <div className="w-full relative z-10">
           
           {/* --- HEADER --- */}
           <header className="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-8 border-b border-white/5 pb-6">
@@ -92,7 +94,7 @@ export default function GuildManagerDashboard() {
               </div>
             </div>
 
-            <div className="flex items-center gap-6 md:gap-8 bg-zinc-900/40 p-3 md:p-4 rounded-full border border-white/5 backdrop-blur-sm px-6 md:px-8 shadow-inner shadow-white/5">
+            <div className="flex items-center gap-6 md:gap-8 bg-zinc-900/40 p-3 md:p-4 rounded-full border border-white/5 backdrop-blur-sm shadow-inner shadow-white/5">
                <div className="flex flex-col items-center gap-1.5 group cursor-pointer opacity-50">
                   <Shield size={20} className="text-zinc-500" />
                   <span className="text-[9px] md:text-[10px] text-zinc-500 font-bold">MASTERS</span>
@@ -110,10 +112,11 @@ export default function GuildManagerDashboard() {
 
           {/* --- NAVIGATION TABS --- */}
           <div className="mb-8 sticky top-4 z-50">
-            <div className="flex overflow-x-auto py-2 gap-2 no-scrollbar bg-black/60 backdrop-blur-xl border border-white/10 rounded-full px-2 md:px-4 w-full md:w-fit mx-auto md:mx-0 shadow-2xl">
+            <div className="flex overflow-x-auto py-2 gap-2 no-scrollbar bg-black/60 backdrop-blur-xl border border-white/10 rounded-full px-2 md:px-4 w-full md:w-fit md:mx-0 shadow-2xl">
                <TabBtn id="GUILD_DESK" icon={LayoutDashboard} label="Desk" active={activeTab} onClick={switchTab} />
                <TabBtn id="GUILD_INFO" icon={BookOpen} label="Info" active={activeTab} onClick={switchTab} />
                <TabBtn id="ADVENTURERS" icon={Sword} label="Adventurers" active={activeTab} onClick={switchTab} />
+               <TabBtn id="TITLES_HIERARCHY" icon={Crown} label="Titles & Roles" active={activeTab} onClick={switchTab} />
                <TabBtn id="VOICES" icon={Mic2} label="Echoes" active={activeTab} onClick={switchTab} />
                <TabBtn id="NOTICE" icon={Feather} label="Notices" active={activeTab} onClick={switchTab} />
             </div>
@@ -124,6 +127,7 @@ export default function GuildManagerDashboard() {
               <div className={activeTab === 'GUILD_DESK' ? 'block' : 'hidden'}><OverviewTab changeTab={switchTab} /></div>
               <div className={activeTab === 'GUILD_INFO' ? 'block' : 'hidden'}><IdentityTab /></div>
               <div className={activeTab === 'ADVENTURERS' ? 'block' : 'hidden'}><RosterTab /></div>
+              <div className={activeTab === 'TITLES_HIERARCHY' ? 'block' : 'hidden'}><RoleTitleManager /></div>
               <div className={activeTab === 'VOICES' ? 'block' : 'hidden'}><VoiceTab /></div>
               <div className={activeTab === 'NOTICE' ? 'block' : 'hidden'}><BroadcastTab /></div>
           </main>
@@ -131,7 +135,7 @@ export default function GuildManagerDashboard() {
 
         {/* --- FOOTER --- */}
         <footer className="w-full border-t border-white/5 bg-zinc-900/20 py-8 mt-8">
-          <div className="max-w-[1350px] mx-auto px-4 text-center space-y-4">
+          <div className="px-4 text-center space-y-4 w-full">
             <div className="flex justify-center items-center gap-3 opacity-80 hover:opacity-100 transition-opacity">
                <img src="/icon.svg" className="w-8 h-8 drop-shadow-lg" alt="Guild Seal"/>
                <h4 className="font-minomu font-bold text-lg text-white tracking-widest">SHADOW GARDEN</h4>
@@ -399,14 +403,22 @@ const VoiceTab = memo(() => {
   const targets = ['welcome', 'register', 'greet-master', 'greet-adventurer', 'greet-traveler', 'bye-master', 'bye-adventurer'];
 
   const fetchVoices = async () => { 
-      const { data } = await supabase.from('voice_packs').select('*').order('created_at', { ascending: false }); 
-      let staticData = [];
       try {
-          const res = await fetch('/api/system/voices');
-          const json = await res.json();
-          staticData = json.staticVoices || [];
-      } catch(e) { console.error("Scanner failed", e); }
-      setVoices([...(data || []), ...staticData]);
+          const { data } = await supabase.from('voice_packs').select('*').order('created_at', { ascending: false }); 
+          let staticData = [];
+          try {
+              const res = await fetch('/api/system/voices');
+              if (res.ok) {
+                  const json = await res.json();
+                  staticData = json.staticVoices || [];
+              }
+          } catch(e) { 
+              console.warn("Scanner failed or unreachable", e); 
+          }
+          setVoices([...(data || []), ...staticData]);
+      } catch (err) {
+          console.error("fetchVoices error:", err);
+      }
   };
   
   useEffect(() => { fetchVoices(); }, []);
@@ -525,7 +537,7 @@ const VoiceTab = memo(() => {
                    </Select>
                </div>
                <div onClick={()=>fileInput.current?.click()} className="mt-4 border-2 border-dashed border-white/10 rounded-2xl p-6 text-center hover:bg-white/5 cursor-pointer">
-                   {uploading ? <Loader2 className="animate-spin mx-auto text-fuchsia-500"/> : <Upload className="mx-auto text-zinc-500 mb-2"/>}
+                   {uploading ? <Loader2 className="animate-spin text-fuchsia-500 w-full"/> : <Upload className="text-zinc-500 mb-2 w-full"/>}
                    <p className="text-xs text-zinc-400">Select Audio File</p>
                </div>
                <input type="file" ref={fileInput} className="hidden" accept="audio/*" onChange={handleUpload}/>
@@ -577,7 +589,7 @@ const BroadcastTab = memo(() => {
                 <Textarea value={msg} onChange={e => setMsg(e.target.value)} placeholder="Enter guild announcement..." className="bg-black/40 border-white/10 min-h-[140px] rounded-2xl text-lg resize-none focus:border-fuchsia-500/30"/>
               </div>
               <div className="border border-dashed border-white/10 rounded-xl p-4 text-center text-xs text-zinc-500 hover:bg-white/5 cursor-pointer relative" onClick={() => imgInput.current?.click()}>
-                  {imageUrl ? <img src={imageUrl} className="h-20 mx-auto object-cover rounded-md"/> : <><ImageIcon className="mx-auto mb-1 w-4 h-4"/> {uploading ? "Uploading..." : "Add Image (Optional)"}</>}
+                  {imageUrl ? <img src={imageUrl} className="h-20 object-cover rounded-md w-full"/> : <><ImageIcon className="mb-1 w-4 h-4"/> {uploading ? "Uploading..." : "Add Image (Optional)"}</>}
               </div>
               <input type="file" ref={imgInput} className="hidden" accept="image/*" onChange={handleImage} />
               <Button onClick={handlePost} disabled={uploading} className="w-full bg-fuchsia-600 hover:bg-fuchsia-700 text-white font-bold h-14 rounded-full shadow-lg shadow-fuchsia-900/20 text-lg">POST</Button>

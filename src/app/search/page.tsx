@@ -10,26 +10,43 @@ import { hpi } from '@/lib/hpi';
 import { omni } from '@/lib/omni';
 import { cn } from '@/lib/utils';
 import Footer from '@/components/Anime/Footer';
+import { SimpleGridSkeleton } from '@/components/UIx/SkeletonLoaders';
 
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Search, Loader2, ChevronLeft, ChevronRight, Filter, X, SlidersHorizontal,
   Flame, TrendingUp, Clock, Star, Tv, Film, LayoutGrid, List,
-  Calendar, Layers, Info, CheckCircle, RotateCcw, ArrowDownAZ, Hash, PlaySquare, ChevronDown
+  Calendar, Layers, Info, CheckCircle, RotateCcw, ArrowDownAZ, Hash, PlaySquare, ChevronDown, Ban
 } from 'lucide-react';
 
 // --- CONSTANTS ---
 
-const GENRES = ["Action", "Adventure", "Comedy", "Drama", "Ecchi", "Fantasy", "Horror", "Isekai", "Mecha", "Mystery", "Psychological", "Romance", "Sci-Fi", "Seinen", "Shoujo", "Shounen", "Slice of Life", "Sports", "Supernatural", "Thriller"];
-const TYPES = ["tv", "movie", "ova", "ona", "special"];
-const STATUS_OPTIONS = ["currently-airing", "finished-airing", "not-yet-aired"];
-const SEASONS = ["spring", "summer", "fall", "winter"];
-const YEARS = Array.from({ length: 2027 - 2000 }, (_, i) => (2027 - i).toString());
+const GENRES = [
+  "Action", "Adventure", "Boys Love", "Cars", "Comedy", "Dementia", "Demons", "Drama",
+  "Ecchi", "Erotica", "Fantasy", "Game", "Girls Love", "Gourmet", "Harem", "Historical",
+  "Horror", "Isekai", "Josei", "Kids", "Magic", "Mahou Shoujo", "Martial Arts", "Mecha",
+  "Military", "Music", "Mystery", "Parody", "Police", "Psychological", "Romance", "Samurai",
+  "School", "Sci-Fi", "Seinen", "Shoujo", "Shoujo Ai", "Shounen", "Shounen Ai", "Slice of Life",
+  "Space", "Sports", "Super Power", "Supernatural", "Suspense", "Thriller", "unknown", "Vampire"
+];
+
+const TYPES = ["Movie", "Music", "ONA", "OVA", "Special", "TV", "TV_SHORT", "TV Special"];
+const STATUS_OPTIONS = ["finished-airing", "currently-airing", "not-yet-aired"];
+const SEASONS = ["fall", "summer", "spring", "winter"];
+const YEARS = Array.from({ length: 2027 - 1980 }, (_, i) => (2026 - i).toString());
+const LANGUAGES = ["sub", "dub"];
+const RATINGS = ["PG", "PG-13", "G", "R", "R+", "Rx"];
+const SOURCES = ["manga", "original", "light_novel", "other", "video_game", "visual_novel", "novel", "web_novel", "unknown", "web_manga", "game", "4-koma_manga", "book", "picture_book", "mixed_media", "card_game", "music", "radio"];
+
 const SORT_OPTIONS = [
-  { value: "newest", label: "Latest", icon: Clock },
-  { value: "popular", label: "Popular", icon: Flame },
-  { value: "trending", label: "Trending", icon: TrendingUp },
-  { value: "rating", label: "Top Rated", icon: Star },
+  { value: "default", label: "Default", icon: Clock },
+  { value: "latest-updated", label: "Latest Updated", icon: Clock },
+  { value: "latest-added", label: "Latest Added", icon: Clock },
+  { value: "score", label: "Top Score", icon: Star },
+  { value: "name-az", label: "Name A-Z", icon: ArrowDownAZ },
+  { value: "release-date", label: "Release Date", icon: Calendar },
+  { value: "most-viewed", label: "Most Viewed", icon: Flame },
+  { value: "number_of_episodes", label: "Episode Count", icon: Layers }
 ];
 
 const DONGHUA_GENRES = ["Action", "Adventure", "Comedy", "Drama", "Ecchi", "Fantasy", "Harem", "Historical", "Martial Arts", "Mecha", "Mystery", "Romance", "Sci-Fi", "Shounen", "Slice of Life"];
@@ -84,18 +101,22 @@ const getThemeStyles = (lib: string) => {
 };
 
 // --- PREMIUM SUB COMPONENTS ---
-function PremiumFilterChip({ label, active, onClick, themeStyles }: { label: string; active: boolean; onClick: () => void; themeStyles: any }) {
+function PremiumFilterChip({ label, state, onClick, themeStyles }: { label: string; state: 'include' | 'exclude' | 'off'; onClick: () => void; themeStyles: any }) {
   return (
     <motion.button
       whileHover={{ scale: 1.05 }}
       whileTap={{ scale: 0.95 }}
       onClick={onClick}
-      className={`px-4 py-2 rounded-full text-[11px] md:text-xs font-bold transition-all duration-300 backdrop-blur-md ${
-        active
+      className={`px-3 py-1.5 rounded-full text-[11px] md:text-xs font-bold transition-all duration-300 backdrop-blur-md flex items-center gap-1.5 ${
+        state === 'include'
           ? `${themeStyles.bgActive} text-white shadow-lg ${themeStyles.shadowActive} border border-transparent`
+          : state === 'exclude'
+          ? 'bg-red-600/90 border border-red-500/50 text-white shadow-lg shadow-red-900/30 font-black'
           : 'bg-white/5 border border-white/10 text-zinc-400 hover:bg-white/10 hover:text-white hover:border-white/20'
       }`}
     >
+      {state === 'include' && <CheckCircle size={12} className="text-white" />}
+      {state === 'exclude' && <X size={12} className="text-white font-black" />}
       {label}
     </motion.button>
   );
@@ -173,13 +194,20 @@ function SearchContent() {
   const [showFilters, setShowFilters] = useState(false);
   const [selectedLibrary, setSelectedLibrary] = useState(libraryParam);
 
-  // Filter state
+  const excludedParam = searchParams.get('genre_exclude') || '';
+
   const [query, setQuery] = useState(keyword);
   const [selectedGenres, setSelectedGenres] = useState<string[]>(genresParam ? genresParam.split(',') : []);
+  const [excludedGenres, setExcludedGenres] = useState<string[]>(excludedParam ? excludedParam.split(',') : []);
   const [selectedType, setSelectedType] = useState('');
   const [selectedStatus, setSelectedStatus] = useState('');
   const [selectedSeason, setSelectedSeason] = useState('');
   const [selectedYear, setSelectedYear] = useState('');
+  const [selectedLanguage, setSelectedLanguage] = useState('');
+  const [selectedRating, setSelectedRating] = useState('');
+  const [selectedSource, setSelectedSource] = useState('');
+  const [epMin, setEpMin] = useState('');
+  const [epMax, setEpMax] = useState('');
   const [selectedSort, setSelectedSort] = useState(sortParam);
 
   const fetchResults = useCallback(async () => {
@@ -249,21 +277,34 @@ function SearchContent() {
             data = { results: items, hasNextPage: false, currentPage: 1 };
         }
       } else {
-        if (modeParam === 'az') {
-          data = await AnimeService.getFilteredAnime('recent', currentPage);
-        } else if (keyword) {
+        if (modeParam === 'az' && !keyword && !selectedGenres.length && (!selectedSort || selectedSort === 'default')) {
+          data = await AnimeService.getFilteredAnime('az-list', currentPage);
+        } else if (keyword && !selectedGenres.length && !excludedGenres.length && !selectedType && !selectedStatus && !selectedSeason && !selectedYear && !selectedLanguage && !selectedRating && !selectedSource && !epMin && !epMax && (!selectedSort || selectedSort === 'default')) {
           data = await AnimeService.search(keyword, currentPage);
-        } else if (selectedGenres.length > 0 || selectedType || selectedStatus || selectedSeason || selectedYear) {
+        } else if (selectedGenres.length > 0 || excludedGenres.length > 0 || selectedType || selectedStatus || selectedSeason || selectedYear || selectedLanguage || selectedRating || selectedSource || epMin || epMax || (selectedSort && selectedSort !== 'default')) {
           const params: Record<string, any> = { page: currentPage };
-          if (selectedGenres.length) params.genres = selectedGenres.join(',').toLowerCase();
+          if (keyword) params.keyword = keyword;
+          if (selectedGenres.length) params.genres = selectedGenres.join(',');
+          if (excludedGenres.length) params.genre_exclude = excludedGenres.join(',');
           if (selectedType) params.type = selectedType;
           if (selectedStatus) params.status = selectedStatus;
           if (selectedSeason) params.season = selectedSeason;
           if (selectedYear) params.year = selectedYear;
-          const filterResults = await AnimeService.filter(params);
-          data = { results: filterResults, currentPage, hasNextPage: filterResults.length >= 20 };
+          if (selectedLanguage) params.language = selectedLanguage;
+          if (selectedRating) params.rating = selectedRating;
+          if (selectedSource) params.source = selectedSource;
+          if (epMin) params.ep_min = epMin;
+          if (epMax) params.ep_max = epMax;
+          if (selectedSort) params.sort = selectedSort;
+          let filterResults = await AnimeService.filter(params);
+          if ((!filterResults || filterResults.length === 0) && selectedSort === 'name-az') {
+            const azRes = await AnimeService.getFilteredAnime('az-list', currentPage);
+            filterResults = azRes.results || [];
+          }
+          data = { results: filterResults, currentPage, hasNextPage: filterResults.length >= 18 };
         } else {
-          data = await AnimeService.getFilteredAnime(selectedSort === 'popular' ? 'popular' : selectedSort === 'trending' ? 'trending' : 'recent', currentPage);
+          const sortStr = selectedSort as string;
+          data = await AnimeService.getFilteredAnime(sortStr === 'most-viewed' ? 'popular' : sortStr === 'latest-added' ? 'added' : 'recent', currentPage);
         }
       }
 
@@ -276,7 +317,7 @@ function SearchContent() {
     } finally {
       setLoading(false);
     }
-  }, [keyword, currentPage, selectedGenres, selectedType, selectedStatus, selectedSeason, selectedYear, selectedSort, modeParam, selectedLibrary]);
+  }, [keyword, currentPage, selectedGenres, excludedGenres, selectedType, selectedStatus, selectedSeason, selectedYear, selectedLanguage, selectedRating, selectedSource, epMin, epMax, selectedSort, modeParam, selectedLibrary]);
 
   useEffect(() => {
     fetchResults();
@@ -288,24 +329,37 @@ function SearchContent() {
     const params = new URLSearchParams();
     if (query) params.set('keyword', query);
     if (selectedGenres.length) params.set('genres', selectedGenres.join(','));
+    if (excludedGenres.length) params.set('genre_exclude', excludedGenres.join(','));
     if (selectedSort !== 'newest' && selectedSort !== 'update') params.set('sort', selectedSort);
     if (selectedLibrary !== 'main') params.set('library', selectedLibrary);
     router.push(`/search?${params.toString()}`);
   };
 
   const toggleGenre = (genre: string) => {
-    setSelectedGenres(prev =>
-      prev.includes(genre.toLowerCase()) ? prev.filter(g => g !== genre.toLowerCase()) : [...prev, genre.toLowerCase()]
-    );
+    const gLower = genre.toLowerCase();
+    if (selectedGenres.includes(gLower)) {
+      setSelectedGenres(prev => prev.filter(g => g !== gLower));
+      setExcludedGenres(prev => [...prev, gLower]);
+    } else if (excludedGenres.includes(gLower)) {
+      setExcludedGenres(prev => prev.filter(g => g !== gLower));
+    } else {
+      setSelectedGenres(prev => [...prev, gLower]);
+    }
   };
 
   const resetFilters = () => {
     setSelectedGenres([]);
+    setExcludedGenres([]);
     setSelectedType('');
     setSelectedStatus('');
     setSelectedSeason('');
     setSelectedYear('');
-    setSelectedSort(selectedLibrary === 'donghua' ? 'update' : 'newest');
+    setSelectedLanguage('');
+    setSelectedRating('');
+    setSelectedSource('');
+    setEpMin('');
+    setEpMax('');
+    setSelectedSort(selectedLibrary === 'donghua' ? 'update' : 'default');
     setQuery('');
   };
 
@@ -348,7 +402,7 @@ function SearchContent() {
         PREMIUM HERO HEADER 
         Uses glassmorphism, dynamic glowing blobs, and sleek typography 
       */}
-      <div className="relative pt-[calc(env(safe-area-inset-top)+80px)] md:pt-[calc(env(safe-area-inset-top)+56px)] pb-12 px-4 overflow-hidden border-b border-white/5">
+      <div className="relative overflow-hidden border-b border-white/5">
         <div className="absolute inset-0 bg-gradient-to-b from-white/[0.02] to-transparent pointer-events-none" />
         
         {/* Animated glowing blob matching the theme */}
@@ -359,7 +413,7 @@ function SearchContent() {
             className={`absolute top-[-20%] left-1/2 -translate-x-1/2 w-[600px] md:w-[1000px] h-[400px] ${themeStyles.bgActive} rounded-[100%] blur-[120px] pointer-events-none`} 
         />
         
-        <div className="max-w-7xl mx-auto relative z-10 flex flex-col items-center text-center">
+        <div className="relative z-10 flex flex-col items-center text-center w-full">
           <motion.div initial={{ y: -20, opacity: 0 }} animate={{ y: 0, opacity: 1 }} className="flex items-center gap-3 mb-6">
             <div className={`h-px w-12 bg-gradient-to-r from-transparent ${themeStyles.bgActive} to-transparent`} />
             <span className={`${themeStyles.textMain} text-xs tracking-[0.4em] font-black uppercase font-lemon`}>
@@ -423,10 +477,10 @@ function SearchContent() {
           </motion.div>
 
           {/* Premium Search Bar */}
-          <motion.form initial={{ y: 20, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ delay: 0.3 }} onSubmit={handleSearch} className="w-full max-w-3xl mx-auto flex flex-col md:flex-row gap-4 relative">
+          <motion.form initial={{ y: 20, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ delay: 0.3 }} onSubmit={handleSearch} className="w-full flex flex-col md:flex-row gap-4 relative">
             <div className="relative flex-1 group">
               <div className={`absolute -inset-1 bg-gradient-to-r from-transparent via-${themeStyles.bgActive.replace('bg-', '')}/30 to-transparent rounded-[2rem] blur opacity-0 group-hover:opacity-100 transition duration-500`} />
-              <div className="relative flex items-center bg-[#0a0a0a] border border-white/10 rounded-[2rem] px-2 h-16 shadow-xl transition-all focus-within:border-white/20">
+              <div className="relative flex items-center bg-[#0a0a0a] border border-white/10 rounded-[2rem] h-16 shadow-xl transition-all focus-within:border-white/20">
                   <div className={`w-12 h-12 flex items-center justify-center rounded-full ${themeStyles.bgLight} ${themeStyles.textMain} ml-1`}>
                       <Search size={20} />
                   </div>
@@ -479,7 +533,7 @@ function SearchContent() {
             transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
             className="overflow-hidden border-b border-white/5 bg-white/[0.02]"
           >
-            <div className="max-w-7xl mx-auto px-4 py-8 space-y-8">
+            <div className="px-4 py-8 space-y-8 w-full">
               {/* Genres Container */}
               <div>
                 <div className="flex items-center gap-3 mb-4">
@@ -489,21 +543,25 @@ function SearchContent() {
                 <div className="flex flex-wrap gap-2.5">
                   {(() => {
                     const activeGenres = selectedLibrary === 'donghua' ? DONGHUA_GENRES : selectedLibrary === 'hindi' ? HINDI_GENRES : selectedLibrary === 'drama' ? DRAMA_CATEGORIES : selectedLibrary === 'movies' ? [...MOVIES_COUNTRIES, ...MOVIES_CATEGORIES] : GENRES;
-                    return activeGenres.map(g => (
-                      <PremiumFilterChip
-                        key={g}
-                        label={g.replace(/-/g, ' ')}
-                        active={selectedGenres.includes(g.toLowerCase())}
-                        themeStyles={themeStyles}
-                        onClick={() => {
-                          if (selectedLibrary === 'drama' || selectedLibrary === 'movies') {
-                            setSelectedGenres(selectedGenres.includes(g) ? [] : [g]);
-                          } else {
-                            toggleGenre(g);
-                          }
-                        }}
-                      />
-                    ));
+                    return activeGenres.map(g => {
+                      const gLower = g.toLowerCase();
+                      const state: 'include' | 'exclude' | 'off' = selectedGenres.includes(gLower) ? 'include' : excludedGenres.includes(gLower) ? 'exclude' : 'off';
+                      return (
+                        <PremiumFilterChip
+                          key={g}
+                          label={g.replace(/-/g, ' ')}
+                          state={state}
+                          themeStyles={themeStyles}
+                          onClick={() => {
+                            if (selectedLibrary === 'drama' || selectedLibrary === 'movies') {
+                              setSelectedGenres(selectedGenres.includes(g) ? [] : [g]);
+                            } else {
+                              toggleGenre(g);
+                            }
+                          }}
+                        />
+                      );
+                    });
                   })()}
                 </div>
               </div>
@@ -514,7 +572,35 @@ function SearchContent() {
                 {selectedLibrary !== 'drama' && selectedLibrary !== 'movies' && <PremiumSelect label="Status" icon={Info} options={selectedLibrary === 'donghua' ? DONGHUA_STATUS : selectedLibrary === 'hindi' ? HINDI_STATUS : STATUS_OPTIONS} value={selectedStatus} onChange={setSelectedStatus} themeStyles={themeStyles} />}
                 {selectedLibrary === 'main' && <PremiumSelect label="Season" icon={Calendar} options={SEASONS} value={selectedSeason} onChange={setSelectedSeason} themeStyles={themeStyles} />}
                 {selectedLibrary === 'main' && <PremiumSelect label="Year" icon={Layers} options={YEARS} value={selectedYear} onChange={setSelectedYear} themeStyles={themeStyles} />}
+                {selectedLibrary === 'main' && <PremiumSelect label="Language" icon={Tv} options={LANGUAGES} value={selectedLanguage} onChange={setSelectedLanguage} themeStyles={themeStyles} />}
+                {selectedLibrary === 'main' && <PremiumSelect label="Rating" icon={Info} options={RATINGS} value={selectedRating} onChange={setSelectedRating} themeStyles={themeStyles} />}
+                {selectedLibrary === 'main' && <PremiumSelect label="Source" icon={Layers} options={SOURCES} value={selectedSource} onChange={setSelectedSource} themeStyles={themeStyles} />}
+                {selectedLibrary === 'main' && <PremiumSelect label="Exclude" icon={Ban} options={GENRES} value={excludedGenres[0] || ''} onChange={(val: string) => setExcludedGenres(val ? [val.toLowerCase()] : [])} themeStyles={themeStyles} />}
               </div>
+
+              {/* Episode Range */}
+              {selectedLibrary === 'main' && (
+                <div className="flex flex-wrap items-center gap-4 p-4 rounded-2xl bg-white/5 border border-white/10">
+                  <span className="text-xs font-bold text-zinc-400 uppercase tracking-wider">Episode Range:</span>
+                  <input
+                    type="number"
+                    min="0"
+                    placeholder="Min eps"
+                    value={epMin}
+                    onChange={(e) => setEpMin(e.target.value)}
+                    className="w-28 px-3 py-2 rounded-xl bg-black/40 border border-white/10 text-xs text-white outline-none focus:border-primary-500"
+                  />
+                  <span className="text-zinc-500 text-xs">-</span>
+                  <input
+                    type="number"
+                    min="0"
+                    placeholder="Max eps"
+                    value={epMax}
+                    onChange={(e) => setEpMax(e.target.value)}
+                    className="w-28 px-3 py-2 rounded-xl bg-black/40 border border-white/10 text-xs text-white outline-none focus:border-primary-500"
+                  />
+                </div>
+              )}
 
               {/* Filter Actions */}
               <div className="flex justify-between items-center pt-6 border-t border-white/5">
@@ -534,7 +620,7 @@ function SearchContent() {
       </AnimatePresence>
 
       {/* Results Section */}
-      <div className="max-w-7xl mx-auto px-4 py-12 relative z-10">
+      <div className="py-12 relative z-10 w-full">
         
         {/* Sort & Stats Bar */}
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-8 bg-[#0a0a0a] p-4 rounded-3xl border border-white/5 shadow-2xl">
@@ -575,13 +661,7 @@ function SearchContent() {
 
         {/* Loading / Empty / Results */}
         {loading ? (
-          <div className="h-[40vh] flex flex-col items-center justify-center gap-6">
-            <div className="relative">
-                <div className={`absolute inset-0 ${themeStyles.bgActive} blur-2xl opacity-20 rounded-full animate-pulse`} />
-                <Loader2 className={`w-12 h-12 animate-spin ${themeStyles.textMain} relative z-10`} />
-            </div>
-            <p className="text-zinc-500 text-sm font-bold uppercase tracking-widest animate-pulse">Scanning the archives...</p>
-          </div>
+            <SimpleGridSkeleton />
         ) : results.length === 0 ? (
           <div className="h-[40vh] flex flex-col items-center justify-center gap-6 text-center">
             <div className="w-24 h-24 rounded-full bg-white/5 border border-white/10 flex items-center justify-center relative overflow-hidden">
@@ -590,7 +670,7 @@ function SearchContent() {
             </div>
             <div>
                 <h3 className="text-2xl font-black text-white mb-2 font-gradvis">Void Encountered</h3>
-                <p className="text-zinc-500 text-sm max-w-md mx-auto">
+                <p className="text-zinc-500 text-sm max-w-md">
                 {keyword ? `We searched the entire ${selectedLibrary} universe but couldn't find "${keyword}".` : 'Try adjusting your filters or search terms to uncover hidden gems.'}
                 </p>
             </div>

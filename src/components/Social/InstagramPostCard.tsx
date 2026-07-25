@@ -7,11 +7,13 @@ import {
 } from 'lucide-react';
 import ProfileAvatar from '@/components/User/ProfileAvatar';
 import { formatDistanceToNow } from 'date-fns';
+import { UserTitleBadge } from '@/components/ui/UserTitleBadge';
 import { 
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger 
 } from '@/components/ui/dropdown-menu';
 import { motion, AnimatePresence } from 'framer-motion';
 import { toast } from '@/lib/toast';
+import { RenderMentions } from '@/lib/mentions';
 
 export interface PollOption {
   id: number;
@@ -148,9 +150,10 @@ export default function InstagramPostCard({
               >
                 {(post.user || post.profiles)?.username || 'Otaku Explorer'}
               </span>
-              {(post.user || post.profiles)?.role === 'admin' && (
-                <ShieldCheck size={14} className="text-primary-500 shrink-0" />
-              )}
+              <UserTitleBadge 
+                user={post.user || post.profiles}
+                className="shrink-0 ml-1" 
+              />
             </div>
             <p className="text-[10px] text-zinc-500 truncate">
               @{(post.user || post.profiles)?.username?.toLowerCase().replace(/\s/g, '')} • {formatDistanceToNow(new Date(post.created_at), { addSuffix: false })}
@@ -179,6 +182,8 @@ export default function InstagramPostCard({
           </DropdownMenuContent>
         </DropdownMenu>
       </div>
+
+
 
       {/* --- OPTIONAL HEADER (from POST_META) --- */}
       {postMeta?.header && (
@@ -341,9 +346,7 @@ export default function InstagramPostCard({
           )}
 
           <span className="whitespace-pre-wrap">
-            {isExpanded || cleanContent.length <= 120 
-              ? cleanContent 
-              : `${cleanContent.slice(0, 120)}... `}
+            <RenderMentions content={isExpanded || cleanContent.length <= 120 ? cleanContent : `${cleanContent.slice(0, 120)}... `} />
           </span>
 
           {cleanContent.length > 120 && (
@@ -422,11 +425,34 @@ export default function InstagramPostCard({
 
       {/* --- LATEST COMMENT PREVIEW --- */}
       {post.latest_comment && (
-        <div className="px-3.5 sm:px-4 pt-1.5 pb-0.5 text-xs text-zinc-300 line-clamp-1">
-          <span className="font-bold text-white mr-1.5">
-            {post.latest_comment.user?.username || 'Otaku'}
-          </span>
-          {post.latest_comment.content}
+        <div className="px-3.5 sm:px-4 mt-1.5 mb-0.5 text-xs text-white flex flex-col items-start gap-1">
+          {(() => {
+            const contentLines = (post.latest_comment.content || '').split('\n');
+            const mediaRegex = /^(https?:\/\/.*\.(?:png|jpg|jpeg|gif|webp)(?:\?.*)?)$/i;
+            const textLines = contentLines.filter((line: string) => !mediaRegex.test(line.trim()));
+            const mediaLines = contentLines.filter((line: string) => mediaRegex.test(line.trim()));
+
+            return (
+              <>
+                <div className="flex items-start w-full">
+                  <span className="font-bold mr-1.5 shrink-0">{post.latest_comment.user?.username || 'User'}</span>
+                  {textLines.length > 0 && (
+                    <span className="text-zinc-300 line-clamp-1 flex-1 break-words">
+                      {textLines.join(' ')}
+                    </span>
+                  )}
+                </div>
+                {mediaLines.map((line: string, idx: number) => (
+                  <img
+                    key={idx}
+                    src={line.trim()}
+                    alt="Comment media"
+                    className="max-h-16 w-auto rounded-lg object-contain"
+                  />
+                ))}
+              </>
+            );
+          })()}
         </div>
       )}
 

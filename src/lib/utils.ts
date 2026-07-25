@@ -114,3 +114,94 @@ export function isRelatedAnime(currentId: string, currentTitle: string, targetId
     
     return false;
 }
+
+export function getWatchRoute(animeId: string, episodeId?: string, type?: string): string {
+    const t = (type || '').toLowerCase();
+    const epQuery = episodeId ? `?ep=${encodeURIComponent(episodeId)}` : '';
+    if (t === 'hindi' || t === 'hindi-anime') {
+        return `/hindi-watch/${animeId}${epQuery}`;
+    }
+    if (t === 'donghua') {
+        return `/donghua-watch/${animeId}${epQuery}`;
+    }
+    if (t === 'drama' || t === 'cdrama' || t === 'kdrama') {
+        return `/drama-watch/${animeId}${epQuery}`;
+    }
+    if (t === 'movie' || t === 'movies') {
+        return `/movies-watch/${animeId}`;
+    }
+    return `/watch/${animeId}${epQuery}`;
+}
+
+export function formatAnimeTitle(rawTitle?: string | null | any, animeId?: string | null): string {
+    // 1. Handle title object variants (english, romaji, userPreferred, name, title)
+    if (rawTitle && typeof rawTitle === 'object') {
+        const extracted = rawTitle.english || rawTitle.romaji || rawTitle.userPreferred || rawTitle.name || rawTitle.title;
+        if (extracted && typeof extracted === 'string' && extracted.trim() !== '' && !extracted.toLowerCase().includes('unknown')) {
+            return extracted.trim();
+        }
+    }
+
+    // 2. Handle valid string titles that are NOT purely numeric and NOT "unknown"
+    if (rawTitle && typeof rawTitle === 'string' && rawTitle.trim() !== '') {
+        const clean = rawTitle.trim();
+        if (!clean.toLowerCase().includes('unknown') && !/^\d+$/.test(clean)) {
+            return clean;
+        }
+    }
+
+    // 3. Check cached title in localStorage by animeId
+    if (animeId && typeof animeId === 'string' && typeof window !== 'undefined') {
+        try {
+            const cached = localStorage.getItem(`shadow_anime_title_${animeId}`);
+            if (cached && cached.trim() !== '' && !cached.toLowerCase().includes('unknown') && !/^\d+$/.test(cached.trim())) {
+                return cached.trim();
+            }
+        } catch { }
+    }
+
+    // 4. Humanize slug-based animeId if it contains words (e.g. solo-leveling-season-2)
+    if (animeId && typeof animeId === 'string' && animeId.trim() !== '') {
+        const cleanId = animeId.trim();
+        if (!/^\d+$/.test(cleanId)) {
+            return cleanId
+                .replace(/[-_]+/g, ' ')
+                .split(' ')
+                .filter(Boolean)
+                .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+                .join(' ');
+        }
+    }
+
+    // 5. Fallback for purely numeric IDs when no title cached
+    if (rawTitle && typeof rawTitle === 'string' && rawTitle.trim() !== '' && !rawTitle.toLowerCase().includes('unknown')) {
+        return rawTitle.trim();
+    }
+    if (animeId && typeof animeId === 'string' && /^\d+$/.test(animeId.trim())) {
+        return `Anime #${animeId.trim()}`;
+    }
+
+    return 'Anime';
+}
+
+export function sanitizeContinueWatchingEntry(p: any, fallbackUserId?: string) {
+    if (!p) return null;
+    return {
+        user_id: p.user_id || fallbackUserId,
+        anime_id: p.anime_id || p.animeId || '',
+        title: p.title || 'Unknown Title',
+        banner_image: p.banner_image || p.poster || p.image || null,
+        episode_id: p.episode_id || p.episodeId || '',
+        episode_number: Number(p.episode_number || p.episodeNumber || p.episode) || 1,
+        progress: Math.floor(Number(p.progress) || 0),
+        last_updated: p.last_updated || (p.lastUpdated ? new Date(p.lastUpdated).toISOString() : new Date().toISOString()),
+        last_server: p.last_server || null,
+        episode_image: p.episode_image || p.banner_image || p.poster || null,
+        total_episodes: Number(p.total_episodes || p.totalEpisodes) || 1,
+        type: p.type || 'anime',
+        media_type: p.media_type || p.type || 'anime',
+        is_completed: Boolean(p.is_completed),
+        age_rating: p.age_rating || p.ageRating || null,
+        is_adult: Boolean(p.is_adult || p.isAdult)
+    };
+}

@@ -3,10 +3,11 @@
 import React, { useState, useEffect, useRef, useCallback, memo, Suspense } from 'react';
 import { useParams, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
-import { motion } from 'framer-motion';
-import { SkipForward, SkipBack, Server as ServerIcon, Layers, Clock, Play, Grid, List, LayoutGrid, ChevronDown, Flame, Info, Loader2, Check, X, Download, AlertTriangle } from 'lucide-react';
+import { motion, AnimatePresence, LayoutGroup } from 'framer-motion';
+import { SkipForward, SkipBack, Server as ServerIcon, Layers, Clock, Play, Grid, List, LayoutGrid, ChevronDown, Flame, Info, Loader2, Check, X, Download, AlertTriangle, Lightbulb, RotateCw, StepForward } from 'lucide-react';
+import { WatchPageSkeleton, PlayerSkeleton, SimpleGridSkeleton } from '@/components/UIx/SkeletonLoaders';
 import { omni, DramaDetail, DramaServer, DramaStream } from '@/lib/omni';
-import { cn } from '@/lib/utils';
+import { cn, formatAnimeTitle } from '@/lib/utils';
 import DramaPlayer, { DramaPlayerRef } from '@/components/Player/DramaPlayer';
 import Footer from '@/components/Anime/Footer';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -15,17 +16,13 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { Button } from '@/components/ui/button';
 import ShadowComments from '@/components/Comments/ShadowComments';
 import WatchListButton from '@/components/Watch/WatchListButton';
+import { supabase } from '@/lib/supabase';
+import { useAuth } from '@/context/AuthContext';
+import { useUserData } from '@/context/UserDataContext';
 import DCard from '@/components/Drama/DCard';
+import CountryBadge from '@/components/Drama/CountryBadge';
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
-
-const FantasyLoader = memo(({ text = "LOADING..." }: { text?: string }) => (
-  <div className="w-full min-h-[500px] flex flex-col items-center justify-center bg-[#050505]">
-    <div className="w-14 h-14 border-4 border-orange-600 border-t-transparent rounded-full animate-spin mb-4" />
-    <h2 className="text-lg font-lemon text-orange-500 animate-pulse tracking-[0.3em]">{text}</h2>
-  </div>
-));
-FantasyLoader.displayName = "FantasyLoader";
 
 interface EpisodeButtonProps {
   ep: { id: string; number: number; title: string };
@@ -35,37 +32,57 @@ interface EpisodeButtonProps {
   onClick: (id: string) => void;
 }
 
-const EpisodeButton = memo(({ ep, isCurrent, percent, viewMode, onClick }: EpisodeButtonProps) => (
-  <motion.button
-    layout initial={{ opacity: 0, scale: 0.8 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.8 }}
-    transition={{ type: "spring", stiffness: 400, damping: 25 }}
-    onClick={() => onClick(ep.id)}
-    className={cn(
-      "relative overflow-hidden group border transition-all duration-300",
-      viewMode === 'grid' ? "h-9 w-full rounded-full flex items-center justify-center text-[11px] font-black shadow-lg" :
-        viewMode === 'compact' ? "aspect-square rounded-full flex items-center justify-center text-[9px] font-bold" :
-          "w-[95%] mx-auto h-9 rounded-full flex items-center px-4 text-[11px] font-bold text-left",
-      isCurrent ? "bg-orange-600/90 border-orange-400 text-white shadow-[0_0_15px_rgba(220,38,38,0.6)] scale-105" :
-        percent >= 80 ? "bg-[#000] border border-orange-900/30 text-white shadow-[inset_0_0_15px_rgba(220,38,38,0.5)]" :
-          "bg-zinc-900 border-zinc-800 text-zinc-500 hover:border-zinc-700 hover:text-white"
-    )}
-    style={!isCurrent && percent > 0 && percent < 80 ? { background: `linear-gradient(to right, rgba(220,38,38,0.4) ${percent}%, transparent ${percent}%)` } : {}}
-  >
-    <span className={cn("truncate relative z-10 w-full", viewMode === 'list' ? "text-left" : "text-center")}>
-      {viewMode === 'list' ? `${ep.number}. ${ep.title}` : ep.number}
-    </span>
-  </motion.button>
-));
+const EpisodeButton = memo(({ ep, isCurrent, percent, viewMode, onClick }: EpisodeButtonProps) => {
+  const isWatched = percent > 0;
+  return (
+    <motion.button
+      layout
+      initial={{ opacity: 0, scale: 0.95 }}
+      animate={{ opacity: 1, scale: 1 }}
+      exit={{ opacity: 0, scale: 0.95 }}
+      transition={{
+          layout: { type: "tween", duration: 0.3, ease: "easeInOut" },
+          opacity: { duration: 0.2 }
+      }}
+      onClick={() => onClick(ep.id)}
+      className={cn(
+        "relative overflow-hidden group border transition-all duration-300 transform-gpu shadow-[0_4px_16px_rgba(0,0,0,0.2)]",
+        viewMode === 'grid' ? "h-9 w-full rounded-2xl flex items-center justify-center text-[11px] font-black" :
+          viewMode === 'compact' ? "aspect-square rounded-full flex items-center justify-center text-[9px] font-bold" :
+            "w-[98%] mx-auto h-10 rounded-2xl flex items-center px-4 text-[11px] font-bold text-left",
+        isCurrent ? "bg-green-500/20 backdrop-blur-xl border-green-400/50 text-white shadow-[0_0_20px_rgba(34,197,94,0.4)] z-20 scale-105" :
+          isWatched ? "bg-orange-600/10 backdrop-blur-xl border border-orange-500/30 text-orange-500 hover:bg-orange-600/20" :
+            "bg-white/5 backdrop-blur-xl border-white/10 text-zinc-400 hover:border-white/20 hover:bg-white/10 hover:text-white"
+      )}
+    >
+      <div className="absolute inset-x-0 top-0 h-[40%] bg-gradient-to-b from-white/15 to-transparent pointer-events-none rounded-t-2xl" />
+      
+      {isCurrent && (
+          <>
+              <div className="absolute inset-0 bg-gradient-to-tr from-green-500/10 via-transparent to-green-400/20 animate-pulse pointer-events-none" />
+              <div className="absolute inset-0 bg-[linear-gradient(45deg,transparent_25%,rgba(74,222,128,0.2)_50%,transparent_75%)] bg-[length:250%_250%] animate-shimmer pointer-events-none" />
+          </>
+      )}
+
+      <motion.span layout="position" className={cn("truncate relative z-10 w-full font-lemon tracking-wide", viewMode === 'list' ? "text-left" : "text-center")}>
+        {viewMode === 'list' ? `${ep.number}. ${ep.title}` : ep.number}
+      </motion.span>
+    </motion.button>
+  );
+});
 EpisodeButton.displayName = "EpisodeButton";
 
 // ── Main Component ────────────────────────────────────────────────────────────
 
-function DramaWatchContent() {
+export function DramaWatchContent() {
   const params = useParams();
   const searchParams = useSearchParams();
   const slug = params.id as string;
   const urlEp = searchParams.get('ep');
 
+  const { user } = useAuth();
+  const { continueData } = useUserData();
+  const [dimMode, setDimMode] = useState(false);
   const playerRef = useRef<DramaPlayerRef>(null);
   const progressRef = useRef(0);
 
@@ -125,7 +142,7 @@ function DramaWatchContent() {
         setCurrentEpId(target);
       }
     })();
-  }, [slug]);
+  }, [slug, urlEp]);
 
   // Load stream when episode changes
   useEffect(() => {
@@ -155,14 +172,69 @@ function DramaWatchContent() {
 
   const currentEpIndex = drama?.episodes.findIndex(e => e.id === currentEpId) ?? -1;
   const currentEp = drama?.episodes[currentEpIndex];
+  const currentServer = stream?.servers?.[activeServerIdx];
+
+  const saveDramaProgress = useCallback(async () => {
+    if (!drama || !currentEp) return;
+    const epNum = currentEp.number || 1;
+    const title = formatAnimeTitle(drama.title, slug);
+    if (typeof window !== 'undefined' && title && !title.toLowerCase().includes('unknown')) {
+        localStorage.setItem(`shadow_anime_title_${slug}`, title);
+    }
+    const poster = (drama as any).poster || (drama as any).cover || (drama as any).image || '/images/no-poster.png';
+    const serverName = currentServer?.name || 'Standard';
+
+    if (user && supabase) {
+      const payload = {
+        user_id: user.id,
+        anime_id: slug,
+        title: title,
+        banner_image: poster,
+        episode_id: currentEp.id,
+        episode_number: epNum,
+        progress: 100,
+        last_updated: new Date().toISOString(),
+        last_server: serverName,
+        episode_image: poster,
+        total_episodes: drama.episodes?.length || 1,
+        type: 'drama',
+        media_type: 'drama',
+        is_completed: false
+      };
+      try {
+        await (supabase.from('user_continue_watching') as any).upsert(payload, { onConflict: 'user_id,episode_id' });
+        if (typeof window !== 'undefined') window.dispatchEvent(new CustomEvent('shadow-continue-updated'));
+      } catch (e) {}
+    }
+
+    const localData = JSON.parse(localStorage.getItem('shadow_continue_watching') || '{}');
+    localData[slug] = {
+      animeId: slug,
+      title: title,
+      poster: poster,
+      episodeId: currentEp.id,
+      episodeNumber: epNum,
+      progress: 100,
+      type: 'drama',
+      lastUpdated: Date.now()
+    };
+    localStorage.setItem('shadow_continue_watching', JSON.stringify(localData));
+    if (typeof window !== 'undefined') window.dispatchEvent(new CustomEvent('shadow-continue-updated'));
+  }, [drama, currentEp, user, slug, currentServer]);
 
   useEffect(() => {
     if (typeof window !== 'undefined' && currentEp) {
       window.history.replaceState({}, '', `/drama-watch/${slug}?ep=${currentEp.number}`);
+      saveDramaProgress();
     }
-  }, [currentEpId, slug]);
+  }, [currentEpId, slug, currentEp, saveDramaProgress]);
 
-  const currentServer = stream?.servers?.[activeServerIdx];
+  useEffect(() => {
+    return () => {
+      saveDramaProgress();
+    };
+  }, [saveDramaProgress]);
+
   const activeUrl = stream?.servers?.[activeServerIdx]?.url;
   const activeIframe = activeUrl || currentEp?.embedUrl || currentEp?.url;
 
@@ -185,9 +257,9 @@ function DramaWatchContent() {
     if (idx !== -1) setEpChunkIndex(Math.floor(idx / chunkSize));
   }, [currentEpId, drama]);
 
-  if (isLoadingInfo) return <FantasyLoader text="LOADING DRAMA..." />;
+  if (isLoadingInfo) return <WatchPageSkeleton />;
   if (!drama) return (
-    <div className="min-h-screen bg-[#050505] text-gray-100 flex items-center justify-center flex-col gap-4 pt-[env(safe-area-inset-top)]">
+    <div className="min-h-screen bg-[#050505] text-gray-100 flex items-center justify-center flex-col gap-4">
       <AlertTriangle className="w-12 h-12 text-red-500" />
       <h2 className="text-xl font-black tracking-widest uppercase">Failed to load data</h2>
       <p className="text-zinc-500 text-sm">Please try refreshing the page.</p>
@@ -195,19 +267,21 @@ function DramaWatchContent() {
   );
 
   return (
-    <div className="min-h-screen bg-[#050505] text-gray-100 pb-24 pt-[env(safe-area-inset-top)] pt-4 md:pt-8 font-sans overflow-x-hidden">
-      <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="w-full flex flex-col items-center bg-[#050505] relative z-40 px-4 md:px-8 mt-2">
-        <div className="w-full max-w-[1500px] flex flex-col xl:grid xl:grid-cols-12 gap-8 items-start">
+    <div className="min-h-screen bg-[#050505] text-gray-100 font-sans overflow-x-hidden relative">
+      <style jsx global>{`
+          @keyframes shimmer { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } } .animate-shimmer { animation: shimmer 3s infinite linear; }
+      `}</style>
+      <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="w-full flex flex-col items-center relative z-10 px-4 mt-2">
+      <div onClick={() => setDimMode(false)} className={cn("fixed inset-0 bg-black/95 transition-opacity duration-500 will-change-[opacity]", dimMode ? 'opacity-100 pointer-events-auto cursor-pointer z-[40]' : 'opacity-0 pointer-events-none z-[40]')} />
+
+        <div className="w-full flex flex-col xl:grid xl:grid-cols-12 gap-6 items-stretch">
 
           {/* Player Column */}
           <div className="xl:col-span-8 w-full flex flex-col gap-2 order-1">
-            <div className="w-full h-[250px] md:h-auto md:aspect-video bg-black rounded-[30px] overflow-hidden border border-white/5 shadow-2xl relative">
+            <div className={cn("w-full h-[250px] md:h-auto md:aspect-video bg-black/40 backdrop-blur-2xl rounded-[30px] overflow-hidden border border-white/10 shadow-[0_8px_32px_0_rgba(0,0,0,0.37)] relative outline-none focus:ring-1 focus:ring-white/10 transition-all duration-500", dimMode ? "z-[60] ring-2 ring-orange-500/50 shadow-[0_0_50px_rgba(0,0,0,0.9)]" : "z-10")}>
               {isStreamLoading ? (
-                <div className="w-full h-full flex items-center justify-center bg-black">
-                  <div className="flex flex-col items-center gap-3">
-                    <Loader2 className="w-10 h-10 text-orange-600 animate-spin" />
-                    <p className="text-[10px] font-lemon text-orange-500 animate-pulse tracking-widest uppercase">Opening Portal...</p>
-                  </div>
+                <div className="w-full h-full flex items-center justify-center border-b border-white/5">
+                  <PlayerSkeleton />
                 </div>
               ) : streamError ? (
                 <div className="w-full h-full flex items-center justify-center bg-black text-zinc-500">
@@ -233,8 +307,8 @@ function DramaWatchContent() {
               )}
             </div>
 
-            {/* Controls Bar — Desktop */}
-            <div className="hidden lg:flex w-full bg-[#0a0a0a] border border-white/5 rounded-[30px] shadow-lg px-5 py-3 items-center justify-between gap-4 mt-3">
+             <motion.div initial={{ y: -20, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ duration: 0.5, delay: 0.2 }} className="w-full transition-all duration-500 will-change-transform">
+            <div className={cn("hidden lg:flex w-full bg-white/5 backdrop-blur-md border border-white/10 rounded-[30px] shadow-[0_8px_32px_0_rgba(0,0,0,0.2)] px-5 py-3 items-center justify-between gap-4 mt-3 transition-all duration-500", dimMode ? "z-[60] relative" : "relative z-10")}>
               {/* Left: Prev / Next EP */}
               <div className="flex items-center gap-2 flex-shrink-0">
                 <button disabled={!prevEp} onClick={() => prevEp && handleEpClick(prevEp.id)} className={cn("flex items-center justify-center gap-2 px-4 h-8 rounded-full border text-[10px] font-black uppercase tracking-tighter transition-all duration-300 shadow-md shadow-black/40 whitespace-nowrap", prevEp ? "bg-white/5 border-white/10 text-zinc-300 hover:bg-orange-600 hover:border-orange-500 hover:text-white" : "opacity-10 border-white/5 text-zinc-600")}><SkipBack size={12} /> PREV</button>
@@ -243,6 +317,7 @@ function DramaWatchContent() {
                 ) : (
                   <button disabled className="flex items-center justify-center gap-2 px-4 h-8 rounded-full border border-white/5 bg-white/5 text-zinc-600 text-[10px] font-black uppercase tracking-widest whitespace-nowrap opacity-50 cursor-not-allowed">NEXT <SkipForward size={12} /></button>
                 )}
+                <Button onClick={() => setDimMode(v => !v)} variant="ghost" size="icon" className={cn("rounded-full w-8 h-8 transition-all hover:scale-110 shadow-orange-900/10 flex-shrink-0", dimMode ? "text-yellow-500 bg-yellow-500/10" : "text-zinc-600 hover:bg-white/5 shadow-none")}><Lightbulb size={14} /></Button>
               </div>
 
               {/* Middle: Now Playing + Auto Next */}
@@ -290,7 +365,7 @@ function DramaWatchContent() {
             </div>
 
             {/* Controls Bar — Mobile */}
-            <div className="flex lg:hidden w-full bg-[#0a0a0a] border border-white/5 rounded-[30px] shadow-lg px-4 py-4 flex-col gap-3 overflow-hidden relative z-[60] mt-3">
+            <div className={cn("flex lg:hidden w-full bg-white/5 backdrop-blur-md border border-white/10 rounded-[30px] shadow-[0_8px_32px_0_rgba(0,0,0,0.2)] py-4 flex-col gap-3 overflow-hidden mt-3 transition-all duration-500", dimMode ? "z-[60] relative" : "relative z-10")}>
               {/* Row 1: Now Playing title */}
               <div className="flex items-center gap-2 overflow-hidden">
                 <span className="text-[10px] text-orange-500 font-black uppercase shrink-0">NOW:</span>
@@ -300,8 +375,12 @@ function DramaWatchContent() {
               </div>
               {/* Row 2: Auto Next + WatchList */}
               <div className="grid grid-cols-2 gap-3 w-full items-center">
-                <button onClick={() => setIsAutoNext(v => !v)} className={cn("w-full flex items-center justify-center gap-2 h-10 rounded-full border text-[10px] font-black uppercase tracking-widest transition-all whitespace-nowrap", isAutoNext ? "bg-orange-600/20 border-orange-500/50 text-orange-500" : "bg-white/5 border-white/10 text-zinc-500")}>
-                  <SkipForward size={14} /> AUTO
+                <button onClick={() => setIsAutoNext(v => !v)} className={cn("w-full flex items-center justify-center gap-2 h-10 rounded-full border text-[10px] font-black uppercase tracking-widest transition-all whitespace-nowrap active:scale-95", isAutoNext ? "bg-orange-600/20 border-orange-500/60 text-orange-400 shadow-[0_0_12px_rgba(234,88,12,0.25)]" : "bg-white/5 border-white/10 text-zinc-500")} title={`Auto Next: ${isAutoNext ? 'ON' : 'OFF'}`}>
+                  <div className="relative flex items-center gap-2">
+                    <StepForward size={14} className={cn("transition-transform", isAutoNext && "scale-110")} />
+                    <span>AUTO NEXT</span>
+                    <span className={cn("w-1.5 h-1.5 rounded-full transition-all ml-0.5", isAutoNext ? "bg-orange-500 shadow-[0_0_6px_rgba(234,88,12,1)] animate-pulse" : "bg-zinc-600/40")} />
+                  </div>
                 </button>
                 <WatchListButton animeId={drama.id} animeTitle={drama.title} animeImage={drama.image} currentEp={currentEp?.number} mediaType="drama" />
               </div>
@@ -312,6 +391,7 @@ function DramaWatchContent() {
               </div>
               {/* Row 4: Download + Server */}
               <div className="flex w-full justify-between items-center gap-2 border-t border-white/5 pt-3">
+                <Button onClick={() => setDimMode(v => !v)} variant="ghost" size="icon" className={cn("rounded-full w-8 h-8 transition-all shadow-orange-900/10 flex-shrink-0", dimMode ? "text-yellow-500 bg-yellow-500/10" : "text-zinc-600 hover:bg-white/5 shadow-none")}><Lightbulb size={14} /></Button>
                 {currentEpId && (
                   <Link href={`/download/drama/${slug}?ep=${currentEpId}`} className="flex items-center gap-2 px-4 h-8 rounded-full border border-white/10 bg-white/5 text-zinc-400 text-[10px] font-black uppercase hover:text-white active:bg-white/10">
                     <Download size={14} /> DOWNLOAD
@@ -339,14 +419,15 @@ function DramaWatchContent() {
                 )}
               </div>
             </div>
+          </motion.div>
           </div>
 
           {/* Right Column: Episodes */}
-          <div className="xl:col-span-4 w-full xl:h-[650px] h-auto bg-[#0a0a0a] rounded-[40px] border border-white/5 overflow-hidden flex flex-col shadow-2xl order-2">
-            <div className="p-6 bg-white/5 border-b border-white/5 flex justify-between items-center shrink-0">
+          <div className="xl:col-span-4 w-full h-full bg-black/40 backdrop-blur-2xl rounded-[40px] border border-white/10 overflow-hidden flex flex-col shadow-[0_8px_32px_0_rgba(0,0,0,0.37)] relative z-20 order-2">
+            <div className="p-6 bg-white/5 border-b border-white/10 flex justify-between items-center shrink-0">
               <div className="flex items-center gap-3">
                 <h3 className="font-black text-white flex items-center gap-2 uppercase text-sm font-lemon tracking-widest"><Layers size={18} className="text-orange-600" /> Episodes</h3>
-                <Badge className="bg-white/10 border border-white/10 text-white font-black text-[10px] px-3 h-5 rounded-full">{drama.episodes.length}</Badge>
+                <Badge className="bg-white/10 backdrop-blur-md border border-white/10 text-white font-black text-[10px] px-3 h-5 rounded-full shadow-lg">{drama.episodes.length}</Badge>
               </div>
               <div className="flex items-center gap-1 bg-black/50 p-1 rounded-lg border border-white/5">
                 <button onClick={() => setEpViewMode('compact')} className={cn("p-1.5 rounded-md transition-all", epViewMode === 'compact' ? "bg-zinc-800 text-white" : "text-zinc-500 hover:text-zinc-300")}><Grid size={14} /></button>
@@ -356,12 +437,14 @@ function DramaWatchContent() {
             </div>
 
             {episodeChunks.length > 1 && (
-              <div className="flex items-center gap-2 px-4 py-3 border-b border-white/5 overflow-x-auto no-scrollbar">
-                {episodeChunks.map((_, idx) => (
-                  <button key={idx} onClick={() => setEpChunkIndex(idx)} className={cn("flex-shrink-0 px-4 py-1.5 text-[10px] font-black rounded-full border shadow-sm uppercase tracking-wider transition-all", epChunkIndex === idx ? "bg-orange-600 text-white border-orange-500" : "bg-zinc-900 border-zinc-800 text-zinc-500 hover:text-zinc-300")}>
-                    {idx * chunkSize + 1}–{Math.min((idx + 1) * chunkSize, drama.episodes.length)}
-                  </button>
-                ))}
+              <div className="w-full border-b border-white/10 bg-white/5 backdrop-blur-md flex-shrink-0 py-3 relative group/chunks">
+                <div className="flex items-center gap-2 w-full overflow-x-auto no-scrollbar px-4">
+                  {episodeChunks.map((_, idx) => (
+                    <button key={idx} onClick={() => setEpChunkIndex(idx)} className={cn("flex-shrink-0 px-4 py-1.5 text-[10px] font-black rounded-full transition-all border shadow-sm uppercase tracking-wider backdrop-blur-md", epChunkIndex === idx ? "bg-orange-600 text-white border-orange-500 shadow-orange-900/20" : "bg-white/5 border-white/10 text-zinc-400 hover:text-white hover:bg-white/10")}>
+                      {idx * chunkSize + 1}–{Math.min((idx + 1) * chunkSize, drama.episodes.length)}
+                    </button>
+                  ))}
+                </div>
               </div>
             )}
 
@@ -375,10 +458,10 @@ function DramaWatchContent() {
           </div>
 
           {/* Info Section */}
-          <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }} className="xl:col-span-8 w-full bg-[#0a0a0a] rounded-[40px] border border-white/5 overflow-hidden flex flex-col shadow-2xl order-3">
+          <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }} className="xl:col-span-8 w-full h-auto bg-black/40 backdrop-blur-2xl rounded-[40px] border border-white/10 overflow-hidden flex flex-col shadow-[0_8px_32px_0_rgba(0,0,0,0.37)] relative order-3">
             <div className="flex-shrink-0 p-8 flex flex-col sm:flex-row gap-8 bg-gradient-to-b from-orange-600/5 to-transparent">
               <div className="shrink-0">
-                <div className="relative p-[3px] rounded-3xl overflow-hidden group/poster shadow-[0_0_40px_rgba(220,38,38,0.2)] w-fit mx-auto sm:mx-0">
+                <div className="relative p-[3px] rounded-3xl overflow-hidden group/poster shadow-[0_0_40px_rgba(220,38,38,0.2)] w-fit sm:mx-0">
                   <div className="absolute inset-[-150%] bg-[conic-gradient(from_0deg,transparent,30%,#f97316_50%,transparent_70%)] animate-[spin_3s_linear_infinite] opacity-60 blur-[1px]" />
                   <img src={drama.image || '/images/no-poster.png'} className="w-44 h-60 rounded-3xl border border-white/10 object-cover relative z-10 shadow-2xl" alt={drama.title} loading="lazy" />
                 </div>
@@ -386,7 +469,7 @@ function DramaWatchContent() {
               <div className="flex-1 flex flex-col gap-4">
                 <h1 className="text-3xl md:text-4xl font-black text-white font-lemon leading-none tracking-tighter">{drama.title}</h1>
                 <div className="flex flex-wrap gap-3 items-center text-[10px] font-black text-zinc-400 uppercase tracking-widest">
-                  {drama.country && <span className="bg-white/5 border border-white/5 px-3 py-1 rounded-full">{drama.country}</span>}
+                  <CountryBadge country={drama.country} type={drama.type} showFullname />
                   {drama.year && <span className="bg-white/5 border border-white/5 px-3 py-1 rounded-full">{drama.year}</span>}
                   {drama.status && <span className={cn("px-3 py-1 rounded-full border", drama.status.toLowerCase().includes('ongoing') ? "text-green-400 border-green-900/50 bg-green-900/20 animate-pulse" : "bg-white/5 border-white/5")}>{drama.status}</span>}
                   {drama.rating && <span className="text-yellow-500 bg-yellow-900/20 border border-yellow-900/30 px-3 py-1 rounded-full">⭐ {drama.rating}</span>}
@@ -405,11 +488,11 @@ function DramaWatchContent() {
           </motion.div>
 
           {/* Suggestions (More Like This) */}
-          <div className="xl:col-span-4 w-full order-4">
+          <div className="xl:col-span-4 w-full h-[500px] xl:h-auto xl:relative xl:self-stretch order-4">
             {drama.recommendations.length > 0 && (
-              <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.4 }} className="w-full bg-[#0a0a0a] rounded-[40px] border border-white/5 p-6 shadow-2xl">
-                <div className="flex items-center gap-3 mb-6"><Flame size={18} className="text-orange-600" /><h3 className="font-black text-white text-sm font-lemon tracking-widest uppercase">More Like This</h3></div>
-                <ScrollArea className="h-[300px] xl:h-[600px] pr-4">
+              <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.4 }} className="w-full h-full xl:absolute xl:inset-0 flex flex-col bg-[#0a0a0a] rounded-[40px] border border-white/5 p-6 shadow-2xl">
+                <div className="flex items-center gap-3 mb-6 shrink-0"><Flame size={18} className="text-orange-600" /><h3 className="font-black text-white text-sm font-lemon tracking-widest uppercase">More Like This</h3></div>
+                <ScrollArea className="flex-1 min-h-0 h-[300px] xl:h-auto pr-4">
                   <div className="flex flex-col gap-3">
                     {drama.recommendations.map((rec: any) => (
                       <Link key={rec.id} href={`/drama-watch/${rec.id}`} className="flex items-center gap-4 bg-white/5 border border-white/5 hover:border-orange-500/50 hover:bg-white/10 rounded-2xl p-2 transition-all">
@@ -428,7 +511,7 @@ function DramaWatchContent() {
           </div>
 
           {/* Comment Section */}
-          <div className="xl:col-span-12 w-full mt-4 order-5">
+          <div className="xl:col-span-12 w-full mt-2 order-5">
             <ShadowComments episodeId={`drama_${drama.id}`} />
           </div>
 
@@ -441,5 +524,5 @@ function DramaWatchContent() {
 }
 
 export default function DramaWatchClient() {
-  return <Suspense fallback={<FantasyLoader text="LOADING..." />}><DramaWatchContent /></Suspense>;
+  return <Suspense fallback={<WatchPageSkeleton />}><DramaWatchContent /></Suspense>;
 }

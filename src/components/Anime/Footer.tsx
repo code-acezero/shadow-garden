@@ -11,7 +11,7 @@ export default function Footer() {
 
   return (
     <footer className="w-full bg-[#050505] border-t border-white/5 py-4 md:py-8 mt-6 md:mt-12">
-      <div className="max-w-[1200px] mx-auto px-4 md:px-6 flex flex-col md:flex-row items-center justify-between gap-4 md:gap-6">
+      <div className="px-4 flex flex-col md:flex-row items-center justify-between gap-4 md:gap-6 w-full">
         
         {/* Left: Branding */}
         <div className="flex flex-col items-center md:items-start gap-1">
@@ -33,17 +33,11 @@ export default function Footer() {
           <Link href="/donghua" className="hover:text-white transition-colors">Donghua</Link>
           <Link href="/drama" className="hover:text-white transition-colors">Drama</Link>
           <Link href="/movies" className="hover:text-white transition-colors">Movies &amp; Series</Link>
-          <Link href="/schedule" className="hover:text-white transition-colors">Schedule</Link>
         </div>
 
         {/* Right: Copyright & Creator */}
-        <div className="flex flex-col items-center md:items-end gap-1 text-[10px] font-bold text-zinc-600 uppercase tracking-widest">
-          <div className="flex items-center gap-1">
-            <Copyright size={10} /> {currentYear} Shadow Garden
-          </div>
-          <div className="flex items-center gap-1">
-            Developed by <a href="https://www.facebook.com/codeacezero.azim" target="_blank" rel="noreferrer" className="text-zinc-400 hover:text-white transition-colors border-b border-zinc-400 hover:border-white">Ace Zero</a>
-          </div>
+        <div className="flex items-center text-[10px] font-bold text-zinc-500 uppercase tracking-widest">
+          established by shadow
         </div>
 
       </div>

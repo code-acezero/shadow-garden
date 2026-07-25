@@ -3,7 +3,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { 
   Search, X, Loader2, PlayCircle, Clock, Image as ImageIcon, 
-  Sparkles, Filter, Calendar, Layers, Tag, Tv, Dices, RotateCcw, Wand2
+  Sparkles, Filter, Calendar, Layers, Tag, Tv, Dices, RotateCcw, Wand2, Ban, Info, ArrowDownAZ
 } from 'lucide-react';
 import { useRouter } from 'next/navigation'; 
 import { motion, AnimatePresence } from 'framer-motion';
@@ -23,14 +23,21 @@ interface SearchResult {
 
 // --- CONSTANTS ---
 const GENRES = [
-  "Action", "Adventure", "Comedy", "Drama", "Fantasy", "Horror", "Isekai", 
-  "Magic", "Mystery", "Romance", "Sci-Fi", "Shounen", "Slice of Life", "Supernatural"
+  "Action", "Adventure", "Boys Love", "Cars", "Comedy", "Dementia", "Demons", "Drama",
+  "Ecchi", "Erotica", "Fantasy", "Game", "Girls Love", "Gourmet", "Harem", "Historical",
+  "Horror", "Isekai", "Josei", "Kids", "Magic", "Mahou Shoujo", "Martial Arts", "Mecha",
+  "Military", "Music", "Mystery", "Parody", "Police", "Psychological", "Romance", "Samurai",
+  "School", "Sci-Fi", "Seinen", "Shoujo", "Shoujo Ai", "Shounen", "Shounen Ai", "Slice of Life",
+  "Space", "Sports", "Super Power", "Supernatural", "Suspense", "Thriller", "unknown", "Vampire"
 ];
 
-const SEASONS = ["spring", "summer", "fall", "winter"];
-const STATUSES = ["currently_airing", "finished_airing", "not_yet_aired"];
-const TYPES = ["tv", "movie", "ova", "ona", "special"];
-const YEARS = Array.from({ length: 2026 - 1990 }, (_, i) => (2026 - i).toString());
+const SEASONS = ["fall", "summer", "spring", "winter"];
+const STATUSES = ["finished-airing", "currently-airing", "not-yet-aired"];
+const TYPES = ["Movie", "Music", "ONA", "OVA", "Special", "TV", "TV_SHORT", "TV Special"];
+const YEARS = Array.from({ length: 2027 - 1980 }, (_, i) => (2026 - i).toString());
+const LANGUAGES = ["sub", "dub"];
+const RATINGS = ["PG", "PG-13", "G", "R", "R+", "Rx"];
+const SOURCES = ["4-koma Manga", "Book", "Card Game", "Game", "Light Novel", "Manga", "Mixed Media", "Music", "Novel", "Original", "Other", "Picture Book", "Radio", "Visual Novel", "Web Manga", "Web Novel"];
 
 const PLACEHOLDERS = [
   "Summon Solo Leveling...", "Find One Piece...", "Search Jujutsu Kaisen...", 
@@ -56,7 +63,11 @@ export default function SearchBar() {
     season: "",
     year: "",
     type: "",
-    status: ""
+    status: "",
+    language: "",
+    rating: "",
+    source: "",
+    exclude: ""
   });
 
   // Animated Placeholder
@@ -123,6 +134,10 @@ export default function SearchBar() {
     if (filters.year && filters.year !== "all") params.set('year', filters.year);
     if (filters.type && filters.type !== "all") params.set('type', filters.type);
     if (filters.status && filters.status !== "all") params.set('status', filters.status);
+    if (filters.language && filters.language !== "all") params.set('language', filters.language);
+    if (filters.rating && filters.rating !== "all") params.set('rating', filters.rating);
+    if (filters.source && filters.source !== "all") params.set('source', filters.source);
+    if (filters.exclude && filters.exclude !== "all") params.set('genre_exclude', filters.exclude.toLowerCase());
 
     router.push(`/search?${params.toString()}`);
   };
@@ -152,13 +167,13 @@ export default function SearchBar() {
   };
 
   const clearFilters = () => {
-    setFilters({ genre: "", season: "", year: "", type: "", status: "" });
+    setFilters({ genre: "", season: "", year: "", type: "", status: "", language: "", rating: "", source: "", exclude: "" });
   };
 
   const activeFilterCount = Object.values(filters).filter(v => v && v !== "all").length;
 
   return (
-    <div ref={wrapperRef} className="relative w-full max-w-xl z-50">
+    <div ref={wrapperRef} className="relative w-full z-50">
       
       {/* SEARCH CAPSULE */}
       <form onSubmit={handleSearchSubmit} className="relative group">
@@ -230,102 +245,156 @@ export default function SearchBar() {
                 </div>
             </div>
 
-            {/* FILTER PANEL */}
-            <AnimatePresence>
-                {showFilters && (
-                    <motion.div 
-                        initial={{ height: 0 }} animate={{ height: "auto" }} exit={{ height: 0 }}
-                        className="border-t border-white/5 bg-black/40 overflow-hidden"
-                    >
-                        <div className="p-3 grid grid-cols-2 md:grid-cols-5 gap-2">
-                             <Select value={filters.genre} onValueChange={(v) => handleFilterChange('genre', v)}>
-                                <SelectTrigger className="h-8 text-[10px] bg-white/5 border-white/10 text-gray-300 focus:ring-0">
-                                    <Tag className="w-3 h-3 mr-2 opacity-50"/> <SelectValue placeholder="Genre" />
-                                </SelectTrigger>
-                                <SelectContent className="bg-[#0f0f0f] border-white/10 text-gray-300">
-                                    <SelectItem value="all">All Genres</SelectItem>
-                                    {GENRES.map(g => <SelectItem key={g} value={g}>{g}</SelectItem>)}
-                                </SelectContent>
-                             </Select>
-
-                             <Select value={filters.season} onValueChange={(v) => handleFilterChange('season', v)}>
-                                <SelectTrigger className="h-8 text-[10px] bg-white/5 border-white/10 text-gray-300">
-                                    <Calendar className="w-3 h-3 mr-2 opacity-50"/> <SelectValue placeholder="Season" />
-                                </SelectTrigger>
-                                <SelectContent className="bg-[#0f0f0f] border-white/10 text-gray-300 uppercase">
-                                    <SelectItem value="all">All Seasons</SelectItem>
-                                    {SEASONS.map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}
-                                </SelectContent>
-                             </Select>
-
-                             <Select value={filters.year} onValueChange={(v) => handleFilterChange('year', v)}>
-                                <SelectTrigger className="h-8 text-[10px] bg-white/5 border-white/10 text-gray-300">
-                                    <Clock className="w-3 h-3 mr-2 opacity-50"/> <SelectValue placeholder="Year" />
-                                </SelectTrigger>
-                                <SelectContent className="bg-[#0f0f0f] border-white/10 text-gray-300 max-h-[200px]">
-                                    <SelectItem value="all">All Years</SelectItem>
-                                    {YEARS.map(y => <SelectItem key={y} value={y}>{y}</SelectItem>)}
-                                </SelectContent>
-                             </Select>
-
-                             <Select value={filters.type} onValueChange={(v) => handleFilterChange('type', v)}>
-                                <SelectTrigger className="h-8 text-[10px] bg-white/5 border-white/10 text-gray-300">
-                                    <Tv className="w-3 h-3 mr-2 opacity-50"/> <SelectValue placeholder="Type" />
-                                </SelectTrigger>
-                                <SelectContent className="bg-[#0f0f0f] border-white/10 text-gray-300 uppercase">
-                                    <SelectItem value="all">All Types</SelectItem>
-                                    {TYPES.map(t => <SelectItem key={t} value={t}>{t}</SelectItem>)}
-                                </SelectContent>
-                             </Select>
-                             
-                             <Select value={filters.status} onValueChange={(v) => handleFilterChange('status', v)}>
-                                <SelectTrigger className="h-8 text-[10px] bg-white/5 border-white/10 text-gray-300">
-                                    <Layers className="w-3 h-3 mr-2 opacity-50"/> <SelectValue placeholder="Status" />
-                                </SelectTrigger>
-                                <SelectContent className="bg-[#0f0f0f] border-white/10 text-gray-300 uppercase">
-                                    <SelectItem value="all">All Status</SelectItem>
-                                    {STATUSES.map(s => <SelectItem key={s} value={s.replace(/_/g, ' ')}>{s.replace(/_/g, ' ')}</SelectItem>)}
-                                </SelectContent>
-                             </Select>
-                        </div>
-                        
-                        <div className="px-3 pb-3 flex items-center justify-between">
-                            <button 
-                                type="button" 
-                                onClick={clearFilters} 
-                                className="flex items-center gap-1.5 text-[10px] text-gray-500 hover:text-white transition-colors"
-                            >
-                                <RotateCcw size={10} /> Reset
-                            </button>
-
-                            <div className="flex gap-2">
-                                {/* ✅ RANDOM SUMMON BUTTON MOVED HERE */}
-                                <Button 
-                                    type="button"
-                                    variant="outline"
-                                    size="sm"
-                                    onClick={handleRandomSummon}
-                                    disabled={isRandomLoading}
-                                    className="h-7 text-[10px] bg-white/5 border-white/10 hover:bg-yellow-500/20 hover:text-yellow-500 text-gray-300 rounded-md px-4"
-                                >
-                                    {isRandomLoading ? <Loader2 className="w-3 h-3 animate-spin" /> : <Dices className="w-3 h-3 mr-2" />}
-                                    Random Summon
-                                </Button>
-
-                                <Button 
-                                    type="submit" 
-                                    size="sm" 
-                                    className="h-7 text-[10px] bg-primary-600 hover:bg-primary-700 text-white rounded-md px-4"
-                                >
-                                    Apply & Search
-                                </Button>
-                            </div>
-                        </div>
-                    </motion.div>
-                )}
-            </AnimatePresence>
         </div>
+
       </form>
+
+      {/* FILTER PANEL */}
+      <AnimatePresence>
+          {showFilters && (
+              <motion.div 
+                  initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }}
+                  style={{ top: '56px' }}
+                  className="absolute left-0 right-0 bg-[#0a0a0a]/95 border border-white/10 rounded-2xl shadow-[0_20px_50px_rgba(0,0,0,0.9)] backdrop-blur-xl overflow-hidden z-[100]"
+              >
+                  <div className="p-3 grid grid-cols-2 md:grid-cols-5 gap-2">
+                       <Select value={filters.genre} onValueChange={(v) => handleFilterChange('genre', v)}>
+                          <SelectTrigger className="h-8 text-[10px] bg-white/5 border-white/10 text-gray-300 focus:ring-0">
+                              <Tag className="w-3 h-3 mr-2 opacity-50"/> <SelectValue placeholder="Genre" />
+                          </SelectTrigger>
+                          <SelectContent className="bg-[#0f0f0f] border-white/10 text-gray-300">
+                              <SelectItem value="all">All Genres</SelectItem>
+                              {GENRES.map(g => <SelectItem key={g} value={g}>{g}</SelectItem>)}
+                          </SelectContent>
+                       </Select>
+
+                       <Select value={filters.season} onValueChange={(v) => handleFilterChange('season', v)}>
+                          <SelectTrigger className="h-8 text-[10px] bg-white/5 border-white/10 text-gray-300">
+                              <Calendar className="w-3 h-3 mr-2 opacity-50"/> <SelectValue placeholder="Season" />
+                          </SelectTrigger>
+                          <SelectContent className="bg-[#0f0f0f] border-white/10 text-gray-300 uppercase">
+                              <SelectItem value="all">All Seasons</SelectItem>
+                              {SEASONS.map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}
+                          </SelectContent>
+                       </Select>
+
+                       <Select value={filters.year} onValueChange={(v) => handleFilterChange('year', v)}>
+                          <SelectTrigger className="h-8 text-[10px] bg-white/5 border-white/10 text-gray-300">
+                              <Clock className="w-3 h-3 mr-2 opacity-50"/> <SelectValue placeholder="Year" />
+                          </SelectTrigger>
+                          <SelectContent className="bg-[#0f0f0f] border-white/10 text-gray-300 max-h-[200px]">
+                              <SelectItem value="all">All Years</SelectItem>
+                              {YEARS.map(y => <SelectItem key={y} value={y}>{y}</SelectItem>)}
+                          </SelectContent>
+                       </Select>
+
+                       <Select value={filters.type} onValueChange={(v) => handleFilterChange('type', v)}>
+                          <SelectTrigger className="h-8 text-[10px] bg-white/5 border-white/10 text-gray-300">
+                              <Tv className="w-3 h-3 mr-2 opacity-50"/> <SelectValue placeholder="Type" />
+                          </SelectTrigger>
+                          <SelectContent className="bg-[#0f0f0f] border-white/10 text-gray-300 uppercase">
+                              <SelectItem value="all">All Types</SelectItem>
+                              {TYPES.map(t => <SelectItem key={t} value={t}>{t}</SelectItem>)}
+                          </SelectContent>
+                       </Select>
+                       
+                        <Select value={filters.status} onValueChange={(v) => handleFilterChange('status', v)}>
+                           <SelectTrigger className="h-8 text-[10px] bg-white/5 border-white/10 text-gray-300">
+                               <Info className="w-3 h-3 mr-2 opacity-50"/> <SelectValue placeholder="Status" />
+                           </SelectTrigger>
+                           <SelectContent className="bg-[#0f0f0f] border-white/10 text-gray-300 uppercase">
+                               <SelectItem value="all">All Status</SelectItem>
+                               {STATUSES.map(s => <SelectItem key={s} value={s.replace(/_/g, ' ')}>{s.replace(/_/g, ' ')}</SelectItem>)}
+                           </SelectContent>
+                        </Select>
+
+                        <Select value={filters.language} onValueChange={(v) => handleFilterChange('language', v)}>
+                           <SelectTrigger className="h-8 text-[10px] bg-white/5 border-white/10 text-gray-300">
+                               <Tv className="w-3 h-3 mr-2 opacity-50"/> <SelectValue placeholder="Language" />
+                           </SelectTrigger>
+                           <SelectContent className="bg-[#0f0f0f] border-white/10 text-gray-300 uppercase">
+                               <SelectItem value="all">All Languages</SelectItem>
+                               {LANGUAGES.map(l => <SelectItem key={l} value={l}>{l}</SelectItem>)}
+                           </SelectContent>
+                        </Select>
+
+                        <Select value={filters.rating} onValueChange={(v) => handleFilterChange('rating', v)}>
+                           <SelectTrigger className="h-8 text-[10px] bg-white/5 border-white/10 text-gray-300">
+                               <Info className="w-3 h-3 mr-2 opacity-50"/> <SelectValue placeholder="Rating" />
+                           </SelectTrigger>
+                           <SelectContent className="bg-[#0f0f0f] border-white/10 text-gray-300 uppercase">
+                               <SelectItem value="all">All Ratings</SelectItem>
+                               {RATINGS.map(r => <SelectItem key={r} value={r}>{r}</SelectItem>)}
+                           </SelectContent>
+                        </Select>
+
+                        <Select value={filters.source} onValueChange={(v) => handleFilterChange('source', v)}>
+                           <SelectTrigger className="h-8 text-[10px] bg-white/5 border-white/10 text-gray-300">
+                               <Layers className="w-3 h-3 mr-2 opacity-50"/> <SelectValue placeholder="Source" />
+                           </SelectTrigger>
+                           <SelectContent className="bg-[#0f0f0f] border-white/10 text-gray-300">
+                               <SelectItem value="all">All Sources</SelectItem>
+                               {SOURCES.map(src => <SelectItem key={src} value={src}>{src}</SelectItem>)}
+                           </SelectContent>
+                        </Select>
+
+                        <Select value={filters.exclude} onValueChange={(v) => handleFilterChange('exclude', v)}>
+                           <SelectTrigger className="h-8 text-[10px] bg-white/5 border-white/10 text-gray-300">
+                               <Ban className="w-3 h-3 mr-2 opacity-50 text-red-400"/> <SelectValue placeholder="Exclude" />
+                           </SelectTrigger>
+                           <SelectContent className="bg-[#0f0f0f] border-white/10 text-gray-300">
+                               <SelectItem value="all">None Excluded</SelectItem>
+                               {GENRES.map(g => <SelectItem key={g} value={g}>{g}</SelectItem>)}
+                           </SelectContent>
+                        </Select>
+                  </div>
+                  
+                  <div className="px-3 pb-3 flex items-center justify-between">
+                      <button 
+                          type="button" 
+                          onClick={clearFilters} 
+                          className="flex items-center gap-1.5 text-[10px] text-gray-500 hover:text-white transition-colors"
+                      >
+                          <RotateCcw size={10} /> Reset
+                      </button>
+
+                      <div className="flex gap-2">
+                          <Button 
+                              type="button"
+                              variant="outline"
+                              size="sm"
+                              onClick={() => { setShowFilters(false); router.push('/search?sort=name-az'); }}
+                              className="h-7 text-[10px] bg-white/5 border-white/10 hover:bg-white/10 text-gray-300 rounded-md px-3 flex items-center gap-1.5"
+                          >
+                              <ArrowDownAZ className="w-3 h-3 text-primary-400" />
+                              A-Z List
+                          </Button>
+
+                          <Button 
+                              type="button"
+                              variant="outline"
+                              size="sm"
+                              onClick={handleRandomSummon}
+                              disabled={isRandomLoading}
+                              className="h-7 text-[10px] bg-white/5 border-white/10 hover:bg-yellow-500/20 hover:text-yellow-500 text-gray-300 rounded-md px-3 flex items-center gap-1.5"
+                          >
+                              {isRandomLoading ? <Loader2 className="w-3 h-3 animate-spin" /> : <Dices className="w-3 h-3 text-yellow-500" />}
+                              Random Summon
+                          </Button>
+
+                          <Button 
+                              type="button" 
+                              onClick={handleSearchSubmit}
+                              size="sm" 
+                              className="h-7 text-[10px] bg-primary-600 hover:bg-primary-700 text-white rounded-md px-4"
+                          >
+                              Apply & Search
+                          </Button>
+                      </div>
+                  </div>
+              </motion.div>
+          )}
+      </AnimatePresence>
 
       {/* SUGGESTIONS DROPDOWN */}
       <AnimatePresence>

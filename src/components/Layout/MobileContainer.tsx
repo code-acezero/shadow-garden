@@ -22,7 +22,7 @@ export default function MobileContainer({
         className
       )}
     >
-      <div className="flex-1 px-4 sm:px-6">
+      <div className="flex-1 w-full">
         {children}
       </div>
     </div>

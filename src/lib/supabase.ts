@@ -54,9 +54,41 @@ export const getSupabaseBrowserClient = () => {
       return fetch(input, init);
     };
 
+    if (!url || !key) {
+      // Return a no-op stub that matches the Supabase client shape
+      // so the app renders gracefully when env vars are not configured.
+      const noopError = { message: 'Supabase not configured' };
+      const noopQ = { data: null, error: noopError, count: null, status: 400, statusText: 'Not configured' };
+      // Query builder stub: all chainable methods return self, then awaiting gives noopQ
+      const qBuilder: any = new Proxy(Promise.resolve(noopQ), {
+        get(target, prop) {
+          if (prop === 'then' || prop === 'catch' || prop === 'finally') return (target[prop as keyof typeof target] as Function).bind(target);
+          return () => qBuilder;
+        }
+      });
+      const stub: any = {
+        auth: {
+          getSession: async () => ({ data: { session: null }, error: null }),
+          getUser: async () => ({ data: { user: null }, error: null }),
+          signOut: async () => ({ error: null }),
+          setSession: async () => ({ data: { session: null, user: null }, error: null }),
+          refreshSession: async () => ({ data: { session: null, user: null }, error: null }),
+          onAuthStateChange: (_cb: any) => ({
+            data: { subscription: { unsubscribe: () => {} } }
+          }),
+        },
+        from: () => qBuilder,
+        storage: { from: () => ({ upload: async () => ({ data: null, error: noopError }), getPublicUrl: () => ({ data: { publicUrl: '' } }) }) },
+        channel: () => ({ on: () => ({ subscribe: () => {} }) }),
+        removeChannel: () => {},
+      };
+      supabaseInstance = stub as ReturnType<typeof createBrowserClient>;
+      return supabaseInstance;
+    }
+
     supabaseInstance = createBrowserClient(
-      url || '', 
-      key || '',
+      url,
+      key,
       {
         global: {
           fetch: customFetch

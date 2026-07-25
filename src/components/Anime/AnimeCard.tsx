@@ -113,9 +113,15 @@ export default function AnimeCard({ anime, progress = 0, isHindi = false }: Anim
     const dubCount = typeof anime.episodes === 'object' ? anime.episodes?.dub : anime.dub || null;
     const totalEp = anime.totalEpisodes || (typeof anime.episodes === 'number' ? anime.episodes : null);
 
-    // Initial Adult Check
-    const rawRating = anime.rating || "";
-    const isAdult = anime.isAdult === true || ["Rx", "RX", "Hentai"].some((t: string) => rawRating.toUpperCase().includes(t));
+    // Initial Adult & Rating Check
+    const genresList = Array.isArray(anime.genres) ? anime.genres.map((g: any) => String(g).toLowerCase()) : [];
+    const hasAdultGenre = genresList.some((g: string) => ['ecchi', 'erotica', 'hentai', 'adult'].includes(g));
+    const rawRatingGiven = anime.rating || anime.ageRating || "";
+    const rawUpper = rawRatingGiven.toUpperCase().trim();
+    const isAdult = anime.isAdult === true || hasAdultGenre || 
+        ["RX", "HENTAI", "18", "R+", "R -", "R-17", "R17", "NC-17", "MATURE", "SEX"].some((t: string) => rawUpper.includes(t)) ||
+        rawUpper === "R" || rawUpper.startsWith("R");
+    const rawRating = rawRatingGiven || (isAdult ? "18+" : "");
 
     // Route Logic
     let finalRoute = "";
@@ -161,39 +167,47 @@ export default function AnimeCard({ anime, progress = 0, isHindi = false }: Anim
         return { rating: normalized.rawRating, isAdult: normalized.isAdult };
     }
 
-    return { rating: qtip.rating, isAdult: qtip.isAdult };
+    return { rating: qtip.rating || normalized.rawRating, isAdult: qtip.isAdult || normalized.isAdult };
   };
 
   // --- HELPER: AGE TAG ---
   const AgeTag = ({ adult, rating }: { adult: boolean, rating?: string }) => {
-    let label = "PG 13"; 
+    const r = rating ? rating.toUpperCase().trim() : "";
+    if (!r && !adult) return null;
+
+    let label = ""; 
     let isRed = false;
 
-    const r = rating ? rating.toUpperCase() : "";
-
-    if (r.includes("RX") || r.includes("HENTAI")) {
-        label = "Rx";
+    if (adult || r.includes("RX") || r.includes("HENTAI") || r.includes("R+") || r.includes("18") || r.includes("TV-MA") || r.includes("SEX") || r.includes("MATURE") || r === "R" || r.startsWith("R") || r.includes("17+")) {
+        label = (r.includes("RX") || r.includes("HENTAI")) ? "Rx" : "18+";
         isRed = true;
     } 
-    else if (adult || r.includes("R+") || r.includes("18+")) {
-        label = "18+";
-        isRed = true;
-    } 
-    else if (r.includes("R") || r.includes("17")) {
-        label = "18";
-        isRed = true;
-    } 
+    else if (r.includes("13") || r.includes("PG-13") || r.includes("TEEN")) {
+        label = "PG 13";
+        isRed = false;
+    }
+    else if (r.includes("PG")) {
+        label = "PG";
+        isRed = false;
+    }
+    else if (r === "G" || r.includes("ALL")) {
+        label = "G";
+        isRed = false;
+    }
     else if (rating && rating !== "?" && rating !== "Unknown") {
         label = rating.replace("PG-", "PG ").replace("R-", "").trim();
-        if (label === "13" || label === "PG-13") label = "PG 13";
         isRed = false;
+    } else {
+        if (!adult) return null;
+        label = "18+";
+        isRed = true;
     }
 
     return (
       <span className={cn(
-        "h-5 px-2 flex items-center justify-center rounded-full border text-[9px] font-black shadow-lg backdrop-blur-md",
+        "h-5 px-2 flex items-center justify-center rounded-full border text-[9px] font-black shadow-lg backdrop-blur-md transition-colors",
         isRed 
-          ? "bg-primary-600/90 border-primary-500/50 text-white shadow-primary-900/40" 
+          ? "bg-red-600 border-red-500 text-white shadow-[0_0_10px_rgba(220,38,38,0.6)]" 
           : "bg-black/60 border-white/10 text-white"
       )}>
         {label}
@@ -232,6 +246,15 @@ export default function AnimeCard({ anime, progress = 0, isHindi = false }: Anim
     e.preventDefault(); e.stopPropagation();
     router.push(normalized.targetRoute);
   };
+
+  // --- AUTOMATIC BACKGROUND PREFETCH IF RATING MISSING ---
+  useEffect(() => {
+    if (normalized.rawRating || isHindi || qtip || loading) return;
+    const timer = setTimeout(() => {
+      fetchDataNow();
+    }, 350);
+    return () => clearTimeout(timer);
+  }, [normalized.rawRating, isHindi, qtip, loading]);
 
   const fetchDataNow = async () => {
     if (qtip || loading || isHindi) return;

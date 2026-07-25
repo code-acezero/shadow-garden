@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect, useCallback } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useParams } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/context/AuthContext';
 import { Play, Pause, X, Users, MessageSquare, ArrowLeft, Loader2, MonitorPlay, Send, Shield, Lock, Trash2, LogOut, Crown, UserX, Volume2, VolumeX, Radio } from 'lucide-react';
@@ -10,10 +10,12 @@ import Link from 'next/link';
 import ProfileAvatar from '@/components/User/ProfileAvatar';
 import { motion, AnimatePresence } from 'framer-motion';
 import { toast } from '@/lib/toast';
+import { PageSkeleton } from '@/components/UIx/SkeletonLoaders';
 
-export default function WatchRoomPage({ params }: { params: { code: string } }) {
+export default function WatchRoomPage({ params }: { params: Promise<{ code: string }> }) {
   const router = useRouter();
-  const roomCode = params.code as string;
+  const routeParams = useParams();
+  const roomCode = (routeParams?.code as string) || '';
   const { user } = useAuth();
 
   const [room, setRoom] = useState<any>(null);
@@ -147,17 +149,13 @@ export default function WatchRoomPage({ params }: { params: { code: string } }) 
   };
 
   if (loading) {
-    return (
-      <div className="min-h-screen bg-[#050505] flex items-center justify-center text-white">
-        <Loader2 className="w-10 h-10 animate-spin text-primary-500" />
-      </div>
-    );
+    return <PageSkeleton />;
   }
 
   return (
-    <div className="min-h-[100dvh] bg-[#050505] text-white flex flex-col safe-top pt-16 md:pt-20 pb-20 md:pb-0">
+    <div className="min-h-[100dvh] bg-[#050505] text-white flex flex-col safe-top">
       {/* Header bar */}
-      <div className="bg-[#0a0a0a] border-b border-white/10 px-6 py-4 flex items-center justify-between">
+      <div className="bg-[#0a0a0a] border-b border-white/10 py-4 flex items-center justify-between w-full">
         <div className="flex items-center gap-3">
           <span className="text-[10px] font-black uppercase tracking-widest px-3 py-1 rounded-full bg-primary-600/20 text-primary-400 border border-primary-500/30">
             {room?.media_type}
@@ -187,7 +185,7 @@ export default function WatchRoomPage({ params }: { params: { code: string } }) 
       </div>
 
       {/* Main Grid: Player + Live Chat & Members */}
-      <div className="flex-1 max-w-[1600px] w-full mx-auto p-4 md:p-6 grid grid-cols-1 lg:grid-cols-12 gap-6">
+      <div className="flex-1 w-full p-4 md:p-6 grid grid-cols-1 lg:grid-cols-12 gap-6">
         {/* Synchronized Player Container */}
         <div className="lg:col-span-8 space-y-4">
           <div className="relative w-full aspect-video bg-black rounded-3xl overflow-hidden border border-white/10 shadow-2xl flex items-center justify-center">

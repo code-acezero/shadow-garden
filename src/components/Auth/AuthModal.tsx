@@ -45,7 +45,6 @@ const YinYangIcon = () => (
             <path d="M12 2a10 10 0 0 0 0 20 5 5 0 0 1 0-10 5 5 0 0 0 0-10Z" fill="#dc2626"/>
             <circle cx="12" cy="7" r="1.5" fill="white" />
             <circle cx="12" cy="17" r="1.5" fill="#dc2626" />
-            <circle cx="12" cy="12" r="10" fill="none" stroke="black" strokeWidth="0.5" strokeOpacity="0.3" />
         </svg>
     </div>
 );
@@ -305,7 +304,26 @@ export default function AuthModal({ isOpen, onClose, onAuthSuccess, initialView 
   };
 
   // ... (Rest of handlers: Register, OTP, etc - Unchanged) ...
-  const handleRegister = async (e: React.FormEvent) => { e.preventDefault(); if (isDuplicate) return; if (!usernameAvailable || formData.password.length < 6 || !passwordsMatch) return notifyIsland('Guild Manager Alpha', "Details invalid.", 'warning'); setIsLoading(true); try { const { data, error } = await UserAPI.signUp(formData.email, formData.password, formData.username); if (error) throw error; if (data?.user) { setView('OTP'); notifyIsland('Guild Manager Alpha', "Contract Sealed. Enter 8-digit token.", 'system'); } } catch (error: any) { notifyIsland('Guild Manager Alpha', error.message, 'error'); } finally { setIsLoading(false); } };
+  const handleRegister = async (e: React.FormEvent) => { 
+    e.preventDefault(); 
+    if (isDuplicate) return; 
+    if (!usernameAvailable || formData.password.length < 6 || !passwordsMatch) return notifyIsland('Guild Manager Alpha', "Details invalid.", 'warning'); 
+    setIsLoading(true); 
+    try { 
+      const avatar = localStorage.getItem('shadow_traveller_avatar') || undefined;
+      const gender = localStorage.getItem('shadow_traveller_gender') || undefined;
+      const { data, error } = await UserAPI.signUp(formData.email, formData.password, formData.username, avatar, gender); 
+      if (error) throw error; 
+      if (data?.user) { 
+        setView('OTP'); 
+        notifyIsland('Guild Manager Alpha', "Contract Sealed. Enter 8-digit token.", 'system'); 
+      } 
+    } catch (error: any) { 
+      notifyIsland('Guild Manager Alpha', error.message, 'error'); 
+    } finally { 
+      setIsLoading(false); 
+    } 
+  };
   const handleVerifyOTP = async (e: React.FormEvent) => { e.preventDefault(); setIsLoading(true); try { const { data, error } = await supabase.auth.verifyOtp({ email: formData.email, token: formData.otp, type: view === 'FORGOT' ? 'recovery' : 'signup' }); if (error) throw error; if (data.session) { notifyIsland('Guild Manager Alpha', view !== 'FORGOT' ? "Welcome to the Guild." : "Access Recovered."); if (typeof window !== 'undefined') window.location.href = '/home'; } } catch (err: any) { notifyIsland('Guild Manager Alpha', "Invalid Token.", 'error'); setIsLoading(false); } };
   const handleResendToken = async () => { if(!formData.email) return; setIsLoading(true); try { await supabase.auth.resend({ type: 'signup', email: formData.email }); notifyIsland('Guild Manager Alpha', 'Token resent. Check spam.', 'system'); } catch(e:any) { notifyIsland('Error', e.message, 'error'); } finally { setIsLoading(false); } };
   const handleForgotPass = async (e: React.FormEvent) => { e.preventDefault(); setIsLoading(true); try { await supabase.auth.resetPasswordForEmail(formData.email); notifyIsland('Guild Manager Alpha', "Recovery scroll sent.", 'system'); setView('OTP'); } catch (err: any) { notifyIsland('Error', err.message, 'error'); } finally { setIsLoading(false); } };

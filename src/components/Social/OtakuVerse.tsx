@@ -22,18 +22,21 @@ import * as VisuallyHidden from "@radix-ui/react-visually-hidden";
 
 import { AppUser, ImageAPI } from '@/lib/api';
 import { supabase } from '@/lib/supabase';
+import { useAuth } from '@/context/AuthContext';
+import { useTravellerProfile } from '@/hooks/useTravellerProfile';
 import { motion, AnimatePresence } from 'framer-motion';
 import { toast } from '@/lib/toast';
 import { formatDistanceToNow } from 'date-fns';
 import ImageLightbox from './ImageLightbox';
 import ClanSystem from './Clans/ClanSystem';
 import ShadowComments from '@/components/Comments/ShadowComments';
+import { RoleTitleBadge } from '@/components/ui/RoleTitleBadge';
 import Link from 'next/link';
 import Footer from '@/components/Anime/Footer';
-import { useAuth } from '@/context/AuthContext';
 import InstagramPostCard from './InstagramPostCard';
 import InstagramPostComposer from './InstagramPostComposer';
 import InstagramCommentsModal from './InstagramCommentsModal';
+import { processMentionsAndNotify } from '@/lib/mentions';
 
 // --- TYPES ---
 interface Comment {
@@ -44,7 +47,7 @@ interface Comment {
   content: string;
   created_at: string;
   likes_count?: number;
-  user: { username: string; avatar_url: string; role?: string };
+  user: { username: string; avatar_url: string; role?: string; admin_title?: string };
   replies?: Comment[];
 }
 
@@ -58,6 +61,7 @@ interface SocialPost {
     username: string;
     avatar_url: string;
     role?: string;
+    admin_title?: string;
   };
   likes_count: number;
   comments_count: number;
@@ -75,6 +79,7 @@ interface OtakuVerseProps {
 
 export default function OtakuVerse({ user, onAuthRequired, highlightId, initialNewsId }: OtakuVerseProps) {
   const { profile } = useAuth();
+  const travellerProfile = useTravellerProfile();
   const [posts, setPosts] = useState<SocialPost[]>([]);
   const [newPost, setNewPost] = useState('');
   const [selectedImages, setSelectedImages] = useState<File[]>([]);
@@ -100,17 +105,33 @@ export default function OtakuVerse({ user, onAuthRequired, highlightId, initialN
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [hasUnreadMessages, setHasUnreadMessages] = useState(false);
   const [showScrollTop, setShowScrollTop] = useState(false);
+  const [isAlphaActive, setIsAlphaActive] = useState(false);
 
   useEffect(() => {
     const handleScroll = () => {
       const scrollY = window.scrollY || document.documentElement.scrollTop || document.body.scrollTop || 0;
       setShowScrollTop(scrollY > 150);
+      if (document.getElementById('alpha-widget-container')) {
+          setIsAlphaActive(true);
+      }
     };
+    const handleAlphaState = (e: any) => {
+      setIsAlphaActive(e.detail?.isOpen || false);
+    };
+    
     window.addEventListener('scroll', handleScroll, { passive: true });
     document.addEventListener('scroll', handleScroll, { passive: true });
+    window.addEventListener('alpha-state-changed', handleAlphaState);
+    
+    // Check initial state
+    if (document.getElementById('alpha-widget-container')) {
+      setIsAlphaActive(true);
+    }
+    
     return () => {
       window.removeEventListener('scroll', handleScroll);
       document.removeEventListener('scroll', handleScroll);
+      window.removeEventListener('alpha-state-changed', handleAlphaState);
     };
   }, []);
   
@@ -241,30 +262,43 @@ export default function OtakuVerse({ user, onAuthRequired, highlightId, initialN
     }
   }, [initialNewsId, aniListNews]);
 
-  // --- FETCH POSTS LOGIC ---
+  // --- FETCH POSTS LOGIC WITH FACEBOOK-STYLE RANKING ALGORITHM ---
   const fetchPosts = useCallback(async (showLoading = false) => {
     if (!supabase) return;
 
     if (showLoading) setIsLoading(true);
     try {
+      // 1. Get user's followed accounts and joined clans for priority ranking
+      let followedUserIds: string[] = [];
+      let joinedClanIds: string[] = [];
+
+      if (user) {
+        const [{ data: followingData }, { data: clanMembersData }] = await Promise.all([
+          supabase.from('follows').select('following_id').eq('follower_id', user.id),
+          supabase.from('clan_members').select('clan_id').eq('user_id', user.id)
+        ]);
+
+        followedUserIds = (followingData as any)?.map((f: any) => f.following_id) || [];
+        joinedClanIds = (clanMembersData as any)?.map((c: any) => c.clan_id) || [];
+      }
+
       let query = supabase
         .from('social_posts')
         .select(`
           *,
-          user:profiles(username, avatar_url, role, level, frame_id, show_level)
+          user:profiles(username, avatar_url, role, level, admin_title, title, frame_id, show_level),
+          clan:clans(id, name, avatar_url)
         `)
         .order('created_at', { ascending: false });
 
       if (activeTab === 'following' && user) {
-        const { data: following } = await supabase.from('follows').select('following_id').eq('follower_id', user.id);
-        const ids = (following as any)?.map((f: any) => f.following_id) || [];
-        query = query.in('user_id', ids);
+        query = query.in('user_id', followedUserIds);
       } 
 
       const { data, error } = await query;
       if (error) throw error;
 
-      const postsWithMetadata = await Promise.all(data.map(async (post: any) => {
+      const postsWithMetadata = await Promise.all((data || []).map(async (post: any) => {
         let isLiked = false;
         let isBookmarked = false;
         let lCount = 0;
@@ -290,6 +324,14 @@ export default function OtakuVerse({ user, onAuthRequired, highlightId, initialN
           .limit(1)
           .maybeSingle();
 
+        // Compute Facebook-style Algorithmic Priority Tier:
+        // Tier 3: Followed Users (highest priority multiplier)
+        // Tier 2: Joined Clans
+        // Tier 1: General Public Feed
+        const isFollowedUser = user && followedUserIds.includes(post.user_id);
+        const isJoinedClan = user && post.clan_id && joinedClanIds.includes(post.clan_id);
+        const priorityTier = isFollowedUser ? 3 : (isJoinedClan ? 2 : 1);
+
         return {
           ...post,
           likes_count: lCount,
@@ -297,9 +339,20 @@ export default function OtakuVerse({ user, onAuthRequired, highlightId, initialN
           is_liked_by_user: isLiked,
           is_bookmarked: isBookmarked,
           latest_comment: latestComment || null,
-          user: post.user || { username: 'Otaku Explorer', avatar_url: `https://api.dicebear.com/7.x/bottts/svg?seed=${post.user_id}` }
+          user: post.user || { username: 'Otaku Explorer', avatar_url: 'https://cdn.myanimelist.net/images/characters/9/310307.jpg' },
+          priorityTier
         };
       }));
+
+      // --- FACEBOOK ALGORITHMIC FEED SORTING ---
+      // 1st Priority: Priority Tier (Followed Users -> Joined Clans -> General Feed)
+      // 2nd Priority: Latest Post Timestamp (created_at desc)
+      postsWithMetadata.sort((a: any, b: any) => {
+        if (a.priorityTier !== b.priorityTier) {
+          return b.priorityTier - a.priorityTier;
+        }
+        return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+      });
 
       setPosts(postsWithMetadata);
     } catch (err) {
@@ -311,6 +364,18 @@ export default function OtakuVerse({ user, onAuthRequired, highlightId, initialN
 
   useEffect(() => {
     fetchPosts(true);
+
+    if (!supabase) return;
+    const channel = supabase
+      .channel('public:social_posts')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'social_posts' }, () => {
+        fetchPosts(false);
+      })
+      .subscribe();
+
+    return () => {
+      supabase?.removeChannel(channel);
+    };
   }, [fetchPosts]);
 
   // Handle Image Upload
@@ -349,10 +414,32 @@ export default function OtakuVerse({ user, onAuthRequired, highlightId, initialN
           images: uploadedUrls,
           tags: []
         })
-        .select(`*, user:profiles(username, avatar_url, role, level, frame_id, show_level)`)
+        .select(`*, user:profiles(username, avatar_url, role, level, admin_title, title, frame_id, show_level)`)
         .single();
 
       if (error) throw error;
+
+      // Process mention notifications
+      processMentionsAndNotify(supabase, newPost, user.id, profile?.username || 'Agent', 'post');
+
+      // Check if Alpha was mentioned
+      if (newPost.toLowerCase().includes('@alpha')) {
+        fetch('/api/alpha/agent', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            context: `User ${user.user_metadata?.preferred_username || 'Someone'} mentioned you in a new post.`,
+            action: 'evaluate_mention',
+            data: { 
+              message: newPost, 
+              user_id: user.id, 
+              post_id: data.id,
+              user_role: profile?.role || 'user',
+              admin_title: profile?.admin_title || '' 
+            }
+          })
+        }).catch(console.error);
+      }
 
       toast.success("Post published!");
       setNewPost('');
@@ -400,7 +487,7 @@ export default function OtakuVerse({ user, onAuthRequired, highlightId, initialN
     try {
       const { data, error } = await supabase
         .from('social_comments')
-        .select(`*, user:profiles(username, avatar_url, role, level, frame_id, show_level)`)
+        .select(`*, user:profiles(username, avatar_url, role, level, admin_title, title, frame_id, show_level)`)
         .eq('post_id', postId)
         .order('created_at', { ascending: true });
 
@@ -413,7 +500,7 @@ export default function OtakuVerse({ user, onAuthRequired, highlightId, initialN
         const item: Comment = { 
           ...c, 
           replies: [],
-          user: c.user || { username: 'Adventurer', avatar_url: `https://api.dicebear.com/7.x/bottts/svg?seed=${c.user_id}` } 
+          user: c.user || { username: 'Adventurer', avatar_url: 'https://cdn.myanimelist.net/images/characters/9/310307.jpg' } 
         };
         commentMap.set(c.id, item);
       });
@@ -441,14 +528,36 @@ export default function OtakuVerse({ user, onAuthRequired, highlightId, initialN
     if (!commentText.trim() || !activePostForComments) return;
 
     try {
-      const { error } = await supabase.from('social_comments').insert({
+      const { data, error } = await supabase.from('social_comments').insert({
         post_id: activePostForComments.id,
         user_id: user.id,
         parent_id: replyTarget?.id || null,
         content: commentText
-      });
+      }).select().single();
 
       if (error) throw error;
+
+      processMentionsAndNotify(supabase, commentText, user.id, profile?.username || 'Agent', 'comment');
+
+      // Check if Alpha was mentioned
+      if (commentText.toLowerCase().includes('@alpha')) {
+        fetch('/api/alpha/agent', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            context: `User ${user.user_metadata?.preferred_username || 'Someone'} mentioned you in a comment.`,
+            action: 'evaluate_mention',
+            data: { 
+              message: commentText, 
+              user_id: user.id, 
+              post_id: activePostForComments.id,
+              parent_id: data.id,
+              user_role: profile?.role || 'user',
+              admin_title: profile?.admin_title || '' 
+            }
+          })
+        }).catch(console.error);
+      }
 
       setCommentText('');
       setReplyTarget(null);
@@ -466,7 +575,7 @@ export default function OtakuVerse({ user, onAuthRequired, highlightId, initialN
     try {
       const { data, error } = await supabase
         .from('comments')
-        .select(`*, user:profiles(username, avatar_url, role, level, frame_id, show_level)`)
+        .select(`*, user:profiles(username, avatar_url, role, level, admin_title, title, frame_id, show_level)`)
         .eq('episode_id', `news_${newsId}`)
         .order('created_at', { ascending: true });
 
@@ -479,7 +588,7 @@ export default function OtakuVerse({ user, onAuthRequired, highlightId, initialN
         const item: Comment = { 
           ...c, 
           replies: [],
-          user: c.user || { username: 'Adventurer', avatar_url: `https://api.dicebear.com/7.x/bottts/svg?seed=${c.user_id}` } 
+          user: c.user || { username: 'Adventurer', avatar_url: 'https://cdn.myanimelist.net/images/characters/9/310307.jpg' } 
         };
         commentMap.set(c.id, item);
       });
@@ -533,7 +642,7 @@ export default function OtakuVerse({ user, onAuthRequired, highlightId, initialN
 
   return (
     <div className="w-full bg-[#050505] text-white flex justify-center selection:bg-primary-500 selection:text-white min-h-screen">
-      <div className="max-w-7xl w-full flex justify-center lg:justify-between px-0 md:px-2">
+      <div className="w-full flex justify-center lg:justify-between px-0 md:px-2">
         
         {/* LEFT SIDEBAR (Desktop) */}
         <header className="hidden sm:flex w-20 lg:w-64 xl:w-72 flex-col justify-between h-[calc(100vh-160px)] sticky top-4 pt-0 px-2 lg:px-4 overflow-y-auto custom-scrollbar">
@@ -553,29 +662,35 @@ export default function OtakuVerse({ user, onAuthRequired, highlightId, initialN
               <button 
                 type="button"
                 onClick={() => user ? document.getElementById('composer-input')?.focus() : onAuthRequired()} 
-                className="mt-4 w-12 h-12 lg:w-[90%] lg:h-14 rounded-full bg-primary-600 hover:bg-primary-500 text-white font-bold text-[0px] lg:text-base transition-all shadow-lg shadow-primary-900/30 mx-auto lg:mx-0 flex items-center justify-center cursor-pointer"
+                className="mt-4 w-12 h-12 lg:w-[90%] lg:h-14 rounded-full bg-primary-600 hover:bg-primary-500 text-white font-bold text-[0px] lg:text-base transition-all shadow-lg shadow-primary-900/30 lg:mx-0 flex items-center justify-center cursor-pointer"
               >
                  <span className="hidden lg:inline uppercase tracking-wider">Post</span>
                  <SendHorizontal size={22} className="lg:hidden" />
               </button>
            </div>
 
-           {user && (
-              <div className="flex items-center justify-center lg:justify-between gap-3 p-3 rounded-full hover:bg-white/10 cursor-pointer transition-colors mb-4 w-full border border-white/5">
-                 <ProfileAvatar 
-                     profile={profile} 
-                     className="w-10 h-10" 
-                 />
-                 <div className="hidden lg:block overflow-hidden flex-1">
-                    <p className="font-bold text-white text-sm truncate leading-tight">{user.user_metadata?.full_name || 'User'}</p>
-                    <p className="text-zinc-500 text-xs truncate leading-tight">@{user.user_metadata?.preferred_username || 'shadow'}</p>
-                 </div>
+           {/* Logged in / Guest Profile Header */}
+           <div 
+             className="flex items-center justify-center lg:justify-between gap-3 p-3 rounded-full hover:bg-white/10 cursor-pointer transition-colors mb-4 w-full border border-white/5"
+             onClick={() => user ? (window.location.href='/profile') : onAuthRequired()}
+           >
+              <ProfileAvatar 
+                  profile={profile || travellerProfile} 
+                  className="w-10 h-10 shrink-0 object-cover" 
+              />
+              <div className="hidden lg:block overflow-hidden flex-1">
+                 <p className="font-bold text-white text-sm truncate leading-tight">
+                   {user ? (user.user_metadata?.full_name || 'User') : travellerProfile.name}
+                 </p>
+                 <p className="text-zinc-500 text-xs truncate leading-tight">
+                   @{user ? (user.user_metadata?.preferred_username || 'shadow') : travellerProfile.name}
+                 </p>
               </div>
-           )}
+           </div>
         </header>
 
         {/* MIDDLE COLUMN (Feed & Mobile Header) */}
-        <main className={`flex-1 ${activeTab === 'clans' ? 'w-full' : 'max-w-[580px]'} w-full min-h-screen border-x border-white/10 pb-4`}>
+        <main className="flex-1 w-full min-h-screen border-x border-white/10 pb-4 relative">
            
            {/* Sticky Top Header */}
            <div className="sticky top-0 z-40 bg-[#050505]/95 backdrop-blur-xl border-b border-white/10 shadow-lg">
@@ -653,7 +768,7 @@ export default function OtakuVerse({ user, onAuthRequired, highlightId, initialN
              <div className="p-2 sm:p-4">
                <InstagramPostComposer
                  user={user}
-                 profile={profile}
+                 profile={user ? profile : travellerProfile}
                  onAuthRequired={onAuthRequired}
                  onPostCreated={async ({ content, images, pollData }) => {
                    const { error } = await supabase
@@ -665,6 +780,7 @@ export default function OtakuVerse({ user, onAuthRequired, highlightId, initialN
                        tags: []
                      });
                    if (error) throw error;
+                   processMentionsAndNotify(supabase, content, user!.id, profile?.username || 'Agent', 'post');
                    fetchPosts();
                  }}
                />
@@ -726,6 +842,22 @@ export default function OtakuVerse({ user, onAuthRequired, highlightId, initialN
                    ))}
                 </div>
             )}
+
+            {/* Clean White Scroll To Top Arrow Button (Fixed in one place relative to middle posts section) */}
+            <AnimatePresence>
+              {showScrollTop && !isAlphaActive && !activeNewsItem && !activePostForComments && !lightbox.isOpen && (
+                <motion.button
+                  initial={{ opacity: 0, scale: 0.5, y: 20 }}
+                  animate={{ opacity: 1, scale: 1, y: 0 }}
+                  exit={{ opacity: 0, scale: 0.5, y: 20 }}
+                  onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
+                  className="fixed bottom-20 right-6 lg:right-[340px] xl:right-[420px] z-[9999] p-3.5 rounded-full bg-white/25 hover:bg-white/40 text-white shadow-[0_4px_25px_rgba(255,255,255,0.35)] backdrop-blur-xl border border-white/50 active:scale-90 transition-all cursor-pointer flex items-center justify-center shadow-2xl"
+                  title="Scroll to top of feed"
+                >
+                  <ArrowUp size={22} className="text-white" strokeWidth={2.8} />
+                </motion.button>
+              )}
+            </AnimatePresence>
         </main>
 
         {/* RIGHT SIDEBAR — News or Clan Sidebar */}
@@ -734,7 +866,7 @@ export default function OtakuVerse({ user, onAuthRequired, highlightId, initialN
              {/* Portal Target for Clan Management */}
           </aside>
         ) : (
-          <aside className="hidden lg:flex flex-col w-80 xl:w-96 h-[calc(100vh-5rem)] sticky top-20 pt-4 pb-20 px-4 overflow-y-auto custom-scrollbar shrink-0">
+          <aside className="hidden lg:flex flex-col w-80 xl:w-96 h-[calc(100vh-5rem)] sticky top-20 pt-4 px-4 overflow-y-auto custom-scrollbar shrink-0">
             <div className="pb-3 bg-[#050505] z-10">
             <h3 className="text-[10px] font-black uppercase tracking-widest text-zinc-400 flex items-center gap-2">
               <Newspaper size={14} className="text-primary-500" /> Anime Industry News
@@ -781,7 +913,7 @@ export default function OtakuVerse({ user, onAuthRequired, highlightId, initialN
               animate={{ x: 0, opacity: 1 }}
               exit={{ x: '-100%', opacity: 0 }}
               transition={{ type: 'spring', damping: 25, stiffness: 280 }}
-              className="w-80 max-w-[85vw] bg-[#0c0c12] border-r border-white/15 h-full p-5 sm:p-6 flex flex-col justify-between shadow-2xl relative z-10 rounded-r-[2.5rem] overflow-y-auto custom-scrollbar"
+              className="w-80 bg-[#0c0c12] border-r border-white/15 h-full p-5 sm:p-6 flex flex-col justify-between shadow-2xl relative z-10 rounded-r-[2.5rem] overflow-y-auto custom-scrollbar"
             >
               <div className="space-y-5">
                 {/* Header */}
@@ -803,22 +935,28 @@ export default function OtakuVerse({ user, onAuthRequired, highlightId, initialN
                   </button>
                 </div>
 
-                {/* Profile Card if Logged In */}
-                {user ? (
-                  <div className="bg-[#14141c] border border-white/10 p-3 rounded-2xl flex items-center gap-3 shadow-md">
-                    <ProfileAvatar profile={user.user_metadata || user} className="w-11 h-11" />
-                    <div className="min-w-0 flex-1">
-                      <p className="font-bold text-white text-xs truncate leading-tight">{user.user_metadata?.full_name || 'Agent'}</p>
-                      <p className="text-[10px] text-zinc-400 truncate mt-0.5">@{user.user_metadata?.preferred_username || 'shadow'}</p>
+                {/* Profile Card if Logged In / Guest */}
+                <div className="bg-[#14141c] border border-white/10 p-3 rounded-2xl flex items-center gap-3 shadow-md mb-2">
+                  <ProfileAvatar profile={profile || travellerProfile} className="w-11 h-11" />
+                  <div className="min-w-0 flex-1">
+                    <p className="font-bold text-white text-xs truncate leading-tight">
+                      {(profile || travellerProfile).name || 'Agent'}
+                    </p>
+                    <p className="text-[10px] text-zinc-400 truncate mt-0.5">
+                      @{(profile || travellerProfile).username || 'shadow'}
+                    </p>
+                    {user && (
                       <span className="inline-block mt-1 text-[9px] font-mono font-bold text-primary-400 bg-primary-600/20 px-2 py-0.5 rounded-full border border-primary-500/30">
                         Lv. {user.user_metadata?.level || 1}
                       </span>
-                    </div>
+                    )}
                   </div>
-                ) : (
+                </div>
+
+                {!user && (
                   <button
                     onClick={() => { setIsMobileMenuOpen(false); onAuthRequired(); }}
-                    className="w-full py-2.5 bg-primary-600 hover:bg-primary-500 text-white rounded-2xl font-bold text-xs uppercase tracking-wider transition-all shadow-md"
+                    className="w-full py-2.5 bg-primary-600 hover:bg-primary-500 text-white rounded-2xl font-bold text-xs uppercase tracking-wider transition-all shadow-md mb-2"
                   >
                     Sign In / Register
                   </button>
@@ -954,7 +1092,7 @@ export default function OtakuVerse({ user, onAuthRequired, highlightId, initialN
 
       {/* News View Dialog Modal */}
       <Dialog open={!!activeNewsItem} onOpenChange={() => setActiveNewsItem(null)}>
-        <DialogContent className="max-w-2xl bg-[#0d0d10] border border-white/10 text-white rounded-3xl p-0 shadow-2xl flex flex-col overflow-hidden [&>button]:right-6 [&>button]:top-6 [&>button]:text-zinc-400 hover:[&>button]:text-white" style={{ maxHeight: "calc(100dvh - var(--nav-height-top) - var(--nav-height-bottom) - 30px)" }}>
+        <DialogContent className="bg-[#0d0d10] border border-white/10 text-white rounded-3xl p-0 shadow-2xl flex flex-col overflow-hidden [&>button]:right-6 [&>button]:top-6 [&>button]:text-zinc-400 hover:[&>button]:text-white" style={{ maxHeight: "calc(100dvh - var(--nav-height-top) - var(--nav-height-bottom) - 30px)" }}>
           {activeNewsItem && (
             <>
               <DialogHeader className="border-b border-white/10 p-6 pb-4 shrink-0 bg-[#0a0a0d] z-10">
@@ -1001,7 +1139,7 @@ export default function OtakuVerse({ user, onAuthRequired, highlightId, initialN
                     {newsComments.length === 0 ? (
                       <div className="text-center py-10 text-zinc-500 text-xs">Be the first to comment!</div>
                     ) : (
-                      newsComments.map(c => (
+                      [...newsComments].reverse().map(c => (
                         <FacebookCommentBubble
                           key={c.id}
                           comment={c}
@@ -1020,7 +1158,7 @@ export default function OtakuVerse({ user, onAuthRequired, highlightId, initialN
                       </div>
                     )}
                     <div className="flex gap-2.5">
-                      <ProfileAvatar profile={user?.user_metadata || user} className="w-8 h-8" />
+                      <ProfileAvatar profile={user ? (user.user_metadata || user) : travellerProfile} className="w-8 h-8" />
                       <input
                         type="text"
                         value={newsCommentText}
@@ -1047,25 +1185,6 @@ export default function OtakuVerse({ user, onAuthRequired, highlightId, initialN
 
 
       <ImageLightbox isOpen={lightbox.isOpen} src={lightbox.src} onClose={() => setLightbox({ isOpen: false, src: '' })} />
-
-      {/* Floating Glowing Arrow To Top (Portal to body for max z-index, hides when any modal/lightbox is active) */}
-      {typeof window !== 'undefined' && createPortal(
-        <AnimatePresence>
-          {showScrollTop && !activeNewsItem && !activePostForComments && !lightbox.isOpen && (
-            <motion.button
-              initial={{ opacity: 0, scale: 0.5, y: 20 }}
-              animate={{ opacity: 1, scale: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.5, y: 20 }}
-              onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
-              className="fixed bottom-24 right-5 sm:bottom-20 sm:right-7 z-[999999] p-2 text-primary-400 hover:text-white drop-shadow-[0_0_15px_rgba(99,102,241,0.9)] active:scale-90 transition-all cursor-pointer flex items-center justify-center pointer-events-auto filter"
-              title="Scroll to top"
-            >
-              <ArrowUp size={28} strokeWidth={2.5} />
-            </motion.button>
-          )}
-        </AnimatePresence>,
-        document.body
-      )}
     </div>
   );
 }
@@ -1074,7 +1193,7 @@ export default function OtakuVerse({ user, onAuthRequired, highlightId, initialN
 
 function NavButton({ icon, label, active, onClick, badge }: { icon: React.ReactNode, label: string, active?: boolean, onClick?: () => void, badge?: number | boolean }) {
    return (
-      <div onClick={onClick} className="flex items-center justify-center lg:justify-start gap-3.5 p-3 rounded-full hover:bg-white/10 cursor-pointer transition-colors w-12 h-12 lg:w-auto lg:h-auto mx-auto lg:mx-0 group relative">
+      <div onClick={onClick} className="flex items-center justify-center lg:justify-start gap-3.5 p-3 rounded-full hover:bg-white/10 cursor-pointer transition-colors w-12 h-12 lg:w-auto lg:h-auto lg:mx-0 group relative">
          <div className={`${active ? 'text-primary-500' : 'text-zinc-400 group-hover:text-white'}`}>
             {icon}
             {!!badge && (
@@ -1110,7 +1229,7 @@ const PostItem = React.forwardRef<HTMLDivElement, any>(({ post, highlightId, onL
                       className="font-bold text-sm text-white hover:underline cursor-pointer truncate"
                       onClick={(e) => { e.stopPropagation(); window.location.href = `/profile/${post.user?.username}`; }}
                   >{post.user?.username || 'Otaku Explorer'}</span>
-                  {post.user?.role === 'admin' && <ShieldCheck size={14} className="text-primary-500 shrink-0" />}
+                  <RoleTitleBadge role={post.user?.role} adminTitle={post.user?.admin_title} className="shrink-0" />
                   <span className="text-zinc-500 text-xs truncate">@{post.user?.username?.toLowerCase().replace(/\s/g, '')}</span>
                   <span className="text-zinc-500 text-xs">·</span>
                   <span className="text-zinc-500 text-xs shrink-0">{formatDistanceToNow(new Date(post.created_at), { addSuffix: false })}</span>
@@ -1188,7 +1307,7 @@ function FacebookCommentBubble({ comment, onReply, isReply = false }: { comment:
             <span className="font-bold text-xs text-white hover:underline cursor-pointer">
               {comment.user?.username || 'User'}
             </span>
-            {comment.user?.role === 'admin' && <ShieldCheck size={12} className="text-primary-500" />}
+            <RoleTitleBadge role={comment.user?.role} adminTitle={comment.user?.admin_title} />
           </div>
           <p className="text-xs text-zinc-200 mt-1 whitespace-pre-wrap leading-relaxed">
             {isReply && (comment as any).replyToUser && (

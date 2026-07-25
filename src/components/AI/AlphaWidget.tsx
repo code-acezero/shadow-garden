@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Send, Loader2, X, ScanSearch, Upload, Search, Play, Crop } from 'lucide-react';
+import { Send, Loader2, X, ScanSearch, Upload, Search, Play, Crop, Volume2, VolumeX, Info } from 'lucide-react';
 import { usePathname, useRouter } from 'next/navigation';
 import { useAuth } from '@/context/AuthContext';
 import { useUserData } from '@/context/UserDataContext';
@@ -10,6 +10,11 @@ import { cn } from '@/lib/utils';
 import { AnimeService } from '@/lib/api';
 import { MoeAPI } from '@/lib/moeApi';
 import ImageCropper from '@/components/AI/ImageCropper';
+import { getSupabaseBrowserClient } from '@/lib/supabase';
+import { useMentions } from '@/hooks/useMentions';
+import MentionDropdown from '@/components/ui/MentionDropdown';
+import { getAlphaDynamicGreeting } from '@/lib/alphaGreetings';
+import { getUserTitle } from '@/components/ui/UserTitleBadge';
 
 interface ChatMessage {
     role: 'user' | 'model';
@@ -40,8 +45,8 @@ const STICKER_DICTIONARY: Record<string, string> = {
 function extractStateAndContent(text: string, currentState: string) {
     const stateRegex = /\[state:\s*([a-zA-Z0-9_-]+)\]/i;
     const actionRegex = /\[action:\s*([a-zA-Z0-9_-]+)\]/i;
-    const gifRegex = /\[gif:\s*([a-zA-Z0-9_-]+)\]/i;
-    const stickerRegex = /\[sticker:\s*([a-zA-Z0-9_-]+)\]/i;
+    const gifRegex = /\[gif:\s*([^\]]+)\]/i;
+    const stickerRegex = /\[sticker:\s*([^\]]+)\]/i;
 
     let match = text.match(stateRegex);
     let actionMatch = text.match(actionRegex);
@@ -51,7 +56,7 @@ function extractStateAndContent(text: string, currentState: string) {
     let cleanText = text;
     let newState = currentState;
     let action = null;
-    let detectedMedia: { type: 'gif' | 'sticker', url: string } | null = null;
+    let detectedMedia: { type: 'gif' | 'sticker', url?: string, query?: string } | null = null;
 
     if (match) {
         newState = match[1].toLowerCase().trim();
@@ -69,15 +74,17 @@ function extractStateAndContent(text: string, currentState: string) {
     }
 
     if (stickerMatch) {
-        const s = stickerMatch[1].toLowerCase().trim();
-        if (STICKER_DICTIONARY[s]) {
-            detectedMedia = { type: 'sticker', url: STICKER_DICTIONARY[s] };
+        const s = stickerMatch[1].trim();
+        detectedMedia = { type: 'sticker', query: s };
+        if (STICKER_DICTIONARY[s.toLowerCase()]) {
+            detectedMedia.url = STICKER_DICTIONARY[s.toLowerCase()];
         }
         cleanText = cleanText.replace(stickerRegex, '').trim();
     } else if (gifMatch) {
-        const g = gifMatch[1].toLowerCase().trim();
-        if (GIF_DICTIONARY[g]) {
-            detectedMedia = { type: 'gif', url: GIF_DICTIONARY[g] };
+        const g = gifMatch[1].trim();
+        detectedMedia = { type: 'gif', query: g };
+        if (GIF_DICTIONARY[g.toLowerCase()]) {
+            detectedMedia.url = GIF_DICTIONARY[g.toLowerCase()];
         }
         cleanText = cleanText.replace(gifRegex, '').trim();
     }
@@ -90,6 +97,22 @@ const formatTime = (seconds: number) => {
     const s = Math.floor(seconds % 60);
     return `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
 };
+
+async function resolveMediaWithTenor(media: { type: 'gif' | 'sticker', url?: string, query?: string } | null) {
+    if (!media || media.url || !media.query) return media;
+    try {
+        const TENOR_API_KEY = 'LIVDSRZULELA';
+        const q = encodeURIComponent(media.query);
+        const res = await fetch(`https://g.tenor.com/v1/search?q=${q}&key=${TENOR_API_KEY}&limit=1`);
+        const data = await res.json();
+        if (data.results && data.results.length > 0) {
+            media.url = data.results[0].media[0].gif.url;
+        }
+    } catch (e) {
+        console.error("Tenor fetch error:", e);
+    }
+    return media;
+}
 
 function ImageSearchPanel({ onClose, onResultFound }: { onClose: () => void, onResultFound: (text: string) => void }) {
     const [dragActive, setDragActive] = useState(false);
@@ -354,7 +377,8 @@ export default function AlphaWidget() {
     const { library } = useUserData();
     const pathname = usePathname();
     const userName = profile?.username || 'Shadow';
-    const displayName = profile?.username || 'TRAVELLER';
+    const userTitle = getUserTitle(profile);
+    const displayName = profile?.username ? `${profile.username} • ${userTitle}` : 'TRAVELLER';
 
     const [isOpen, setIsOpen] = useState(false);
     const [messages, setMessages] = useState<ChatMessage[]>([]);
@@ -364,6 +388,20 @@ export default function AlphaWidget() {
     const [activeMedia, setActiveMedia] = useState<{ type: 'gif' | 'sticker'; url: string } | null>(null);
     const [showImageSearch, setShowImageSearch] = useState(false);
     const inputRef = useRef<HTMLInputElement>(null);
+    const audioRef = useRef<HTMLAudioElement | null>(null);
+    const [isPlayingAudio, setIsPlayingAudio] = useState(false);
+    const [globalVoiceEnabled, setGlobalVoiceEnabled] = useState(false);
+    const [isUserVoiceEnabled, setIsUserVoiceEnabled] = useState(true);
+    const [showVoiceUnavailable, setShowVoiceUnavailable] = useState(false);
+
+    const {
+        mentionState,
+        handleKeyDown: handleMentionKeyDown,
+        insertMention,
+        setMentionState
+    } = useMentions(input, (username) => {
+        setInput(insertMention(username));
+    });
 
     const PLACEHOLDER_PROMPTS = [
         "Awaiting orders, Lord Shadow...",
@@ -408,20 +446,45 @@ export default function AlphaWidget() {
 
     useEffect(() => {
         if (messages.length === 0 && isOpen) {
+            const todayKey = `alpha_visit_date_${profile?.id || 'guest'}`;
+            const todayStr = new Date().toISOString().split('T')[0];
+            const lastVisit = typeof window !== 'undefined' ? localStorage.getItem(todayKey) : null;
+            const isRevisitToday = lastVisit === todayStr;
+
+            if (typeof window !== 'undefined' && !isRevisitToday) {
+                localStorage.setItem(todayKey, todayStr);
+            }
+
+            const dynamicGreeting = getAlphaDynamicGreeting(profile, isRevisitToday);
             setMessages([
                 {
                     role: 'model',
-                    content: `[state: greet] Welcome, integration candidate. I am Alpha, your primary guide through the Shadow Garden systems.\n\nGive me an order below, and let us commence.`,
+                    content: dynamicGreeting,
                 },
             ]);
         }
-    }, [userName, messages.length, isOpen]);
+    }, [profile, messages.length, isOpen]);
 
     useEffect(() => {
         if (isOpen && inputRef.current && !showImageSearch) {
             setTimeout(() => inputRef.current?.focus(), 100);
         }
     }, [isOpen, showImageSearch]);
+
+    useEffect(() => {
+        const fetchGlobalVoice = async () => {
+            try {
+                const supabase = getSupabaseBrowserClient();
+                const { data } = await supabase.from('system_apis').select('*').eq('name', 'ALPHA_VOICE').single();
+                if (data) {
+                    setGlobalVoiceEnabled(data.is_active);
+                }
+            } catch (err) {
+                console.error("Failed to fetch global voice state", err);
+            }
+        };
+        fetchGlobalVoice();
+    }, [isOpen]);
 
     useEffect(() => {
         const handleToggle = () => setIsOpen(prev => !prev);
@@ -434,6 +497,12 @@ export default function AlphaWidget() {
             }
         };
     }, []);
+
+    useEffect(() => {
+        if (typeof window !== 'undefined') {
+            window.dispatchEvent(new CustomEvent('alpha-state-changed', { detail: { isOpen } }));
+        }
+    }, [isOpen]);
 
     const handleSendMessage = async (e?: React.FormEvent) => {
         if (e) e.preventDefault();
@@ -457,7 +526,10 @@ export default function AlphaWidget() {
                         url: pathname,
                         watchlist: (watchlistContext || 'Empty').slice(0, 1000),
                         userName: profile?.username || 'Guest',
-                        email: profile?.email || ''
+                        email: profile?.email || '',
+                        userId: profile?.id,
+                        userRole: profile?.role,
+                        adminTitle: profile?.admin_title
                     }
                 }),
             });
@@ -468,13 +540,42 @@ export default function AlphaWidget() {
             const rawReply = data.reply || '[state: error] I have nothing to report.';
 
             const { cleanText, newState, action, detectedMedia } = extractStateAndContent(rawReply, state);
+            const finalMedia = await resolveMediaWithTenor(detectedMedia);
 
             setMessages([...newMessages, { role: 'model', content: `[state: ${newState}] ${cleanText}` }]);
             setState(newState);
-            setActiveMedia(detectedMedia);
+            setActiveMedia(finalMedia?.url ? { type: finalMedia.type, url: finalMedia.url } : null);
 
             if (action === 'open_imagesearch') {
                 setShowImageSearch(true);
+            }
+
+            // Fetch and play TTS audio in the background (using GET for native streaming)
+            if (cleanText && globalVoiceEnabled && isUserVoiceEnabled) {
+                // Replace markdown and underscores to prevent TTS from pronouncing them
+                const ttsText = cleanText.replace(/_/g, ' ');
+                const audioUrl = `/api/alpha/tts?text=${encodeURIComponent(ttsText)}`;
+                const audio = new Audio(audioUrl);
+                
+                if (audioRef.current) {
+                    audioRef.current.pause();
+                }
+                audioRef.current = audio;
+                
+                audio.onplay = () => setIsPlayingAudio(true);
+                audio.onended = () => {
+                    setIsPlayingAudio(false);
+                };
+                audio.onerror = () => setIsPlayingAudio(false);
+                
+                audio.play().catch(e => console.error("Audio play failed:", e));
+            } else if (cleanText) {
+                // If TTS is disabled or fetching is skipped, still stop previous audio if we got a new message
+                if (audioRef.current) {
+                    audioRef.current.pause();
+                    audioRef.current = null;
+                    setIsPlayingAudio(false);
+                }
             }
 
         } catch (err: any) {
@@ -503,6 +604,7 @@ export default function AlphaWidget() {
         <AnimatePresence>
             {isOpen && (
                 <motion.div
+                    id="alpha-widget-container"
                     initial={{ opacity: 0 }}
                     animate={{ opacity: 1 }}
                     exit={{ opacity: 0 }}
@@ -528,7 +630,7 @@ export default function AlphaWidget() {
                         <DesktopFireflies />
 
                         {/* Character Sprite (Mobile & Desktop: 2nd highest z-index z-[60], below input box z-[70]) */}
-                        <div className="absolute bottom-0 sm:bottom-0 lg:bottom-0 left-0 sm:left-2 lg:left-1/2 lg:-translate-x-1/2 lg:right-auto h-[45vh] sm:h-[50vh] lg:h-[95vh] xl:h-[100vh] z-[60] flex items-end justify-start lg:justify-center scale-[0.95] lg:scale-[0.95] origin-bottom-left lg:origin-bottom pointer-events-none">
+                        <div className="absolute bottom-16 sm:bottom-20 lg:bottom-0 left-0 sm:left-2 lg:left-1/2 lg:-translate-x-1/2 lg:right-auto h-[45vh] sm:h-[50vh] lg:h-[95vh] xl:h-[100vh] z-[60] flex items-end justify-start lg:justify-center scale-[0.95] lg:scale-[0.95] origin-bottom-left lg:origin-bottom pointer-events-none">
                             {ALL_STATES.map(st => (
                                 <img
                                     key={st}
@@ -568,15 +670,24 @@ export default function AlphaWidget() {
                                                         headers: { 'Content-Type': 'application/json' },
                                                         body: JSON.stringify({
                                                             messages: newMessages,
-                                                            context: { url: pathname, userName: profile?.username || 'Guest', email: profile?.email || '' }
+                                                            context: { 
+                                                                url: pathname, 
+                                                                userName: profile?.username || 'Guest', 
+                                                                email: profile?.email || '',
+                                                                userId: profile?.id,
+                                                                userRole: profile?.role,
+                                                                adminTitle: profile?.admin_title
+                                                            }
                                                         }),
                                                     }).then(res => res.json()).then(data => {
                                                         const rawReply = data.reply || '[state: explain] I have analyzed the scan results.';
                                                         const { cleanText, newState, detectedMedia } = extractStateAndContent(rawReply, state);
-                                                        setMessages([...newMessages, { role: 'model', content: `[state: ${newState}] ${cleanText}` }]);
-                                                        setState(newState);
-                                                        setActiveMedia(detectedMedia);
-                                                        setLoading(false);
+                                                        resolveMediaWithTenor(detectedMedia).then((finalMedia) => {
+                                                            setMessages([...newMessages, { role: 'model', content: `[state: ${newState}] ${cleanText}` }]);
+                                                            setState(newState);
+                                                            setActiveMedia(finalMedia?.url ? { type: finalMedia.type, url: finalMedia.url } : null);
+                                                            setLoading(false);
+                                                        });
                                                     }).catch(() => setLoading(false));
                                                 }}
                                             />
@@ -594,7 +705,7 @@ export default function AlphaWidget() {
                                     <div className="w-[42%] sm:w-[45%] lg:hidden shrink-0" />
 
                                     {/* Adaptive Mobile & Responsive Desktop Speech Bubble */}
-                                    <div className="w-[58%] sm:w-[55%] lg:w-full max-w-[calc(100vw-120px)] md:max-w-[480px] lg:max-w-[38vw] xl:max-w-[440px] shrink-0 ml-auto lg:ml-0">
+                                    <div className="w-[50%] sm:w-[48%] lg:w-fit max-w-[50vw] sm:max-w-[48vw] md:max-w-[480px] lg:max-w-[38vw] xl:max-w-[440px] shrink-0 ml-auto lg:ml-0 transition-all duration-300">
                                         <AnimatePresence mode="wait">
                                             <motion.div
                                                 key={currentMessageContent}
@@ -604,22 +715,65 @@ export default function AlphaWidget() {
                                                 transition={{ duration: 0.2 }}
                                                 className="relative w-full"
                                             >
-                                                <div className="absolute -top-5 left-6 z-30 drop-shadow-md">
+                                                <div className="absolute -top-5 left-3 sm:left-6 z-30 drop-shadow-md">
                                                     <div
-                                                        className="bg-orange-600 text-white px-8 py-1 font-black tracking-[0.2em] uppercase flex items-center justify-center border border-orange-400 text-sm shadow-[0_0_15px_rgba(234,88,12,0.5)]"
+                                                        className="bg-orange-600 text-white py-0.5 sm:py-1 px-3 sm:px-4 font-black tracking-[0.15em] uppercase flex items-center justify-center border border-orange-400 text-[10px] sm:text-xs shadow-[0_0_15px_rgba(234,88,12,0.5)] w-fit"
                                                         style={{ clipPath: 'polygon(10% 0, 90% 0, 100% 50%, 90% 100%, 10% 100%, 0% 50%)' }}
                                                     >
                                                         Alpha
                                                     </div>
                                                 </div>
 
-                                                <div className="relative bg-[#0a0a0a]/95 backdrop-blur-md border-[2px] border-orange-600/50 rounded-2xl p-4 lg:p-6 min-h-[190px] lg:min-h-[170px] max-h-[300px] overflow-y-auto custom-scrollbar shadow-[0_10px_40px_rgba(0,0,0,0.8)] shadow-orange-900/20">
+                                                {/* Audio Playing Indicator (Top Right of Bubble) */}
+                                                <AnimatePresence>
+                                                    {isPlayingAudio && (
+                                                        <motion.div
+                                                            initial={{ opacity: 0, y: 10, scale: 0.9 }}
+                                                            animate={{ opacity: 1, y: 0, scale: 1 }}
+                                                            exit={{ opacity: 0, y: 10, scale: 0.9 }}
+                                                            onClick={() => {
+                                                                if (audioRef.current) {
+                                                                    audioRef.current.pause();
+                                                                    setIsPlayingAudio(false);
+                                                                }
+                                                            }}
+                                                            className="absolute -top-4 -right-2 flex items-center gap-2.5 bg-[#0a0a0a]/95 border border-orange-500/50 hover:border-orange-400 px-3.5 py-1.5 rounded-r-2xl rounded-tl-2xl cursor-pointer transition-all backdrop-blur-xl z-40 shadow-[0_0_20px_rgba(234,88,12,0.35)]"
+                                                        >
+                                                            <div className="flex gap-1 items-end h-3">
+                                                                <motion.div animate={{ height: ['4px', '12px', '4px'] }} transition={{ duration: 0.8, repeat: Infinity, ease: "easeInOut" }} className="w-1 bg-red-500 rounded-full shadow-[0_0_6px_rgba(239,68,68,0.8)]" />
+                                                                <motion.div animate={{ height: ['4px', '16px', '4px'] }} transition={{ duration: 0.8, delay: 0.2, repeat: Infinity, ease: "easeInOut" }} className="w-1 bg-orange-400 rounded-full shadow-[0_0_6px_rgba(251,146,60,0.8)]" />
+                                                                <motion.div animate={{ height: ['4px', '10px', '4px'] }} transition={{ duration: 0.8, delay: 0.4, repeat: Infinity, ease: "easeInOut" }} className="w-1 bg-amber-400 rounded-full shadow-[0_0_6px_rgba(251,191,36,0.8)]" />
+                                                                <motion.div animate={{ height: ['4px', '14px', '4px'] }} transition={{ duration: 0.8, delay: 0.1, repeat: Infinity, ease: "easeInOut" }} className="w-1 bg-orange-500 rounded-full shadow-[0_0_6px_rgba(249,115,22,0.8)]" />
+                                                            </div>
+                                                            <span className="text-[10px] font-black text-orange-200 tracking-wider uppercase">Speaking <span className="opacity-60 lowercase font-normal ml-0.5 text-zinc-400">(stop)</span></span>
+                                                        </motion.div>
+                                                    )}
+                                                </AnimatePresence>
+
+                                                <div className="relative bg-[#0a0a0a]/95 backdrop-blur-md border-[2px] border-orange-600/50 rounded-2xl p-3 sm:p-4 lg:p-5 min-h-[60px] max-h-[220px] sm:max-h-[260px] lg:max-h-[300px] overflow-y-auto custom-scrollbar shadow-[0_10px_40px_rgba(0,0,0,0.8)] shadow-orange-900/20 w-full">
                                                     {loading ? (
-                                                        <div className="flex items-center gap-3 text-orange-500 font-bold h-full">
-                                                            <Loader2 className="w-5 h-5 animate-spin" /> Typing...
+                                                        <div className="flex items-center gap-3 text-orange-400 font-bold h-full py-2 text-xs sm:text-sm tracking-wide">
+                                                            <span className="text-orange-500 font-black">Alpha is typing</span>
+                                                            <div className="flex items-center gap-1.5 pt-1">
+                                                                <motion.span
+                                                                    animate={{ y: [0, -6, 0], opacity: [0.4, 1, 0.4] }}
+                                                                    transition={{ duration: 0.8, repeat: Infinity, ease: "easeInOut", delay: 0 }}
+                                                                    className="w-2 h-2 rounded-full bg-orange-500 shadow-[0_0_8px_rgba(249,115,22,0.8)]"
+                                                                />
+                                                                <motion.span
+                                                                    animate={{ y: [0, -6, 0], opacity: [0.4, 1, 0.4] }}
+                                                                    transition={{ duration: 0.8, repeat: Infinity, ease: "easeInOut", delay: 0.2 }}
+                                                                    className="w-2 h-2 rounded-full bg-orange-400 shadow-[0_0_8px_rgba(251,146,60,0.8)]"
+                                                                />
+                                                                <motion.span
+                                                                    animate={{ y: [0, -6, 0], opacity: [0.4, 1, 0.4] }}
+                                                                    transition={{ duration: 0.8, repeat: Infinity, ease: "easeInOut", delay: 0.4 }}
+                                                                    className="w-2 h-2 rounded-full bg-red-500 shadow-[0_0_8px_rgba(239,68,68,0.8)]"
+                                                                />
+                                                            </div>
                                                         </div>
                                                     ) : (
-                                                        <div className="text-zinc-200 font-medium text-xs sm:text-sm lg:text-base leading-relaxed whitespace-pre-wrap font-sans min-h-[60px] max-h-[30vh] lg:max-h-[50vh] overflow-y-auto pr-2 custom-scrollbar">
+                                                        <div className="text-zinc-200 font-semibold text-sm sm:text-base lg:text-base leading-relaxed whitespace-pre-wrap font-sans max-h-[190px] sm:max-h-[230px] lg:max-h-[270px] overflow-y-auto pr-2 custom-scrollbar">
                                                             <motion.div initial="hidden" animate="visible" variants={{ visible: { opacity: 1 }, hidden: { opacity: 0 } }}>
                                                                 {currentMessageContent.split("").map((char, index) => (
                                                                     <motion.span key={`${index}-${char}`} variants={{ hidden: { opacity: 0 }, visible: { opacity: 1 } }}>
@@ -653,8 +807,9 @@ export default function AlphaWidget() {
                                                         </div>
                                                     )}
 
-                                                    <div className="absolute top-1/2 -left-[14px] transform -translate-y-1/2 w-0 h-0 border-t-[12px] lg:border-t-[14px] border-t-transparent border-b-[12px] lg:border-b-[14px] border-b-transparent border-r-[14px] lg:border-r-[16px] border-r-orange-600/50">
-                                                        <div className="absolute -top-[10px] lg:-top-[12px] -right-[16px] lg:-right-[18px] w-0 h-0 border-t-[10px] lg:border-t-[12px] border-t-transparent border-b-[10px] lg:border-b-[12px] border-b-transparent border-r-[12px] lg:border-r-[14px] border-r-[#0a0a0a]" />
+                                                    {/* Speech Bubble Arrow Pointing Left at Alpha */}
+                                                    <div className="absolute top-1/2 -left-[14px] transform -translate-y-1/2 w-0 h-0 border-t-[10px] sm:border-t-[12px] lg:border-t-[14px] border-t-transparent border-b-[10px] sm:border-b-[12px] lg:border-b-[14px] border-b-transparent border-r-[14px] lg:border-r-[16px] border-r-orange-600/60 z-20">
+                                                        <div className="absolute -top-[8px] sm:-top-[10px] lg:-top-[12px] -right-[16px] lg:-right-[18px] w-0 h-0 border-t-[8px] sm:border-t-[10px] lg:border-t-[12px] border-t-transparent border-b-[8px] sm:border-b-[10px] lg:border-b-[12px] border-b-transparent border-r-[12px] lg:border-r-[14px] border-r-[#0a0a0a]" />
                                                     </div>
                                                 </div>
                                             </motion.div>
@@ -663,16 +818,29 @@ export default function AlphaWidget() {
                                 </div>
 
                                 {/* Bottom Input Area (Very top Z-Index z-[70]) */}
-                                <div className="w-full px-2 sm:px-4 lg:px-0 pb-2 sm:pb-4 lg:pb-6 mb-2 sm:mb-3 lg:mb-6 z-[70] pointer-events-auto shrink-0 flex justify-end lg:justify-start">
-                                    <div className="w-full max-w-full lg:max-w-[38vw] xl:max-w-[440px] bg-[#0a0a0a]/90 backdrop-blur-md border border-white/5 border-t-orange-500/30 rounded-xl p-3 pt-5 shadow-[0_0_30px_rgba(234,88,12,0.1)] relative">
+                                <div className="w-full px-0 sm:px-4 lg:px-0 pb-0 sm:pb-4 lg:pb-6 mb-0 sm:mb-3 lg:mb-6 z-[70] pointer-events-auto shrink-0 flex justify-end lg:justify-start">
+                                    <div className="w-full max-w-full lg:max-w-[38vw] xl:max-w-[440px] bg-[#0a0a0a]/95 sm:bg-[#0a0a0a]/90 backdrop-blur-xl sm:backdrop-blur-md border-t border-t-orange-500/30 sm:border sm:border-white/5 sm:border-t-orange-500/30 rounded-none sm:rounded-xl p-3 pt-5 shadow-[0_-10px_30px_rgba(0,0,0,0.5)] sm:shadow-[0_0_30px_rgba(234,88,12,0.1)] relative">
 
-                                        <div className="absolute -top-4 right-6 z-30 drop-shadow-md">
-                                            <div className="bg-zinc-800 text-zinc-200 px-6 py-0.5 font-black tracking-[0.1em] uppercase flex items-center justify-center border border-zinc-600 text-[10px] shadow-[0_0_10px_rgba(0,0,0,0.5)]" style={{ clipPath: 'polygon(10% 0, 90% 0, 100% 50%, 90% 100%, 10% 100%, 0% 50%)' }}>
+                                        <div className="absolute -top-4 right-4 sm:right-6 z-20 drop-shadow-md transition-all duration-300">
+                                            <div 
+                                                className="bg-zinc-800 text-zinc-200 py-0.5 px-4 font-black tracking-[0.1em] uppercase flex items-center justify-center border border-zinc-600 text-[10px] shadow-[0_0_10px_rgba(0,0,0,0.5)] w-fit max-w-[200px] sm:max-w-[280px] truncate"
+                                                style={{ clipPath: 'polygon(10% 0, 90% 0, 100% 50%, 90% 100%, 10% 100%, 0% 50%)' }}
+                                            >
                                                 {displayName}
                                             </div>
                                         </div>
 
-                                        <form onSubmit={handleSendMessage} className="relative flex mt-2">
+                                        <form onSubmit={handleSendMessage} className="relative flex mt-2 z-30">
+                                            {mentionState.isMentioning && mentionState.users.length > 0 && (
+                                                <MentionDropdown
+                                                    suggestions={mentionState.users}
+                                                    selectedIndex={mentionState.selectedIndex}
+                                                    onSelect={(username) => {
+                                                        setInput(insertMention(username));
+                                                    }}
+                                                    position="top"
+                                                />
+                                            )}
                                             <button
                                                 type="button"
                                                 onClick={() => setShowImageSearch(!showImageSearch)}
@@ -685,18 +853,52 @@ export default function AlphaWidget() {
                                                 type="text"
                                                 value={input}
                                                 onChange={(e) => setInput(e.target.value)}
-                                                className="w-full bg-white/5 border border-white/5 rounded-lg py-2.5 pl-10 pr-12 text-white text-sm outline-none focus:border-orange-500/50 transition-colors shadow-inner"
+                                                onKeyDown={(e) => {
+                                                    if (handleMentionKeyDown(e)) return;
+                                                }}
+                                                className="w-full bg-white/5 border border-white/5 rounded-lg py-2.5 pl-10 pr-20 text-white text-sm outline-none focus:border-orange-500/50 transition-colors shadow-inner"
                                                 disabled={loading}
                                                 autoComplete="off"
                                                 placeholder={currentPlaceholder ? `${currentPlaceholder}│` : "Awaiting orders..."}
                                             />
-                                            <button
-                                                type="submit"
-                                                disabled={!input.trim() || loading}
-                                                className="absolute right-1 top-1/2 -translate-y-1/2 p-2 text-orange-500 hover:text-white disabled:opacity-30 transition-colors active:scale-90"
-                                            >
-                                                <Send size={16} />
-                                            </button>
+                                            <div className="absolute right-1 top-1/2 -translate-y-1/2 flex items-center">
+                                                <div className="relative flex items-center justify-center">
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => {
+                                                            if (!globalVoiceEnabled) {
+                                                                setShowVoiceUnavailable(true);
+                                                                setTimeout(() => setShowVoiceUnavailable(false), 3000);
+                                                            } else {
+                                                                setIsUserVoiceEnabled(!isUserVoiceEnabled);
+                                                            }
+                                                        }}
+                                                        className={`p-2 transition-colors active:scale-90 ${!globalVoiceEnabled ? 'text-zinc-600 cursor-not-allowed' : (isUserVoiceEnabled ? 'text-orange-500 hover:text-orange-400' : 'text-zinc-500 hover:text-white')}`}
+                                                    >
+                                                        {(!globalVoiceEnabled || !isUserVoiceEnabled) ? <VolumeX size={16} /> : <Volume2 size={16} />}
+                                                    </button>
+                                                    <AnimatePresence>
+                                                        {showVoiceUnavailable && (
+                                                            <motion.div
+                                                                initial={{ opacity: 0, y: 10 }}
+                                                                animate={{ opacity: 1, y: 0 }}
+                                                                exit={{ opacity: 0, y: 10 }}
+                                                                className="absolute bottom-full right-0 mb-2 w-48 bg-black/90 border border-white/10 rounded-lg p-2 shadow-xl z-50 text-xs text-white flex items-start gap-2"
+                                                            >
+                                                                <Info className="w-4 h-4 text-orange-500 shrink-0 mt-0.5" />
+                                                                <p>Voice features are currently offline for maintenance. We will notify you when available.</p>
+                                                            </motion.div>
+                                                        )}
+                                                    </AnimatePresence>
+                                                </div>
+                                                <button
+                                                    type="submit"
+                                                    disabled={!input.trim() || loading}
+                                                    className="p-2 text-orange-500 hover:text-white disabled:opacity-30 transition-colors active:scale-90"
+                                                >
+                                                    <Send size={16} />
+                                                </button>
+                                            </div>
                                         </form>
                                     </div>
                                 </div>

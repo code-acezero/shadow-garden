@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useEffect, useRef, useMemo, memo } from 'react';
+import { motion } from 'framer-motion';
 import RoleGuard from '@/components/Auth/RoleGuard';
 import { useSettings, AppSettings } from '@/hooks/useSettings'; // Ensure AppSettings type is imported if exported, otherwise we just cast
 import { useAuth } from '@/context/AuthContext';
@@ -72,45 +73,58 @@ export default function GuildMasterDashboard() {
 
         <div className="w-full max-w-[1350px] mx-auto px-4 md:px-8 pb-4 relative z-10">
           
-          {/* --- HEADER --- */}
-          <header className="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-8 border-b border-white/5 pb-6">
-            <div className="flex items-center gap-4">
-              <div className="relative p-2 bg-zinc-900/50 border border-white/10 rounded-xl group overflow-hidden shadow-lg shadow-primary-900/10">
-                 <div className="absolute inset-0 bg-primary-600/20 blur-xl opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
-                 <div className="relative z-10 flex items-center justify-center w-12 h-12">
-                    <Shield className="w-10 h-10 text-primary-600 absolute" strokeWidth={1.5} />
-                    <Sword className="w-6 h-6 text-white absolute mb-1 drop-shadow-md" strokeWidth={2.5} />
+          {/* --- iOS DYNAMIC ISLAND HEADER --- */}
+          <header className="relative bg-[#0d0d12]/70 border border-white/10 rounded-[32px] p-6 md:p-8 mb-8 backdrop-blur-3xl shadow-[0_25px_60px_rgba(0,0,0,0.8)] overflow-hidden">
+            {/* Ambient Background Blur Spheres */}
+            <div className="absolute -top-24 -left-24 w-72 h-72 bg-primary-600/20 rounded-full blur-[90px] pointer-events-none" />
+            <div className="absolute -bottom-24 -right-24 w-72 h-72 bg-purple-600/20 rounded-full blur-[90px] pointer-events-none" />
+
+            <div className="relative z-10 flex flex-col lg:flex-row lg:items-center justify-between gap-6">
+              <div className="flex items-center gap-5">
+                <div className="relative p-3 bg-white/5 border border-white/15 rounded-2xl shadow-xl backdrop-blur-md group cursor-pointer hover:border-primary-500/50 transition-colors">
+                   <div className="absolute inset-0 bg-gradient-to-tr from-primary-600/30 to-purple-600/30 blur-xl opacity-50 group-hover:opacity-100 transition-opacity" />
+                   <div className="relative z-10 flex items-center justify-center w-12 h-12">
+                      <Shield className="w-10 h-10 text-primary-500 absolute" strokeWidth={1.5} />
+                      <Sword className="w-6 h-6 text-white absolute mb-1 drop-shadow-lg" strokeWidth={2.5} />
+                   </div>
+                </div>
+                <div>
+                  <div className="flex items-center gap-2 mb-1">
+                    <span className="px-2.5 py-0.5 rounded-full bg-primary-500/20 border border-primary-500/30 text-[9px] font-black uppercase tracking-widest text-primary-400 flex items-center gap-1.5 shadow-sm">
+                      <span className="w-1.5 h-1.5 bg-primary-500 rounded-full animate-pulse"/> iOS CONTROL CENTER v2.5
+                    </span>
+                  </div>
+                  <h1 className="text-3xl md:text-4xl font-minomu tracking-wider text-white leading-none drop-shadow-md">
+                    GUILD MASTER
+                  </h1>
+                </div>
+              </div>
+
+              {/* iOS System Telemetry Status Bar */}
+              <div className="flex flex-wrap items-center gap-3 bg-black/40 p-2.5 rounded-2xl border border-white/10 backdrop-blur-xl shadow-inner">
+                 <div className="flex items-center gap-2 px-3 py-1.5 bg-white/5 rounded-xl border border-white/5">
+                    <Activity size={13} className="text-emerald-400 animate-pulse" />
+                    <span className="text-[10px] font-bold text-zinc-300">PING <span className="text-emerald-400 font-mono">12ms</span></span>
+                 </div>
+                 <div className="flex items-center gap-2 px-3 py-1.5 bg-white/5 rounded-xl border border-white/5">
+                    <Users size={13} className="text-blue-400" />
+                    <span className="text-[10px] font-bold text-zinc-300">ACTIVE <span className="text-blue-400 font-mono">ONLINE</span></span>
+                 </div>
+                 <div className="flex items-center gap-2 px-3 py-1.5 bg-white/5 rounded-xl border border-white/5">
+                    <Globe size={13} className="text-purple-400" />
+                    <span className="text-[10px] font-bold text-zinc-300">SYSTEM <span className="text-purple-400 font-mono">HEALTHY</span></span>
                  </div>
               </div>
-              <div>
-                <h1 className="text-3xl md:text-4xl font-minomu tracking-wider text-white leading-none drop-shadow-md">
-                  GUILD MASTER
-                </h1>
-                <p className="text-[10px] text-primary-500 font-mono tracking-[0.3em] uppercase mt-1 flex items-center gap-2">
-                  <span className="w-1.5 h-1.5 bg-primary-500 rounded-full animate-pulse"/> Grandmaster Clearance
-                </p>
-              </div>
-            </div>
-
-            <div className="flex items-center gap-6 md:gap-8 bg-zinc-900/40 p-3 md:p-4 rounded-full border border-white/5 backdrop-blur-sm px-6 md:px-8 shadow-inner shadow-white/5">
-               <HeaderIcon icon={Shield} label="MASTERS" color="text-yellow-500" />
-               <HeaderIcon icon={Sword} label="VANGUARD" color="text-blue-500" />
-               <div className="flex flex-col items-center gap-1.5 group cursor-pointer">
-                  <div className="p-0.5 bg-zinc-800 rounded-full border border-white/10 group-hover:border-primary-500/50 transition-colors">
-                    <Lock size={14} className="text-zinc-400 group-hover:text-primary-500 transition-colors" />
-                  </div>
-                  <span className="text-[9px] md:text-[10px] text-zinc-500 font-bold group-hover:text-white transition-colors">VAULT</span>
-               </div>
             </div>
           </header>
 
-          {/* --- NAVIGATION TABS --- */}
+          {/* --- iOS SEGMENTED CONTROL BAR --- */}
           <div className="mb-8 sticky top-4 z-50">
-            <div className="flex overflow-x-auto py-2 gap-2 no-scrollbar bg-black/60 backdrop-blur-xl border border-white/10 rounded-full px-2 md:px-4 w-full md:w-fit mx-auto md:mx-0 shadow-2xl">
+            <div className="p-1.5 bg-[#09090d]/80 backdrop-blur-3xl border border-white/10 rounded-full shadow-[0_15px_35px_rgba(0,0,0,0.8)] overflow-x-auto no-scrollbar flex items-center justify-between gap-1 w-full max-w-full">
                <TabBtn id="GUILD_DESK" icon={LayoutDashboard} label="Desk" active={activeTab} onClick={switchTab} />
-               <TabBtn id="GUILD_INFO" icon={BookOpen} label="Info" active={activeTab} onClick={switchTab} />
+               <TabBtn id="GUILD_INFO" icon={BookOpen} label="Site Specs" active={activeTab} onClick={switchTab} />
                <TabBtn id="ADVENTURERS" icon={Sword} label="Adventurers" active={activeTab} onClick={switchTab} />
-               <TabBtn id="PALETTES" icon={Palette} label="Theme Palettes" active={activeTab} onClick={switchTab} />
+               <TabBtn id="PALETTES" icon={Palette} label="Palettes" active={activeTab} onClick={switchTab} />
                <TabBtn id="MOD_APPS" icon={UserCheck} label="Mod Apps" active={activeTab} onClick={switchTab} />
                <TabBtn id="MAGIC_NET" icon={Globe} label="Magic Net" active={activeTab} onClick={switchTab} />
                <TabBtn id="VOICES" icon={Mic2} label="Echoes" active={activeTab} onClick={switchTab} />
@@ -841,9 +855,58 @@ const ModApplicationsTab = memo(() => {
 ModApplicationsTab.displayName = 'ModApplicationsTab';
 
 // --- HELPERS ---
-const TabBtn = memo(({ id, icon: Icon, label, active, onClick }: any) => { return (<button onClick={() => onClick(id)} className={`flex items-center gap-2 px-5 py-2.5 rounded-full text-sm font-bold transition-all whitespace-nowrap ${active === id ? 'bg-primary-600 text-white shadow-lg shadow-primary-900/20 scale-105' : 'text-zinc-400 hover:text-white hover:bg-white/5'}`}><Icon size={16} />{label}</button>); }); 
+const TabBtn = memo(({ id, icon: Icon, label, active, onClick }: any) => { 
+  const isActive = active === id;
+  return (
+    <button 
+      onClick={() => onClick(id)} 
+      className={`relative flex items-center gap-2 px-4 py-2 rounded-full text-xs font-black transition-all whitespace-nowrap z-10 ${isActive ? 'text-white' : 'text-zinc-400 hover:text-white'}`}
+    >
+      {isActive && (
+        <motion.div 
+          layoutId="iosActivePill"
+          transition={{ type: "spring", stiffness: 400, damping: 30 }}
+          className="absolute inset-0 bg-gradient-to-r from-primary-600 via-purple-600 to-indigo-600 rounded-full shadow-[0_0_20px_rgba(220,38,38,0.5)] -z-10"
+        />
+      )}
+      <Icon size={14} className={isActive ? 'text-white' : 'text-zinc-400'} />
+      {label}
+    </button>
+  ); 
+}); 
 TabBtn.displayName = 'TabBtn';
-const HeaderIcon = ({ icon: Icon, label, color }: any) => (<div className="flex flex-col items-center gap-1.5 group cursor-pointer"><Icon size={20} className={`${color} group-hover:scale-110 transition-transform`} /><span className="text-[9px] md:text-[10px] text-zinc-500 font-bold group-hover:text-white transition-colors">{label}</span></div>); 
-const Section = ({ title, icon: Icon, children }: any) => (<div className="bg-zinc-900/20 border border-white/5 p-6 md:p-8 rounded-[2rem]"><div className="flex items-center gap-3 mb-8 pb-4 border-b border-white/5"><Icon className="text-zinc-400" /><h3 className="text-xl font-bold text-white">{title}</h3></div>{children}</div>); 
-const InputGroup = ({ label, value, onChange, placeholder, className, font }: any) => (<div className={`space-y-2 ${className}`}><label className="text-xs uppercase text-zinc-500 font-bold tracking-wider ml-1">{label}</label><Input value={value || ''} onChange={e => onChange(e.target.value)} placeholder={placeholder} className={`bg-black/40 border-white/10 h-12 rounded-xl focus:border-white/30 ${font}`} /></div>); 
-const CmdTile = ({ label, icon: Icon, onClick, color }: any) => (<button onClick={onClick} className="flex flex-col items-center justify-center gap-3 p-6 rounded-[2rem] bg-black/20 border border-white/5 hover:border-white/20 hover:bg-white/5 transition-all group"><div className={`p-3 rounded-2xl bg-white/5 transition-colors text-${color}-500 group-hover:bg-${color}-500/20`}><Icon size={24} /></div><span className="text-sm font-bold text-zinc-300">{label}</span></button>);
+
+const HeaderIcon = ({ icon: Icon, label, color }: any) => (
+  <div className="flex flex-col items-center gap-1.5 group cursor-pointer">
+    <Icon size={18} className={`${color} group-hover:scale-110 transition-transform`} />
+    <span className="text-[9px] md:text-[10px] text-zinc-500 font-bold group-hover:text-white transition-colors">{label}</span>
+  </div>
+); 
+
+const Section = ({ title, icon: Icon, children }: any) => (
+  <div className="bg-[#0b0b10]/60 border border-white/10 p-6 md:p-8 rounded-[32px] backdrop-blur-2xl shadow-[0_20px_50px_rgba(0,0,0,0.6)]">
+    <div className="flex items-center gap-3 mb-6 pb-4 border-b border-white/10">
+      <div className="p-2 rounded-xl bg-white/5 border border-white/10">
+        <Icon className="text-primary-400 w-5 h-5" />
+      </div>
+      <h3 className="text-lg md:text-xl font-black text-white tracking-wide">{title}</h3>
+    </div>
+    {children}
+  </div>
+); 
+
+const InputGroup = ({ label, value, onChange, placeholder, className, font }: any) => (
+  <div className={`space-y-2 ${className}`}>
+    <label className="text-[10px] uppercase text-zinc-400 font-black tracking-widest ml-1">{label}</label>
+    <Input value={value || ''} onChange={e => onChange(e.target.value)} placeholder={placeholder} className={`bg-black/50 border-white/10 h-11 rounded-2xl focus:border-primary-500/60 focus:bg-black/70 text-sm font-medium ${font}`} />
+  </div>
+); 
+
+const CmdTile = ({ label, icon: Icon, onClick, color }: any) => (
+  <button onClick={onClick} className="flex flex-col items-center justify-center gap-3 p-6 rounded-[28px] bg-black/40 border border-white/10 hover:border-primary-500/40 hover:bg-white/5 transition-all group shadow-lg">
+    <div className={`p-3 rounded-2xl bg-white/5 transition-all text-${color}-400 group-hover:bg-${color}-500/20 group-hover:scale-110`}>
+      <Icon size={22} />
+    </div>
+    <span className="text-xs font-bold text-zinc-200 group-hover:text-white">{label}</span>
+  </button>
+);

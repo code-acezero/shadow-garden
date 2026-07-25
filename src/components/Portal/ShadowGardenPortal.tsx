@@ -1036,7 +1036,7 @@ const GenderSelection = React.memo(({ onSelect }: { onSelect: (g: Gender) => voi
         <motion.div 
             initial={{ opacity: 0, scale: 0.9 }} 
             animate={{ opacity: 1, scale: 1 }} 
-            className="max-w-2xl w-full border border-white/10 bg-white/5 p-10 rounded-3xl text-center backdrop-blur-xl"
+            className="w-full border border-white/10 bg-white/5 p-10 rounded-3xl text-center backdrop-blur-xl"
         >
             <div className="flex justify-center items-center gap-2 mb-8">
                 <h2 className="text-3xl text-white font-bold tracking-widest">
@@ -1091,7 +1091,7 @@ const AnimationPreferencePopup = React.memo(({
                 initial={{ opacity: 0, scale: 0.95, y: 10 }} 
                 animate={{ opacity: 1, scale: 1, y: 0 }} 
                 transition={{ duration: 0.4, ease: "circOut" }}
-                className="relative max-w-lg w-full bg-[#080505] border border-primary-900/30 p-1 rounded-sm shadow-[0_0_50px_-10px_rgba(220,38,38,0.2)] overflow-hidden"
+                className="relative w-full bg-[#080505] border border-primary-900/30 p-1 rounded-sm shadow-[0_0_50px_-10px_rgba(220,38,38,0.2)] overflow-hidden"
             >
                 <div className="absolute top-0 left-0 w-2 h-2 border-t border-l border-primary-500" />
                 <div className="absolute top-0 right-0 w-2 h-2 border-t border-r border-primary-500" />
@@ -1187,7 +1187,7 @@ const GuildCookieNotice = React.memo(({
     onAccept: () => void; 
     onDecline: () => void;
 }) => (
-    <div className="fixed bottom-10 left-0 right-0 mx-auto z-[99999] w-full flex justify-center px-4 pointer-events-none">
+    <div className="fixed bottom-10 left-0 right-0 z-[99999] w-full flex justify-center px-4 pointer-events-none">
         <motion.div 
             initial={{ y: 50, opacity: 0 }} 
             animate={{ y: 0, opacity: 1 }} 
@@ -1296,7 +1296,17 @@ export default function ShadowGardenPortal({
 
     const handleGenderSelect = useCallback((g: Gender) => {
         setGender(g); 
-        localStorage.setItem('guest_gender', g); 
+        localStorage.setItem('guest_gender', g);
+        localStorage.setItem('shadow_traveller_gender', g);
+        
+        import('@/components/User/AvatarSelectorModal').then(({ getRandomAvatar }) => {
+            const avatar = getRandomAvatar(true, g);
+            localStorage.setItem('shadow_traveller_avatar', avatar);
+            window.dispatchEvent(new CustomEvent('shadow-traveller-updated', { 
+                detail: { avatar, gender: g } 
+            }));
+        }).catch(err => console.error("Failed to load avatar generator", err));
+        
         sfx.unlock(); 
         setAppState('loading');
     }, []);

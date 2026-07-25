@@ -26,7 +26,26 @@ export default function Notifications() {
   const router = useRouter();
   const [isOpen, setIsOpen] = useState(false);
   const [notifications, setNotifications] = useState<NotificationItem[]>([]);
+  const [tempNotifications, setTempNotifications] = useState<NotificationItem[]>([]);
   const [loading, setLoading] = useState(false);
+
+  // Listen for custom temp notification events
+  useEffect(() => {
+    const handleAddTemp = (e: any) => {
+      setTempNotifications(prev => [e.detail, ...prev]);
+    };
+    const handleClearTemp = () => {
+      setTempNotifications(prev => prev.filter(n => n.type !== 'unread_message'));
+    };
+    
+    window.addEventListener('add_temp_notification', handleAddTemp);
+    window.addEventListener('clear_temp_notifications', handleClearTemp);
+    
+    return () => {
+      window.removeEventListener('add_temp_notification', handleAddTemp);
+      window.removeEventListener('clear_temp_notifications', handleClearTemp);
+    };
+  }, []);
 
   // 1. Fetch real notifications from Supabase
   const fetchNotifications = useCallback(async () => {
@@ -48,6 +67,9 @@ export default function Notifications() {
       setLoading(false);
     }
   }, [user]);
+
+  // Combine real and temp notifications for display
+  const allNotifications = [...tempNotifications, ...notifications].sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
 
   // 2. Realtime listener & initial load
   useEffect(() => {
@@ -76,13 +98,15 @@ export default function Notifications() {
     };
   }, [user, fetchNotifications]);
 
-  const unreadCount = notifications.filter(n => !n.is_read).length;
+  const unreadCount = allNotifications.filter(n => !n.is_read).length;
 
   // 3. Mark all notifications as read
   const markAllRead = async () => {
-    if (!user || !supabase || notifications.length === 0) return;
+    if (!user || !supabase || allNotifications.length === 0) return;
     try {
       setNotifications(prev => prev.map(n => ({ ...n, is_read: true })));
+      setTempNotifications(prev => prev.map(n => ({ ...n, is_read: true })));
+
       await supabase
         .from('notifications')
         .update({ is_read: true })
@@ -93,15 +117,19 @@ export default function Notifications() {
     }
   };
 
-  // 4. Clear all notifications (DELETE)
+  // 4. Clear all notifications (DELETE SAFELY BY ID)
   const clearAll = async () => {
-    if (!user || !supabase || notifications.length === 0) return;
+    if (!user || !supabase || allNotifications.length === 0) return;
+    const realIds = notifications.map(n => n.id).filter(Boolean);
     try {
       setNotifications([]);
-      await supabase
-        .from('notifications')
-        .delete()
-        .eq('user_id', user.id);
+      setTempNotifications([]);
+      if (realIds.length > 0) {
+        await supabase
+          .from('notifications')
+          .delete()
+          .in('id', realIds);
+      }
     } catch (err) {
       console.error('Error clearing notifications:', err);
     }
@@ -113,6 +141,7 @@ export default function Notifications() {
     if (!user || !supabase) return;
     try {
       setNotifications(prev => prev.filter(n => n.id !== id));
+      setTempNotifications(prev => prev.filter(n => n.id !== id));
       await supabase
         .from('notifications')
         .delete()
@@ -127,6 +156,9 @@ export default function Notifications() {
     if (!item.is_read && user && supabase) {
       try {
         setNotifications(prev =>
+          prev.map(n => (n.id === item.id ? { ...n, is_read: true } : n))
+        );
+        setTempNotifications(prev =>
           prev.map(n => (n.id === item.id ? { ...n, is_read: true } : n))
         );
         await supabase
@@ -153,24 +185,21 @@ export default function Notifications() {
         return <AlertTriangle size={14} className="text-yellow-400" />;
       case 'REPLY':
         return <MessageSquare size={14} className="text-sky-400" />;
+      case 'MENTION':
+        return <Bell size={14} className="text-red-400" />;
       default:
         return <Bell size={14} className="text-primary-400" />;
     }
   };
 
   return (
-    <div className="relative z-50">
+    <div className="relative z-50 w-full h-full">
       {/* Bell Button */}
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className="relative p-2 group transition-all outline-none"
+        className="relative w-full h-full rounded-full liquid-glass hover:bg-white/10 flex items-center justify-center group transition-all outline-none"
         title="Notifications"
       >
-        <div
-          className={`absolute inset-0 bg-primary-600/20 rounded-full transition-transform duration-300 ${
-            isOpen ? 'scale-100' : 'scale-0 group-hover:scale-100'
-          }`}
-        />
         <Bell
           size={20}
           className={`relative z-10 transition-colors ${
@@ -179,7 +208,7 @@ export default function Notifications() {
         />
 
         {unreadCount > 0 && (
-          <span className="absolute top-1 right-1 min-w-4 h-4 px-1 bg-primary-600 text-[9px] font-black text-white rounded-full flex items-center justify-center border-2 border-[#050505] shadow-[0_0_10px_rgba(220,38,38,0.8)] animate-pulse">
+          <span className="absolute -top-1 -right-1 min-w-4 h-4 px-1 bg-primary-600 text-[9px] font-black text-white rounded-full flex items-center justify-center border border-[#050505] shadow-[0_0_10px_rgba(220,38,38,0.8)] animate-pulse">
             {unreadCount > 9 ? '9+' : unreadCount}
           </span>
         )}
@@ -196,7 +225,7 @@ export default function Notifications() {
               animate={{ opacity: 1, y: 0, scale: 1 }}
               exit={{ opacity: 0, y: 10, scale: 0.95 }}
               transition={{ duration: 0.2 }}
-              className="absolute right-0 mt-3 w-80 sm:w-96 bg-[#0a0a0a]/95 border border-white/10 rounded-2xl shadow-[0_10px_50px_rgba(0,0,0,0.9)] overflow-hidden z-50 backdrop-blur-xl"
+              className="fixed top-[80px] left-[5vw] right-[5vw] w-[90vw] sm:absolute sm:top-full sm:left-auto sm:right-0 sm:mt-3 sm:w-96 bg-black/95 backdrop-blur-2xl border border-white/10 rounded-2xl shadow-[0_10px_50px_rgba(0,0,0,0.9)] overflow-hidden z-50"
             >
               {/* Header */}
               <div className="p-4 border-b border-white/5 flex justify-between items-center bg-gradient-to-r from-primary-950/20 via-black to-transparent">
@@ -221,13 +250,12 @@ export default function Notifications() {
                       <CheckCheck size={13} /> Mark Read
                     </button>
                   )}
-                  {notifications.length > 0 && (
+                  {allNotifications.length > 0 && (
                     <button
                       onClick={clearAll}
-                      className="text-[10px] text-red-400/80 hover:text-red-400 font-bold uppercase tracking-wider flex items-center gap-1 transition-colors"
-                      title="Clear all notifications"
+                      className="text-[10px] uppercase font-bold tracking-widest text-zinc-500 hover:text-red-400 transition-colors flex items-center gap-1"
                     >
-                      <Trash2 size={12} /> Clear All
+                      <Trash2 size={12} /> Clear
                     </button>
                   )}
                 </div>
@@ -235,14 +263,14 @@ export default function Notifications() {
 
               {/* Notification List */}
               <div className="max-h-[380px] overflow-y-auto no-scrollbar divide-y divide-white/5">
-                {notifications.length === 0 ? (
+                {allNotifications.length === 0 ? (
                   <div className="p-10 text-center flex flex-col items-center justify-center gap-3 text-zinc-500">
                     <Bell size={32} className="opacity-20 stroke-[1.5]" />
                     <p className="text-xs font-bold uppercase tracking-wider">No notifications yet</p>
                     <span className="text-[10px] text-zinc-600">Tracked series alerts and system updates will appear here.</span>
                   </div>
                 ) : (
-                  notifications.map(item => {
+                  allNotifications.map(item => {
                     const timeAgo = item.created_at
                       ? formatDistanceToNow(new Date(item.created_at), { addSuffix: true })
                       : '';

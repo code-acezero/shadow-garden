@@ -4,6 +4,7 @@ import React, { useState, useEffect, Suspense, useCallback } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import AnimeCard from '@/components/Anime/AnimeCard';
 import { hpi } from '@/lib/hpi';
+import { SimpleGridSkeleton } from '@/components/UIx/SkeletonLoaders';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Search, Loader2, ChevronLeft, ChevronRight, X, Languages, Hash,
@@ -96,11 +97,11 @@ function HindiSearchContent() {
   return (
     <div className="min-h-screen bg-[#050505] text-white">
       {/* Header */}
-      <div className="relative pt-20 pb-8 px-4 overflow-hidden">
+      <div className="relative overflow-hidden">
         <div className="absolute inset-0 bg-gradient-to-b from-orange-950/20 via-transparent to-transparent" />
         <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[800px] h-[400px] bg-orange-600/5 rounded-full blur-[120px]" />
         
-        <div className="max-w-7xl mx-auto relative z-10">
+        <div className="relative z-10 w-full px-4 pt-14 sm:pt-16 pb-8 max-w-7xl mx-auto">
           <div className="flex items-center gap-3 mb-2">
             <div className="h-px w-8 bg-orange-500" />
             <span className={`text-orange-400 text-[10px] tracking-[0.3em] font-bold uppercase font-lemon`}>
@@ -128,7 +129,7 @@ function HindiSearchContent() {
 
           {/* Search Bar */}
           <form onSubmit={handleSearch} className="mt-6 flex gap-3">
-            <div className="relative flex-1 max-w-2xl">
+            <div className="relative flex-1">
               <Languages size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-orange-500/60" />
               <input
                 type="text"
@@ -143,7 +144,7 @@ function HindiSearchContent() {
                 </button>
               )}
             </div>
-            <button type="submit" className="px-6 py-3.5 bg-orange-600 hover:bg-orange-700 rounded-2xl text-sm font-bold transition-colors shadow-lg shadow-orange-600/20">
+            <button type="submit" className="py-3.5 bg-orange-600 hover:bg-orange-700 rounded-2xl text-sm font-bold transition-colors shadow-lg shadow-orange-600/20">
               Search
             </button>
             <button
@@ -179,7 +180,7 @@ function HindiSearchContent() {
             exit={{ height: 0, opacity: 0 }}
             className="overflow-hidden border-y border-white/5"
           >
-            <div className="max-w-7xl mx-auto px-4 py-6 space-y-6">
+            <div className="px-4 py-6 space-y-6 w-full">
               <div>
                 <span className="text-[10px] font-bold text-zinc-500 uppercase tracking-[0.2em] mb-3 block flex items-center gap-2">
                   <Hash size={12} /> Genres
@@ -222,7 +223,7 @@ function HindiSearchContent() {
                 <button onClick={() => { setSelectedGenres([]); setSelectedLang(''); }} className="flex items-center gap-2 text-xs text-zinc-500 hover:text-white transition-colors">
                   <RotateCcw size={12} /> Reset
                 </button>
-                <button onClick={handleSearch} className="px-8 py-2.5 bg-orange-600 hover:bg-orange-700 rounded-xl text-sm font-bold transition-colors shadow-lg">
+                <button onClick={handleSearch} className="py-2.5 bg-orange-600 hover:bg-orange-700 rounded-xl text-sm font-bold transition-colors shadow-lg">
                   Apply
                 </button>
               </div>
@@ -230,14 +231,10 @@ function HindiSearchContent() {
           </motion.div>
         )}
       </AnimatePresence>
-
       {/* Results */}
-      <div className="max-w-7xl mx-auto px-4 py-8">
+      <div className="px-4 py-8 w-full">
         {loading ? (
-          <div className="h-[50vh] flex flex-col items-center justify-center gap-4">
-            <Loader2 className="w-10 h-10 animate-spin text-orange-500" />
-            <p className="text-zinc-500 text-sm animate-pulse">Searching Hindi archives...</p>
-          </div>
+          <SimpleGridSkeleton />
         ) : results.length === 0 ? (
           <div className="h-[50vh] flex flex-col items-center justify-center gap-4">
             <div className="w-20 h-20 rounded-full bg-white/5 border border-white/10 flex items-center justify-center">

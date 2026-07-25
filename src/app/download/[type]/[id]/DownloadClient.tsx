@@ -457,7 +457,7 @@ iframe{width:100vw;height:100vh;border:none;}</style></head><body>
       <div className="w-full min-h-screen bg-[#050505] flex flex-col items-center justify-center text-center p-6">
         <h2 className="text-2xl font-bold text-white mb-4">Download Failed</h2>
         <p className="text-zinc-400 mb-8">{error || "No stream data found for this episode."}</p>
-        <button onClick={() => router.back()} className="px-6 py-2 bg-white/10 hover:bg-white/20 rounded-full font-bold text-white transition-all">Go Back</button>
+        <button onClick={() => router.back()} className="py-2 bg-white/10 hover:bg-white/20 rounded-full font-bold text-white transition-all w-full">Go Back</button>
       </div>
     );
   }
@@ -467,14 +467,14 @@ iframe{width:100vw;height:100vh;border:none;}</style></head><body>
   const mp4Target = resolvedEmbed?.type === 'mp4' ? resolvedEmbed.url : (directSource?.kind === 'mp4' ? directSource.url : null);
 
   return (
-    <div className="min-h-screen bg-[#050505] text-gray-100 font-sans p-4 md:p-8 pt-20 relative">
+    <div className="min-h-screen bg-[#050505] text-gray-100 font-sans p-4 md:p-8 relative">
 
       {/* ── 15-Second Ad Gateway Overlay ── */}
       {!adFinished && (
         <div className="fixed inset-0 z-50 bg-[#050505] flex flex-col items-center justify-center p-4 md:p-8 overflow-y-auto">
-          <div className="max-w-2xl w-full flex flex-col items-center text-center gap-6 my-auto">
+          <div className="w-full flex flex-col items-center text-center gap-6 my-auto">
             {/* Top Banner Ad Slot Placeholder */}
-            <div id="ad-slot-header" className="w-full max-w-lg aspect-[728/90] bg-white/5 border border-dashed border-orange-500/30 rounded-2xl flex flex-col items-center justify-center p-3 text-zinc-500 text-[10px] font-mono tracking-widest">
+            <div id="ad-slot-header" className="w-full aspect-[728/90] bg-white/5 border border-dashed border-orange-500/30 rounded-2xl flex flex-col items-center justify-center p-3 text-zinc-500 text-[10px] font-mono tracking-widest">
               <span>[ ADVERTISEMENT SPACE - 728x90 BANNER ]</span>
               <span className="text-[9px] text-zinc-600">Google AdSense / PropellerAds / Adsterra Integration Ready</span>
             </div>
@@ -510,7 +510,7 @@ iframe{width:100vw;height:100vh;border:none;}</style></head><body>
             </div>
 
             {/* Main Interstitial Ad Slot Placeholder */}
-            <div id="ad-slot-main" className="w-full max-w-md aspect-[300/250] bg-white/5 border border-emerald-500/30 rounded-3xl flex flex-col items-center justify-center p-6 text-zinc-500 text-xs font-mono tracking-widest relative overflow-hidden group">
+            <div id="ad-slot-main" className="w-full aspect-[300/250] bg-white/5 border border-emerald-500/30 rounded-3xl flex flex-col items-center justify-center p-6 text-zinc-500 text-xs font-mono tracking-widest relative overflow-hidden group">
               <div className="absolute inset-0 bg-gradient-to-b from-orange-500/5 to-transparent pointer-events-none" />
               <span className="text-orange-400 font-bold mb-1">[ SPONSORED AD / INTERSTITIAL - 300x250 ]</span>
               <span className="text-[10px] text-zinc-500 max-w-xs leading-relaxed">High-converting Ad Unit Slot for direct monetization (PopAds, Native Banner, Direct Sponsor Ad)</span>
@@ -543,7 +543,7 @@ iframe{width:100vw;height:100vh;border:none;}</style></head><body>
         </div>
       )}
 
-      <div className="max-w-[1200px] mx-auto">
+      <div className="w-full">
 
         <button onClick={() => router.back()} className="flex items-center gap-2 text-zinc-400 hover:text-white mb-8 transition-colors">
           <ArrowLeft size={16} /> <span className="text-sm font-bold tracking-widest uppercase">Back to Watch</span>
@@ -605,7 +605,7 @@ iframe{width:100vw;height:100vh;border:none;}</style></head><body>
                             : "bg-white/5 border-white/5 text-zinc-400 hover:text-white hover:bg-white/10"
                         )}>
                         <span>Ep {epNum}</span>
-                        {ep.title && <span className="text-[10px] text-zinc-400 truncate max-w-[100px]">{ep.title}</span>}
+                        {ep.title && <span className="text-[10px] text-zinc-400 truncate w-full">{ep.title}</span>}
                       </button>
                     );
                   })}
@@ -757,7 +757,7 @@ iframe{width:100vw;height:100vh;border:none;}</style></head><body>
                 ) : (
                   !mp4Target && !hlsTarget && !resolvingEmbed && (
                     <div className="bg-[#0a0a0a] rounded-3xl p-6 border border-white/5 shadow-xl text-center py-8">
-                      <FileWarning className="w-10 h-10 text-amber-500 mx-auto mb-3" />
+                      <FileWarning className="w-10 h-10 text-amber-500 mb-3" />
                       <h4 className="text-white font-bold text-sm mb-1">Direct Download Options Fetching...</h4>
                       <p className="text-zinc-400 text-xs">If no direct links appear, you can still use the Batch Links Generator or Season ZIP Package on the right.</p>
                     </div>

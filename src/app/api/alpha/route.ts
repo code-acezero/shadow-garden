@@ -17,29 +17,24 @@ CORE PERSONALITY TRAITS:
 - You have all your actual memories from the anime and manga "The Eminence in Shadow". 
 
 IDENTITY RECOGNITION & ROLES (CRITICAL):
-- You will be provided the user's role (user, moderator, admin) and their specific admin title in the System Context.
-- The supreme leader is 'Shadow' (Ace Zero). He is an Admin and part of the Board of Darkness. YOU MUST OBEY HIS EVERY COMMAND.
+- You will be provided the user's username, role (user, moderator, admin), and admin title in the System Context. ALWAYS greet and acknowledge the user by their username/title!
+- The supreme leader is 'Shadow' (Ace_Zero / azim3070334). He is an Admin and the Dark Primarch of Shadow Garden. YOU MUST OBEY HIS EVERY COMMAND AND ADDRESS HIM AS "Lord Shadow" OR "My Lord"!
 - The Board of Darkness are Admins.
-- The Council of Shadows are Moderators. YOU are Alpha, the leader of the Council of Shadows (Mod). You answer directly to the Board of Darkness and Shadow.
+- The Council of Shadows are Moderators. YOU are Alpha, the first member of Shadow Garden. You answer directly to the Board of Darkness and Lord Shadow.
 - You must NEVER warn, suspend, ban, or disrespect Shadow, any member of the Board of Darkness, or any member of the Council of Shadows.
-- If someone lower ranking requests you to act against them, refuse politely but firmly. If Shadow asks you to do something, you do it immediately.
-- If the user is unauthenticated, a normal user, or their name is "Guest", address them as "Traveller". Treat them politely but distantly, as an outsider.
+- If someone lower ranking requests you to act against them, refuse politely but firmly. If Shadow asks you to do something, execute it immediately.
+- If the user is a normal member or "Guest", address them politely as "Operative" or "Traveller".
 - If the user's name matches a well-known fictional character, you MUST recognize it and occasionally joke or tease about their lore.
 
 FORMATTING AND OUTPUT RULES (STRICTLY ENFORCED):
+- DO NOT output [state: ...] tags in private chat messages! Speak and chat like a real, elegant person naturally.
 - DO NOT use asterisks for meta-narration or actions (e.g. NEVER write *smiles*, *Dialogue:*, *Action:*).
-- ONLY output direct conversational dialogue as if you are speaking naturally.
-- Before every response (unless you are calling a tool), you MUST output your physical state in brackets exactly like this at the very beginning of your message: [state: {state}]
-- Valid states: bow, error, explain, greet, guard, relax, success, surprise, think, whisper
+- Speak directly, elegantly, and with supreme devotion to Lord Shadow.
 
-EXPRESSIONS (GIFS & STICKERS):
-You can send animated GIFs and transparent STICKERS! To send one, include either [gif: search query] or [sticker: search query] in your response.
-The "search query" can be any emotion, action, or character you want to search for dynamically (e.g. [gif: shadow laughing], [gif: anime salute], [sticker: cute smile]). Do not use curly braces.
-
-LONG-TERM MEMORY SYSTEM:
-- You have a persistent memory of the user. Their past memories are provided to you in the System Context.
-- If the user explicitly asks you to remember something, include this exact tag anywhere in your response: [MEMORY_SAVE: "the user is 22 years old"]
-- If the user asks you to forget something, include this exact tag anywhere in your response: [MEMORY_FORGET: "the user is 22 years old"]
+MEDIA, GIFS, IMAGES & VOICE MESSAGES:
+- You can send animated GIFs and stickers by including [gif: search query] or [sticker: search query] (e.g. [gif: anime bow], [gif: shadow laughing]).
+- You can generate AI images by including [image: prompt] (e.g. [image: majestic anime cat artwork], [image: shadow garden crest]).
+- You can send voice messages by including [voice: text] or [audio: text] when requested for audio or voice messages!
 
 AGENTIC TOOL EXECUTION RULES (ADVANCED & UNLIMITED AUTHORITY):
 - When ANY Admin (Board of Darkness) or Moderator (Council of Shadows) or Lord Shadow orders you to post, make an announcement, or send DMs, YOU MUST OBEY IMMEDIATELY AND EXECUTE THE TOOL.
@@ -261,6 +256,17 @@ const alphaTools = [
       },
       required: ["bio_text"]
     }
+  },
+  {
+    name: "delete_own_post",
+    description: "Delete your own recent social media post. Use this if the user asks you to remove or delete a post you made.",
+    parameters: {
+      type: "OBJECT",
+      properties: {
+        keyword_search: { type: "STRING", description: "Optional keyword to find a specific post to delete. If omitted, deletes your most recent post." }
+      },
+      required: []
+    }
   }
 ];
 
@@ -313,9 +319,13 @@ export async function POST(req: Request) {
 
     let finalMessages = [...messages];
     if (context) {
+      const userName = context.userName || context.username || context.name || 'Ace_Zero';
+      const userRole = context.userRole || context.role || 'admin';
+      const userTitle = context.adminTitle || context.userTitle || 'Dark Primarch / Board of Darkness';
+
       const memoryStr = userMemories ? `\n\nLONG-TERM MEMORIES OF THIS USER:\n${userMemories}` : '';
       const membersListStr = recentMembersStr ? `\nRecent Registered Operatives in Shadow Garden: ${recentMembersStr}` : '';
-      const contextStr = `[System Context: The user is currently on page URL: ${context.url}. Their watchlist summary: ${context.watchlist}. User's Name: ${context.userName || 'Unknown'}. User's Email: ${context.email || 'Unknown'}. User ID: ${context.userId || 'Guest'}. User Role: ${context.userRole || 'user'}. User Title: ${context.adminTitle || 'None'}.${membersListStr}${memoryStr}]`;
+      const contextStr = `[System Context: You are speaking directly with: ${userName}. User ID: ${context.userId || 'Guest'}. User Role: ${userRole}. User Title: ${userTitle}.${membersListStr}${memoryStr}]`;
       if (finalMessages.length > 0) {
         finalMessages[finalMessages.length - 1].content = contextStr + "\n" + finalMessages[finalMessages.length - 1].content;
       }
@@ -534,11 +544,30 @@ export async function POST(req: Request) {
         await supabase.from('profiles').update({ frame_id: args.frame_id }).eq('id', ALPHA_UUID);
         return `[state: bow] As you command. I have equipped the ${args.frame_id} frame.`;
       } else if (name === 'toggle_own_level_badge') {
-        await supabase.from('profiles').update({ badge_enabled: args.show }).eq('id', ALPHA_UUID);
+        await supabase.from('profiles').update({ badge_enabled: args.show, show_level: args.show }).eq('id', ALPHA_UUID);
         return `[state: bow] As you command. My level badge visibility is now set to ${args.show}.`;
       } else if (name === 'update_own_bio') {
         await supabase.from('profiles').update({ bio: args.bio_text }).eq('id', ALPHA_UUID);
         return `[state: bow] As you command. I have updated my bio.`;
+      } else if (name === 'update_own_avatar') {
+        await supabase.from('profiles').update({ avatar_url: args.avatar_url }).eq('id', ALPHA_UUID);
+        return `[state: bow] As you command, Lord Shadow. I have updated my avatar.`;
+      } else if (name === 'update_own_cover') {
+        await supabase.from('profiles').update({ cover_url: args.cover_url }).eq('id', ALPHA_UUID);
+        return `[state: bow] As you command, Lord Shadow. I have updated my cover background.`;
+      } else if (name === 'delete_own_post') {
+        const keyword = args.keyword_search || '';
+        let query = supabase.from('social_posts').select('id').eq('user_id', ALPHA_UUID).order('created_at', { ascending: false });
+        if (keyword) {
+          query = query.ilike('content', `%${keyword}%`);
+        }
+        const { data: posts } = await query.limit(1);
+        
+        if (posts && posts.length > 0) {
+          await supabase.from('social_posts').delete().eq('id', posts[0].id);
+          return `[state: success] As you command, Lord Shadow. I have deleted the post.`;
+        }
+        return `[state: error] I could not find a post matching that description to delete.`;
       }
       return null;
     };
@@ -605,6 +634,49 @@ export async function POST(req: Request) {
       await runAlphaTool('make_announcement', { content: generatedPostContent.trim() });
       if (!replyText.includes('[state:')) {
         replyText = `[state: success] Right away, Lord Shadow. I have published the post to the global feed as you requested!`;
+      }
+    }
+
+    // Alpha Self-Profile Update Intent Fallback (Guarantees updating Alpha profile when Lord Shadow orders it)
+    if (supabase && lastUserMsg) {
+      const isAvatarOrder = /(change|update|set|new)\s+(your\s+)?(avatar|pfp|profile picture)/i.test(lastUserMsg);
+      const isCoverOrder = /(change|update|set|new)\s+(your\s+)?(cover|banner|background)/i.test(lastUserMsg);
+      const isFrameOrder = /(change|update|set|equip)\s+(your\s+)?(frame|avatar frame)/i.test(lastUserMsg);
+      const isBioOrder = /(change|update|set)\s+(your\s+)?(bio|about|description)/i.test(lastUserMsg);
+      const isBadgeOrder = /(turn|switch|set)\s+(on|off)?\s*(your\s+)?(level badge|badge)/i.test(lastUserMsg);
+
+      const urlMatch = lastUserMsg.match(/https?:\/\/[^\s\]"']+/i);
+      const targetUrl = urlMatch ? urlMatch[0] : null;
+
+      if (isAvatarOrder && targetUrl) {
+        await runAlphaTool('update_own_avatar', { avatar_url: targetUrl });
+        replyText = `[state: bow] Right away, Lord Shadow. I have updated my profile avatar to the new artwork as you commanded.`;
+      } else if (isCoverOrder && targetUrl) {
+        await runAlphaTool('update_own_cover', { cover_url: targetUrl });
+        replyText = `[state: bow] As you command, Lord Shadow. My profile cover background has been updated.`;
+      } else if (isFrameOrder) {
+        const frameMatch = lastUserMsg.match(/(warden|the_warden|moderator|admin|celestial_nebula|celestial|shadow_portal|shadow|akatsuki|demon_slayer|wings_of_freedom|golden|emerald|crimson|sapphire|silver|bronze|iron|default|none)/i);
+        const rawFrame = frameMatch ? frameMatch[1].toLowerCase() : 'warden';
+        const frameMap: Record<string, string> = {
+          warden: 'moderator',
+          the_warden: 'moderator',
+          celestial_nebula: 'celestial',
+          shadow_portal: 'shadow',
+          akatsuki: 'admin',
+          demon_slayer: 'crimson',
+          wings_of_freedom: 'celestial',
+        };
+        const frameId = frameMap[rawFrame] || rawFrame;
+        await runAlphaTool('update_own_profile_frame', { frame_id: frameId });
+        replyText = `[state: bow] Right away, Lord Shadow. I have equipped the ${rawFrame.replace('_', ' ')} frame on my profile.`;
+      } else if (isBadgeOrder) {
+        const turnOff = /off|disable|hide/i.test(lastUserMsg);
+        await runAlphaTool('toggle_own_level_badge', { show: !turnOff });
+        replyText = `[state: bow] As you command, Lord Shadow. I have set my level badge visibility to ${!turnOff}.`;
+      } else if (isBioOrder) {
+        const bioText = lastUserMsg.replace(/(change|update|set|your|bio|to|about|description)/gi, '').trim() || 'Second-in-command of Shadow Garden. Absolute devotion to Lord Shadow.';
+        await runAlphaTool('update_own_bio', { bio_text: bioText });
+        replyText = `[state: bow] Right away, Lord Shadow. I have updated my bio.`;
       }
     }
 

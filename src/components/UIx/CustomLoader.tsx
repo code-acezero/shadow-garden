@@ -93,7 +93,6 @@ export default function CustomLoader() {
     const pathname = usePathname();
 
     useEffect(() => {
-        // --- TRIGGER LOGIC ---
         const hasSeenSplash = sessionStorage.getItem("shadow_splash_seen");
         const fromLanding = document.referrer.includes('/landing');
 
@@ -106,10 +105,9 @@ export default function CustomLoader() {
 
         const sequence = async () => {
             // 1. DRAW PHASE (2s)
-            // Gentle breathing (Very subtle)
+            // Subtle breathing glow — opacity only, NO blur filter on full-screen overlay (very expensive on mobile)
             glowControls.start({
-                scale: [1, 1.15, 1],
-                opacity: [0.1, 0.25, 0.1], // Max 25% opacity
+                opacity: [0.08, 0.22, 0.08],
                 transition: { duration: 3, repeat: Infinity, ease: "easeInOut" }
             });
 
@@ -117,19 +115,17 @@ export default function CustomLoader() {
             sessionStorage.setItem("shadow_splash_seen", "true");
 
             // 2. ACCELERATION PHASE (1.8s)
-            // Custom Bezier for "Slow Start -> High Speed"
             iconControls.start({
                 rotate: 1080, 
                 transition: { 
                     duration: 1.8, 
-                    ease: [0.6, 0.05, 0.01, 0.99] // Deep curve for heavy acceleration
+                    ease: [0.6, 0.05, 0.01, 0.99]
                 }
             });
 
-            // Mist breathes slightly faster but stays dim
+            // Glow pulses slightly faster — still opacity only
             glowControls.start({
-                scale: [1.1, 1.3, 1.1],
-                opacity: [0.2, 0.4, 0.2], // slightly brighter
+                opacity: [0.15, 0.35, 0.15],
                 transition: { duration: 0.3, repeat: Infinity, ease: "linear" }
             });
 
@@ -148,34 +144,26 @@ export default function CustomLoader() {
                     initial={{ opacity: 1 }}
                     exit={{ 
                         opacity: 0, 
-                        transition: { duration: 0.8, ease: "easeOut", delay: 0.1 } 
+                        // Simple opacity fade only — scale:20 + blur exit were catastrophic on mobile GPU
+                        transition: { duration: 0.6, ease: "easeOut" } 
                     }}
                 >
                     <div className="relative w-32 h-32 md:w-48 md:h-48 flex items-center justify-center">
                         
-                        {/* --- GLOSSY SHINE MIST --- */}
+                        {/* AMBIENT GLOW — opacity only, no filter:blur (avoid full-viewport blur layer) */}
                         <motion.div
-                            className="absolute inset-0 rounded-full"
-                            style={{
-                                background: "radial-gradient(circle, rgba(255,255,255,0.15) 0%, transparent 70%)",
-                                filter: "blur(20px)"
-                            }}
-                            initial={{ opacity: 0, scale: 0.8 }}
+                            className="absolute inset-0 rounded-full bg-white/15"
+                            initial={{ opacity: 0 }}
                             animate={glowControls}
-                            exit={{ 
-                                opacity: 0, 
-                                scale: 20, // Expands to cover screen like a reflection
-                                transition: { duration: 1.2, ease: "easeOut" } 
-                            }}
+                            exit={{ opacity: 0, transition: { duration: 0.3 } }}
                         />
 
-                        {/* --- ICON (NO ZOOM) --- */}
+                        {/* ICON */}
                         <motion.div
                             className="relative w-full h-full z-10"
                             animate={iconControls}
                             exit={{ 
                                 opacity: 0, 
-                                scale: 1, // STRICTLY 1
                                 transition: { duration: 0.2 } 
                             }}
                         >
@@ -188,7 +176,7 @@ export default function CustomLoader() {
                         className="absolute bottom-[35%] md:bottom-[30%] text-[10px] uppercase tracking-[0.6em] text-primary-600/80 font-bold whitespace-nowrap z-20"
                         initial={{ opacity: 0, y: 20 }} 
                         animate={{ opacity: 1, y: 0 }} 
-                        exit={{ opacity: 0, filter: "blur(5px)", transition: { duration: 0.3 } }} 
+                        exit={{ opacity: 0, transition: { duration: 0.3 } }} 
                         transition={{ delay: 1 }}
                     >
                         Shadow Garden Opening

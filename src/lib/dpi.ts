@@ -209,7 +209,7 @@ export const dpi = {
       const episodesData: any[] = info?.episodes?.episodes || info?.episodes || [];
       return {
         id: (detail?.id || id) as string,
-        title: (detail?.title || 'Unknown Title') as string,
+        title: (detail?.title || detail?.name || 'Unknown Title') as string,
         nativeTitle: ((detail?.alternativeTitles || [])[0] || '') as string,
         image: (detail?.image || '') as string,
         banner: (detail?.image || '') as string,

@@ -110,8 +110,8 @@ export default function RoomsHubPage() {
   };
 
   return (
-    <div className="min-h-screen bg-[#050505] text-white flex flex-col safe-top pt-20 md:pt-24 pb-20 md:pb-0">
-      <div className="w-full max-w-[1350px] mx-auto px-4 flex-1">
+    <div className="min-h-screen bg-[#050505] text-white flex flex-col safe-top">
+      <div className="w-full px-4 flex-1">
         {/* Header Hero */}
         <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-6 mb-10 border-b border-white/10 pb-8">
           <div>
@@ -123,14 +123,14 @@ export default function RoomsHubPage() {
                 Synchronized Watch Rooms
               </h1>
             </div>
-            <p className="text-xs text-zinc-400 mt-2 max-w-xl">
+            <p className="text-xs text-zinc-400 mt-2 w-full">
               Watch Anime, Donghua, Movies & Drama together in real-time. Live synchronized video, temporary chat, and full room controls.
             </p>
           </div>
 
           <button
             onClick={() => setCreateModalOpen(true)}
-            className="px-6 py-3 bg-primary-600 hover:bg-primary-500 text-white rounded-full text-xs font-black uppercase tracking-widest shadow-lg shadow-primary-900/40 flex items-center gap-2 transition-all"
+            className="py-3 bg-primary-600 hover:bg-primary-500 text-white rounded-full text-xs font-black uppercase tracking-widest shadow-lg shadow-primary-900/40 flex items-center gap-2 transition-all"
           >
             <Plus size={16} /> Create Watch Room
           </button>
@@ -150,7 +150,7 @@ export default function RoomsHubPage() {
             <p className="text-xs text-zinc-500 max-w-md">Be the first to host a watch party! Create a room and invite your friends or guild members.</p>
             <button
               onClick={() => setCreateModalOpen(true)}
-              className="mt-2 px-6 py-2.5 bg-primary-600 text-white rounded-full text-xs font-bold uppercase tracking-wider"
+              className="mt-2 py-2.5 bg-primary-600 text-white rounded-full text-xs font-bold uppercase tracking-wider w-full"
             >
               Start A Room
             </button>
@@ -219,7 +219,7 @@ export default function RoomsHubPage() {
               initial={{ scale: 0.95, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
               exit={{ scale: 0.95, opacity: 0 }}
-              className="w-full max-w-lg bg-[#0a0a0a] border border-white/10 rounded-3xl p-6 shadow-2xl space-y-6"
+              className="w-full bg-[#0a0a0a] border border-white/10 rounded-3xl p-6 shadow-2xl space-y-6"
             >
               <div className="flex items-center justify-between border-b border-white/10 pb-4">
                 <h3 className="text-sm font-black uppercase tracking-widest text-white flex items-center gap-2">

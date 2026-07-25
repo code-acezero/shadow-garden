@@ -9,6 +9,7 @@ import { AnimeService } from '@/lib/api';
 import { hpi } from '@/lib/hpi'; 
 import { dpi } from '@/lib/dpi';
 import Link from 'next/link';
+import { SimpleGridSkeleton } from '@/components/UIx/SkeletonLoaders';
 
 interface CacheData {
     [key: string]: {
@@ -186,15 +187,15 @@ export default function RecentUpdatesSection({ initialData }: { initialData: any
     }, [filter, isMounted, initialData]);
 
     return (
-        <section className="w-full relative z-10 animate-in fade-in duration-700 mt-8 mb-12 px-4 md:px-8 max-w-[1350px] mx-auto">
+        <section className="w-full relative z-10 animate-in fade-in duration-700 mt-2 md:mt-8 mb-6 md:mb-12 px-4">
             
             {/* --- HEADER --- */}
-            <div className="flex flex-wrap md:flex-nowrap items-center justify-between mb-6 gap-y-4 md:gap-4 relative">
+            <div className="flex flex-wrap md:flex-nowrap items-center justify-between mb-3 md:mb-6 gap-y-3 md:gap-4 relative">
                 <div className="flex items-center gap-2 md:gap-3 min-w-0 order-1">
                     <div className="p-1.5 md:p-2 bg-primary-600/10 rounded-lg md:rounded-xl border border-primary-500/20 backdrop-blur-md flex-shrink-0">
                         <Zap className="w-3.5 h-3.5 md:w-4 md:h-4 text-primary-500 fill-current" />
                     </div>
-                    <h2 className="text-sm md:text-lg font-black tracking-[0.15em] md:tracking-[0.2em] uppercase font-sans drop-shadow-md bg-gradient-to-r from-primary-500 via-violet-500 to-violet-600 bg-clip-text text-transparent truncate">
+                    <h2 className="text-sm md:text-lg font-black tracking-[0.15em] md:tracking-[0.2em] uppercase font-sans drop-shadow-md bg-gradient-to-r from-primary-500 via-primary-600 to-primary-800 bg-clip-text text-transparent truncate">
                         Recent Updates
                     </h2>
                 </div>
@@ -230,16 +231,13 @@ export default function RecentUpdatesSection({ initialData }: { initialData: any
 
             {/* --- GRID CONTENT --- */}
             {loading ? (
-                <div className="h-[300px] md:h-[400px] w-full flex flex-col items-center justify-center gap-4 rounded-[24px] md:rounded-[32px] border border-white/5 bg-white/5">
-                    <Loader2 className="w-8 h-8 md:w-10 md:h-10 text-primary-600 animate-spin drop-shadow-[0_0_15px_rgba(220,38,38,0.5)]" />
-                    <p className="text-[9px] md:text-[10px] font-black text-zinc-500 uppercase tracking-[0.4em] animate-pulse">Syncing Intel...</p>
-                </div>
+                <SimpleGridSkeleton />
             ) : data.length > 0 ? (
-                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4 md:gap-6 relative">
+                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4 md:gap-6 relative perf-contain">
                     {data.slice(0, 24).map((anime, idx) => (
                         <div 
                             key={`${anime.id}-${idx}`}
-                            className="group relative z-10 transition-all duration-300 hover:scale-[1.03] hover:z-50"
+                            className="group relative z-10 transform-gpu will-change-transform transition-transform duration-300 hover:scale-[1.03] hover:z-50"
                         >
                             {filter === 'hindi' ? (
                                 <HindiAnimeCard anime={anime} />

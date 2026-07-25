@@ -2,14 +2,18 @@
 
 import React, { useState, useMemo, useEffect, useCallback } from 'react';
 import { 
-  X, ShieldCheck, CornerDownRight, MessageSquare, Image as ImageIcon, Smile, Loader2, Search
+  X, CornerDownRight, MessageSquare, Image as ImageIcon, Smile, Loader2, Search
 } from 'lucide-react';
 import ProfileAvatar from '@/components/User/ProfileAvatar';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { formatDistanceToNow } from 'date-fns';
+import { RoleTitleBadge } from '@/components/ui/RoleTitleBadge';
 import { toast } from '@/lib/toast';
 import { useAuth } from '@/context/AuthContext';
 import { ImageAPI } from '@/lib/api';
+import { supabase } from '@/lib/supabase';
+import { useMentions } from '@/hooks/useMentions';
+import MentionDropdown from '@/components/ui/MentionDropdown';
 
 export interface InstagramCommentsModalProps {
   post: any | null;
@@ -19,8 +23,8 @@ export interface InstagramCommentsModalProps {
   user: any;
 }
 
-// Giphy public beta key (free, rate-limited, replace with your own key for production)
-const GIPHY_API_KEY = 'dc6zaTOxFJmzC';
+// Tenor public API key (free, rate-limited, replace with your own key for production)
+const TENOR_API_KEY = 'LIVDSRZULELA';
 
 export default function InstagramCommentsModal({
   post,
@@ -42,18 +46,27 @@ export default function InstagramCommentsModal({
   const [gifResults, setGifResults] = useState<Array<{ id: string; url: string; preview: string }>>([]);
   const [gifLoading, setGifLoading] = useState(false);
 
+  // Mention Suggestions logic
+  const {
+    mentionState,
+    handleKeyDown: handleMentionKeyDown,
+    insertMention,
+  } = useMentions(commentText, (username) => {
+    setCommentText(prev => insertMention(username));
+  });
+
   const fetchGifs = useCallback(async (query: string) => {
     setGifLoading(true);
     try {
       const endpoint = query.trim()
-        ? `https://api.giphy.com/v1/gifs/search?api_key=${GIPHY_API_KEY}&q=${encodeURIComponent(query)}&limit=20&rating=g`
-        : `https://api.giphy.com/v1/gifs/trending?api_key=${GIPHY_API_KEY}&limit=20&rating=g`;
+        ? `https://g.tenor.com/v1/search?q=${encodeURIComponent(query)}&key=${TENOR_API_KEY}&limit=20`
+        : `https://g.tenor.com/v1/trending?key=${TENOR_API_KEY}&limit=20`;
       const res = await fetch(endpoint);
       const json = await res.json();
-      const gifs = (json.data || []).map((g: any) => ({
+      const gifs = (json.results || []).map((g: any) => ({
         id: g.id,
-        url: g.images.fixed_height.url,
-        preview: g.images.fixed_height_small.url,
+        url: g.media[0].gif.url,
+        preview: g.media[0].tinygif.url,
       }));
       setGifResults(gifs);
     } catch {
@@ -113,8 +126,8 @@ export default function InstagramCommentsModal({
 
   return (
     <Dialog open={!!post} onOpenChange={() => onClose()}>
-      <DialogContent className="max-w-4xl bg-[#0a0a0f]/95 backdrop-blur-2xl border border-white/10 text-white sm:rounded-3xl p-0 shadow-2xl overflow-hidden flex flex-col md:flex-row h-[85vh] max-h-[700px] [&>button]:right-4 [&>button]:top-4 [&>button]:text-zinc-400 hover:[&>button]:text-white z-[2000]">
-        
+      <DialogContent className="bg-[#0a0a0f]/95 backdrop-blur-2xl border border-white/10 text-white sm:rounded-3xl p-0 shadow-2xl overflow-hidden flex flex-col md:flex-row !top-[7.5vh] !translate-y-0 h-[83vh] max-h-[680px] [&>button]:right-4 [&>button]:top-4 [&>button]:text-zinc-400 hover:[&>button]:text-white z-[2000]">
+        <DialogTitle className="sr-only">Post Comments</DialogTitle>
         {/* --- LEFT SIDE: Post Media Preview (Desktop) --- */}
         <div className="hidden md:flex flex-1 bg-black/60 backdrop-blur-md items-center justify-center relative overflow-hidden border-r border-white/10">
           {post.images && post.images.length > 0 ? (
@@ -125,8 +138,11 @@ export default function InstagramCommentsModal({
             />
           ) : (
             <div className="p-8 text-center space-y-3 max-w-sm">
-              <ProfileAvatar profile={post.user} className="w-16 h-16 mx-auto cursor-pointer" />
-              <h4 className="font-bold text-sm text-white">{post.user?.username}</h4>
+              <ProfileAvatar profile={post.user} className="w-16 h-16 cursor-pointer" />
+              <div className="flex items-center justify-center gap-2">
+                <h4 className="font-bold text-sm text-white">{post.user?.username}</h4>
+                <RoleTitleBadge role={post.user?.role} adminTitle={post.user?.admin_title} />
+              </div>
               <p className="text-xs text-zinc-300 leading-relaxed italic">{post.content?.replace(/<!--POLL_DATA:.*?-->/g, '')}</p>
             </div>
           )}
@@ -141,7 +157,7 @@ export default function InstagramCommentsModal({
             <div className="min-w-0 flex-1">
               <div className="flex items-center gap-1.5 truncate">
                 <span className="font-bold text-xs text-white truncate">{post.user?.username}</span>
-                {post.user?.role === 'admin' && <ShieldCheck size={12} className="text-primary-500" />}
+                <RoleTitleBadge role={post.user?.role} adminTitle={post.user?.admin_title} className="shrink-0" />
               </div>
               <p className="text-[10px] text-zinc-500 truncate">
                 {formatDistanceToNow(new Date(post.created_at), { addSuffix: false })} ago
@@ -158,6 +174,7 @@ export default function InstagramCommentsModal({
                 <div className="text-xs space-y-1">
                   <p className="text-zinc-200 leading-relaxed">
                     <span className="font-bold text-white mr-1.5">{post.user?.username}</span>
+                    <RoleTitleBadge role={post.user?.role} adminTitle={post.user?.admin_title} className="inline-flex mr-1.5 align-middle -mt-0.5" />
                     {post.content.replace(/<!--POLL_DATA:.*?-->/g, '')}
                   </p>
                   <span className="text-[10px] text-zinc-500 block">
@@ -169,11 +186,11 @@ export default function InstagramCommentsModal({
 
             {comments.length === 0 ? (
               <div className="text-center py-16 text-zinc-500 text-xs">
-                <MessageSquare size={24} className="mx-auto mb-2 opacity-40 text-primary-400" />
+                <MessageSquare size={24} className="mb-2 opacity-40 text-primary-400 w-full" />
                 No comments yet. Be the first to comment!
               </div>
             ) : (
-              comments.map(c => (
+              [...comments].reverse().map(c => (
                 <InstagramCommentBubble 
                   key={c.id} 
                   comment={c} 
@@ -198,7 +215,7 @@ export default function InstagramCommentsModal({
 
             {/* Media Preview Attachment */}
             {commentMedia && (
-              <div className="relative inline-block rounded-xl overflow-hidden border border-white/15 group shrink-0 max-w-[120px]">
+              <div className="relative inline-block rounded-xl overflow-hidden border border-white/15 group shrink-0">
                 <img src={commentMedia} alt="Attachment" className="w-20 h-20 object-cover" />
                 <button
                   type="button"
@@ -210,7 +227,7 @@ export default function InstagramCommentsModal({
               </div>
             )}
 
-            {/* GIF / Sticker Tray (Giphy-powered) */}
+            {/* GIF / Sticker Tray (Tenor-powered) */}
             {showStickerTray && (
               <div className="bg-[#121218] border border-white/10 rounded-2xl overflow-hidden">
                 {/* Search bar */}
@@ -256,15 +273,29 @@ export default function InstagramCommentsModal({
               </div>
             )}
 
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 relative">
               <ProfileAvatar profile={profile || user?.user_metadata || user} className="w-8 h-8 shrink-0 cursor-pointer" />
               
+              <MentionDropdown
+                suggestions={mentionState.users}
+                selectedIndex={mentionState.selectedIndex}
+                onSelect={(username) => setCommentText(insertMention(username))}
+                isFetching={false}
+                position="top"
+              />
+
               <div className="flex-1 flex items-center bg-black/50 border border-white/15 rounded-full px-3 py-1.5 focus-within:border-primary-500 transition-colors">
                 <input
+                  id="comment-input-field"
                   type="text"
                   value={commentText}
-                  onChange={e => setCommentText(e.target.value)}
-                  onKeyDown={e => { if (e.key === 'Enter') handleSubmit(); }}
+                  onChange={e => {
+                    setCommentText(e.target.value);
+                  }}
+                  onKeyDown={e => {
+                    if (handleMentionKeyDown(e as any)) return;
+                    if (e.key === 'Enter') handleSubmit(); 
+                  }}
                   placeholder={`Add a comment for @${post.user?.username || 'user'}...`}
                   className="flex-1 bg-transparent border-none text-xs text-white placeholder-zinc-500 focus:outline-none"
                 />
@@ -339,7 +370,7 @@ function InstagramCommentBubble({ comment, onReply, isReply = false }: { comment
           <span className="font-bold text-white mr-1.5 hover:underline cursor-pointer">
             {comment.user?.username || 'User'}
           </span>
-          {comment.user?.role === 'admin' && <ShieldCheck size={12} className="inline text-primary-500 mr-1" />}
+          <RoleTitleBadge role={comment.user?.role} adminTitle={comment.user?.admin_title} className="inline-flex mr-1.5 align-middle -mt-0.5" />
           {isReply && comment.replyToUser && (
             <span className="text-primary-400 font-semibold mr-1.5 hover:underline cursor-pointer">
               @{comment.replyToUser}
@@ -354,7 +385,7 @@ function InstagramCommentBubble({ comment, onReply, isReply = false }: { comment
                     key={idx}
                     src={line.trim()}
                     alt="Comment media"
-                    className="mt-1.5 max-h-44 max-w-[240px] rounded-xl border border-white/10 object-cover cursor-pointer hover:scale-[1.02] transition-transform shadow-md"
+                    className="mt-1.5 max-h-44 rounded-xl border border-white/10 object-cover cursor-pointer hover:scale-[1.02] transition-transform shadow-md"
                     onClick={() => window.open(line.trim(), '_blank')}
                   />
                 );

@@ -4,12 +4,13 @@ import React, { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 // ✅ FIXED: Import from the correct singleton file
 import { supabase } from '@/lib/supabase';
-import { ArrowLeft, Loader2 } from 'lucide-react';
+import { ArrowLeft } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge'; 
 import OtakuVerse from '@/components/Social/OtakuVerse';
 import Footer from '@/components/Anime/Footer';
 import { toast } from '@/lib/toast';
+import { PageSkeleton } from '@/components/UIx/SkeletonLoaders';
 
 export default function SinglePostPage() {
   const params = useParams();
@@ -33,7 +34,7 @@ export default function SinglePostPage() {
             .from('social_posts')
             .select(`
               *,
-              user:profiles(username, avatar_url, role, level, frame_id, show_level)
+              user:profiles(username, avatar_url, role, level, admin_title, title, frame_id, show_level)
             `)
             .eq('id', params.id)
             .single();
@@ -57,16 +58,7 @@ export default function SinglePostPage() {
   }, [params.id]);
 
   if (isLoading || !isReady) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-black">
-        <div className="flex flex-col items-center gap-4">
-          <Loader2 className="w-10 h-10 text-primary-600 animate-spin" />
-          <p className="text-zinc-500 font-lemon tracking-widest animate-pulse text-xs">
-            DECRYPTING_SIGNAL...
-          </p>
-        </div>
-      </div>
-    );
+    return <PageSkeleton />;
   }
 
   if (!post) {
@@ -81,7 +73,7 @@ export default function SinglePostPage() {
         </p>
         <Button 
           onClick={() => router.push('/social')} 
-          className="bg-primary-600 hover:bg-primary-700 text-white font-black px-8 rounded-full shadow-[0_0_20px_rgba(220,38,38,0.4)] transition-all"
+          className="bg-primary-600 hover:bg-primary-700 text-white font-black rounded-full shadow-[0_0_20px_rgba(220,38,38,0.4)] transition-all"
         >
           RETURN TO GLOBAL FEED
         </Button>
@@ -93,7 +85,7 @@ export default function SinglePostPage() {
     <div className="min-h-screen bg-black text-white">
       {/* Dynamic Header for Single Post View */}
       <div className="sticky top-0 z-[100] bg-black/80 backdrop-blur-md border-b border-white/5 p-4">
-        <div className="max-w-4xl mx-auto flex items-center justify-between">
+        <div className="flex items-center justify-between w-full">
           <div className="flex items-center gap-4">
             <Button 
               variant="ghost" 

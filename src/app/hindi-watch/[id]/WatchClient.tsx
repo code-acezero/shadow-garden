@@ -11,12 +11,13 @@ import {
   ChevronDown, Heart, CheckCircle, XCircle,
   FastForward, Star, Info, MessageSquare, User,
   Loader2, Globe, Flame, Calendar, Copyright, Check, Mic, X,
-  ChevronLeft, ChevronRight, Pause, ArrowLeft, ArrowRight, Download, Wand2
+  ChevronLeft, ChevronRight, Pause, ArrowLeft, ArrowRight, Download, Wand2,
+  Zap, PlayCircle, RotateCw, StepForward
 } from 'lucide-react';
 
 import { AnimeService, UniversalAnime } from '@/lib/api';
 import { hpi } from '@/lib/hpi';
-import { cn, getSimilarity, isRelatedAnime, getChunkLabel } from '@/lib/utils';
+import { cn, getSimilarity, isRelatedAnime, getChunkLabel, formatAnimeTitle, sanitizeContinueWatchingEntry } from '@/lib/utils';
 import { supabase } from '@/lib/supabase';
 import { toast } from '@/lib/toast';
 import { useAuth } from '@/context/AuthContext';
@@ -29,6 +30,7 @@ import AnimeCard from '@/components/Anime/AnimeCard';
 import AuthModal from '@/components/Auth/AuthModal';
 import { useUserData } from '@/context/UserDataContext';
 import { Button } from '@/components/ui/button';
+import { WatchPageSkeleton, PlayerSkeleton, SimpleGridSkeleton } from '@/components/UIx/SkeletonLoaders';
 import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
 import {
@@ -90,7 +92,7 @@ const useWatchSettings = () => {
   const [isLoaded, setIsLoaded] = useState(false);
   const [settings, setSettings] = useState({
     autoPlay: true, autoNext: true, autoSkip: false, dimMode: false,
-    server: 'VidPlay-1', category: 'sub' as 'sub' | 'dub' | 'raw', volume: 1
+    server: 'VidPlay-1', category: 'dub' as 'sub' | 'dub' | 'raw', volume: 1
   });
 
   useEffect(() => {
@@ -115,11 +117,8 @@ const useWatchSettings = () => {
 
 // --- 2. MEMOIZED PERFORMANCE COMPONENTS ---
 
-const FantasyLoader = memo(({ text = "SUMMONING..." }: { text?: string }) => (
-  <div className="w-full h-full min-h-[500px] flex flex-col items-center justify-center relative bg-[#050505]">
-    <div className="w-16 h-16 border-4 border-orange-600 border-t-transparent rounded-full animate-spin mb-4 shadow-orange-500/20" />
-    <h2 className="text-xl font-lemon text-orange-500 animate-pulse tracking-[0.3em]">{text}</h2>
-  </div>
+const FantasyLoader = memo(() => (
+  <WatchPageSkeleton />
 ));
 FantasyLoader.displayName = "FantasyLoader";
 
@@ -165,28 +164,80 @@ const PingPongScroll = memo(({ text, className }: { text: string, className?: st
 });
 PingPongScroll.displayName = "PingPongScroll";
 
-const EpisodeButton = memo(({ ep, isCurrent, isFullyPlayed, percent, viewMode, onClick }: any) => {
+const EpisodeButton = memo(({ ep, isCurrent, isFullyPlayed, percent, viewMode, onClick, category, progressRef, playerRef }: any) => {
+    const [realPercent, setRealPercent] = useState(percent);
+    
+    useEffect(() => {
+        if (!isCurrent) return;
+        let animationFrameId: number;
+        const updateProgress = () => {
+             if (progressRef?.current !== undefined && playerRef?.current) {
+                  const duration = playerRef.current.getDuration() || 1;
+                  const p = Math.min(100, Math.max(2, (progressRef.current / duration) * 100));
+                  setRealPercent(p);
+             }
+             animationFrameId = requestAnimationFrame(updateProgress);
+        };
+        animationFrameId = requestAnimationFrame(updateProgress);
+        return () => cancelAnimationFrame(animationFrameId);
+    }, [isCurrent, progressRef, playerRef]);
+    
+    const displayPercent = isCurrent ? realPercent : percent;
+
     return (
         <motion.button
             layout
-            initial={{ opacity: 0, scale: 0.8 }}
-            animate={{ opacity: 1, scale: 1 }}
-            exit={{ opacity: 0, scale: 0.8 }}
-            transition={{ type: "spring", stiffness: 400, damping: 25 }}
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: isCurrent ? 1.05 : 1 }}
+            exit={{ opacity: 0, scale: 0.95 }}
+            transition={{
+                layout: { type: "spring", stiffness: 350, damping: 30 },
+                scale: { type: "spring", stiffness: 300, damping: 25 },
+                opacity: { duration: 0.2 }
+            }}
             onClick={() => onClick(ep.id)}
             className={cn(
-                "relative overflow-hidden group border transition-all duration-300 transform-gpu",
-                viewMode === 'grid' ? "h-9 w-full rounded-full flex items-center justify-center text-[11px] font-black shadow-lg" :
+                "relative overflow-hidden group border transition-colors duration-300 transform-gpu shadow-[0_4px_16px_rgba(0,0,0,0.2)]",
+                viewMode === 'grid' ? "h-9 w-full rounded-full flex items-center justify-center text-[11px] font-black" :
                 viewMode === 'compact' ? "aspect-square rounded-full flex items-center justify-center text-[9px] font-bold" :
-                "w-[95%] mx-auto h-9 rounded-full flex items-center px-4 text-[11px] font-bold text-left",
-                isCurrent ? "bg-orange-600/90 backdrop-blur-md border-orange-400 text-white shadow-[0_0_15px_rgba(220,38,38,0.6)] z-20 scale-105" :
-                isFullyPlayed ? "bg-[#000] border border-orange-900/30 text-white shadow-[inset_0_0_15px_rgba(220,38,38,0.5)] drop-shadow-[0_0_8px_rgba(220,38,38,0.5)]" :
-                "bg-zinc-900 border-zinc-800 text-zinc-500 hover:border-zinc-700 hover:text-white"
+                "w-[98%] mx-auto h-9 rounded-full flex items-center px-4 text-[11px] font-bold text-left",
+                isCurrent ? "bg-green-900/30 backdrop-blur-md border-green-400/40 text-white shadow-[inset_0_0_15px_rgba(74,222,128,0.2),0_0_20px_rgba(34,197,94,0.4)] z-20" :
+                isFullyPlayed ? "border border-red-500/60 text-white shadow-[inset_0_0_25px_rgba(220,38,38,0.8)] drop-shadow-[0_0_10px_rgba(220,38,38,0.5)] overflow-hidden" :
+                "bg-white/5 backdrop-blur-xl border-white/10 text-zinc-400 hover:border-white/30 hover:bg-white/10 hover:text-white hover:shadow-[0_0_15px_rgba(255,255,255,0.15)]"
             )}
-            style={!isCurrent && !isFullyPlayed && percent > 0 ? { background: `linear-gradient(to right, rgba(220, 38, 38, 0.4) ${percent}%, transparent ${percent}%)`, } : {}}
+            style={{
+                ...( (!isCurrent && !isFullyPlayed && displayPercent > 0) ? { background: `linear-gradient(to right, rgba(220, 38, 38, 0.45) ${displayPercent}%, rgba(255, 255, 255, 0.05) ${displayPercent}%)` } : {} ),
+                ...( isFullyPlayed && !isCurrent ? { 
+                     background: `linear-gradient(135deg, transparent 48%, rgba(255,255,255,0.4) 50%, transparent 52%), linear-gradient(45deg, transparent 38%, rgba(255,255,255,0.4) 40%, transparent 42%), linear-gradient(75deg, transparent 68%, rgba(255,255,255,0.3) 70%, transparent 72%), rgba(220, 38, 38, 0.8)`,
+                     backdropFilter: 'blur(10px)'
+                } : {} )
+            }}
         >
-            {!isCurrent && !isFullyPlayed && percent > 0 && <div className="absolute inset-0 bg-orange-600/10 animate-liquid pointer-events-none" />}
-            <span className={cn("truncate relative z-10 w-full", viewMode === 'list' ? "text-left" : "text-center")}>
+            <div className="absolute inset-x-0 top-0 h-[40%] bg-gradient-to-b from-white/15 to-transparent pointer-events-none rounded-t-full" />
+            
+            {!isCurrent && !isFullyPlayed && displayPercent > 0 && <div className="absolute inset-0 bg-orange-600/10 animate-liquid pointer-events-none" />}
+            
+            {isCurrent && (
+                category === 'anime' ? (
+                    <motion.div 
+                        className="absolute bottom-0 left-0 h-full bg-green-500/40 overflow-hidden pointer-events-none rounded-r-2xl border-r border-green-300/50 shadow-[4px_0_15px_rgba(74,222,128,0.5)] backdrop-blur-sm"
+                        initial={{ width: 0 }}
+                        animate={{ width: `${Math.max(2, displayPercent)}%` }}
+                        transition={{ ease: "linear", duration: 0.1 }}
+                    >
+                        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-green-300/40 via-transparent to-transparent opacity-80" />
+                        <div className="absolute top-0 right-0 bottom-0 w-8 bg-gradient-to-l from-green-300/40 to-transparent" />
+                        <div className="absolute top-0 left-0 w-full h-[2px] bg-green-300/70 shadow-[0_0_5px_rgba(134,239,172,0.8)]" />
+                    </motion.div>
+                ) : (
+                    <>
+                        <div className="absolute inset-0 bg-gradient-to-tr from-green-500/20 via-transparent to-green-400/30 animate-pulse pointer-events-none" />
+                        <div className="absolute inset-0 bg-[linear-gradient(45deg,transparent_25%,rgba(134,239,172,0.3)_50%,transparent_75%)] bg-[length:250%_250%] animate-shimmer pointer-events-none" />
+                    </>
+                )
+            )}
+
+            <span className={cn("truncate relative z-10 w-full font-lemon tracking-wide", viewMode === 'list' ? "text-left" : "text-center")}>
                 {viewMode === 'list' ? `${ep.number}. ${ep.title}` : ep.number}
             </span>
         </motion.button>
@@ -244,7 +295,7 @@ const NextEpisodeTimer = ({ schedule, status }: { schedule: any, status: string 
 
 const TrailerSection = ({ videos }: { videos: any[] }) => {
     const [activeVideo, setActiveVideo] = useState(videos?.[0]?.source); if (!videos || videos.length === 0) return null; const getYoutubeId = (url: string) => url?.split('v=')[1]?.split('&')[0] || url?.split('/').pop();
-    return (<Dialog><DialogTrigger asChild><div className="inline-flex items-center gap-2 bg-orange-600/10 border border-orange-500/20 rounded-full px-6 py-2 cursor-pointer hover:bg-orange-600 hover:border-orange-500 transition-all group active:scale-95 shadow-lg shadow-orange-900/10 w-full md:w-auto justify-center"><span className="flex items-center justify-center w-4 h-4 bg-orange-600 rounded-full text-white shadow-lg group-hover:scale-110 transition-transform"><Play size={8} fill="currentColor" /></span><span className="text-[9px] font-black text-primary-100 group-hover:text-white uppercase tracking-wider">Trailers ({videos.length})</span></div></DialogTrigger><DialogContent className="bg-black/95 border-orange-500/40 max-w-4xl w-[90vw] lg:max-w-2xl max-h-[70vh] p-0 overflow-hidden rounded-3xl shadow-[0_0_100px_-20px_rgba(220,38,38,0.5)] animate-in zoom-in-95 duration-300 flex flex-col"><DialogTitle className="sr-only">Trailers</DialogTitle><div className="flex-1 flex flex-col min-h-0"><div className="aspect-video w-full bg-zinc-900 shrink-0"><iframe src={`https://www.youtube.com/embed/${getYoutubeId(activeVideo)}?autoplay=1`} className="w-full h-full" allow="autoplay; encrypted-media" allowFullScreen /></div><div className="p-4 md:p-6 bg-[#0a0a0a] flex-1 overflow-hidden flex flex-col"><ScrollArea className="w-full whitespace-nowrap pb-4 h-full"><div className="flex gap-4 px-2">{videos.map((v: any, i: number) => (v && v.source ? <button key={i} onClick={() => setActiveVideo(v.source)} className={cn("flex flex-col gap-1 p-2 rounded-2xl border transition-all shrink-0 w-28 md:w-36 hover:scale-105 active:scale-95 group/pv", activeVideo === v.source ? "bg-orange-600/10 border-orange-600" : "bg-white/5 border-transparent hover:border-white/10")}><div className="aspect-video w-full bg-zinc-800 rounded-lg overflow-hidden relative shadow-lg"><img src={v.thumbnail || '/images/no-thumb.png'} className="w-full h-full object-cover opacity-60" alt="" loading="lazy" decoding="async"/><div className="absolute inset-0 flex items-center justify-center bg-orange-600/20 opacity-0 group-hover/pv:opacity-100 transition-opacity"><Play size={16} fill="white" className="text-white" /></div></div><span className="text-[9px] font-black text-center truncate w-full uppercase text-zinc-400 group-hover/pv:text-white">{v.title || `Promo ${i+1}`}</span></button> : null))}</div><ScrollBar orientation="horizontal" className="h-1 bg-white/5" /></ScrollArea></div></div></DialogContent></Dialog>);
+    return (<Dialog><DialogTrigger asChild><div className="inline-flex items-center gap-2 bg-orange-600/10 border border-orange-500/20 rounded-full py-2 cursor-pointer hover:bg-orange-600 hover:border-orange-500 transition-all group active:scale-95 shadow-lg shadow-orange-900/10 w-full md:w-auto justify-center"><span className="flex items-center justify-center w-4 h-4 bg-orange-600 rounded-full text-white shadow-lg group-hover:scale-110 transition-transform"><Play size={8} fill="currentColor" /></span><span className="text-[9px] font-black text-primary-100 group-hover:text-white uppercase tracking-wider">Trailers ({videos.length})</span></div></DialogTrigger><DialogContent className="bg-black/95 border-orange-500/40 w-[90vw] lg:max-w-2xl max-h-[70vh] p-0 overflow-hidden rounded-3xl shadow-[0_0_100px_-20px_rgba(220,38,38,0.5)] animate-in zoom-in-95 duration-300 flex flex-col"><DialogTitle className="sr-only">Trailers</DialogTitle><div className="flex-1 flex flex-col min-h-0"><div className="aspect-video w-full bg-zinc-900 shrink-0"><iframe src={`https://www.youtube.com/embed/${getYoutubeId(activeVideo)}?autoplay=1`} className="w-full h-full" allow="autoplay; encrypted-media" allowFullScreen /></div><div className="p-4 md:p-6 bg-[#0a0a0a] flex-1 overflow-hidden flex flex-col"><ScrollArea className="w-full whitespace-nowrap pb-4 h-full"><div className="flex gap-4 px-2">{videos.map((v: any, i: number) => (v && v.source ? <button key={i} onClick={() => setActiveVideo(v.source)} className={cn("flex flex-col gap-1 p-2 rounded-2xl border transition-all shrink-0 w-28 md:w-36 hover:scale-105 active:scale-95 group/pv", activeVideo === v.source ? "bg-orange-600/10 border-orange-600" : "bg-white/5 border-transparent hover:border-white/10")}><div className="aspect-video w-full bg-zinc-800 rounded-lg overflow-hidden relative shadow-lg"><img src={v.thumbnail || '/images/no-thumb.png'} className="w-full h-full object-cover opacity-60" alt="" loading="lazy" decoding="async"/><div className="absolute inset-0 flex items-center justify-center bg-orange-600/20 opacity-0 group-hover/pv:opacity-100 transition-opacity"><Play size={16} fill="white" className="text-white" /></div></div><span className="text-[9px] font-black text-center truncate w-full uppercase text-zinc-400 group-hover/pv:text-white">{v.title || `Promo ${i+1}`}</span></button> : null))}</div><ScrollBar orientation="horizontal" className="h-1 bg-white/5" /></ScrollArea></div></div></DialogContent></Dialog>);
 };
 
 const MarqueeTitle = ({ text }: { text: string }) => {
@@ -259,7 +310,7 @@ const MarqueeTitle = ({ text }: { text: string }) => {
     }, [text]);
 
     return (
-        <div className="flex items-center bg-white/5 rounded-full px-4 h-7 border border-white/5 w-full flex-1 min-w-0 overflow-hidden relative transition-all hover:border-orange-500/20 active:scale-95 group shadow-inner shadow-orange-900/5">
+        <div className="flex items-center bg-white/5 rounded-full h-7 border border-white/5 w-full flex-1 min-w-0 overflow-hidden relative transition-all hover:border-orange-500/20 active:scale-95 group shadow-inner shadow-orange-900/5">
             <span className="text-[10px] text-orange-500 font-black uppercase mr-2 flex-shrink-0 group-hover:animate-pulse">NOW:</span>
             <div ref={containerRef} className="flex-1 overflow-hidden relative h-full flex items-center mask-image-gradient">
                 <div className={cn("whitespace-nowrap inline-block", isOverflowing && "animate-marquee-pingpong")}>
@@ -308,8 +359,8 @@ const StarRating = ({ animeId, initialRating = 0 }: { animeId: string; initialRa
                 }
                 if (user) {
                     const myRating = await retryOperation(async () => {
-                        const { data } = await (supabase.from('anime_ratings') as any).select('rating').eq('user_id', user.id).eq('anime_id', animeId).single();
-                        return data;
+                        const { data } = await (supabase.from('anime_ratings') as any).select('rating').eq('user_id', user.id).eq('anime_id', animeId).limit(1);
+                        return data?.[0] || null;
                     });
                     if (myRating && (myRating as any).rating != null) setUserRating((myRating as any).rating);
                 }
@@ -322,7 +373,7 @@ const StarRating = ({ animeId, initialRating = 0 }: { animeId: string; initialRa
         if (!user) { toast.error("Shadow Agents only."); return; }
         setUserRating(score);
         try {
-            await (supabase!.from('anime_ratings') as any).upsert({ user_id: user.id, anime_id: animeId, rating: score }, { onConflict: 'user_id, anime_id' });
+            await (supabase!.from('anime_ratings') as any).upsert({ user_id: user.id, anime_id: animeId, rating: score }, { onConflict: 'user_id,anime_id' });
             toast.success(`Rated ${score} stars!`);
         } catch (err) {}
     };
@@ -371,7 +422,7 @@ const CharacterDetailsDialog = ({
 
   return (
     <Dialog open={isOpen} onOpenChange={(v) => !v && onClose()}>
-        <DialogContent className="max-w-4xl w-[90vw] h-[65vh] md:h-[550px] p-0 border-0 bg-transparent shadow-none overflow-hidden sm:rounded-[30px] z-[60] [&>button]:hidden">
+        <DialogContent className="w-[90vw] h-[65vh] md:h-[550px] p-0 border-0 bg-transparent shadow-none overflow-hidden sm:rounded-[30px] z-[60] [&>button]:hidden">
             <DialogTitle className="sr-only">Character Details</DialogTitle>
             <div className="w-full h-full relative backdrop-blur-2xl bg-[#050505]/95 border border-white/10 rounded-[30px] shadow-[0_0_80px_rgba(220,38,38,0.15)] overflow-hidden flex flex-col md:flex-row">
                 <div className="absolute top-0 left-0 w-full h-full bg-gradient-to-br from-orange-900/10 via-transparent to-orange-900/5 pointer-events-none" />
@@ -392,7 +443,7 @@ const CharacterDetailsDialog = ({
                     </button>
                 </div>
 
-                {loading ? <div className="w-full h-full flex items-center justify-center"><FantasyLoader text="ANALYZING..." /></div> : data ? (
+                {loading ? <div className="w-full h-full flex items-center justify-center"><SimpleGridSkeleton /></div> : data ? (
                 <>
                     <div className="w-full md:w-[35%] h-[40%] md:h-full relative overflow-hidden group border-b md:border-b-0 md:border-r border-white/5">
                         <img src={data.profile || data.image || '/images/non-non.png'} className="w-full h-full object-cover opacity-90 transition-transform duration-700 group-hover:scale-105" alt={data.name} loading="lazy" decoding="async"/>
@@ -487,7 +538,7 @@ const VoiceActorDetailsDialog = ({
 
   return (
     <Dialog open={isOpen} onOpenChange={(v) => !v && onClose()}>
-        <DialogContent className="max-w-4xl w-[95vw] h-[65vh] md:h-[550px] p-0 border-0 bg-transparent shadow-none overflow-hidden sm:rounded-[30px] z-[60] [&>button]:hidden">
+        <DialogContent className="w-[95vw] h-[65vh] md:h-[550px] p-0 border-0 bg-transparent shadow-none overflow-hidden sm:rounded-[30px] z-[60] [&>button]:hidden">
             <DialogTitle className="sr-only">Actor Details</DialogTitle>
             <div className="w-full h-full relative backdrop-blur-2xl bg-[#050505]/95 border border-white/10 rounded-[30px] shadow-[0_0_80px_rgba(220,38,38,0.3)] overflow-hidden flex flex-col md:flex-row">
                 <div className="absolute top-0 left-0 w-full h-full bg-gradient-to-br from-orange-600/10 via-transparent to-orange-600/5 pointer-events-none" />
@@ -508,7 +559,7 @@ const VoiceActorDetailsDialog = ({
                     </button>
                 </div>
 
-                {loading ? <div className="w-full h-full flex items-center justify-center"><FantasyLoader text="IDENTIFYING..." /></div> : data ? (
+                {loading ? <div className="w-full h-full flex items-center justify-center"><SimpleGridSkeleton /></div> : data ? (
                 <>
                     <div className="w-full md:w-[35%] h-[40%] md:h-full relative overflow-hidden group border-b md:border-b-0 md:border-r border-white/5">
                         <img src={data.profile || '/images/non-non.png'} className="w-full h-full object-cover opacity-90 transition-transform duration-700 group-hover:scale-105" alt={data.name} loading="lazy" decoding="async"/>
@@ -627,10 +678,14 @@ function WatchContent() {
   const [resumeTime, setResumeTime] = useState(0);
   const [isResumeLoaded, setIsResumeLoaded] = useState(false);
   const progressRef = useRef(0);
+  // For iframe streams where we can't read the video element's currentTime
+  const iframeElapsedRef = useRef(0);
+  const iframeTimerRef = useRef<NodeJS.Timeout | null>(null);
   const playerRef = useRef<HindiPlayerRef>(null);
   const playerContainerRef = useRef<HTMLDivElement>(null);
   const progressBuffer = useRef<{[key: string]: any}>({});
   const isBufferDirty = useRef(false);
+  const isSwitchingEpisode = useRef(false);
 
   const seasonsRef = useDraggable();
   const relatedRef = useDraggable();
@@ -662,87 +717,180 @@ function WatchContent() {
       const payload = Object.values(progressBuffer.current);
       if (payload.length === 0) return;
       isBufferDirty.current = false;
-      const sanitizedPayload = payload.map(p => { const { duration, ...clean } = p; return clean; });
+      const sanitizedPayload = payload.map(p => sanitizeContinueWatchingEntry(p, user.id)).filter(Boolean);
       try {
           // ✅ Shared Client Used Here
-          await (supabase.from('user_continue_watching') as any).upsert(sanitizedPayload, { onConflict: 'user_id, episode_id' });
+          await (supabase.from('user_continue_watching') as any).upsert(sanitizedPayload, { onConflict: 'user_id,episode_id' });
+          if (typeof window !== 'undefined') window.dispatchEvent(new CustomEvent('shadow-continue-updated'));
       } catch (e) {
           isBufferDirty.current = true;
       }
   }, [user, animeId]);
 
-  const saveProgress = useCallback(async (forceFlush = false) => {
-      if (!currentEpId || !anime) return;
-      const progress = Math.floor(progressRef.current);
-      if (progress < 5) return;
-      const ep = anime.episodes.find(e => e.id === currentEpId);
-      if (!ep) return;
-      const duration = playerRef.current?.getDuration() || 1350;
-      const percent = Math.min(100, Math.round((progress / duration) * 100));
-      const isCompleted = percent >= 80;
+  const saveProgress = useCallback(async (forceFlush = false, overrideEpId?: string) => {
+      const targetEpId = overrideEpId || currentEpId;
+      if (!targetEpId || !anime) return;
+      const playerTime = playerRef.current?.getCurrentTime() || 0;
+      const currentSavedProgress = progressBuffer.current[targetEpId]?.progress || 0;
+      
+      let progress = Math.max(playerTime, progressRef.current);
+      if (progress <= 1 && currentSavedProgress > 5) {
+          progress = currentSavedProgress;
+      }
+      if (progress <= 0) return;
 
-      setEpProgress(prev => {
-          if (prev[ep.number] === (isCompleted ? 100 : percent)) return prev;
-          return { ...prev, [ep.number]: isCompleted ? 100 : percent };
-      });
+      const ep = anime.episodes.find(e => e.id === targetEpId || String(e.number) === targetEpId);
+      if (!ep) return;
+      
+      const rawDuration = playerRef.current?.getDuration();
+      const duration = (rawDuration && !isNaN(rawDuration) && rawDuration > 0) ? rawDuration : (progressBuffer.current[targetEpId]?.duration || 1350);
+      
+      const percent = Math.min(100, Math.round((progress / duration) * 100));
+      const isCompleted = percent >= 98;
+
+      setEpProgress(prev => ({
+          ...prev,
+          [ep.number]: isCompleted ? 100 : percent,
+          [ep.id]: isCompleted ? 100 : percent
+      }));
 
       if (user) {
           const episodeImage = (ep as any).image || (ep as any).poster || anime.poster;
-          const animeType = (anime as any).type || 'TV';
+          const rawTitle = anime.title || (anime as any).name || (anime as any).jname;
+          const animeTitle = formatAnimeTitle(rawTitle, animeId);
+          if (typeof window !== 'undefined' && animeTitle && !animeTitle.toLowerCase().includes('unknown')) {
+              localStorage.setItem(`shadow_anime_title_${animeId}`, animeTitle);
+          }
+          const animeImage = anime.poster || (anime as any).image || episodeImage;
+          const animeType = 'hindi';
+          const isAdultVal = false;
+          const ageRatingVal = null;
           const entry = {
               user_id: user.id,
               anime_id: animeId,
-              episode_id: currentEpId,
+              title: animeTitle,
+              banner_image: animeImage,
+              episode_id: targetEpId,
               episode_number: ep.number,
               progress: progress,
-              duration: duration,
               last_updated: new Date().toISOString(),
               last_server: settings.server,
               episode_image: episodeImage,
-              total_episodes: anime.episodes.length,
+              total_episodes: anime.episodes?.length || 1,
               type: animeType,
-              is_completed: isCompleted
+              media_type: 'hindi',
+              is_completed: isCompleted,
+              age_rating: ageRatingVal,
+              is_adult: isAdultVal
           };
-          progressBuffer.current[currentEpId] = entry;
+          progressBuffer.current[targetEpId] = entry;
           isBufferDirty.current = true;
           localStorage.setItem(`shadow_sync_buffer_${animeId}`, JSON.stringify(progressBuffer.current));
           if (forceFlush || isCompleted) flushSyncBuffer();
       } else {
+          const rawTitle = anime.title || (anime as any).name || (anime as any).jname;
+          const animeTitle = formatAnimeTitle(rawTitle, animeId);
+          if (typeof window !== 'undefined' && animeTitle && !animeTitle.toLowerCase().includes('unknown')) {
+              localStorage.setItem(`shadow_anime_title_${animeId}`, animeTitle);
+          }
           const localData = JSON.parse(localStorage.getItem('shadow_continue_watching') || '{}');
-          localData[animeId] = { animeId, episodeId: currentEpId, episodeNumber: ep.number, progress, lastUpdated: Date.now() };
+          localData[animeId] = { 
+            animeId, 
+            title: animeTitle,
+            poster: anime.poster || (anime as any).image,
+            episodeId: targetEpId, 
+            episodeNumber: ep.number, 
+            progress, 
+            type: 'hindi',
+            lastUpdated: Date.now() 
+          };
           localStorage.setItem('shadow_continue_watching', JSON.stringify(localData));
+
+          const epData = JSON.parse(localStorage.getItem(`shadow_ep_progress_${animeId}`) || '{}');
+          epData[targetEpId] = {
+              episode_id: targetEpId,
+              episode_number: ep.number,
+              progress,
+              duration,
+              is_completed: isCompleted,
+              last_updated: new Date().toISOString()
+          };
+          localStorage.setItem(`shadow_ep_progress_${animeId}`, JSON.stringify(epData));
+          progressBuffer.current[targetEpId] = epData[targetEpId];
+
+          if (typeof window !== 'undefined') window.dispatchEvent(new CustomEvent('shadow-continue-updated'));
       }
-  }, [anime, currentEpId, user, animeId, settings.server, flushSyncBuffer]);
+  }, [anime, user, animeId, settings.server, flushSyncBuffer]);
+
+  // Instant Registration & Progress Restoration on Episode Visit
+
+  useEffect(() => {
+      if (anime && currentEpId) {
+          const record = progressBuffer.current[currentEpId];
+          if (record && !record.is_completed && record.progress > 0) {
+              progressRef.current = record.progress;
+              setResumeTime(record.progress);
+          }
+      }
+  }, [anime, currentEpId]);
+
+  // Save progress on unmount (when leaving watch page)
+  useEffect(() => {
+      const epToSave = currentEpId;
+      return () => {
+          if (isSwitchingEpisode.current) {
+              isSwitchingEpisode.current = false;
+              return;
+          }
+          if (epToSave && progressRef.current > 5) {
+              saveProgress(true, epToSave);
+          }
+      };
+  }, [currentEpId, saveProgress]);
 
   const handlePause = useCallback(() => saveProgress(true), [saveProgress]);
 
   const handleEpisodeClick = useCallback((id: string) => {
-      saveProgress(true);
+      isSwitchingEpisode.current = true;
+      if (currentEpId && progressRef.current > 5) {
+          saveProgress(true);
+      }
+      failedServersRef.current = [];
+      iframeElapsedRef.current = 0;
+      if (iframeTimerRef.current) { clearInterval(iframeTimerRef.current); iframeTimerRef.current = null; }
+      
+      const ep = anime?.episodes.find(e => e.id === id);
+      if (ep) {
+          const savedRecord = progressBuffer.current[id];
+          const savedProgress = savedRecord?.progress || 0;
+          const isCompleted = savedRecord?.is_completed || (epProgress[ep.number] === 100);
+          
+          if (isCompleted) {
+              progressRef.current = 0;
+              setResumeTime(0);
+          } else {
+              progressRef.current = savedProgress;
+              setResumeTime(savedProgress);
+          }
+      } else {
+          progressRef.current = 0;
+          setResumeTime(0);
+      }
+      
       setCurrentEpId(id);
       setStreamUrl(null);
       isSkipToastLocked.current = false;
-      window.history.pushState({}, '', `/watch/${animeId}?ep=${id}`);
-  }, [animeId, saveProgress]);
+      const targetParam = ep ? String(ep.number) : id;
+      router.push(`/hindi-watch/${animeId}?ep=${targetParam}`, { scroll: false });
+  }, [animeId, saveProgress, anime, epProgress, router, currentEpId]);
 
-  const resetInterfaceTimer = useCallback(() => {
-      if (interfaceTimeoutRef.current) clearTimeout(interfaceTimeoutRef.current);
-      interfaceTimeoutRef.current = setTimeout(() => setHideInterface(true), 15000);
-  }, []);
+  const resetInterfaceTimer = useCallback(() => {}, []);
 
   const handlePlayerClick = useCallback(() => {
       if (playerContainerRef.current) playerContainerRef.current.focus();
-      if (hideInterface) {
-          setHideInterface(false);
-          resetInterfaceTimer();
-      } else {
-          setHideInterface(true);
-          if (interfaceTimeoutRef.current) clearTimeout(interfaceTimeoutRef.current);
-      }
-  }, [hideInterface, resetInterfaceTimer]);
+  }, []);
 
-  const handlePlaybackStart = useCallback(() => {
-      resetInterfaceTimer();
-  }, [resetInterfaceTimer]);
+  const handlePlaybackStart = useCallback(() => {}, []);
 
   const handleSkipIntro = useCallback(() => {
       if (isSkipToastLocked.current || showSkipNotification) return;
@@ -786,11 +934,6 @@ function WatchContent() {
     const init = async () => {
         setIsLoadingInfo(true);
         try {
-            // AnimeService.getAnimeInfo() already fetches related + recommendations
-            // itself now (the new source splits them into separate endpoints
-            // internally) — no more separate enrichment call needed here.
-            // Seasons/trailers aren't available from the new source, so those
-            // stay empty (universalData.seasons / .trailers default to []).
             const details = await hpi.bridge.getSmartDetails(animeId);
             if (!details) throw new Error("Anime not found");
 
@@ -819,13 +962,27 @@ function WatchContent() {
                     japanese: details.nativeTitle || '?',
                     synonyms: (details.synonyms || []).join(', ')
                 },
-                episodes: details.episodes.map(e => ({
-                    id: e.id,
-                    number: parseInt(e.number, 10) || 1,
-                    title: e.title,
-                    url: e.url,
-                    isFiller: false
-                })),
+                episodes: (() => {
+                    const seenEpKeys = new Set<string>();
+                    const parsed: any[] = [];
+                    (details.episodes || []).forEach(e => {
+                        const epNum = parseInt(e.number, 10) || 1;
+                        const uniqueKey = `${e.id}_${epNum}`;
+                        const numKey = `num_${epNum}`;
+                        if (!seenEpKeys.has(uniqueKey) && !seenEpKeys.has(numKey)) {
+                            seenEpKeys.add(uniqueKey);
+                            seenEpKeys.add(numKey);
+                            parsed.push({
+                                id: e.id,
+                                number: epNum,
+                                title: e.title,
+                                url: e.url,
+                                isFiller: false
+                            });
+                        }
+                    });
+                    return parsed;
+                })(),
                 trailers: [],
                 seasons: [],
                 recommendations: details.recommendations.map((r: any) => ({
@@ -835,11 +992,10 @@ function WatchContent() {
                     type: r.type,
                     episodes: { sub: 0, dub: parseInt(r.episode || '0', 10) }
                 })) as any[],
-                related: [], // We will fetch actual franchise
+                related: [], 
                 characters: []
             };
 
-            // 1. Fetch Actual Related Animes (Franchise)
             if (!universalData.related || universalData.related.length === 0) {
                 try {
                     const baseTitle = details.title.split(/season|part|\d+/i)[0].trim();
@@ -862,7 +1018,6 @@ function WatchContent() {
                 } catch(e) {}
             }
 
-            // 2. Fetch Suggestions (Genre Fallback if empty)
             if (universalData.recommendations.length === 0 && details.genres && details.genres.length > 0) {
                 try {
                     const genreSearch = await hpi.hindi.search(details.genres[0], 1);
@@ -882,16 +1037,12 @@ function WatchContent() {
             }
 
             setAnime(universalData);
-            // No next-episode-schedule endpoint on the new source; nextEpSchedule
-            // stays null and the countdown UI degrades gracefully (as it already
-            // does for any anime with no schedule data).
 
         } catch(e) { console.error(e); } finally { setIsLoadingInfo(false); }
     };
     init();
   }, [animeId]);
 
-  // Sync History
   useEffect(() => {
       if (!anime) return;
       const syncHistory = async () => {
@@ -901,9 +1052,31 @@ function WatchContent() {
           let needsDbUpdate = false;
           let bufferToFlush: any[] = [];
           let localData: {[key: string]: any} = {};
-          try { const raw = localStorage.getItem(tempStorageKey); if (raw) localData = JSON.parse(raw); } catch {}
+          try { 
+              const raw = localStorage.getItem(tempStorageKey); 
+              if (raw) localData = JSON.parse(raw); 
+              const epRaw = localStorage.getItem(`shadow_ep_progress_${animeId}`);
+              if (epRaw) {
+                  const epParsed = JSON.parse(epRaw);
+                  localData = { ...epParsed, ...localData };
+              }
+          } catch {}
           let dbData: {[key: string]: any} = {};
-          if (user && continueData) {
+          if (user && supabase) {
+              try { 
+                  const { data: dbRows } = await (supabase.from('user_continue_watching') as any)
+                      .select('*')
+                      .eq('user_id', user.id)
+                      .eq('anime_id', animeId);
+                  if (dbRows && Array.isArray(dbRows)) {
+                      dbRows.forEach((row: any) => {
+                          if (row.episode_id) dbData[row.episode_id] = row;
+                      });
+                  }
+              } catch (e) {
+                  console.error("Failed to fetch direct user anime watch history:", e);
+              }
+          } else if (continueData) {
               try { 
                   continueData.forEach((row: any) => { 
                       if (row.anime_id === animeId) dbData[row.episode_id] = row; 
@@ -919,7 +1092,16 @@ function WatchContent() {
               if (final) {
                   progressBuffer.current[epId] = final;
                   const dur = final.duration || 1350;
-                  if (final.is_completed) progressMap[final.episode_number] = 100; else progressMap[final.episode_number] = Math.min(100, Math.round((final.progress / dur) * 100));
+                  const epNum = final.episode_number || final.episode;
+                  if (epNum) {
+                      if (final.is_completed) {
+                          progressMap[epNum] = 100;
+                      } else {
+                          const pVal = final.progress || 0;
+                          const pct = (pVal <= 100 && !final.duration) ? pVal : Math.min(100, Math.round((pVal / dur) * 100));
+                          progressMap[epNum] = pct;
+                      }
+                  }
                   if (final.last_server) savedServer = final.last_server;
               }
           });
@@ -927,8 +1109,8 @@ function WatchContent() {
           if (savedServer && savedServer !== settings.server) updateSetting('server', savedServer);
           localStorage.setItem(tempStorageKey, JSON.stringify(progressBuffer.current));
           if (user && needsDbUpdate && bufferToFlush.length > 0) {
-              const sanitized = bufferToFlush.map(p => { const { duration, ...clean } = p; return clean; });
-              (supabase!.from('user_continue_watching') as any).upsert(sanitized, { onConflict: 'user_id, episode_id' });
+              const sanitized = bufferToFlush.map(p => sanitizeContinueWatchingEntry(p, user.id)).filter(Boolean);
+              (supabase!.from('user_continue_watching') as any).upsert(sanitized, { onConflict: 'user_id,episode_id' });
           }
 
           let targetEpId: string | null = null;
@@ -950,11 +1132,9 @@ function WatchContent() {
               });
           }
           
-          // Safety Check: Prevent older format 'episodeId' cache from failing lookup
           if (targetEpId && anime.episodes.length > 0) {
               const epExists = anime.episodes.find((e: any) => e.id === targetEpId);
               if (!epExists) {
-                  // Fallback for cache mismatches (try matching old history by number)
                   const oldData = Object.values(progressBuffer.current).find((p:any) => p.episode_id === targetEpId);
                   if (oldData && oldData.episode_number) {
                       const match = anime.episodes.find((e: any) => e.number === oldData.episode_number);
@@ -970,7 +1150,6 @@ function WatchContent() {
           if (targetEpId && targetEpId !== currentEpId) setCurrentEpId(targetEpId);
           setIsResumeLoaded(true);
 
-          // Handle Custom Timestamp from URL
           const urlTime = searchParams.get('timestamp') || searchParams.get('t');
           if (urlTime && !isNaN(Number(urlTime))) {
               setResumeTime(Number(urlTime));
@@ -985,8 +1164,9 @@ function WatchContent() {
 
   const [fetchTrigger, setFetchTrigger] = useState(0);
   const activeFetchRef = useRef(0);
+  const failedServersRef = useRef<string[]>([]);
+  const programmaticServerRef = useRef<string | null>(null);
   
-  // Stream Loading
   useEffect(() => {
     if (!currentEpId || !isSettingsLoaded) return;
     
@@ -1004,46 +1184,27 @@ function WatchContent() {
              if (requestedEp && requestedEp.id === currentEpId) { time = Number(urlTimestamp); isUrlOverride = true; }
         }
         if (!isUrlOverride) {
-            if (progressBuffer.current[currentEpId]) time = progressBuffer.current[currentEpId].progress;
-            else if (!user) {
+            if (progressBuffer.current[currentEpId]) {
+                const epRec = progressBuffer.current[currentEpId];
+                time = epRec.is_completed ? 0 : (epRec.progress || 0);
+            } else if (!user) {
                 const localData = JSON.parse(localStorage.getItem('shadow_continue_watching') || '{}');
-                if (localData[animeId] && localData[animeId].episodeId === currentEpId) time = localData[animeId].progress;
+                if (localData[animeId] && localData[animeId].episodeId === currentEpId) {
+                    const epRec = localData[animeId];
+                    time = epRec.is_completed ? 0 : (epRec.progress || 0);
+                }
             }
         }
         setResumeTime(time); progressRef.current = time; setIsResumeLoaded(true);
+        
         try {
             let targetCategory = settings.category;
-            if ((urlType === 'dub' || urlType === 'sub') && settings.category !== urlType) { 
-                targetCategory = urlType; 
-                if (currentFetch === activeFetchRef.current) updateSetting('category', urlType); 
-            }
-            
-            let streamData: any = await retryOperation(
-                () => hpi.hindi.getStream(currentEpId),
-                2, 1000, 15000
-            );
-            
-            if (currentFetch !== activeFetchRef.current) return;
+            let streamData = await hpi.hindi.getStream(currentEpId);
 
             const hasStream = (data: any) => data && (data.url || data.iframe || data.targetUrl || data.stream?.file);
 
-            if (!hasStream(streamData) && targetCategory === 'dub') {
-                console.warn("Dub missing, falling back to Sub");
-                targetCategory = 'sub';
-                streamData = await retryOperation(
-                    () => hpi.hindi.getStream(currentEpId),
-                    2, 1000, 15000
-                );
-                if (currentFetch !== activeFetchRef.current) return;
-                
-                if (hasStream(streamData) && settings.category !== 'sub') { 
-                    toast.info("Dub not available. Switching to Sub."); 
-                    updateSetting('category', 'sub'); 
-                }
-            }
-            
             if (streamData) { 
-                let finalUrl = streamData.url || streamData.targetUrl || streamData.iframe || streamData.stream?.file;
+                let finalUrl = (streamData as any).url || (streamData as any).targetUrl || (streamData as any).iframe || (streamData as any).stream?.file;
                 const mapServerArray = (arr: any[]) => {
                     const baseNames = arr.map(s => s.name || s.serverName || 'Server');
                     const counts = baseNames.reduce((acc: any, val: string) => { acc[val] = (acc[val] || 0) + 1; return acc; }, {});
@@ -1058,60 +1219,61 @@ function WatchContent() {
 
                 let subServers: any[] = [];
                 let dubServers: any[] = [];
+                let rawServers: any[] = [];
 
-                if (Array.isArray(streamData.servers)) {
-                    // For Hindi, we always force DUB since the content is inherently Hindi dubbed
-                    const mapped = mapServerArray(streamData.servers);
-                    dubServers = mapped;
-                    subServers = [];
-                    if (targetCategory !== 'dub') {
-                        targetCategory = 'dub';
-                        setTimeout(() => updateSetting('category', 'dub'), 0);
-                    }
-                } else if (streamData.servers) {
-                    if (streamData.servers.sub) subServers = mapServerArray(streamData.servers.sub);
-                    if (streamData.servers.dub) dubServers = mapServerArray(streamData.servers.dub);
+                const serversByCategory = (streamData as any).serversByCategory;
+                if (serversByCategory) {
+                    if (Array.isArray(serversByCategory.sub)) subServers = mapServerArray(serversByCategory.sub);
+                    if (Array.isArray(serversByCategory.dub)) dubServers = mapServerArray(serversByCategory.dub);
+                    if (Array.isArray(serversByCategory.raw)) rawServers = mapServerArray(serversByCategory.raw);
                 }
 
-                setServers({ sub: subServers, dub: dubServers, raw: [] });
+                if (subServers.length === 0 && dubServers.length === 0 && rawServers.length === 0 && Array.isArray((streamData as any).servers)) {
+                    dubServers = mapServerArray((streamData as any).servers);
+                }
 
-                let currentList = targetCategory === 'dub' && dubServers.length > 0 ? dubServers : subServers;
-                
-                if (currentList.length === 0) {
-                    if (targetCategory === 'sub' && dubServers.length > 0) {
-                        targetCategory = 'dub';
-                        currentList = dubServers;
-                        setTimeout(() => updateSetting('category', 'dub'), 0);
-                    } else if (targetCategory === 'dub' && subServers.length > 0) {
-                        targetCategory = 'sub';
-                        currentList = subServers;
-                        setTimeout(() => updateSetting('category', 'sub'), 0);
+                const serverObj: Record<string, any[]> = { sub: subServers, dub: dubServers, raw: rawServers };
+                setServers(serverObj);
+
+                // Determine active category with available servers
+                let activeCategory = settings.category;
+                if (!serverObj[activeCategory] || serverObj[activeCategory].length === 0) {
+                    if (dubServers.length > 0) activeCategory = 'dub';
+                    else if (subServers.length > 0) activeCategory = 'sub';
+                    else if (rawServers.length > 0) activeCategory = 'raw';
+
+                    if (activeCategory !== settings.category) {
+                        updateSetting('category', activeCategory as 'sub' | 'dub' | 'raw');
                     }
                 }
 
-                const selected = currentList.find((s: any) => s.serverName.toLowerCase() === settings.server.toLowerCase());
-                let finalIsEmbed = false;
-                if (selected && selected.url) {
-                    finalUrl = selected.url;
-                    finalIsEmbed = selected.isEmbed;
-                } else if (currentList.length > 0) {
-                    isProgrammaticServerUpdate.current = true;
-                    updateSetting('server', currentList[0].serverName);
-                    finalUrl = currentList[0].url || finalUrl;
-                    finalIsEmbed = currentList[0].isEmbed;
-                }
-                if (finalUrl) {
+                const activeList = serverObj[activeCategory] || [];
+                const currentServer = activeList.find((s: any) => s.serverName.toLowerCase() === settings.server.toLowerCase()) || activeList[0];
+
+                if (currentServer) {
+                    finalUrl = currentServer.url;
+                    setStreamIsEmbed(Boolean(currentServer.isEmbed));
+
+                    if (finalUrl && currentServer && currentServer.serverName) {
+                        if (currentServer.serverName.toLowerCase() !== settings.server.toLowerCase()) {
+                            programmaticServerRef.current = currentServer.serverName.toLowerCase();
+                            updateSetting('server', currentServer.serverName);
+                        }
+                    }
+                    
                     setStreamUrl(finalUrl); 
-                    setStreamIsEmbed(Boolean(finalIsEmbed));
                     setStreamReferer(streamData.referer || null); 
                     setSubtitles(streamData.subtitles || []); 
                     setIntro(streamData.intro); 
                     setOutro(streamData.outro);
                     
-                    if (streamData.server && streamData.server.toLowerCase() !== settings.server.toLowerCase()) {
-                        isProgrammaticServerUpdate.current = true;
-                        updateSetting('server', streamData.server);
-                    }
+                } else if (finalUrl) {
+                    setStreamUrl(finalUrl);
+                    setStreamIsEmbed(false);
+                    setStreamReferer(streamData.referer || null);
+                    setSubtitles(streamData.subtitles || []);
+                    setIntro(streamData.intro);
+                    setOutro(streamData.outro);
                 } else {
                     throw new Error("No Stream Found");
                 }
@@ -1124,18 +1286,16 @@ function WatchContent() {
         if (currentFetch === activeFetchRef.current) setIsStreamLoading(false);
     };
     loadStream();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentEpId, user?.id, animeId, isSettingsLoaded, urlType, fetchTrigger]);
 
-  // Handle explicit server/category changes by the user
   const initialSettingsMount = useRef(true);
   useEffect(() => {
       if (initialSettingsMount.current) {
           initialSettingsMount.current = false;
           return;
       }
-      if (isProgrammaticServerUpdate.current) {
-          isProgrammaticServerUpdate.current = false;
+      if (programmaticServerRef.current === settings.server.toLowerCase()) {
+          programmaticServerRef.current = null;
           return;
       }
       if (isSettingsLoaded && currentEpId) {
@@ -1143,8 +1303,24 @@ function WatchContent() {
       }
   }, [settings.server, settings.category]);
 
-  // Interval & Visibility
-  useEffect(() => { const i = setInterval(() => saveProgress(false), 10000); return () => clearInterval(i); }, [saveProgress]);
+  useEffect(() => { const i = setInterval(() => saveProgress(true), 10000); return () => clearInterval(i); }, [saveProgress]);
+
+  // ✅ Iframe elapsed-time tracker: since we can't read currentTime from cross-origin iframes,
+  // we count wall-clock seconds from the moment the iframe stream is set.
+  useEffect(() => {
+      if (iframeTimerRef.current) clearInterval(iframeTimerRef.current);
+      if (streamIsEmbed && streamUrl) {
+          // Start counting from the resume position
+          iframeElapsedRef.current = resumeTime || 0;
+          iframeTimerRef.current = setInterval(() => {
+              iframeElapsedRef.current += 1;
+              progressRef.current = iframeElapsedRef.current;
+          }, 1000);
+      } else {
+          iframeElapsedRef.current = 0;
+      }
+      return () => { if (iframeTimerRef.current) clearInterval(iframeTimerRef.current); };
+  }, [streamIsEmbed, streamUrl]);
   useEffect(() => {
       let ticking = false;
       const handleScroll = () => { if (!ticking) { window.requestAnimationFrame(() => { if (window.scrollY > 100) { setHideInterface(false); if (interfaceTimeoutRef.current) clearTimeout(interfaceTimeoutRef.current); } else { resetInterfaceTimer(); } ticking = false; }); ticking = true; } };
@@ -1174,22 +1350,22 @@ function WatchContent() {
   if (!anime) return (<div className="min-h-screen bg-[#050505] flex items-center justify-center"><div className="w-12 h-12 border-4 border-orange-600 border-t-transparent rounded-full animate-spin" /></div>);
 
   return (
-    <div className="min-h-screen bg-[#050505] text-gray-100 pb-24 md:pb-20 pt-24 md:pt-28 relative font-sans overflow-x-hidden">
+    <div className="min-h-screen bg-[#050505] text-white flex flex-col font-sans select-none selection:bg-primary-500/30">
       <style jsx global>{`
           .custom-scrollbar::-webkit-scrollbar { width: 6px; height: 6px; display: block; }
           .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
-          .custom-scrollbar::-webkit-scrollbar-thumb { background: #f97316; border-radius: 10px; opacity: 0.8; }
+          .custom-scrollbar::-webkit-scrollbar-thumb { background: #dc2626; border-radius: 10px; opacity: 0.8; }
           .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: #ef4444; }
-          @media (min-width: 1024px) { ${hideInterface ? `nav, header, footer, .bottom-navigation, div[class*="navbar"], div[class*="header"], div[class*="footer"], .fixed.top-0, .fixed.bottom-0 { opacity: 0 !important; pointer-events: none !important; transition: opacity 0.5s ease-in-out; }` : ''} div[class*="navbar"]:hover, header:hover { opacity: 1 !important; pointer-events: auto !important; } }
           body { overflow-y: auto; } ::-webkit-scrollbar { width: 0px; display: none; } .no-scrollbar::-webkit-scrollbar { display: none; } .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
           @keyframes liquid { 0% { background-position: 0% 50%; } 50% { background-position: 100% 50%; } 100% { background-position: 0% 50%; } } .animate-liquid { background-size: 200% 200%; animation: liquid 4s ease infinite; } .will-change-transform { will-change: transform; }
+          @keyframes shimmer { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } } .animate-shimmer { animation: shimmer 3s infinite linear; }
       `}</style>
-      <div className={cn("fixed inset-0 bg-black/90 z-[39] transition-opacity duration-700 pointer-events-none will-change-[opacity]", settings.dimMode ? 'opacity-100' : 'opacity-0')} />
 
-            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.8 }} className="w-full flex flex-col items-center bg-[#050505] relative z-40 px-4 md:px-8 mt-6">
-        <div className="w-full max-w-[1500px] flex flex-col xl:grid xl:grid-cols-12 gap-8 items-start pb-12">
+      <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.8 }} className={cn("w-full flex flex-col items-center relative px-4 pt-0 mt-0 z-10")}>
+        <div onClick={() => updateSetting('dimMode', false)} className={cn("fixed inset-0 bg-black/95 transition-opacity duration-500 will-change-[opacity]", settings.dimMode ? 'opacity-100 pointer-events-auto cursor-pointer z-[40]' : 'opacity-0 pointer-events-none z-[40]')} />
+        <div className="w-full flex flex-col xl:grid xl:grid-cols-12 gap-8 items-start">
             <div className="xl:col-span-8 w-full flex flex-col gap-2 order-1">
-                <div ref={playerContainerRef} tabIndex={0} className="w-full aspect-video bg-black rounded-[30px] overflow-hidden border border-white/5 shadow-2xl relative shadow-orange-900/10 outline-none focus:ring-1 focus:ring-white/10" onClick={handlePlayerClick} onKeyDown={(e) => { if (e.code === 'Space') { e.preventDefault(); } }}>
+                <div ref={playerContainerRef} tabIndex={0} className={cn("w-full aspect-video bg-black/40 backdrop-blur-2xl rounded-[30px] overflow-hidden border border-white/10 shadow-[0_8px_32px_0_rgba(0,0,0,0.37)] relative outline-none focus:ring-1 focus:ring-white/10 transition-all duration-500", settings.dimMode ? "z-[60] ring-2 ring-primary-500/50 shadow-[0_0_80px_rgba(0,0,0,0.9)]" : "z-10")} onClick={handlePlayerClick} onKeyDown={(e) => { if (e.code === 'Space') { e.preventDefault(); } }}>
                 <AnimatePresence>
                     {showSkipNotification && (
                         <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 10 }} className="absolute bottom-32 lg:bottom-24 left-1/2 -translate-x-1/2 z-[70] bg-black/60 backdrop-blur-md border border-white/10 text-white px-3 py-1 rounded-full flex items-center gap-2 shadow-[0_0_15px_rgba(0,0,0,0.5)] pointer-events-none">
@@ -1204,7 +1380,7 @@ function WatchContent() {
                         url={streamUrl || ""} 
                         isEmbed={streamIsEmbed}
                         isM3U8={!streamIsEmbed && !streamUrl.toLowerCase().includes('.mp4')}
-                        iframeUrl={streamUrl.includes('/api/proxy?url=') ? decodeURIComponent(streamUrl.split('/api/proxy?url=')[1].split('&')[0]) : streamUrl} 
+                        iframeUrl={streamUrl.includes('/api/proxy?url=') ? decodeURIComponent(streamUrl.split('/api/proxy?url=')[1].split('&')[0]) : streamUrl}
                         referer={streamReferer} 
                         subtitles={subtitles} 
                         intro={intro} 
@@ -1220,12 +1396,13 @@ function WatchContent() {
                         onPlay={handlePlaybackStart} 
                         onPause={handlePause} 
                         onSkipIntro={handleSkipIntro} 
+                        onError={(err) => { console.warn("Player Error, forcing reload..."); failedServersRef.current.push(settings.server.toLowerCase()); setFetchTrigger(prev => prev + 1); }} 
                     /> 
-                ) : streamError ? ( <div className="w-full h-full flex items-center justify-center border-b border-white/5"><div className="text-zinc-500 text-sm font-bold uppercase tracking-widest">{streamError}</div></div> ) : ( <div className="w-full h-full flex items-center justify-center border-b border-white/5"><FantasyLoader text="OPENING PORTAL..." /></div> )}
+                ) : streamError ? ( <div className="w-full h-full flex items-center justify-center border-b border-white/5"><div className="text-zinc-500 text-sm font-bold uppercase tracking-widest">{streamError}</div></div> ) : ( <div className="w-full h-full flex items-center justify-center border-b border-white/5"><PlayerSkeleton /></div> )}
             </div>
 
-            <motion.div initial={{ y: -20, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ duration: 0.5, delay: 0.2 }} className={cn("w-full transition-all duration-500 will-change-transform", hideInterface ? "opacity-0 pointer-events-none translate-y-4" : "opacity-100 translate-y-0")}>
-                <div className="hidden lg:flex w-full bg-[#0a0a0a] border border-white/5 rounded-[30px] shadow-orange-900/10 shadow-lg px-5 py-3 flex-col gap-2 overflow-visible mt-3">
+            <motion.div initial={{ y: -20, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ duration: 0.5, delay: 0.2 }} className="w-full transition-all duration-500 will-change-transform">
+                <div className={cn("hidden lg:flex w-full bg-white/5 backdrop-blur-md border border-white/10 rounded-[30px] shadow-[0_8px_32px_0_rgba(0,0,0,0.2)] px-5 py-3 flex-col gap-2 overflow-visible mt-3 transition-all duration-500", settings.dimMode ? "z-[96] relative" : "relative z-10")}>
                     {/* ROW 1: Main playback controls */}
                     <div className="flex w-full justify-between items-center gap-3">
                         <div className="flex items-center gap-3 w-full">
@@ -1276,13 +1453,28 @@ function WatchContent() {
                 </div>
 
                 {/* MOBILE CONTROLS */}
-                <div className="flex lg:hidden w-full bg-[#0a0a0a] border border-white/5 rounded-[30px] shadow-orange-900/10 shadow-lg px-4 py-4 flex-col gap-3 overflow-hidden relative z-[60] mt-3">
+                <div className={cn("flex lg:hidden w-full bg-white/5 backdrop-blur-md border border-white/10 rounded-[30px] shadow-[0_8px_32px_0_rgba(0,0,0,0.2)] py-4 flex-col gap-3 overflow-hidden mt-3 transition-all duration-500", settings.dimMode ? "z-[96] relative" : "relative z-10")}>
                     <div className="flex w-full justify-between items-center gap-2">
-                        <button disabled={!prevEpisode} onClick={() => prevEpisode && handleEpisodeClick(prevEpisode.id)} className="flex-1 bg-white/5 h-8 rounded-full border border-white/5 flex items-center justify-center text-zinc-400 hover:text-white active:bg-white/10"><SkipBack size={14}/></button>
-                        <button onClick={() => updateSetting('autoSkip', !settings.autoSkip)} className={cn("flex-1 h-8 rounded-full border flex items-center justify-center gap-0.5 transition-colors relative", settings.autoSkip ? "bg-orange-600/20 border-orange-500 text-orange-500" : "bg-white/5 border-white/5 text-zinc-400")}><FastForward size={14}/><sup className="font-bold text-[8px] top-[-2px] text-inherit">A</sup></button>
-                        <button onClick={() => updateSetting('autoPlay', !settings.autoPlay)} className={cn("flex-1 h-8 rounded-full border flex items-center justify-center gap-0.5 transition-colors relative", settings.autoPlay ? "bg-orange-600/20 border-orange-500 text-orange-500" : "bg-white/5 border-white/5 text-zinc-400")}><Play size={14}/><sup className="font-bold text-[8px] top-[-2px] text-inherit">A</sup></button>
-                        <button onClick={() => updateSetting('autoNext', !settings.autoNext)} className={cn("flex-1 h-8 rounded-full border flex items-center justify-center gap-0.5 transition-colors relative", settings.autoNext ? "bg-orange-600/20 border-orange-500 text-orange-500" : "bg-white/5 border-white/5 text-zinc-400")}><SkipForward size={14}/><sup className="font-bold text-[8px] top-[-2px] text-inherit">A</sup></button>
-                        <button disabled={!nextEpisode} onClick={() => nextEpisode && handleEpisodeClick(nextEpisode.id)} className="flex-1 bg-white/5 h-8 rounded-full border border-white/5 flex items-center justify-center text-zinc-400 hover:text-white active:bg-white/10"><SkipForward size={14}/></button>
+                        <button disabled={!prevEpisode} onClick={() => prevEpisode && handleEpisodeClick(prevEpisode.id)} className="flex-1 bg-white/5 h-9 rounded-full border border-white/5 flex items-center justify-center text-zinc-400 hover:text-white active:scale-95 disabled:opacity-30 disabled:pointer-events-none transition-all" title="Previous Episode"><SkipBack size={14}/></button>
+                        <button onClick={() => updateSetting('autoSkip', !settings.autoSkip)} className={cn("flex-1 h-9 rounded-full border flex items-center justify-center transition-all relative active:scale-95", settings.autoSkip ? "bg-orange-600/20 border-orange-500/60 text-orange-400 shadow-[0_0_12px_rgba(234,88,12,0.25)]" : "bg-white/5 border-white/5 text-zinc-400 hover:text-zinc-200")} title={`Auto Skip Intro: ${settings.autoSkip ? 'ON' : 'OFF'}`}>
+                            <div className="relative flex items-center justify-center">
+                                <FastForward size={14} className={cn("transition-transform", settings.autoSkip && "scale-110")} />
+                                <span className={cn("absolute -top-1 -right-1.5 w-1.5 h-1.5 rounded-full transition-all", settings.autoSkip ? "bg-orange-500 shadow-[0_0_6px_rgba(234,88,12,1)] animate-pulse" : "bg-zinc-600/40")} />
+                            </div>
+                        </button>
+                        <button onClick={() => updateSetting('autoPlay', !settings.autoPlay)} className={cn("flex-1 h-9 rounded-full border flex items-center justify-center transition-all relative active:scale-95", settings.autoPlay ? "bg-orange-600/20 border-orange-500/60 text-orange-400 shadow-[0_0_12px_rgba(234,88,12,0.25)]" : "bg-white/5 border-white/5 text-zinc-400 hover:text-zinc-200")} title={`Auto Play: ${settings.autoPlay ? 'ON' : 'OFF'}`}>
+                            <div className="relative flex items-center justify-center">
+                                <PlayCircle size={14} className={cn("transition-transform", settings.autoPlay && "scale-110")} />
+                                <span className={cn("absolute -top-1 -right-1.5 w-1.5 h-1.5 rounded-full transition-all", settings.autoPlay ? "bg-orange-500 shadow-[0_0_6px_rgba(234,88,12,1)] animate-pulse" : "bg-zinc-600/40")} />
+                            </div>
+                        </button>
+                        <button onClick={() => updateSetting('autoNext', !settings.autoNext)} className={cn("flex-1 h-9 rounded-full border flex items-center justify-center transition-all relative active:scale-95", settings.autoNext ? "bg-orange-600/20 border-orange-500/60 text-orange-400 shadow-[0_0_12px_rgba(234,88,12,0.25)]" : "bg-white/5 border-white/5 text-zinc-400 hover:text-zinc-200")} title={`Auto Next Episode: ${settings.autoNext ? 'ON' : 'OFF'}`}>
+                            <div className="relative flex items-center justify-center">
+                                <StepForward size={14} className={cn("transition-transform", settings.autoNext && "scale-110")} />
+                                <span className={cn("absolute -top-1 -right-1.5 w-1.5 h-1.5 rounded-full transition-all", settings.autoNext ? "bg-orange-500 shadow-[0_0_6px_rgba(234,88,12,1)] animate-pulse" : "bg-zinc-600/40")} />
+                            </div>
+                        </button>
+                        <button disabled={!nextEpisode} onClick={() => nextEpisode && handleEpisodeClick(nextEpisode.id)} className="flex-1 bg-white/5 h-9 rounded-full border border-white/5 flex items-center justify-center text-zinc-400 hover:text-white active:scale-95 disabled:opacity-30 disabled:pointer-events-none transition-all" title="Next Episode"><SkipForward size={14}/></button>
                     </div>
                     <div className="grid grid-cols-[1fr_auto_auto] gap-3 w-full items-center">
                         <div className="min-w-0"><MarqueeTitle text={currentEpisode?.title || `Episode ${currentEpisode?.number}`} /></div>
@@ -1310,7 +1502,7 @@ function WatchContent() {
             </motion.div>
             </div>
             
-            <div className="xl:col-span-4 w-full xl:h-[650px] h-auto bg-[#0a0a0a] rounded-[40px] border border-white/5 overflow-hidden flex flex-col shadow-2xl relative z-20 order-2">
+            <div className="xl:col-span-4 w-full xl:h-[650px] h-auto bg-black/40 backdrop-blur-2xl rounded-[40px] border border-white/10 overflow-hidden flex flex-col shadow-[0_8px_32px_0_rgba(0,0,0,0.37)] relative z-20 order-2">
                 <div className="p-6 bg-white/5 border-b border-white/5 flex justify-between items-center shrink-0">
                     <div className="flex items-center gap-3"><h3 className="font-black text-white flex items-center gap-2 uppercase text-sm font-lemon tracking-widest"><Layers size={18} className="text-orange-600"/> Episodes</h3><Badge className="bg-white/10 backdrop-blur-md border border-white/10 text-white font-black text-[10px] px-3 h-5 rounded-full shadow-lg">{anime.episodes.length}</Badge></div>
                     <div className="flex items-center gap-1 bg-black/50 p-1 rounded-lg border border-white/5">
@@ -1319,10 +1511,10 @@ function WatchContent() {
                         <button onClick={() => setEpViewMode('list')} className={cn("p-1.5 rounded-md transition-all", epViewMode === 'list' ? "bg-zinc-800 text-white shadow-sm" : "text-zinc-500 hover:text-zinc-300")}><List size={14}/></button>
                     </div>
                 </div>
-                <div className="w-full border-b border-white/5 bg-black/20 flex-shrink-0 py-3 px-4 relative group/chunks">
-                    <div ref={chunksRef} className="flex items-center gap-2 w-full overflow-x-auto no-scrollbar cursor-grab active:cursor-grabbing">
+                <div className="w-full border-b border-white/10 bg-white/5 backdrop-blur-md flex-shrink-0 py-3 relative group/chunks">
+                    <div ref={chunksRef} className="flex items-center gap-2 w-full overflow-x-auto no-scrollbar cursor-grab active:cursor-grabbing px-4">
                         {episodeChunks.map((chunk, idx) => (
-                            <button key={idx} onClick={() => setEpChunkIndex(idx)} className={cn("flex-shrink-0 px-4 py-1.5 text-[10px] font-black rounded-full transition-all border shadow-sm uppercase tracking-wider", epChunkIndex === idx ? "bg-orange-600 text-white border-orange-500 shadow-orange-900/20" : "bg-zinc-900 border-zinc-800 text-zinc-500 hover:text-zinc-300 hover:border-zinc-700")}>{getChunkLabel(chunk, (idx * chunkSize) + 1, Math.min((idx + 1) * chunkSize, anime.episodes.length))}</button>
+                            <button key={idx} onClick={() => setEpChunkIndex(idx)} className={cn("flex-shrink-0 px-4 py-1.5 text-[10px] font-black rounded-full transition-all border shadow-sm uppercase tracking-wider backdrop-blur-md", epChunkIndex === idx ? "bg-orange-600 text-white border-orange-500 shadow-orange-900/20" : "bg-white/5 border-white/10 text-zinc-400 hover:text-white hover:bg-white/10")}>{getChunkLabel(chunk, (idx * chunkSize) + 1, Math.min((idx + 1) * chunkSize, anime.episodes.length))}</button>
                         ))}
                     </div>
                 </div>
@@ -1332,10 +1524,10 @@ function WatchContent() {
                             <AnimatePresence mode="popLayout">
                                 {episodeChunks[epChunkIndex]?.map((ep) => {
                                     const percent = epProgress[ep.number] || 0;
-                                    const isFullyPlayed = percent >= 80 || percent === 100;
+                                    const isFullyPlayed = percent >= 98;
                                     const isCurrent = ep.id === currentEpId;
                                     return (
-                                        <EpisodeButton key={ep.id} ep={ep} isCurrent={isCurrent} isFullyPlayed={isFullyPlayed} percent={percent} viewMode={epViewMode} onClick={handleEpisodeClick} />
+                                        <EpisodeButton key={ep.id} ep={ep} isCurrent={isCurrent} isFullyPlayed={isFullyPlayed} percent={percent} viewMode={epViewMode} onClick={handleEpisodeClick} category="anime" progressRef={progressRef} playerRef={playerRef} />
                                     );
                                 })}
                             </AnimatePresence>
@@ -1344,10 +1536,10 @@ function WatchContent() {
                 </div>
             </div>
             
-            <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} transition={{ duration: 0.6, delay: 0.4 }} className="xl:col-span-8 w-full h-auto xl:h-[650px] bg-[#0a0a0a] rounded-[40px] border border-white/5 overflow-hidden flex flex-col shadow-2xl relative shadow-orange-900/20 order-3">
-                    <div className="flex-shrink-0 relative p-8 pt-16 flex flex-col sm:flex-row gap-10 bg-gradient-to-b from-orange-600/5 to-transparent">
-                        <div className="relative shrink-0 mx-auto lg:mx-0 flex flex-col gap-6 w-full lg:w-auto items-center lg:items-start text-center lg:text-left">
-                            <div className="relative p-[3px] rounded-3xl overflow-hidden group/poster shadow-[0_0_40px_rgba(220,38,38,0.2)] mx-auto sm:mx-0 w-fit">
+            <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} transition={{ duration: 0.6, delay: 0.4 }} className="xl:col-span-8 w-full h-auto bg-black/40 backdrop-blur-2xl rounded-[40px] border border-white/10 overflow-hidden flex flex-col shadow-[0_8px_32px_0_rgba(0,0,0,0.37)] relative order-3">
+                    <div className="flex-shrink-0 relative p-8 flex flex-col sm:flex-row gap-10 bg-gradient-to-b from-orange-600/5 to-transparent">
+                        <div className="relative shrink-0 lg:mx-0 flex flex-col gap-6 w-full lg:w-auto items-center lg:items-start text-center lg:text-left">
+                            <div className="relative p-[3px] rounded-3xl overflow-hidden group/poster shadow-[0_0_40px_rgba(220,38,38,0.2)] sm:mx-0 w-fit">
                                 <div className="absolute inset-[-150%] bg-[conic-gradient(from_0deg,transparent,30%,#f97316_50%,transparent_70%)] animate-[spin_3s_linear_infinite] opacity-60 blur-[1px]" />
                                 <img src={anime.poster} className="w-44 h-60 rounded-3xl border border-white/10 object-cover relative z-10 shadow-2xl shadow-black" alt={anime.title} loading="lazy" decoding="async"/>
                             </div>
@@ -1386,7 +1578,7 @@ function WatchContent() {
                             <div className="mt-auto pt-6 w-full flex justify-end"><StarRating animeId={animeId} initialRating={anime.stats.rating} /></div>
                         </div>
                     </div>
-                    <div className="flex-1 min-h-0 relative px-6 sm:px-10 mt-4 overflow-hidden flex flex-col">
+                    <div className="flex-1 min-h-0 relative sm:px-10 mt-4 overflow-hidden flex flex-col">
                         <div className="lg:hidden flex flex-wrap gap-2 justify-center mb-6">
                              {anime.info.genres.map((g: string) => (<Link key={g} href={`/search?type=${g}`} className="text-[8px] px-3 py-1 bg-white/5 rounded-full text-zinc-500 border border-white/5 uppercase font-bold">{g}</Link>))}
                         </div>
@@ -1427,7 +1619,8 @@ function WatchContent() {
                     </div>
             </motion.div>
                   
-            <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} transition={{ duration: 0.6, delay: 0.5 }} className="xl:col-span-4 w-full h-auto xl:h-[650px] bg-[#0a0a0a] rounded-[40px] border border-white/5 overflow-hidden flex flex-col shadow-2xl relative shadow-orange-900/10 mt-8 xl:mt-0 order-5 xl:order-4">
+            <div className="xl:col-span-4 w-full h-[500px] xl:h-auto xl:relative xl:self-stretch mt-8 xl:mt-0 order-5 xl:order-4">
+                <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} transition={{ duration: 0.6, delay: 0.5 }} className="w-full h-full xl:absolute xl:inset-0 bg-[#0a0a0a] rounded-[40px] border border-white/5 overflow-hidden flex flex-col shadow-2xl shadow-orange-900/10">
                      <div className="p-6 bg-white/5 border-b border-white/5 flex items-center gap-3 shrink-0"><Wand2 size={18} className="text-orange-600"/><h3 className="font-black text-white text-sm font-lemon tracking-widest uppercase">Suggestions</h3></div>
                      <ScrollArea className="flex-1 custom-scrollbar">
                          <div className="p-4 flex flex-col gap-3">
@@ -1450,7 +1643,8 @@ function WatchContent() {
                              )}
                          </div>
                      </ScrollArea>
-            </motion.div>
+                </motion.div>
+            </div>
               
             {/* RELATED SECTION */}
             {anime.related && anime.related.length > 0 && (
@@ -1479,4 +1673,4 @@ function WatchContent() {
   );
 }
 
-export default function WatchPage() { return <Suspense fallback={<FantasyLoader />}><WatchContent /></Suspense>; }
+export default function WatchPage() { return <Suspense fallback={<WatchPageSkeleton />}><WatchContent /></Suspense>; }

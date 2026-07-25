@@ -5,11 +5,13 @@ import Navigation from "@/components/Layout/Navigation";
 import { AuthProvider } from '@/context/AuthContext';
 import { SettingsProvider } from "@/hooks/useSettings";
 import CustomLoader from "@/components/UIx/CustomLoader"; 
+import NavigationLoader from "@/components/UIx/NavigationLoader"; 
 import { createClient } from "@supabase/supabase-js"; 
 import { SITE_CONFIG } from '@/lib/site-config'; 
 import WelcomeModal from "@/components/UIx/WelcomeModal";
 import { UserDataProvider } from '@/context/UserDataContext';
 import AlphaWidget from '@/components/AI/AlphaWidget';
+import GuildBoardPopupRenderer from '@/components/UIx/GuildBoardPopupRenderer';
 
 // Import fonts from your library (Optimized: These are just variable definitions now)
 import { 
@@ -169,6 +171,9 @@ export default function RootLayout({
           dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
         />
 
+        {/* Global Navigation Loader */}
+        <NavigationLoader />
+
         {/* Global Loading Overlay */}
         <CustomLoader />
 
@@ -181,13 +186,14 @@ export default function RootLayout({
             <SettingsProvider>
               <Navigation />
 
-              <main className="min-h-screen relative overflow-clip">
+              <main className="min-h-screen relative overflow-clip w-full">
                 <PageTransition>
                   {children}
                 </PageTransition>
               </main>
 
               <AlphaWidget />
+              <GuildBoardPopupRenderer />
             </SettingsProvider>
           </UserDataProvider>
         </AuthProvider>

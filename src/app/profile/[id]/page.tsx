@@ -18,11 +18,13 @@ import Footer from '@/components/Anime/Footer';
 import { motion, AnimatePresence } from 'framer-motion';
 import ShadowAvatar from '@/components/User/ShadowAvatar'; 
 import ProfileAvatar from '@/components/User/ProfileAvatar';
+import UserTitleBadge from '@/components/ui/UserTitleBadge';
 import Link from 'next/link';
 
-export default function PublicProfilePage({ params }: { params: { id: string } }) {
+export default function PublicProfilePage({ params }: { params: Promise<{ id: string }> }) {
     const router = useRouter();
-    const targetUserId = params.id as string;
+    const routeParams = useParams();
+    const targetUserId = (routeParams?.id as string) || '';
     
     const { user, isLoading } = useAuth();
     
@@ -235,10 +237,23 @@ export default function PublicProfilePage({ params }: { params: { id: string } }
     if (!hasMounted || isLoading || !profile) return <div className="min-h-screen bg-black flex items-center justify-center"><div className="w-8 h-8 border-4 border-primary-500 border-t-transparent rounded-full animate-spin" /></div>;
 
     return (
-        <div className="min-h-screen bg-[#000] text-white pt-24 pb-32">
-            <div className="max-w-4xl mx-auto px-4 md:px-8">
+        <div className="min-h-screen bg-[#000] text-white pb-8">
+            {/* PUBLIC PROFILE COVER BANNER */}
+            <div className="relative w-full mb-2">
+                <div className="w-full h-48 sm:h-64 md:h-80 rounded-b-3xl relative overflow-hidden bg-zinc-900 shadow-2xl border-b border-white/10">
+                    <img 
+                        src={profile.banner_url || "https://images.unsplash.com/photo-1618336753974-aae8e04506aa?q=80&w=2000"} 
+                        alt={`${profile.username}'s Cover`} 
+                        className="w-full h-full object-cover"
+                        style={{ objectPosition: `center ${profile.banner_pos !== undefined && profile.banner_pos !== null ? profile.banner_pos : 50}%` }}
+                    />
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent pointer-events-none" />
+                </div>
+            </div>
+
+            <div className="px-4 sm:px-8 w-full -mt-14 sm:-mt-20 md:-mt-24 relative z-20">
                 
-                {/* INSTAGRAM HEADER */}
+                {/* PROFILE HEADER */}
                 <div className="flex flex-col md:flex-row items-center md:items-start gap-8 mb-12">
                     {/* Avatar */}
                     <div className="shrink-0 relative">
@@ -249,10 +264,22 @@ export default function PublicProfilePage({ params }: { params: { id: string } }
                     </div>
 
                     {/* Info & Stats */}
-                    <div className="flex-1 flex flex-col items-center md:items-start w-full">
-                        <div className="flex flex-col md:flex-row items-center gap-4 mb-5 w-full">
+                    <div className="flex-1 flex flex-col items-center md:items-start w-full pt-4 md:pt-14">
+                        {/* Username & Title */}
+                        <div className="flex items-baseline gap-2 flex-wrap justify-center md:justify-start mb-4">
                             <h1 className="text-2xl md:text-xl font-medium text-white">{profile.username}</h1>
-                            <div className="flex gap-2">
+                            <UserTitleBadge user={profile} variant="bracket" />
+                        </div>
+
+                        {/* Stats on Left & Action Buttons on Right (Same Row) */}
+                        <div className="w-full flex flex-col md:flex-row items-center justify-between gap-4 mb-5">
+                            <div className="flex gap-8 text-sm md:text-base hidden md:flex">
+                                <div><span className="font-bold text-white">{posts.length}</span> posts</div>
+                                <div onClick={()=>fetchFollowList('followers')} className="cursor-pointer hover:text-zinc-300"><span className="font-bold text-white">{followersCount}</span> followers</div>
+                                <div onClick={()=>fetchFollowList('following')} className="cursor-pointer hover:text-zinc-300"><span className="font-bold text-white">{followingCount}</span> following</div>
+                            </div>
+
+                            <div className="flex gap-2 md:ml-auto">
                                 <Button 
                                     onClick={handleFollowToggle} 
                                     variant={isPartner ? "secondary" : isFollowing ? "secondary" : "default"} 
@@ -293,12 +320,6 @@ export default function PublicProfilePage({ params }: { params: { id: string } }
                             </div>
                         </div>
 
-                        <div className="flex gap-8 mb-5 text-sm md:text-base hidden md:flex">
-                            <div><span className="font-bold text-white">{posts.length}</span> posts</div>
-                            <div onClick={()=>fetchFollowList('followers')} className="cursor-pointer hover:text-zinc-300"><span className="font-bold text-white">{followersCount}</span> followers</div>
-                            <div onClick={()=>fetchFollowList('following')} className="cursor-pointer hover:text-zinc-300"><span className="font-bold text-white">{followingCount}</span> following</div>
-                        </div>
-
                         <div className="flex flex-col items-center md:items-start text-sm">
                             {profile.full_name && profile.full_name.toLowerCase() !== profile.username.toLowerCase() && <span className="font-bold text-white">{profile.full_name}</span>}
                             <span className="text-zinc-300 whitespace-pre-wrap text-center md:text-left mt-1">{profile.bio}</span>
@@ -320,15 +341,15 @@ export default function PublicProfilePage({ params }: { params: { id: string } }
 
                 {/* TABS (POSTS, FAVORITES, WATCH HISTORY) */}
                 <Tabs defaultValue="posts" className="w-full border-t border-zinc-800">
-                    <TabsList className="bg-transparent w-full justify-center h-auto p-0 rounded-none flex">
-                        <TabsTrigger value="posts" className="data-[state=active]:bg-transparent data-[state=active]:border-t-[1px] data-[state=active]:border-white data-[state=active]:text-white rounded-none px-6 py-4 text-xs font-bold text-zinc-500 hover:text-zinc-300 uppercase tracking-widest flex items-center gap-2 -mt-[1px]">
+                    <TabsList className="bg-transparent w-full justify-center h-auto p-0 rounded-none flex items-center gap-2 sm:gap-6 overflow-x-auto custom-scrollbar">
+                        <TabsTrigger value="posts" className="data-[state=active]:bg-transparent data-[state=active]:border-t-[2px] data-[state=active]:border-white data-[state=active]:text-white rounded-none px-3 sm:px-6 py-3.5 text-xs font-extrabold text-zinc-500 hover:text-zinc-300 uppercase tracking-wider flex items-center gap-1.5 -mt-[1px] shrink-0 transition-colors">
                             <Grid size={14}/> Posts
                         </TabsTrigger>
-                        <TabsTrigger value="favorites" className="data-[state=active]:bg-transparent data-[state=active]:border-t-[1px] data-[state=active]:border-white data-[state=active]:text-white rounded-none px-6 py-4 text-xs font-bold text-zinc-500 hover:text-zinc-300 uppercase tracking-widest flex items-center gap-2 -mt-[1px]">
+                        <TabsTrigger value="favorites" className="data-[state=active]:bg-transparent data-[state=active]:border-t-[2px] data-[state=active]:border-white data-[state=active]:text-white rounded-none px-3 sm:px-6 py-3.5 text-xs font-extrabold text-zinc-500 hover:text-zinc-300 uppercase tracking-wider flex items-center gap-1.5 -mt-[1px] shrink-0 transition-colors">
                             <Heart size={14}/> Favorites
                         </TabsTrigger>
-                        <TabsTrigger value="watchlist" className="data-[state=active]:bg-transparent data-[state=active]:border-t-[1px] data-[state=active]:border-white data-[state=active]:text-white rounded-none px-6 py-4 text-xs font-bold text-zinc-500 hover:text-zinc-300 uppercase tracking-widest flex items-center gap-2 -mt-[1px]">
-                            <History size={14}/> Watch History
+                        <TabsTrigger value="watchlist" className="data-[state=active]:bg-transparent data-[state=active]:border-t-[2px] data-[state=active]:border-white data-[state=active]:text-white rounded-none px-3 sm:px-6 py-3.5 text-xs font-extrabold text-zinc-500 hover:text-zinc-300 uppercase tracking-wider flex items-center gap-1.5 -mt-[1px] shrink-0 transition-colors">
+                            <History size={14}/> History
                         </TabsTrigger>
                     </TabsList>
 
@@ -429,7 +450,7 @@ export default function PublicProfilePage({ params }: { params: { id: string } }
                         {followersList.length === 0 ? (
                             <div className="text-center py-10 text-zinc-500">No followers yet.</div>
                         ) : followersList.map(u => (
-                            <a key={u.id} href={`/profile/${u.id}`} className="flex items-center justify-between p-2 hover:bg-white/5 rounded-lg transition-colors">
+                            <a key={u.id} href={`/profile/${u.username}`} className="flex items-center justify-between p-2 hover:bg-white/5 rounded-lg transition-colors">
                                 <div className="flex items-center gap-3">
                                     <div className="w-10 h-10">
                                       <ProfileAvatar profile={u} className="w-10 h-10" />
@@ -455,7 +476,7 @@ export default function PublicProfilePage({ params }: { params: { id: string } }
                         {followingList.length === 0 ? (
                             <div className="text-center py-10 text-zinc-500">Not following anyone yet.</div>
                         ) : followingList.map(u => (
-                            <a key={u.id} href={`/profile/${u.id}`} className="flex items-center justify-between p-2 hover:bg-white/5 rounded-lg transition-colors">
+                            <a key={u.id} href={`/profile/${u.username}`} className="flex items-center justify-between p-2 hover:bg-white/5 rounded-lg transition-colors">
                                 <div className="flex items-center gap-3">
                                     <div className="w-10 h-10">
                                       <ProfileAvatar profile={u} className="w-10 h-10" />

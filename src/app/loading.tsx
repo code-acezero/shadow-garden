@@ -1,9 +1,7 @@
-import { BreathingLoader } from '@/components/ui/BreathingLoader';
+'use client';
+
+import { PageSkeleton } from '@/components/UIx/SkeletonLoaders';
 
 export default function Loading() {
-  return (
-    <div className="w-full h-screen flex flex-col items-center justify-center bg-transparent pointer-events-none z-[9999]">
-        <BreathingLoader />
-    </div>
-  );
+  return <PageSkeleton />;
 }

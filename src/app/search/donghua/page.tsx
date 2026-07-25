@@ -4,6 +4,7 @@ import React, { useState, useEffect, Suspense, useCallback } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import AnimeCard from '@/components/Anime/AnimeCard';
 import { dpi } from '@/lib/dpi';
+import { SimpleGridSkeleton } from '@/components/UIx/SkeletonLoaders';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Search, Loader2, ChevronLeft, ChevronRight, X, Flame,
@@ -85,11 +86,11 @@ function DonghuaSearchContent() {
   return (
     <div className="min-h-screen bg-[#050505] text-white">
       {/* Header */}
-      <div className="relative pt-20 pb-8 px-4 overflow-hidden">
+      <div className="relative overflow-hidden">
         <div className="absolute inset-0 bg-gradient-to-b from-red-950/20 via-transparent to-transparent" />
         <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[800px] h-[400px] bg-red-600/5 rounded-full blur-[120px]" />
         
-        <div className="max-w-7xl mx-auto relative z-10">
+        <div className="relative z-10 w-full">
           <div className="flex items-center gap-3 mb-2">
             <div className="h-px w-8 bg-red-500" />
             <span className={`text-red-400 text-[10px] tracking-[0.3em] font-bold uppercase font-lemon`}>
@@ -117,7 +118,7 @@ function DonghuaSearchContent() {
 
           {/* Search Bar */}
           <form onSubmit={handleSearch} className="mt-6 flex gap-3">
-            <div className="relative flex-1 max-w-2xl">
+            <div className="relative flex-1">
               <Flame size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-red-500/60" />
               <input
                 type="text"
@@ -132,7 +133,7 @@ function DonghuaSearchContent() {
                 </button>
               )}
             </div>
-            <button type="submit" className="px-6 py-3.5 bg-red-600 hover:bg-red-700 rounded-2xl text-sm font-bold transition-colors shadow-lg shadow-red-600/20">
+            <button type="submit" className="py-3.5 bg-red-600 hover:bg-red-700 rounded-2xl text-sm font-bold transition-colors shadow-lg shadow-red-600/20">
               Search
             </button>
           </form>
@@ -151,12 +152,9 @@ function DonghuaSearchContent() {
       </div>
 
       {/* Results */}
-      <div className="max-w-7xl mx-auto px-4 py-8">
+      <div className="px-4 py-8 w-full">
         {loading ? (
-          <div className="h-[50vh] flex flex-col items-center justify-center gap-4">
-            <Loader2 className="w-10 h-10 animate-spin text-red-500" />
-            <p className="text-zinc-500 text-sm animate-pulse">Searching Donghua archives...</p>
-          </div>
+            <SimpleGridSkeleton />
         ) : results.length === 0 ? (
           <div className="h-[50vh] flex flex-col items-center justify-center gap-4">
             <div className="w-20 h-20 rounded-full bg-white/5 border border-white/10 flex items-center justify-center">

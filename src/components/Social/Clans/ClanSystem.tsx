@@ -22,6 +22,8 @@ export interface Clan {
   owner_id: string;
   privacy: string;
   created_at: string;
+  level?: number;
+  xp?: number;
   owner?: { username: string; avatar_url: string };
   member_count?: number;
 }
@@ -29,7 +31,7 @@ export interface Clan {
 export default function ClanSystem({ onClanOpen }: { onClanOpen?: (isOpen: boolean) => void }) {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const clanIdParam = searchParams.get('clanId');
+  const clanParam = searchParams.get('clan');
 
   const { user } = useAuth();
   const [clans, setClans] = useState<Clan[]>([]);
@@ -65,6 +67,29 @@ export default function ClanSystem({ onClanOpen }: { onClanOpen?: (isOpen: boole
         ...clan,
         owner: clan.profiles
       }));
+
+      // SORTING ALGORITHM: Rank Descending -> Tiebreaker: Combined Time & Activity
+      mappedData.sort((a: any, b: any) => {
+        const rankA = Number(a.level) || 1;
+        const rankB = Number(b.level) || 1;
+
+        if (rankA !== rankB) {
+          return rankB - rankA; // Rank 100 > Rank 10 > Rank 1
+        }
+
+        // Tiebreaker for identical Ranks: Activity (member count & XP) + Creation/Activity Time
+        const activityA = (Number(a.member_count) || 1) * 1000 + (Number(a.xp) || 0);
+        const activityB = (Number(b.member_count) || 1) * 1000 + (Number(b.xp) || 0);
+
+        const timeA = new Date(a.created_at || 0).getTime() / 1000000;
+        const timeB = new Date(b.created_at || 0).getTime() / 1000000;
+
+        const scoreA = activityA + timeA;
+        const scoreB = activityB + timeB;
+
+        return scoreB - scoreA;
+      });
+
       setClans(mappedData);
 
       if (user) {
@@ -159,19 +184,19 @@ export default function ClanSystem({ onClanOpen }: { onClanOpen?: (isOpen: boole
 
   useEffect(() => {
     if (clans.length > 0) {
-      if (clanIdParam && !selectedClan) {
-        const clan = clans.find(c => c.id === clanIdParam);
+      if (clanParam && !selectedClan) {
+        const clan = clans.find(c => c.name === clanParam);
         if (clan) setSelectedClan(clan);
-      } else if (!clanIdParam && selectedClan) {
+      } else if (!clanParam && selectedClan) {
         setSelectedClan(null);
       }
     }
-  }, [clanIdParam, clans, selectedClan]);
+  }, [clanParam, clans, selectedClan]);
 
   const handleClanSelect = (clan: Clan | null) => {
     setSelectedClan(clan);
     if (clan) {
-      window.history.pushState(null, '', `?clanId=${clan.id}`);
+      window.history.pushState(null, '', `?clan=${encodeURIComponent(clan.name)}`);
     } else {
       window.history.pushState(null, '', `?`);
     }
@@ -316,7 +341,7 @@ export default function ClanSystem({ onClanOpen }: { onClanOpen?: (isOpen: boole
                     </div>
 
                     {/* Metadata line */}
-                    <div className="flex items-center gap-3 mt-1.5 text-[10px] text-zinc-400 font-medium">
+                    <div className="flex items-center gap-2.5 mt-1.5 text-[10px] text-zinc-400 font-medium flex-wrap">
                       <span className="flex items-center gap-1.5">
                         <Users size={12} className="text-primary-400" />
                         <span className="text-white font-bold">{clan.member_count || 1}</span> members
@@ -360,10 +385,10 @@ export default function ClanSystem({ onClanOpen }: { onClanOpen?: (isOpen: boole
               exit={{ y: "100%", opacity: 0 }}
               transition={{ type: "spring", damping: 25, stiffness: 280 }}
               style={{ maxHeight: "calc(100dvh - var(--nav-height-top, 64px) - var(--nav-height-bottom, 64px) - 10px)" }}
-              className="w-full max-w-lg bg-[#0c0c10]/95 border-t sm:border border-white/15 rounded-t-[2.5rem] sm:rounded-3xl p-6 shadow-2xl space-y-4 my-0 sm:my-auto overflow-y-auto custom-scrollbar"
+              className="w-full bg-[#0c0c10]/95 border-t sm:border border-white/15 rounded-t-[2.5rem] sm:rounded-3xl p-6 shadow-2xl space-y-4 my-0 sm:my-auto overflow-y-auto custom-scrollbar"
             >
               {/* iOS Top Drag Indicator Bar */}
-              <div className="w-12 h-1.5 bg-white/25 rounded-full mx-auto mb-2 shrink-0" />
+              <div className="w-12 h-1.5 bg-white/25 rounded-full mb-2 shrink-0" />
 
               <div className="flex items-center justify-between pb-3 border-b border-white/10">
                 <h3 className="text-sm font-black uppercase tracking-widest text-white flex items-center gap-2">
@@ -401,7 +426,7 @@ export default function ClanSystem({ onClanOpen }: { onClanOpen?: (isOpen: boole
                   <label className="text-xs font-bold text-zinc-300 uppercase tracking-wider block mb-1.5">Clan Emblem / Avatar</label>
                   <div className="flex items-center gap-3 bg-black/50 border border-white/15 p-3 rounded-3xl">
                     <div className="w-12 h-12 rounded-2xl overflow-hidden bg-zinc-900 border border-white/10 shrink-0">
-                      <img src={avatarUrl || 'https://api.dicebear.com/7.x/bottts/svg?seed=' + (clanName || 'Random')} alt="" className="w-full h-full object-cover" />
+                      <img src={avatarUrl || 'https://cdn.myanimelist.net/images/characters/8/422170.jpg'} alt="" className="w-full h-full object-cover" />
                     </div>
                     <div className="flex-1">
                       <p className="text-[10px] text-zinc-400 mb-1.5">{avatarUrl ? 'Selected emblem' : 'Random anime emblem will be assigned if unselected.'}</p>

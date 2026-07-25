@@ -53,7 +53,7 @@ export default function WelcomeModal() {
             initial={{ scale: 0.95, opacity: 0 }}
             animate={{ scale: 1, opacity: 1 }}
             exit={{ scale: 0.95, opacity: 0 }}
-            className="w-[90%] max-w-[320px] bg-[#050505] border border-white/10 p-6 rounded-2xl shadow-2xl flex flex-col items-center text-center relative overflow-hidden"
+            className="w-[90%] bg-[#050505] border border-white/10 p-6 rounded-2xl shadow-2xl flex flex-col items-center text-center relative overflow-hidden"
           >
             {/* Decorative "Scanner" Line */}
             <motion.div 

@@ -344,7 +344,7 @@ const DaySelector = ({ selectedDate, onSelect }: { selectedDate: Date, onSelect:
 
     return (
         <div className="w-full border-b border-white/5 bg-[#050505]/80 backdrop-blur-xl z-40 sticky top-0 transition-all">
-            <div className="max-w-[1350px] mx-auto px-4 md:px-8 py-3 flex items-center gap-4">
+            <div className="px-4 py-3 flex items-center gap-4 w-full">
                 <button 
                     onClick={() => onSelect(new Date())}
                     className="hidden md:flex flex-col items-center justify-center h-[60px] px-4 rounded-xl border border-primary-500/20 bg-primary-500/10 text-primary-500 hover:bg-primary-500 hover:text-white transition-all shrink-0"
@@ -441,9 +441,9 @@ export default function SchedulePage() {
           <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[800px] h-[500px] bg-primary-900/10 blur-[120px] rounded-full mix-blend-screen opacity-30" />
       </div>
       
-      <div className="relative z-10 flex flex-col items-center w-full pb-20">
+      <div className="relative z-10 flex flex-col items-center w-full">
           
-          <div className="w-full max-w-[1350px] px-4 md:px-8 mt-24 mb-10 flex flex-col md:flex-row justify-between items-start md:items-end gap-6">
+          <div className="w-full px-4 mt-24 mb-10 flex flex-col md:flex-row justify-between items-start md:items-end gap-6">
               <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}>
                   <div className="flex items-center gap-3 mb-3">
                       <div className="h-px w-8 bg-primary-600" />
@@ -464,7 +464,7 @@ export default function SchedulePage() {
 
           <DaySelector selectedDate={selectedDate} onSelect={setSelectedDate} />
 
-          <div className="w-full max-w-[1350px] px-4 md:px-8 mt-12 space-y-20">
+          <div className="w-full px-4 mt-12 space-y-20">
 
               {/* SECTION 1: SCHEDULE GRID */}
               <section>
@@ -501,7 +501,7 @@ export default function SchedulePage() {
                   </div>
                   
                   {/* OVERLAP CONTAINER - 20% Overlap Effect */}
-                  <div ref={deckRef} className="w-full overflow-visible pb-20 pt-10 px-4 md:px-0">
+                  <div ref={deckRef} className="w-full overflow-visible pt-10 px-4 md:px-0">
                       <motion.div 
                         key={topTab}
                         variants={containerVariants}

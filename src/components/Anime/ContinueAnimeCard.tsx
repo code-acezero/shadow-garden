@@ -1,9 +1,9 @@
 "use client";
 
-import React, { useState, useRef } from "react";
+import React, { useState, useRef, useEffect, memo } from "react";
 import { motion } from "framer-motion";
 import { Play, Captions, Mic, X } from "lucide-react";
-import { cn } from "@/lib/utils";
+import { cn, formatAnimeTitle } from "@/lib/utils";
 
 // Shared Interface
 export interface ContinueWatchingItem {
@@ -23,16 +23,21 @@ export interface ContinueWatchingItem {
 
 interface ContinueAnimeCardProps {
   anime: ContinueWatchingItem;
-  onClick: (id: string, episodeId: string) => void;
+  onClick: (id: string, episodeId: string, type?: string) => void;
   onRemove?: (id: string) => void;
   variants?: any;
   className?: string;
 }
 
-export default function ContinueAnimeCard({ anime, onClick, onRemove, variants, className }: ContinueAnimeCardProps) {
+export default memo(function ContinueAnimeCard({ anime, onClick, onRemove, variants, className }: ContinueAnimeCardProps) {
   const [showRemove, setShowRemove] = useState(false);
   const lastTapRef = useRef<number>(0);
   const clickTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  // One-time touch device detection — avoids hover animation overhead on mobile
+  const isTouchRef = useRef<boolean | null>(null);
+  useEffect(() => {
+    isTouchRef.current = window.matchMedia('(hover: none)').matches;
+  }, []);
 
   const handleRemove = (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -52,7 +57,7 @@ export default function ContinueAnimeCard({ anime, onClick, onRemove, variants, 
       // --- SINGLE TAP DETECTED ---
       // Wait briefly to see if a second tap comes
       clickTimeoutRef.current = setTimeout(() => {
-        onClick(anime.id, anime.episodeId);
+        onClick(anime.id, anime.episodeId, anime.type);
       }, DOUBLE_TAP_DELAY);
     }
     lastTapRef.current = now;
@@ -61,22 +66,28 @@ export default function ContinueAnimeCard({ anime, onClick, onRemove, variants, 
   return (
     <motion.div
       variants={variants}
-      whileHover={{ scale: 1.05, y: -8 }}
+      // Skip whileHover on touch devices — touch devices can't hover, this just adds overhead
+      whileHover={isTouchRef.current ? undefined : { scale: 1.05, y: -8 }}
       whileTap={{ scale: 0.96 }}
       onClick={handleSmartClick}
+      style={{ willChange: 'transform' }}
       className={cn(
-        "group relative aspect-[3/4] rounded-[24px] md:rounded-[32px] overflow-hidden cursor-pointer shadow-2xl shadow-black/50 ring-1 ring-white/10 bg-[#050505] transform-gpu transition-all duration-300 z-0 hover:z-10 select-none touch-manipulation",
+        "group relative aspect-[3/4] rounded-[24px] md:rounded-[32px] overflow-hidden cursor-pointer shadow-2xl shadow-black/50 ring-1 ring-white/10 bg-[#050505] transform-gpu z-0 hover:z-10 select-none touch-manipulation",
         className || "flex-shrink-0 w-[42%] sm:w-[28%] md:w-[22%] lg:w-[15.5%] xl:w-[15.5%] snap-start"
       )}
     >
-      {/* 1. Background Image */}
+        {/* 1. Background Image */}
       <div className="absolute inset-0 overflow-hidden rounded-[24px] md:rounded-[32px]">
-        <motion.img
-          src={anime.poster}
+        {/* Plain img — no framer-motion overhead needed here, image itself doesn't animate */}
+        <img
+          src={anime.poster && anime.poster.trim() !== '' ? anime.poster : "/images/no-poster.png"}
           alt={anime.title}
           loading="lazy"
           decoding="async"
-          className="w-full h-full object-cover transition-transform duration-700 ease-out group-hover:scale-110"
+          onError={(e) => {
+            (e.target as HTMLImageElement).src = "/images/no-poster.png";
+          }}
+          className="w-full h-full object-cover transform-gpu transition-transform duration-700 ease-out group-hover:scale-110"
         />
         <div className="absolute inset-0 bg-gradient-to-t from-black via-black/60 to-transparent opacity-95 group-hover:opacity-100 transition-opacity duration-300" />
       </div>
@@ -106,20 +117,44 @@ export default function ContinueAnimeCard({ anime, onClick, onRemove, variants, 
         </div>
       )}
 
-      {/* Age Rating Tag (Hidden if Remove is shown on mobile) */}
-      {anime.ageRating && !showRemove && (
-        <div className="absolute top-2.5 right-2.5 md:top-3 md:right-3 z-30 transition-opacity duration-200 group-hover:opacity-0">
-          <div
-            className={`px-1.5 py-0.5 md:px-2 md:py-1 backdrop-blur-md border rounded-lg text-[7px] md:text-[8px] font-black text-white uppercase tracking-wider shadow-lg ${
-              anime.isAdult
-                ? "bg-primary-600/90 border-primary-500/50 shadow-primary-900/20"
-                : "bg-black/60 border-white/10"
-            }`}
-          >
-            {anime.ageRating}
+      {/* Age Rating Tag */}
+      {!showRemove && (() => {
+        let raw = anime.ageRating || (anime.isAdult ? "18+" : "");
+        if (!raw && !anime.isAdult) return null;
+        
+        const rUpper = raw.toUpperCase().trim();
+        const isRed = anime.isAdult || rUpper.includes("18") || rUpper.includes("RX") || rUpper.includes("HENTAI") || rUpper.includes("R+") || rUpper === "R" || rUpper.startsWith("R");
+        
+        let label = "";
+        if (rUpper.includes("RX") || rUpper.includes("HENTAI")) {
+          label = "Rx";
+        } else if (isRed) {
+          label = "18+";
+        } else if (rUpper.includes("13") || rUpper.includes("PG-13")) {
+          label = "PG 13";
+        } else if (rUpper.includes("PG")) {
+          label = "PG";
+        } else if (rUpper === "G" || rUpper.includes("ALL")) {
+          label = "G";
+        } else {
+          label = raw;
+        }
+        
+        return (
+          <div className="absolute top-2.5 right-2.5 md:top-3 md:right-3 z-30 transition-opacity duration-200 group-hover:opacity-0">
+            <div
+              className={cn(
+                "h-4 md:h-5 px-1.5 md:px-2 flex items-center justify-center rounded-full border text-[7px] md:text-[8px] font-black shadow-lg backdrop-blur-md transition-colors",
+                isRed 
+                  ? "bg-red-600 border-red-500 text-white shadow-[0_0_10px_rgba(220,38,38,0.6)]" 
+                  : "bg-black/60 border-white/10 text-white"
+              )}
+            >
+              {label}
+            </div>
           </div>
-        </div>
-      )}
+        );
+      })()}
 
       {/* 3. Center Play Button */}
       <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all duration-300 z-20 scale-50 group-hover:scale-100 -translate-y-4 md:-translate-y-6">
@@ -135,7 +170,7 @@ export default function ContinueAnimeCard({ anime, onClick, onRemove, variants, 
       <div className="absolute bottom-0 left-0 right-0 px-2.5 pb-2.5 md:px-3 md:pb-3 z-20 flex flex-col gap-1 md:gap-1.5">
         {/* Title */}
         <h3 className="text-xs md:text-sm font-black text-white leading-tight truncate drop-shadow-xl filter group-hover:text-primary-400 transition-colors">
-          {anime.title}
+          {formatAnimeTitle(anime.title, anime.id)}
         </h3>
 
         {/* Adaptive Info Row */}
@@ -190,4 +225,4 @@ export default function ContinueAnimeCard({ anime, onClick, onRemove, variants, 
       <div className="absolute inset-0 rounded-[24px] md:rounded-[32px] ring-1 ring-inset ring-white/10 pointer-events-none z-30 group-hover:ring-red-500/30 transition-all duration-500" />
     </motion.div>
   );
-}
+});

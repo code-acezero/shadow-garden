@@ -2,6 +2,7 @@
 
 import { motion } from "framer-motion";
 import { usePathname } from "next/navigation";
+import { useEffect, useState } from "react";
 
 export default function PageTransition({
   children,
@@ -9,33 +10,42 @@ export default function PageTransition({
   children: React.ReactNode;
 }) {
   const pathname = usePathname();
+  const [isMobile, setIsMobile] = useState(false);
 
-  // Pages that render edge-to-edge and ignore safe areas
-  const isEdgeToEdge = 
-    pathname === '/' || 
-    pathname.startsWith('/watch') || 
-    pathname.startsWith('/donghua-watch') || 
-    pathname.startsWith('/drama-watch') ||
-    pathname.startsWith('/hindi-watch') ||
-    pathname.startsWith('/movies-watch');
+  useEffect(() => {
+    // Detect mobile/tablet once on mount — avoids re-render on resize
+    const mq = window.matchMedia("(max-width: 1023px)");
+    setIsMobile(mq.matches);
+  }, []);
+
+  const isMaster = pathname?.startsWith('/master');
+
+  // Mobile/Tablet: opacity only (no y-offset = no layout reflow)
+  // Desktop: subtle y-offset for premium feel
+  const variants = isMobile
+    ? {
+        initial: { opacity: 0 },
+        animate: { opacity: 1 },
+        exit: { opacity: 0 },
+      }
+    : {
+        initial: { opacity: 0, y: 10 },
+        animate: { opacity: 1, y: 0 },
+        exit: { opacity: 0, y: -10 },
+      };
 
   return (
     <motion.div
       key={pathname}
-      initial={{ opacity: 0, y: 12 }}
-      animate={{ opacity: 1, y: 0 }}
-      exit={{ opacity: 0, y: -12 }}
+      initial={variants.initial}
+      animate={variants.animate}
+      exit={variants.exit}
       transition={{
-        duration: 0.35,
+        duration: isMobile ? 0.18 : 0.3,
         ease: "easeOut",
       }}
-      onAnimationComplete={(definition) => {
-        const el = document.querySelector('.page-transition-wrapper') as HTMLElement;
-        if (el) {
-          el.style.transform = 'none';
-        }
-      }}
-      className={`page-transition-wrapper min-h-screen ${!isEdgeToEdge ? 'page-safe-area' : ''}`}
+      style={{ willChange: 'opacity, transform' }}
+      className={`page-transition-wrapper min-h-screen w-full ${isMaster ? '!p-0 !pt-0 !pb-0' : 'page-safe-area'}`}
     >
       {children}
     </motion.div>

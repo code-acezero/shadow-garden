@@ -33,7 +33,7 @@ function SocialContent() {
       </div>
 
       {/* Footer spans full width */}
-      <div className="relative z-10 mt-auto w-full pt-8 pb-8">
+      <div className="relative z-10 mt-auto w-full">
         <Footer />
       </div>
 

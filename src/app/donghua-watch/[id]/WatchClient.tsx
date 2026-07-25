@@ -11,13 +11,14 @@ import {
   ChevronDown, Heart, CheckCircle, XCircle,
   FastForward, Star, Info, MessageSquare, User,
   Loader2, Globe, Flame, Calendar, Copyright, Check, Mic, X,
-  ChevronLeft, ChevronRight, Pause, ArrowLeft, ArrowRight, Download, Wand2
+  ChevronLeft, ChevronRight, Pause, ArrowLeft, ArrowRight, Download, Wand2,
+  PlayCircle, StepForward
 } from 'lucide-react';
 
 import { AnimeService, UniversalAnime } from '@/lib/api';
 import { dpi } from '@/lib/dpi';
 import { supabase } from '@/lib/supabase';
-import { cn, isRelatedAnime, getChunkLabel } from '@/lib/utils';
+import { cn, isRelatedAnime, getChunkLabel, formatAnimeTitle, sanitizeContinueWatchingEntry } from '@/lib/utils';
 import { toast } from '@/lib/toast';
 import { useAuth } from '@/context/AuthContext';
 
@@ -28,6 +29,8 @@ import Footer from '@/components/Anime/Footer';
 import AnimeCard from '@/components/Anime/AnimeCard';
 import AuthModal from '@/components/Auth/AuthModal';
 import { useUserData } from '@/context/UserDataContext';
+import { Button } from '@/components/ui/button';
+import { WatchPageSkeleton, PlayerSkeleton, SimpleGridSkeleton } from '@/components/UIx/SkeletonLoaders';
 import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
 import {
@@ -36,7 +39,6 @@ import {
 import {
   Dialog, DialogContent, DialogTrigger, DialogTitle
 } from "@/components/ui/dialog";
-import { Button } from '@/components/ui/button';
 
 // --- 1. CUSTOM HOOKS ---
 
@@ -115,12 +117,7 @@ const useWatchSettings = () => {
 
 // --- 2. MEMOIZED PERFORMANCE COMPONENTS ---
 
-const FantasyLoader = memo(({ text = "SUMMONING..." }: { text?: string }) => (
-  <div className="w-full h-full min-h-[500px] flex flex-col items-center justify-center relative bg-[#050505]">
-    <div className="w-16 h-16 border-4 border-emerald-600 border-t-transparent rounded-full animate-spin mb-4 shadow-emerald-500/20" />
-    <h2 className="text-xl font-lemon text-emerald-500 animate-pulse tracking-[0.3em]">{text}</h2>
-  </div>
-));
+const FantasyLoader = memo(() => <WatchPageSkeleton />);
 FantasyLoader.displayName = "FantasyLoader";
 
 const PingPongScroll = memo(({ text, className }: { text: string, className?: string }) => {
@@ -166,29 +163,45 @@ const PingPongScroll = memo(({ text, className }: { text: string, className?: st
 PingPongScroll.displayName = "PingPongScroll";
 
 const EpisodeButton = memo(({ ep, isCurrent, isFullyPlayed, percent, viewMode, onClick }: any) => {
+    const isWatched = isFullyPlayed || percent > 0;
     return (
         <motion.button
             layout
-            initial={{ opacity: 0, scale: 0.8 }}
-            animate={{ opacity: 1, scale: 1 }}
-            exit={{ opacity: 0, scale: 0.8 }}
-            transition={{ type: "spring", stiffness: 400, damping: 25 }}
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: isCurrent ? 1.05 : 1 }}
+            exit={{ opacity: 0, scale: 0.95 }}
+            transition={{
+                layout: { type: "spring", stiffness: 350, damping: 30 },
+                scale: { type: "spring", stiffness: 300, damping: 25 },
+                opacity: { duration: 0.2 }
+            }}
             onClick={() => onClick(ep.id)}
             className={cn(
-                "relative overflow-hidden group border transition-all duration-300 transform-gpu",
-                viewMode === 'grid' ? "h-9 w-full rounded-full flex items-center justify-center text-[11px] font-black shadow-lg" :
+                "relative overflow-hidden group border transition-all duration-300 transform-gpu shadow-[0_4px_16px_rgba(0,0,0,0.2)]",
+                viewMode === 'grid' ? "h-9 w-full rounded-2xl flex items-center justify-center text-[11px] font-black" :
                 viewMode === 'compact' ? "aspect-square rounded-full flex items-center justify-center text-[9px] font-bold" :
-                "w-[95%] mx-auto h-9 rounded-full flex items-center px-4 text-[11px] font-bold text-left",
-                isCurrent ? "bg-emerald-600/90 backdrop-blur-md border-emerald-400 text-white shadow-[0_0_15px_rgba(220,38,38,0.6)] z-20 scale-105" :
-                isFullyPlayed ? "bg-[#000] border border-emerald-900/30 text-white shadow-[inset_0_0_15px_rgba(220,38,38,0.5)] drop-shadow-[0_0_8px_rgba(220,38,38,0.5)]" :
-                "bg-zinc-900 border-zinc-800 text-zinc-500 hover:border-zinc-700 hover:text-white"
+                "w-[98%] mx-auto h-10 rounded-2xl flex items-center px-4 text-[11px] font-bold text-left",
+                isCurrent ? "bg-green-500/20 backdrop-blur-xl border-green-400/50 text-white shadow-[0_0_20px_rgba(34,197,94,0.4)] z-20 scale-105" :
+                isWatched ? "bg-emerald-600/10 backdrop-blur-xl border border-emerald-500/30 text-emerald-500 hover:bg-emerald-600/20" :
+                "bg-white/5 backdrop-blur-xl border-white/10 text-zinc-400 hover:border-white/20 hover:bg-white/10 hover:text-white"
             )}
-            style={!isCurrent && !isFullyPlayed && percent > 0 ? { background: `linear-gradient(to right, rgba(220, 38, 38, 0.4) ${percent}%, transparent ${percent}%)`, } : {}}
         >
-            {!isCurrent && !isFullyPlayed && percent > 0 && <div className="absolute inset-0 bg-emerald-600/10 animate-liquid pointer-events-none" />}
-            <span className={cn("truncate relative z-10 w-full", viewMode === 'list' ? "text-left" : "text-center")}>
+            <div className="absolute inset-x-0 top-0 h-[40%] bg-gradient-to-b from-white/15 to-transparent pointer-events-none rounded-t-2xl" />
+            
+            {isCurrent && (
+                <>
+                    <div className="absolute inset-0 bg-gradient-to-tr from-green-500/10 via-transparent to-green-400/20 animate-pulse pointer-events-none" />
+                    <div className="absolute inset-0 bg-[linear-gradient(45deg,transparent_25%,rgba(74,222,128,0.2)_50%,transparent_75%)] bg-[length:250%_250%] animate-shimmer pointer-events-none" />
+                </>
+            )}
+
+            <motion.span layout="position" className={cn("truncate relative z-10 w-full font-bold tracking-wide", viewMode === 'list' ? "text-left" : "text-center")}>
                 {viewMode === 'list' ? `${ep.number}. ${ep.title}` : ep.number}
-            </span>
+            </motion.span>
+            
+            {isWatched && !isCurrent && (
+                <div className="absolute bottom-0 left-0 h-0.5 bg-emerald-500/50 transition-all pointer-events-none" style={{ width: `${percent}%` }} />
+            )}
         </motion.button>
     );
 });
@@ -244,7 +257,7 @@ const NextEpisodeTimer = ({ schedule, status }: { schedule: any, status: string 
 
 const TrailerSection = ({ videos }: { videos: any[] }) => {
     const [activeVideo, setActiveVideo] = useState(videos?.[0]?.source); if (!videos || videos.length === 0) return null; const getYoutubeId = (url: string) => url?.split('v=')[1]?.split('&')[0] || url?.split('/').pop();
-    return (<Dialog><DialogTrigger asChild><div className="inline-flex items-center gap-2 bg-emerald-600/10 border border-emerald-500/20 rounded-full px-6 py-2 cursor-pointer hover:bg-emerald-600 hover:border-emerald-500 transition-all group active:scale-95 shadow-lg shadow-emerald-900/10 w-full md:w-auto justify-center"><span className="flex items-center justify-center w-4 h-4 bg-emerald-600 rounded-full text-white shadow-lg group-hover:scale-110 transition-transform"><Play size={8} fill="currentColor" /></span><span className="text-[9px] font-black text-primary-100 group-hover:text-white uppercase tracking-wider">Trailers ({videos.length})</span></div></DialogTrigger><DialogContent className="bg-black/95 border-emerald-500/40 max-w-4xl w-[90vw] lg:max-w-2xl max-h-[70vh] p-0 overflow-hidden rounded-3xl shadow-[0_0_100px_-20px_rgba(220,38,38,0.5)] animate-in zoom-in-95 duration-300 flex flex-col"><DialogTitle className="sr-only">Trailers</DialogTitle><div className="flex-1 flex flex-col min-h-0"><div className="aspect-video w-full bg-zinc-900 shrink-0"><iframe src={`https://www.youtube.com/embed/${getYoutubeId(activeVideo)}?autoplay=1`} className="w-full h-full" allow="autoplay; encrypted-media" allowFullScreen /></div><div className="p-4 md:p-6 bg-[#0a0a0a] flex-1 overflow-hidden flex flex-col"><ScrollArea className="w-full whitespace-nowrap pb-4 h-full"><div className="flex gap-4 px-2">{videos.map((v: any, i: number) => (v && v.source ? <button key={i} onClick={() => setActiveVideo(v.source)} className={cn("flex flex-col gap-1 p-2 rounded-2xl border transition-all shrink-0 w-28 md:w-36 hover:scale-105 active:scale-95 group/pv", activeVideo === v.source ? "bg-emerald-600/10 border-emerald-600" : "bg-white/5 border-transparent hover:border-white/10")}><div className="aspect-video w-full bg-zinc-800 rounded-lg overflow-hidden relative shadow-lg"><img src={v.thumbnail || '/images/no-thumb.png'} className="w-full h-full object-cover opacity-60" alt="" loading="lazy" decoding="async"/><div className="absolute inset-0 flex items-center justify-center bg-emerald-600/20 opacity-0 group-hover/pv:opacity-100 transition-opacity"><Play size={16} fill="white" className="text-white" /></div></div><span className="text-[9px] font-black text-center truncate w-full uppercase text-zinc-400 group-hover/pv:text-white">{v.title || `Promo ${i+1}`}</span></button> : null))}</div><ScrollBar orientation="horizontal" className="h-1 bg-white/5" /></ScrollArea></div></div></DialogContent></Dialog>);
+    return (<Dialog><DialogTrigger asChild><div className="inline-flex items-center gap-2 bg-emerald-600/10 border border-emerald-500/20 rounded-full py-2 cursor-pointer hover:bg-emerald-600 hover:border-emerald-500 transition-all group active:scale-95 shadow-lg shadow-emerald-900/10 w-full md:w-auto justify-center"><span className="flex items-center justify-center w-4 h-4 bg-emerald-600 rounded-full text-white shadow-lg group-hover:scale-110 transition-transform"><Play size={8} fill="currentColor" /></span><span className="text-[9px] font-black text-primary-100 group-hover:text-white uppercase tracking-wider">Trailers ({videos.length})</span></div></DialogTrigger><DialogContent className="bg-black/95 border-emerald-500/40 w-[90vw] lg:max-w-2xl max-h-[70vh] p-0 overflow-hidden rounded-3xl shadow-[0_0_100px_-20px_rgba(220,38,38,0.5)] animate-in zoom-in-95 duration-300 flex flex-col"><DialogTitle className="sr-only">Trailers</DialogTitle><div className="flex-1 flex flex-col min-h-0"><div className="aspect-video w-full bg-zinc-900 shrink-0"><iframe src={`https://www.youtube.com/embed/${getYoutubeId(activeVideo)}?autoplay=1`} className="w-full h-full" allow="autoplay; encrypted-media" allowFullScreen /></div><div className="p-4 md:p-6 bg-[#0a0a0a] flex-1 overflow-hidden flex flex-col"><ScrollArea className="w-full whitespace-nowrap pb-4 h-full"><div className="flex gap-4 px-2">{videos.map((v: any, i: number) => (v && v.source ? <button key={i} onClick={() => setActiveVideo(v.source)} className={cn("flex flex-col gap-1 p-2 rounded-2xl border transition-all shrink-0 w-28 md:w-36 hover:scale-105 active:scale-95 group/pv", activeVideo === v.source ? "bg-emerald-600/10 border-emerald-600" : "bg-white/5 border-transparent hover:border-white/10")}><div className="aspect-video w-full bg-zinc-800 rounded-lg overflow-hidden relative shadow-lg"><img src={v.thumbnail || '/images/no-thumb.png'} className="w-full h-full object-cover opacity-60" alt="" loading="lazy" decoding="async"/><div className="absolute inset-0 flex items-center justify-center bg-emerald-600/20 opacity-0 group-hover/pv:opacity-100 transition-opacity"><Play size={16} fill="white" className="text-white" /></div></div><span className="text-[9px] font-black text-center truncate w-full uppercase text-zinc-400 group-hover/pv:text-white">{v.title || `Promo ${i+1}`}</span></button> : null))}</div><ScrollBar orientation="horizontal" className="h-1 bg-white/5" /></ScrollArea></div></div></DialogContent></Dialog>);
 };
 
 const MarqueeTitle = ({ text }: { text: string }) => {
@@ -259,7 +272,7 @@ const MarqueeTitle = ({ text }: { text: string }) => {
     }, [text]);
 
     return (
-        <div className="flex items-center bg-white/5 rounded-full px-4 h-7 border border-white/5 w-full flex-1 min-w-0 overflow-hidden relative transition-all hover:border-emerald-500/20 active:scale-95 group shadow-inner shadow-emerald-900/5">
+        <div className="flex items-center bg-white/5 rounded-full h-7 border border-white/5 w-full flex-1 min-w-0 overflow-hidden relative transition-all hover:border-emerald-500/20 active:scale-95 group shadow-inner shadow-emerald-900/5">
             <span className="text-[10px] text-emerald-500 font-black uppercase mr-2 flex-shrink-0 group-hover:animate-pulse">NOW:</span>
             <div ref={containerRef} className="flex-1 overflow-hidden relative h-full flex items-center mask-image-gradient">
                 <div className={cn("whitespace-nowrap inline-block", isOverflowing && "animate-marquee-pingpong")}>
@@ -308,8 +321,8 @@ const StarRating = ({ animeId, initialRating = 0 }: { animeId: string; initialRa
                 }
                 if (user) {
                     const myRating = await retryOperation(async () => {
-                        const { data } = await (supabase.from('anime_ratings') as any).select('rating').eq('user_id', user.id).eq('anime_id', animeId).single();
-                        return data;
+                        const { data } = await (supabase.from('anime_ratings') as any).select('rating').eq('user_id', user.id).eq('anime_id', animeId).limit(1);
+                        return data?.[0] || null;
                     });
                     if (myRating && (myRating as any).rating != null) setUserRating((myRating as any).rating);
                 }
@@ -322,7 +335,7 @@ const StarRating = ({ animeId, initialRating = 0 }: { animeId: string; initialRa
         if (!user) { toast.error("Shadow Agents only."); return; }
         setUserRating(score);
         try {
-            await (supabase!.from('anime_ratings') as any).upsert({ user_id: user.id, anime_id: animeId, rating: score }, { onConflict: 'user_id, anime_id' });
+            await (supabase!.from('anime_ratings') as any).upsert({ user_id: user.id, anime_id: animeId, rating: score }, { onConflict: 'user_id,anime_id' });
             toast.success(`Rated ${score} stars!`);
         } catch (err) {}
     };
@@ -371,7 +384,7 @@ const CharacterDetailsDialog = ({
 
   return (
     <Dialog open={isOpen} onOpenChange={(v) => !v && onClose()}>
-        <DialogContent className="max-w-4xl w-[90vw] h-[65vh] md:h-[550px] p-0 border-0 bg-transparent shadow-none overflow-hidden sm:rounded-[30px] z-[60] [&>button]:hidden">
+        <DialogContent className="w-[90vw] h-[65vh] md:h-[550px] p-0 border-0 bg-transparent shadow-none overflow-hidden sm:rounded-[30px] z-[60] [&>button]:hidden">
             <DialogTitle className="sr-only">Character Details</DialogTitle>
             <div className="w-full h-full relative backdrop-blur-2xl bg-[#050505]/95 border border-white/10 rounded-[30px] shadow-[0_0_80px_rgba(220,38,38,0.15)] overflow-hidden flex flex-col md:flex-row">
                 <div className="absolute top-0 left-0 w-full h-full bg-gradient-to-br from-emerald-900/10 via-transparent to-emerald-900/5 pointer-events-none" />
@@ -392,7 +405,7 @@ const CharacterDetailsDialog = ({
                     </button>
                 </div>
 
-                {loading ? <div className="w-full h-full flex items-center justify-center"><FantasyLoader text="ANALYZING..." /></div> : data ? (
+                {loading ? <div className="w-full h-full flex items-center justify-center"><SimpleGridSkeleton /></div> : data ? (
                 <>
                     <div className="w-full md:w-[35%] h-[40%] md:h-full relative overflow-hidden group border-b md:border-b-0 md:border-r border-white/5">
                         <img src={data.profile || data.image || '/images/non-non.png'} className="w-full h-full object-cover opacity-90 transition-transform duration-700 group-hover:scale-105" alt={data.name} loading="lazy" decoding="async"/>
@@ -486,7 +499,7 @@ const VoiceActorDetailsDialog = ({
 
   return (
     <Dialog open={isOpen} onOpenChange={(v) => !v && onClose()}>
-        <DialogContent className="max-w-4xl w-[95vw] h-[65vh] md:h-[550px] p-0 border-0 bg-transparent shadow-none overflow-hidden sm:rounded-[30px] z-[60] [&>button]:hidden">
+        <DialogContent className="w-[95vw] h-[65vh] md:h-[550px] p-0 border-0 bg-transparent shadow-none overflow-hidden sm:rounded-[30px] z-[60] [&>button]:hidden">
             <DialogTitle className="sr-only">Actor Details</DialogTitle>
             <div className="w-full h-full relative backdrop-blur-2xl bg-[#050505]/95 border border-white/10 rounded-[30px] shadow-[0_0_80px_rgba(220,38,38,0.3)] overflow-hidden flex flex-col md:flex-row">
                 <div className="absolute top-0 left-0 w-full h-full bg-gradient-to-br from-emerald-600/10 via-transparent to-emerald-600/5 pointer-events-none" />
@@ -507,7 +520,7 @@ const VoiceActorDetailsDialog = ({
                     </button>
                 </div>
 
-                {loading ? <div className="w-full h-full flex items-center justify-center"><FantasyLoader text="IDENTIFYING..." /></div> : data ? (
+                {loading ? <div className="w-full h-full flex items-center justify-center"><SimpleGridSkeleton /></div> : data ? (
                 <>
                     <div className="w-full md:w-[35%] h-[40%] md:h-full relative overflow-hidden group border-b md:border-b-0 md:border-r border-white/5">
                         <img src={data.profile || '/images/non-non.png'} className="w-full h-full object-cover opacity-90 transition-transform duration-700 group-hover:scale-105" alt={data.name} loading="lazy" decoding="async"/>
@@ -656,9 +669,10 @@ function WatchContent() {
       const payload = Object.values(progressBuffer.current);
       if (payload.length === 0) return;
       isBufferDirty.current = false;
-      const sanitizedPayload = payload.map(p => { const { duration, ...clean } = p; return clean; });
+      const sanitizedPayload = payload.map(p => sanitizeContinueWatchingEntry(p, user.id)).filter(Boolean);
       try {
-          await (supabase.from('user_continue_watching') as any).upsert(sanitizedPayload, { onConflict: 'user_id, episode_id' });
+          await (supabase.from('user_continue_watching') as any).upsert(sanitizedPayload, { onConflict: 'user_id,episode_id' });
+          if (typeof window !== 'undefined') window.dispatchEvent(new CustomEvent('shadow-continue-updated'));
       } catch (e) {
           isBufferDirty.current = true;
       }
@@ -666,8 +680,7 @@ function WatchContent() {
 
   const saveProgress = useCallback(async (forceFlush = false) => {
       if (!currentEpId || !anime) return;
-      const progress = Math.floor(progressRef.current);
-      if (progress < 5) return;
+      const progress = Math.max(1, Math.floor(progressRef.current));
       const ep = anime.episodes.find(e => e.id === currentEpId);
       if (!ep) return;
       const duration = playerRef.current?.getDuration() || 1350;
@@ -681,19 +694,27 @@ function WatchContent() {
 
       if (user) {
           const episodeImage = (ep as any).image || (ep as any).poster || anime.poster;
-          const animeType = (anime as any).type || 'TV';
+          const rawTitle = anime.title || (anime as any).name || (anime as any).jname;
+          const animeTitle = formatAnimeTitle(rawTitle, animeId);
+          if (typeof window !== 'undefined' && animeTitle && !animeTitle.toLowerCase().includes('unknown')) {
+              localStorage.setItem(`shadow_anime_title_${animeId}`, animeTitle);
+          }
+          const animeImage = anime.poster || (anime as any).image || episodeImage;
+          const animeType = 'donghua';
           const entry = {
               user_id: user.id,
               anime_id: animeId,
+              title: animeTitle,
+              banner_image: animeImage,
               episode_id: currentEpId,
               episode_number: ep.number,
-              progress: progress,
-              duration: duration,
+              progress: progress || 50,
               last_updated: new Date().toISOString(),
               last_server: settings.server,
               episode_image: episodeImage,
-              total_episodes: anime.episodes.length,
+              total_episodes: anime.episodes?.length || 1,
               type: animeType,
+              media_type: 'donghua',
               is_completed: isCompleted
           };
           progressBuffer.current[currentEpId] = entry;
@@ -701,21 +722,83 @@ function WatchContent() {
           localStorage.setItem(`shadow_sync_buffer_${animeId}`, JSON.stringify(progressBuffer.current));
           if (forceFlush || isCompleted) flushSyncBuffer();
       } else {
+          const rawTitle = anime.title || (anime as any).name || (anime as any).jname;
+          const animeTitle = formatAnimeTitle(rawTitle, animeId);
+          if (typeof window !== 'undefined' && animeTitle && !animeTitle.toLowerCase().includes('unknown')) {
+              localStorage.setItem(`shadow_anime_title_${animeId}`, animeTitle);
+          }
           const localData = JSON.parse(localStorage.getItem('shadow_continue_watching') || '{}');
-          localData[animeId] = { animeId, episodeId: currentEpId, episodeNumber: ep.number, progress, lastUpdated: Date.now() };
+          localData[animeId] = { 
+            animeId, 
+            title: animeTitle,
+            poster: anime.poster || (anime as any).image,
+            episodeId: currentEpId, 
+            episodeNumber: ep.number, 
+            progress: progress || 50, 
+            type: 'donghua',
+            lastUpdated: Date.now() 
+          };
           localStorage.setItem('shadow_continue_watching', JSON.stringify(localData));
+
+          const epData = JSON.parse(localStorage.getItem(`shadow_ep_progress_${animeId}`) || '{}');
+          epData[currentEpId] = {
+              episode_id: currentEpId,
+              episode_number: ep.number,
+              progress,
+              duration,
+              is_completed: isCompleted,
+              last_updated: new Date().toISOString()
+          };
+          localStorage.setItem(`shadow_ep_progress_${animeId}`, JSON.stringify(epData));
+          progressBuffer.current[currentEpId] = epData[currentEpId];
+
+          if (typeof window !== 'undefined') window.dispatchEvent(new CustomEvent('shadow-continue-updated'));
       }
   }, [anime, currentEpId, user, animeId, settings.server, flushSyncBuffer]);
+
+  // Instant Watch History Registration on Page Visit / Episode Change
+  useEffect(() => {
+      if (anime && currentEpId) {
+          saveProgress(true);
+      }
+  }, [anime, currentEpId]);
+
+  // Save progress on unmount (when leaving watch page)
+  useEffect(() => {
+      return () => {
+          saveProgress(true);
+      };
+  }, [saveProgress]);
 
   const handlePause = useCallback(() => saveProgress(true), [saveProgress]);
 
   const handleEpisodeClick = useCallback((id: string) => {
       saveProgress(true);
+      
+      const ep = anime?.episodes.find(e => e.id === id);
+      if (ep) {
+          const savedRecord = progressBuffer.current[id];
+          const savedProgress = savedRecord?.progress || 0;
+          const isCompleted = savedRecord?.is_completed || (epProgress[ep.number] === 100);
+          
+          if (isCompleted) {
+              progressRef.current = 0;
+              setResumeTime(0);
+          } else {
+              progressRef.current = savedProgress;
+              setResumeTime(savedProgress);
+          }
+      } else {
+          progressRef.current = 0;
+          setResumeTime(0);
+      }
+      
       setCurrentEpId(id);
       setStreamUrl(null);
       isSkipToastLocked.current = false;
-      window.history.pushState({}, '', `/watch/${animeId}?ep=${id}`);
-  }, [animeId, saveProgress]);
+      const targetParam = ep ? String(ep.number) : id;
+      router.push(`/donghua-watch/${animeId}?ep=${targetParam}`, { scroll: false });
+  }, [animeId, saveProgress, anime, epProgress, router]);
 
   const resetInterfaceTimer = useCallback(() => {
       if (interfaceTimeoutRef.current) clearTimeout(interfaceTimeoutRef.current);
@@ -883,9 +966,31 @@ function WatchContent() {
           let needsDbUpdate = false;
           let bufferToFlush: any[] = [];
           let localData: {[key: string]: any} = {};
-          try { const raw = localStorage.getItem(tempStorageKey); if (raw) localData = JSON.parse(raw); } catch {}
+          try { 
+              const raw = localStorage.getItem(tempStorageKey); 
+              if (raw) localData = JSON.parse(raw); 
+              const epRaw = localStorage.getItem(`shadow_ep_progress_${animeId}`);
+              if (epRaw) {
+                  const epParsed = JSON.parse(epRaw);
+                  localData = { ...epParsed, ...localData };
+              }
+          } catch {}
           let dbData: {[key: string]: any} = {};
-          if (user && continueData) {
+          if (user && supabase) {
+              try { 
+                  const { data: dbRows } = await (supabase.from('user_continue_watching') as any)
+                      .select('*')
+                      .eq('user_id', user.id)
+                      .eq('anime_id', animeId);
+                  if (dbRows && Array.isArray(dbRows)) {
+                      dbRows.forEach((row: any) => {
+                          if (row.episode_id) dbData[row.episode_id] = row;
+                      });
+                  }
+              } catch (e) {
+                  console.error("Failed to fetch direct user anime watch history:", e);
+              }
+          } else if (continueData) {
               try { 
                   continueData.forEach((row: any) => { 
                       if (row.anime_id === animeId) dbData[row.episode_id] = row; 
@@ -909,8 +1014,8 @@ function WatchContent() {
           if (savedServer && savedServer !== settings.server) updateSetting('server', savedServer);
           localStorage.setItem(tempStorageKey, JSON.stringify(progressBuffer.current));
           if (user && needsDbUpdate && bufferToFlush.length > 0) {
-              const sanitized = bufferToFlush.map(p => { const { duration, ...clean } = p; return clean; });
-              (supabase!.from('user_continue_watching') as any).upsert(sanitized, { onConflict: 'user_id, episode_id' });
+              const sanitized = bufferToFlush.map(p => sanitizeContinueWatchingEntry(p, user.id)).filter(Boolean);
+              (supabase!.from('user_continue_watching') as any).upsert(sanitized, { onConflict: 'user_id,episode_id' });
           }
 
           let targetEpId: string | null = null;
@@ -986,10 +1091,15 @@ function WatchContent() {
              if (requestedEp && requestedEp.id === currentEpId) { time = Number(urlTimestamp); isUrlOverride = true; }
         }
         if (!isUrlOverride) {
-            if (progressBuffer.current[currentEpId]) time = progressBuffer.current[currentEpId].progress;
-            else if (!user) {
+            if (progressBuffer.current[currentEpId]) {
+                const epRec = progressBuffer.current[currentEpId];
+                time = epRec.is_completed ? 0 : (epRec.progress || 0);
+            } else if (!user) {
                 const localData = JSON.parse(localStorage.getItem('shadow_continue_watching') || '{}');
-                if (localData[animeId] && localData[animeId].episodeId === currentEpId) time = localData[animeId].progress;
+                if (localData[animeId] && localData[animeId].episodeId === currentEpId) {
+                    const epRec = localData[animeId];
+                    time = epRec.is_completed ? 0 : (epRec.progress || 0);
+                }
             }
         }
         setResumeTime(time); progressRef.current = time; setIsResumeLoaded(true);
@@ -1096,7 +1206,7 @@ function WatchContent() {
   }, [settings.server, settings.category]);
 
   // Interval & Visibility
-  useEffect(() => { const i = setInterval(() => saveProgress(false), 10000); return () => clearInterval(i); }, [saveProgress]);
+  useEffect(() => { const i = setInterval(() => saveProgress(true), 10000); return () => clearInterval(i); }, [saveProgress]);
   useEffect(() => {
       let ticking = false;
       const handleScroll = () => { if (!ticking) { window.requestAnimationFrame(() => { if (window.scrollY > 100) { setHideInterface(false); if (interfaceTimeoutRef.current) clearTimeout(interfaceTimeoutRef.current); } else { resetInterfaceTimer(); } ticking = false; }); ticking = true; } };
@@ -1126,7 +1236,7 @@ function WatchContent() {
   if (!anime) return (<div className="min-h-screen bg-[#050505] flex items-center justify-center"><div className="w-12 h-12 border-4 border-emerald-600 border-t-transparent rounded-full animate-spin" /></div>);
 
   return (
-    <div className="min-h-screen bg-[#050505] text-gray-100 pb-24 md:pb-20 pt-[calc(env(safe-area-inset-top)+80px)] md:pt-[calc(env(safe-area-inset-top)+100px)] relative font-sans overflow-x-hidden">
+    <div className="min-h-screen bg-[#050505] text-gray-100 relative font-sans overflow-x-hidden">
       <style jsx global>{`
           .custom-scrollbar::-webkit-scrollbar { width: 6px; height: 6px; display: block; }
           .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
@@ -1135,13 +1245,14 @@ function WatchContent() {
           @media (min-width: 1024px) { ${hideInterface ? `nav, header, footer, .bottom-navigation, div[class*="navbar"], div[class*="header"], div[class*="footer"], .fixed.top-0, .fixed.bottom-0 { opacity: 0 !important; pointer-events: none !important; transition: opacity 0.5s ease-in-out; }` : ''} div[class*="navbar"]:hover, header:hover { opacity: 1 !important; pointer-events: auto !important; } }
           body { overflow-y: auto; } ::-webkit-scrollbar { width: 0px; display: none; } .no-scrollbar::-webkit-scrollbar { display: none; } .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
           @keyframes liquid { 0% { background-position: 0% 50%; } 50% { background-position: 100% 50%; } 100% { background-position: 0% 50%; } } .animate-liquid { background-size: 200% 200%; animation: liquid 4s ease infinite; } .will-change-transform { will-change: transform; }
+          @keyframes shimmer { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } } .animate-shimmer { animation: shimmer 3s infinite linear; }
       `}</style>
-      <div className={cn("fixed inset-0 bg-black/90 z-[39] transition-opacity duration-700 pointer-events-none will-change-[opacity]", settings.dimMode ? 'opacity-100' : 'opacity-0')} />
+            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.8 }} className="w-full flex flex-col items-center relative z-10 px-4 mt-6">
+      <div onClick={() => updateSetting('dimMode', false)} className={cn("fixed inset-0 bg-black/95 transition-opacity duration-500 will-change-[opacity]", settings.dimMode ? 'opacity-100 pointer-events-auto cursor-pointer z-[40]' : 'opacity-0 pointer-events-none z-[40]')} />
 
-            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.8 }} className="w-full flex flex-col items-center bg-[#050505] relative z-40 px-4 md:px-8 mt-6">
-        <div className="w-full max-w-[1500px] flex flex-col xl:grid xl:grid-cols-12 gap-8 items-start pb-12">
+        <div className="w-full flex flex-col xl:grid xl:grid-cols-12 gap-8 items-start">
             <div className="xl:col-span-8 w-full flex flex-col gap-2 order-1">
-                <div ref={playerContainerRef} tabIndex={0} className="w-full aspect-video bg-black rounded-[30px] overflow-hidden border border-white/5 shadow-2xl relative shadow-emerald-900/10 outline-none focus:ring-1 focus:ring-white/10" onClick={handlePlayerClick} onKeyDown={(e) => { if (e.code === 'Space') { e.preventDefault(); } }}>
+                <div ref={playerContainerRef} tabIndex={0} className={cn("w-full aspect-video bg-black/40 backdrop-blur-2xl rounded-[30px] overflow-hidden border border-white/10 shadow-[0_8px_32px_0_rgba(0,0,0,0.37)] relative outline-none focus:ring-1 focus:ring-white/10 transition-all duration-500", settings.dimMode ? "z-[60] ring-2 ring-emerald-500/50 shadow-[0_0_50px_rgba(0,0,0,0.9)]" : "z-10")} onClick={handlePlayerClick} onKeyDown={(e) => { if (e.code === 'Space') { e.preventDefault(); } }}>
                 <AnimatePresence>
                     {showSkipNotification && (
                         <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 10 }} className="absolute bottom-32 lg:bottom-24 left-1/2 -translate-x-1/2 z-[70] bg-black/60 backdrop-blur-md border border-white/10 text-white px-3 py-1 rounded-full flex items-center gap-2 shadow-[0_0_15px_rgba(0,0,0,0.5)] pointer-events-none">
@@ -1164,11 +1275,11 @@ function WatchContent() {
                     )
                 ) : streamError ? (
                      <div className="w-full h-full flex items-center justify-center border-b border-white/5"><div className="text-emerald-500 text-sm font-bold uppercase tracking-widest">{streamError}</div></div>
-                ) : ( <div className="w-full h-full flex items-center justify-center border-b border-white/5"><FantasyLoader text="OPENING PORTAL..." /></div> )}
+                ) : ( <div className="w-full h-full flex items-center justify-center border-b border-white/5"><PlayerSkeleton /></div> )}
             </div>
 
-            <motion.div initial={{ y: -20, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ duration: 0.5, delay: 0.2 }} className={cn("w-full transition-all duration-500 will-change-transform", hideInterface ? "opacity-0 pointer-events-none translate-y-4" : "opacity-100 translate-y-0")}>
-                <div className="hidden lg:flex w-full bg-[#0a0a0a] border border-white/5 rounded-[30px] shadow-emerald-900/10 shadow-lg px-5 py-3 items-center justify-between gap-4 mt-3">
+            <motion.div initial={{ y: -20, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ duration: 0.5, delay: 0.2 }} className="w-full transition-all duration-500 will-change-transform">
+                <div className={cn("hidden lg:flex w-full bg-white/5 backdrop-blur-md border border-white/10 rounded-[30px] shadow-[0_8px_32px_0_rgba(0,0,0,0.2)] px-5 py-3 items-center justify-between gap-4 mt-3 transition-all duration-500", settings.dimMode ? "z-[60] relative" : "relative z-10")}>
                     {/* Left: Prev/Next EP */}
                     <div className="flex items-center gap-2 flex-shrink-0">
                         <button disabled={!prevEpisode} onClick={() => prevEpisode && handleEpisodeClick(prevEpisode.id)} className={cn("flex items-center justify-center gap-2 px-4 h-8 rounded-full border text-[10px] font-black uppercase tracking-tighter transition-all duration-300 shadow-md shadow-black/40 whitespace-nowrap", prevEpisode ? "bg-white/5 border-white/10 text-zinc-300 hover:bg-emerald-600 hover:border-emerald-500 hover:text-white" : "opacity-10 border-white/5 text-zinc-600")}><SkipBack size={12}/> PREV</button>
@@ -1216,16 +1327,28 @@ function WatchContent() {
                 </div>
 
                 {/* MOBILE CONTROLS */}
-                <div className="flex lg:hidden w-full bg-[#0a0a0a] border border-white/5 rounded-[30px] shadow-emerald-900/10 shadow-lg px-4 py-4 flex-col gap-3 overflow-hidden relative z-[60] mt-3">
-                    <div className="grid grid-cols-2 gap-3 w-full items-center">
-                        <button onClick={() => updateSetting('autoNext', !settings.autoNext)} className={cn("w-full flex items-center justify-center gap-2 h-10 rounded-full border text-[10px] sm:text-[11px] font-black uppercase tracking-widest transition-all whitespace-nowrap", settings.autoNext ? "bg-emerald-600/20 border-emerald-500/50 text-emerald-500" : "bg-white/5 border-white/10 text-zinc-500")}>
-                            <SkipForward size={14} /> AUTO-NEXT
+                <div className={cn("flex lg:hidden w-full bg-white/5 backdrop-blur-md border border-white/10 rounded-[30px] shadow-[0_8px_32px_0_rgba(0,0,0,0.2)] py-4 flex-col gap-3 overflow-hidden mt-3 transition-all duration-500", settings.dimMode ? "z-[60] relative" : "relative z-10")}>
+                    <div className="flex w-full justify-between items-center gap-2">
+                        <button disabled={!prevEpisode} onClick={() => prevEpisode && handleEpisodeClick(prevEpisode.id)} className="flex-1 bg-white/5 h-9 rounded-full border border-white/5 flex items-center justify-center text-zinc-400 hover:text-white active:scale-95 disabled:opacity-30 disabled:pointer-events-none transition-all" title="Previous Episode"><SkipBack size={14}/></button>
+                        <button onClick={() => updateSetting('autoSkip', !settings.autoSkip)} className={cn("flex-1 h-9 rounded-full border flex items-center justify-center transition-all relative active:scale-95", settings.autoSkip ? "bg-emerald-600/20 border-emerald-500/60 text-emerald-400 shadow-[0_0_12px_rgba(16,185,129,0.25)]" : "bg-white/5 border-white/5 text-zinc-400 hover:text-zinc-200")} title={`Auto Skip Intro: ${settings.autoSkip ? 'ON' : 'OFF'}`}>
+                            <div className="relative flex items-center justify-center">
+                                <FastForward size={14} className={cn("transition-transform", settings.autoSkip && "scale-110")} />
+                                <span className={cn("absolute -top-1 -right-1.5 w-1.5 h-1.5 rounded-full transition-all", settings.autoSkip ? "bg-emerald-500 shadow-[0_0_6px_rgba(16,185,129,1)] animate-pulse" : "bg-zinc-600/40")} />
+                            </div>
                         </button>
-                        <WatchListButton animeId={anime.id} animeTitle={anime.title} animeImage={anime.poster} currentEp={currentEpisode?.number} mediaType="donghua" />
-                    </div>
-                    <div className="flex w-full justify-between items-center gap-2 border-t border-white/5 pt-3">
-                        <button disabled={!prevEpisode} onClick={() => prevEpisode && handleEpisodeClick(prevEpisode.id)} className="flex-1 bg-white/5 h-8 rounded-full border border-white/5 flex items-center justify-center text-zinc-400 hover:text-white active:bg-white/10"><SkipBack size={14}/> PREV</button>
-                        <button disabled={!nextEpisode} onClick={() => nextEpisode && handleEpisodeClick(nextEpisode.id)} className="flex-1 bg-white/5 h-8 rounded-full border border-white/5 flex items-center justify-center text-zinc-400 hover:text-white active:bg-white/10">NEXT <SkipForward size={14}/></button>
+                        <button onClick={() => updateSetting('autoPlay', !settings.autoPlay)} className={cn("flex-1 h-9 rounded-full border flex items-center justify-center transition-all relative active:scale-95", settings.autoPlay ? "bg-emerald-600/20 border-emerald-500/60 text-emerald-400 shadow-[0_0_12px_rgba(16,185,129,0.25)]" : "bg-white/5 border-white/5 text-zinc-400 hover:text-zinc-200")} title={`Auto Play: ${settings.autoPlay ? 'ON' : 'OFF'}`}>
+                            <div className="relative flex items-center justify-center">
+                                <PlayCircle size={14} className={cn("transition-transform", settings.autoPlay && "scale-110")} />
+                                <span className={cn("absolute -top-1 -right-1.5 w-1.5 h-1.5 rounded-full transition-all", settings.autoPlay ? "bg-emerald-500 shadow-[0_0_6px_rgba(16,185,129,1)] animate-pulse" : "bg-zinc-600/40")} />
+                            </div>
+                        </button>
+                        <button onClick={() => updateSetting('autoNext', !settings.autoNext)} className={cn("flex-1 h-9 rounded-full border flex items-center justify-center transition-all relative active:scale-95", settings.autoNext ? "bg-emerald-600/20 border-emerald-500/60 text-emerald-400 shadow-[0_0_12px_rgba(16,185,129,0.25)]" : "bg-white/5 border-white/5 text-zinc-400 hover:text-zinc-200")} title={`Auto Next Episode: ${settings.autoNext ? 'ON' : 'OFF'}`}>
+                            <div className="relative flex items-center justify-center">
+                                <StepForward size={14} className={cn("transition-transform", settings.autoNext && "scale-110")} />
+                                <span className={cn("absolute -top-1 -right-1.5 w-1.5 h-1.5 rounded-full transition-all", settings.autoNext ? "bg-emerald-500 shadow-[0_0_6px_rgba(16,185,129,1)] animate-pulse" : "bg-zinc-600/40")} />
+                            </div>
+                        </button>
+                        <button disabled={!nextEpisode} onClick={() => nextEpisode && handleEpisodeClick(nextEpisode.id)} className="flex-1 bg-white/5 h-9 rounded-full border border-white/5 flex items-center justify-center text-zinc-400 hover:text-white active:scale-95 disabled:opacity-30 disabled:pointer-events-none transition-all" title="Next Episode"><SkipForward size={14}/></button>
                     </div>
                     <div className="flex w-full justify-between items-center gap-2 border-t border-white/5 pt-3">
                         <Button onClick={() => updateSetting('dimMode', !settings.dimMode)} variant="ghost" size="icon" className={cn("rounded-full w-8 h-8", settings.dimMode ? "text-yellow-500 bg-yellow-500/10" : "text-zinc-600 bg-white/5")}><Lightbulb size={16} /></Button>
@@ -1248,7 +1371,7 @@ function WatchContent() {
             </motion.div>
             </div>
             
-            <div className="xl:col-span-4 w-full xl:h-[650px] h-auto bg-[#0a0a0a] rounded-[40px] border border-white/5 overflow-hidden flex flex-col shadow-2xl relative z-20 order-2">
+            <div className="xl:col-span-4 w-full xl:h-[650px] h-auto bg-black/40 backdrop-blur-2xl rounded-[40px] border border-white/10 overflow-hidden flex flex-col shadow-[0_8px_32px_0_rgba(0,0,0,0.37)] relative z-20 order-2">
                 <div className="p-6 bg-white/5 border-b border-white/5 flex justify-between items-center shrink-0">
                     <div className="flex items-center gap-3"><h3 className="font-black text-white flex items-center gap-2 uppercase text-sm font-lemon tracking-widest"><Layers size={18} className="text-emerald-600"/> Episodes</h3><Badge className="bg-white/10 backdrop-blur-md border border-white/10 text-white font-black text-[10px] px-3 h-5 rounded-full shadow-lg">{anime.episodes.length}</Badge></div>
                     <div className="flex items-center gap-1 bg-black/50 p-1 rounded-lg border border-white/5">
@@ -1257,10 +1380,10 @@ function WatchContent() {
                         <button onClick={() => setEpViewMode('list')} className={cn("p-1.5 rounded-md transition-all", epViewMode === 'list' ? "bg-zinc-800 text-white shadow-sm" : "text-zinc-500 hover:text-zinc-300")}><List size={14}/></button>
                     </div>
                 </div>
-                <div className="w-full border-b border-white/5 bg-black/20 flex-shrink-0 py-3 px-4 relative group/chunks">
-                    <div ref={chunksRef} className="flex items-center gap-2 w-full overflow-x-auto no-scrollbar cursor-grab active:cursor-grabbing">
+                <div className="w-full border-b border-white/10 bg-white/5 backdrop-blur-md flex-shrink-0 py-3 relative group/chunks">
+                    <div ref={chunksRef} className="flex items-center gap-2 w-full overflow-x-auto no-scrollbar cursor-grab active:cursor-grabbing px-4">
                         {episodeChunks.map((chunk, idx) => (
-                            <button key={idx} onClick={() => setEpChunkIndex(idx)} className={cn("flex-shrink-0 px-4 py-1.5 text-[10px] font-black rounded-full transition-all border shadow-sm uppercase tracking-wider", epChunkIndex === idx ? "bg-emerald-600 text-white border-emerald-500 shadow-emerald-900/20" : "bg-zinc-900 border-zinc-800 text-zinc-500 hover:text-zinc-300 hover:border-zinc-700")}>{getChunkLabel(chunk, (idx * chunkSize) + 1, Math.min((idx + 1) * chunkSize, anime.episodes.length))}</button>
+                            <button key={idx} onClick={() => setEpChunkIndex(idx)} className={cn("flex-shrink-0 px-4 py-1.5 text-[10px] font-black rounded-full transition-all border shadow-sm uppercase tracking-wider backdrop-blur-md", epChunkIndex === idx ? "bg-emerald-600 text-white border-emerald-500 shadow-emerald-900/20" : "bg-white/5 border-white/10 text-zinc-400 hover:text-white hover:bg-white/10")}>{getChunkLabel(chunk, (idx * chunkSize) + 1, Math.min((idx + 1) * chunkSize, anime.episodes.length))}</button>
                         ))}
                     </div>
                 </div>
@@ -1282,10 +1405,10 @@ function WatchContent() {
                 </div>
             </div>
 
-            <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} transition={{ duration: 0.6, delay: 0.4 }} className="xl:col-span-8 w-full h-auto xl:h-[650px] bg-[#0a0a0a] rounded-[40px] border border-white/5 overflow-hidden flex flex-col shadow-2xl relative shadow-emerald-900/20 order-3">
-                    <div className="flex-shrink-0 relative p-8 pt-16 flex flex-col sm:flex-row gap-10 bg-gradient-to-b from-emerald-600/5 to-transparent">
-                        <div className="relative shrink-0 mx-auto lg:mx-0 flex flex-col gap-6 w-full lg:w-auto items-center lg:items-start text-center lg:text-left">
-                            <div className="relative p-[3px] rounded-3xl overflow-hidden group/poster shadow-[0_0_40px_rgba(220,38,38,0.2)] mx-auto sm:mx-0 w-fit">
+            <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} transition={{ duration: 0.6, delay: 0.4 }} className="xl:col-span-8 w-full h-auto bg-black/40 backdrop-blur-2xl rounded-[40px] border border-white/10 overflow-hidden flex flex-col shadow-[0_8px_32px_0_rgba(0,0,0,0.37)] relative order-3">
+                    <div className="flex-shrink-0 relative p-8 flex flex-col sm:flex-row gap-10 bg-gradient-to-b from-emerald-600/5 to-transparent">
+                        <div className="relative shrink-0 lg:mx-0 flex flex-col gap-6 w-full lg:w-auto items-center lg:items-start text-center lg:text-left">
+                            <div className="relative p-[3px] rounded-3xl overflow-hidden group/poster shadow-[0_0_40px_rgba(220,38,38,0.2)] sm:mx-0 w-fit">
                                 <div className="absolute inset-[-150%] bg-[conic-gradient(from_0deg,transparent,30%,#10b981_50%,transparent_70%)] animate-[spin_3s_linear_infinite] opacity-60 blur-[1px]" />
                                 <img src={anime.poster} className="w-44 h-60 rounded-3xl border border-white/10 object-cover relative z-10 shadow-2xl shadow-black" alt={anime.title} loading="lazy" decoding="async"/>
                             </div>
@@ -1324,7 +1447,7 @@ function WatchContent() {
                             <div className="mt-auto pt-6 w-full flex justify-end"><StarRating animeId={animeId} initialRating={anime.stats.rating} /></div>
                         </div>
                     </div>
-                    <div className="flex-1 min-h-0 relative px-6 sm:px-10 mt-4 overflow-hidden flex flex-col">
+                    <div className="flex-1 min-h-0 relative sm:px-10 mt-4 overflow-hidden flex flex-col">
                         <div className="lg:hidden flex flex-wrap gap-2 justify-center mb-6">
                              {anime.info.genres.map((g: string) => (<Link key={g} href={`/search?type=${g}`} className="text-[8px] px-3 py-1 bg-white/5 rounded-full text-zinc-500 border border-white/5 uppercase font-bold">{g}</Link>))}
                         </div>
@@ -1365,7 +1488,8 @@ function WatchContent() {
                     </div>
             </motion.div>
                   
-            <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} transition={{ duration: 0.6, delay: 0.5 }} className="xl:col-span-4 w-full h-auto xl:h-[650px] bg-[#0a0a0a] rounded-[40px] border border-white/5 overflow-hidden flex flex-col shadow-2xl relative shadow-emerald-900/10 mt-8 xl:mt-0 order-5 xl:order-4">
+            <div className="xl:col-span-4 w-full h-[500px] xl:h-auto xl:relative xl:self-stretch mt-8 xl:mt-0 order-5 xl:order-4">
+                <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} transition={{ duration: 0.6, delay: 0.5 }} className="w-full h-full xl:absolute xl:inset-0 bg-[#0a0a0a] rounded-[40px] border border-white/5 overflow-hidden flex flex-col shadow-2xl shadow-emerald-900/10">
                      <div className="p-6 bg-white/5 border-b border-white/5 flex items-center gap-3 shrink-0"><Wand2 size={18} className="text-emerald-600"/><h3 className="font-black text-white text-sm font-lemon tracking-widest uppercase">Suggestions</h3></div>
                      <ScrollArea className="flex-1 custom-scrollbar">
                          <div className="p-4 flex flex-col gap-3">
@@ -1388,7 +1512,8 @@ function WatchContent() {
                              )}
                          </div>
                      </ScrollArea>
-            </motion.div>
+                </motion.div>
+            </div>
               
             {/* RELATED SECTION */}
             {anime.related && anime.related.length > 0 && (
@@ -1417,4 +1542,4 @@ function WatchContent() {
   );
 }
 
-export default function WatchPage() { return <Suspense fallback={<FantasyLoader />}><WatchContent /></Suspense>; }
+export default function WatchPage() { return <Suspense fallback={<WatchPageSkeleton />}><WatchContent /></Suspense>; }

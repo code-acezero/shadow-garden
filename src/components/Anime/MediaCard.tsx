@@ -43,7 +43,7 @@ export const MediaCard = memo(({ item, theme }: { item: any, theme: string }) =>
   const href = isDrama ? `/drama-watch/${item.id}` : `/movies-watch/${item.id}`;
 
   return (
-    <Link href={href} className="group relative flex flex-col shrink-0 w-full sm:w-[160px] md:w-[200px] transition-all duration-300 hover:z-50 hover:scale-110 origin-bottom touch-manipulation block mx-auto">
+    <Link href={href} className="group relative flex flex-col shrink-0 w-full sm:w-[160px] md:w-[200px] transition-all duration-300 hover:z-50 hover:scale-110 origin-bottom touch-manipulation block">
       <div className={cn("aspect-[2/3] w-full overflow-hidden rounded-xl bg-[#0f172a] relative shadow-lg transition-all", themeColors.shadowHover, "group-hover:ring-2", themeColors.ringHover)}>
         {item.image ? (
           <img src={item.image} alt={item.title} className="w-full h-full object-cover group-hover:opacity-40 transition-opacity duration-300" loading="lazy" decoding="async" />

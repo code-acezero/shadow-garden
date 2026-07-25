@@ -31,17 +31,16 @@ const containerVariants = {
   hidden: { opacity: 0 },
   visible: {
     opacity: 1,
-    transition: { staggerChildren: 0.08, delayChildren: 0.1 },
+    transition: { staggerChildren: 0.04, delayChildren: 0.05 },
   },
 };
 
 const itemVariants = {
-  hidden: { opacity: 0, x: 20, scale: 0.95 },
+  hidden: { opacity: 0, scale: 0.96 },
   visible: { 
     opacity: 1, 
-    x: 0, 
     scale: 1,
-    transition: { type: "spring", stiffness: 100, damping: 15 }
+    transition: { type: "spring", stiffness: 120, damping: 18 }
   },
 };
 
@@ -54,48 +53,57 @@ const notifyWhisper = (message: string, type: 'success' | 'error' = 'success') =
   }
 };
 
+import { getWatchRoute } from "@/lib/utils";
+
 export default function ContinueWatching() {
   const { user, isLoading: authLoading } = useAuth();
   const { continueData, loadingData, removeFromContinue } = useUserData();
   const router = useRouter();
 
-  const goToWatch = (animeId: string, episodeId?: string) => {
-    if (!episodeId) return;
-    router.push(`/watch/${animeId}?ep=${episodeId}`);
+  const goToWatch = (animeId: string, episodeId?: string, type?: string) => {
+    router.push(getWatchRoute(animeId, episodeId, type));
   };
 
   const handleRemoveItem = async (animeId: string) => {
-    if (!user) return;
     removeFromContinue(animeId);
-    try {
-      const { error } = await supabase
-        .from("user_continue_watching")
-        .delete()
-        .eq("user_id", user.id)
-        .eq("anime_id", animeId);
+    if (user) {
+      try {
+        const { error } = await supabase
+          .from("user_continue_watching")
+          .delete()
+          .eq("user_id", user.id)
+          .eq("anime_id", animeId);
 
-      if (error) {
-        console.error("Failed to remove continue watching item:", error);
-        notifyWhisper("Failed to remove anime.", "error");
-      } else {
-        notifyWhisper("Anime removed from history.", "success");
+        if (error) {
+          console.error("Failed to remove continue watching item:", error);
+          notifyWhisper("Failed to remove anime.", "error");
+        } else {
+          notifyWhisper("Anime removed from history.", "success");
+        }
+      } catch (err) {
+        console.error("Error removing item:", err);
+        notifyWhisper("An error occurred.", "error");
       }
-    } catch (err) {
-      console.error("Error removing item:", err);
-      notifyWhisper("An error occurred.", "error");
+    } else {
+      try {
+        const localData = JSON.parse(localStorage.getItem('shadow_continue_watching') || '{}');
+        delete localData[animeId];
+        localStorage.setItem('shadow_continue_watching', JSON.stringify(localData));
+        notifyWhisper("Anime removed from history.", "success");
+      } catch (err) {}
     }
   };
 
-  if (!user || (!loadingData && continueData.length === 0)) return null;
+  if (!loadingData && continueData.length === 0) return null;
 
   return (
-    <section className="w-full relative z-10 animate-in fade-in duration-700 mt-8">
+    <section className="w-full relative z-10 animate-in fade-in duration-700 mt-2 md:mt-8">
       {/* Header - Updated max-w to 1350px */}
       <motion.div 
         initial={{ opacity: 0, x: -20 }}
         whileInView={{ opacity: 1, x: 0 }}
         viewport={{ once: true }}
-        className="flex items-center justify-between flex-nowrap mb-4 md:mb-6 px-4 md:px-8 max-w-[1350px] mx-auto gap-4"
+        className="flex items-center justify-between flex-nowrap mb-2 md:mb-6 px-4 gap-4 w-full"
       >
         <div className="flex items-center gap-2 md:gap-3 min-w-0">
           <div className="p-1.5 md:p-2 bg-primary-600/10 rounded-lg md:rounded-xl border border-primary-500/20 backdrop-blur-md flex-shrink-0">
@@ -118,7 +126,7 @@ export default function ContinueWatching() {
       {/* Horizontal Scroll Content - Updated max-w to 1350px */}
       <AnimatePresence mode="wait">
         {loadingData ? (
-          <div className="flex gap-4 overflow-hidden px-4 md:px-8 max-w-[1350px] mx-auto py-8">
+          <div className="flex gap-4 overflow-hidden px-4 py-4 md:py-8">
             {[...Array(6)].map((_, i) => (
               <div key={i} className="flex-shrink-0 w-[42%] md:w-[22%] lg:w-[15%] aspect-[3/4] rounded-[32px] bg-white/5 animate-pulse border border-white/5 shadow-inner" />
             ))}
@@ -128,7 +136,7 @@ export default function ContinueWatching() {
             variants={containerVariants}
             initial="hidden"
             animate="visible"
-            className="w-full max-w-[1350px] mx-auto overflow-x-auto no-scrollbar py-8 px-4 md:px-8 snap-x snap-mandatory flex gap-4 md:gap-5"
+            className="w-full overflow-x-auto no-scrollbar py-2 md:py-8 px-4 snap-x snap-mandatory flex gap-4 md:gap-5"
           >
             {continueData.slice(0, 10).map((anime) => (
               <ContinueAnimeCard 

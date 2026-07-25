@@ -221,8 +221,8 @@ function normalizeHindiCard(item: any): AnimeCard {
   const epCount = epObj?.total ?? epObj?.dub ?? epObj?.sub ?? undefined;
   return {
     id: item?.id || item?.slug || '',
-    title: item?.title || item?.titleJp || 'Unknown Title',
-    image: item?.image || '',
+    title: item?.title || item?.name || item?.titleJp || 'Unknown Title',
+    image: item?.image || item?.poster || '',
     type: item?.type || 'TV',
     episode: epCount !== undefined ? String(epCount) : undefined,
     episodeCount: epCount !== undefined ? String(epCount) : undefined,
@@ -331,11 +331,11 @@ class HPIClient {
 
       return {
         id,
-        title: info.title || 'Unknown Title',
-        englishTitle: info.title || '',
-        nativeTitle: info.titleJp || info.title || '',
-        image: info.image || '',
-        banner: info.cover || info.image || '',
+        title: info.title || info.name || 'Unknown Title',
+        englishTitle: info.title || info.name || '',
+        nativeTitle: info.titleJp || info.native || info.title || info.name || '',
+        image: info.image || info.poster || '',
+        banner: info.cover || info.banner || info.image || '',
         type: info.type || 'TV',
         synopsis: info.synopsis || info.description || '',
         status: info.status || 'Unknown',

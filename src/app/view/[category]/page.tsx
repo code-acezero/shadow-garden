@@ -4,6 +4,7 @@ import React, { useState, useEffect, Suspense } from 'react';
 import { useSearchParams, useParams, useRouter } from 'next/navigation';
 import AnimeCard from '@/components/Anime/AnimeCard'; 
 import { Loader2, ChevronLeft, ChevronRight } from 'lucide-react';
+import { SimpleGridSkeleton } from '@/components/UIx/SkeletonLoaders';
 import Footer from '@/components/Anime/Footer';
 import { AnimeService } from '@/lib/api';
 import { dpi } from '@/lib/dpi';
@@ -77,7 +78,7 @@ function ViewAllContent() {
     <div className="min-h-screen bg-[#050505] text-white">
       <div className="px-4 py-24">
         {/* Header */}
-        <div className="max-w-7xl mx-auto mb-8 flex items-center justify-between">
+        <div className="mb-8 flex items-center justify-between w-full">
           <div>
             <h1 className="text-3xl font-black tracking-widest text-transparent bg-clip-text bg-gradient-to-r from-primary-500 to-white uppercase drop-shadow-md">
               {pageTitle}
@@ -90,11 +91,9 @@ function ViewAllContent() {
 
         {/* Grid Content */}
         {loading ? (
-          <div className="h-[60vh] flex items-center justify-center">
-            <Loader2 className="w-10 h-10 animate-spin text-primary-600 drop-shadow-[0_0_15px_rgba(220,38,38,0.5)]" />
-          </div>
+            <SimpleGridSkeleton />
         ) : (
-          <div className="max-w-7xl mx-auto grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-4">
+          <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-4 w-full">
             {data?.results?.map((anime: any) => (
               <AnimeCard 
                 key={anime.id} 
@@ -106,7 +105,7 @@ function ViewAllContent() {
 
         {/* Pagination Controls */}
         {!loading && data && (
-          <div className="max-w-7xl mx-auto mt-12 flex justify-center items-center gap-4">
+          <div className="mt-12 flex justify-center items-center gap-4 w-full">
             
             <button
               onClick={handlePrev}

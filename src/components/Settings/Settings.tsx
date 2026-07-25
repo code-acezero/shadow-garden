@@ -93,7 +93,7 @@ export default function Settings() {
   const [voices, setVoices] = useState<any[]>([]);
   const [voicesLoaded, setVoicesLoaded] = useState(false);
   const [playingVoice, setPlayingVoice] = useState<string | null>(null);
-  const [subStyle, setSubStyle] = useState({ color: 'White', size: 'Normal', bg: 'Box', font: 'Sans', lift: 'Middle' });
+  const [subStyle, setSubStyle] = useState({ color: 'White', size: 'Normal', bg: 'Outline', font: 'Sans', lift: 'Middle' });
   const [dummySubUrl, setDummySubUrl] = useState('');
   
   const [anilistUsername, setAnilistUsername] = useState('');
@@ -106,6 +106,12 @@ export default function Settings() {
 
   const isAuthenticated = !!(profile && profile.id && !profile.is_guest);
 
+  // Traveller profile state (localStorage-backed for unauthenticated users)
+  const [travellerName, setTravellerName] = useState('');
+  const [travellerAvatar, setTravellerAvatar] = useState('');
+  const [travellerAvatarModalOpen, setTravellerAvatarModalOpen] = useState(false);
+  const [isSavingTraveller, setIsSavingTraveller] = useState(false);
+
   useEffect(() => {
     if (profile) {
       setUsername(profile.username || '');
@@ -115,6 +121,26 @@ export default function Settings() {
       setWebsite(profile.website || '');
     }
   }, [profile]);
+
+  useEffect(() => {
+    if (!isAuthenticated) {
+      const savedName = localStorage.getItem('shadow_traveller_name') || '';
+      const savedAvatar = localStorage.getItem('shadow_traveller_avatar') || getRandomAvatar(true);
+      setTravellerName(savedName);
+      setTravellerAvatar(savedAvatar);
+    }
+  }, [isAuthenticated]);
+
+  const handleSaveTraveller = () => {
+    setIsSavingTraveller(true);
+    localStorage.setItem('shadow_traveller_name', travellerName);
+    localStorage.setItem('shadow_traveller_avatar', travellerAvatar);
+    window.dispatchEvent(new CustomEvent('shadow-traveller-updated', {
+      detail: { name: travellerName, avatar: travellerAvatar }
+    }));
+    notifyWhisper('Traveller profile saved!', 'success');
+    setTimeout(() => setIsSavingTraveller(false), 600);
+  };
 
   useEffect(() => { setMounted(true); refreshVoiceCache(); }, []);
 
@@ -488,13 +514,13 @@ export default function Settings() {
                 <div className="relative z-10 flex flex-col md:flex-row items-center gap-8">
                     <div className="relative shrink-0">
                         <div className="w-28 h-28 rounded-full bg-black border-4 border-white/5 flex items-center justify-center overflow-hidden shadow-[0_0_40px_var(--primary-color)]">
-                            <img src={profile?.avatar_url || "https://api.dicebear.com/7.x/bottts/svg?seed=Shadow"} alt="Avatar" className="w-full h-full object-cover" />
+                            <img src={profile?.avatar_url || travellerAvatar || "https://cdn.myanimelist.net/images/characters/9/310307.jpg"} alt="Avatar" className="w-full h-full object-cover" onError={e => { e.currentTarget.src = 'https://cdn.myanimelist.net/images/characters/9/310307.jpg'; }} />
                         </div>
                     </div>
                     <div className="flex-1 text-center md:text-left space-y-2">
                         <h2 className="text-3xl font-black text-white tracking-tight drop-shadow-md font-sans">{profile?.username || "Shadow Agent"}</h2>
                         <div className="flex flex-col md:flex-row items-center gap-3">
-                            <span className="text-xs font-bold text-zinc-400 uppercase tracking-widest bg-white/5 px-3 py-1 rounded-full">{profile?.username || "Guest"}</span>
+                            <span className="text-xs font-bold text-zinc-400 uppercase tracking-widest bg-white/5 px-3 py-1 rounded-full">{profile?.username || "Traveller"}</span>
                             <span className={`flex items-center gap-1.5 px-3 py-1 rounded-full border text-[9px] font-black uppercase tracking-wider ${profile?.role === 'admin' ? 'bg-red-500/10 border-red-500/30 text-red-400' : 'bg-blue-500/10 border-blue-500/30 text-blue-400'}`}>
                                 <Crown size={10} /> {profile?.role === 'admin' ? 'Guild Master' : 'Adventurer'}
                             </span>
@@ -594,15 +620,88 @@ export default function Settings() {
                     </div>
                 </div>
             ) : (
-                <div className="bg-gradient-to-r from-blue-900/20 to-blue-900/5 border border-blue-500/20 rounded-[32px] p-8 flex flex-col md:flex-row items-center justify-between gap-6 shadow-lg">
-                    <div className="flex gap-6 items-center">
-                        <div className="p-4 bg-blue-500/20 rounded-2xl text-blue-400"><User size={28} /></div>
-                        <div><h4 className="font-bold text-white text-lg">Guest Mode</h4><p className="text-sm text-blue-200/60 mt-1 max-w-sm">Sign in to sync your data.</p></div>
+                <div className="grid gap-6 md:grid-cols-2">
+                    {/* Traveller Identity Card */}
+                    <div className="bg-[#0f0f0f] rounded-[32px] border border-white/5 p-8 shadow-lg">
+                        <h3 className="text-xs font-black text-zinc-500 uppercase tracking-widest mb-6 flex items-center gap-2">
+                            <User size={14} className="text-primary"/> Traveller Identity
+                        </h3>
+                        <div className="space-y-6">
+                            {/* Avatar picker */}
+                            <div className="flex items-center gap-6 p-4 bg-black/40 border border-white/5 rounded-2xl">
+                                <div className="relative group w-20 h-20 rounded-2xl overflow-hidden border border-white/10 shadow-lg shrink-0">
+                                    <img src={travellerAvatar || getRandomAvatar(true)} alt="" className="w-full h-full object-cover" />
+                                    <button
+                                        onClick={() => setTravellerAvatarModalOpen(true)}
+                                        className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 flex items-center justify-center text-white text-[10px] font-black uppercase tracking-wider transition-opacity"
+                                    >
+                                        Change
+                                    </button>
+                                </div>
+                                <div>
+                                    <button
+                                        onClick={() => setTravellerAvatarModalOpen(true)}
+                                        className="px-4 py-2 bg-primary-600/20 border border-primary-500/30 text-primary hover:bg-primary-600 hover:text-white rounded-full text-xs font-bold uppercase tracking-wider transition-all"
+                                    >
+                                        Choose Avatar
+                                    </button>
+                                    <p className="text-[10px] text-zinc-500 mt-1.5">
+                                        Select from curated anime characters
+                                    </p>
+                                </div>
+                            </div>
+                            {/* Name */}
+                            <div>
+                                <label className="text-[10px] font-bold text-zinc-500 uppercase">Traveller Name</label>
+                                <input
+                                    type="text"
+                                    value={travellerName}
+                                    onChange={e => setTravellerName(e.target.value)}
+                                    placeholder="Shadow Wanderer"
+                                    maxLength={30}
+                                    className="w-full bg-black/40 border border-white/5 rounded-xl px-4 py-3 text-sm text-white focus:border-primary/50 outline-none mt-1"
+                                />
+                                <p className="text-[10px] text-zinc-600 mt-1">Saved locally on this device</p>
+                            </div>
+                            <Button
+                                disabled={isSavingTraveller}
+                                onClick={handleSaveTraveller}
+                                className="w-full h-12 rounded-xl text-xs font-bold bg-primary text-white hover:bg-primary-600 shadow-[0_0_15px_var(--primary-color)] transition-all uppercase tracking-widest"
+                            >
+                                {isSavingTraveller ? 'Saved!' : 'Save Profile'}
+                            </Button>
+                        </div>
                     </div>
-                    <Button onClick={() => window.dispatchEvent(new CustomEvent('shadow-open-auth', { detail: { view: 'ENTER' } }))} className="bg-blue-600 hover:bg-blue-500 text-white px-8 h-12 rounded-xl font-bold shadow-lg">Connect</Button>
+
+                    {/* Sign-in nudge */}
+                    <div className="bg-gradient-to-br from-primary/10 to-transparent border border-primary/20 rounded-[32px] p-8 flex flex-col justify-between gap-6 shadow-lg">
+                        <div>
+                            <h4 className="font-bold text-white text-lg mb-2">Unlock Full Profile</h4>
+                            <ul className="space-y-2 text-sm text-zinc-400">
+                                {['Sync across devices', 'Access all 170+ avatars', 'Post in the community', 'Track your watch history', 'Join a clan'].map(f => (
+                                    <li key={f} className="flex items-center gap-2"><span className="w-1.5 h-1.5 rounded-full bg-primary shrink-0" />{f}</li>
+                                ))}
+                            </ul>
+                        </div>
+                        <Button onClick={() => window.dispatchEvent(new CustomEvent('shadow-open-auth', { detail: { view: 'ENTER' } }))} className="bg-primary hover:bg-primary-600 text-white h-12 rounded-xl font-bold shadow-lg">
+                            Create Account
+                        </Button>
+                    </div>
                 </div>
             )}
 
+            {/* Traveller avatar modal */}
+            {!isAuthenticated && (
+                <AvatarSelectorModal
+                    isOpen={travellerAvatarModalOpen}
+                    onClose={() => setTravellerAvatarModalOpen(false)}
+                    onSelect={(url) => setTravellerAvatar(url)}
+                    currentUrl={travellerAvatar}
+                    isGuest={true}
+                />
+            )}
+
+            {isAuthenticated && (
             <div className="grid gap-6 md:grid-cols-2">
                 <div className="bg-[#0f0f0f] rounded-[32px] border border-white/5 p-8 shadow-lg space-y-6">
                     <h3 className="text-xs font-black text-zinc-500 uppercase tracking-widest flex items-center gap-2"><Lock size={14} className="text-primary"/> Security</h3>
@@ -622,6 +721,7 @@ export default function Settings() {
                     </div>
                 </div>
             </div>
+            )}
           </div>
       );
 
@@ -937,7 +1037,7 @@ export default function Settings() {
                         <Button 
                             onClick={handleAniListSync}
                             disabled={isSyncing || !anilistUsername.trim()}
-                            className="bg-[#02A9FF] hover:bg-[#02A9FF]/80 text-white rounded-xl shadow-[0_0_15px_rgba(2,169,255,0.4)] px-6"
+                            className="bg-[#02A9FF] hover:bg-[#02A9FF]/80 text-white rounded-xl shadow-[0_0_15px_rgba(2,169,255,0.4)]"
                         >
                             {isSyncing ? 'Syncing...' : 'Sync'}
                         </Button>
@@ -961,7 +1061,7 @@ export default function Settings() {
         button:focus { outline: none !important; box-shadow: none !important; }
       `}</style>
 
-      <div className="lg:hidden fixed top-[60px] left-0 w-full z-40 bg-[#050505]/95 backdrop-blur-xl border-b border-white/10 px-6 py-4 flex items-center justify-between shadow-2xl transition-all">
+      <div className="lg:hidden fixed top-[60px] left-0 w-full z-40 bg-[#050505]/95 backdrop-blur-xl border-b border-white/10 py-4 flex items-center justify-between shadow-2xl transition-all">
           <div className="flex items-center gap-2">
               <button onClick={() => router.back()} className="p-2.5 rounded-full hover:bg-white/10 active:scale-95 transition-all text-white border border-white/5 mr-2"><ArrowLeft size={18}/></button>
               <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-primary to-white flex items-center justify-center shadow-[0_0_15px_var(--primary-color)]"><SettingsIcon size={16} className="text-black" /></div>
@@ -973,7 +1073,7 @@ export default function Settings() {
       <div className="h-12 lg:hidden w-full bg-[#050505]" />
 
       <div className="w-full bg-[#050505] text-white font-sans flex flex-col overflow-y-auto no-scrollbar" style={{ height: "calc(100dvh - var(--nav-height-top) - var(--nav-height-bottom))" }}>
-        <div className="w-full max-w-[1400px] mx-auto flex-1 flex flex-col lg:flex-row relative z-10 px-0 lg:px-6">
+        <div className="w-full flex-1 flex flex-col lg:flex-row relative z-10 px-0 lg:px-6">
             <motion.div layout initial={false} animate={{ width: isSidebarExpanded ? 280 : 80 }} transition={{ type: "spring", stiffness: 300, damping: 30 }} className="hidden lg:flex flex-col border border-white/5 bg-zinc-900/50 backdrop-blur-xl rounded-[32px] my-6 mr-6 shrink-0 h-[500px] sticky top-6 overflow-hidden z-30 shadow-2xl">
                 <div className="flex-1 overflow-y-auto py-6 px-3 flex flex-col justify-between no-scrollbar">
                     <div className="space-y-6">
@@ -1012,7 +1112,7 @@ export default function Settings() {
         </div>
 
         {/* FOOTER - Spans full width of the screen */}
-        <div className="w-full mt-auto bg-black/40 border-t border-white/5 py-12 px-6 relative z-10">
+        <div className="w-full mt-auto bg-black/40 border-t border-white/5 py-12 relative z-10">
             <div className="w-full flex flex-col items-center justify-center space-y-4 opacity-70">
                 <div className="flex items-center justify-center gap-3">
                     <img src="/icon.svg" alt="Seal" className="w-8 h-8 opacity-50 filter grayscale" />
@@ -1025,7 +1125,7 @@ export default function Settings() {
 
         <AnimatePresence>
             {mobileMenuOpen && (
-                <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="lg:hidden fixed inset-0 z-50 flex items-start justify-center bg-black/60 backdrop-blur-md pt-20 px-6" onClick={() => setMobileMenuOpen(false)}>
+                <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="lg:hidden fixed inset-0 z-50 flex items-start justify-center bg-black/60 backdrop-blur-md w-full" onClick={() => setMobileMenuOpen(false)}>
                     <motion.div initial={{ scale: 0.9, y: 20 }} animate={{ scale: 1, y: 0 }} exit={{ scale: 0.9, y: 20 }} className="bg-[#0f0f0f] border border-white/10 rounded-[32px] p-4 w-full max-w-xs shadow-2xl space-y-2 flex flex-col items-center" onClick={e => e.stopPropagation()}>
                         <div className="flex items-center justify-between w-full px-2 mb-2">
                             <h2 className="text-sm font-black text-white uppercase tracking-widest" style={{ fontFamily: currentFont }}>Magical Core</h2>
@@ -1052,6 +1152,6 @@ export default function Settings() {
 
 function SectionHeader({ title, desc, font }: { title: string, desc: string, font?: string }) { return (<div className="mb-8 pb-6 border-b border-white/5 flex flex-col gap-1 w-full"><h2 className="text-2xl font-black text-white tracking-widest flex items-center gap-3 uppercase" style={{ fontFamily: font }}><div className="w-1.5 h-8 bg-primary rounded-full shadow-[0_0_15px_var(--primary-color)]" />{title}</h2><p className="text-xs text-zinc-500 font-bold ml-5 uppercase tracking-widest">{desc}</p></div>); }
 function ToggleRow({ title, desc, checked, onChange }: any) { return (<div className="flex items-center justify-between p-4 border-b border-white/5 last:border-0 hover:bg-white/[0.02] transition-colors cursor-pointer group w-full" onClick={() => onChange(!checked)}><div><h4 className="text-sm font-bold text-zinc-200 group-hover:text-white transition-colors">{title}</h4><p className="text-[10px] text-zinc-500 font-medium">{desc}</p></div><div className={`w-14 h-8 flex items-center rounded-full p-1 transition-all duration-500 ${checked ? 'bg-primary shadow-[0_0_20px_var(--primary-color)]' : 'bg-zinc-900 border border-white/10'}`}><motion.div layout className="bg-white w-6 h-6 rounded-full shadow-lg" animate={{ x: checked ? 24 : 0 }} transition={{ type: "spring", stiffness: 500, damping: 30 }} /></div></div>); }
-function LoadingSkeleton() { return (<div className="w-full max-w-[1350px] mx-auto h-screen flex justify-center pt-24 px-8 space-y-8 animate-in fade-in"><div className="w-full max-w-5xl space-y-8"><SectionHeader title="System Identity" desc="Verifying security clearance..." /><div className="w-full h-48 bg-[#0f0f0f] rounded-[32px] animate-pulse border border-white/5" /><div className="grid gap-6 md:grid-cols-2"><div className="h-40 bg-[#0f0f0f] rounded-[32px] animate-pulse border border-white/5" /><div className="h-40 bg-[#0f0f0f] rounded-[32px] animate-pulse border border-white/5" /></div></div></div>); }
+function LoadingSkeleton() { return (<div className="w-full h-screen flex justify-center space-y-8 animate-in fade-in"><div className="w-full space-y-8"><SectionHeader title="System Identity" desc="Verifying security clearance..." /><div className="w-full h-48 bg-[#0f0f0f] rounded-[32px] animate-pulse border border-white/5" /><div className="grid gap-6 md:grid-cols-2"><div className="h-40 bg-[#0f0f0f] rounded-[32px] animate-pulse border border-white/5" /><div className="h-40 bg-[#0f0f0f] rounded-[32px] animate-pulse border border-white/5" /></div></div></div>); }
 function SettingRow({ icon: Icon, title, desc, action }: any) { return (<div className="flex items-center justify-between p-4 bg-black/40 border border-white/5 rounded-[24px] hover:border-white/10 transition-colors group w-full"><div className="flex items-center gap-4"><div className="p-3 bg-white/5 rounded-2xl text-zinc-400 group-hover:text-primary group-hover:bg-primary/10 transition-colors"><Icon size={18} /></div><div><h4 className="text-sm font-bold text-zinc-200">{title}</h4><p className="text-[10px] text-zinc-500 font-medium">{desc}</p></div></div>{action}</div>); }
 function SelectCard({ icon: Icon, label, value, options, onChange, displayOptions }: any) { return (<div className="p-6 bg-black/40 border border-white/5 rounded-[32px] flex flex-col gap-4 hover:border-white/10 transition-colors w-full"><div className="flex items-center gap-3 text-zinc-400 mb-1"><div className="p-2 bg-white/5 rounded-xl text-primary"><Icon size={16} /></div><span className="text-[10px] font-black uppercase tracking-widest">{label}</span></div><div className="flex flex-wrap gap-2">{options.map((opt: string, idx: number) => (<button key={opt} onClick={() => onChange(opt)} className={`flex-1 py-1.5 px-3 text-[10px] font-bold rounded-full border transition-all uppercase whitespace-nowrap outline-none focus:ring-2 focus:ring-primary/50 ${value === opt ? 'bg-primary text-white border-primary shadow-lg' : 'bg-transparent border-white/10 text-zinc-500 hover:border-white/30 hover:text-zinc-300 hover:bg-white/10'}`}>{displayOptions ? displayOptions[idx] : opt}</button>))}</div></div>); }

@@ -118,13 +118,15 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event: AuthChangeEvent, session: Session | null) => {
         if (!isMounted.current) return;
-        // Ignore silent token refreshes — these happen on tab focus and should NOT trigger a data reload
-        if (event === 'TOKEN_REFRESHED') {
-            if (session?.user) setUser(session.user); // silently update user ref only
+        // Ignore silent token refreshes & user updates — maintain stable user reference to prevent flash reloads on tab focus/minimize
+        if (event === 'TOKEN_REFRESHED' || event === 'USER_UPDATED') {
+            if (session?.user) {
+                setUser(prev => (prev?.id === session.user.id ? prev : session.user));
+            }
             return;
         }
         if (session?.user) {
-            setUser(session.user);
+            setUser(prev => (prev?.id === session.user.id ? prev : session.user));
             // Only re-fetch profile if user actually changed (account switch / fresh sign in)
             if (currentProfileId.current !== session.user.id) {
                 const profileData = await fetchProfile(session.user.id, session.user.email, session.user.user_metadata);
@@ -224,7 +226,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   }, [fetchProfile]);
 
   const value = useMemo(() => ({ user, profile, isLoading, savedAccounts, signOut, refreshSession, switchAccount, removeAccount }), 
-    [user?.id, profile?.id, isLoading, savedAccounts.length, signOut, refreshSession, switchAccount, removeAccount]);
+    [user, profile, isLoading, savedAccounts, signOut, refreshSession, switchAccount, removeAccount]);
 
   return (
     <AuthContext.Provider value={value}>

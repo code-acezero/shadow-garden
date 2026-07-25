@@ -4,6 +4,7 @@ import React, { useEffect, useRef, useState, useCallback, forwardRef, useImperat
 import Hls from 'hls.js';
 import { Play, Pause, Volume2, VolumeX, Settings, Maximize, Subtitles, Gauge, ChevronRight, ChevronLeft, ChevronsLeft, ChevronsRight, Loader2, PictureInPicture, Server as ServerIcon, SkipForward, ToggleLeft, ToggleRight } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import IframeAdShield from '@/components/Player/IframeAdShield';
 
 interface DramaPlayerProps {
   /** HLS or MP4 url — if present, tries to play natively first */
@@ -48,6 +49,7 @@ const DramaPlayer = forwardRef<DramaPlayerRef, DramaPlayerProps>(({
   const hlsRef = useRef<Hls | null>(null);
   const hasInitRef = useRef(false);
   const canSaveRef = useRef(false);
+  const lastProgressTimeRef = useRef(0);
   const ctTimerRef = useRef<NodeJS.Timeout | null>(null);
 
   const [useIframe, setUseIframe] = useState(!url);
@@ -223,14 +225,18 @@ const DramaPlayer = forwardRef<DramaPlayerRef, DramaPlayerProps>(({
                 </div>
             </div>
         )}
-        <iframe
-          src={iframeUrl}
-          onLoad={() => setIframeLoading(false)}
-          className="absolute inset-0 w-full h-full border-0"
-          allowFullScreen
-          allow="autoplay; fullscreen; encrypted-media"
-          title={title || 'Drama Player'}
-        />
+        <IframeAdShield
+          className="absolute inset-0 w-full h-full"
+        >
+          <iframe
+            src={iframeUrl}
+            onLoad={() => setIframeLoading(false)}
+            className="absolute inset-0 w-full h-full border-0"
+            allowFullScreen
+            allow="autoplay; fullscreen; encrypted-media"
+            title={title || 'Drama Player'}
+          />
+        </IframeAdShield>
         {title && (
           <div className="absolute top-3 left-1/2 -translate-x-1/2 bg-black/70 backdrop-blur-md border border-white/10 rounded-full px-4 py-1.5 pointer-events-none z-10">
             <span className="text-[9px] font-black text-white uppercase tracking-widest truncate max-w-xs block">{title}</span>
@@ -258,7 +264,10 @@ const DramaPlayer = forwardRef<DramaPlayerRef, DramaPlayerProps>(({
       onClick={() => { if (showControls) setShowControls(false); else showUI(); }}
       onMouseMove={showUI}
       onKeyDown={(e) => {
-        if (e.code === 'Space') { e.preventDefault(); togglePlay(); }
+        if (['Space', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'KeyF', 'KeyM'].includes(e.code)) {
+            e.preventDefault();
+        }
+        if (e.code === 'Space') togglePlay();
         if (e.code === 'ArrowRight') seek(10);
         if (e.code === 'ArrowLeft') seek(-10);
         if (e.code === 'KeyF') toggleFullscreen();
@@ -283,7 +292,14 @@ const DramaPlayer = forwardRef<DramaPlayerRef, DramaPlayerProps>(({
           if (!v) return;
           setCurrentTime(v.currentTime);
           if (!hasStarted && v.currentTime > 0) setHasStarted(true);
-          if (canSaveRef.current) onProgress?.({ playedSeconds: v.currentTime });
+          
+          if (canSaveRef.current) {
+              const now = Date.now();
+              if (now - lastProgressTimeRef.current > 5000) {
+                  onProgress?.({ playedSeconds: v.currentTime });
+                  lastProgressTimeRef.current = now;
+              }
+          }
         }}
         onLoadedMetadata={() => setDuration(videoRef.current?.duration || 0)}
         onEnded={() => { 
@@ -320,12 +336,17 @@ const DramaPlayer = forwardRef<DramaPlayerRef, DramaPlayerProps>(({
       </div>
 
       {/* Center Play Button */}
-      <div className={cn("absolute inset-0 flex items-center justify-center pointer-events-none z-20 transition-all duration-500", showControls ? "opacity-100" : "opacity-0 scale-150")}>
-        {!isBuffering && (
-          <div onClick={(e) => { e.stopPropagation(); togglePlay(); }} className="w-14 h-14 md:w-16 md:h-16 bg-primary-600/20 backdrop-blur-md border border-primary-500/50 rounded-full flex items-center justify-center text-white shadow-[0_0_30px_rgba(220,38,38,0.4)] pointer-events-auto cursor-pointer hover:scale-110 active:scale-95 transition-all">
-            {isPlaying ? <Pause fill="white" size={24} /> : <Play fill="white" size={24} className="ml-1" />}
-          </div>
-        )}
+      <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-20">
+          {!isBuffering && (
+            <div onClick={(e) => { e.stopPropagation(); togglePlay(); }} className={cn("group/playbtn relative w-16 h-16 md:w-20 md:h-20 rounded-full flex items-center justify-center pointer-events-auto cursor-pointer active:scale-95 transition-all duration-500", showControls ? "opacity-100 scale-100 hover:scale-110" : "opacity-0 scale-150 pointer-events-none")}>
+                {/* Liquid Glass Background */}
+                <div className="absolute inset-0 rounded-full bg-gradient-to-br from-white/20 to-white/5 backdrop-blur-xl border border-white/30 shadow-[0_8px_32px_rgba(0,0,0,0.5),inset_0_2px_4px_rgba(255,255,255,0.4)] group-hover/playbtn:bg-white/30 group-hover/playbtn:border-white/50 transition-all duration-500 overflow-hidden">
+                    {/* Glass Shine */}
+                    <div className="absolute inset-0 bg-gradient-to-b from-white/60 to-transparent opacity-40 -translate-y-[40%] rounded-[100%] pointer-events-none" />
+                </div>
+                {isPlaying ? <Pause fill="white" size={28} className="md:w-8 md:h-8 relative z-10 drop-shadow-[0_2px_8px_rgba(0,0,0,0.8)] transition-transform duration-300 group-hover/playbtn:scale-110" /> : <Play fill="white" size={28} className="ml-1 md:w-8 md:h-8 relative z-10 drop-shadow-[0_2px_8px_rgba(0,0,0,0.8)] transition-transform duration-300 group-hover/playbtn:scale-110" />}
+            </div>
+          )}
       </div>
 
       {/* Bottom Controls */}
@@ -366,14 +387,14 @@ const DramaPlayer = forwardRef<DramaPlayerRef, DramaPlayerProps>(({
             {/* Integrated Episodes Menu */}
             {episodes && episodes.length > 0 && (
               <div className="relative">
-                <button onClick={(e) => { e.stopPropagation(); setShowEpisodes(!showEpisodes); setShowServers(false); setShowSettings(false); }} className={cn("text-[10px] md:text-xs font-black uppercase tracking-widest px-3 py-1.5 rounded-full border transition-all active:scale-95 text-white", showEpisodes ? "bg-primary-600 border-primary-500" : "bg-white/10 border-white/20 hover:border-primary-500")}>
+                <button onClick={(e) => { e.stopPropagation(); setShowEpisodes(!showEpisodes); setShowServers(false); setShowSettings(false); }} className={cn("text-[10px] md:text-xs font-black uppercase tracking-widest px-3 py-1.5 rounded-full border transition-all active:scale-95 text-white", showEpisodes ? "bg-primary-600 border-primary-500" : "frost-glass hover:border-primary-500")}>
                   Episodes
                 </button>
                 {showEpisodes && (
-                  <div className="absolute bottom-full mb-4 left-0 bg-black/90 backdrop-blur-md border border-white/10 rounded-2xl p-2 w-64 shadow-2xl z-50 flex flex-col gap-1 animate-in slide-in-from-bottom-2 max-h-[180px] md:max-h-[300px] overflow-y-auto no-scrollbar" onClick={(e) => e.stopPropagation()}>
+                  <div className="absolute bottom-full mb-4 left-0 bg-zinc-950/70 backdrop-blur-3xl border border-white/5 ring-1 ring-white/10 rounded-2xl p-2 w-64 shadow-2xl z-50 flex flex-col gap-1 animate-in slide-in-from-bottom-2 max-h-[calc(100%-4rem)] md:max-h-[350px] overflow-y-auto no-scrollbar" onClick={(e) => e.stopPropagation()}>
                     <p className="text-[10px] font-black text-zinc-500 uppercase px-3 pb-2 pt-1 sticky top-0 bg-black/90 z-10 border-b border-white/10">Select Episode</p>
                     {episodes.map(ep => (
-                      <button key={ep.id} onClick={() => { onEpisodeSelect?.(ep.id); setShowEpisodes(false); }} className={cn("text-[11px] px-3 py-2 rounded-xl text-left font-bold transition-all flex items-center justify-between group", currentEpId === ep.id ? "bg-primary-600 text-white" : "text-zinc-400 hover:text-white hover:bg-white/10")}>
+                      <button key={ep.id} onClick={() => { onEpisodeSelect?.(ep.id); setShowEpisodes(false); }} className={cn("text-[11px] px-3 py-2 rounded-xl text-left font-bold transition-all flex items-center justify-between group", currentEpId === ep.id ? "bg-primary-600 text-white" : "text-zinc-400 hover:text-white hover:bg-white/10 hover:shadow-inner")}>
                         <span className="truncate">EP {ep.number}: {ep.title}</span>
                         {currentEpId === ep.id && <Play size={10} className="shrink-0" />}
                       </button>
@@ -386,14 +407,14 @@ const DramaPlayer = forwardRef<DramaPlayerRef, DramaPlayerProps>(({
             {/* Integrated Servers Menu */}
             {servers && servers.length > 0 && (
               <div className="relative">
-                <button onClick={(e) => { e.stopPropagation(); setShowServers(!showServers); setShowEpisodes(false); setShowSettings(false); }} className={cn("text-[10px] md:text-xs font-black uppercase tracking-widest px-3 py-1.5 rounded-full border transition-all active:scale-95 text-white flex items-center gap-2", showServers ? "bg-primary-600 border-primary-500" : "bg-white/10 border-white/20 hover:border-primary-500")}>
+                <button onClick={(e) => { e.stopPropagation(); setShowServers(!showServers); setShowEpisodes(false); setShowSettings(false); }} className={cn("text-[10px] md:text-xs font-black uppercase tracking-widest px-3 py-1.5 rounded-full border transition-all active:scale-95 text-white flex items-center gap-2", showServers ? "bg-primary-600 border-primary-500" : "frost-glass hover:border-primary-500")}>
                   <ServerIcon size={12} className="hidden md:block" /> {servers[activeServerIdx]?.name || 'Server'}
                 </button>
                 {showServers && (
-                  <div className="absolute bottom-full mb-4 left-0 bg-black/90 backdrop-blur-md border border-white/10 rounded-2xl p-2 w-56 shadow-2xl z-50 flex flex-col gap-1 animate-in slide-in-from-bottom-2 max-h-[180px] md:max-h-[300px] overflow-y-auto no-scrollbar" onClick={(e) => e.stopPropagation()}>
+                  <div className="absolute bottom-full mb-4 left-0 bg-zinc-950/70 backdrop-blur-3xl border border-white/5 ring-1 ring-white/10 rounded-2xl p-2 w-56 shadow-2xl z-50 flex flex-col gap-1 animate-in slide-in-from-bottom-2 max-h-[calc(100%-4rem)] md:max-h-[350px] overflow-y-auto no-scrollbar" onClick={(e) => e.stopPropagation()}>
                     <p className="text-[10px] font-black text-zinc-500 uppercase px-3 pb-2 pt-1 border-b border-white/10">Audio / Server</p>
                     {servers.map((srv, idx) => (
-                      <button key={idx} onClick={() => { onServerSelect?.(idx); setShowServers(false); }} className={cn("text-[11px] px-3 py-2 rounded-xl text-left font-bold transition-all flex items-center justify-between", activeServerIdx === idx ? "bg-primary-600 text-white" : "text-zinc-400 hover:text-white hover:bg-white/10")}>
+                      <button key={idx} onClick={() => { onServerSelect?.(idx); setShowServers(false); }} className={cn("text-[11px] px-3 py-2 rounded-xl text-left font-bold transition-all flex items-center justify-between", activeServerIdx === idx ? "bg-primary-600 text-white" : "text-zinc-400 hover:text-white hover:bg-white/10 hover:shadow-inner")}>
                         <span>{srv.name}</span>
                         <span className={cn("text-[8px] px-2 py-0.5 rounded-full", srv.type === 'hls' ? "bg-green-900/50 text-green-400" : "bg-zinc-800 text-zinc-400")}>{srv.type === 'hls' ? 'HLS' : 'Embed'}</span>
                       </button>
@@ -414,12 +435,12 @@ const DramaPlayer = forwardRef<DramaPlayerRef, DramaPlayerProps>(({
                 <Settings size={22} />
               </button>
               {showSettings && (
-                <div className="absolute bottom-12 right-0 bg-black/85 backdrop-blur-md border border-white/10 rounded-2xl p-2 w-48 max-h-[180px] md:max-h-[300px] overflow-y-auto scrollbar-hide shadow-2xl z-50 flex flex-col gap-1 animate-in slide-in-from-bottom-2" onClick={(e) => e.stopPropagation()}>
+                <div className="absolute bottom-12 right-0 bg-zinc-950/70 backdrop-blur-3xl border border-white/5 ring-1 ring-white/10 rounded-2xl p-2 w-48 max-h-[calc(100%-4rem)] md:max-h-[350px] overflow-y-auto scrollbar-hide shadow-2xl z-50 flex flex-col gap-1 animate-in slide-in-from-bottom-2" onClick={(e) => e.stopPropagation()}>
                   <p className="text-[10px] font-black text-zinc-500 uppercase px-3 pb-1 border-b border-white/10">Quality</p>
-                  <button onClick={() => { if (hlsRef.current) hlsRef.current.currentLevel = -1; setCurrentQuality(-1); }} className={cn("text-[11px] px-3 py-2 rounded-full text-left font-bold transition-all", currentQuality === -1 ? "bg-primary-600 text-white" : "hover:bg-white/10")}>Auto</button>
-                  {qualities.map(q => <button key={q.index} onClick={() => { if (hlsRef.current) hlsRef.current.currentLevel = q.index; setCurrentQuality(q.index); }} className={cn("text-[11px] px-3 py-2 rounded-full text-left font-bold transition-all", currentQuality === q.index ? "bg-primary-600 text-white" : "hover:bg-white/10")}>{q.height}p</button>)}
+                  <button onClick={() => { if (hlsRef.current) hlsRef.current.currentLevel = -1; setCurrentQuality(-1); }} className={cn("text-[11px] px-3 py-2 rounded-full text-left font-bold transition-all", currentQuality === -1 ? "bg-primary-600 text-white" : "hover:bg-white/10 hover:shadow-inner")}>Auto</button>
+                  {qualities.map(q => <button key={q.index} onClick={() => { if (hlsRef.current) hlsRef.current.currentLevel = q.index; setCurrentQuality(q.index); }} className={cn("text-[11px] px-3 py-2 rounded-full text-left font-bold transition-all", currentQuality === q.index ? "bg-primary-600 text-white" : "hover:bg-white/10 hover:shadow-inner")}>{q.height}p</button>)}
                   <p className="text-[10px] font-black text-zinc-500 uppercase px-3 pb-1 border-b border-white/10 mt-1">Speed</p>
-                  {[0.5, 1, 1.25, 1.5, 2].map(r => <button key={r} onClick={() => { if (videoRef.current) videoRef.current.playbackRate = r; setSpeed(r); }} className={cn("text-[11px] px-3 py-2 rounded-full text-left font-bold transition-all", speed === r ? "bg-primary-600 text-white" : "hover:bg-white/10")}>{r}x</button>)}
+                  {[0.5, 1, 1.25, 1.5, 2].map(r => <button key={r} onClick={() => { if (videoRef.current) videoRef.current.playbackRate = r; setSpeed(r); }} className={cn("text-[11px] px-3 py-2 rounded-full text-left font-bold transition-all", speed === r ? "bg-primary-600 text-white" : "hover:bg-white/10 hover:shadow-inner")}>{r}x</button>)}
                 </div>
               )}
             </div>

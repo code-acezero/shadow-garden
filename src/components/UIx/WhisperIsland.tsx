@@ -23,6 +23,8 @@ import Notifications from '@/components/Anime/Notifications';
 import ShadowAvatar from '@/components/User/ShadowAvatar';
 import ShadowLogo from '@/components/UIx/ShadowLogo';
 import ProfileAvatar from '@/components/User/ProfileAvatar';
+import UserTitleBadge from '@/components/ui/UserTitleBadge';
+import { useTravellerProfile } from '@/hooks/useTravellerProfile';
 
 import { playVoice, refreshVoiceCache } from '@/lib/voice'; 
 import { useSettings } from '@/hooks/useSettings'; 
@@ -239,7 +241,7 @@ const SpecialSearchBar = ({ mode, onClose, isActive, setIsActive }: { mode: 'hin
     );
 };
 
-const SearchBarContent = ({ query, setQuery, searchMode, setSearchMode, showFilters, setShowFilters, handleSearchSubmit, filters, setFilters, toggleGenre, suggestions, handleSuggestionClick, router, compact = false, onCloseMobile, onReset, waveTrigger, isLoadingSearch }: any) => {
+const SearchBarContent = ({ query, setQuery, searchMode, setSearchMode, showFilters, setShowFilters, handleSearchSubmit, filters, setFilters, toggleGenre, suggestions, handleSuggestionClick, router, compact = false, onCloseMobile, onReset, waveTrigger, isLoadingSearch, handleRandomSummon, isRandomLoading }: any) => {
     return (
         <motion.div 
             initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.3 }}
@@ -282,13 +284,13 @@ const SearchBarContent = ({ query, setQuery, searchMode, setSearchMode, showFilt
 
              <AnimatePresence>
                  {showFilters && !compact && (
-                     <motion.div initial={{ opacity: 0, y: 10, scale: 0.95 }} animate={{ opacity: 1, y: 0, scale: 1 }} exit={{ opacity: 0, y: 10, scale: 0.95 }} className="absolute top-[120%] left-0 right-0 bg-[#0a0a0a]/90 backdrop-blur-2xl border border-white/10 rounded-3xl p-5 shadow-2xl z-[100] ring-1 ring-white/5">
+                     <motion.div initial={{ opacity: 0, y: -10, scale: 0.95 }} animate={{ opacity: 1, y: 0, scale: 1 }} exit={{ opacity: 0, y: -10, scale: 0.95 }} className="!absolute top-full mt-3 left-0 right-0 bg-[#0c0c0e]/95 backdrop-blur-2xl border border-white/10 rounded-3xl p-5 shadow-2xl z-[100] ring-1 ring-white/10 origin-top">
                          <div className="flex justify-between items-center mb-4 border-b border-white/5 pb-2">
                              <span className="text-[10px] font-black text-zinc-400 uppercase tracking-widest">{searchMode === 'hindi' ? 'Hindi Filters' : searchMode === 'donghua' ? 'Donghua Filters' : 'Filters'}</span>
                              <div className="flex gap-2 items-center">
                                 {searchMode === 'anime' && (
                                     <>
-                                        <button onClick={() => router.push('/search?mode=az')} className="flex items-center gap-1 text-[9px] px-2 py-1.5 rounded-full bg-transparent text-zinc-500 border border-transparent hover:bg-white/5 transition-all"><ArrowDownAZ size={10}/> A-Z</button>
+                                        <button onClick={() => router.push('/search?sort=name-az')} className="flex items-center gap-1 text-[9px] px-2 py-1.5 rounded-full bg-transparent text-zinc-500 border border-transparent hover:bg-white/5 transition-all"><ArrowDownAZ size={10}/> A-Z</button>
                                         <button onClick={() => setSearchMode('hindi')} className="flex items-center gap-1 text-[9px] px-3 py-1.5 rounded-full border bg-white/5 text-zinc-400 border-white/10 hover:bg-white/10 transition-all"><Languages size={10}/> Hindi</button>
                                         <button onClick={() => setSearchMode('donghua')} className="flex items-center gap-1 text-[9px] px-3 py-1.5 rounded-full border bg-white/5 text-zinc-400 border-white/10 hover:bg-white/10 transition-all"><Flame size={10}/> Donghua</button>
                                     </>
@@ -354,7 +356,10 @@ const SearchBarContent = ({ query, setQuery, searchMode, setSearchMode, showFilt
                              <div className="flex justify-between items-center pt-3 border-t border-white/10">
                                  <button onClick={onReset} className="flex items-center gap-1.5 text-[9px] text-zinc-500 hover:text-white transition-colors px-2 py-1 rounded-md hover:bg-white/5"><RotateCcw size={10} /> Reset</button>
                                  <div className="flex gap-2">
-                                     <Button size="sm" variant="ghost" className="h-8 text-[10px] bg-white/5 hover:bg-white/10 text-zinc-300 rounded-full border border-white/5"><Dices size={12} className="mr-1.5"/> Random</Button>
+                                     <Button size="sm" variant="ghost" onClick={handleRandomSummon} disabled={isRandomLoading} className="h-8 text-[10px] bg-white/5 hover:bg-white/10 text-zinc-300 rounded-full border border-white/5">
+                                         {isRandomLoading ? <Loader2 size={12} className="mr-1.5 animate-spin" /> : <Dices size={12} className="mr-1.5"/>}
+                                         Random
+                                     </Button>
                                      <Button size="sm" onClick={handleSearchSubmit} className={cn("h-8 text-[10px] text-white px-6 rounded-full shadow-lg", searchMode === 'hindi' ? "bg-orange-600 hover:bg-orange-700" : searchMode === 'donghua' ? "bg-red-600 hover:bg-red-700" : "bg-primary-600 hover:bg-primary-700")}>Apply</Button>
                                  </div>
                              </div>
@@ -362,25 +367,46 @@ const SearchBarContent = ({ query, setQuery, searchMode, setSearchMode, showFilt
                      </motion.div>
                  )}
                  {query.length > 0 && suggestions.length > 0 && !showFilters && (
-                     <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 10 }} className="absolute top-[120%] left-0 right-0 bg-[#0a0a0a]/95 border border-white/10 rounded-2xl shadow-2xl p-1 z-[100]">
-                         {/* Prefix hint */}
+                     <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 10 }} className="!absolute top-full mt-3 left-0 right-0 bg-[#0c0c0e]/95 backdrop-blur-2xl border border-white/10 rounded-2xl shadow-2xl p-1 z-[100]">
                          {query.startsWith('@') && <div className="px-3 py-1.5 text-[9px] font-bold text-zinc-500 uppercase tracking-widest flex items-center gap-1"><AtSign size={9}/> Users & Clans</div>}
                          {query.startsWith('/') && <div className="px-3 py-1.5 text-[9px] font-bold text-zinc-500 uppercase tracking-widest flex items-center gap-1"><Hash size={9}/> Posts & News</div>}
-                         {suggestions.map((s: SearchResult & { _kind?: string }) => (
-                             <div key={s.id} onClick={() => handleSuggestionClick(s.id, s._kind)} className="flex items-center gap-3 p-1.5 hover:bg-white/10 rounded-xl cursor-pointer group transition-all">
-                                 {s.image ? (
-                                     <img src={s.image || '/images/no-poster.png'} className={cn("object-cover rounded-lg bg-zinc-800 shadow-md", s._kind === 'post' ? 'w-7 h-7 rounded-full' : 'w-9 h-12')} alt="" />
-                                 ) : (
-                                     <div className={cn("flex items-center justify-center bg-zinc-800 rounded-lg", s._kind === 'post' ? 'w-7 h-7 rounded-full' : 'w-9 h-12')}>
-                                         {s._kind === 'user' ? <User size={14} className="text-zinc-500" /> : s._kind === 'clan' ? <Users size={14} className="text-zinc-500" /> : <Hash size={14} className="text-zinc-500" />}
+                         {suggestions.map((s: SearchResult & { _kind?: string; rawUser?: any; frame_id?: string; level?: number; show_level?: boolean; admin_title?: string; user_title?: string; poster?: string }) => {
+                             const isUser = s._kind === 'user' || s.type === 'User' || s.type === 'Admin';
+                             const raw = s.rawUser || {};
+                             return (
+                                 <div key={s.id} onClick={() => handleSuggestionClick(s.id, s._kind || (isUser ? 'user' : undefined))} className="flex items-center gap-3 p-1.5 hover:bg-white/10 rounded-xl cursor-pointer group transition-all">
+                                     {isUser ? (
+                                         <div className="w-10 h-10 shrink-0 flex items-center justify-center my-1 ml-0.5">
+                                             <ProfileAvatar 
+                                                 profile={{
+                                                     ...raw,
+                                                     id: raw.id || s.id,
+                                                     username: raw.username || s.title,
+                                                     avatar_url: raw.avatar_url || s.image,
+                                                     frame_id: raw.frame_id || s.frame_id || 'none',
+                                                     level: raw.level || s.level || 1,
+                                                     show_level: raw.show_level ?? s.show_level ?? true
+                                                 }} 
+                                                 className="w-10 h-10" 
+                                             />
+                                         </div>
+                                     ) : (s.image || s.poster) ? (
+                                         <img src={s.image || s.poster || '/images/no-poster.png'} className={cn("object-cover rounded-lg bg-zinc-800 shadow-md", s._kind === 'post' ? 'w-7 h-7 rounded-full' : 'w-9 h-12')} alt="" />
+                                     ) : (
+                                         <div className={cn("flex items-center justify-center bg-zinc-800 rounded-lg", s._kind === 'post' ? 'w-7 h-7 rounded-full' : 'w-9 h-12')}>
+                                             {s._kind === 'clan' ? <Users size={14} className="text-zinc-500" /> : <Hash size={14} className="text-zinc-500" />}
+                                         </div>
+                                     )}
+                                     <div className="min-w-0 flex-1">
+                                         <div className="flex items-center gap-1.5 flex-wrap">
+                                             <span className="text-xs font-bold text-white group-hover:text-primary-500">{s.title}</span>
+                                             {isUser && <UserTitleBadge user={s.rawUser || s} variant="bracket" className="shrink-0 text-[10px]" />}
+                                         </div>
+                                         <div className="text-[9px] text-zinc-500 font-medium uppercase mt-0.5">{s.duration || s.type} {s.releaseDate ? `• ${s.releaseDate}` : ''}</div>
                                      </div>
-                                 )}
-                                 <div className="min-w-0 flex-1">
-                                     <div className="text-xs font-bold text-white truncate group-hover:text-primary-500">{s.title}</div>
-                                     <div className="text-[9px] text-zinc-500 font-medium uppercase mt-0.5">{s.duration || s.type} {s.releaseDate ? `• ${s.releaseDate}` : ''}</div>
                                  </div>
-                             </div>
-                         ))}
+                             );
+                         })}
                          {!query.startsWith('@') && !query.startsWith('/') && <div onClick={() => handleSearchSubmit()} className="p-2 mt-1 border-t border-white/5 text-center text-[9px] font-bold text-zinc-500 hover:text-white cursor-pointer uppercase tracking-widest">See All Results</div>}
                      </motion.div>
                  )}
@@ -397,7 +423,8 @@ function WhisperIslandContent() {
   const audioRef = useRef<HTMLAudioElement | null>(null); 
   
   const { profile, savedAccounts, isLoading, signOut } = useAuth(); // Import signOut here
-  const isAuthenticated = !!(profile && profile.id && !profile.is_guest);   
+  const isAuthenticated = !!(profile && profile.id && !profile.is_guest);
+  const travellerProfile = useTravellerProfile();
   const { settings, updateSetting } = useSettings(); 
   
   const [mounted, setMounted] = useState(false);
@@ -413,7 +440,23 @@ function WhisperIslandContent() {
   const [centerMode, setCenterMode] = useState<any>('SEARCH_SOLO');
   const [isMobileSearchExpanded, setIsMobileSearchExpanded] = useState(false);
   const [isSwitchingNotif, setIsSwitchingNotif] = useState(false);
+  const [isRandomLoading, setIsRandomLoading] = useState(false);
   const notifTimerRef = useRef<NodeJS.Timeout | null>(null);
+
+  const handleRandomSummon = async () => {
+    setIsRandomLoading(true);
+    try {
+      const anime = await AnimeService.getRandomAnime();
+      if (anime?.id) {
+        setShowFilters(false);
+        router.push(`/watch/${anime.id}`);
+      }
+    } catch (error) {
+      console.error("Failed to summon random anime", error);
+    } finally {
+      setIsRandomLoading(false);
+    }
+  };
 
   // Voice State
   const [voices, setVoices] = useState<any[]>([]);
@@ -552,32 +595,60 @@ function WhisperIslandContent() {
           try {
               const { data, error } = await supabase
                  .from('messages')
-                 .select('sender_id, profiles!messages_sender_id_fkey(username)')
+                 .select('sender_id')
                  .eq('receiver_id', profile.id)
                  .is('read_at', null);
                  
-              if (data && data.length > 0) {
-                  const grouped = data.reduce((acc: any, msg: any) => {
-                      // fallback to sender_id if profiles join fails
-                      const sender = msg.profiles?.username || 'a user';
-                      acc[sender] = (acc[sender] || 0) + 1;
-                      return acc;
-                  }, {});
-
-                  Object.entries(grouped).forEach(([sender, count]) => {
-                      setTimeout(() => {
-                          dispatchWhisper('Unread Messages', `${count} unread from @${sender}`);
-                      }, 2000); // delay so it doesn't overlap immediately with welcome
-                  });
+              if (!error && data && data.length > 0) {
+                  dispatchWhisper('Unread Messages', `${data.length} unread message${data.length > 1 ? 's' : ''}`);
               }
-          } catch (e) {
-              console.error('Failed to fetch unread messages', e);
-          }
+          } catch (e) {}
       };
 
       // Only fetch unread messages if user is not currently in the messages page
       if (profile?.id && typeof window !== 'undefined' && !window.location.pathname.includes('/messages')) {
           fetchUnread();
+          
+          // Set up realtime subscription for new messages
+          const channel = supabase
+              .channel(`messages_whisper_${profile.id}`)
+              .on(
+                  'postgres_changes',
+                  {
+                      event: 'INSERT',
+                      schema: 'public',
+                      table: 'messages',
+                      filter: `receiver_id=eq.${profile.id}`
+                  },
+                  async (payload: any) => {
+                      if (!window.location.pathname.includes('/messages')) {
+                          // Fetch sender username
+                          const { data } = await supabase
+                              .from('profiles')
+                              .select('username')
+                              .eq('id', payload.new.sender_id)
+                              .single();
+                          const senderName = data?.username || 'Someone';
+                          
+                          dispatchWhisper('New Message', `You received a message from @${senderName}`);
+                          
+                          window.dispatchEvent(new CustomEvent('add_temp_notification', {
+                              detail: {
+                                  id: `temp_${Date.now()}_${Math.random()}`,
+                                  type: 'unread_message',
+                                  content: `New message from @${senderName}`,
+                                  created_at: new Date().toISOString(),
+                                  is_read: false
+                              }
+                          }));
+                      }
+                  }
+              )
+              .subscribe();
+
+          return () => {
+              supabase.removeChannel(channel);
+          };
       }
   }, [profile?.id]);
 
@@ -641,11 +712,11 @@ function WhisperIslandContent() {
         setIsLoadingSearch(true);
         try {
           const [{ data: users }, { data: clans }] = await Promise.all([
-            supabase.from('profiles').select('id, username, avatar_url, role, frame_id, level, show_level').ilike('username', `%${term}%`).limit(4),
+            supabase.from('profiles').select('id, username, avatar_url, role, frame_id, level, show_level, title, admin_title').ilike('username', `%${term}%`).limit(4),
             supabase.from('clans').select('id, name, avatar_url').ilike('name', `%${term}%`).limit(3),
           ]);
-          const userResults = (users || []).map((u: any) => ({ id: u.id, title: u.username, image: u.avatar_url, type: u.role === 'admin' ? 'Admin' : 'User', _kind: 'user', frame_id: u.frame_id, level: u.level, show_level: u.show_level }));
-          const clanResults = (clans || []).map((c: any) => ({ id: c.id, title: c.name, image: c.avatar_url, type: 'Clan', _kind: 'clan' }));
+          const userResults = (users || []).map((u: any) => ({ id: u.username || u.id, title: u.username, image: u.avatar_url, type: u.role === 'admin' ? 'Admin' : 'User', _kind: 'user', frame_id: u.frame_id, level: u.level, show_level: u.show_level, admin_title: u.admin_title, user_title: u.title, rawUser: u }));
+          const clanResults = (clans || []).map((c: any) => ({ id: c.name || c.id, title: c.name, image: c.avatar_url, type: 'Clan', _kind: 'clan' }));
           setSuggestions([...userResults, ...clanResults]);
         } catch { setSuggestions([]); } finally { setIsLoadingSearch(false); }
         return;
@@ -670,7 +741,7 @@ function WhisperIslandContent() {
           `;
 
           const [postsRes, aniRes] = await Promise.all([
-            supabase.from('social_posts').select('id, content, user:profiles(username, avatar_url, frame_id, level, show_level)').ilike('content', `%${term}%`).limit(3),
+            supabase.from('social_posts').select('id, content, user:profiles(username, avatar_url, role, admin_title, title, frame_id, level, show_level)').ilike('content', `%${term}%`).limit(3),
             fetch('https://graphql.anilist.co', {
               method: 'POST',
               headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
@@ -702,13 +773,29 @@ function WhisperIslandContent() {
         } catch { setSuggestions([]); } finally { setIsLoadingSearch(false); }
         return;
       }
-      // Default: anime search
+      // Default: anime + user search
       if (searchMode !== 'anime') return;
       if (q.length > 1) {
         setIsLoadingSearch(true);
         try {
-          const results = await AnimeService.getSearchSuggestions(q);
-          setSuggestions(results || []);
+          const [{ data: users }, animeResults] = await Promise.all([
+            supabase.from('profiles').select('id, username, avatar_url, role, frame_id, level, show_level, title, admin_title').ilike('username', `%${q}%`).limit(3),
+            AnimeService.getSearchSuggestions(q).catch(() => [])
+          ]);
+          const userResults = (users || []).map((u: any) => ({
+            id: u.username || u.id,
+            title: u.username,
+            image: u.avatar_url,
+            type: u.role === 'admin' ? 'Admin' : 'User',
+            _kind: 'user',
+            frame_id: u.frame_id,
+            level: u.level,
+            show_level: u.show_level,
+            admin_title: u.admin_title,
+            user_title: u.title,
+            rawUser: u
+          }));
+          setSuggestions([...userResults, ...(animeResults || [])]);
         } catch { setSuggestions([]); } finally { setIsLoadingSearch(false); }
       } else {
         setSuggestions([]);
@@ -755,12 +842,12 @@ function WhisperIslandContent() {
   if (!mounted) return <div className="fixed top-0 h-16 w-full z-[9999]" />;
 
   return (
-    <div ref={wrapperRef} className="fixed top-0 left-0 right-0 z-[9999] pt-2 px-2 sm:px-4 pointer-events-none font-sans h-auto min-h-[64px]">
-        <div className="w-full md:w-[90%] max-w-6xl md:max-w-none mx-auto flex items-start justify-between gap-2 pointer-events-none relative transition-all duration-500 ease-in-out">
+    <div ref={wrapperRef} className="fixed top-0 left-0 right-0 z-[9999] pt-[0.08rem] px-2 sm:px-4 pointer-events-none font-sans h-auto min-h-[64px]">
+        <div className="w-full flex items-start justify-between gap-2 pointer-events-none relative transition-all duration-500 ease-in-out">
             
             {/* LOGO */}
             <motion.div className="pointer-events-auto z-40 shrink-0">
-               <motion.div layout initial={false} animate={{ width: shouldHideExtras ? 48 : (isMobile ? (logoState === 2 ? 150 : 115) : (logoState === 2 ? 230 : 180)) }} transition={FLUID_TRANSITION} className={cn(`bg-black/40 backdrop-blur-xl border border-white/10 rounded-full ${ISLAND_HEIGHT} flex items-center shadow-lg overflow-hidden cursor-pointer hover:bg-black/50 relative`)} onClick={() => router.push('/home')}>
+               <motion.div layout initial={false} animate={{ width: shouldHideExtras ? 48 : (isMobile ? 150 : 230) }} transition={FLUID_TRANSITION} className={cn(`liquid-glass rounded-full ${ISLAND_HEIGHT} flex items-center shadow-lg overflow-hidden cursor-pointer hover:bg-black/50 relative`)} onClick={() => router.push('/home')}>
                     <div className="absolute inset-0 overflow-hidden rounded-full pointer-events-none"><LightWave trigger={logoState} delay={0} /></div>
                     <div className="absolute left-1.5 top-1/2 -translate-y-1/2 w-9 h-9 flex items-center justify-center z-50 bg-[#0a0a0a] rounded-full border border-white/10"><ShadowLogo size="w-8 h-8" /></div>
                     <div className="w-full h-full flex items-center justify-center pl-11 pr-2 relative z-10 overflow-hidden">
@@ -769,9 +856,9 @@ function WhisperIslandContent() {
                                 {shouldHideExtras ? null : ( 
                                     <>
                                         {/* Desktop Logo Text */}
-                                        <div className="hidden md:flex items-center gap-1.5 font-lemon font-black text-sm tracking-[0.22em] uppercase">
-                                            {logoState === 0 && <span className="text-primary-500 drop-shadow-[0_0_12px_rgba(220,38,38,0.6)]">SHADOW</span>}
-                                            {logoState === 1 && <span className="text-white drop-shadow-[0_0_12px_rgba(255,255,255,0.6)]">GARDEN</span>}
+                                        <div className="hidden md:flex items-center gap-1.5 font-lemon font-black text-sm tracking-[0.22em] uppercase w-[150px] justify-center">
+                                            {logoState === 0 && <span className="text-primary-500 drop-shadow-[0_0_12px_rgba(220,38,38,0.6)] text-xl tracking-[0.55em] ml-3">SHADOW</span>}
+                                            {logoState === 1 && <span className="text-white drop-shadow-[0_0_12px_rgba(255,255,255,0.6)] text-xl tracking-[0.55em] ml-3">GARDEN</span>}
                                             {logoState === 2 && (
                                                 <div className="flex items-center gap-1.5">
                                                     <span className="text-primary-500 drop-shadow-[0_0_12px_rgba(220,38,38,0.6)]">SHADOW</span>
@@ -781,16 +868,16 @@ function WhisperIslandContent() {
                                         </div>
 
                                         {/* Mobile Logo Text */}
-                                        <div className="md:hidden flex items-center gap-1 font-lemon font-black text-[11px] tracking-[0.18em] uppercase">
-                                            {logoState === 0 && <span className="text-primary-500">SHADOW</span>}
-                                            {logoState === 1 && <span className="text-white">GARDEN</span>}
-                                            {logoState === 2 && (
-                                                <div className="flex items-center gap-1">
-                                                    <span className="text-primary-500">SHADOW</span>
-                                                    <span className="text-white">GARDEN</span>
-                                                </div>
-                                            )}
-                                        </div>
+                                         <div className="md:hidden flex items-center justify-center font-lemon font-black uppercase w-[92px]">
+                                             {logoState === 0 && <span className="text-primary-500 text-[11px] tracking-[0.2em] drop-shadow-[0_0_8px_rgba(220,38,38,0.6)]">SHADOW</span>}
+                                             {logoState === 1 && <span className="text-white text-[11px] tracking-[0.2em] drop-shadow-[0_0_8px_rgba(255,255,255,0.6)]">GARDEN</span>}
+                                             {logoState === 2 && (
+                                                 <div className="flex items-center gap-1 text-[8.5px] tracking-[0.1em] leading-none whitespace-nowrap">
+                                                     <span className="text-primary-500 drop-shadow-[0_0_6px_rgba(220,38,38,0.5)]">SHADOW</span>
+                                                     <span className="text-white drop-shadow-[0_0_6px_rgba(255,255,255,0.5)]">GARDEN</span>
+                                                 </div>
+                                             )}
+                                         </div>
                                     </>
                                 )}
                             </motion.div>
@@ -803,10 +890,10 @@ function WhisperIslandContent() {
             <div className="flex-1 flex items-start justify-center pointer-events-auto z-50 min-w-0 w-full">
                 <LayoutGroup>
                     <div className="flex items-start justify-center gap-2 w-full h-full relative">
-                        {centerMode === 'SEARCH_SOLO' && (<motion.div layoutId="main-capsule" transition={FLUID_TRANSITION} onClick={() => isMobile && setIsMobileSearchExpanded(true)} className={cn(`relative bg-black/40 backdrop-blur-xl border border-white/10 shadow-xl rounded-[2rem] ${ISLAND_HEIGHT} flex items-center w-full`)}><div className="absolute left-1 h-full w-10 flex items-center justify-center z-10 pointer-events-none">{isLoadingSearch ? <Loader2 className="w-4 h-4 animate-spin text-primary-500"/> : <Search size={16} className="text-zinc-400" />}</div><SearchBarContent query={query} setQuery={setQuery} searchMode={searchMode} setSearchMode={(mode: any) => { setSearchMode(mode); setShowFilters(false); }} showFilters={showFilters} setShowFilters={setShowFilters} isLoadingSearch={isLoadingSearch} handleSearchSubmit={handleSearchSubmit} filters={filters} setFilters={setFilters} toggleGenre={toggleGenre} suggestions={suggestions} handleSuggestionClick={handleSuggestionClick} router={router} compact={isMobile && !isMobileSearchExpanded} onCloseMobile={closeMobileExpand} onReset={resetFilters} waveTrigger={logoState} /></motion.div>)}
+                        {centerMode === 'SEARCH_SOLO' && (<motion.div layoutId="main-capsule" transition={FLUID_TRANSITION} onClick={() => isMobile && setIsMobileSearchExpanded(true)} className={cn(`relative liquid-glass !overflow-visible shadow-xl rounded-[2rem] ${ISLAND_HEIGHT} flex items-center w-full`)}><div className="absolute left-1 h-full w-10 flex items-center justify-center z-10 pointer-events-none">{isLoadingSearch ? <Loader2 className="w-4 h-4 animate-spin text-primary-500"/> : <Search size={16} className="text-zinc-400" />}</div><SearchBarContent query={query} setQuery={setQuery} searchMode={searchMode} setSearchMode={(mode: any) => { setSearchMode(mode); setShowFilters(false); }} showFilters={showFilters} setShowFilters={setShowFilters} isLoadingSearch={isLoadingSearch} handleSearchSubmit={handleSearchSubmit} filters={filters} setFilters={setFilters} toggleGenre={toggleGenre} suggestions={suggestions} handleSuggestionClick={handleSuggestionClick} router={router} compact={isMobile && !isMobileSearchExpanded} onCloseMobile={closeMobileExpand} onReset={resetFilters} waveTrigger={logoState} handleRandomSummon={handleRandomSummon} isRandomLoading={isRandomLoading} /></motion.div>)}
                         {(centerMode === 'ISLAND_FOCUSED' || centerMode === 'ISLAND_DETAILS') && activeNotif && (
                             <>
-                                <motion.div layoutId="search-bubble" transition={FLUID_TRANSITION} onClick={activateSearchFocus} className={cn(`flex items-center justify-center rounded-full bg-black/40 backdrop-blur-xl border border-white/10 hover:bg-white/10 shadow-[0_0_15px_-5px_rgba(255,255,255,0.1)] ${ISLAND_HEIGHT} w-10 md:w-12 shrink-0 cursor-pointer z-40`)}><Search size={16} className="text-zinc-300" /></motion.div>
+                                <motion.div layoutId="search-bubble" transition={FLUID_TRANSITION} onClick={activateSearchFocus} className={cn(`flex items-center justify-center rounded-full liquid-glass hover:bg-white/10 shadow-[0_0_15px_-5px_rgba(255,255,255,0.1)] ${ISLAND_HEIGHT} w-10 md:w-12 shrink-0 cursor-pointer z-40`)}><Search size={16} className="text-zinc-300" /></motion.div>
                                 <motion.div layoutId="main-capsule" transition={FLUID_TRANSITION} onClick={activateIslandDetails} className={cn("relative overflow-hidden bg-[#0a0a0a]/95 border-primary-500/30 shadow-[0_0_20px_-5px_rgba(220,38,38,0.5)] rounded-[2rem] cursor-pointer z-50", isSwitchingNotif ? `${ISLAND_HEIGHT} w-10 md:w-12 flex items-center justify-center` : centerMode === 'ISLAND_DETAILS' ? "w-[95vw] max-w-lg p-5 flex flex-col gap-3 h-auto" : `${ISLAND_HEIGHT} px-4 w-fit min-w-[250px] max-w-full flex items-center justify-center`)}>
                                     <AnimatePresence mode="wait">
                                         {isSwitchingNotif ? <motion.div key="switch-icon" initial={{scale:0.8, opacity:0}} animate={{scale:1, opacity:1}} exit={{scale:0.8, opacity:0}}>{getNotifIcon(activeNotif.type)}</motion.div> : centerMode === 'ISLAND_DETAILS' ? (<motion.div key="details" layout="position" initial={{opacity:0, y:10}} animate={{opacity:1, y:0}} exit={{opacity:0, y:-5}} className="w-full"><div className="flex justify-between items-start w-full mb-3"><div className="flex items-center gap-3"><div className="p-2 rounded-full bg-white/5 border border-white/10">{getNotifIcon(activeNotif.type)}</div><span className={`text-lg text-white font-lemon tracking-wide`}>{activeNotif.title}</span></div><div role="button" onClick={dismissNotification} className="p-2 hover:bg-white/10 rounded-full bg-white/5 border border-white/5 transition-colors"><X size={16} className="text-white/70 hover:text-white"/></div></div><p className="text-sm text-zinc-300 leading-relaxed mb-4 font-normal normal-case text-center">{activeNotif.content}</p>{activeNotif.link && <Button size="sm" onClick={(e)=>{e.stopPropagation(); router.push(activeNotif.link!)}} className="w-full h-9 bg-primary-600/20 text-primary-400 hover:bg-primary-600 hover:text-white border border-primary-500/20 font-bold uppercase tracking-wider text-xs">View Intel</Button>}</motion.div>) : (<motion.div key="compact" layout="position" initial={{opacity:0}} animate={{opacity:1}} exit={{opacity:0}} className="flex items-center justify-center gap-3 w-full whitespace-nowrap"><div className="shrink-0">{getNotifIcon(activeNotif.type)}</div><div className="flex flex-col min-w-0 flex-1 overflow-hidden items-center"><span className={`text-xs text-white truncate font-lemon tracking-wider`}>{activeNotif.title}</span><span className="text-[10px] text-zinc-400 truncate normal-case">{activeNotif.content}</span></div></motion.div>)}
@@ -816,9 +903,9 @@ function WhisperIslandContent() {
                         )}
                         {centerMode === 'SEARCH_FOCUSED' && activeNotif && (
                             <>
-                                <motion.div layoutId="main-capsule" transition={FLUID_TRANSITION} className={cn(`relative bg-black/40 backdrop-blur-xl border border-white/10 shadow-xl rounded-[2rem] w-full ${ISLAND_HEIGHT} flex items-center`)}>
+                                <motion.div layoutId="main-capsule" transition={FLUID_TRANSITION} className={cn(`relative liquid-glass !overflow-visible shadow-xl rounded-[2rem] w-full ${ISLAND_HEIGHT} flex items-center`)}>
                                     <div className="absolute left-1 h-full w-10 flex items-center justify-center z-10 pointer-events-none">{isLoadingSearch ? <Loader2 className="w-4 h-4 animate-spin text-primary-500"/> : <Search size={16} className="text-zinc-400" />}</div>
-                                    <SearchBarContent query={query} setQuery={setQuery} searchMode={searchMode} setSearchMode={(mode: any) => { setSearchMode(mode); setShowFilters(false); }} showFilters={showFilters} setShowFilters={setShowFilters} isLoadingSearch={isLoadingSearch} handleSearchSubmit={handleSearchSubmit} filters={filters} setFilters={setFilters} toggleGenre={toggleGenre} suggestions={suggestions} handleSuggestionClick={handleSuggestionClick} router={router} onReset={resetFilters} waveTrigger={logoState} />
+                                    <SearchBarContent query={query} setQuery={setQuery} searchMode={searchMode} setSearchMode={(mode: any) => { setSearchMode(mode); setShowFilters(false); }} showFilters={showFilters} setShowFilters={setShowFilters} isLoadingSearch={isLoadingSearch} handleSearchSubmit={handleSearchSubmit} filters={filters} setFilters={setFilters} toggleGenre={toggleGenre} suggestions={suggestions} handleSuggestionClick={handleSuggestionClick} router={router} onReset={resetFilters} waveTrigger={logoState} handleRandomSummon={handleRandomSummon} isRandomLoading={isRandomLoading} />
                                 </motion.div>
                                 <motion.div layoutId="island-body" transition={FLUID_TRANSITION} onClick={activateIslandFocus} className={cn(`flex items-center justify-center rounded-full bg-[#0a0a0a]/95 border border-primary-500/30 hover:border-primary-500 shadow-[0_0_20px_-5px_rgba(220,38,38,0.5)] ${ISLAND_HEIGHT} w-10 md:w-12 shrink-0 cursor-pointer`)}><motion.div layout="position">{getNotifIcon(activeNotif.type)}</motion.div></motion.div>
                             </>
@@ -833,41 +920,38 @@ function WhisperIslandContent() {
                     {!shouldHideExtras && (
                         <motion.div key="actions" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 20 }} transition={{ duration: 0.3, ease: "circOut" }} className="flex items-center gap-2">
                             {/* Alpha Button */}
-                            <button onClick={() => window.dispatchEvent(new CustomEvent('shadow-toggle-alpha'))} className={cn(`relative overflow-hidden flex items-center justify-center bg-gradient-to-r from-primary-950/80 to-black border border-primary-500/30 hover:border-primary-500 text-white font-bold rounded-full shadow-lg transition-all ${ISLAND_HEIGHT} px-3 gap-2 shrink-0`)}>
+                            <button onClick={() => window.dispatchEvent(new CustomEvent('shadow-toggle-alpha'))} className={cn(`relative overflow-hidden flex items-center justify-center group liquid-glass hover:bg-white/10 text-white font-bold rounded-full transition-all ${ISLAND_HEIGHT} px-3 gap-2 shrink-0`)}>
                                 <div className="absolute inset-0 overflow-hidden pointer-events-none rounded-full"><LightWave trigger={logoState} delay={0.6} /></div>
-                                <img src="/images/alpha/alpha-av.png" alt="Alpha" className="w-7 h-7 rounded-full object-cover border border-primary-500/50" onError={(e) => { e.currentTarget.style.display = 'none'; e.currentTarget.nextElementSibling?.classList.remove('hidden'); }} />
+                                
+                                <img src="/images/alpha/alpha-av.png" alt="Alpha" className="w-7 h-7 rounded-full object-cover shrink-0" onError={(e) => { e.currentTarget.style.display = 'none'; e.currentTarget.nextElementSibling?.classList.remove('hidden'); }} />
                                 <span className="hidden sm:inline text-[9px] tracking-widest uppercase">ALPHA</span>
                             </button>
                             
                             {/* Notification Button */}
-                            <div className={cn(`relative ${ISLAND_HEIGHT} w-10 md:w-12 shrink-0 z-50`)}>
-                                <div className="absolute inset-0 rounded-full bg-black/40 backdrop-blur-xl border border-white/10 hover:bg-black/50 overflow-hidden">
-                                    <LightWave trigger={logoState} delay={0.7} />
-                                </div>
-                                <div className="relative w-full h-full flex items-center justify-center">
-                                    <Notifications />
-                                </div>
+                            <div className={cn(`relative ${ISLAND_HEIGHT} w-10 md:w-12 shrink-0 z-50 flex items-center justify-center`)}>
+                                <Notifications />
                             </div>
                         </motion.div>
                     )}
                 </AnimatePresence>
                 
-                <motion.div layout transition={FLUID_TRANSITION} className="relative overflow-hidden rounded-full">
+                <motion.div layout transition={FLUID_TRANSITION} className="relative rounded-full">
                     <div className="absolute inset-0 pointer-events-none overflow-hidden rounded-full"><LightWave trigger={logoState} delay={0.8} /></div>
                     <DropdownMenu modal={false} onOpenChange={setSettingsOpen}>
                         <DropdownMenuTrigger asChild>
-                            <button className="outline-none">
-                                <div className={cn(`${ISLAND_HEIGHT} w-10 md:w-12 rounded-full p-[2px] bg-black/40 backdrop-blur-xl border border-white/10 flex items-center justify-center`)}>
-                                        <ProfileAvatar profile={profile} className="w-full h-full" />
+                            <button className={cn(`relative outline-none ${ISLAND_HEIGHT} w-10 md:w-12 rounded-full p-[2px] flex items-center justify-center`)}>
+                                <div className="absolute inset-0 liquid-glass rounded-full pointer-events-none" />
+                                <div className="relative z-10 w-full h-full">
+                                    <ProfileAvatar profile={profile} travellerAvatar={!isAuthenticated ? travellerProfile.avatar : undefined} className="w-full h-full" />
                                 </div>
                             </button>
                         </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end" className="w-64 bg-[#0a0a0a]/95 backdrop-blur-xl border-white/10 text-zinc-300 p-3 rounded-2xl z-[101] shadow-2xl">
+                        <DropdownMenuContent align="end" className={cn("bg-black/95 backdrop-blur-2xl border border-white/10 text-zinc-300 p-3 rounded-2xl z-[101] shadow-[0_10px_50px_rgba(0,0,0,0.9)]", isAuthenticated ? "w-64" : "w-52")}>
                             {isAuthenticated ? (
                                 <div className="space-y-3">
                                     <div className="flex items-center gap-3 px-2 py-1">
                                         <div className="relative">
-                                            <ProfileAvatar profile={profile} className="w-10 h-10" />
+                                            <ProfileAvatar profile={profile} travellerAvatar={!isAuthenticated ? travellerProfile.avatar : undefined} className="w-10 h-10" />
                                         </div>
                                         <div className="flex flex-col">
                                             <span className="text-xs font-black text-white uppercase tracking-widest">{profile?.username || 'Shadow Agent'}</span>
@@ -946,10 +1030,12 @@ function WhisperIslandContent() {
                                 <div className="space-y-3">
                                     <div className="px-2 py-1.5">
                                         <div className="text-[10px] text-zinc-500 font-bold uppercase tracking-wider mb-1">Status</div>
-                                        <div className="text-sm font-black text-white">Traveler</div>
+                                        <div className="text-sm font-black text-white">Traveller</div>
                                     </div>
                                     <DropdownMenuSeparator className="bg-white/5" />
+                                    <DropdownMenuItem asChild><Link href="/profile" className="flex items-center w-full text-xs py-2 cursor-pointer hover:bg-white/10 rounded-lg transition-colors font-bold"><User size={14} className="mr-3 text-zinc-400" /> Traveller Profile</Link></DropdownMenuItem>
                                     <DropdownMenuItem asChild><Link href="/settings" className="flex items-center w-full text-xs py-2 cursor-pointer hover:bg-white/10 rounded-lg transition-colors font-bold"><Settings size={14} className="mr-3 text-zinc-400" /> Settings</Link></DropdownMenuItem>
+                                    <DropdownMenuSeparator className="bg-white/5" />
                                     <DropdownMenuItem onClick={(e) => { e.preventDefault(); if (typeof window !== 'undefined') window.dispatchEvent(new CustomEvent('shadow-open-auth', { detail: { view: 'ENTER' } })); }} className="flex items-center w-full text-xs py-2 cursor-pointer hover:bg-primary/20 text-primary-400 rounded-lg transition-colors font-bold">
                                         <LogIn size={14} className="mr-3" /> Enter
                                     </DropdownMenuItem>

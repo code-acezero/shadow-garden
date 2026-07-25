@@ -312,14 +312,14 @@ export default function SpotlightSlider({ animes }: { animes: SpotlightAnime[] }
 
   return (
     <section 
-      className="relative w-full mb-4 md:mb-8 group px-0"
+      className="relative w-full mb-2 md:mb-8 group px-0"
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
     >
       <div 
         className={cn(
           "relative w-full overflow-hidden bg-[#050505] z-0 transition-all",
-          "aspect-video max-h-[56vh] md:max-h-none md:aspect-auto",
+          "min-h-[330px] sm:min-h-[370px] aspect-video max-h-[65vh] md:max-h-none md:aspect-auto",
           "md:h-[380px] lg:h-[450px]",
           "rounded-none md:rounded-3xl",
           "border-y md:border border-white/5",
@@ -366,8 +366,8 @@ export default function SpotlightSlider({ animes }: { animes: SpotlightAnime[] }
         <div className="absolute inset-0 z-20 pointer-events-none">
           <div className="w-full h-full relative">
             
-            {/* 1. TEXT CONTENT */}
-            <div className="absolute bottom-0 left-0 w-full md:w-3/4 p-4 pb-20 md:p-10 md:pb-24 pointer-events-auto overflow-hidden">
+            {/* 1. TEXT CONTENT (CLEAR VERTICAL DISTANCE ABOVE BOTTOM CONTROLS) */}
+            <div className="absolute bottom-0 left-0 w-full md:w-3/4 p-4 pb-20 sm:pb-24 md:p-10 md:pb-28 pointer-events-auto overflow-hidden">
               <AnimatePresence mode="wait" custom={direction}>
                 <motion.div 
                   key={current.id} 
@@ -409,7 +409,7 @@ export default function SpotlightSlider({ animes }: { animes: SpotlightAnime[] }
                     custom={2} 
                     variants={liquidTextVariants}
                     transition={{ delay: 0.15 + (2 * 0.06) }}
-                    className="text-zinc-300/90 mb-3 md:mb-6 line-clamp-2 md:line-clamp-3 text-[10px] md:text-sm font-medium leading-relaxed max-w-xl drop-shadow-md overflow-hidden"
+                    className="text-zinc-300/90 mb-3 md:mb-6 line-clamp-2 md:line-clamp-3 text-[10px] md:text-sm font-medium leading-relaxed drop-shadow-md overflow-hidden"
                   >
                     {displayDesc}
                   </motion.p>
@@ -421,9 +421,9 @@ export default function SpotlightSlider({ animes }: { animes: SpotlightAnime[] }
               </AnimatePresence>
             </div>
 
-            {/* 2-4. NAVIGATION ROW - All controls in one aligned row */}
-            <div className="absolute bottom-6 md:bottom-8 left-0 right-0 pointer-events-none z-50">
-              <div className="flex items-center justify-between px-4 md:px-8 max-w-[1350px] mx-auto pointer-events-none">
+            {/* 2-4. NAVIGATION ROW - All controls in one aligned row at bottom */}
+            <div className="absolute bottom-3 sm:bottom-4 md:bottom-6 left-0 right-0 pointer-events-none z-30">
+              <div className="flex items-center justify-between px-3 sm:px-4 pointer-events-none w-full">
                 
                 {/* PREV BUTTON */}
                 <button 
@@ -434,8 +434,8 @@ export default function SpotlightSlider({ animes }: { animes: SpotlightAnime[] }
                   <ChevronLeft className="w-4 h-4 md:w-5 md:h-5 group-hover:-translate-x-0.5 transition-transform" />
                 </button>
 
-                {/* DOTS INDICATOR (CENTER) */}
-                <div className="flex items-center gap-1.5 md:gap-3 px-2.5 md:px-5 py-1.5 md:py-3 bg-black/40 backdrop-blur-2xl rounded-full border border-white/5 shadow-2xl pointer-events-auto">
+                {/* DOTS INDICATOR (CENTER - FRAME REMOVED, BOLDER DOTS) */}
+                <div className="flex items-center gap-2 md:gap-3 px-2 py-1 pointer-events-auto">
                   {validAnimes.map((_, idx) => (
                     <button 
                       key={idx} 
@@ -443,18 +443,18 @@ export default function SpotlightSlider({ animes }: { animes: SpotlightAnime[] }
                         const dir = idx > activeIndex ? 1 : -1;
                         setPage([page + (idx - activeIndex), dir]);
                       }} 
-                      className="relative flex items-center justify-center cursor-pointer outline-none"
-                      style={{ width: idx === activeIndex ? '14px' : '8px', height: '14px' }}
+                      className="relative flex items-center justify-center cursor-pointer outline-none group/dot"
+                      style={{ width: idx === activeIndex ? '22px' : '12px', height: '16px' }}
                       aria-label={`Go to slide ${idx + 1}`}
                     >
-                      {/* Base Dot */}
-                      <span className="absolute w-1 md:w-1.5 h-1 md:h-1.5 bg-white/20 rounded-full transition-all duration-500" />
+                      {/* Base Dot (Bolder) */}
+                      <span className="absolute w-2 md:w-2.5 h-2 md:h-2.5 bg-white/40 group-hover/dot:bg-white/70 rounded-full transition-all duration-300" />
                       
-                      {/* Active "Water Droplet" Pointer */}
+                      {/* Active "Water Droplet" Pointer (Bolder) */}
                       {idx === activeIndex && (
                         <motion.span
                           layoutId="bubble-pointer"
-                          className="absolute w-3 md:w-5 h-1.5 md:h-2 bg-primary-500 rounded-full shadow-[0_0_15px_#ef4444]"
+                          className="absolute w-5 md:w-7 h-2 md:h-2.5 bg-primary-500 rounded-full shadow-[0_0_16px_#ef4444]"
                           transition={{ 
                             type: "spring", 
                             stiffness: 380, 

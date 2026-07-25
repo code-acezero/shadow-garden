@@ -95,13 +95,13 @@
   /* --- MOBILE OPTIMIZATION --- */
   html {
     font-size: 14px;
-    scroll-behavior: smooth;
+    /* scroll-behavior: smooth removed — causes GPU jank on iOS/mobile */
   }
 
   @media (max-width: 767px) {
     :root {
-      --nav-height-top: max(env(safe-area-inset-top, 0px), 60px);
-      --nav-height-bottom: max(env(safe-area-inset-bottom, 0px), 70px);
+      --nav-height-top: max(env(safe-area-inset-top, 0px), 48px);
+      --nav-height-bottom: max(env(safe-area-inset-bottom, 0px), 52px);
     }
   }
 
@@ -119,6 +119,8 @@
     @apply bg-background text-foreground;
     overflow-x: hidden;
     -webkit-tap-highlight-color: transparent;
+    /* Global tap optimization: eliminates 300ms click delay on touch devices */
+    touch-action: manipulation;
   }
 }
 
@@ -143,6 +145,20 @@
 ::selection {
   background: var(--primary-600); /* Uses the active theme color */
   color: #ffffff;
+}
+
+/* 4. Global Subtitle Cue Formatting (Outline Default & Mobile Optimization) */
+::cue {
+  background-color: transparent !important;
+  color: #ffffff !important;
+  text-shadow: 2px 2px 0px #000, -2px -2px 0px #000, 2px -2px 0px #000, -2px 2px 0px #000, 0px 2px 0px #000, 0px -2px 0px #000, 2px 0px 0px #000, -2px 0px 0px #000, 0px 0px 8px rgba(0,0,0,0.9) !important;
+  font-family: 'Inter', sans-serif !important;
+}
+
+@media (max-width: 768px) {
+  ::cue {
+    font-size: 14px !important;
+  }
 }
 
 /* ─── Premium Title Spacing Overrides ─── */
@@ -238,8 +254,8 @@ body, #__next, main {
 
 /* 8. Image rendering optimization on mobile */
 img {
-  -webkit-backface-visibility: hidden;
-  backface-visibility: hidden;
+  /* backface-visibility: hidden removed globally — forces compositor layer on EVERY image, very expensive.
+     Apply only on specific animated images where needed. */
   image-rendering: auto;
 }
 
@@ -253,3 +269,70 @@ img {
   scrollbar-width: none;
 }
 .no-scrollbar::-webkit-scrollbar { display: none; }
+@layer utilities {
+  /* Desktop: Full premium liquid-glass with heavy blur (≥1024px) */
+  .liquid-glass {
+    @apply relative overflow-hidden bg-gradient-to-br from-white/20 to-white/5 backdrop-blur-xl border border-white/20 shadow-[inset_0_1px_1px_rgba(255,255,255,0.4)];
+  }
+  .liquid-glass::after {
+    content: '';
+    @apply absolute inset-0 rounded-[inherit] bg-gradient-to-b from-white/60 to-transparent opacity-0 transition-opacity duration-300 pointer-events-none;
+    -webkit-mask-image: linear-gradient(to bottom, black 0%, transparent 50%);
+  }
+  button.liquid-glass:hover::after, 
+  a.liquid-glass:hover::after, 
+  .liquid-glass-btn:hover::after,
+  [role="button"].liquid-glass:hover::after {
+    @apply opacity-100;
+  }
+  
+  .frost-glass {
+    @apply bg-white/10 backdrop-blur-md border border-white/10 shadow-[0_4px_30px_rgba(0,0,0,0.1)];
+  }
+
+  /* GPU compositing hint for animated/hover elements */
+  .will-change-transform {
+    will-change: transform;
+  }
+  .perf-contain {
+    contain: layout style;
+  }
+}
+
+/* ─── MOBILE & TABLET PERFORMANCE OVERRIDES (< 1024px) ─── */
+/* Keep liquid-glass aesthetic but reduce blur cost from 20px → 8px */
+@media (max-width: 1023px) {
+  .liquid-glass {
+    /* Reduce backdrop-blur from xl (20px) to sm equivalent (8px) — same look, ~60% less GPU cost */
+    backdrop-filter: blur(8px) !important;
+    -webkit-backdrop-filter: blur(8px) !important;
+  }
+  .liquid-glass::after {
+    /* Disable the expensive mask-based shine overlay on mobile/tablet */
+    display: none;
+  }
+  .backdrop-blur-xl {
+    --tw-backdrop-blur: blur(8px);
+    backdrop-filter: var(--tw-backdrop-blur);
+    -webkit-backdrop-filter: var(--tw-backdrop-blur);
+  }
+  .backdrop-blur-2xl {
+    --tw-backdrop-blur: blur(8px);
+    backdrop-filter: var(--tw-backdrop-blur);
+    -webkit-backdrop-filter: var(--tw-backdrop-blur);
+  }
+  .backdrop-blur-md {
+    --tw-backdrop-blur: blur(6px);
+    backdrop-filter: var(--tw-backdrop-blur);
+    -webkit-backdrop-filter: var(--tw-backdrop-blur);
+  }
+  /* Disable drop-shadow CSS filters on mobile (triggers paint layer) */
+  .drop-shadow-\[0_0_8px_rgba\(220\,38\,38\,0\.8\)\],
+  .drop-shadow-\[0_0_8px_rgba\(220\,38\,38\,0\.5\)\] {
+    filter: none !important;
+  }
+  /* Remove animate-pulse on large/non-critical elements — keep only on small indicators */
+  .animate-pulse:not(.keep-pulse) {
+    animation: none !important;
+  }
+}

@@ -1,7 +1,7 @@
 export const SITE_CONFIG = {
   name: "Shadow Garden Guild",
-  title: "Shadow Garden Guild | The Ultimate Anime Streaming Platform",
-  description: "Enter the Shadow Garden Guild. The ultimate anime streaming platform from another world. Join the Seven Shadows, track your guild quests (watchlist), and analyze scenes with screenshot search. Optimized for the chosen ones in USA, Indonesia, Singapore, and Japan.",
+  title: "Shadow Garden Guild | Sanctuary of Anime Wisdom & Otaku Realm",
+  description: "Enter the Shadow Garden Guild — the ultimate anime streaming platform & otaku sanctuary from another world. Join the Seven Shadows, track your guild quests, discuss in Otakuverse, and analyze scenes with screenshot search.",
   keywords: [
     "Shadow Garden Guild", "Eminence in Shadow", "Shadow Anime", "Cid Kagenou", 
     "Seven Shadows", "Anime from Another World", "Isekai Streaming",
@@ -11,7 +11,7 @@ export const SITE_CONFIG = {
     "watch anime malaysia", "free anime philippines", "anime streaming thailand", "free anime china",
     "free anime usa", "anime streaming uk", "watch anime online free 1080p no ads"
   ].join(', '),
-  ogImage: "/og-image.jpg",
+  ogImage: "/og-image.png",
   
   // JSON-LD Navigation Data
   navigation: [

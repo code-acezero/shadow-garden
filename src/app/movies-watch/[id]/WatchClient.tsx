@@ -7,12 +7,14 @@ import { motion } from 'framer-motion';
 import {
   Server as ServerIcon, Play, Download, AlertTriangle, Layers,
   Check, ChevronDown, Grid, LayoutGrid, List, Star, Film, Clapperboard, X,
-  SkipBack, SkipForward, Repeat1, Globe, Users
+  SkipBack, SkipForward, Repeat1, Globe, Users, Lightbulb
 } from 'lucide-react';
+import { WatchPageSkeleton, PlayerSkeleton } from '@/components/UIx/SkeletonLoaders';
 import { omni, MovieDetail } from '@/lib/omni';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/context/AuthContext';
-import { cn } from '@/lib/utils';
+import { useUserData } from '@/context/UserDataContext';
+import { cn, formatAnimeTitle } from '@/lib/utils';
 import Footer from '@/components/Anime/Footer';
 import WatchListButton from '@/components/Watch/WatchListButton';
 import SafeEmbed from '@/components/SafeEmbed';
@@ -54,8 +56,8 @@ const StarRating = ({ movieId, initialRating = 0 }: { movieId: string; initialRa
         }
         if (user) {
           const myRating = await retryOp(async () => {
-            const { data } = await (supabase.from('anime_ratings') as any).select('rating').eq('user_id', user.id).eq('anime_id', movieId).single();
-            return data;
+            const { data } = await (supabase.from('anime_ratings') as any).select('rating').eq('user_id', user.id).eq('anime_id', movieId).limit(1);
+            return data?.[0] || null;
           });
           if (myRating && (myRating as any).rating != null) setUserRating((myRating as any).rating);
         }
@@ -68,7 +70,7 @@ const StarRating = ({ movieId, initialRating = 0 }: { movieId: string; initialRa
     if (!user) { toast.error("Shadow Agents only."); return; }
     setUserRating(score);
     try {
-      await (supabase!.from('anime_ratings') as any).upsert({ user_id: user.id, anime_id: movieId, rating: score }, { onConflict: 'user_id, anime_id' });
+      await (supabase!.from('anime_ratings') as any).upsert({ user_id: user.id, anime_id: movieId, rating: score }, { onConflict: 'user_id,anime_id' });
       toast.success(`Rated ${score} stars!`);
     } catch (err) {}
   };
@@ -117,7 +119,7 @@ const TrailerViewer = ({ title, imdbId }: { title: string; imdbId?: string }) =>
 
       {open && (
         <div className="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm" onClick={() => setOpen(false)}>
-          <div className="relative w-full max-w-3xl aspect-video rounded-2xl overflow-hidden shadow-2xl border border-emerald-900/30" onClick={e => e.stopPropagation()}>
+          <div className="relative w-full aspect-video rounded-2xl overflow-hidden shadow-2xl border border-emerald-900/30" onClick={e => e.stopPropagation()}>
             <iframe
               src={trailerUrl}
               className="w-full h-full border-0"
@@ -140,13 +142,7 @@ const TrailerViewer = ({ title, imdbId }: { title: string; imdbId?: string }) =>
 
 // ── Loader ────────────────────────────────────────────────────────────────────
 
-const PremiumLoader = memo(({ text = "INITIALIZING..." }: { text?: string }) => (
-  <div className="w-full min-h-[500px] flex flex-col items-center justify-center bg-[#020617] relative overflow-hidden">
-    <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,_transparent_0%,_#020617_100%)] opacity-80" />
-    <div className="w-16 h-16 border-4 border-emerald-600 border-t-transparent rounded-full animate-spin mb-4 drop-shadow-[0_0_15px_rgba(16,185,129,0.5)] z-10" />
-    <h2 className="text-xl text-emerald-400 animate-pulse tracking-[0.3em] font-black z-10 font-lemon">{text}</h2>
-  </div>
-));
+const PremiumLoader = memo(() => <WatchPageSkeleton />);
 PremiumLoader.displayName = "PremiumLoader";
 
 type EpViewMode = 'compact' | 'grid' | 'list';
@@ -157,6 +153,9 @@ export default function WatchClient() {
   const params = useParams();
   const slug = params.id as string;
 
+  const { user } = useAuth();
+  const { continueData } = useUserData();
+  const [dimMode, setDimMode] = useState(false);
   const [movie, setMovie] = useState<MovieDetail | null>(null);
   const [isLoadingInfo, setIsLoadingInfo] = useState(true);
   const [activeServerUrl, setActiveServerUrl] = useState<string | null>(null);
@@ -211,6 +210,71 @@ export default function WatchClient() {
     return baseUrl.replace(/-(\d+)-(\d+)$/, `-${seasonNum}-${epNum}`);
   }, []);
 
+  const saveMovieProgress = useCallback(async () => {
+    if (!movie) return;
+    const title = formatAnimeTitle(movie.title || (movie as any).name, slug);
+    if (typeof window !== 'undefined' && title && !title.toLowerCase().includes('unknown')) {
+        localStorage.setItem(`shadow_anime_title_${slug}`, title);
+    }
+    const poster = movie.image || (movie as any).poster || (movie as any).cover || '/images/no-poster.png';
+    const epId = `s${activeSeason}_e${activeEpisode}`;
+
+    if (user && supabase) {
+      const payload = {
+        user_id: user.id,
+        anime_id: slug,
+        title: title,
+        banner_image: poster,
+        episode_id: epId,
+        episode_number: activeEpisode,
+        progress: 100,
+        last_updated: new Date().toISOString(),
+        last_server: activeServerName || 'Standard',
+        episode_image: poster,
+        total_episodes: movie.seasons?.[0]?.episodes?.length || 1,
+        type: 'movie',
+        media_type: 'movie',
+        is_completed: false
+      };
+      try {
+        await (supabase.from('user_continue_watching') as any).upsert(payload, { onConflict: 'user_id,episode_id' });
+        if (typeof window !== 'undefined') window.dispatchEvent(new CustomEvent('shadow-continue-updated'));
+      } catch (e) {}
+    }
+
+    const localData = JSON.parse(localStorage.getItem('shadow_continue_watching') || '{}');
+    localData[slug] = {
+      animeId: slug,
+      title: title,
+      poster: poster,
+      episodeId: epId,
+      episodeNumber: activeEpisode,
+      progress: 100,
+      type: 'movie',
+      lastUpdated: Date.now()
+    };
+    localStorage.setItem('shadow_continue_watching', JSON.stringify(localData));
+    if (typeof window !== 'undefined') window.dispatchEvent(new CustomEvent('shadow-continue-updated'));
+  }, [movie, activeSeason, activeEpisode, activeServerName, user, slug]);
+
+  useEffect(() => {
+    if (movie) {
+      saveMovieProgress();
+    }
+  }, [movie, activeSeason, activeEpisode, saveMovieProgress]);
+
+  useEffect(() => {
+    return () => {
+      saveMovieProgress();
+    };
+  }, [saveMovieProgress]);
+
+  const getEpisodeProgress = useCallback((seasonNum: number, epNum: number) => {
+    const epId = `s${seasonNum}_e${epNum}`;
+    const item = continueData?.find((row: any) => row.anime_id === slug && (row.episode_id === epId || row.episodeId === epId));
+    return item ? (item.progress || 100) : 0;
+  }, [continueData, slug]);
+
   // When season or episode changes, update the URL for the current server
   const handleEpisodeClick = useCallback((seasonNum: number, epNum: number, serverName: string | null) => {
     if (!movie?.seasons) return;
@@ -264,7 +328,7 @@ export default function WatchClient() {
     return () => clearTimeout(t);
   }, [autoNextCountdown, goToNextEpisode]);
 
-  if (isLoadingInfo) return <PremiumLoader text="LOADING THEATER" />;
+  if (isLoadingInfo) return <PremiumLoader />;
   if (!movie) {
     return (
       <div className="w-full min-h-[500px] flex flex-col items-center justify-center text-red-500 bg-[#020617]">
@@ -293,7 +357,8 @@ export default function WatchClient() {
     : [];
 
   return (
-    <div className="min-h-screen bg-[#020617] text-white flex flex-col pb-20 md:pb-0 overflow-x-hidden selection:bg-emerald-500/30 pt-[calc(env(safe-area-inset-top)+64px)] md:pt-[calc(env(safe-area-inset-top)+72px)]">
+    <div className="min-h-screen bg-[#020617] text-white flex flex-col overflow-x-hidden selection:bg-indigo-500/30 relative">
+      <div onClick={() => setDimMode(false)} className={cn("fixed inset-0 bg-black/95 transition-opacity duration-500 will-change-[opacity]", dimMode ? 'opacity-100 pointer-events-auto cursor-pointer z-[45]' : 'opacity-0 pointer-events-none z-[45]')} />
 
       {/* Background glow */}
       <div className="fixed top-0 left-0 w-full h-[50vh] bg-emerald-900/10 blur-[150px] -z-10 pointer-events-none" />
@@ -309,9 +374,9 @@ export default function WatchClient() {
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         transition={{ duration: 0.7 }}
-        className="w-full flex flex-col items-center relative z-40 px-3 md:px-6 mt-0"
+        className="w-full flex flex-col items-center relative z-10 px-3 mt-0"
       >
-        <div className="w-full max-w-[1500px] flex flex-col gap-6 pb-12">
+        <div className="w-full flex flex-col gap-6">
 
           {/* ── ROW 1: Player & Episodes/Suggestions ── */}
           <div className="w-full grid grid-cols-1 xl:grid-cols-12 gap-6 items-stretch">
@@ -322,14 +387,13 @@ export default function WatchClient() {
               (isSeries || (movie.related && movie.related.length > 0)) ? "xl:col-span-8" : "xl:col-span-12"
             )}>
               {/* Player */}
-              <div className="w-full bg-black rounded-[24px] overflow-hidden border border-emerald-900/30 shadow-[0_10px_40px_rgba(0,0,0,0.9)]">
+              <div className={cn("w-full bg-black/40 backdrop-blur-2xl rounded-[30px] overflow-hidden border border-white/10 shadow-[0_8px_32px_0_rgba(0,0,0,0.37)] relative outline-none focus:ring-1 focus:ring-white/10 transition-all duration-500", dimMode ? "z-[60] ring-2 ring-indigo-500/50 shadow-[0_0_50px_rgba(0,0,0,0.9)]" : "z-10")}>
                 <div className="w-full aspect-video relative">
                   {activeServerUrl ? (
                     <SafeEmbed url={activeServerUrl} />
                   ) : (
-                    <div className="w-full h-full flex flex-col items-center justify-center bg-[#0a0f1c] text-emerald-900/40 gap-4">
-                      <Play size={60} className="opacity-20" />
-                      <p className="font-bold tracking-widest text-xs">NO STREAMS AVAILABLE</p>
+                    <div className="w-full h-full flex items-center justify-center border-b border-white/5">
+                      <PlayerSkeleton />
                     </div>
                   )}
 
@@ -376,7 +440,7 @@ export default function WatchClient() {
               </div>
 
               {/* Controls Bar */}
-              <div className="flex w-full bg-[#0a0f1c] border border-emerald-900/30 rounded-[20px] shadow-lg p-2.5 sm:px-4 sm:py-3 items-center justify-between gap-2.5 flex-row">
+              <div className={cn("flex w-full bg-white/5 backdrop-blur-md border border-white/10 rounded-[30px] shadow-[0_8px_32px_0_rgba(0,0,0,0.2)] p-2.5 sm:px-4 sm:py-3 items-center justify-between gap-2 flex-wrap flex-row mt-3 transition-all duration-500", dimMode ? "z-[60] relative" : "relative z-10")}>
                 <div className="flex flex-1 sm:flex-initial items-center gap-1.5 sm:gap-2 min-w-0">
                   {/* Server selector */}
                   <DropdownMenu modal={false}>
@@ -473,6 +537,7 @@ export default function WatchClient() {
                     );
                   })()}
 
+                  <Button onClick={() => setDimMode(v => !v)} variant="ghost" size="icon" className={cn("rounded-full w-8 h-8 transition-all hover:scale-110 shadow-indigo-900/10 flex-shrink-0", dimMode ? "text-yellow-500 bg-yellow-500/10" : "text-zinc-600 hover:bg-white/5 shadow-none")}><Lightbulb size={14} /></Button>
                   <Link href={`/download/movie/${movie.id || slug}${isSeries ? `?season=${activeSeason}&ep=${activeEpisode}` : ''}`}
                     className="flex-1 sm:flex-initial flex items-center justify-center gap-1.5 px-2 sm:px-3 h-8 rounded-full border border-emerald-500/20 bg-[#0a0f1c] hover:bg-emerald-500/20 text-emerald-300 text-[10px] font-black uppercase tracking-widest transition-all hover:text-white whitespace-nowrap min-w-0">
                     <Download size={11} className="shrink-0" /> <span className="sm:inline hidden">Download</span>
@@ -492,7 +557,7 @@ export default function WatchClient() {
               {/* Mobile Episodes Panel (Series Only) */}
               {isSeries && (
                 <div className="xl:hidden w-full">
-                  <div className="w-full h-auto bg-[#0a0f1c] rounded-[28px] border border-emerald-900/30 overflow-hidden flex flex-col shadow-2xl">
+                  <div className="w-full h-auto bg-black/40 backdrop-blur-2xl rounded-[40px] border border-white/10 overflow-hidden flex flex-col shadow-[0_8px_32px_0_rgba(0,0,0,0.37)] relative z-20">
                     <div className="p-5 bg-white/5 border-b border-emerald-900/30 flex justify-between items-center shrink-0">
                       <div className="flex items-center gap-2">
                         <Layers size={16} className="text-emerald-500" />
@@ -524,28 +589,32 @@ export default function WatchClient() {
                           const epNum = ep.episodeNumber;
                           const isActive = activeEpisode === epNum && true;
                           if (epViewMode === 'list') {
+                            const isWatched = getEpisodeProgress(activeSeason, epNum) > 0;
                             return (
                               <button key={epNum} onClick={() => handleEpisodeClick(activeSeason, epNum, activeServerName)}
                                 className={cn(
-                                  "w-full flex items-center gap-3 px-3 py-2 rounded-xl border text-left transition-all text-[10px] font-bold",
-                                  isActive ? "bg-emerald-500/20 border-emerald-500/50 text-emerald-300"
-                                    : "bg-white/5 border-white/5 text-zinc-400 hover:bg-white/10 hover:text-white"
+                                  "w-full flex items-center gap-3 px-3 py-2 rounded-xl border text-left transition-all text-[10px] font-bold transform-gpu duration-300",
+                                  isActive ? "bg-indigo-600/90 backdrop-blur-md border-indigo-400 text-white shadow-[0_0_15px_rgba(79,70,229,0.6)] z-20 scale-[1.02]"
+                                    : isWatched ? "bg-indigo-600/40 backdrop-blur-md border border-indigo-500/50 text-white shadow-[inset_0_0_20px_rgba(79,70,229,0.4)]"
+                                    : "bg-white/5 border-white/10 text-zinc-400 hover:border-white/20 hover:text-white"
                                 )}>
                                 <span className={cn("w-6 h-6 rounded-full flex items-center justify-center text-[9px] font-black shrink-0",
-                                  isActive ? "bg-emerald-500 text-black" : "bg-white/10 text-zinc-300"
+                                  isActive ? "bg-indigo-500 text-black" : isWatched ? "bg-indigo-500/50 text-white" : "bg-white/10 text-zinc-300"
                                 )}>{epNum}</span>
                                 <span className="truncate">{ep.title || `Episode ${epNum}`}</span>
                               </button>
                             );
                           }
+                          const isWatched = getEpisodeProgress(activeSeason, epNum) > 0;
                           return (
                             <button key={epNum} onClick={() => handleEpisodeClick(activeSeason, epNum, activeServerName)}
                               className={cn(
-                                "rounded-xl flex items-center justify-center font-black transition-all border text-[9px]",
+                                "rounded-full flex items-center justify-center font-black transition-all border text-[9px] transform-gpu duration-300",
                                 epViewMode === 'grid' ? "aspect-square" : "h-7",
                                 isActive
-                                  ? "bg-emerald-500 border-emerald-400 text-black shadow-md"
-                                  : "bg-white/5 border-white/5 text-zinc-400 hover:bg-emerald-900/30 hover:border-emerald-700/50 hover:text-emerald-300"
+                                  ? "bg-indigo-600/90 backdrop-blur-md border-indigo-400 text-white shadow-[0_0_15px_rgba(79,70,229,0.6)] z-20 scale-105"
+                                  : isWatched ? "bg-indigo-600/40 backdrop-blur-md border border-indigo-500/50 text-white shadow-[inset_0_0_20px_rgba(79,70,229,0.4)]"
+                                  : "bg-white/5 border-white/10 text-zinc-400 hover:border-white/20 hover:text-white"
                               )}>
                               {epNum}
                             </button>
@@ -561,7 +630,7 @@ export default function WatchClient() {
             {/* Desktop Right Panel: Episodes for Series / Suggestions for Movies */}
             {isSeries ? (
               <div className="xl:col-span-4 w-full flex flex-col">
-                <div className="w-full h-full bg-[#0a0f1c] rounded-[28px] border border-emerald-900/30 overflow-hidden flex flex-col shadow-2xl xl:max-h-[calc(100%)]">
+                <div className="w-full h-full bg-black/40 backdrop-blur-2xl rounded-[40px] border border-white/10 overflow-hidden flex flex-col shadow-[0_8px_32px_0_rgba(0,0,0,0.37)] relative z-20">
                   <div className="p-5 bg-white/5 border-b border-emerald-900/30 flex justify-between items-center shrink-0">
                     <div className="flex items-center gap-2">
                       <Layers size={16} className="text-emerald-500" />
@@ -593,28 +662,32 @@ export default function WatchClient() {
                         const epNum = ep.episodeNumber;
                         const isActive = activeEpisode === epNum && true;
                         if (epViewMode === 'list') {
+                          const isWatched = getEpisodeProgress(activeSeason, epNum) > 0;
                           return (
                             <button key={epNum} onClick={() => handleEpisodeClick(activeSeason, epNum, activeServerName)}
                               className={cn(
-                                "w-full flex items-center gap-3 px-3 py-2 rounded-xl border text-left transition-all text-[10px] font-bold",
-                                isActive ? "bg-emerald-500/20 border-emerald-500/50 text-emerald-300"
-                                  : "bg-white/5 border-white/5 text-zinc-400 hover:bg-white/10 hover:text-white"
+                                "w-full flex items-center gap-3 px-3 py-2 rounded-xl border text-left transition-all text-[10px] font-bold transform-gpu duration-300",
+                                isActive ? "bg-indigo-600/90 backdrop-blur-md border-indigo-400 text-white shadow-[0_0_15px_rgba(79,70,229,0.6)] z-20 scale-[1.02]"
+                                  : isWatched ? "bg-indigo-600/40 backdrop-blur-md border border-indigo-500/50 text-white shadow-[inset_0_0_20px_rgba(79,70,229,0.4)]"
+                                  : "bg-white/5 border-white/10 text-zinc-400 hover:border-white/20 hover:text-white"
                               )}>
                               <span className={cn("w-6 h-6 rounded-full flex items-center justify-center text-[9px] font-black shrink-0",
-                                isActive ? "bg-emerald-500 text-black" : "bg-white/10 text-zinc-300"
+                                isActive ? "bg-indigo-500 text-black" : isWatched ? "bg-indigo-500/50 text-white" : "bg-white/10 text-zinc-300"
                               )}>{epNum}</span>
                               <span className="truncate">{ep.title || `Episode ${epNum}`}</span>
                             </button>
                           );
                         }
+                        const isWatched = getEpisodeProgress(activeSeason, epNum) > 0;
                         return (
                           <button key={epNum} onClick={() => handleEpisodeClick(activeSeason, epNum, activeServerName)}
                             className={cn(
-                              "rounded-xl flex items-center justify-center font-black transition-all border text-[9px]",
+                              "rounded-full flex items-center justify-center font-black transition-all border text-[9px] transform-gpu duration-300",
                               epViewMode === 'grid' ? "aspect-square" : "h-7",
                               isActive
-                                ? "bg-emerald-500 border-emerald-400 text-black shadow-md"
-                                : "bg-white/5 border-white/5 text-zinc-400 hover:bg-emerald-900/30 hover:border-emerald-700/50 hover:text-emerald-300"
+                                ? "bg-indigo-600/90 backdrop-blur-md border-indigo-400 text-white shadow-[0_0_15px_rgba(79,70,229,0.6)] z-20 scale-105"
+                                : isWatched ? "bg-indigo-600/40 backdrop-blur-md border border-indigo-500/50 text-white shadow-[inset_0_0_20px_rgba(79,70,229,0.4)]"
+                                : "bg-white/5 border-white/10 text-zinc-400 hover:border-white/20 hover:text-white"
                             )}>
                             {epNum}
                           </button>
@@ -626,13 +699,13 @@ export default function WatchClient() {
               </div>
             ) : (
               movie.related && movie.related.length > 0 && (
-                <div className="xl:col-span-4 w-full flex flex-col">
-                  <div className="w-full h-full bg-[#0a0f1c] rounded-[28px] border border-emerald-900/30 p-5 shadow-2xl flex flex-col">
+                <div className="xl:col-span-4 w-full h-[500px] xl:h-auto xl:relative xl:self-stretch">
+                  <div className="w-full h-full xl:absolute xl:inset-0 bg-black/40 backdrop-blur-2xl rounded-[40px] border border-white/10 p-5 flex flex-col shadow-[0_8px_32px_0_rgba(0,0,0,0.37)]">
                     <div className="flex items-center gap-3 mb-4 shrink-0">
                       <div className="w-1 h-5 bg-emerald-500 rounded-full shadow-[0_0_8px_rgba(16,185,129,0.6)]" />
                       <h2 className="text-xs font-black uppercase tracking-[0.12em] text-white">More Like This</h2>
                     </div>
-                    <ScrollArea className="flex-1 pr-1 max-h-[420px] xl:max-h-none">
+                    <ScrollArea className="flex-1 pr-1">
                       <div className="flex flex-col gap-2.5">
                         {movie.related.map((item) => (
                           <Link key={item.id} href={`/movies-watch/${item.id}`}
@@ -665,7 +738,7 @@ export default function WatchClient() {
               initial={{ opacity: 0, y: 16 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.6, delay: 0.2 }}
-              className="w-full h-full bg-[#0a0f1c] rounded-[28px] border border-emerald-900/30 overflow-hidden flex flex-col shadow-2xl relative"
+              className="w-full h-auto bg-black/40 backdrop-blur-2xl rounded-[40px] border border-white/10 overflow-hidden flex flex-col shadow-[0_8px_32px_0_rgba(0,0,0,0.37)] relative order-3"
             >
               {/* Poster + cover hero top */}
               <div className="relative flex flex-col sm:flex-row gap-0 min-h-[160px] sm:min-h-[200px]">
@@ -680,7 +753,7 @@ export default function WatchClient() {
                 <div className="absolute bottom-0 left-0 right-0 h-2/3 bg-gradient-to-t from-[#0a0f1c] to-transparent pointer-events-none z-10" />
 
                 {/* Poster */}
-                <div className="relative z-20 p-5 pb-0 sm:pb-5 shrink-0">
+                <div className="relative z-20 p-5 shrink-0">
                   <div className="relative w-28 sm:w-36 rounded-2xl overflow-hidden shadow-[0_0_30px_rgba(0,0,0,0.8)] border border-emerald-900/30">
                     <img src={movie.image} alt={movie.title} className="w-full h-auto object-cover" loading="lazy" />
                     <div className="absolute inset-0 bg-gradient-to-t from-black/40 to-transparent" />
@@ -736,13 +809,13 @@ export default function WatchClient() {
 
           {/* Right part: More Like This (Suggestions) - ONLY for Series in ROW 2 */}
           {isSeries && movie.related && movie.related.length > 0 && (
-            <div className="xl:col-span-4 w-full flex flex-col">
-              <div className="w-full h-full min-h-[350px] bg-[#0a0f1c] rounded-[28px] border border-emerald-900/30 p-5 shadow-2xl flex flex-col">
+            <div className="xl:col-span-4 w-full h-[500px] xl:h-auto xl:relative xl:self-stretch">
+              <div className="w-full h-full xl:absolute xl:inset-0 bg-black/40 backdrop-blur-2xl rounded-[40px] border border-white/10 p-5 flex flex-col shadow-[0_8px_32px_0_rgba(0,0,0,0.37)]">
                 <div className="flex items-center gap-3 mb-4 shrink-0">
                   <div className="w-1 h-5 bg-emerald-500 rounded-full shadow-[0_0_8px_rgba(16,185,129,0.6)]" />
                   <h2 className="text-xs font-black uppercase tracking-[0.12em] text-white">More Like This</h2>
                 </div>
-                <ScrollArea className="flex-1 pr-1 xl:max-h-[350px]">
+                <ScrollArea className="flex-1 pr-1">
                   <div className="flex flex-col gap-2.5">
                     {movie.related.map((item) => (
                       <Link key={item.id} href={`/movies-watch/${item.id}`}
@@ -765,7 +838,7 @@ export default function WatchClient() {
 
         {/* ── ROW 3: Comments (full width) ── */}
         <div className="w-full">
-          <div className="flex items-center gap-2 mb-4">
+          <div className="flex items-center gap-2 mb-3">
             <div className="w-1 h-5 bg-emerald-500 rounded-full shadow-[0_0_8px_rgba(16,185,129,0.6)]" />
             <h3 className="text-base font-black text-white flex items-center gap-2">Comments</h3>
           </div>

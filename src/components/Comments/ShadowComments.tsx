@@ -8,6 +8,8 @@ import {
     Bold, Italic, EyeOff, Send, MoreVertical, Flag, ThumbsUp, ThumbsDown, 
     MessageSquare, CornerDownRight, AlertTriangle, Trash2, Edit2, User, X, ChevronDown, ChevronUp
 } from 'lucide-react';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { RoleTitleBadge } from '@/components/ui/RoleTitleBadge';
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -19,6 +21,7 @@ import {
 import Link from 'next/link'; 
 import { formatDistanceToNow } from 'date-fns';
 import ProfileAvatar from '@/components/User/ProfileAvatar';
+import { RenderMentions, processMentionsAndNotify } from '@/lib/mentions';
 
 // --- TYPES ---
 interface UserProfile {
@@ -103,7 +106,7 @@ const CommentItem = ({ comment, currentUserId, onReply, onReport, onDelete, onEd
         <div className="animate-in fade-in duration-300">
             <div className={cn("relative flex gap-4 group", isReply ? "mt-2" : "mt-4")}>
                 {/* Avatar */}
-                <Link href={`/profile/${comment.user_id}`} onClick={(e) => e.stopPropagation()} className="shrink-0 mt-0.5">
+                <Link href={`/profile/${comment.profiles?.username || comment.user_id}`} onClick={(e) => e.stopPropagation()} className="shrink-0 mt-0.5">
                     <ProfileAvatar profile={comment.user} className={isReply ? "w-6 h-6" : "w-10 h-10"} />
                 </Link>
                 
@@ -111,13 +114,14 @@ const CommentItem = ({ comment, currentUserId, onReply, onReport, onDelete, onEd
                 <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 mb-0.5">
                         <Link 
-                            href={`/profile/${comment.user_id}`} 
+                            href={`/profile/${comment.profiles?.username || comment.user_id}`} 
                             onClick={(e) => e.stopPropagation()}
                             className={cn("text-[13px] font-medium hover:underline cursor-pointer truncate", comment.user_id === currentUserId ? "text-primary-500" : "text-zinc-100")}
                         >
                             {displayName}
                         </Link>
-                        <span className="text-[12px] text-zinc-400 hover:text-zinc-300 cursor-pointer">
+                        <RoleTitleBadge role={comment.user?.role} adminTitle={comment.user?.admin_title} />
+                        <span className="text-[12px] text-zinc-400 hover:text-zinc-300 cursor-pointer ml-1">
                             {formatDistanceToNow(new Date(comment.created_at), { addSuffix: false }).replace('about ', '').replace(' minutes', 'm').replace(' hours', 'h').replace(' days', 'd')}
                         </span>
                         {comment.is_edited && <span className="text-[11px] text-zinc-500 italic">(edited)</span>}
@@ -161,7 +165,7 @@ const CommentItem = ({ comment, currentUserId, onReply, onReport, onDelete, onEd
                             {comment.replyingToName && <span className="text-primary-500 font-medium mr-1">@{comment.replyingToName}</span>}
                             {comment.is_spoiler ? (
                                 <span className="text-zinc-500 italic bg-zinc-900 px-1.5 py-0.5 rounded cursor-pointer hover:bg-zinc-800 select-none">Spoiler Content (Hover to reveal)</span>
-                            ) : formatText(comment.content)}
+                            ) : <RenderMentions content={comment.content} />}
                         </p>
                     )}
 
@@ -378,6 +382,9 @@ export default function ShadowComments({ episodeId }: { episodeId: string }) {
         if (!error) {
             toast.success("Signal transmitted.");
             setReplyingTo(null);
+            // Process mentions and trigger permanent notification
+            const { data: profileData } = await supabase.from('profiles').select('username').eq('id', userId).single();
+            processMentionsAndNotify(supabase, content, userId, profileData?.username || 'Agent', 'comment');
         } else {
             toast.error("Transmission failed.");
         }

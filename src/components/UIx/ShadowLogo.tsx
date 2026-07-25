@@ -1,3 +1,5 @@
+'use client';
+
 import React from 'react';
 
 const ShadowLogo = ({ size = "w-8 h-8" }: { size?: string }) => (
@@ -38,9 +40,6 @@ const ShadowLogo = ({ size = "w-8 h-8" }: { size?: string }) => (
                 {/* Dots */}
                 <circle cx="12" cy="7" r="1.5" fill="white" />
                 <circle cx="12" cy="17" r="1.5" fill="#dc2626" />
-                
-                {/* Outline */}
-                <circle cx="12" cy="12" r="10" fill="none" stroke="black" strokeWidth="0.5" strokeOpacity="0.3" />
             </svg>
         </div>
     </div>

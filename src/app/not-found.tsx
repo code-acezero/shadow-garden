@@ -50,7 +50,7 @@ export default function NotFound() {
                 </h1>
 
                 {/* --- Text Content --- */}
-                <div className="space-y-4 max-w-lg mx-auto mt-6">
+                <div className="space-y-4 mt-6 w-full">
                     <div className="flex items-center justify-center gap-3 text-primary-500/80">
                         <ShieldAlert size={14} />
                         <h2 className={`font-lemon text-xl md:text-2xl tracking-[0.2em] uppercase text-primary-500`}>

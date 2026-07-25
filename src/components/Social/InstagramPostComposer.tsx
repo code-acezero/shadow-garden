@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   Image as ImageIcon, BarChart2, HelpCircle, X, Plus, Check, Loader2 
 } from 'lucide-react';
@@ -9,8 +9,10 @@ import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { toast } from '@/lib/toast';
 import { ImageAPI } from '@/lib/api';
+import { supabase } from '@/lib/supabase';
 import { PollData } from './InstagramPostCard';
-
+import { useMentions } from '@/hooks/useMentions';
+import MentionDropdown from '@/components/ui/MentionDropdown';
 interface InstagramPostComposerProps {
   user: any;
   profile: any;
@@ -30,6 +32,14 @@ export default function InstagramPostComposer({
   const [content, setContent] = useState('');
   const [selectedImages, setSelectedImages] = useState<File[]>([]);
   const [isPublishing, setIsPublishing] = useState(false);
+
+  const {
+    mentionState,
+    handleKeyDown: handleMentionKeyDown,
+    insertMention,
+  } = useMentions(content, (username) => {
+    setContent(insertMention(username));
+  });
 
   // --- POLL / QUIZ STATE ---
   const [pollQuestion, setPollQuestion] = useState('');
@@ -146,12 +156,12 @@ export default function InstagramPostComposer({
   };
 
   return (
-    <div className="w-full bg-[#0c0c12]/90 backdrop-blur-xl border border-white/10 rounded-2xl sm:rounded-3xl p-3.5 sm:p-4.5 shadow-2xl mb-4 transition-all hover:border-white/20 overflow-hidden">
+    <div className="w-full bg-[#0c0c12]/90 backdrop-blur-xl border border-white/10 rounded-2xl sm:rounded-3xl p-3.5 sm:p-4.5 shadow-2xl mb-4 transition-all hover:border-white/20">
       
       {/* Top Header & Rounded Glassmorphism Tab Switcher */}
       <div className="flex items-center justify-between pb-3 border-b border-white/10 mb-3">
         <div className="flex items-center gap-2.5">
-          <ProfileAvatar profile={{ ...profile, show_level: false }} className="w-8 h-8 cursor-pointer" />
+          <ProfileAvatar profile={{ ...profile, show_level: false }} className="w-8 h-8 shrink-0 cursor-pointer" />
           <span className="text-xs font-bold text-white tracking-wide">Create Post</span>
         </div>
 
@@ -193,19 +203,35 @@ export default function InstagramPostComposer({
         </div>
       </div>
 
-      {/* Main Content Textarea */}
-      <Textarea
-        placeholder={
-          activeTab === 'poll' 
-            ? "Add caption or context for your poll..." 
-            : activeTab === 'quiz' 
-            ? "Add caption or context for your quiz..." 
-            : "What's on your mind?"
-        }
-        value={content}
-        onChange={e => setContent(e.target.value)}
-        className="min-h-[65px] max-h-[200px] w-full bg-transparent border-none text-xs sm:text-sm text-white resize-none focus-visible:ring-0 placeholder:text-zinc-600 p-1"
-      />
+      {/* Main Content Textarea & Mentions */}
+      <div className="relative">
+        <Textarea
+          id="post-composer-input"
+          placeholder={
+            activeTab === 'poll' 
+              ? "Add caption or context for your poll..." 
+              : activeTab === 'quiz' 
+              ? "Add caption or context for your quiz..." 
+              : "What's on your mind?"
+          }
+          value={content}
+          onChange={e => {
+            setContent(e.target.value);
+          }}
+          onKeyDown={e => {
+            handleMentionKeyDown(e);
+          }}
+          className="min-h-[65px] max-h-[200px] w-full bg-transparent border-none text-xs sm:text-sm text-white resize-none focus-visible:ring-0 placeholder:text-zinc-600 p-1"
+        />
+
+        <MentionDropdown
+          suggestions={mentionState.users}
+          selectedIndex={mentionState.selectedIndex}
+          onSelect={(username) => setContent(insertMention(username))}
+          isFetching={false}
+        />
+      </div>
+
 
       {/* Image Previews */}
       {selectedImages.length > 0 && (
