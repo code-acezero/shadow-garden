@@ -46,64 +46,67 @@ const SectionHeader = ({ title, icon: Icon, subtitle }: { title: string, icon: a
 );
 
 // --- SHARED TOOLTIP CONTENT (UI) ---
-const AnimeTooltipContent = ({ displayData, isLoading }: { displayData: any, isLoading: boolean }) => (
+const AnimeTooltipContent = ({ displayData, isLoading }: { displayData: any, isLoading: boolean }) => {
+    const data = displayData || {};
+    return (
     <>
         <div className="relative h-44 w-full">
             <img 
-                src={displayData.poster || displayData.image || '/images/no-poster.png'} 
+                src={data.poster || data.image || '/images/no-poster.png'} 
                 className="w-full h-full object-cover opacity-80" 
-                alt={displayData.title}
+                alt={typeof data.title === 'string' ? data.title : 'Anime'}
             />
             <div className="absolute inset-0 bg-gradient-to-t from-[#080808] via-[#080808]/40 to-transparent" />
             <div className="absolute bottom-4 left-5 right-5">
                 <span className="inline-block px-2 py-0.5 mb-2 bg-primary-600 text-white text-[10px] font-bold uppercase tracking-wider rounded-sm font-sans">
-                    {displayData.type || 'TV'}
+                    {data.type || 'TV'}
                 </span>
                 <h4 className="text-xl font-black text-white leading-none line-clamp-2 drop-shadow-md font-sans">
-                    {typeof displayData.title === 'string' ? displayData.title : displayData.title?.userPreferred}
+                    {typeof data.title === 'string' ? data.title : data.title?.userPreferred || 'Unknown Title'}
                 </h4>
                 <p className="text-[11px] text-zinc-400 mt-1 line-clamp-1 italic font-sans">
-                    {displayData.jname || displayData.japaneseTitle}
+                    {data.jname || data.japaneseTitle || ''}
                 </p>
             </div>
         </div>
         <div className="p-5 space-y-4 bg-[#080808] relative font-sans">
             <div className="flex items-center justify-between text-xs">
                 <div className="flex items-center gap-3 text-zinc-300">
-                    <span className="flex items-center gap-1.5"><Clock size={12} className="text-primary-500" /> {displayData.stats?.duration || displayData.duration || '? min'}</span>
+                    <span className="flex items-center gap-1.5"><Clock size={12} className="text-primary-500" /> {data.stats?.duration || data.duration || '? min'}</span>
                     <span className="w-1 h-1 rounded-full bg-zinc-700" />
-                    <span className="flex items-center gap-1"><Star size={12} className="text-yellow-500" /> {displayData.stats?.malScore || displayData.malScore || 'N/A'}</span>
+                    <span className="flex items-center gap-1"><Star size={12} className="text-yellow-500" /> {data.stats?.malScore || data.malScore || 'N/A'}</span>
                 </div>
                 <span className="px-2 py-0.5 bg-white/5 border border-white/10 text-[10px] font-bold text-zinc-300 rounded uppercase">
-                    {displayData.stats?.quality || 'HD'}
+                    {data.stats?.quality || 'HD'}
                 </span>
             </div>
             <p className={cn("text-xs leading-relaxed text-zinc-400 line-clamp-4", isLoading && "opacity-50")}>
-                {displayData.description || "Classified Intel."}
+                {data.description || "Classified Intel."}
             </p>
             <div className="grid grid-cols-2 gap-2 pt-2">
                 <div className="flex items-center justify-center gap-2 p-2 bg-white/5 rounded-lg border border-white/5">
                     <Captions size={12} className="text-zinc-500" />
-                    <span className="text-xs font-bold text-white">{displayData.episodes?.sub || '?'}</span>
+                    <span className="text-xs font-bold text-white">{data.episodes?.sub ?? '?'}</span>
                 </div>
                 <div className="flex items-center justify-center gap-2 p-2 bg-white/5 rounded-lg border border-white/5">
                     <Mic size={12} className="text-zinc-500" />
-                    <span className="text-xs font-bold text-white">{displayData.episodes?.dub || '?'}</span>
+                    <span className="text-xs font-bold text-white">{data.episodes?.dub ?? '?'}</span>
                 </div>
             </div>
         </div>
     </>
-);
+    );
+};
 
 // --- MOBILE INFO BUTTON (With Close X) ---
 const MobileInfoBtn = ({ anime }: { anime: any }) => {
     const [isOpen, setIsOpen] = useState(false);
     const { data: details, isLoading } = useSWR(
         anime?.id && isOpen ? `anime-details-${anime.id}` : null,
-        () => AnimeService.getAnimeInfo(anime.id),
+        () => AnimeService.getAnimeInfo(anime.id).catch(() => null),
         { revalidateOnFocus: false, shouldRetryOnError: false }
     );
-    const displayData = details || anime;
+    const displayData = details || anime || {};
 
     return (
         <div 
@@ -142,10 +145,10 @@ const MobileInfoBtn = ({ anime }: { anime: any }) => {
 const QTip = ({ trigger, anime, side = "right" }: { trigger: React.ReactNode, anime: any, side?: "left" | "right" | "top" | "bottom" }) => {
   const { data: details, isLoading } = useSWR(
     anime?.id ? `anime-details-${anime.id}` : null,
-    () => AnimeService.getAnimeInfo(anime.id),
+    () => AnimeService.getAnimeInfo(anime.id).catch(() => null),
     { revalidateOnFocus: false, shouldRetryOnError: false }
   );
-  const displayData = details || anime;
+  const displayData = details || anime || {};
 
   return (
     <HoverCard openDelay={100} closeDelay={100}>
@@ -390,8 +393,15 @@ export default function SchedulePage() {
 
   const { data: scheduleData, isLoading: loadingSchedule } = useSWR(
     ['schedule', format(selectedDate, 'yyyy-MM-dd')],
-    ([_, date]) => AnimeService.getSchedule(date),
-    { keepPreviousData: true }
+    async ([_, date]) => {
+        try {
+            return await AnimeService.getSchedule(date);
+        } catch (err) {
+            console.error("Failed to load schedule", err);
+            return { scheduledAnimes: [] };
+        }
+    },
+    { keepPreviousData: true, shouldRetryOnError: false }
   );
   
   const schedule = scheduleData?.scheduledAnimes || [];
@@ -399,29 +409,41 @@ export default function SchedulePage() {
   interface UpcomingResponse { response: any[]; pageInfo?: { totalPages?: number; }; }
   const { data: upcomingData } = useSWR<UpcomingResponse>(
     ['upcoming', upcomingPage],
-    async ([_, page]) => ({ response: await AnimeService.getTopUpcoming(page as number), pageInfo: { totalPages: 1 } }),
-    { keepPreviousData: true }
+    async ([_, page]) => {
+        try {
+            const res = await AnimeService.getTopUpcoming(page as number);
+            return { response: Array.isArray(res) ? res : [], pageInfo: { totalPages: 1 } };
+        } catch (err) {
+            return { response: [], pageInfo: { totalPages: 1 } };
+        }
+    },
+    { keepPreviousData: true, shouldRetryOnError: false }
   );
 
   const upcoming = upcomingData?.response || [];
   const upcomingTotalPages = upcomingData?.pageInfo?.totalPages || 1;
 
   const { data: dashboard } = useSWR('dashboard-all', async () => {
-    const [completed, newAdded, released, popular, topTen] = await Promise.all([
-        AnimeService.getCompleted(),
-        AnimeService.getRecentlyAdded(),
-        AnimeService.getRecentlyUpdated(),
-        AnimeService.getMostPopular(),
-        AnimeService.getTopTen()
-    ]);
-    return { 
-        completed: completed?.slice(0, 5) || [],
-        newAdded: newAdded?.slice(0, 5) || [],
-        released: released?.slice(0, 5) || [],
-        popular: popular?.slice(0, 5) || [],
-        topTen: topTen || null
-    };
-  }, { revalidateOnFocus: false });
+    try {
+        const [completed, newAdded, released, popular, topTen] = await Promise.all([
+            AnimeService.getCompleted().catch(() => []),
+            AnimeService.getRecentlyAdded().catch(() => []),
+            AnimeService.getRecentlyUpdated().catch(() => []),
+            AnimeService.getMostPopular().catch(() => []),
+            AnimeService.getTopTen().catch(() => null)
+        ]);
+        return { 
+            completed: Array.isArray(completed) ? completed.slice(0, 5) : [],
+            newAdded: Array.isArray(newAdded) ? newAdded.slice(0, 5) : [],
+            released: Array.isArray(released) ? released.slice(0, 5) : [],
+            popular: Array.isArray(popular) ? popular.slice(0, 5) : [],
+            topTen: topTen || null
+        };
+    } catch (err) {
+        console.error("Dashboard error:", err);
+        return { completed: [], newAdded: [], released: [], popular: [], topTen: null };
+    }
+  }, { revalidateOnFocus: false, shouldRetryOnError: false });
 
   const topChartData = useMemo(() => {
     if (!dashboard?.topTen) return [];

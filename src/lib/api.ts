@@ -927,29 +927,43 @@ export class AnimeService {
     }
 
     static async getSchedule(date: string, tzOffsetHours = 0) {
-        const data: any = await AnimeAPI_Anikoto.getSchedule(tzOffsetHours, true);
-        if (!Array.isArray(data)) return { scheduledAnimes: [] };
+        try {
+            const data: any = await AnimeAPI_Anikoto.getSchedule(tzOffsetHours, true);
+            if (!Array.isArray(data)) return { scheduledAnimes: [] };
 
-        let targetLabel: string | null = null;
-        const parsed = new Date(date);
-        if (!isNaN(parsed.getTime())) {
-            targetLabel = parsed.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: '2-digit' });
+            let targetLabel: string | null = null;
+            let targetDayName: string | null = null;
+            const parsed = new Date(date);
+            if (!isNaN(parsed.getTime())) {
+                targetLabel = parsed.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: '2-digit' });
+                targetDayName = parsed.toLocaleDateString('en-US', { weekday: 'long' });
+            }
+
+            const day = data.find((d: any) => 
+                d && (
+                    d.day === targetLabel || 
+                    d.day?.toLowerCase() === targetLabel?.toLowerCase() ||
+                    d.day?.toLowerCase() === targetDayName?.toLowerCase()
+                )
+            ) || data[0];
+
+            const animes = Array.isArray(day?.animes) ? day.animes : [];
+
+            return {
+                scheduledAnimes: animes.map((item: any) => ({
+                    id: item?.slug || item?.id || '',
+                    time: item?.date || item?.time || 'TBA',
+                    name: item?.title || item?.name || 'Unknown Title',
+                    jname: item?.titleJp || item?.jname || '',
+                    timestamp: null,
+                    secondsUntilAiring: null,
+                    episode: item?.type || item?.episode || '?'
+                }))
+            };
+        } catch (err) {
+            console.error("[getSchedule] Error fetching schedule:", err);
+            return { scheduledAnimes: [] };
         }
-
-        const day = data.find((d: any) => d.day === targetLabel) || data[0];
-        const animes = Array.isArray(day?.animes) ? day.animes : [];
-
-        return {
-            scheduledAnimes: animes.map((item: any) => ({
-                id: item?.slug || item?.id || '',
-                time: item?.date || '',
-                name: item?.title || 'Unknown Title',
-                jname: item?.titleJp || '',
-                timestamp: null,
-                secondsUntilAiring: null,
-                episode: item?.type || ''
-            }))
-        };
     }
 
     static async getTooltip(id: string) {

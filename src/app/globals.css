@@ -235,12 +235,8 @@ html {
   }
 }
 
-/* 6. Touch-friendly minimum tap targets */
+/* 6. Touch-friendly text targets */
 @media (max-width: 767px) {
-  button, a, [role="button"] {
-    min-height: 36px;
-  }
-  
   /* Tighter font-size for ultra-small screens */
   .text-\[8px\] { font-size: 9px; }
   .text-\[9px\] { font-size: 10px; }
