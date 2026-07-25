@@ -298,9 +298,8 @@ export default function LandingClient() {
                <img src={bgImage} alt="Background" loading="eager" className="absolute inset-0 w-full h-full object-cover opacity-20 mix-blend-overlay" />
                <div className="absolute inset-0 bg-gradient-to-b from-black/60 via-[#050505]/90 to-[#050505]" />
                <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-10 mix-blend-overlay" />
+               <FloatingParticles />
             </motion.div>
-
-            <FloatingParticles />
 
             {/* HERO SECTION */}
             <section className="relative min-h-screen flex flex-col items-center justify-center p-4 py-20">
@@ -315,7 +314,7 @@ export default function LandingClient() {
                  />
                ))}
 
-               <div className="relative z-20 text-center px-4 w-full">
+               <div className="relative z-20 text-center px-4 w-full max-w-4xl mx-auto">
                  <motion.div initial={{ y: 30, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ duration: 1, delay: 0.5 }}>
                    
                    <div className="relative inline-block mb-6">
@@ -329,12 +328,12 @@ export default function LandingClient() {
                      </div>
                    </div>
                    
-                   <p className="text-base md:text-xl text-gray-400 font-light mb-10 leading-relaxed font-above tracking-wide w-full">
+                   <p className="text-base md:text-xl text-gray-400 font-light mb-10 leading-relaxed font-above tracking-wide w-full max-w-2xl mx-auto">
                       The ultimate sanctuary for the awakened. <br/>
                       Join the guild. Access the archives. Become legend.
                    </p>
 
-                   <div className="w-full mb-10 transform hover:scale-105 transition-transform duration-300 relative z-20">
+                   <div className="w-full max-w-xl mx-auto mb-10 transform hover:scale-105 transition-transform duration-300 relative z-20">
                       <div className="relative p-1 rounded-full bg-gradient-to-r from-primary-900/50 via-primary-600/50 to-primary-900/50 shadow-[0_0_30px_rgba(220,38,38,0.3)]">
                         <div className="bg-black/90 backdrop-blur-xl rounded-full"><SearchBar /></div>
                       </div>
@@ -349,8 +348,8 @@ export default function LandingClient() {
                      </div>
                    </div>
 
-                   <div className="flex flex-col sm:flex-row gap-5 justify-center items-center relative z-20">
-                      <Button onClick={handleJoinGuildClick} className="h-14 rounded-full bg-primary-800 hover:bg-primary-700 text-white font-bold text-lg shadow-[0_0_35px_rgba(220,38,38,0.4)] border border-primary-500/50 backdrop-blur-md font-above tracking-wider">
+                   <div className="flex flex-col sm:flex-row gap-5 justify-center items-center relative z-20 max-w-md mx-auto">
+                      <Button onClick={handleJoinGuildClick} className="h-14 rounded-full bg-primary-800 hover:bg-primary-700 text-white font-bold text-lg shadow-[0_0_35px_rgba(220,38,38,0.4)] border border-primary-500/50 backdrop-blur-md font-above tracking-wider w-full">
                         <Crown className="mr-3 h-5 w-5" /> Join The Guild
                       </Button>
                       <Button onClick={handleEnterClick} variant="ghost" className="h-14 rounded-full text-white/70 hover:text-white hover:bg-white/10 border border-white/10 text-lg hover:border-primary-500/50 backdrop-blur-md transition-all font-above tracking-wider w-full">
@@ -367,8 +366,8 @@ export default function LandingClient() {
             <div className="relative bg-gradient-to-b from-transparent via-[#050505] to-[#050505] pt-12 space-y-32 z-10">
                
                {/* TOP RANKING */}
-               <section className="w-full py-4">
-                  <div className=" w-full">
+               <section className="w-full py-4 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                  <div className="w-full">
                      <div className="flex items-center gap-3 mb-8 border-b border-white/10 pb-4">
                         <Flame className="w-6 h-6 text-primary-600" />
                         <h3 className="text-3xl font-normal font-gradvis text-white tracking-widest">TOP BOUNTIES</h3>
@@ -393,7 +392,7 @@ export default function LandingClient() {
                </section>
 
                {/* ARCHIVES */}
-               <section className="py-20 relative overflow-hidden">
+               <section className="py-20 relative overflow-hidden max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
                   <div className="flex flex-col md:flex-row items-center gap-12 relative z-10 w-full">
                      <div className="flex-1 space-y-8">
                         <h3 className="text-4xl font-normal text-primary-600 font-gradvis border-l-4 border-primary-600 pl-6" style={{ fontFamily: 'var(--font-above), serif' }}>THE FORBIDDEN LIBRARY</h3>
@@ -421,11 +420,11 @@ export default function LandingClient() {
                </section>
 
                {/* ADVANTAGE */}
-               <section className="relative z-10 w-full">
-                 <div className=" w-full">
+               <section className="relative z-10 w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                 <div className="w-full">
                    <div className="text-center mb-16">
                       <h2 className="text-4xl md:text-5xl font-normal text-white mb-4 font-gradvis text-primary-600" style={{ fontFamily: 'var(--font-above), serif' }}>GUILD PERKS</h2>
-                      <div className="w-24 h-1.5 bg-primary-600 rounded-full shadow-[0_0_15px_red]" />
+                      <div className="w-24 h-1.5 bg-primary-600 rounded-full shadow-[0_0_15px_red] mx-auto" />
                    </div>
                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                       <FeatureCard icon={Zap} title="Hyper Velocity" desc="Built on Next.js 15 Turbo. Intel loads instantly." />
@@ -441,10 +440,10 @@ export default function LandingClient() {
                {/* COMMUNITY HIERARCHY */}
                <section className="py-20 relative overflow-hidden bg-black/40 border-y border-white/5">
                  <div className="absolute inset-0 bg-gradient-to-b from-transparent via-primary-950/10 to-transparent" />
-                 <div className="relative z-10 w-full">
+                 <div className="relative z-10 w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
                    <div className="text-center mb-16">
                      <h2 className="text-4xl md:text-5xl font-normal text-white mb-4 font-gradvis text-primary-600 tracking-wider">GUILD HIERARCHY</h2>
-                     <p className="text-gray-400 text-lg font-above w-full">The structure of the sanctuary. Ascend the ranks and earn your title among the elites.</p>
+                     <p className="text-gray-400 text-lg font-above w-full max-w-2xl mx-auto">The structure of the sanctuary. Ascend the ranks and earn your title among the elites.</p>
                    </div>
 
                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-12">
@@ -490,7 +489,7 @@ export default function LandingClient() {
                </section>
 
                {/* COMMUNITY CTA */}
-               <section className=" w-full">
+               <section className="w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
                   <div className="relative rounded-3xl overflow-hidden border border-primary-900/30 bg-gradient-to-br from-primary-950/20 to-black p-12 text-center md:text-left flex flex-col md:flex-row items-center gap-12 group">
                      <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-20 mix-blend-overlay" />
                      <div className="flex-1 relative z-10">
@@ -514,13 +513,13 @@ export default function LandingClient() {
                      <div className="relative w-48 h-48 md:w-64 md:h-64 flex-shrink-0 animate-float hidden md:block">
                         <div className="absolute inset-0 bg-primary-600/20 blur-[50px] rounded-full group-hover:bg-primary-600/30 transition-all duration-500" />
                         <Sword className="w-full h-full text-primary-800 opacity-80 rotate-45" />
-                     </div>
+                      </div>
                   </div>
                </section>
 
                {/* FOOTER */}
                <footer className="py-12 border-t border-white/5 text-center relative overflow-hidden bg-black">
-                  <div className="relative z-20">
+                  <div className="relative z-20 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
                       <h4 className="text-2xl font-gradvis text-primary-600 font-normal mb-3" style={{ fontFamily: 'var(--font-gradvis), serif' }}>SHADOW GARDEN</h4>
                       <p className="text-gray-600 text-xs uppercase tracking-widest mb-8">Created by Ace Zero • Est. 2026</p>
                       <div className="flex justify-center gap-8 text-xs text-gray-500 font-medium uppercase tracking-wider">

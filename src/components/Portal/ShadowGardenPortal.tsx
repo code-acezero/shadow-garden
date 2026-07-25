@@ -1431,7 +1431,7 @@ export default function ShadowGardenPortal({
     const dpr: [number, number] = quality === 'potato' ? [0.4, 0.7] : quality === 'low' ? [0.5, 0.9] : quality === 'medium' ? [0.7, 1] : [1, 1.25];
 
     return (
-        <div className="fixed inset-0 z-0 bg-black pointer-events-none">
+        <>
             <AnimatePresence>
                 {showCookie && (
                     <GuildCookieNotice 
@@ -1446,6 +1446,8 @@ export default function ShadowGardenPortal({
                     />
                 )}
             </AnimatePresence>
+
+            <div className="fixed inset-0 z-0 bg-black pointer-events-none">
 
             <AnimatePresence>
                 {appState === 'loading' && (
@@ -1491,5 +1493,6 @@ export default function ShadowGardenPortal({
                 className="absolute inset-0 bg-white z-[10000]" 
             />
         </div>
+        </>
     );
 }
