@@ -936,7 +936,7 @@ const HindiPlayer = forwardRef<HindiPlayerRef, HindiPlayerProps>(({
                         <img src="/run-happy.gif" alt="Loading..." className="w-32 h-32 object-contain relative z-10" />
                         <div className="absolute bottom-4 w-full h-1 bg-gradient-to-r from-transparent via-primary-600/50 to-transparent animate-slide-fast" />
                     </div>
-                    <p className="mt-4 font-lemon text-primary-500 animate-pulse tracking-[0.4em] text-[10px] font-bold uppercase">Loading Portal...</p>
+                    <p className="mt-4 font-lemon text-primary-500 animate-pulse tracking-[0.4em] text-[10px] font-bold uppercase">Loading Reality...</p>
                 </div>
             )}
 
