@@ -853,7 +853,13 @@ function WatchContent() {
       }
       failedServersRef.current = [];
       
-      const ep = anime?.episodes.find(e => e.id === id || String(e.number) === id);
+      const ep = anime?.episodes.find(e => 
+          String(e.id) === String(id) || 
+          String(e.number) === String(id) || 
+          Number(e.number) === Number(id) ||
+          String(e.id).endsWith(`::${id}`) ||
+          String(e.id).endsWith(`-${id}`)
+      );
       const targetId = ep ? ep.id : id;
 
       const savedRecord = progressBuffer.current[targetId];
@@ -1061,7 +1067,9 @@ function WatchContent() {
                   (!isNaN(paramNum) && Number(e.number) === paramNum) ||
                   String(e.number) === paramStr ||
                   String(e.id).endsWith(`-${paramStr}`) ||
-                  String(e.id).endsWith(`=${paramStr}`)
+                  String(e.id).endsWith(`=${paramStr}`) ||
+                  String(e.id).endsWith(`::${paramStr}`) ||
+                  String(e.id).includes(`::${paramStr}`)
               );
               if (urlMatch) targetEpId = urlMatch.id;
           }
@@ -1120,7 +1128,9 @@ function WatchContent() {
       (!isNaN(paramNum) && Number(e.number) === paramNum) ||
       String(e.number) === paramStr ||
       String(e.id).endsWith(`-${paramStr}`) ||
-      String(e.id).endsWith(`=${paramStr}`)
+      String(e.id).endsWith(`=${paramStr}`) ||
+      String(e.id).endsWith(`::${paramStr}`) ||
+      String(e.id).includes(`::${paramStr}`)
     );
     
     if (match && match.id !== currentEpId) {
