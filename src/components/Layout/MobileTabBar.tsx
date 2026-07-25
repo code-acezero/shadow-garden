@@ -37,13 +37,6 @@ export default function MobileTabBar() {
   ];
 
   if (pathname === '/' || isFullscreen) return null;
-  if (
-    pathname.includes('/watch/') || 
-    pathname.includes('/drama-watch/') || 
-    pathname.includes('/donghua-watch/') || 
-    pathname.includes('/hindi-watch/') || 
-    pathname.includes('/movies-watch/')
-  ) return null;
 
   return (
     <div className="md:hidden !fixed bottom-0 left-0 w-full z-[100] pb-safe liquid-glass shadow-[0_-10px_30px_rgba(0,0,0,0.8)]">

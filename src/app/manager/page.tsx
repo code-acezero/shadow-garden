@@ -31,6 +31,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import RoleTitleManager from '@/components/Admin/RoleTitleManager';
 import GuildBoardsPanel from '@/components/Admin/GuildBoardsPanel';
+import AnalyticsSection from '@/components/Admin/AnalyticsSection';
 import { cn } from '@/lib/utils';
 
 // --- NOTIFICATION HELPER ---
@@ -340,45 +341,51 @@ const OverviewTab = memo(({ changeTab }: { changeTab: (t: Tab) => void }) => {
   const isLocked = isLoaded && String((settings as any)?.maintenanceMode) === 'true'; 
 
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-      {/* ✅ VIOLET-GREEN OPEN STATE LOGIC */}
-      <div className={`col-span-1 p-8 rounded-[2rem] border relative overflow-hidden group transition-all duration-500 ${
-        isLocked 
-          ? 'bg-primary-950/20 border-primary-500/30 shadow-[0_0_30px_-10px_rgba(220,38,38,0.2)]' 
-          : 'bg-gradient-to-br from-violet-900/20 via-black/20 to-emerald-900/20 border-emerald-500/30 shadow-[0_0_30px_-10px_rgba(16,185,129,0.2)]'
-      }`}>
-        <div className={`absolute inset-0 opacity-10 transition-opacity duration-500 ${isLocked ? 'bg-primary-600' : 'bg-gradient-to-r from-violet-600 to-emerald-600'}`} />
-        <div className="relative z-10">
-           <div className="flex justify-between items-start mb-6">
-             <div className={`p-3 rounded-2xl transition-colors ${isLocked ? 'bg-primary-500/20 text-primary-500' : 'bg-emerald-500/20 text-emerald-400'}`}>
-               <Shield size={24} />
+    <div className="space-y-8">
+      {/* 1. Analytics & Telemetry Overview */}
+      <AnalyticsSection accentColor="fuchsia" />
+
+      {/* 2. Guild Status & Administration Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        {/* ✅ VIOLET-GREEN OPEN STATE LOGIC */}
+        <div className={`col-span-1 p-8 rounded-[2rem] border relative overflow-hidden group transition-all duration-500 ${
+          isLocked 
+            ? 'bg-primary-950/20 border-primary-500/30 shadow-[0_0_30px_-10px_rgba(220,38,38,0.2)]' 
+            : 'bg-gradient-to-br from-violet-900/20 via-black/20 to-emerald-900/20 border-emerald-500/30 shadow-[0_0_30px_-10px_rgba(16,185,129,0.2)]'
+        }`}>
+          <div className={`absolute inset-0 opacity-10 transition-opacity duration-500 ${isLocked ? 'bg-primary-600' : 'bg-gradient-to-r from-violet-600 to-emerald-600'}`} />
+          <div className="relative z-10">
+             <div className="flex justify-between items-start mb-6">
+               <div className={`p-3 rounded-2xl transition-colors ${isLocked ? 'bg-primary-500/20 text-primary-500' : 'bg-emerald-500/20 text-emerald-400'}`}>
+                 <Shield size={24} />
+               </div>
+               <Badge variant="outline" className={`backdrop-blur-md rounded-full px-3 ${isLocked ? 'border-primary-500 text-primary-400' : 'border-emerald-500 text-emerald-400 bg-emerald-500/10'}`}>
+                 {isLocked ? 'GATES CLOSED' : 'GATES OPEN'}
+               </Badge>
              </div>
-             <Badge variant="outline" className={`backdrop-blur-md rounded-full px-3 ${isLocked ? 'border-primary-500 text-primary-400' : 'border-emerald-500 text-emerald-400 bg-emerald-500/10'}`}>
-               {isLocked ? 'GATES CLOSED' : 'GATES OPEN'}
-             </Badge>
-           </div>
-           <h3 className={`text-2xl font-bold mb-2 ${isLocked ? 'text-white' : 'text-transparent bg-clip-text bg-gradient-to-r from-violet-200 to-emerald-200'}`}>Guild Status</h3>
-           <p className="text-zinc-400 text-sm mb-6 leading-relaxed">
-             {isLocked ? "Lockdown Protocol Active. Contact Grandmaster for access." : "The Guild Hall is open to all adventurers."}
-           </p>
-           {/* DISABLED BUTTON FOR MANAGERS */}
-           <Button disabled className={`w-full border rounded-full h-12 cursor-not-allowed ${
-             isLocked
-               ? 'bg-white/5 border-white/10 text-zinc-500'
-               : 'bg-emerald-900/10 border-emerald-500/10 text-emerald-500/50'
-           }`}>Protocol Controls: Restricted</Button>
+             <h3 className={`text-2xl font-bold mb-2 ${isLocked ? 'text-white' : 'text-transparent bg-clip-text bg-gradient-to-r from-violet-200 to-emerald-200'}`}>Guild Status</h3>
+             <p className="text-zinc-400 text-sm mb-6 leading-relaxed">
+               {isLocked ? "Lockdown Protocol Active. Contact Grandmaster for access." : "The Guild Hall is open to all adventurers."}
+             </p>
+             {/* DISABLED BUTTON FOR MANAGERS */}
+             <Button disabled className={`w-full border rounded-full h-12 cursor-not-allowed ${
+               isLocked
+                 ? 'bg-white/5 border-white/10 text-zinc-500'
+                 : 'bg-emerald-900/10 border-emerald-500/10 text-emerald-500/50'
+             }`}>Protocol Controls: Restricted</Button>
+          </div>
         </div>
-      </div>
-      
-      <div className="col-span-1 md:col-span-2 bg-zinc-900/20 border border-white/5 rounded-[2rem] p-6 md:p-8">
-        <h3 className="text-lg font-bold mb-6 flex items-center gap-3 text-white"><Scroll size={20} className="text-fuchsia-500" /> Guild Administration</h3>
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-          <CmdTile label="Adventurers" icon={Sword} onClick={() => changeTab('ADVENTURERS')} color="fuchsia" />
-          <CmdTile label="Echoes" icon={Mic2} onClick={() => changeTab('VOICES')} color="fuchsia" />
-          <CmdTile label="Notices" icon={Feather} onClick={() => changeTab('NOTICE')} color="fuchsia" />
-          <div className="flex flex-col items-center justify-center gap-3 p-6 rounded-[2rem] bg-black/20 border border-white/5 opacity-50 cursor-not-allowed">
-             <div className="p-3 rounded-2xl bg-white/5 text-zinc-500"><Lock size={24} /></div>
-             <span className="text-sm font-bold text-zinc-500">Grimoire (Locked)</span>
+        
+        <div className="col-span-1 md:col-span-2 bg-zinc-900/20 border border-white/5 rounded-[2rem] p-6 md:p-8">
+          <h3 className="text-lg font-bold mb-6 flex items-center gap-3 text-white"><Scroll size={20} className="text-fuchsia-500" /> Guild Administration</h3>
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+            <CmdTile label="Adventurers" icon={Sword} onClick={() => changeTab('ADVENTURERS')} color="fuchsia" />
+            <CmdTile label="Echoes" icon={Mic2} onClick={() => changeTab('VOICES')} color="fuchsia" />
+            <CmdTile label="Notices" icon={Feather} onClick={() => changeTab('NOTICE')} color="fuchsia" />
+            <div className="flex flex-col items-center justify-center gap-3 p-6 rounded-[2rem] bg-black/20 border border-white/5 opacity-50 cursor-not-allowed">
+               <div className="p-3 rounded-2xl bg-white/5 text-zinc-500"><Lock size={24} /></div>
+               <span className="text-sm font-bold text-zinc-500">Grimoire (Locked)</span>
+            </div>
           </div>
         </div>
       </div>

@@ -13,6 +13,7 @@ import WelcomeModal from "@/components/UIx/WelcomeModal";
 import { UserDataProvider } from '@/context/UserDataContext';
 import AlphaWidget from '@/components/AI/AlphaWidget';
 import GuildBoardPopupRenderer from '@/components/UIx/GuildBoardPopupRenderer';
+import AnalyticsTracker from '@/components/Analytics/AnalyticsTracker';
 
 // Import fonts from your library (Optimized: These are just variable definitions now)
 import { 
@@ -187,6 +188,7 @@ export default function RootLayout({
         <AuthProvider>
           <UserDataProvider>
             <SettingsProvider>
+              <AnalyticsTracker />
               <Navigation />
 
               <main className="min-h-screen relative overflow-clip w-full">
