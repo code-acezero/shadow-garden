@@ -24,7 +24,7 @@ import ProfileAvatar from '@/components/User/ProfileAvatar';
 
 // --- TYPES & ICONS ---
 interface AuthModalProps { isOpen: boolean; onClose: () => void; onAuthSuccess: (user: AppUser) => void; initialView?: string; }
-type AuthView = 'ACCOUNTS' | 'ENTER' | 'REGISTER' | 'OTP' | 'FORGOT';
+type AuthView = 'ACCOUNTS' | 'ENTER' | 'REGISTER' | 'OTP' | 'FORGOT' | 'SWITCH';
 
 const GoogleIcon = () => <svg viewBox="0 0 24 24" className="w-4 h-4"><path fill="currentColor" d="M12.48 10.92v3.28h7.84c-.24 1.84-.853 3.187-1.787 4.133-1.147 1.147-2.933 2.4-6.053 2.4-4.827 0-8.6-3.893-8.6-8.72s3.773-8.72 8.6-8.72c2.6 0 4.507 1.027 5.907 2.347l2.307-2.307C18.747 1.44 16.133 0 12.48 0 5.867 0 .307 5.387.307 12s5.56 12 12.173 12c3.573 0 6.267-1.173 8.373-3.36 2.16-2.16 2.84-5.213 2.84-7.667 0-.76-.053-1.467-.173-2.053H12.48z"/></svg>;
 const DiscordIcon = () => <svg viewBox="0 0 24 24" className="w-4 h-4"><path fill="currentColor" d="M20.317 4.37a19.791 19.791 0 0 0-4.885-1.515.074.074 0 0 0-.079.037 3.42 3.42 0 0 0-.68 1.405 18.355 18.355 0 0 0-5.344 0 3.42 3.42 0 0 0-.678-1.405.077.077 0 0 0-.08-.037 19.736 19.736 0 0 0-4.885 1.515.07.07 0 0 0-.032.027C.533 9.046-.32 13.58.099 18.057a.082.082 0 0 0 .031.057 19.9 19.9 0 0 0 5.993 3.03.078.078 0 0 0 .084-.028 14.09 14.09 0 0 0 1.226-1.994.076.076 0 0 0-.041-.106 13.107 13.107 0 0 1-1.872-.892.077.077 0 0 1-.008-.128 10.2 10.2 0 0 0 .372-.292.074.074 0 0 1 .077-.01c3.928 1.793 8.18 1.793 12.062 0a.074.074 0 0 1 .078.01c.12.098.246.198.373.292a.077.077 0 0 1-.006.127 12.299 12.299 0 0 1-1.873.892.077.077 0 0 0-.041.107c.36.698.772 1.362 1.225 1.993a.076.076 0 0 0 .084.028 19.839 19.839 0 0 0 6.002-3.03.077.077 0 0 0 .032-.054c.5-5.177-.838-9.674-3.549-13.66a.061.061 0 0 0-.031-.03zM8.02 15.33c-1.183 0-2.157-1.085-2.157-2.419 0-1.333.956-2.419 2.157-2.419 1.21 0 2.176 1.086 2.157 2.419 0 1.334-.956 2.419-2.157 2.419zm7.975 0c-1.183 0-2.157-1.085-2.157-2.419 0-1.333.955-2.419 2.157-2.419 1.21 0 2.176 1.086 2.157 2.419 0 1.334-.946 2.419-2.157 2.419z"/></svg>;
@@ -81,7 +81,10 @@ export default function AuthModal({ isOpen, onClose, onAuthSuccess, initialView 
   const { savedAccounts, switchAccount, removeAccount, user: currentUser, signOut, profile: currentProfile } = useAuth();
   
   const [view, setView] = useState<AuthView>('ENTER');
-  const [switchingToId, setSwitchingToId] = useState<string | null>(null);
+  const [switchTarget, setSwitchTarget] = useState<{ id: string; email: string; username?: string; avatar_url?: string } | null>(null);
+  const [switchPassword, setSwitchPassword] = useState('');
+  const [switchError, setSwitchError] = useState<string | null>(null);
+  const [switchLoading, setSwitchLoading] = useState(false);
   
   // Listen for the "Direct Leave" event from Dropdown
   useEffect(() => {
@@ -156,39 +159,36 @@ export default function AuthModal({ isOpen, onClose, onAuthSuccess, initialView 
 
   // --- ACTIONS ---
   
-  // ✅ SWITCH ACCOUNT (Unstoppable Reload + Voice)
-  const handleSwitchAccount = async (id: string) => {
-      if (currentUser?.id === id) { onClose(); return; }
+  // ✅ SWITCH ACCOUNT — open password re-entry view
+  const handleSwitchAccount = (account: { id: string; email: string; username?: string; avatar_url?: string }) => {
+      if (currentUser?.id === account.id) { onClose(); return; }
+      setSwitchTarget(account);
+      setSwitchPassword('');
+      setSwitchError(null);
+      setView('SWITCH');
+  };
 
-      setSwitchingToId(id); 
-      setIsLoading(true);
+  // ✅ CONFIRM SWITCH — sign out current, sign in fresh with entered password
+  const handleConfirmSwitch = async (e: React.FormEvent) => {
+      e.preventDefault();
+      if (!switchTarget || !switchPassword) return;
+      setSwitchLoading(true);
+      setSwitchError(null);
 
-      // 1. Play Goodbye Voice
       const role = currentProfile?.role;
       const isMaster = role === 'admin' || role === 'moderator';
-      
       playVoice(isMaster ? 'BYE_MASTER' : 'BYE_ADVENTURER');
-      notifyIsland('Guild Receptionist', isMaster 
-        ? 'See you again, Master. Have a nice day. Goodbye.' 
+      notifyIsland('Guild Receptionist', isMaster
+        ? 'See you again, Master. Have a nice day. Goodbye.'
         : 'See you again, Adventurer. Have a nice day. Goodbye.'
       );
-      
-      // 2. Suppress flags
-      if (typeof window !== 'undefined') {
-          sessionStorage.removeItem('shadow_welcome_shown');
-          sessionStorage.setItem('shadow_suppress_welcome', 'true');
+
+      const { error } = await switchAccount(switchTarget.email, switchPassword);
+      if (error) {
+          setSwitchError(error);
+          setSwitchLoading(false);
       }
-
-      // 3. START UNSTOPPABLE TIMER (4s)
-      setTimeout(() => {
-          if (typeof window !== 'undefined') {
-              sessionStorage.removeItem('shadow_suppress_welcome'); 
-              window.location.assign('/home'); // Hard Reload
-          }
-      }, 4000);
-
-      // 4. Run Logic (Fire and Forget)
-      switchAccount(id).catch(() => {});
+      // On success, AuthContext calls window.location.reload()
   };
 
   // ✅ LEAVE ACCOUNT (Corrected)
@@ -351,22 +351,20 @@ export default function AuthModal({ isOpen, onClose, onAuthSuccess, initialView 
             <AnimatePresence mode="wait">
                 {view === 'ACCOUNTS' && (
                     <motion.div key="accounts" initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 20 }} className="space-y-4">
-                        <div className="space-y-2 max-h-[200px] overflow-y-auto pr-1 custom-scroll [&::-webkit-scrollbar]:hidden [-ms-overflow-style:'none'] [scrollbar-width:'none']">
+                        <div className="space-y-2 max-h-[240px] overflow-y-auto pr-1 custom-scroll [&::-webkit-scrollbar]:hidden [-ms-overflow-style:'none'] [scrollbar-width:'none']">
                             {savedAccounts.map((account) => (
-                                <div 
-                                    key={account.id} 
+                                <div
+                                    key={account.id}
                                     className={`flex items-center justify-between p-2 rounded-xl border transition-all outline-none focus:outline-none ring-0 ${currentUser?.id === account.id ? 'bg-primary-900/20 border-primary-500/50' : 'bg-zinc-900/50 border-white/5 hover:border-white/20'}`}
                                 >
-                                    <div className="flex items-center gap-3 cursor-pointer flex-1 outline-none" onClick={() => handleSwitchAccount(account.id)}>
+                                    <div className="flex items-center gap-3 cursor-pointer flex-1 outline-none" onClick={() => handleSwitchAccount(account)}>
                                         <ProfileAvatar profile={account} className="w-10 h-10" />
                                         <div className="text-left">
                                             <div className={`text-xs font-bold ${currentUser?.id === account.id ? 'text-primary-400' : 'text-white'}`}>{account.username}</div>
                                             <div className="text-[9px] text-zinc-500 flex items-center gap-1">
-                                                {switchingToId === account.id ? (
-                                                    <><Loader2 className="w-3 h-3 animate-spin text-primary-500"/> Switching...</>
-                                                ) : currentUser?.id === account.id ? (
+                                                {currentUser?.id === account.id ? (
                                                     <><span className="w-1.5 h-1.5 bg-green-500 rounded-full animate-pulse" /> Active</>
-                                                ) : 'Saved'}
+                                                ) : 'Tap to switch'}
                                             </div>
                                         </div>
                                     </div>
@@ -376,21 +374,58 @@ export default function AuthModal({ isOpen, onClose, onAuthSuccess, initialView 
                                 </div>
                             ))}
                         </div>
-                        
-                        {savedAccounts.length < 2 && (
-                            <button onClick={() => setView('ENTER')} className="w-full h-11 flex items-center justify-center gap-2 rounded-full border-2 border-dashed border-white/10 hover:border-white/30 text-zinc-400 hover:text-white transition-all text-xs font-bold uppercase tracking-wider outline-none">
-                                <Plus size={14} /> Add Account
-                            </button>
-                        )}
-                        {savedAccounts.length >= 2 && (
-                            <p className="text-center text-[9px] text-zinc-600">Max accounts reached. Remove one to add another.</p>
-                        )}
+
+                        <button onClick={() => setView('ENTER')} className="w-full h-11 flex items-center justify-center gap-2 rounded-full border-2 border-dashed border-white/10 hover:border-white/30 text-zinc-400 hover:text-white transition-all text-xs font-bold uppercase tracking-wider outline-none">
+                            <Plus size={14} /> Add Account
+                        </button>
 
                         {currentUser && (
                             <button onClick={handleSignOutActive} className="w-full h-11 flex items-center justify-center gap-2 rounded-full bg-primary-900/20 hover:bg-primary-900/40 text-primary-400 hover:text-primary-300 transition-all text-xs font-bold uppercase tracking-wider mt-2 border border-primary-500/20 outline-none focus:outline-none">
                                 {isLoading ? <Loader2 className="animate-spin w-4 h-4"/> : <><LogOut size={14} /> Leave {currentUser.email?.split('@')[0]}</>}
                             </button>
                         )}
+                    </motion.div>
+                )}
+
+                {view === 'SWITCH' && switchTarget && (
+                    <motion.div key="switch" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} className="space-y-5">
+                        <div onClick={() => { setView('ACCOUNTS'); setSwitchError(null); }} className="flex items-center gap-2 text-zinc-500 hover:text-white cursor-pointer w-fit px-1 outline-none">
+                            <ArrowLeft className="w-3.5 h-3.5" />
+                            <span className="text-[10px] font-bold uppercase tracking-widest">Accounts</span>
+                        </div>
+                        <div className="flex items-center gap-3 bg-zinc-900/50 border border-white/5 p-3 rounded-2xl">
+                            <ProfileAvatar profile={switchTarget} className="w-10 h-10" />
+                            <div>
+                                <div className="text-xs font-bold text-white">{switchTarget.username || switchTarget.email.split('@')[0]}</div>
+                                <div className="text-[9px] text-zinc-500">{switchTarget.email}</div>
+                            </div>
+                        </div>
+                        <form onSubmit={handleConfirmSwitch} className="space-y-3">
+                            <div className="relative group">
+                                <Lock className="absolute left-4 top-1/2 -translate-y-1/2 text-zinc-500 w-3.5 h-3.5 group-focus-within:text-white" />
+                                <Input
+                                    type="password"
+                                    placeholder="Enter password to switch"
+                                    value={switchPassword}
+                                    onChange={(e) => { setSwitchPassword(e.target.value); setSwitchError(null); }}
+                                    className={`h-11 pl-10 bg-zinc-800/50 border-white/5 rounded-full text-xs placeholder:text-zinc-600 focus:bg-zinc-800/80 focus:border-white/10 outline-none focus:outline-none focus-visible:ring-0 focus-visible:ring-offset-0 transition-all ${switchError ? 'border-primary-500/50' : ''}`}
+                                    autoFocus
+                                    required
+                                />
+                            </div>
+                            {switchError && (
+                                <div className="flex items-center gap-2 text-[9px] text-primary-400 px-2">
+                                    <AlertCircle size={10} /> {switchError}
+                                </div>
+                            )}
+                            <SpotlightButton
+                                type="submit"
+                                disabled={switchPassword.length < 6 || switchLoading}
+                                className="w-full h-11 bg-zinc-200/90 hover:bg-white text-black font-extrabold text-[10px] uppercase tracking-widest rounded-full"
+                            >
+                                {switchLoading ? <div className="w-4 h-4 border-2 border-black/30 border-t-black rounded-full animate-spin" /> : 'Confirm Switch'}
+                            </SpotlightButton>
+                        </form>
                     </motion.div>
                 )}
 

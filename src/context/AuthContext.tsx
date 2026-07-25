@@ -1,16 +1,18 @@
 "use client";
 
 import { createContext, useContext, useEffect, useState, useRef, useCallback, useMemo } from "react";
-import { supabase } from "@/lib/supabase"; 
-import { Session, User, AuthChangeEvent } from "@supabase/supabase-js"; 
-import { getRandomAvatar, getRandomGuestName } from "@/components/User/AvatarSelectorModal"; 
+import { supabase } from "@/lib/supabase";
+import { User, AuthChangeEvent, Session } from "@supabase/supabase-js";
+import { getRandomAvatar, getRandomGuestName } from "@/components/User/AvatarSelectorModal";
 
+// ── SavedAccount: metadata only — NO session/token storage ──────────────────
+// Storing tokens caused stale-token session invalidation on Vercel reloads.
+// Now we only store display info; switching requires password re-entry.
 export interface SavedAccount {
   id: string;
   email: string;
   username?: string;
   avatar_url?: string;
-  session: Session; 
   lastActive: number;
 }
 
@@ -21,8 +23,8 @@ type AuthContextType = {
   savedAccounts: SavedAccount[];
   signOut: () => Promise<void>;
   refreshSession: () => Promise<void>;
-  switchAccount: (accountId: string) => Promise<void>;
-  removeAccount: (accountId: string) => void; 
+  switchAccount: (email: string, password: string) => Promise<{ error: string | null }>;
+  removeAccount: (accountId: string) => void;
 };
 
 const AuthContext = createContext<AuthContextType>({
@@ -32,7 +34,7 @@ const AuthContext = createContext<AuthContextType>({
   savedAccounts: [],
   signOut: async () => {},
   refreshSession: async () => {},
-  switchAccount: async () => {},
+  switchAccount: async () => ({ error: null }),
   removeAccount: () => {},
 });
 
@@ -41,191 +43,182 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const [profile, setProfile] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [savedAccounts, setSavedAccounts] = useState<SavedAccount[]>([]);
-  
+
   const isMounted = useRef(true);
-  const hasInitialized = useRef(false);
   const currentProfileId = useRef<string | null>(null);
 
   const fetchProfile = useCallback(async (userId: string, userEmail?: string, userMeta?: any) => {
     try {
-        const { data } = await supabase.from("profiles").select("*").eq("id", userId).single();
-        if (data) {
-          // If avatar or username is missing, update with random generated values
-          if (!data.avatar_url || !data.username) {
-            const updatedName = data.username || userMeta?.full_name || userEmail?.split('@')[0] || getRandomGuestName();
-            const updatedAvatar = data.avatar_url || userMeta?.avatar_url || getRandomAvatar(false);
-            await supabase.from("profiles").update({ username: updatedName, avatar_url: updatedAvatar }).eq("id", userId);
-            return { ...data, username: updatedName, avatar_url: updatedAvatar };
-          }
-          return data;
+      const { data } = await supabase.from("profiles").select("*").eq("id", userId).single();
+      if (data) {
+        if (!data.avatar_url || !data.username) {
+          const updatedName = data.username || userMeta?.full_name || userEmail?.split('@')[0] || getRandomGuestName();
+          const updatedAvatar = data.avatar_url || userMeta?.avatar_url || getRandomAvatar(false);
+          await supabase.from("profiles").update({ username: updatedName, avatar_url: updatedAvatar }).eq("id", userId);
+          return { ...data, username: updatedName, avatar_url: updatedAvatar };
         }
-        return {
-            id: userId,
-            username: userMeta?.full_name || userEmail?.split('@')[0] || getRandomGuestName(),
-            email: userEmail,
-            avatar_url: userMeta?.avatar_url || getRandomAvatar(false),
-            role: 'user',
-            is_guest: false
-        };
+        return data;
+      }
+      return {
+        id: userId,
+        username: userMeta?.full_name || userEmail?.split('@')[0] || getRandomGuestName(),
+        email: userEmail,
+        avatar_url: userMeta?.avatar_url || getRandomAvatar(false),
+        role: 'user',
+        is_guest: false
+      };
     } catch (e) { return null; }
   }, []);
 
-  const updateSavedAccounts = useCallback((session: Session, profileData: any) => {
-      if (!session?.user) return;
-      setSavedAccounts(prev => {
-          const existing = prev.filter(a => a.id !== session.user.id);
-          const updated: SavedAccount = {
-              id: session.user.id,
-              email: session.user.email!,
-              username: profileData?.username,
-              avatar_url: profileData?.avatar_url,
-              session: session,
-              lastActive: Date.now()
-          };
-          const nextList = [updated, ...existing].slice(0, 2);
-          if (typeof window !== 'undefined') localStorage.setItem('shadow_multi_auth', JSON.stringify(nextList));
-          return nextList;
-      });
+  // Persist only metadata (never tokens) to localStorage
+  const updateSavedAccounts = useCallback((user: User, profileData: any) => {
+    setSavedAccounts(prev => {
+      const existing = prev.filter(a => a.id !== user.id);
+      const updated: SavedAccount = {
+        id: user.id,
+        email: user.email!,
+        username: profileData?.username,
+        avatar_url: profileData?.avatar_url,
+        lastActive: Date.now()
+      };
+      const nextList = [updated, ...existing];
+      if (typeof window !== 'undefined') localStorage.setItem('shadow_saved_accounts', JSON.stringify(nextList));
+      return nextList;
+    });
   }, []);
 
   useEffect(() => {
     isMounted.current = true;
 
+    // Load saved account metadata from localStorage (no tokens)
     if (typeof window !== 'undefined') {
-        try {
-            const stored = localStorage.getItem('shadow_multi_auth');
-            if (stored) setSavedAccounts(JSON.parse(stored));
-        } catch(e) {}
+      try {
+        // Migrate old token-based storage if present
+        const oldKey = localStorage.getItem('shadow_multi_auth');
+        if (oldKey) {
+          const old: any[] = JSON.parse(oldKey);
+          // Strip session field, keep only metadata
+          const migrated: SavedAccount[] = old.map(a => ({
+            id: a.id,
+            email: a.email,
+            username: a.username,
+            avatar_url: a.avatar_url,
+            lastActive: a.lastActive || Date.now()
+          }));
+          localStorage.setItem('shadow_saved_accounts', JSON.stringify(migrated));
+          localStorage.removeItem('shadow_multi_auth');
+          setSavedAccounts(migrated);
+        } else {
+          const stored = localStorage.getItem('shadow_saved_accounts');
+          if (stored) setSavedAccounts(JSON.parse(stored));
+        }
+      } catch (e) {}
     }
 
     const init = async () => {
-        try {
-            const { data: { session } } = await supabase.auth.getSession();
-            if (session?.user && isMounted.current) {
-                setUser(session.user);
-                const profileData = await fetchProfile(session.user.id, session.user.email, session.user.user_metadata);
-                if (isMounted.current && profileData) {
-                    setProfile(profileData);
-                    currentProfileId.current = profileData.id;
-                    updateSavedAccounts(session, profileData);
-                }
-            }
-        } catch (e) { console.error("Auth Init error", e); } 
-        finally { if (isMounted.current) setIsLoading(false); }
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (session?.user && isMounted.current) {
+          setUser(session.user);
+          const profileData = await fetchProfile(session.user.id, session.user.email, session.user.user_metadata);
+          if (isMounted.current && profileData) {
+            setProfile(profileData);
+            currentProfileId.current = profileData.id;
+            updateSavedAccounts(session.user, profileData);
+          }
+        }
+      } catch (e) { console.error("Auth Init error", e); }
+      finally { if (isMounted.current) setIsLoading(false); }
     };
 
     init();
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event: AuthChangeEvent, session: Session | null) => {
-        if (!isMounted.current) return;
-        // Ignore silent token refreshes & user updates — maintain stable user reference to prevent flash reloads on tab focus/minimize
-        if (event === 'TOKEN_REFRESHED' || event === 'USER_UPDATED') {
-            if (session?.user) {
-                setUser(prev => (prev?.id === session.user.id ? prev : session.user));
-            }
-            return;
-        }
+      if (!isMounted.current) return;
+
+      // Ignore silent refreshes — don't re-fetch profile on token rotation
+      if (event === 'TOKEN_REFRESHED' || event === 'USER_UPDATED') {
         if (session?.user) {
-            setUser(prev => (prev?.id === session.user.id ? prev : session.user));
-            // Only re-fetch profile if user actually changed (account switch / fresh sign in)
-            if (currentProfileId.current !== session.user.id) {
-                const profileData = await fetchProfile(session.user.id, session.user.email, session.user.user_metadata);
-                if (isMounted.current && profileData) {
-                    setProfile(profileData);
-                    currentProfileId.current = profileData.id;
-                    updateSavedAccounts(session, profileData);
-                }
-            }
-        } else if (event === 'SIGNED_OUT') {
-            setUser(null);
-            setProfile(null);
-            currentProfileId.current = null;
+          setUser(prev => (prev?.id === session.user.id ? prev : session.user));
         }
-        if (isMounted.current) setIsLoading(false);
+        return;
+      }
+
+      if (session?.user) {
+        setUser(prev => (prev?.id === session.user.id ? prev : session.user));
+        // Only re-fetch profile on actual account change (fresh sign-in / switch)
+        if (currentProfileId.current !== session.user.id) {
+          const profileData = await fetchProfile(session.user.id, session.user.email, session.user.user_metadata);
+          if (isMounted.current && profileData) {
+            setProfile(profileData);
+            currentProfileId.current = profileData.id;
+            updateSavedAccounts(session.user, profileData);
+          }
+        }
+      } else if (event === 'SIGNED_OUT') {
+        setUser(null);
+        setProfile(null);
+        currentProfileId.current = null;
+      }
+
+      if (isMounted.current) setIsLoading(false);
     });
 
     return () => { isMounted.current = false; subscription.unsubscribe(); };
   }, [fetchProfile, updateSavedAccounts]);
 
-  const switchAccount = useCallback(async (accountId: string) => {
-    const target = savedAccounts.find(a => a.id === accountId);
-    if (!target) return;
-    setIsLoading(true);
-    await supabase.auth.setSession({ access_token: target.session.access_token, refresh_token: target.session.refresh_token });
-    window.location.reload(); 
-  }, [savedAccounts]);
+  // Switch account: sign out current, sign in fresh with password — no stale tokens
+  const switchAccount = useCallback(async (email: string, password: string): Promise<{ error: string | null }> => {
+    try {
+      await supabase.auth.signOut();
+      const { error } = await supabase.auth.signInWithPassword({ email, password });
+      if (error) return { error: error.message };
+      window.location.reload();
+      return { error: null };
+    } catch (e: any) {
+      return { error: e?.message || 'Switch failed' };
+    }
+  }, []);
 
   const removeAccount = useCallback((accountId: string) => {
-    const nextList = savedAccounts.filter(a => a.id !== accountId);
-    setSavedAccounts(nextList);
-    if (typeof window !== 'undefined') localStorage.setItem('shadow_multi_auth', JSON.stringify(nextList));
+    setSavedAccounts(prev => {
+      const nextList = prev.filter(a => a.id !== accountId);
+      if (typeof window !== 'undefined') localStorage.setItem('shadow_saved_accounts', JSON.stringify(nextList));
+      return nextList;
+    });
+    // If removing the active account, sign out to guest
     if (user?.id === accountId) {
-      supabase.auth.signOut().then(() => { 
-        setUser(null); 
+      supabase.auth.signOut().then(() => {
+        setUser(null);
         setProfile(null);
         currentProfileId.current = null;
       });
     }
-  }, [savedAccounts, user]);
+  }, [user]);
 
-  // ✅ FIXED: Sequential "Remove -> SignOut -> Switch? -> Reload"
+  // Sign out: clear session, reload as guest (or to account picker if others saved)
   const signOut = useCallback(async () => {
     try {
-      const currentId = user?.id;
-      // 1. Calculate remaining accounts (this is the list AFTER current is gone)
-      const remainingAccounts = savedAccounts.filter(a => a.id !== currentId);
-      
-      // 2. Commit removal to Storage & State IMMEDIATELY
-      if (typeof window !== 'undefined') {
-          localStorage.setItem('shadow_multi_auth', JSON.stringify(remainingAccounts));
-      }
-      setSavedAccounts(remainingAccounts);
-
-      // 3. Perform the Sign Out (Clears current session)
       await supabase.auth.signOut();
-      
-      // 4. Decision: Switch or Guest?
-      if (remainingAccounts.length > 0) {
-        // --- SWITCH LOGIC ---
-        const nextAccount = remainingAccounts[0];
-        
-        // Restore session for the next account
-        const { error } = await supabase.auth.setSession({
-            access_token: nextAccount.session.access_token,
-            refresh_token: nextAccount.session.refresh_token
-        });
-
-        if (error) {
-            console.error("Switch failed, defaulting to guest", error);
-        }
-      } 
-      
-      // 5. FINAL STEP: Reload unconditionally.
-      // If switch worked -> Loads as User B.
-      // If switch failed/no accounts -> Loads as Guest.
-      window.location.reload();
-      
-    } catch(e) {
-      // Failsafe
-      window.location.reload();
-    }
-  }, [savedAccounts, user]);
+    } catch (e) {}
+    window.location.reload();
+  }, []);
 
   const refreshSession = useCallback(async () => {
     try {
-        const { data: { session } } = await supabase.auth.refreshSession();
-        if (session?.user) {
-            setUser(session.user);
-            const profileData = await fetchProfile(session.user.id, session.user.email, session.user.user_metadata);
-            if (profileData) {
-                setProfile(profileData);
-                currentProfileId.current = profileData.id;
-            }
+      const { data: { session } } = await supabase.auth.refreshSession();
+      if (session?.user) {
+        setUser(session.user);
+        const profileData = await fetchProfile(session.user.id, session.user.email, session.user.user_metadata);
+        if (profileData) {
+          setProfile(profileData);
+          currentProfileId.current = profileData.id;
         }
-    } catch(e) {}
+      }
+    } catch (e) {}
   }, [fetchProfile]);
 
-  const value = useMemo(() => ({ user, profile, isLoading, savedAccounts, signOut, refreshSession, switchAccount, removeAccount }), 
+  const value = useMemo(() => ({ user, profile, isLoading, savedAccounts, signOut, refreshSession, switchAccount, removeAccount }),
     [user, profile, isLoading, savedAccounts, signOut, refreshSession, switchAccount, removeAccount]);
 
   return (

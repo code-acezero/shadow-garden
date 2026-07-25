@@ -971,18 +971,17 @@ function WhisperIslandContent() {
 
                                     <DropdownMenuSeparator className="bg-white/5" />
                                     
-                                    {savedAccounts.length < 2 ? (
-                                        <DropdownMenuItem onClick={(e) => { e.preventDefault(); if (typeof window !== 'undefined') window.dispatchEvent(new CustomEvent('shadow-open-auth', { detail: { view: 'ENTER' } })); }} className="flex items-center w-full text-xs py-2 cursor-pointer hover:bg-white/10 rounded-lg transition-colors text-zinc-400 font-bold">
-                                            <Plus size={14} className="mr-3" /> Add Profile
-                                        </DropdownMenuItem>
-                                    ) : (
-                                        <DropdownMenuItem onClick={async (e) => { 
-                                            e.preventDefault(); 
-                                            if (typeof window !== 'undefined') window.dispatchEvent(new CustomEvent('shadow-open-auth', { detail: { view: 'ACCOUNTS' } })); 
+                                    {savedAccounts.length > 0 && (
+                                        <DropdownMenuItem onClick={async (e) => {
+                                            e.preventDefault();
+                                            if (typeof window !== 'undefined') window.dispatchEvent(new CustomEvent('shadow-open-auth', { detail: { view: 'ACCOUNTS' } }));
                                         }} className="flex items-center w-full text-xs py-2 cursor-pointer hover:bg-white/10 rounded-lg transition-colors text-zinc-400 font-bold">
                                             <Users size={14} className="mr-3" /> Switch Profile
                                         </DropdownMenuItem>
                                     )}
+                                    <DropdownMenuItem onClick={(e) => { e.preventDefault(); if (typeof window !== 'undefined') window.dispatchEvent(new CustomEvent('shadow-open-auth', { detail: { view: 'ENTER' } })); }} className="flex items-center w-full text-xs py-2 cursor-pointer hover:bg-white/10 rounded-lg transition-colors text-zinc-400 font-bold">
+                                        <Plus size={14} className="mr-3" /> Add Profile
+                                    </DropdownMenuItem>
 
                                     {/* ✅ FIXED: GUARANTEED RELOAD LOGIC */}
                                     <DropdownMenuItem onClick={(e) => { 
