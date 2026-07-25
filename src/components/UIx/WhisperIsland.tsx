@@ -918,7 +918,7 @@ function WhisperIslandContent() {
             <motion.div layout className="pointer-events-auto z-40 shrink-0 flex items-center gap-2">
                 <AnimatePresence mode="popLayout">
                     {!shouldHideExtras && (
-                        <motion.div key="actions" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 20 }} transition={{ duration: 0.3, ease: "circOut" }} className="flex items-center gap-2">
+                        <motion.div key="actions" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 20 }} transition={{ duration: 0.3, ease: "circOut" }} className="flex items-center gap-2 shrink-0">
                             {/* Alpha Button */}
                             <button onClick={() => window.dispatchEvent(new CustomEvent('shadow-toggle-alpha'))} className={cn(`relative overflow-hidden flex items-center justify-center group liquid-glass hover:bg-white/10 text-white font-bold rounded-full transition-all ${ISLAND_HEIGHT} px-3 gap-2 shrink-0`)}>
                                 <div className="absolute inset-0 overflow-hidden pointer-events-none rounded-full"><LightWave trigger={logoState} delay={0.6} /></div>
@@ -935,13 +935,13 @@ function WhisperIslandContent() {
                     )}
                 </AnimatePresence>
                 
-                <motion.div layout transition={FLUID_TRANSITION} className="relative rounded-full">
+                <motion.div layout transition={FLUID_TRANSITION} className="relative rounded-full shrink-0">
                     <div className="absolute inset-0 pointer-events-none overflow-hidden rounded-full"><LightWave trigger={logoState} delay={0.8} /></div>
                     <DropdownMenu modal={false} onOpenChange={setSettingsOpen}>
                         <DropdownMenuTrigger asChild>
-                            <button className={cn(`relative outline-none ${ISLAND_HEIGHT} w-10 md:w-12 rounded-full p-[2px] flex items-center justify-center`)}>
+                            <button className={cn(`relative outline-none ${ISLAND_HEIGHT} w-10 md:w-12 rounded-full p-[2px] flex items-center justify-center shrink-0`)}>
                                 <div className="absolute inset-0 liquid-glass rounded-full pointer-events-none" />
-                                <div className="relative z-10 w-full h-full">
+                                <div className="relative z-10 w-full h-full shrink-0">
                                     <ProfileAvatar profile={profile} travellerAvatar={!isAuthenticated ? travellerProfile.avatar : undefined} className="w-full h-full" />
                                 </div>
                             </button>

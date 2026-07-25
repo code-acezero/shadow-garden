@@ -429,10 +429,10 @@ export default function ProfilePage() {
 
     // Traveller (not logged-in) profile view
     if (!profile || !user) return (
-        <div className="min-h-screen bg-black text-white">
-            <div className="px-4 pt-12 w-full">
+        <div className="min-h-screen bg-black text-white flex flex-col justify-between">
+            <div className="px-4 pt-12 pb-16 w-full max-w-md sm:max-w-lg mx-auto flex flex-col items-center">
                 {/* Header */}
-                <div className="flex flex-col items-center gap-6 mb-10">
+                <div className="flex flex-col items-center gap-6 mb-8 w-full text-center">
                     <div className="relative group">
                         <div
                             className="w-28 h-28 rounded-full overflow-hidden border-4 border-white/10 shadow-xl cursor-pointer"
@@ -449,7 +449,7 @@ export default function ProfilePage() {
                     </div>
 
                     {travellerEditing ? (
-                        <div className="flex items-center gap-2 w-full max-w-xs">
+                        <div className="flex items-center gap-2 w-full max-w-xs mx-auto">
                             <input
                                 autoFocus
                                 value={travellerDraft}
@@ -462,7 +462,7 @@ export default function ProfilePage() {
                             <button onClick={() => setTravellerEditing(false)} className="p-2.5 bg-white/5 rounded-xl hover:bg-white/10 transition-colors"><X size={16} /></button>
                         </div>
                     ) : (
-                        <div className="flex items-center gap-2">
+                        <div className="flex items-center justify-center gap-2">
                             <h1 className="text-2xl font-black text-white">{travellerName}</h1>
                             <button onClick={() => { setTravellerDraft(travellerName); setTravellerEditing(true); }} className="p-1.5 rounded-lg text-zinc-500 hover:text-white hover:bg-white/10 transition-colors">
                                 <Pencil size={14} />
@@ -470,7 +470,7 @@ export default function ProfilePage() {
                         </div>
                     )}
 
-                    <div className="flex items-center gap-2 px-3 py-1 rounded-full bg-white/5 border border-white/10">
+                    <div className="flex items-center gap-2 px-3 py-1 rounded-full bg-white/5 border border-white/10 w-fit mx-auto">
                         <span className="w-1.5 h-1.5 rounded-full bg-zinc-400" />
                         <span className="text-xs text-zinc-400 font-bold uppercase tracking-widest">Traveller</span>
                     </div>
@@ -479,7 +479,7 @@ export default function ProfilePage() {
                 {/* Avatar selector shortcut */}
                 <button
                     onClick={() => setTravellerAvatarModalOpen(true)}
-                    className="w-full flex items-center justify-between p-4 bg-white/[0.03] border border-white/5 rounded-2xl hover:bg-white/5 transition-colors mb-4"
+                    className="w-full max-w-md flex items-center justify-between p-4 bg-white/[0.03] border border-white/5 rounded-2xl hover:bg-white/5 transition-colors mb-6"
                 >
                     <div className="flex items-center gap-3">
                         <img src={travellerAvatar} alt="" className="w-10 h-10 rounded-xl object-cover border border-white/10" />
@@ -492,12 +492,12 @@ export default function ProfilePage() {
                 </button>
 
                 {/* Sign-in prompt */}
-                <div className="mt-8 p-6 bg-gradient-to-br from-primary/10 to-transparent border border-primary/20 rounded-3xl">
+                <div className="w-full max-w-md p-6 bg-gradient-to-br from-primary/10 to-transparent border border-primary/20 rounded-3xl text-center">
                     <h3 className="font-black text-white text-lg mb-1">Unlock your full profile</h3>
-                    <p className="text-sm text-zinc-400 mb-4">Create an account to sync your progress, post in the community, and access all features.</p>
+                    <p className="text-sm text-zinc-400 mb-5 leading-relaxed">Create an account to sync your progress, post in the community, and access all features.</p>
                     <Button
                         onClick={() => window.dispatchEvent(new CustomEvent('shadow-open-auth', { detail: { view: 'ENTER' } }))}
-                        className="w-full h-12 bg-primary hover:bg-primary-600 text-white font-bold rounded-xl"
+                        className="w-full max-w-xs h-12 bg-primary hover:bg-primary-600 text-white font-bold rounded-xl mx-auto shadow-lg"
                     >
                         Create Account
                     </Button>

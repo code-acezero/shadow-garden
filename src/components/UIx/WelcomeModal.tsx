@@ -26,20 +26,44 @@ export default function WelcomeModal() {
 
   const handleGrant = async () => {
     try {
-      // 3. The Magic: Playing audio inside a click handler unlocks the browser
-      // We play the standard welcome voice immediately upon click
-      await playVoice('WELCOME'); 
-
-      // 4. Save the permit forever
+      // 1. Save audio permissions
       localStorage.setItem("guild_audio_permit", "true");
+      localStorage.setItem("shadow_audio_permitted", "true");
       
-      // 5. Close the gate
+      // 2. Automatically activate default telepathy voice pack ('Alpha')
+      const currentSettings = localStorage.getItem("shadow_voice_settings");
+      if (!currentSettings) {
+        localStorage.setItem("shadow_voice_settings", JSON.stringify({ pack: 'Alpha', language: 'en', enabled: true }));
+      } else {
+        try {
+          const parsed = JSON.parse(currentSettings);
+          parsed.enabled = true;
+          if (!parsed.pack) parsed.pack = 'Alpha';
+          localStorage.setItem("shadow_voice_settings", JSON.stringify(parsed));
+        } catch {
+          localStorage.setItem("shadow_voice_settings", JSON.stringify({ pack: 'Alpha', language: 'en', enabled: true }));
+        }
+      }
+
+      // 3. Unlock browser Web Audio API context
+      if (typeof window !== 'undefined') {
+        const AudioCtx = window.AudioContext || (window as any).webkitAudioContext;
+        if (AudioCtx) {
+          const ctx = new AudioCtx();
+          if (ctx.state === 'suspended') {
+            await ctx.resume();
+          }
+        }
+      }
+
+      // 4. Play standard welcome voice immediately inside click handler to unblock audio
+      playVoice('WELCOME'); 
+
+      // 5. Close modal
       setIsOpen(false);
       
     } catch (e) {
       console.error("Audio unlock failed", e);
-      // Even if it fails, we close it to not block the user, 
-      // but usually, a click event is enough to satisfy Chrome.
       setIsOpen(false); 
     }
   };
@@ -51,14 +75,14 @@ export default function WelcomeModal() {
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
-          className="fixed inset-0 z-[10000] flex items-center justify-center bg-black/90 backdrop-blur-md"
+          className="fixed inset-0 z-[10000] flex items-center justify-center bg-black/85 backdrop-blur-xl p-4"
         >
           {/* Main Card */}
           <motion.div 
             initial={{ scale: 0.95, opacity: 0 }}
             animate={{ scale: 1, opacity: 1 }}
             exit={{ scale: 0.95, opacity: 0 }}
-            className="w-[90%] bg-[#050505] border border-white/10 p-6 rounded-2xl shadow-2xl flex flex-col items-center text-center relative overflow-hidden"
+            className="w-full max-w-sm sm:max-w-md bg-[#080c14]/95 border border-white/10 p-6 sm:p-8 rounded-3xl shadow-[0_0_60px_rgba(0,0,0,0.9)] flex flex-col items-center text-center relative overflow-hidden backdrop-blur-2xl"
           >
             {/* Decorative "Scanner" Line */}
             <motion.div 

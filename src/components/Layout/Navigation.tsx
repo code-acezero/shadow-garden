@@ -4,7 +4,7 @@ import React, { useState, useEffect, memo, Suspense } from 'react';
 import { usePathname } from 'next/navigation';
 import Link from 'next/link';
 
-import { Home, User, Heart, MessageCircle, Search, Settings, Bell, Clapperboard, Flame, Film } from 'lucide-react';
+import { Home, User, Heart, MessageCircle, Search, Settings, Bell, Clapperboard, Flame, Film, Calendar } from 'lucide-react';
 import WhisperIsland from '@/components/UIx/WhisperIsland';
 import AuthModal from '@/components/Auth/AuthModal';
 import MobileTabBar from './MobileTabBar';
@@ -68,6 +68,7 @@ export default function Navigation() {
     { id: 'donghua', icon: Flame, label: 'Donghua', path: '/donghua' },
     { id: 'search', icon: Search, label: 'Search', path: '/search' },
     { id: 'social', icon: MessageCircle, label: 'Otakuverse', path: '/social' },
+    { id: 'schedule', icon: Calendar, label: 'Schedule', path: '/schedule' },
     { id: 'drama', icon: Clapperboard, label: 'Drama', path: '/drama' },
     { id: 'movies', icon: Film, label: 'Movies & Series', path: '/movies' },
   ];

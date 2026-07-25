@@ -3,7 +3,7 @@
 import React from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Home, MessageCircle, Heart, User, Search, Clapperboard, Settings, Flame, Film, Users, MessageSquare } from 'lucide-react';
+import { Home, MessageCircle, Heart, User, Search, Clapperboard, Settings, Flame, Film, Users, MessageSquare, Calendar } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 export default function MobileTabBar() {
@@ -14,6 +14,7 @@ export default function MobileTabBar() {
     { id: 'donghua', icon: Flame, label: 'Donghua', path: '/donghua' },
     { id: 'search', icon: Search, label: 'Search', path: '/search' },
     { id: 'social', icon: MessageCircle, label: 'Social', path: '/social' },
+    { id: 'schedule', icon: Calendar, label: 'Schedule', path: '/schedule' },
     { id: 'drama', icon: Clapperboard, label: 'Drama', path: '/drama' },
     { id: 'movies', icon: Film, label: 'Movies', path: '/movies' },
   ];
