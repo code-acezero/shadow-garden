@@ -115,13 +115,15 @@ export default function AuthModal({ isOpen, onClose, onAuthSuccess, initialView 
   const [passwordsMatch, setPasswordsMatch] = useState(false);
   const [formData, setFormData] = useState({ email: '', password: '', username: '', confirmPassword: '', otp: '' });
 
-  // ✅ DUPLICATE CHECK STATE
+  // ✅ DUPLICATE CHECK STATE — only block if already signed in (adding account)
   const [isDuplicate, setIsDuplicate] = useState(false);
 
   useEffect(() => {
-      const exists = savedAccounts.some(acc => acc.email.toLowerCase() === formData.email.toLowerCase());
+      // Only flag duplicate when a user is currently signed in (preventing re-adding same account)
+      if (!currentUser) { setIsDuplicate(false); return; }
+      const exists = savedAccounts.some(acc => acc.email.toLowerCase() === formData.email.toLowerCase() && acc.id === currentUser.id);
       setIsDuplicate(exists);
-  }, [formData.email, savedAccounts]);
+  }, [formData.email, savedAccounts, currentUser]);
 
   const checkUsername = async (username: string) => {
       if (username.length < 3) { setUsernameAvailable(null); return; }
@@ -153,7 +155,7 @@ export default function AuthModal({ isOpen, onClose, onAuthSuccess, initialView 
 
   const suggestNewUsername = () => handleInputChange('username', `${formData.username}${Math.floor(Math.random() * 9999)}`);
   
-  const isEnterValid = formData.email && formData.password.length >= 6 && !isDuplicate;
+  const isEnterValid = formData.email && formData.password.length >= 6 && (!currentUser || !isDuplicate);
   const isRegisterValid = formData.email && usernameAvailable && passwordStrength >= 30 && passwordsMatch && !isDuplicate;
   const isOtpValid = formData.otp.length === 8;
 
