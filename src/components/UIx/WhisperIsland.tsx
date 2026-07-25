@@ -422,7 +422,7 @@ function WhisperIslandContent() {
   const voiceLock = useRef(false);
   const audioRef = useRef<HTMLAudioElement | null>(null); 
   
-  const { profile, savedAccounts, isLoading, signOut } = useAuth(); // Import signOut here
+  const { profile, isLoading, signOut } = useAuth();
   const isAuthenticated = !!(profile && profile.id && !profile.is_guest);
   const travellerProfile = useTravellerProfile();
   const { settings, updateSetting } = useSettings(); 
@@ -970,18 +970,6 @@ function WhisperIslandContent() {
                                     </div>
 
                                     <DropdownMenuSeparator className="bg-white/5" />
-                                    
-                                    {savedAccounts.length > 0 && (
-                                        <DropdownMenuItem onClick={async (e) => {
-                                            e.preventDefault();
-                                            if (typeof window !== 'undefined') window.dispatchEvent(new CustomEvent('shadow-open-auth', { detail: { view: 'ACCOUNTS' } }));
-                                        }} className="flex items-center w-full text-xs py-2 cursor-pointer hover:bg-white/10 rounded-lg transition-colors text-zinc-400 font-bold">
-                                            <Users size={14} className="mr-3" /> Switch Profile
-                                        </DropdownMenuItem>
-                                    )}
-                                    <DropdownMenuItem onClick={(e) => { e.preventDefault(); if (typeof window !== 'undefined') window.dispatchEvent(new CustomEvent('shadow-open-auth', { detail: { view: 'ENTER' } })); }} className="flex items-center w-full text-xs py-2 cursor-pointer hover:bg-white/10 rounded-lg transition-colors text-zinc-400 font-bold">
-                                        <Plus size={14} className="mr-3" /> Add Profile
-                                    </DropdownMenuItem>
 
                                     {/* ✅ FIXED: GUARANTEED RELOAD LOGIC */}
                                     <DropdownMenuItem onClick={(e) => { 
