@@ -1124,6 +1124,10 @@ function WatchContent() {
     }
   }, [urlEpId, urlEpNumber, anime, currentEpId]);
 
+  const [fetchTrigger, setFetchTrigger] = useState(0);
+  const activeFetchRef = useRef(0);
+  const failedServersRef = useRef<string[]>([]);
+
   // Stream Loading
   useEffect(() => {
     if (!currentEpId || !isSettingsLoaded) return;
