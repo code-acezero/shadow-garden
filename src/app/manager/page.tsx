@@ -1,3 +1,12 @@
+"use client";
+
+import React, { useState, useEffect, useMemo, memo, useRef } from 'react';
+import RoleGuard from '@/components/Auth/RoleGuard';
+import { useSettings } from '@/hooks/useSettings';
+import { useAuth } from '@/context/AuthContext';
+import { supabase } from '@/lib/supabase';
+import { ImageAPI } from '@/lib/api'; 
+import { SITE_CONFIG } from '@/lib/site-config'; 
 import Link from 'next/link';
 import { 
   Shield, Activity, Search, AlertTriangle, 
@@ -14,7 +23,7 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Switch } from '@/components/ui/switch';
 import { Badge } from '@/components/ui/badge';
-import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
+import { Avatar, AvatarImage, AvatarFallback } from '@/components/User/Avatar';
 import ProfileAvatar from '@/components/User/ProfileAvatar';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from '@/components/ui/dialog';

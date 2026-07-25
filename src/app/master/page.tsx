@@ -1,4 +1,15 @@
+"use client";
+
+import React, { useState, useEffect, useRef, useMemo, memo } from 'react';
 import Link from 'next/link';
+import { motion } from 'framer-motion';
+import RoleGuard from '@/components/Auth/RoleGuard';
+import { useSettings } from '@/hooks/useSettings';
+import { useAuth } from '@/context/AuthContext';
+import { supabase } from '@/lib/supabase';
+import { ImageAPI, BASE_URL } from '@/lib/api';
+import { SITE_CONFIG } from '@/lib/site-config';
+import { COLOR_PALETTES, applyColorPalette } from '@/lib/theme';
 import { 
   Shield, Mic2, Save, Upload, Loader2, 
   Users, Globe, Activity, Search, AlertTriangle, 
@@ -15,7 +26,7 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Switch } from '@/components/ui/switch';
 import { Badge } from '@/components/ui/badge';
-import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
+import { Avatar, AvatarImage, AvatarFallback } from '@/components/User/Avatar';
 import ProfileAvatar from '@/components/User/ProfileAvatar';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from '@/components/ui/dialog';
