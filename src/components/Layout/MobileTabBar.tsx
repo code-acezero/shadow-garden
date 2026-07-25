@@ -14,13 +14,17 @@ export default function MobileTabBar() {
     const handleFsChange = () => {
       setIsFullscreen(!!document.fullscreenElement);
     };
+    
+    // Check current state immediately in case we missed an event during navigation
+    handleFsChange();
+    
     document.addEventListener('fullscreenchange', handleFsChange);
     document.addEventListener('webkitfullscreenchange', handleFsChange);
     return () => {
       document.removeEventListener('fullscreenchange', handleFsChange);
       document.removeEventListener('webkitfullscreenchange', handleFsChange);
     };
-  }, []);
+  }, [pathname]);
 
   const tabs = [
     { id: 'home', icon: Home, label: 'Home', path: '/home' },

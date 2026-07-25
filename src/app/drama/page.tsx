@@ -34,7 +34,7 @@ const DramaSearch = () => {
 
   return (
     <div className={cn("relative transition-all duration-300 z-50", expanded ? "w-[calc(100vw-2.5rem)] max-w-sm sm:w-64 md:w-80" : "w-32 sm:w-44 md:w-64")}>
-      <form onSubmit={(e) => { e.preventDefault(); if (query.trim()) window.location.href = `/search?library=drama&keyword=${encodeURIComponent(query.trim())}`; }} className="flex items-center gap-1.5 sm:gap-2 bg-[#0f172a]/90 backdrop-blur-xl border border-cyan-500/30 hover:border-cyan-400/60 rounded-full px-3 py-1.5 sm:py-2 focus-within:bg-[#0f172a] focus-within:border-cyan-400 focus-within:shadow-[0_0_20px_rgba(34,211,238,0.35)] transition-all group">
+      <form onSubmit={(e) => { e.preventDefault(); if (query.trim()) window.location.href = `/search?library=drama&keyword=${encodeURIComponent(query.trim())}`; }} className="flex items-center h-8 sm:h-9 gap-1.5 sm:gap-2 bg-[#0f172a]/90 backdrop-blur-xl border border-cyan-500/30 hover:border-cyan-400/60 rounded-full px-3 py-1.5 sm:py-2 focus-within:bg-[#0f172a] focus-within:border-cyan-400 focus-within:shadow-[0_0_20px_rgba(34,211,238,0.35)] transition-all group">
         <button 
           type="button" 
           onClick={() => {
@@ -244,11 +244,12 @@ const HeroSlider = ({ items }: { items: DramaCard[] }) => {
         {/* Indicators */}
         <div className="flex items-center gap-1.5 pointer-events-auto w-fit bg-black/40 backdrop-blur-md px-2.5 py-1 rounded-full border border-white/10 mt-1">
             {items.map((_, i) => (
-                <button 
+                <div 
                     key={i} 
-                    type="button"
+                    role="button"
+                    tabIndex={0}
                     onClick={() => setCurrentIndex(i)} 
-                    className={cn("h-1.5 shrink-0 rounded-full transition-all duration-300 border-0 outline-none p-0 min-h-0 block", currentIndex === i ? "w-5 sm:w-6 bg-cyan-400 shadow-[0_0_10px_#22d3ee]" : "w-1.5 bg-white/30 hover:bg-white/60")}
+                    className={cn("h-1.5 shrink-0 rounded-full transition-all duration-300 border-0 outline-none p-0 min-h-[6px] max-h-[6px] cursor-pointer block appearance-none", currentIndex === i ? "w-5 sm:w-6 bg-cyan-400 shadow-[0_0_10px_#22d3ee]" : "w-1.5 bg-white/30 hover:bg-white/60")}
                 />
             ))}
         </div>

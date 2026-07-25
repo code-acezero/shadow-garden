@@ -39,7 +39,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
   const fetchProfile = useCallback(async (userId: string, userEmail?: string, userMeta?: any) => {
     try {
-      const { data } = await supabase.from("profiles").select("*").eq("id", userId).single();
+      const { data }: { data: any } = await supabase.from("profiles").select("*").eq("id", userId).single();
       if (data) {
         if (!data.avatar_url || !data.username) {
           const updatedName = data.username || userMeta?.full_name || userEmail?.split('@')[0] || getRandomGuestName();
@@ -113,7 +113,13 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   }, [fetchProfile]);
 
   const signOut = useCallback(async () => {
-    try { await supabase.auth.signOut(); } catch {}
+    try { 
+      // Add a 2-second timeout to prevent signOut from hanging indefinitely
+      await Promise.race([
+        supabase.auth.signOut(),
+        new Promise(resolve => setTimeout(resolve, 2000))
+      ]);
+    } catch {}
     if (typeof window !== 'undefined') {
       sessionStorage.removeItem('shadow_welcome_shown');
       window.location.assign('/home');

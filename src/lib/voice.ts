@@ -34,8 +34,12 @@ interface VoicePreference {
 
 export const getVoiceSettings = (): VoicePreference => {
     if (typeof window === 'undefined') return { pack: 'Alpha', language: 'en', enabled: true };
-    const stored = localStorage.getItem('shadow_voice_settings');
-    if (stored) return JSON.parse(stored);
+    try {
+        const stored = localStorage.getItem('shadow_voice_settings');
+        if (stored) return JSON.parse(stored);
+    } catch (e) {
+        console.warn("Invalid shadow_voice_settings in localStorage");
+    }
     return { pack: 'Alpha', language: 'en', enabled: true };
 };
 

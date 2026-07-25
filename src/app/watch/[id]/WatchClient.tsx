@@ -1111,15 +1111,27 @@ function WatchContent() {
     if (!anime?.episodes?.length) return;
     const paramEp = urlEpId || urlEpNumber;
     if (!paramEp) return;
+    
     const paramStr = String(paramEp).trim();
     const paramNum = Number(paramStr);
+    
     const match = anime.episodes.find(e => 
       String(e.id) === paramStr || 
       (!isNaN(paramNum) && Number(e.number) === paramNum) ||
       String(e.number) === paramStr ||
-      String(e.id).endsWith(`-${paramStr}`)
+      String(e.id).endsWith(`-${paramStr}`) ||
+      String(e.id).endsWith(`=${paramStr}`)
     );
+    
     if (match && match.id !== currentEpId) {
+      const savedRecord = progressBuffer.current[match.id];
+      if (savedRecord && !savedRecord.is_completed && savedRecord.progress > 5) {
+          progressRef.current = savedRecord.progress;
+          setResumeTime(savedRecord.progress);
+      } else {
+          progressRef.current = 0;
+          setResumeTime(0);
+      }
       setCurrentEpId(match.id);
     }
   }, [urlEpId, urlEpNumber, anime, currentEpId]);
