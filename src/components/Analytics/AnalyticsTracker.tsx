@@ -30,7 +30,7 @@ export default function AnalyticsTracker() {
           .select('value')
           .eq('key', 'total_site_visits')
           .single()
-          .then(({ data }) => {
+          .then(({ data }: { data: any }) => {
             const count = data ? parseInt(data.value || '0', 10) + 1 : updatedVisits;
             supabase.from('site_config').upsert({
               key: 'total_site_visits',
@@ -57,7 +57,7 @@ export default function AnalyticsTracker() {
       },
     });
 
-    channel.subscribe(async (status) => {
+    channel.subscribe(async (status: string) => {
       if (status === 'SUBSCRIBED') {
         await channel.track({
           online_at: new Date().toISOString(),
