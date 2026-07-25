@@ -39,10 +39,10 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
   const fetchProfile = useCallback(async (userId: string, userEmail?: string, userMeta?: any) => {
     try {
-      // 4-second timeout to prevent network stalls on rapid reloads
+      // 8-second timeout to allow DB cold-starts while preventing infinite hangs
       const queryPromise = supabase.from("profiles").select("*").eq("id", userId).single();
       const timeoutPromise = new Promise<{ data: any }>((_, reject) => 
-        setTimeout(() => reject(new Error("Timeout")), 4000)
+        setTimeout(() => reject(new Error("Timeout")), 8000)
       );
 
       const { data }: { data: any } = await Promise.race([queryPromise, timeoutPromise]);
@@ -51,9 +51,9 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
           const updatedName = data.username || userMeta?.full_name || userEmail?.split('@')[0] || getRandomGuestName();
           const updatedAvatar = data.avatar_url || userMeta?.avatar_url || getRandomAvatar(false);
           supabase.from("profiles").update({ username: updatedName, avatar_url: updatedAvatar }).eq("id", userId).catch(() => {});
-          return { ...data, username: updatedName, avatar_url: updatedAvatar };
+          return { ...data, username: updatedName, avatar_url: updatedAvatar, _isFallback: false };
         }
-        return data;
+        return { ...data, _isFallback: false };
       }
       return {
         id: userId,
@@ -61,20 +61,44 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         email: userEmail,
         avatar_url: userMeta?.avatar_url || getRandomAvatar(false),
         role: 'user',
-        is_guest: false
+        is_guest: false,
+        _isFallback: true
       };
     } catch (e) { 
-      // Return fallback profile so user is NEVER disconnected on temporary network stalls or rate limits
       return {
         id: userId,
         username: userMeta?.full_name || userEmail?.split('@')[0] || getRandomGuestName(),
         email: userEmail,
         avatar_url: userMeta?.avatar_url || getRandomAvatar(false),
         role: 'user',
-        is_guest: false
+        is_guest: false,
+        _isFallback: true
       };
     }
   }, []);
+
+  const loadUserProfile = useCallback(async (u: User) => {
+    const profileData = await fetchProfile(u.id, u.email, u.user_metadata);
+    if (!isMounted.current || !profileData) return;
+
+    setProfile(profileData);
+
+    if (profileData._isFallback) {
+      // If DB timed out or blipped, schedule background retry to fetch full profile (level, frame, title)
+      setTimeout(async () => {
+        if (!isMounted.current) return;
+        try {
+          const { data }: { data: any } = await supabase.from("profiles").select("*").eq("id", u.id).single();
+          if (data && isMounted.current) {
+            setProfile({ ...data, _isFallback: false });
+            currentProfileId.current = u.id;
+          }
+        } catch (err) {}
+      }, 2500);
+    } else {
+      currentProfileId.current = u.id;
+    }
+  }, [fetchProfile]);
 
   useEffect(() => {
     isMounted.current = true;
@@ -83,18 +107,14 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       try {
         const sessionPromise = supabase.auth.getSession();
         const timeoutPromise = new Promise<any>((resolve) => 
-          setTimeout(() => resolve({ data: { session: null } }), 4000)
+          setTimeout(() => resolve({ data: { session: null } }), 6000)
         );
 
         const { data: { session } } = await Promise.race([sessionPromise, timeoutPromise]);
         if (session?.user && isMounted.current) {
           setUser(session.user);
           if (currentProfileId.current !== session.user.id) {
-            const profileData = await fetchProfile(session.user.id, session.user.email, session.user.user_metadata);
-            if (isMounted.current && profileData) {
-              setProfile(profileData);
-              currentProfileId.current = profileData.id;
-            }
+            await loadUserProfile(session.user);
           }
         }
       } catch (e) { console.error("Auth Init error", e); }
@@ -106,7 +126,6 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event: AuthChangeEvent, session: Session | null) => {
       if (!isMounted.current) return;
 
-      // Ignore silent refreshes & initial session if already handled
       if (event === 'TOKEN_REFRESHED' || event === 'USER_UPDATED' || (event === 'INITIAL_SESSION' && currentProfileId.current)) {
         if (session?.user) {
           setUser(prev => (prev?.id === session.user.id ? prev : session.user));
@@ -117,11 +136,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       if (session?.user) {
         setUser(prev => (prev?.id === session.user.id ? prev : session.user));
         if (currentProfileId.current !== session.user.id) {
-          const profileData = await fetchProfile(session.user.id, session.user.email, session.user.user_metadata);
-          if (isMounted.current && profileData) {
-            setProfile(profileData);
-            currentProfileId.current = profileData.id;
-          }
+          await loadUserProfile(session.user);
         }
       } else if (event === 'SIGNED_OUT') {
         setUser(null);
@@ -133,7 +148,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     });
 
     return () => { isMounted.current = false; subscription.unsubscribe(); };
-  }, [fetchProfile]);
+  }, [fetchProfile, loadUserProfile]);
 
   const signOut = useCallback(async () => {
     try { 
