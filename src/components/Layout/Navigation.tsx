@@ -1,10 +1,10 @@
 "use client";
 
-import React, { useState, useEffect, memo } from 'react';
+import React, { useState, useEffect, memo, Suspense } from 'react';
 import { usePathname } from 'next/navigation';
 import Link from 'next/link';
 
-import { Home, User, Heart, MessageCircle, CalendarDays, Search, Settings, Bell, Clapperboard, Flame, Film } from 'lucide-react';
+import { Home, User, Heart, MessageCircle, Search, Settings, Bell, Clapperboard, Flame, Film } from 'lucide-react';
 import WhisperIsland from '@/components/UIx/WhisperIsland';
 import AuthModal from '@/components/Auth/AuthModal';
 import MobileTabBar from './MobileTabBar';
@@ -68,14 +68,15 @@ export default function Navigation() {
     { id: 'donghua', icon: Flame, label: 'Donghua', path: '/donghua' },
     { id: 'search', icon: Search, label: 'Search', path: '/search' },
     { id: 'social', icon: MessageCircle, label: 'Otakuverse', path: '/social' },
-    { id: 'schedule', icon: CalendarDays, label: 'Schedule', path: '/schedule' },
     { id: 'drama', icon: Clapperboard, label: 'Drama', path: '/drama' },
     { id: 'movies', icon: Film, label: 'Movies & Series', path: '/movies' },
   ];
 
   return (
     <>
-      <MemoizedWhisperIsland />
+      <Suspense fallback={null}>
+        <MemoizedWhisperIsland />
+      </Suspense>
 
       <nav className="hidden md:block fixed bottom-3 left-1/2 transform -translate-x-1/2 z-[90] w-[95%] max-w-2xl">
         <div className="relative liquid-glass rounded-full shadow-[0_10px_40px_rgba(0,0,0,0.8)] px-8 py-4">

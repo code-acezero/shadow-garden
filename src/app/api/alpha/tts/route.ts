@@ -1,7 +1,5 @@
 import { NextResponse } from 'next/server';
 
-export const runtime = 'edge';
-
 function prepareTextForSpeech(text: string) {
   // 1. Handle gaps/pauses by replacing newlines with ellipses BEFORE stripping
   // Fish Audio responds well to ellipses for pauses.

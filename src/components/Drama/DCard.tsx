@@ -8,9 +8,9 @@ import CountryBadge from './CountryBadge';
 
 const DCard = memo(({ item }: { item: DramaCard }) => {
   return (
-    <div className="group relative flex flex-col shrink-0 w-full transition-all duration-300 hover:z-50 hover:scale-105 origin-bottom touch-manipulation">
+    <div className="group relative flex flex-col shrink-0 w-full transition-all duration-300 hover:z-50 hover:scale-105 origin-center touch-manipulation">
       <div 
-        className="aspect-[2/3] w-full overflow-hidden rounded-2xl bg-[#0f172a] relative shadow-lg group-hover:shadow-[0_0_30px_rgba(34,211,238,0.25)] group-hover:ring-2 group-hover:ring-cyan-400/50 transition-all cursor-pointer" 
+        className="aspect-[2/3] w-full overflow-hidden rounded-2xl bg-[#0f172a] relative shadow-lg group-hover:shadow-[0_0_30px_rgba(34,211,238,0.35)] group-hover:ring-2 group-hover:ring-cyan-400/60 transition-all cursor-pointer" 
         onClick={() => window.location.href = `/drama-watch/${item.id}`}
       >
         {item.image ? (
@@ -20,19 +20,19 @@ const DCard = memo(({ item }: { item: DramaCard }) => {
         )}
         
         {/* Country Badge with crisp vector SVG flag */}
-        <div className="absolute top-2.5 left-2.5">
+        <div className="absolute top-2.5 left-2.5 z-20">
           <CountryBadge country={item.country} type={item.type} />
         </div>
 
         {/* Episode Badge (Top Right) */}
         {item.episode && (
-          <div className="absolute top-2.5 right-2.5 bg-cyan-500 text-black px-2 py-0.5 rounded-full font-black text-[9px] z-10 shadow-md">
+          <div className="absolute top-2.5 right-2.5 bg-cyan-500 text-black px-2 py-0.5 rounded-full font-black text-[9px] z-20 shadow-md">
             EP {item.episode}
           </div>
         )}
 
         {/* Permanent & Hover Info Overlay */}
-        <div className="absolute inset-0 p-3 md:p-4 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex flex-col justify-end bg-gradient-to-t from-[#020617] via-[#020617]/90 to-transparent pb-4">
+        <div className="absolute inset-0 p-3 md:p-4 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex flex-col justify-end bg-gradient-to-t from-[#020617] via-[#020617]/90 to-transparent pb-4 z-10">
           <div className="mb-3">
             <h3 className="text-xs md:text-sm font-black text-white line-clamp-2 leading-tight drop-shadow-md mb-1">{item.title}</h3>
             <div className="flex flex-wrap items-center gap-1.5 text-[8px] md:text-[9px] font-bold text-cyan-200/80 uppercase tracking-widest">

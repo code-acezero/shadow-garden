@@ -1,3 +1,4 @@
+import { Suspense } from "react";
 import { Metadata, Viewport } from "next";
 import PageTransition from "@/components/Transitions/PageTransition";
 import "./globals.css";
@@ -172,7 +173,9 @@ export default function RootLayout({
         />
 
         {/* Global Navigation Loader */}
-        <NavigationLoader />
+        <Suspense fallback={null}>
+          <NavigationLoader />
+        </Suspense>
 
         {/* Global Loading Overlay */}
         <CustomLoader />
