@@ -26,6 +26,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import AvatarSelectorModal, { getRandomAvatar, getRandomGuestName } from '@/components/User/AvatarSelectorModal';
 import AvatarCropperModal from '@/components/User/AvatarCropperModal';
+import { useTravellerProfile, saveTravellerProfile } from '@/hooks/useTravellerProfile';
 import { getWatchRoute, formatAnimeTitle } from '@/lib/utils';
 
 const PRESET_COVERS = [
@@ -1347,7 +1348,7 @@ export default function ProfilePage() {
                         {/* Option 3: Reposition & Resize Photo */}
                         <button 
                             onClick={() => {
-                                const currentSrc = profile?.avatar_url || profile?.avatar || travellerAvatar || (typeof window !== 'undefined' ? localStorage.getItem('shadow_traveller_avatar') : null) || 'https://cdn.myanimelist.net/images/characters/9/310307.jpg';
+                                const currentSrc = profile?.avatar_url || profile?.avatar || traveller?.avatar || (typeof window !== 'undefined' ? localStorage.getItem('shadow_traveller_avatar') : null) || 'https://cdn.myanimelist.net/images/characters/9/310307.jpg';
                                 setPendingAvatarSrc(currentSrc);
                                 setShowAvatarModal(false);
                                 setCropperModalOpen(true);
