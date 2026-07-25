@@ -1,14 +1,4 @@
-"use client";
-
-import React, { useState, useEffect, useRef, useMemo, memo } from 'react';
-import { motion } from 'framer-motion';
-import RoleGuard from '@/components/Auth/RoleGuard';
-import { useSettings, AppSettings } from '@/hooks/useSettings'; // Ensure AppSettings type is imported if exported, otherwise we just cast
-import { useAuth } from '@/context/AuthContext';
-import { supabase } from '@/lib/supabase';
-import { ImageAPI, BASE_URL } from '@/lib/api'; 
-import { SITE_CONFIG } from '@/lib/site-config'; 
-import { COLOR_PALETTES, applyColorPalette } from '@/lib/theme'; 
+import Link from 'next/link';
 import { 
   Shield, Mic2, Save, Upload, Loader2, 
   Users, Globe, Activity, Search, AlertTriangle, 
@@ -17,7 +7,8 @@ import {
   AlertCircle, MessageSquareWarning, Folder, FileAudio, Eye,
   Scroll, Sword, BookOpen, Link2, Feather, Play, Pause,
   Bold, Italic, Type, UserCheck, X, LayoutDashboard, Palette,
-  Filter, ArrowDownCircle, Menu, Crown, Layers
+  Filter, ArrowDownCircle, Menu, Crown, Layers, ArrowLeft,
+  PanelLeftClose, PanelLeftOpen
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -61,6 +52,7 @@ const MASTER_TABS = [
 export default function GuildMasterDashboard() {
   const [activeTab, setActiveTab] = useState<Tab>('GUILD_DESK');
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [isCollapsed, setIsCollapsed] = useState(false);
   const { user } = useAuth();
   
   useEffect(() => {
@@ -84,161 +76,257 @@ export default function GuildMasterDashboard() {
         .font-minomu { font-family: var(--font-minomu), sans-serif; }
       `}</style>
 
-      <div className="min-h-screen bg-[#050505] text-white font-sans relative overflow-y-auto pb-8 transform-gpu will-change-transform">
-        <div className="fixed top-0 left-0 w-full h-96 bg-primary-900/10 blur-[100px] pointer-events-none translate-z-0" />
-        <div className="h-24 w-full" />
+      <div className="min-h-screen bg-[#050505] text-white font-sans flex flex-col md:flex-row relative overflow-x-hidden">
+        
+        {/* Background Ambient Glow */}
+        <div className="fixed top-0 left-0 w-full h-96 bg-primary-900/10 blur-[100px] pointer-events-none z-0" />
 
-        <div className="w-full max-w-[1350px] mx-auto px-4 md:px-8 pb-4 relative z-10">
+        {/* ========================================================= */}
+        {/* --- DESKTOP COLLAPSIBLE LEFT SIDEBAR --- */}
+        {/* ========================================================= */}
+        <aside 
+          className={cn(
+            "hidden md:flex flex-col justify-between h-screen sticky top-0 bg-[#09090d]/90 backdrop-blur-3xl border-r border-white/10 shadow-[10px_0_30px_rgba(0,0,0,0.8)] z-40 transition-all duration-300 shrink-0",
+            isCollapsed ? "w-20 p-3" : "w-64 p-5"
+          )}
+        >
+          <div className="flex flex-col gap-6 overflow-hidden flex-1">
+            
+            {/* Sidebar Top: Logo & Collapse Button */}
+            <div className={cn("flex items-center justify-between pb-4 border-b border-white/10", isCollapsed && "justify-center")}>
+              {!isCollapsed && (
+                <div className="flex items-center gap-3">
+                  <div className="p-2 bg-white/5 border border-white/15 rounded-xl shadow-md flex items-center justify-center">
+                    <Shield className="w-5 h-5 text-primary-500" strokeWidth={2} />
+                  </div>
+                  <div className="flex flex-col">
+                    <span className="font-minomu font-bold text-sm tracking-wider text-white leading-none">SHADOW</span>
+                    <span className="text-[9px] font-black tracking-widest text-primary-500 uppercase">ADMIN PANEL</span>
+                  </div>
+                </div>
+              )}
+
+              <button
+                onClick={() => setIsCollapsed(!isCollapsed)}
+                className="p-2 rounded-xl bg-white/5 border border-white/10 text-zinc-400 hover:text-white hover:bg-white/10 active:scale-95 transition-all"
+                title={isCollapsed ? "Expand Menu" : "Collapse Menu"}
+              >
+                {isCollapsed ? <PanelLeftOpen size={18} /> : <PanelLeftClose size={18} />}
+              </button>
+            </div>
+
+            {/* Sidebar Navigation Items */}
+            <div className="flex flex-col gap-1.5 overflow-y-auto scrollbar-hide flex-1">
+              {MASTER_TABS.map((tab) => {
+                const Icon = tab.icon;
+                const isActive = activeTab === tab.id;
+                return (
+                  <button
+                    key={tab.id}
+                    onClick={() => switchTab(tab.id as Tab)}
+                    className={cn(
+                      "flex items-center gap-3 rounded-2xl text-xs font-bold transition-all text-left group relative",
+                      isCollapsed ? "p-3 justify-center" : "px-4 py-3 w-full",
+                      isActive
+                        ? "bg-gradient-to-r from-primary-600 to-primary-500 text-white shadow-lg shadow-primary-600/30 border border-primary-500/50"
+                        : "text-zinc-400 hover:bg-white/5 hover:text-white border border-transparent"
+                    )}
+                    title={isCollapsed ? tab.label : undefined}
+                  >
+                    <Icon size={18} className={cn("shrink-0", isActive ? "text-white" : "text-zinc-400 group-hover:text-white")} />
+                    {!isCollapsed && <span className="truncate">{tab.label}</span>}
+                    
+                    {/* Collapsed Tooltip */}
+                    {isCollapsed && (
+                      <div className="absolute left-full ml-3 px-3 py-1.5 bg-zinc-950 border border-white/15 rounded-xl text-[11px] font-bold text-white whitespace-nowrap shadow-xl opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity z-50">
+                        {tab.label}
+                      </div>
+                    )}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Sidebar Bottom: BACK BUTTON */}
+          <div className="pt-4 border-t border-white/10 shrink-0">
+            <Link
+              href="/"
+              className={cn(
+                "flex items-center gap-3 rounded-2xl text-xs font-bold transition-all bg-white/5 hover:bg-primary-600/20 border border-white/10 hover:border-primary-500/50 text-zinc-300 hover:text-white shadow-lg group",
+                isCollapsed ? "p-3 justify-center" : "px-4 py-3 w-full"
+              )}
+              title="Back to App"
+            >
+              <ArrowLeft size={18} className="text-primary-500 group-hover:-translate-x-1 transition-transform shrink-0" />
+              {!isCollapsed && <span>Back to App</span>}
+            </Link>
+          </div>
+        </aside>
+
+        {/* ========================================================= */}
+        {/* --- MOBILE HEADER & TOP NAV BAR --- */}
+        {/* ========================================================= */}
+        <div className="flex md:hidden flex-col w-full z-40 bg-[#09090d]/90 backdrop-blur-3xl border-b border-white/10 sticky top-0 px-4 py-3">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <button
+                onClick={() => setMobileMenuOpen(true)}
+                className="p-2 rounded-xl bg-white/5 border border-white/10 text-white active:scale-95 transition-all"
+              >
+                <Menu size={20} className="text-primary-500" />
+              </button>
+              <span className="font-minomu font-bold text-sm text-white">GUILD MASTER</span>
+            </div>
+
+            <Link
+              href="/"
+              className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/5 border border-white/10 text-zinc-300 text-xs font-bold hover:bg-white/10"
+            >
+              <ArrowLeft size={14} className="text-primary-500" />
+              <span>Back</span>
+            </Link>
+          </div>
+        </div>
+
+        {/* Mobile Drawer Overlay */}
+        {mobileMenuOpen && (
+          <div className="fixed inset-0 z-[100] flex md:hidden">
+            <div 
+              className="fixed inset-0 bg-black/80 backdrop-blur-md animate-in fade-in duration-200" 
+              onClick={() => setMobileMenuOpen(false)} 
+            />
+            <div className="relative w-72 max-w-[85vw] bg-[#09090d] border-r border-white/10 h-full p-6 flex flex-col justify-between shadow-2xl z-10 animate-in slide-in-from-left duration-300">
+              <div>
+                <div className="flex items-center justify-between pb-6 border-b border-white/10 mb-6">
+                  <div className="flex items-center gap-2.5">
+                    <Shield className="w-6 h-6 text-primary-500" />
+                    <span className="font-minomu font-bold text-sm tracking-wider text-white">GUILD MASTER</span>
+                  </div>
+                  <button 
+                    onClick={() => setMobileMenuOpen(false)}
+                    className="p-1.5 rounded-full bg-white/5 border border-white/10 text-zinc-400 hover:text-white"
+                  >
+                    <X size={16} />
+                  </button>
+                </div>
+                
+                <div className="flex flex-col gap-1.5">
+                  {MASTER_TABS.map(tab => {
+                    const Icon = tab.icon;
+                    const isActive = activeTab === tab.id;
+                    return (
+                      <button
+                        key={tab.id}
+                        onClick={() => {
+                          switchTab(tab.id as Tab);
+                          setMobileMenuOpen(false);
+                        }}
+                        className={cn(
+                          "flex items-center gap-3 px-4 py-3 rounded-2xl text-xs font-bold transition-all text-left w-full",
+                          isActive ? "bg-primary-600 text-white shadow-lg shadow-primary-600/30 border border-primary-500/50" : "text-zinc-400 hover:bg-white/5 hover:text-white"
+                        )}
+                      >
+                        <Icon size={16} className={isActive ? "text-white" : "text-zinc-400"} />
+                        <span>{tab.label}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Mobile Drawer Bottom Back Button */}
+              <div className="pt-6 border-t border-white/10">
+                <Link
+                  href="/"
+                  onClick={() => setMobileMenuOpen(false)}
+                  className="flex items-center justify-center gap-2.5 px-4 py-3 rounded-2xl bg-white/5 border border-white/10 text-zinc-300 hover:text-white text-xs font-bold w-full"
+                >
+                  <ArrowLeft size={16} className="text-primary-500" />
+                  <span>Back to App</span>
+                </Link>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* ========================================================= */}
+        {/* --- RIGHT MAIN CONTENT AREA --- */}
+        {/* ========================================================= */}
+        <main className="flex-1 min-w-0 p-4 md:p-8 relative z-10 overflow-y-auto">
           
-          {/* --- iOS DYNAMIC ISLAND HEADER --- */}
+          {/* iOS Dynamic Header & Telemetry */}
           <header className="relative bg-[#0d0d12]/70 border border-white/10 rounded-[32px] p-6 md:p-8 mb-8 backdrop-blur-3xl shadow-[0_25px_60px_rgba(0,0,0,0.8)] overflow-hidden">
-            {/* Ambient Background Blur Spheres */}
             <div className="absolute -top-24 -left-24 w-72 h-72 bg-primary-600/20 rounded-full blur-[90px] pointer-events-none" />
             <div className="absolute -bottom-24 -right-24 w-72 h-72 bg-purple-600/20 rounded-full blur-[90px] pointer-events-none" />
 
             <div className="relative z-10 flex flex-col lg:flex-row lg:items-center justify-between gap-6">
               <div className="flex items-center gap-5">
                 <div className="relative p-3 bg-white/5 border border-white/15 rounded-2xl shadow-xl backdrop-blur-md group cursor-pointer hover:border-primary-500/50 transition-colors">
-                   <div className="absolute inset-0 bg-gradient-to-tr from-primary-600/30 to-purple-600/30 blur-xl opacity-50 group-hover:opacity-100 transition-opacity" />
-                   <div className="relative z-10 flex items-center justify-center w-12 h-12">
-                      <Shield className="w-10 h-10 text-primary-500 absolute" strokeWidth={1.5} />
-                      <Sword className="w-6 h-6 text-white absolute mb-1 drop-shadow-lg" strokeWidth={2.5} />
-                   </div>
+                  <div className="absolute inset-0 bg-gradient-to-tr from-primary-600/30 to-purple-600/30 blur-xl opacity-50 group-hover:opacity-100 transition-opacity" />
+                  <div className="relative z-10 flex items-center justify-center w-12 h-12">
+                    <Shield className="w-10 h-10 text-primary-500 absolute" strokeWidth={1.5} />
+                    <Sword className="w-6 h-6 text-white absolute mb-1 drop-shadow-lg" strokeWidth={2.5} />
+                  </div>
                 </div>
                 <div>
                   <div className="flex items-center gap-2 mb-1">
                     <span className="px-2.5 py-0.5 rounded-full bg-primary-500/20 border border-primary-500/30 text-[9px] font-black uppercase tracking-widest text-primary-400 flex items-center gap-1.5 shadow-sm">
-                      <span className="w-1.5 h-1.5 bg-primary-500 rounded-full animate-pulse"/> iOS CONTROL CENTER v2.5
+                      <span className="w-1.5 h-1.5 bg-primary-500 rounded-full animate-pulse"/> SHADOW GARDEN ADMIN CONTROL
                     </span>
                   </div>
                   <h1 className="text-3xl md:text-4xl font-minomu tracking-wider text-white leading-none drop-shadow-md">
-                    GUILD MASTER
+                    {MASTER_TABS.find(t => t.id === activeTab)?.label || 'GUILD MASTER'}
                   </h1>
                 </div>
               </div>
 
               {/* iOS System Telemetry Status Bar */}
               <div className="flex flex-wrap items-center gap-3 bg-black/40 p-2.5 rounded-2xl border border-white/10 backdrop-blur-xl shadow-inner">
-                 <div className="flex items-center gap-2 px-3 py-1.5 bg-white/5 rounded-xl border border-white/5">
-                    <Activity size={13} className="text-emerald-400 animate-pulse" />
-                    <span className="text-[10px] font-bold text-zinc-300">PING <span className="text-emerald-400 font-mono">12ms</span></span>
-                 </div>
-                 <div className="flex items-center gap-2 px-3 py-1.5 bg-white/5 rounded-xl border border-white/5">
-                    <Users size={13} className="text-blue-400" />
-                    <span className="text-[10px] font-bold text-zinc-300">ACTIVE <span className="text-blue-400 font-mono">ONLINE</span></span>
-                 </div>
-                 <div className="flex items-center gap-2 px-3 py-1.5 bg-white/5 rounded-xl border border-white/5">
-                    <Globe size={13} className="text-purple-400" />
-                    <span className="text-[10px] font-bold text-zinc-300">SYSTEM <span className="text-purple-400 font-mono">HEALTHY</span></span>
-                 </div>
+                <div className="flex items-center gap-2 px-3 py-1.5 bg-white/5 rounded-xl border border-white/5">
+                  <Activity size={13} className="text-emerald-400 animate-pulse" />
+                  <span className="text-[10px] font-bold text-zinc-300">PING <span className="text-emerald-400 font-mono">12ms</span></span>
+                </div>
+                <div className="flex items-center gap-2 px-3 py-1.5 bg-white/5 rounded-xl border border-white/5">
+                  <Users size={13} className="text-blue-400" />
+                  <span className="text-[10px] font-bold text-zinc-300">ACTIVE <span className="text-blue-400 font-mono">ONLINE</span></span>
+                </div>
+                <div className="flex items-center gap-2 px-3 py-1.5 bg-white/5 rounded-xl border border-white/5">
+                  <Globe size={13} className="text-purple-400" />
+                  <span className="text-[10px] font-bold text-zinc-300">SYSTEM <span className="text-purple-400 font-mono">HEALTHY</span></span>
+                </div>
               </div>
             </div>
           </header>
 
-          {/* --- iOS SEGMENTED CONTROL BAR / MOBILE SIDE PANEL MENU --- */}
-          <div className="mb-8 sticky top-4 z-50">
-            {/* Mobile Side Drawer Toggle Button (Top-Left 3 Lines) */}
-            <div className="flex md:hidden items-center justify-between px-4 py-2.5 bg-[#09090d]/90 backdrop-blur-3xl border border-white/10 rounded-full shadow-[0_15px_35px_rgba(0,0,0,0.8)]">
-               <button 
-                 onClick={() => setMobileMenuOpen(true)} 
-                 className="flex items-center gap-2.5 text-white font-bold text-xs uppercase active:scale-95 transition-all"
-               >
-                 <Menu size={20} className="text-primary-500" />
-                 <span>{MASTER_TABS.find(t => t.id === activeTab)?.label || 'Menu'}</span>
-               </button>
-               <span className="text-[9px] font-black text-zinc-500 uppercase tracking-widest">MASTER PANEL</span>
-            </div>
-
-            {/* Desktop Control Bar */}
-            <div className="hidden md:flex p-1.5 bg-[#09090d]/80 backdrop-blur-3xl border border-white/10 rounded-full shadow-[0_15px_35px_rgba(0,0,0,0.8)] overflow-x-auto no-scrollbar items-center justify-between gap-1 w-full max-w-full">
-               {MASTER_TABS.map(t => (
-                 <TabBtn key={t.id} id={t.id as Tab} icon={t.icon} label={t.label} active={activeTab} onClick={switchTab} />
-               ))}
-            </div>
+          {/* Tab Panel Content */}
+          <div className="animate-in fade-in slide-in-from-bottom-4 duration-300 min-h-[500px]">
+            <div className={activeTab === 'GUILD_DESK' ? 'block' : 'hidden'}><OverviewTab changeTab={switchTab} /></div>
+            <div className={activeTab === 'GUILD_INFO' ? 'block' : 'hidden'}><IdentityTab /></div>
+            <div className={activeTab === 'ADVENTURERS' ? 'block' : 'hidden'}><RosterTab /></div>
+            <div className={activeTab === 'TITLES_HIERARCHY' ? 'block' : 'hidden'}><RoleTitleManager /></div>
+            <div className={activeTab === 'GUILD_BOARDS' ? 'block' : 'hidden'}><GuildBoardsPanel /></div>
+            <div className={activeTab === 'PALETTES' ? 'block' : 'hidden'}><ThemePaletteTab /></div>
+            <div className={activeTab === 'MOD_APPS' ? 'block' : 'hidden'}><ModApplicationsTab /></div>
+            <div className={activeTab === 'MAGIC_NET' ? 'block' : 'hidden'}><NetworkTab /></div>
+            <div className={activeTab === 'VOICES' ? 'block' : 'hidden'}><VoiceTab /></div>
+            <div className={activeTab === 'NOTICE' ? 'block' : 'hidden'}><BroadcastTab /></div>
           </div>
 
-          {/* Mobile Side Drawer Overlay */}
-          {mobileMenuOpen && (
-            <div className="fixed inset-0 z-[100] flex md:hidden">
-               <div 
-                 className="fixed inset-0 bg-black/80 backdrop-blur-md animate-in fade-in duration-200" 
-                 onClick={() => setMobileMenuOpen(false)} 
-               />
-               <div className="relative w-72 max-w-[85vw] bg-[#09090d] border-r border-white/10 h-full p-6 flex flex-col justify-between shadow-2xl z-10 animate-in slide-in-from-left duration-300">
-                  <div>
-                     <div className="flex items-center justify-between pb-6 border-b border-white/10 mb-6">
-                        <div className="flex items-center gap-2.5">
-                           <Shield className="w-6 h-6 text-primary-500" />
-                           <span className="font-minomu font-bold text-sm tracking-wider text-white">GUILD MASTER</span>
-                        </div>
-                        <button 
-                          onClick={() => setMobileMenuOpen(false)}
-                          className="p-1.5 rounded-full bg-white/5 border border-white/10 text-zinc-400 hover:text-white"
-                        >
-                           <X size={16} />
-                        </button>
-                     </div>
-                     
-                     <div className="flex flex-col gap-1.5">
-                        {MASTER_TABS.map(tab => {
-                           const Icon = tab.icon;
-                           const isActive = activeTab === tab.id;
-                           return (
-                              <button
-                                key={tab.id}
-                                onClick={() => {
-                                   switchTab(tab.id as Tab);
-                                   setMobileMenuOpen(false);
-                                }}
-                                className={cn(
-                                  "flex items-center gap-3 px-4 py-3 rounded-2xl text-xs font-bold transition-all text-left w-full",
-                                  isActive ? "bg-primary-600 text-white shadow-lg shadow-primary-600/30 border border-primary-500/50" : "text-zinc-400 hover:bg-white/5 hover:text-white"
-                                )}
-                              >
-                                 <Icon size={16} className={isActive ? "text-white" : "text-zinc-400"} />
-                                 <span>{tab.label}</span>
-                              </button>
-                           );
-                        })}
-                     </div>
-                  </div>
-
-                  <div className="pt-6 border-t border-white/10 text-center">
-                     <p className="text-[10px] font-mono text-zinc-600 uppercase">Shadow Garden Master v2.5</p>
-                  </div>
-               </div>
+          {/* Footer */}
+          <footer className="w-full border-t border-white/5 bg-zinc-900/20 py-6 mt-12 rounded-3xl">
+            <div className="px-4 text-center space-y-2 w-full">
+              <div className="flex justify-center items-center gap-3 opacity-80 hover:opacity-100 transition-opacity">
+                <img src="/icon.svg" className="w-6 h-6 drop-shadow-lg" alt="Guild Seal"/>
+                <h4 className="font-minomu font-bold text-base text-white tracking-widest">SHADOW GARDEN</h4>
+              </div>
+              <p className="text-zinc-600 text-[10px] font-mono uppercase tracking-widest">
+                Guild-Master Console • V2.5 • {user?.email}
+              </p>
             </div>
-          )}
+          </footer>
+        </main>
 
-          {/* --- CONTENT PANELS --- */}
-          <main className="animate-in fade-in slide-in-from-bottom-4 duration-300 min-h-[500px]">
-              <div className={activeTab === 'GUILD_DESK' ? 'block' : 'hidden'}><OverviewTab changeTab={switchTab} /></div>
-              <div className={activeTab === 'GUILD_INFO' ? 'block' : 'hidden'}><IdentityTab /></div>
-              <div className={activeTab === 'ADVENTURERS' ? 'block' : 'hidden'}><RosterTab /></div>
-              <div className={activeTab === 'TITLES_HIERARCHY' ? 'block' : 'hidden'}><RoleTitleManager /></div>
-              <div className={activeTab === 'GUILD_BOARDS' ? 'block' : 'hidden'}><GuildBoardsPanel /></div>
-              <div className={activeTab === 'PALETTES' ? 'block' : 'hidden'}><ThemePaletteTab /></div>
-              <div className={activeTab === 'MOD_APPS' ? 'block' : 'hidden'}><ModApplicationsTab /></div>
-              <div className={activeTab === 'MAGIC_NET' ? 'block' : 'hidden'}><NetworkTab /></div>
-              <div className={activeTab === 'VOICES' ? 'block' : 'hidden'}><VoiceTab /></div>
-              <div className={activeTab === 'NOTICE' ? 'block' : 'hidden'}><BroadcastTab /></div>
-          </main>
-        </div>
-
-        {/* --- FOOTER --- */}
-        <footer className="w-full border-t border-white/5 bg-zinc-900/20 py-8 mt-8">
-          <div className="max-w-[1350px] mx-auto px-4 text-center space-y-4">
-            <div className="flex justify-center items-center gap-3 opacity-80 hover:opacity-100 transition-opacity">
-               <img src="/icon.svg" className="w-8 h-8 drop-shadow-lg" alt="Guild Seal"/>
-               <h4 className="font-minomu font-bold text-lg text-white tracking-widest">SHADOW GARDEN</h4>
-            </div>
-            <p className="text-zinc-600 text-[10px] font-mono uppercase tracking-widest">
-              Guild-Master Console • V0.1.2 (Beta) • {user?.email}
-            </p>
-          </div>
-        </footer>
-
-        <div className="h-8 w-full" />
       </div>
     </RoleGuard>
   );
