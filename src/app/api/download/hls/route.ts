@@ -2,9 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import crypto from 'node:crypto';
 
 export const runtime = 'nodejs';
-// Large HLS downloads can take a while to fully fetch+concat server-side.
-// Requires a hosting plan that allows longer function durations (e.g. Vercel Pro).
-export const maxDuration = 800;
+export const maxDuration = 300; // Vercel Hobby plan max; upgrade to Pro for 800+
 
 const UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36';
 
