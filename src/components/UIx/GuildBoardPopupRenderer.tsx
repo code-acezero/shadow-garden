@@ -14,14 +14,14 @@ export default function GuildBoardPopupRenderer() {
   // Check if current page is explicitly allowed to display Guild Boards
   const isAllowedPage = React.useMemo(() => {
     if (!pathname) return false;
-    // Watch pages and all other pages are stripped off
+    // Watch pages and landing page are stripped off
     if (
+      pathname === '/' ||
       pathname.includes('/watch') || 
       pathname.includes('-watch')
     ) return false;
 
     return (
-      pathname === '/' ||
       pathname === '/home' ||
       pathname === '/drama' ||
       pathname.startsWith('/drama/') ||

@@ -1,1 +1,0 @@
-async function test() { const res = await fetch("https://anikoto-api-ivory.vercel.app/api/blakite/info/82684"); console.log("HPI Status:", res.status); console.log("HPI Body:", (await res.text()).substring(0, 500)); } test();

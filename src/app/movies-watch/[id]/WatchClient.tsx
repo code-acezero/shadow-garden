@@ -440,12 +440,12 @@ export default function WatchClient() {
               </div>
 
               {/* Controls Bar */}
-              <div className={cn("flex w-full bg-white/5 backdrop-blur-md border border-white/10 rounded-[30px] shadow-[0_8px_32px_0_rgba(0,0,0,0.2)] p-2.5 sm:px-4 sm:py-3 items-center justify-between gap-2 flex-wrap flex-row mt-3 transition-all duration-500", dimMode ? "z-[60] relative" : "relative z-10")}>
-                <div className="flex flex-1 sm:flex-initial items-center gap-1.5 sm:gap-2 min-w-0">
-                  {/* Server selector */}
+              <div className={cn("flex flex-wrap gap-3 w-full bg-white/5 backdrop-blur-md border border-white/10 rounded-[30px] shadow-[0_8px_32px_0_rgba(0,0,0,0.2)] px-3 sm:px-5 py-3 items-center justify-between mt-3 transition-all duration-500", dimMode ? "z-[60] relative" : "relative z-10")}>
+                {/* Left: Server / Season pickers */}
+                <div className="flex items-center gap-2 min-w-0 overflow-hidden">
                   <DropdownMenu modal={false}>
                     <DropdownMenuTrigger asChild>
-                      <Button variant="ghost" className="flex-1 sm:flex-initial h-8 gap-1.5 text-[10px] font-black text-emerald-300 hover:text-white uppercase rounded-full border border-emerald-900/40 bg-emerald-950/20 px-2.5 sm:px-3 min-w-0">
+                      <Button variant="ghost" className="h-8 gap-1.5 text-[10px] font-black text-emerald-300 hover:text-white uppercase rounded-full border border-emerald-900/40 bg-emerald-950/20 px-3 max-w-[130px]">
                         <ServerIcon size={11} className="shrink-0" />
                         <span className="truncate">{activeServerName || 'Server'}</span>
                         <ChevronDown size={10} className="shrink-0" />
@@ -471,12 +471,11 @@ export default function WatchClient() {
                     </DropdownMenuContent>
                   </DropdownMenu>
 
-                  {/* Season picker */}
                   {isSeries && (
                     <DropdownMenu modal={false}>
                       <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" className="flex-1 sm:flex-initial h-8 gap-1 text-[10px] font-black text-emerald-300 hover:text-white uppercase rounded-full border border-emerald-900/40 bg-emerald-950/20 px-2 sm:px-3 min-w-0">
-                          <span className="truncate">S{activeSeason}</span> <ChevronDown size={10} className="shrink-0" />
+                        <Button variant="ghost" className="h-8 gap-1 text-[10px] font-black text-emerald-300 hover:text-white uppercase rounded-full border border-emerald-900/40 bg-emerald-950/20 px-3">
+                          <span>S{activeSeason}</span> <ChevronDown size={10} className="shrink-0" />
                         </Button>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="start" className="bg-[#020617] border border-emerald-900/30 rounded-2xl shadow-2xl z-[80] p-1.5 min-w-[130px]">
@@ -493,9 +492,8 @@ export default function WatchClient() {
                   )}
                 </div>
 
-                <div className="flex flex-1 sm:flex-initial items-center gap-1.5 sm:gap-2 justify-end min-w-0">
-
-                  {/* Prev / Next / AutoNext (Series only) */}
+                {/* Right: Playback controls + actions */}
+                <div className="flex items-center gap-1.5 flex-shrink-0">
                   {isSeries && episodesList.length > 0 && (() => {
                     const season = movie.seasons?.find(s => s.seasonNumber === activeSeason);
                     const episodes = season?.episodes || [];
@@ -504,53 +502,38 @@ export default function WatchClient() {
                     const hasNext = currentIdx !== -1 && currentIdx < episodes.length - 1;
                     return (
                       <>
-                        <button
-                          onClick={goToPrevEpisode}
-                          disabled={!hasPrev}
-                          title="Previous Episode"
-                          className="h-8 w-8 flex items-center justify-center rounded-full border border-emerald-900/40 bg-emerald-950/20 text-emerald-300 hover:bg-emerald-500/20 hover:text-white disabled:opacity-25 disabled:cursor-not-allowed transition-all"
-                        >
+                        <button onClick={goToPrevEpisode} disabled={!hasPrev} title="Previous Episode"
+                          className="h-8 w-8 flex items-center justify-center rounded-full border border-emerald-900/40 bg-emerald-950/20 text-emerald-300 hover:bg-emerald-500/20 hover:text-white disabled:opacity-25 disabled:cursor-not-allowed transition-all">
                           <SkipBack size={13} />
                         </button>
-                        <button
-                          onClick={goToNextEpisode}
-                          disabled={!hasNext}
-                          title="Next Episode"
-                          className="h-8 w-8 flex items-center justify-center rounded-full border border-emerald-900/40 bg-emerald-950/20 text-emerald-300 hover:bg-emerald-500/20 hover:text-white disabled:opacity-25 disabled:cursor-not-allowed transition-all"
-                        >
+                        <button onClick={goToNextEpisode} disabled={!hasNext} title="Next Episode"
+                          className="h-8 w-8 flex items-center justify-center rounded-full border border-emerald-900/40 bg-emerald-950/20 text-emerald-300 hover:bg-emerald-500/20 hover:text-white disabled:opacity-25 disabled:cursor-not-allowed transition-all">
                           <SkipForward size={13} />
                         </button>
-                        <button
-                          onClick={() => setAutoNext(v => !v)}
-                          title={autoNext ? 'Auto-Next: ON' : 'Auto-Next: OFF'}
-                          className={cn(
-                            "h-8 px-2 flex items-center gap-1 rounded-full border text-[9px] font-black uppercase tracking-widest transition-all",
-                            autoNext
-                              ? "border-emerald-500/60 bg-emerald-500/20 text-emerald-300"
-                              : "border-emerald-900/40 bg-emerald-950/20 text-zinc-500"
-                          )}
-                        >
-                          <Repeat1 size={11} />
-                          <span className="hidden sm:inline">Auto</span>
+                        <button onClick={() => setAutoNext(v => !v)} title={autoNext ? 'Auto-Next: ON' : 'Auto-Next: OFF'}
+                          className={cn("h-8 px-2.5 flex items-center gap-1 rounded-full border text-[9px] font-black uppercase tracking-widest transition-all",
+                            autoNext ? "border-emerald-500/60 bg-emerald-500/20 text-emerald-300" : "border-emerald-900/40 bg-emerald-950/20 text-zinc-500")}>
+                          <Repeat1 size={11} /><span className="hidden sm:inline">Auto</span>
                         </button>
                       </>
                     );
                   })()}
 
-                  <Button onClick={() => setDimMode(v => !v)} variant="ghost" size="icon" className={cn("rounded-full w-8 h-8 transition-all hover:scale-110 shadow-indigo-900/10 flex-shrink-0", dimMode ? "text-yellow-500 bg-yellow-500/10" : "text-zinc-600 hover:bg-white/5 shadow-none")}><Lightbulb size={14} /></Button>
+                  <Button onClick={() => setDimMode(v => !v)} variant="ghost" size="icon"
+                    className={cn("rounded-full w-8 h-8 transition-all hover:scale-110 flex-shrink-0", dimMode ? "text-yellow-500 bg-yellow-500/10" : "text-zinc-600 hover:bg-white/5")}>
+                    <Lightbulb size={14} />
+                  </Button>
+
                   <Link href={`/download/movie/${movie.id || slug}${isSeries ? `?season=${activeSeason}&ep=${activeEpisode}` : ''}`}
-                    className="flex-1 sm:flex-initial flex items-center justify-center gap-1.5 px-2 sm:px-3 h-8 rounded-full border border-emerald-500/20 bg-[#0a0f1c] hover:bg-emerald-500/20 text-emerald-300 text-[10px] font-black uppercase tracking-widest transition-all hover:text-white whitespace-nowrap min-w-0">
-                    <Download size={11} className="shrink-0" /> <span className="sm:inline hidden">Download</span>
+                    className="h-8 w-8 sm:w-auto sm:px-3 flex items-center justify-center gap-1.5 rounded-full border border-emerald-500/20 bg-emerald-950/20 hover:bg-emerald-500/20 text-emerald-300 text-[10px] font-black uppercase tracking-widest transition-all hover:text-white">
+                    <Download size={11} /><span className="hidden sm:inline">Download</span>
                   </Link>
-                  <div className="flex-1 sm:flex-initial flex min-w-0 justify-end items-center gap-2">
-                    <Link
-                      href={`/rooms`}
-                      className="px-3 h-8 rounded-full bg-primary-600/20 border border-primary-500/30 text-primary-400 hover:bg-primary-600 hover:text-white text-[9px] sm:text-[10px] font-black uppercase tracking-widest flex items-center gap-1.5 transition-all"
-                    >
-                      <Users size={13} /> Room
-                    </Link>
-                    <WatchListButton animeId={movie.id} animeTitle={movie.title} animeImage={movie.image} mediaType="movie" />
-                  </div>
+
+                  <Link href="/rooms"
+                    className="h-8 w-8 sm:w-auto sm:px-3 flex items-center justify-center gap-1.5 rounded-full bg-primary-600/20 border border-primary-500/30 text-primary-400 hover:bg-primary-600 hover:text-white text-[10px] font-black uppercase tracking-widest transition-all">
+                    <Users size={13} /><span className="hidden sm:inline">Room</span>
+                  </Link>
+                  <WatchListButton animeId={movie.id} animeTitle={movie.title} animeImage={movie.image} mediaType="movie" />
                 </div>
               </div>
 

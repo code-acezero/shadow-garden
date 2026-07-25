@@ -227,11 +227,13 @@ export default function LandingClient() {
       if (AudioContext) {
         const ctx = new AudioContext();
         ctx.resume();
-        localStorage.setItem('shadow_audio_permitted', 'true');
       }
     } catch (e) {
       console.warn("Audio Context init failed:", e);
     }
+    // Always mark audio as permitted — user clicked, that satisfies the browser gate
+    localStorage.setItem('shadow_audio_permitted', 'true');
+    localStorage.setItem('guild_audio_permit', 'true');
   }, []);
 
   const handleSceneReady = useCallback(() => { setShowLandingUI(true); }, []);

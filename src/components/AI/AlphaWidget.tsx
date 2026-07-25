@@ -600,6 +600,9 @@ export default function AlphaWidget() {
 
     const ALL_STATES = ['bow', 'error', 'explain', 'greet', 'guard', 'relax', 'success', 'surprise', 'think', 'whisper'];
 
+    // Don't render on landing page — it interferes with the portal background
+    if (pathname === '/') return null;
+
     return (
         <AnimatePresence>
             {isOpen && (

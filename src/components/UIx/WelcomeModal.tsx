@@ -2,22 +2,27 @@
 
 import { useEffect, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Mic2, Fingerprint } from "lucide-react";
-import { cn } from "@/lib/utils";
+import { Fingerprint } from "lucide-react";
 import { playVoice } from "@/lib/voice"; // Re-using your existing voice logic
+import { usePathname } from "next/navigation";
 
 export default function WelcomeModal() {
   const [isOpen, setIsOpen] = useState(false);
+  const pathname = usePathname();
 
   useEffect(() => {
-    // 1. Check if we already have permission
-    const hasPermit = localStorage.getItem("guild_audio_permit");
-    
-    // 2. If not, show the modal immediately
+    // Don't show on the landing page — it has its own interaction gate
+    if (pathname === "/") return;
+
+    // Check both keys: guild_audio_permit (this modal) or shadow_audio_permitted (set by landing)
+    const hasPermit =
+      localStorage.getItem("guild_audio_permit") === "true" ||
+      localStorage.getItem("shadow_audio_permitted") === "true";
+
     if (!hasPermit) {
       setIsOpen(true);
     }
-  }, []);
+  }, [pathname]);
 
   const handleGrant = async () => {
     try {
