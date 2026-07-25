@@ -163,7 +163,7 @@ DCard.displayName = "DCard";
 const MoviesRow = ({ section, isFirst }: { section: DramaSection & { query?: string }, isFirst?: boolean }) => {
   if (!section.items.length) return null;
   return (
-    <div className={cn("w-full relative z-30 px-4 md:px-8", isFirst ? "-mt-8 md:-mt-14" : "mt-4")}>
+    <div className={cn("w-full relative z-30 px-4 md:px-8", isFirst ? "mt-3 md:-mt-10" : "mt-4")}>
       <div className="mb-2 flex items-center justify-between w-full">
           <h2 className="text-[15px] sm:text-[17px] md:text-[20px] font-black text-white tracking-tight flex items-center gap-2 group cursor-pointer w-fit drop-shadow-md">
              {section.title}
@@ -173,7 +173,7 @@ const MoviesRow = ({ section, isFirst }: { section: DramaSection & { query?: str
           </Link>
       </div>
       <div className="w-full relative group/row">
-          <div className="flex gap-3.5 sm:gap-4 md:gap-5 pt-6 pb-7 pr-4 overflow-x-auto no-scrollbar scroll-smooth snap-x snap-mandatory">
+          <div className="flex gap-3.5 sm:gap-4 md:gap-5 pt-4 pb-6 pr-4 overflow-x-auto no-scrollbar scroll-smooth snap-x snap-mandatory">
             {section.items.map(item => (
               <div key={item.id} className="snap-start shrink-0 w-[130px] sm:w-[160px] md:w-[195px] relative hover:z-50">
                 <DCard item={item} />
@@ -236,7 +236,7 @@ const HeroSlider = ({ items }: { items: DramaCard[] }) => {
   const detail = details[item.id];
 
   return (
-    <div className="relative w-full h-[52vh] sm:h-[60vh] md:h-[68vh] lg:h-[72vh] bg-[#020617] overflow-hidden flex items-center justify-center z-10">
+    <div className="relative w-full h-[46vh] sm:h-[55vh] md:h-[65vh] lg:h-[70vh] bg-[#020617] overflow-hidden flex items-center justify-center z-10">
       <AnimatePresence mode="wait">
         <motion.div
           key={item.id}
@@ -253,20 +253,20 @@ const HeroSlider = ({ items }: { items: DramaCard[] }) => {
           {/* Centered Vignette Gradients */}
           <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,_transparent_0%,_#020617_100%)] opacity-80" />
           <div className="absolute inset-0 bg-gradient-to-b from-[#020617]/80 via-transparent to-[#020617] bottom-0" />
-          <div className="absolute inset-0 bg-gradient-to-t from-[#020617] via-transparent to-[#020617]/80 h-28 sm:h-40 top-0" />
+          <div className="absolute inset-0 bg-gradient-to-t from-[#020617] via-transparent to-[#020617]/80 h-24 sm:h-40 top-0" />
           
           {/* Cinematic Glow */}
           <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-emerald-600/10 blur-[150px] rounded-full pointer-events-none" />
         </motion.div>
       </AnimatePresence>
 
-      {/* Top Nav Search Bar Overlay */}
-      <div className="absolute top-14 sm:top-16 md:top-6 right-4 sm:right-6 md:right-10 z-40 flex items-center gap-3">
+      {/* Desktop Search Bar positioned cleanly in Hero header */}
+      <div className="hidden md:flex absolute top-6 right-8 z-40 items-center gap-3">
          <MoviesSearch />
       </div>
 
       {/* Centered Hero Content */}
-      <div className="absolute bottom-10 sm:bottom-14 md:bottom-20 left-0 right-0 px-4 sm:px-6 flex flex-col items-center text-center z-20 pointer-events-none">
+      <div className="absolute bottom-4 sm:bottom-10 md:bottom-16 left-0 right-0 px-4 sm:px-6 flex flex-col items-center text-center z-20 pointer-events-none">
         <AnimatePresence mode="wait">
             <motion.div 
                 key={`content-${item.id}`}
@@ -276,16 +276,16 @@ const HeroSlider = ({ items }: { items: DramaCard[] }) => {
                 transition={{ duration: 0.5, delay: 0.15 }} 
                 className="pointer-events-auto flex flex-col items-center w-full max-w-3xl mx-auto"
             >
-              <div className="flex items-center justify-center gap-1.5 mb-2 sm:mb-3">
-                  <Check size={12} className="text-emerald-400 p-0.5 bg-emerald-400/20 rounded-full" />
+              <div className="flex items-center justify-center gap-1.5 mb-1.5 sm:mb-2">
+                  <Check size={11} className="text-emerald-400 p-0.5 bg-emerald-400/20 rounded-full" />
                   <span className="text-[9px] sm:text-[10px] md:text-xs font-bold text-emerald-300 tracking-[0.2em] uppercase font-lemon">Shadow Exclusives</span>
               </div>
               
-              <h1 className="text-2xl sm:text-4xl md:text-6xl font-black text-white leading-tight mb-2 sm:mb-3 drop-shadow-[0_0_30px_rgba(16,185,129,0.3)] font-gradvis line-clamp-2 px-2">
+              <h1 className="text-lg sm:text-3xl md:text-5xl font-black text-white leading-tight mb-2 drop-shadow-[0_0_30px_rgba(16,185,129,0.3)] font-gradvis line-clamp-2 px-2 max-w-xl">
                 {item.title}
               </h1>
 
-              <div className="flex flex-wrap items-center justify-center gap-1.5 sm:gap-2 text-[9px] sm:text-[10px] md:text-[11px] font-black text-emerald-100/80 mb-3 sm:mb-4 uppercase tracking-widest">
+              <div className="flex flex-wrap items-center justify-center gap-1.5 text-[9px] sm:text-[10px] md:text-[11px] font-black text-emerald-100/80 mb-2.5 sm:mb-4 uppercase tracking-widest">
                   <span className="text-black bg-emerald-400 px-2 py-0.5 rounded-full shadow-[0_0_10px_rgba(16,185,129,0.4)]">Premium</span>
                   {item.year && <span className="bg-white/10 px-2 py-0.5 rounded-full border border-white/10">{item.year}</span>}
                   {item.country && <span className="bg-white/10 px-2 py-0.5 rounded-full border border-white/10">{item.country}</span>}
@@ -293,23 +293,23 @@ const HeroSlider = ({ items }: { items: DramaCard[] }) => {
                   <span className="border border-white/20 px-2 py-0.5 rounded-full">HD</span>
               </div>
 
-              <p className="text-[11px] sm:text-xs md:text-sm text-emerald-50/80 leading-relaxed mb-4 sm:mb-6 line-clamp-2 md:line-clamp-3 font-medium max-w-xl">
+              <p className="hidden sm:block text-xs md:text-sm text-emerald-50/80 leading-relaxed mb-4 line-clamp-2 font-medium max-w-xl">
                  {detail?.synopsis || "Immerse yourself in a world of high-definition cinematic experiences. Watch unlimited movies and series."}
               </p>
               
-              <div className="flex flex-wrap justify-center gap-2.5 sm:gap-3.5">
-                <Link href={`/movies-watch/${item.id}`} className="flex items-center gap-2 bg-emerald-500 hover:bg-emerald-400 text-black font-black text-xs sm:text-sm px-5 py-2.5 sm:px-7 sm:py-3.5 rounded-full transition-all active:scale-95 shadow-[0_0_25px_rgba(16,185,129,0.5)] hover:shadow-[0_0_35px_rgba(16,185,129,0.7)]">
-                  <Play size={16} fill="black" /> Watch Now
+              <div className="flex flex-wrap justify-center gap-2 sm:gap-3">
+                <Link href={`/movies-watch/${item.id}`} className="flex items-center gap-2 bg-emerald-500 hover:bg-emerald-400 text-black font-black text-xs sm:text-sm px-4 py-2 sm:px-6 sm:py-2.5 rounded-full transition-all active:scale-95 shadow-[0_0_25px_rgba(16,185,129,0.5)] hover:shadow-[0_0_35px_rgba(16,185,129,0.7)]">
+                  <Play size={15} fill="black" /> Watch Now
                 </Link>
-                <Link href={`/movies-watch/${item.id}`} className="flex items-center gap-2 bg-white/10 hover:bg-white/20 text-white font-bold text-xs sm:text-sm px-5 py-2.5 sm:px-7 sm:py-3.5 rounded-full transition-all backdrop-blur-md shadow-xl border border-white/20 hover:border-white/40 active:scale-95">
-                  <Info size={16} /> More Info
+                <Link href={`/movies-watch/${item.id}`} className="flex items-center gap-2 bg-white/10 hover:bg-white/20 text-white font-bold text-xs sm:text-sm px-4 py-2 sm:px-6 sm:py-2.5 rounded-full transition-all backdrop-blur-md shadow-xl border border-white/20 hover:border-white/40 active:scale-95">
+                  <Info size={15} /> More Info
                 </Link>
               </div>
             </motion.div>
         </AnimatePresence>
         
         {/* Indicators */}
-        <div className="flex items-center justify-center gap-1.5 sm:gap-2 mt-4 sm:mt-6 pointer-events-auto w-fit bg-black/40 backdrop-blur-md px-3 py-1.5 rounded-full border border-white/10">
+        <div className="flex items-center justify-center gap-1.5 mt-2 sm:mt-4 pointer-events-auto w-fit bg-black/40 backdrop-blur-md px-2.5 py-1 rounded-full border border-white/10">
             {items.map((_, i) => (
                 <button 
                     key={i} 

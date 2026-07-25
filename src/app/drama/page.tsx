@@ -92,7 +92,7 @@ const DramaSearch = () => {
 const DramaRow = ({ section, isFirst }: { section: DramaSection & { query?: string }, isFirst?: boolean }) => {
   if (!section.items.length) return null;
   return (
-    <div className={cn("w-full relative z-30 px-4 md:px-8", isFirst ? "-mt-8 md:-mt-14" : "mt-4")}>
+    <div className={cn("w-full relative z-30 px-4 md:px-8", isFirst ? "mt-3 md:-mt-10" : "mt-4")}>
       <div className="mb-2 flex items-center justify-between w-full">
           <h2 className="text-[15px] sm:text-[17px] md:text-[22px] font-black text-white tracking-tight flex items-center gap-2 group cursor-pointer w-fit drop-shadow-md">
              {section.title}
@@ -102,7 +102,7 @@ const DramaRow = ({ section, isFirst }: { section: DramaSection & { query?: stri
           </Link>
       </div>
       <div className="w-full relative group/row">
-          <div className="flex gap-3.5 sm:gap-4 md:gap-5 pt-6 pb-7 pr-4 overflow-x-auto no-scrollbar scroll-smooth snap-x snap-mandatory">
+          <div className="flex gap-3.5 sm:gap-4 md:gap-5 pt-4 pb-6 pr-4 overflow-x-auto no-scrollbar scroll-smooth snap-x snap-mandatory">
             {section.items.map(item => (
               <div key={item.id} className="snap-start shrink-0 w-[130px] sm:w-[160px] md:w-[195px] relative hover:z-50">
                 <DCard item={item} />
@@ -165,7 +165,7 @@ const HeroSlider = ({ items }: { items: DramaCard[] }) => {
   const detail = details[item.id];
 
   return (
-    <div className="relative w-full h-[52vh] sm:h-[60vh] md:h-[68vh] lg:h-[72vh] bg-[#020617] overflow-hidden z-10">
+    <div className="relative w-full h-[46vh] sm:h-[55vh] md:h-[65vh] lg:h-[70vh] bg-[#020617] overflow-hidden z-10">
       <AnimatePresence mode="wait">
         <motion.div
           key={item.id}
@@ -180,8 +180,8 @@ const HeroSlider = ({ items }: { items: DramaCard[] }) => {
           )}
           {/* Gradients */}
           <div className="absolute inset-0 bg-gradient-to-r from-[#020617] via-[#020617]/85 to-transparent w-full md:w-[70%]" />
-          <div className="absolute inset-0 bg-gradient-to-t from-[#020617] via-[#020617]/50 to-transparent bottom-0" />
-          <div className="absolute inset-0 bg-gradient-to-t from-[#020617] via-transparent to-[#020617]/80 h-28 sm:h-32 top-0" />
+          <div className="absolute inset-0 bg-gradient-to-t from-[#020617] via-[#020617]/60 to-transparent bottom-0" />
+          <div className="absolute inset-0 bg-gradient-to-t from-[#020617] via-transparent to-[#020617]/80 h-24 sm:h-32 top-0" />
           
           {/* Magical Flares */}
           <div className="absolute top-1/4 -left-32 w-96 h-96 bg-cyan-600/20 blur-[120px] rounded-full pointer-events-none" />
@@ -189,13 +189,13 @@ const HeroSlider = ({ items }: { items: DramaCard[] }) => {
         </motion.div>
       </AnimatePresence>
 
-      {/* Drama Search Bar positioned cleanly in Hero header area without overlapping top nav */}
-      <div className="absolute top-14 sm:top-16 md:top-6 right-4 sm:right-6 md:right-8 z-40 flex items-center gap-3">
+      {/* Desktop Search Bar positioned cleanly in Hero header */}
+      <div className="hidden md:flex absolute top-6 right-8 z-40 items-center gap-3">
          <DramaSearch />
       </div>
 
       {/* Hero Content */}
-      <div className="absolute bottom-10 sm:bottom-14 md:bottom-20 left-0 w-full px-4 sm:px-6 md:px-12 flex flex-col justify-end z-20 pointer-events-none">
+      <div className="absolute bottom-4 sm:bottom-10 md:bottom-16 left-0 w-full px-4 sm:px-6 md:px-12 flex flex-col justify-end z-20 pointer-events-none">
         <AnimatePresence mode="wait">
             <motion.div 
                 key={`content-${item.id}`}
@@ -205,16 +205,16 @@ const HeroSlider = ({ items }: { items: DramaCard[] }) => {
                 transition={{ duration: 0.5, delay: 0.15 }} 
                 className="pointer-events-auto max-w-3xl w-full"
             >
-              <div className="flex items-center gap-1.5 sm:gap-2 mb-2 sm:mb-3">
-                  <Check size={12} className="text-cyan-400 p-0.5 bg-cyan-400/20 rounded-full" />
+              <div className="flex items-center gap-1.5 mb-1.5 sm:mb-2">
+                  <Check size={11} className="text-cyan-400 p-0.5 bg-cyan-400/20 rounded-full" />
                   <span className="text-[9px] sm:text-[10px] md:text-xs font-black text-cyan-300 tracking-[0.2em] uppercase">Included with Shadow Prime</span>
               </div>
               
-              <h1 className="text-2xl sm:text-4xl md:text-6xl font-black text-white leading-tight tracking-tight mb-2 sm:mb-4 drop-shadow-[0_0_30px_rgba(34,211,238,0.3)] line-clamp-2">
+              <h1 className="text-lg sm:text-3xl md:text-5xl font-black text-white leading-tight tracking-tight mb-2 drop-shadow-[0_0_30px_rgba(34,211,238,0.3)] line-clamp-2 max-w-xl">
                 {item.title}
               </h1>
 
-              <div className="flex flex-wrap items-center gap-1.5 sm:gap-2.5 text-[9px] sm:text-[10px] md:text-[11px] font-black text-cyan-100/80 mb-3 sm:mb-5 uppercase tracking-widest">
+              <div className="flex flex-wrap items-center gap-1.5 text-[9px] sm:text-[10px] md:text-[11px] font-black text-cyan-100/80 mb-2.5 sm:mb-4 uppercase tracking-widest">
                   <span className="text-black bg-cyan-400 px-2 py-0.5 rounded-full font-black shadow-[0_0_10px_rgba(34,211,238,0.4)]">Top Rated</span>
                   <CountryBadge country={item.country} type={item.type} showFullname />
                   {item.year && <span className="bg-white/10 px-2 py-0.5 rounded-full border border-white/10">{item.year}</span>}
@@ -222,27 +222,27 @@ const HeroSlider = ({ items }: { items: DramaCard[] }) => {
                   <span className="border border-white/20 px-2 py-0.5 rounded-full">HD</span>
               </div>
 
-              <p className="text-[11px] sm:text-xs md:text-sm text-cyan-50/80 leading-relaxed mb-4 sm:mb-7 line-clamp-2 md:line-clamp-4 font-medium max-w-2xl">
+              <p className="hidden sm:block text-xs md:text-sm text-cyan-50/80 leading-relaxed mb-4 line-clamp-2 md:line-clamp-3 font-medium max-w-2xl">
                  {detail?.synopsis || "Unveil the mysteries hidden within the shadows. Discover a world of magic, politics, and romance in this exclusive drama."}
               </p>
               
               {/* Rounded Buttons with proper padding & Play label */}
-              <div className="flex items-center flex-wrap gap-2.5 sm:gap-3">
-                <Link href={`/drama-watch/${item.id}`} className="flex items-center justify-center gap-2 bg-cyan-500 hover:bg-cyan-400 text-black font-black text-xs sm:text-sm md:text-base px-5 py-2.5 sm:px-7 sm:py-3 rounded-full transition-all active:scale-95 shadow-[0_0_25px_rgba(34,211,238,0.5)]">
-                  <Play size={16} fill="black" /> Play
+              <div className="flex items-center flex-wrap gap-2 mb-2.5 sm:mb-4">
+                <Link href={`/drama-watch/${item.id}`} className="flex items-center justify-center gap-2 bg-cyan-500 hover:bg-cyan-400 text-black font-black text-xs sm:text-sm md:text-base px-4 py-2 sm:px-6 sm:py-2.5 rounded-full transition-all active:scale-95 shadow-[0_0_25px_rgba(34,211,238,0.5)]">
+                  <Play size={15} fill="black" /> Play
                 </Link>
-                <Link href={`/drama-watch/${item.id}`} className="flex items-center justify-center gap-2 bg-white/10 hover:bg-white/20 text-white font-bold text-xs sm:text-sm md:text-base px-5 py-2.5 sm:px-6 sm:py-3 rounded-full transition-all backdrop-blur-md shadow-xl border border-white/20 active:scale-95">
-                  <Info size={16} /> Details
+                <Link href={`/drama-watch/${item.id}`} className="flex items-center justify-center gap-2 bg-white/10 hover:bg-white/20 text-white font-bold text-xs sm:text-sm md:text-base px-4 py-2 sm:px-5 sm:py-2.5 rounded-full transition-all backdrop-blur-md shadow-xl border border-white/20 active:scale-95">
+                  <Info size={15} /> Details
                 </Link>
-                <button className="flex items-center justify-center w-9 h-9 sm:w-11 sm:h-11 rounded-full bg-white/10 hover:bg-white/20 text-white transition-all backdrop-blur-md border border-white/20 active:scale-95">
-                  <Plus size={18} />
+                <button className="flex items-center justify-center w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-white/10 hover:bg-white/20 text-white transition-all backdrop-blur-md border border-white/20 active:scale-95">
+                  <Plus size={16} />
                 </button>
               </div>
             </motion.div>
         </AnimatePresence>
         
         {/* Indicators */}
-        <div className="flex items-center gap-1.5 sm:gap-2 mt-4 sm:mt-6 pointer-events-auto w-fit bg-black/40 backdrop-blur-md px-3 py-1.5 rounded-full border border-white/10">
+        <div className="flex items-center gap-1.5 pointer-events-auto w-fit bg-black/40 backdrop-blur-md px-2.5 py-1 rounded-full border border-white/10">
             {items.map((_, i) => (
                 <button 
                     key={i} 
