@@ -122,6 +122,8 @@ const AnimePlayer = forwardRef<AnimePlayerRef, AnimePlayerProps>(({
   const [castAvailable, setCastAvailable] = useState(false); 
   const [isPiPActive, setIsPiPActive] = useState(false);
   
+  const [videoAspectRatio, setVideoAspectRatio] = useState<number | null>(null);
+  
   // UI State
   const [showControls, setShowControls] = useState(true);
   const [showSkipIntro, setShowSkipIntro] = useState(false);
@@ -840,10 +842,10 @@ const AnimePlayer = forwardRef<AnimePlayerRef, AnimePlayerProps>(({
       ref={containerRef}
       tabIndex={0} 
       className={cn(
-        "group relative w-full aspect-video min-h-[240px] sm:min-h-[260px] bg-black overflow-hidden font-sans select-none rounded-2xl shadow-2xl ring-1 ring-white/10 outline-none focus:outline-none focus-visible:ring-0",
+        "group relative w-full bg-black overflow-hidden font-sans select-none rounded-2xl shadow-2xl ring-1 ring-white/10 outline-none focus:outline-none focus-visible:ring-0 max-h-[80dvh]",
         showControls ? "cursor-auto" : "cursor-none"
       )}
-      style={{ touchAction: 'none' }} 
+      style={{ touchAction: 'none', aspectRatio: videoAspectRatio ? `${videoAspectRatio}` : '16 / 9' }} 
       onClick={handleContainerClick} 
       onKeyDown={handleKeyDown}
       onMouseDown={handleMouseDown}
@@ -869,6 +871,10 @@ const AnimePlayer = forwardRef<AnimePlayerRef, AnimePlayerProps>(({
         onLoadedMetadata={() => {
             if (videoRef.current) {
                 setDuration(videoRef.current.duration || 0);
+                if (videoRef.current.videoWidth && videoRef.current.videoHeight) {
+                    const r = videoRef.current.videoWidth / videoRef.current.videoHeight;
+                    if (r > 0.3 && r < 3) setVideoAspectRatio(r);
+                }
                 if (startTime > 0 && !hasSeekedStartTimeRef.current) {
                     try {
                         videoRef.current.currentTime = startTime;
