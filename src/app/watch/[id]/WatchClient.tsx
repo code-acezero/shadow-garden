@@ -200,9 +200,9 @@ const EpisodeButton = memo(({ ep, isCurrent, isFullyPlayed, percent, viewMode, o
             onClick={() => onClick(ep.id)}
             className={cn(
                 "relative overflow-hidden group border transition-colors duration-300 transform-gpu shadow-[0_4px_16px_rgba(0,0,0,0.2)]",
-                viewMode === 'grid' ? "h-9 w-full rounded-full flex items-center justify-center text-[11px] font-black" :
-                viewMode === 'compact' ? "aspect-square rounded-full flex items-center justify-center text-[9px] font-bold" :
-                "w-[98%] mx-auto h-9 rounded-full flex items-center px-4 text-[11px] font-bold text-left",
+                viewMode === 'grid' ? "h-8 sm:h-9 w-full rounded-full flex items-center justify-center text-[10px] sm:text-[11px] font-black" :
+                viewMode === 'compact' ? "h-7 sm:h-8 aspect-square rounded-full flex items-center justify-center text-[9px] font-bold" :
+                "w-[98%] mx-auto h-8 sm:h-9 rounded-full flex items-center px-3 sm:px-4 text-[10px] sm:text-[11px] font-bold text-left",
                 isCurrent ? "bg-green-900/30 backdrop-blur-md border-green-400/40 text-white shadow-[inset_0_0_15px_rgba(74,222,128,0.2),0_0_20px_rgba(34,197,94,0.4)] z-20" :
                 isFullyPlayed ? "border border-red-500/60 text-white shadow-[inset_0_0_25px_rgba(220,38,38,0.8)] drop-shadow-[0_0_10px_rgba(220,38,38,0.5)] overflow-hidden" :
                 "bg-white/5 backdrop-blur-xl border-white/10 text-zinc-400 hover:border-white/30 hover:bg-white/10 hover:text-white hover:shadow-[0_0_15px_rgba(255,255,255,0.15)]"
@@ -1398,7 +1398,7 @@ function WatchContent() {
                 </div>
 
                 {/* MOBILE CONTROLS */}
-                <div className={cn("flex lg:hidden w-full bg-white/5 backdrop-blur-md border border-white/10 rounded-[30px] shadow-[0_8px_32px_0_rgba(0,0,0,0.2)] py-4 flex-col gap-3 overflow-hidden mt-3 transition-all duration-500", settings.dimMode ? "z-[96] relative" : "relative z-10")}>
+                <div className={cn("flex lg:hidden w-full max-w-[95%] mx-auto bg-white/5 backdrop-blur-md border border-white/10 rounded-[24px] shadow-[0_8px_32px_0_rgba(0,0,0,0.2)] px-3 py-3 flex-col gap-2.5 overflow-hidden mt-3 transition-all duration-500", settings.dimMode ? "z-[96] relative" : "relative z-10")}>
                     <div className="flex w-full justify-between items-center gap-2">
                         <button disabled={!prevEpisode} onClick={() => prevEpisode && handleEpisodeClick(prevEpisode.id)} className="flex-1 bg-white/5 h-9 rounded-full border border-white/5 flex items-center justify-center text-zinc-400 hover:text-white active:scale-95 disabled:opacity-30 disabled:pointer-events-none transition-all" title="Previous Episode"><SkipBack size={14}/></button>
                         <button onClick={() => updateSetting('autoSkip', !settings.autoSkip)} className={cn("flex-1 h-9 rounded-full border flex items-center justify-center transition-all relative active:scale-95", settings.autoSkip ? "bg-primary-600/20 border-primary-500/60 text-primary-400 shadow-[0_0_12px_rgba(220,38,38,0.25)]" : "bg-white/5 border-white/5 text-zinc-400 hover:text-zinc-200")} title={`Auto Skip Intro: ${settings.autoSkip ? 'ON' : 'OFF'}`}>

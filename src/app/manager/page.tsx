@@ -14,7 +14,7 @@ import {
   AlertCircle, MessageSquareWarning, BookOpen, 
   Scroll, Sword, Feather, 
   Bold, Italic, Type, UserCheck, LayoutDashboard,
-  Filter, ArrowDownCircle, Crown, Plus, Upload, Loader2
+  Filter, ArrowDownCircle, Crown, Plus, Upload, Loader2, Menu, X
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -27,6 +27,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from '@/components/ui/dialog';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
+import RoleTitleManager from '@/components/Admin/RoleTitleManager';
+import { cn } from '@/lib/utils';
 
 // --- NOTIFICATION HELPER ---
 const notify = (title: string, message: string, type: 'success' | 'error' | 'system' = 'system') => {
@@ -37,12 +39,20 @@ const notify = (title: string, message: string, type: 'success' | 'error' | 'sys
     }
 };
 
-import RoleTitleManager from '@/components/Admin/RoleTitleManager';
-
 type Tab = 'GUILD_DESK' | 'GUILD_INFO' | 'ADVENTURERS' | 'TITLES_HIERARCHY' | 'VOICES' | 'NOTICE';
+
+const MANAGER_TABS = [
+  { id: 'GUILD_DESK', icon: LayoutDashboard, label: 'Desk' },
+  { id: 'GUILD_INFO', icon: BookOpen, label: 'Info' },
+  { id: 'ADVENTURERS', icon: Sword, label: 'Adventurers' },
+  { id: 'TITLES_HIERARCHY', icon: Crown, label: 'Titles & Roles' },
+  { id: 'VOICES', icon: Mic2, label: 'Echoes' },
+  { id: 'NOTICE', icon: Feather, label: 'Notices' },
+];
 
 export default function GuildManagerDashboard() {
   const [activeTab, setActiveTab] = useState<Tab>('GUILD_DESK');
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const { user } = useAuth();
   
   useEffect(() => {
@@ -62,65 +72,131 @@ export default function GuildManagerDashboard() {
       <style jsx global>{`
         ::-webkit-scrollbar { display: none; }
         * { -ms-overflow-style: none; scrollbar-width: none; outline: none !important; -webkit-tap-highlight-color: transparent; }
-        input:focus, textarea:focus, select:focus, button:focus { box-shadow: none !important; ring: 0 !important; border-color: rgba(192, 38, 211, 0.5) !important; }
+        input:focus, textarea:focus, select:focus, button:focus { box-shadow: none !important; ring: 0 !important; border-color: rgba(220, 38, 38, 0.5) !important; }
         .font-minomu { font-family: var(--font-minomu), sans-serif; }
       `}</style>
 
-      <div className="min-h-screen bg-[#050505] text-white font-sans relative overflow-y-auto transform-gpu will-change-transform">
-        
-        {/* Ambient Background (Red-Violet) */}
+      <div className="min-h-screen bg-[#050505] text-white font-sans relative overflow-y-auto pb-8 transform-gpu will-change-transform">
         <div className="fixed top-0 left-0 w-full h-96 bg-fuchsia-900/10 blur-[100px] pointer-events-none translate-z-0" />
         <div className="h-24 w-full" />
 
-        <div className="w-full relative z-10">
+        <div className="w-full max-w-[1350px] mx-auto px-4 md:px-8 pb-4 relative z-10">
           
-          {/* --- HEADER --- */}
-          <header className="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-8 border-b border-white/5 pb-6">
-            <div className="flex items-center gap-4">
-              <div className="relative p-2 bg-zinc-900/50 border border-white/10 rounded-xl group overflow-hidden shadow-lg shadow-fuchsia-900/10">
-                 <div className="absolute inset-0 bg-fuchsia-600/20 blur-xl opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
-                 {/* Icon: Sword (Manager) */}
-                 <div className="relative z-10 flex items-center justify-center w-12 h-12">
-                    <Sword className="w-8 h-8 text-fuchsia-500 drop-shadow-md" strokeWidth={2} />
-                 </div>
-              </div>
-              <div>
-                <h1 className="text-3xl md:text-4xl font-minomu tracking-wider text-white leading-none drop-shadow-md">
-                  GUILD MANAGER
-                </h1>
-                <p className="text-[10px] text-fuchsia-500 font-mono tracking-[0.3em] uppercase mt-1 flex items-center gap-2">
-                  <span className="w-1.5 h-1.5 bg-fuchsia-500 rounded-full animate-pulse"/> Level 2 Clearance
-                </p>
-              </div>
-            </div>
+          {/* --- iOS DYNAMIC ISLAND HEADER --- */}
+          <header className="relative bg-[#0d0d12]/70 border border-white/10 rounded-[32px] p-6 md:p-8 mb-8 backdrop-blur-3xl shadow-[0_25px_60px_rgba(0,0,0,0.8)] overflow-hidden">
+            {/* Ambient Background Blur Spheres */}
+            <div className="absolute -top-24 -left-24 w-72 h-72 bg-fuchsia-600/20 rounded-full blur-[90px] pointer-events-none" />
+            <div className="absolute -bottom-24 -right-24 w-72 h-72 bg-primary-600/20 rounded-full blur-[90px] pointer-events-none" />
 
-            <div className="flex items-center gap-6 md:gap-8 bg-zinc-900/40 p-3 md:p-4 rounded-full border border-white/5 backdrop-blur-sm shadow-inner shadow-white/5">
-               <div className="flex flex-col items-center gap-1.5 group cursor-pointer opacity-50">
-                  <Shield size={20} className="text-zinc-500" />
-                  <span className="text-[9px] md:text-[10px] text-zinc-500 font-bold">MASTERS</span>
-               </div>
-               <div className="flex flex-col items-center gap-1.5 group cursor-pointer">
-                  <Sword size={20} className="text-fuchsia-500 scale-110" />
-                  <span className="text-[9px] md:text-[10px] text-white font-bold">MANAGER</span>
-               </div>
-               <div className="flex flex-col items-center gap-1.5 group cursor-pointer opacity-50">
-                  <Lock size={14} className="text-zinc-500" />
-                  <span className="text-[9px] md:text-[10px] text-zinc-500 font-bold">VAULT</span>
-               </div>
+            <div className="relative z-10 flex flex-col lg:flex-row lg:items-center justify-between gap-6">
+              <div className="flex items-center gap-5">
+                <div className="relative p-3 bg-white/5 border border-white/15 rounded-2xl shadow-xl backdrop-blur-md group cursor-pointer hover:border-fuchsia-500/50 transition-colors">
+                   <div className="absolute inset-0 bg-gradient-to-tr from-fuchsia-600/30 to-primary-600/30 blur-xl opacity-50 group-hover:opacity-100 transition-opacity" />
+                   <div className="relative z-10 flex items-center justify-center w-12 h-12">
+                      <Shield className="w-10 h-10 text-fuchsia-500 absolute" strokeWidth={1.5} />
+                      <Sword className="w-6 h-6 text-white absolute mb-1 drop-shadow-lg" strokeWidth={2.5} />
+                   </div>
+                </div>
+                <div>
+                  <div className="flex items-center gap-2 mb-1">
+                    <span className="px-2.5 py-0.5 rounded-full bg-fuchsia-500/20 border border-fuchsia-500/30 text-[9px] font-black uppercase tracking-widest text-fuchsia-400 flex items-center gap-1.5 shadow-sm">
+                      <span className="w-1.5 h-1.5 bg-fuchsia-500 rounded-full animate-pulse"/> GUILD MANAGER v2.5
+                    </span>
+                  </div>
+                  <h1 className="text-3xl md:text-4xl font-minomu tracking-wider text-white leading-none drop-shadow-md">
+                    GUILD MANAGER
+                  </h1>
+                </div>
+              </div>
+
+              {/* iOS System Telemetry Status Bar */}
+              <div className="flex items-center gap-6 bg-black/40 p-3 rounded-2xl border border-white/10 backdrop-blur-xl shadow-inner">
+                <div className="flex items-center gap-3">
+                   <Shield size={20} className="text-primary-500" />
+                   <span className="text-[9px] md:text-[10px] text-zinc-400 font-bold">ADMINS</span>
+                </div>
+                <div className="flex flex-col items-center gap-1.5 group cursor-pointer">
+                   <Sword size={20} className="text-fuchsia-500 scale-110" />
+                   <span className="text-[9px] md:text-[10px] text-white font-bold">MANAGER</span>
+                </div>
+             </div>
             </div>
           </header>
 
-          {/* --- NAVIGATION TABS --- */}
+          {/* --- NAVIGATION TABS / MOBILE SIDE PANEL MENU --- */}
           <div className="mb-8 sticky top-4 z-50">
-            <div className="flex overflow-x-auto py-2 gap-2 no-scrollbar bg-black/60 backdrop-blur-xl border border-white/10 rounded-full px-2 md:px-4 w-full md:w-fit md:mx-0 shadow-2xl">
-               <TabBtn id="GUILD_DESK" icon={LayoutDashboard} label="Desk" active={activeTab} onClick={switchTab} />
-               <TabBtn id="GUILD_INFO" icon={BookOpen} label="Info" active={activeTab} onClick={switchTab} />
-               <TabBtn id="ADVENTURERS" icon={Sword} label="Adventurers" active={activeTab} onClick={switchTab} />
-               <TabBtn id="TITLES_HIERARCHY" icon={Crown} label="Titles & Roles" active={activeTab} onClick={switchTab} />
-               <TabBtn id="VOICES" icon={Mic2} label="Echoes" active={activeTab} onClick={switchTab} />
-               <TabBtn id="NOTICE" icon={Feather} label="Notices" active={activeTab} onClick={switchTab} />
+            {/* Mobile Side Drawer Toggle Button (Top-Left 3 Lines) */}
+            <div className="flex md:hidden items-center justify-between px-4 py-2.5 bg-[#09090d]/90 backdrop-blur-3xl border border-white/10 rounded-full shadow-[0_15px_35px_rgba(0,0,0,0.8)]">
+               <button 
+                 onClick={() => setMobileMenuOpen(true)} 
+                 className="flex items-center gap-2.5 text-white font-bold text-xs uppercase active:scale-95 transition-all"
+               >
+                 <Menu size={20} className="text-fuchsia-500" />
+                 <span>{MANAGER_TABS.find(t => t.id === activeTab)?.label || 'Menu'}</span>
+               </button>
+               <span className="text-[9px] font-black text-zinc-500 uppercase tracking-widest">MANAGER PANEL</span>
+            </div>
+
+            {/* Desktop Navigation Tabs */}
+            <div className="hidden md:flex overflow-x-auto py-2 gap-2 no-scrollbar bg-black/60 backdrop-blur-xl border border-white/10 rounded-full px-2 md:px-4 w-full md:w-fit md:mx-0 shadow-2xl">
+               {MANAGER_TABS.map(t => (
+                 <TabBtn key={t.id} id={t.id as Tab} icon={t.icon} label={t.label} active={activeTab} onClick={switchTab} />
+               ))}
             </div>
           </div>
+
+          {/* Mobile Side Drawer Overlay */}
+          {mobileMenuOpen && (
+            <div className="fixed inset-0 z-[100] flex md:hidden">
+               <div 
+                 className="fixed inset-0 bg-black/80 backdrop-blur-md animate-in fade-in duration-200" 
+                 onClick={() => setMobileMenuOpen(false)} 
+               />
+               <div className="relative w-72 max-w-[85vw] bg-[#09090d] border-r border-white/10 h-full p-6 flex flex-col justify-between shadow-2xl z-10 animate-in slide-in-from-left duration-300">
+                  <div>
+                     <div className="flex items-center justify-between pb-6 border-b border-white/10 mb-6">
+                        <div className="flex items-center gap-2.5">
+                           <Sword className="w-6 h-6 text-fuchsia-500" />
+                           <span className="font-minomu font-bold text-sm tracking-wider text-white">GUILD MANAGER</span>
+                        </div>
+                        <button 
+                          onClick={() => setMobileMenuOpen(false)}
+                          className="p-1.5 rounded-full bg-white/5 border border-white/10 text-zinc-400 hover:text-white"
+                        >
+                           <X size={16} />
+                        </button>
+                     </div>
+                     
+                     <div className="flex flex-col gap-1.5">
+                        {MANAGER_TABS.map(tab => {
+                           const Icon = tab.icon;
+                           const isActive = activeTab === tab.id;
+                           return (
+                              <button
+                                key={tab.id}
+                                onClick={() => {
+                                   switchTab(tab.id as Tab);
+                                   setMobileMenuOpen(false);
+                                }}
+                                className={cn(
+                                  "flex items-center gap-3 px-4 py-3 rounded-2xl text-xs font-bold transition-all text-left w-full",
+                                  isActive ? "bg-fuchsia-600 text-white shadow-lg shadow-fuchsia-600/30 border border-fuchsia-500/50" : "text-zinc-400 hover:bg-white/5 hover:text-white"
+                                )}
+                              >
+                                 <Icon size={16} className={isActive ? "text-white" : "text-fuchsia-400"} />
+                                 <span>{tab.label}</span>
+                              </button>
+                           );
+                        })}
+                     </div>
+                  </div>
+
+                  <div className="pt-6 border-t border-white/10 text-center">
+                     <p className="text-[10px] font-mono text-zinc-600 uppercase">Shadow Garden Manager v2.5</p>
+                  </div>
+               </div>
+            </div>
+          )}
 
           {/* --- CONTENT PANELS --- */}
           <main className="animate-in fade-in slide-in-from-bottom-4 duration-300 min-h-[500px]">

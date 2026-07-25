@@ -17,7 +17,7 @@ import {
   AlertCircle, MessageSquareWarning, Folder, FileAudio, Eye,
   Scroll, Sword, BookOpen, Link2, Feather, Play, Pause,
   Bold, Italic, Type, UserCheck, X, LayoutDashboard, Palette,
-  Filter, ArrowDownCircle
+  Filter, ArrowDownCircle, Menu
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -30,6 +30,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from '@/components/ui/dialog';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
+import { cn } from '@/lib/utils';
 
 // --- NOTIFICATION HELPER ---
 const notify = (title: string, message: string, type: 'success' | 'error' | 'system' = 'system') => {
@@ -42,8 +43,20 @@ const notify = (title: string, message: string, type: 'success' | 'error' | 'sys
 
 type Tab = 'GUILD_DESK' | 'GUILD_INFO' | 'ADVENTURERS' | 'PALETTES' | 'MOD_APPS' | 'MAGIC_NET' | 'VOICES' | 'NOTICE';
 
+const MASTER_TABS = [
+  { id: 'GUILD_DESK', icon: LayoutDashboard, label: 'Desk' },
+  { id: 'GUILD_INFO', icon: BookOpen, label: 'Site Specs' },
+  { id: 'ADVENTURERS', icon: Sword, label: 'Adventurers' },
+  { id: 'PALETTES', icon: Palette, label: 'Palettes' },
+  { id: 'MOD_APPS', icon: UserCheck, label: 'Mod Apps' },
+  { id: 'MAGIC_NET', icon: Globe, label: 'Magic Net' },
+  { id: 'VOICES', icon: Mic2, label: 'Echoes' },
+  { id: 'NOTICE', icon: Feather, label: 'Notices' },
+];
+
 export default function GuildMasterDashboard() {
   const [activeTab, setActiveTab] = useState<Tab>('GUILD_DESK');
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const { user } = useAuth();
   
   useEffect(() => {
@@ -59,7 +72,7 @@ export default function GuildMasterDashboard() {
   };
 
   return (
-    <RoleGuard allowedRoles={['admin']}>
+    <RoleGuard allowedRoles={['admin', 'moderator']}>
       <style jsx global>{`
         ::-webkit-scrollbar { display: none; }
         * { -ms-overflow-style: none; scrollbar-width: none; outline: none !important; -webkit-tap-highlight-color: transparent; }
@@ -118,19 +131,80 @@ export default function GuildMasterDashboard() {
             </div>
           </header>
 
-          {/* --- iOS SEGMENTED CONTROL BAR --- */}
+          {/* --- iOS SEGMENTED CONTROL BAR / MOBILE SIDE PANEL MENU --- */}
           <div className="mb-8 sticky top-4 z-50">
-            <div className="p-1.5 bg-[#09090d]/80 backdrop-blur-3xl border border-white/10 rounded-full shadow-[0_15px_35px_rgba(0,0,0,0.8)] overflow-x-auto no-scrollbar flex items-center justify-between gap-1 w-full max-w-full">
-               <TabBtn id="GUILD_DESK" icon={LayoutDashboard} label="Desk" active={activeTab} onClick={switchTab} />
-               <TabBtn id="GUILD_INFO" icon={BookOpen} label="Site Specs" active={activeTab} onClick={switchTab} />
-               <TabBtn id="ADVENTURERS" icon={Sword} label="Adventurers" active={activeTab} onClick={switchTab} />
-               <TabBtn id="PALETTES" icon={Palette} label="Palettes" active={activeTab} onClick={switchTab} />
-               <TabBtn id="MOD_APPS" icon={UserCheck} label="Mod Apps" active={activeTab} onClick={switchTab} />
-               <TabBtn id="MAGIC_NET" icon={Globe} label="Magic Net" active={activeTab} onClick={switchTab} />
-               <TabBtn id="VOICES" icon={Mic2} label="Echoes" active={activeTab} onClick={switchTab} />
-               <TabBtn id="NOTICE" icon={Feather} label="Notices" active={activeTab} onClick={switchTab} />
+            {/* Mobile Side Drawer Toggle Button (Top-Left 3 Lines) */}
+            <div className="flex md:hidden items-center justify-between px-4 py-2.5 bg-[#09090d]/90 backdrop-blur-3xl border border-white/10 rounded-full shadow-[0_15px_35px_rgba(0,0,0,0.8)]">
+               <button 
+                 onClick={() => setMobileMenuOpen(true)} 
+                 className="flex items-center gap-2.5 text-white font-bold text-xs uppercase active:scale-95 transition-all"
+               >
+                 <Menu size={20} className="text-primary-500" />
+                 <span>{MASTER_TABS.find(t => t.id === activeTab)?.label || 'Menu'}</span>
+               </button>
+               <span className="text-[9px] font-black text-zinc-500 uppercase tracking-widest">MASTER PANEL</span>
+            </div>
+
+            {/* Desktop Control Bar */}
+            <div className="hidden md:flex p-1.5 bg-[#09090d]/80 backdrop-blur-3xl border border-white/10 rounded-full shadow-[0_15px_35px_rgba(0,0,0,0.8)] overflow-x-auto no-scrollbar items-center justify-between gap-1 w-full max-w-full">
+               {MASTER_TABS.map(t => (
+                 <TabBtn key={t.id} id={t.id as Tab} icon={t.icon} label={t.label} active={activeTab} onClick={switchTab} />
+               ))}
             </div>
           </div>
+
+          {/* Mobile Side Drawer Overlay */}
+          {mobileMenuOpen && (
+            <div className="fixed inset-0 z-[100] flex md:hidden">
+               <div 
+                 className="fixed inset-0 bg-black/80 backdrop-blur-md animate-in fade-in duration-200" 
+                 onClick={() => setMobileMenuOpen(false)} 
+               />
+               <div className="relative w-72 max-w-[85vw] bg-[#09090d] border-r border-white/10 h-full p-6 flex flex-col justify-between shadow-2xl z-10 animate-in slide-in-from-left duration-300">
+                  <div>
+                     <div className="flex items-center justify-between pb-6 border-b border-white/10 mb-6">
+                        <div className="flex items-center gap-2.5">
+                           <Shield className="w-6 h-6 text-primary-500" />
+                           <span className="font-minomu font-bold text-sm tracking-wider text-white">GUILD MASTER</span>
+                        </div>
+                        <button 
+                          onClick={() => setMobileMenuOpen(false)}
+                          className="p-1.5 rounded-full bg-white/5 border border-white/10 text-zinc-400 hover:text-white"
+                        >
+                           <X size={16} />
+                        </button>
+                     </div>
+                     
+                     <div className="flex flex-col gap-1.5">
+                        {MASTER_TABS.map(tab => {
+                           const Icon = tab.icon;
+                           const isActive = activeTab === tab.id;
+                           return (
+                              <button
+                                key={tab.id}
+                                onClick={() => {
+                                   switchTab(tab.id as Tab);
+                                   setMobileMenuOpen(false);
+                                }}
+                                className={cn(
+                                  "flex items-center gap-3 px-4 py-3 rounded-2xl text-xs font-bold transition-all text-left w-full",
+                                  isActive ? "bg-primary-600 text-white shadow-lg shadow-primary-600/30 border border-primary-500/50" : "text-zinc-400 hover:bg-white/5 hover:text-white"
+                                )}
+                              >
+                                 <Icon size={16} className={isActive ? "text-white" : "text-zinc-400"} />
+                                 <span>{tab.label}</span>
+                              </button>
+                           );
+                        })}
+                     </div>
+                  </div>
+
+                  <div className="pt-6 border-t border-white/10 text-center">
+                     <p className="text-[10px] font-mono text-zinc-600 uppercase">Shadow Garden Master v2.5</p>
+                  </div>
+               </div>
+            </div>
+          )}
 
           {/* --- CONTENT PANELS --- */}
           <main className="animate-in fade-in slide-in-from-bottom-4 duration-300 min-h-[500px]">

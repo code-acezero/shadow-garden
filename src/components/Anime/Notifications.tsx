@@ -206,13 +206,13 @@ export default function Notifications() {
             isOpen ? 'text-white' : 'text-zinc-400 group-hover:text-white'
           }`}
         />
-
-        {unreadCount > 0 && (
-          <span className="absolute -top-1 -right-1 min-w-4 h-4 px-1 bg-primary-600 text-[9px] font-black text-white rounded-full flex items-center justify-center border border-[#050505] shadow-[0_0_10px_rgba(220,38,38,0.8)] animate-pulse">
-            {unreadCount > 9 ? '9+' : unreadCount}
-          </span>
-        )}
       </button>
+
+      {unreadCount > 0 && (
+        <span className="absolute -top-1 -right-1 min-w-[18px] h-[18px] px-1 bg-primary-600 text-[9px] font-black text-white rounded-full flex items-center justify-center border border-[#050505] shadow-[0_0_10px_rgba(220,38,38,0.8)] z-20 pointer-events-none leading-none">
+          {unreadCount > 9 ? '9+' : unreadCount}
+        </span>
+      )}
 
       {/* Notification Dropdown Panel */}
       <AnimatePresence>
