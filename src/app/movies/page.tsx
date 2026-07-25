@@ -7,6 +7,7 @@ import { Search, Play, ChevronRight, Loader2, Info, Plus, Check, Star } from 'lu
 import { omni, DramaSection, DramaCard } from '@/lib/omni';
 import { cn } from '@/lib/utils';
 import Footer from '@/components/Anime/Footer';
+import { MoviePageSkeleton } from '@/components/UIx/SkeletonLoaders';
 
 // ── Search Bar ────────────────────────────────────────────────────────────────
 
@@ -357,9 +358,7 @@ export default function MoviesHomePage() {
   return (
     <div className="min-h-screen bg-[#020617] text-white overflow-x-hidden selection:bg-emerald-500/30">
       {loading ? (
-        <div className="w-full min-h-screen flex flex-col items-center justify-center bg-[#020617]">
-           <div className="w-16 h-16 border-4 border-emerald-500/20 border-t-emerald-500 rounded-full animate-spin drop-shadow-[0_0_15px_rgba(16,185,129,0.5)]" />
-        </div>
+        <MoviePageSkeleton />
       ) : (
         <>
           {heroItems.length > 0 && <HeroSlider items={heroItems} />}

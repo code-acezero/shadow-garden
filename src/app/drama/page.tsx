@@ -9,6 +9,7 @@ import { cn } from '@/lib/utils';
 import Footer from '@/components/Anime/Footer';
 import DCard from '@/components/Drama/DCard';
 import CountryBadge from '@/components/Drama/CountryBadge';
+import { MoviePageSkeleton } from '@/components/UIx/SkeletonLoaders';
 
 // ── Search Bar ────────────────────────────────────────────────────────────────
 
@@ -285,9 +286,7 @@ export default function DramaHomePage() {
   return (
     <div className="min-h-screen bg-[#020617] text-white overflow-x-hidden selection:bg-cyan-500/30">
       {loading ? (
-        <div className="w-full min-h-screen flex flex-col items-center justify-center bg-[#020617]">
-           <div className="w-16 h-16 border-4 border-cyan-500/20 border-t-cyan-500 rounded-full animate-spin drop-shadow-[0_0_15px_rgba(34,211,238,0.5)]" />
-        </div>
+        <MoviePageSkeleton />
       ) : (
         <>
           {heroItems.length > 0 && <HeroSlider items={heroItems} />}
