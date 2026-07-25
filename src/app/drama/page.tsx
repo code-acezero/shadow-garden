@@ -246,8 +246,9 @@ const HeroSlider = ({ items }: { items: DramaCard[] }) => {
             {items.map((_, i) => (
                 <button 
                     key={i} 
+                    type="button"
                     onClick={() => setCurrentIndex(i)} 
-                    className={cn("h-1.5 rounded-full transition-all duration-300", currentIndex === i ? "w-5 sm:w-6 bg-cyan-400 shadow-[0_0_10px_#22d3ee]" : "w-1.5 bg-white/30 hover:bg-white/60")}
+                    className={cn("h-1.5 shrink-0 rounded-full transition-all duration-300 border-0 outline-none p-0 min-h-0 block", currentIndex === i ? "w-5 sm:w-6 bg-cyan-400 shadow-[0_0_10px_#22d3ee]" : "w-1.5 bg-white/30 hover:bg-white/60")}
                 />
             ))}
         </div>

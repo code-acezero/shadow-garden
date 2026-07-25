@@ -391,7 +391,7 @@ const DramaPlayer = forwardRef<DramaPlayerRef, DramaPlayerProps>(({
                   Episodes
                 </button>
                 {showEpisodes && (
-                  <div className="absolute bottom-full mb-4 left-0 bg-zinc-950/70 backdrop-blur-3xl border border-white/5 ring-1 ring-white/10 rounded-2xl p-2 w-64 shadow-2xl z-50 flex flex-col gap-1 animate-in slide-in-from-bottom-2 max-h-[calc(100%-4rem)] md:max-h-[350px] overflow-y-auto no-scrollbar" onClick={(e) => e.stopPropagation()}>
+                  <div className="absolute bottom-full mb-4 left-0 bg-zinc-950/70 backdrop-blur-3xl border border-white/5 ring-1 ring-white/10 rounded-2xl p-2 w-64 shadow-2xl z-50 flex flex-col gap-1 animate-in slide-in-from-bottom-2 max-h-[220px] sm:max-h-[280px] md:max-h-[350px] overflow-y-auto no-scrollbar" onClick={(e) => e.stopPropagation()}>
                     <p className="text-[10px] font-black text-zinc-500 uppercase px-3 pb-2 pt-1 sticky top-0 bg-black/90 z-10 border-b border-white/10">Select Episode</p>
                     {episodes.map(ep => (
                       <button key={ep.id} onClick={() => { onEpisodeSelect?.(ep.id); setShowEpisodes(false); }} className={cn("text-[11px] px-3 py-2 rounded-xl text-left font-bold transition-all flex items-center justify-between group", currentEpId === ep.id ? "bg-primary-600 text-white" : "text-zinc-400 hover:text-white hover:bg-white/10 hover:shadow-inner")}>
@@ -411,7 +411,7 @@ const DramaPlayer = forwardRef<DramaPlayerRef, DramaPlayerProps>(({
                   <ServerIcon size={12} className="hidden md:block" /> {servers[activeServerIdx]?.name || 'Server'}
                 </button>
                 {showServers && (
-                  <div className="absolute bottom-full mb-4 left-0 bg-zinc-950/70 backdrop-blur-3xl border border-white/5 ring-1 ring-white/10 rounded-2xl p-2 w-56 shadow-2xl z-50 flex flex-col gap-1 animate-in slide-in-from-bottom-2 max-h-[calc(100%-4rem)] md:max-h-[350px] overflow-y-auto no-scrollbar" onClick={(e) => e.stopPropagation()}>
+                  <div className="absolute bottom-full mb-4 left-0 bg-zinc-950/70 backdrop-blur-3xl border border-white/5 ring-1 ring-white/10 rounded-2xl p-2 w-56 shadow-2xl z-50 flex flex-col gap-1 animate-in slide-in-from-bottom-2 max-h-[220px] sm:max-h-[280px] md:max-h-[350px] overflow-y-auto no-scrollbar" onClick={(e) => e.stopPropagation()}>
                     <p className="text-[10px] font-black text-zinc-500 uppercase px-3 pb-2 pt-1 border-b border-white/10">Audio / Server</p>
                     {servers.map((srv, idx) => (
                       <button key={idx} onClick={() => { onServerSelect?.(idx); setShowServers(false); }} className={cn("text-[11px] px-3 py-2 rounded-xl text-left font-bold transition-all flex items-center justify-between", activeServerIdx === idx ? "bg-primary-600 text-white" : "text-zinc-400 hover:text-white hover:bg-white/10 hover:shadow-inner")}>
@@ -435,7 +435,7 @@ const DramaPlayer = forwardRef<DramaPlayerRef, DramaPlayerProps>(({
                 <Settings size={22} />
               </button>
               {showSettings && (
-                <div className="absolute bottom-12 right-0 bg-zinc-950/70 backdrop-blur-3xl border border-white/5 ring-1 ring-white/10 rounded-2xl p-2 w-48 max-h-[calc(100%-4rem)] md:max-h-[350px] overflow-y-auto scrollbar-hide shadow-2xl z-50 flex flex-col gap-1 animate-in slide-in-from-bottom-2" onClick={(e) => e.stopPropagation()}>
+                <div className="absolute bottom-12 right-0 bg-zinc-950/70 backdrop-blur-3xl border border-white/5 ring-1 ring-white/10 rounded-2xl p-2 w-48 max-h-[220px] sm:max-h-[280px] md:max-h-[350px] overflow-y-auto scrollbar-hide shadow-2xl z-50 flex flex-col gap-1 animate-in slide-in-from-bottom-2" onClick={(e) => e.stopPropagation()}>
                   <p className="text-[10px] font-black text-zinc-500 uppercase px-3 pb-1 border-b border-white/10">Quality</p>
                   <button onClick={() => { if (hlsRef.current) hlsRef.current.currentLevel = -1; setCurrentQuality(-1); }} className={cn("text-[11px] px-3 py-2 rounded-full text-left font-bold transition-all", currentQuality === -1 ? "bg-primary-600 text-white" : "hover:bg-white/10 hover:shadow-inner")}>Auto</button>
                   {qualities.map(q => <button key={q.index} onClick={() => { if (hlsRef.current) hlsRef.current.currentLevel = q.index; setCurrentQuality(q.index); }} className={cn("text-[11px] px-3 py-2 rounded-full text-left font-bold transition-all", currentQuality === q.index ? "bg-primary-600 text-white" : "hover:bg-white/10 hover:shadow-inner")}>{q.height}p</button>)}

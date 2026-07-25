@@ -31,8 +31,8 @@ const MoviesSearch = () => {
   const expanded = isFocused || query.length > 0;
 
   return (
-    <div className={cn("relative transition-all duration-300 z-50", expanded ? "w-[calc(100vw-2.5rem)] max-w-sm sm:w-64 md:w-80" : "w-10 sm:w-44 md:w-72")}>
-      <form onSubmit={(e) => { e.preventDefault(); if (query.trim()) window.location.href = `/search?library=movies&keyword=${encodeURIComponent(query.trim())}`; }} className="flex items-center gap-2 bg-[#080d1a]/90 backdrop-blur-xl border border-white/15 hover:border-emerald-500/40 rounded-full px-3 py-2 focus-within:bg-[#0a1020] focus-within:border-emerald-400 focus-within:shadow-[0_0_20px_rgba(16,185,129,0.35)] transition-all group">
+    <div className={cn("relative transition-all duration-300 z-50", expanded ? "w-[calc(100vw-2.5rem)] max-w-sm sm:w-64 md:w-80" : "w-36 sm:w-44 md:w-72")}>
+      <form onSubmit={(e) => { e.preventDefault(); if (query.trim()) window.location.href = `/search?library=movies&keyword=${encodeURIComponent(query.trim())}`; }} className="flex items-center gap-2 bg-[#080d1a]/90 backdrop-blur-xl border border-white/15 hover:border-emerald-500/40 rounded-full px-3 py-1.5 sm:py-2 focus-within:bg-[#0a1020] focus-within:border-emerald-400 focus-within:shadow-[0_0_20px_rgba(16,185,129,0.35)] transition-all group">
         <button 
           type="button" 
           onClick={() => {
@@ -54,8 +54,8 @@ const MoviesSearch = () => {
           onFocus={() => setIsFocused(true)}
           onBlur={() => setTimeout(() => setIsFocused(false), 200)}
           onChange={e => setQuery(e.target.value)}
-          placeholder="Search movies & series..."
-          className={cn("bg-transparent text-white text-xs font-bold w-full outline-none placeholder:text-zinc-400/70 transition-all", !expanded && "hidden sm:block")}
+          placeholder="Search movies..."
+          className="bg-transparent text-white text-xs font-bold w-full outline-none placeholder:text-zinc-400/70 transition-all block"
         />
         {query && (
           <div className="flex items-center shrink-0">
@@ -313,8 +313,9 @@ const HeroSlider = ({ items }: { items: DramaCard[] }) => {
             {items.map((_, i) => (
                 <button 
                     key={i} 
+                    type="button"
                     onClick={() => setCurrentIndex(i)} 
-                    className={cn("h-1.5 rounded-full transition-all duration-300", currentIndex === i ? "w-5 sm:w-6 bg-emerald-400 shadow-[0_0_10px_#34d399]" : "w-1.5 bg-white/30 hover:bg-white/60")}
+                    className={cn("h-1.5 shrink-0 rounded-full transition-all duration-300 border-0 outline-none p-0 min-h-0 block", currentIndex === i ? "w-5 sm:w-6 bg-emerald-400 shadow-[0_0_10px_#34d399]" : "w-1.5 bg-white/30 hover:bg-white/60")}
                 />
             ))}
         </div>

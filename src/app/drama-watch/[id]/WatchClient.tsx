@@ -136,13 +136,34 @@ export function DramaWatchContent() {
       if (data?.episodes?.length) {
         let target = data.episodes[0].id;
         if (urlEp) {
-          const found = data.episodes.find(e => String(e.number) === urlEp || e.id === urlEp);
+          const paramStr = String(urlEp).trim();
+          const paramNum = Number(paramStr);
+          const found = data.episodes.find(e => 
+            String(e.id) === paramStr || 
+            String(e.number) === paramStr || 
+            (!isNaN(paramNum) && Number(e.number) === paramNum)
+          );
           if (found) target = found.id;
         }
         setCurrentEpId(target);
       }
     })();
-  }, [slug, urlEp]);
+  }, [slug]);
+
+  // Sync currentEpId when URL ep param changes
+  useEffect(() => {
+    if (!drama?.episodes?.length || !urlEp) return;
+    const paramStr = String(urlEp).trim();
+    const paramNum = Number(paramStr);
+    const found = drama.episodes.find(e => 
+      String(e.id) === paramStr || 
+      String(e.number) === paramStr || 
+      (!isNaN(paramNum) && Number(e.number) === paramNum)
+    );
+    if (found && found.id !== currentEpId) {
+      setCurrentEpId(found.id);
+    }
+  }, [urlEp, drama, currentEpId]);
 
   // Load stream when episode changes
   useEffect(() => {

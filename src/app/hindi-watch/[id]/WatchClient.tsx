@@ -1113,17 +1113,23 @@ function WatchContent() {
               (supabase!.from('user_continue_watching') as any).upsert(sanitized, { onConflict: 'user_id,episode_id' });
           }
 
+          // Robust URL Episode Resolution
+          const paramEp = urlEpId || urlEpNumber;
           let targetEpId: string | null = null;
-          if (urlEpId && !isNaN(Number(urlEpId)) && anime.episodes) {
-                const requestedNumber = Number(urlEpId);
-                const foundEp = anime.episodes.find(e => e.number === requestedNumber);
-                if (foundEp) targetEpId = foundEp.id;
-          } 
-          else if (urlEpId) targetEpId = urlEpId;
-          else if (urlEpNumber && anime.episodes) {
-              const foundEp = anime.episodes.find(e => e.number === Number(urlEpNumber));
-              if (foundEp) targetEpId = foundEp.id;
+
+          if (paramEp && anime.episodes?.length) {
+              const paramStr = String(paramEp).trim();
+              const paramNum = Number(paramStr);
+              const urlMatch = anime.episodes.find(e => 
+                  String(e.id) === paramStr || 
+                  (!isNaN(paramNum) && Number(e.number) === paramNum) ||
+                  String(e.number) === paramStr ||
+                  String(e.id).endsWith(`-${paramStr}`) ||
+                  String(e.id).endsWith(`=${paramStr}`)
+              );
+              if (urlMatch) targetEpId = urlMatch.id;
           }
+
           if (!targetEpId) {
               let maxTime = 0;
               Object.values(progressBuffer.current).forEach((p:any) => {
@@ -1132,18 +1138,18 @@ function WatchContent() {
               });
           }
           
-          if (targetEpId && anime.episodes.length > 0) {
+          if (targetEpId && anime.episodes?.length > 0) {
               const epExists = anime.episodes.find((e: any) => e.id === targetEpId);
               if (!epExists) {
                   const oldData = Object.values(progressBuffer.current).find((p:any) => p.episode_id === targetEpId);
                   if (oldData && oldData.episode_number) {
-                      const match = anime.episodes.find((e: any) => e.number === oldData.episode_number);
+                      const match = anime.episodes.find((e: any) => Number(e.number) === Number(oldData.episode_number));
                       targetEpId = match ? match.id : anime.episodes[0].id;
                   } else {
                       targetEpId = anime.episodes[0].id;
                   }
               }
-          } else if (!targetEpId && anime.episodes.length > 0) {
+          } else if (!targetEpId && anime.episodes?.length > 0) {
               targetEpId = anime.episodes[0].id;
           }
 
@@ -1161,6 +1167,24 @@ function WatchContent() {
       };
       syncHistory();
   }, [anime, user?.id, animeId]);
+
+  // Sync currentEpId when URL search params change
+  useEffect(() => {
+    if (!anime?.episodes?.length) return;
+    const paramEp = urlEpId || urlEpNumber;
+    if (!paramEp) return;
+    const paramStr = String(paramEp).trim();
+    const paramNum = Number(paramStr);
+    const match = anime.episodes.find(e => 
+      String(e.id) === paramStr || 
+      (!isNaN(paramNum) && Number(e.number) === paramNum) ||
+      String(e.number) === paramStr ||
+      String(e.id).endsWith(`-${paramStr}`)
+    );
+    if (match && match.id !== currentEpId) {
+      setCurrentEpId(match.id);
+    }
+  }, [urlEpId, urlEpNumber, anime, currentEpId]);
 
   const [fetchTrigger, setFetchTrigger] = useState(0);
   const activeFetchRef = useRef(0);

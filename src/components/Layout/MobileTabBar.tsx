@@ -1,13 +1,26 @@
 "use client";
 
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Home, MessageCircle, Heart, User, Search, Clapperboard, Settings, Flame, Film, Users, MessageSquare, Calendar } from 'lucide-react';
+import { Home, MessageCircle, Search, Clapperboard, Flame, Film, Calendar } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 export default function MobileTabBar() {
   const pathname = usePathname();
+  const [isFullscreen, setIsFullscreen] = useState(false);
+
+  useEffect(() => {
+    const handleFsChange = () => {
+      setIsFullscreen(!!document.fullscreenElement);
+    };
+    document.addEventListener('fullscreenchange', handleFsChange);
+    document.addEventListener('webkitfullscreenchange', handleFsChange);
+    return () => {
+      document.removeEventListener('fullscreenchange', handleFsChange);
+      document.removeEventListener('webkitfullscreenchange', handleFsChange);
+    };
+  }, []);
 
   const tabs = [
     { id: 'home', icon: Home, label: 'Home', path: '/home' },
@@ -19,8 +32,14 @@ export default function MobileTabBar() {
     { id: 'movies', icon: Film, label: 'Movies', path: '/movies' },
   ];
 
-  if (pathname === '/') return null;
-  if (pathname.includes('/watch/') || pathname.includes('/drama-watch/')) return null;
+  if (pathname === '/' || isFullscreen) return null;
+  if (
+    pathname.includes('/watch/') || 
+    pathname.includes('/drama-watch/') || 
+    pathname.includes('/donghua-watch/') || 
+    pathname.includes('/hindi-watch/') || 
+    pathname.includes('/movies-watch/')
+  ) return null;
 
   return (
     <div className="md:hidden !fixed bottom-0 left-0 w-full z-[100] pb-safe liquid-glass shadow-[0_-10px_30px_rgba(0,0,0,0.8)]">
@@ -29,7 +48,7 @@ export default function MobileTabBar() {
           const Icon = tab.icon;
           const isActive = pathname.startsWith(tab.path);
           return (
-              <Link 
+            <Link 
               key={tab.id} 
               href={tab.path}
               className={cn(
