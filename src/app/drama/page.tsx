@@ -33,8 +33,8 @@ const DramaSearch = () => {
   const expanded = isFocused || query.length > 0;
 
   return (
-    <div className={cn("relative transition-all duration-300 z-50", expanded ? "w-[calc(100vw-2.5rem)] max-w-sm sm:w-64 md:w-80" : "w-10 sm:w-44 md:w-64")}>
-      <form onSubmit={(e) => { e.preventDefault(); if (query.trim()) window.location.href = `/search?library=drama&keyword=${encodeURIComponent(query.trim())}`; }} className="flex items-center gap-2 bg-[#0f172a]/90 backdrop-blur-xl border border-cyan-500/30 hover:border-cyan-400/60 rounded-full px-3 py-2 focus-within:bg-[#0f172a] focus-within:border-cyan-400 focus-within:shadow-[0_0_20px_rgba(34,211,238,0.35)] transition-all group">
+    <div className={cn("relative transition-all duration-300 z-50", expanded ? "w-[calc(100vw-2.5rem)] max-w-sm sm:w-64 md:w-80" : "w-32 sm:w-44 md:w-64")}>
+      <form onSubmit={(e) => { e.preventDefault(); if (query.trim()) window.location.href = `/search?library=drama&keyword=${encodeURIComponent(query.trim())}`; }} className="flex items-center gap-1.5 sm:gap-2 bg-[#0f172a]/90 backdrop-blur-xl border border-cyan-500/30 hover:border-cyan-400/60 rounded-full px-3 py-1.5 sm:py-2 focus-within:bg-[#0f172a] focus-within:border-cyan-400 focus-within:shadow-[0_0_20px_rgba(34,211,238,0.35)] transition-all group">
         <button 
           type="button" 
           onClick={() => {
@@ -47,7 +47,7 @@ const DramaSearch = () => {
           disabled={loading} 
           className="shrink-0 outline-none hover:scale-110 transition-transform p-0.5"
         >
-            {loading ? <Loader2 size={16} className="text-cyan-400 animate-spin" /> : <Search size={16} className="text-cyan-400 group-focus-within:text-cyan-300 transition-colors" />}
+            {loading ? <Loader2 size={15} className="text-cyan-400 animate-spin" /> : <Search size={15} className="text-cyan-400 group-focus-within:text-cyan-300 transition-colors" />}
         </button>
         <input
           id="drama-search-input"
@@ -57,15 +57,15 @@ const DramaSearch = () => {
           onBlur={() => setTimeout(() => setIsFocused(false), 200)}
           onChange={e => setQuery(e.target.value)}
           placeholder="Search dramas..."
-          className={cn("bg-transparent text-white text-xs font-bold w-full outline-none placeholder:text-cyan-200/50 transition-all", !expanded && "hidden sm:block")}
+          className="bg-transparent text-white text-[11px] sm:text-xs font-bold w-full outline-none placeholder:text-cyan-200/50 transition-all truncate"
         />
         {query && (
           <div className="flex items-center shrink-0">
             <button type="button" onClick={() => setQuery('')} className="p-1 text-cyan-400 hover:text-cyan-300 transition-colors outline-none">
-               <Plus size={16} className="rotate-45" />
+               <Plus size={15} className="rotate-45" />
             </button>
             <button type="button" onClick={() => window.location.href = `/search?library=drama&keyword=${encodeURIComponent(query.trim())}`} className="p-1 text-cyan-400 hover:text-cyan-300 transition-colors outline-none border-l border-cyan-500/30 ml-1 pl-2">
-               <ChevronRight size={16} />
+               <ChevronRight size={15} />
             </button>
           </div>
         )}
@@ -92,7 +92,7 @@ const DramaSearch = () => {
 const DramaRow = ({ section, isFirst }: { section: DramaSection & { query?: string }, isFirst?: boolean }) => {
   if (!section.items.length) return null;
   return (
-    <div className={cn("w-full relative z-30 px-4 md:px-8", isFirst ? "mt-3 md:-mt-10" : "mt-4")}>
+    <div className={cn("w-full relative z-30 px-4 md:px-8", isFirst ? "mt-4 md:-mt-10" : "mt-4")}>
       <div className="mb-2 flex items-center justify-between w-full">
           <h2 className="text-[15px] sm:text-[17px] md:text-[22px] font-black text-white tracking-tight flex items-center gap-2 group cursor-pointer w-fit drop-shadow-md">
              {section.title}
@@ -165,7 +165,7 @@ const HeroSlider = ({ items }: { items: DramaCard[] }) => {
   const detail = details[item.id];
 
   return (
-    <div className="relative w-full h-[46vh] sm:h-[55vh] md:h-[65vh] lg:h-[70vh] bg-[#020617] overflow-hidden z-10">
+    <div className="relative w-full h-[56vh] sm:h-[62vh] md:h-[68vh] lg:h-[72vh] bg-[#020617] overflow-hidden z-10">
       <AnimatePresence mode="wait">
         <motion.div
           key={item.id}
@@ -189,13 +189,13 @@ const HeroSlider = ({ items }: { items: DramaCard[] }) => {
         </motion.div>
       </AnimatePresence>
 
-      {/* Desktop Search Bar positioned cleanly in Hero header */}
-      <div className="hidden md:flex absolute top-6 right-8 z-40 items-center gap-3">
+      {/* Drama Search Bar positioned cleanly in Hero header */}
+      <div className="absolute top-14 sm:top-16 md:top-6 right-3 sm:right-6 md:right-8 z-40 flex items-center gap-3">
          <DramaSearch />
       </div>
 
       {/* Hero Content */}
-      <div className="absolute bottom-4 sm:bottom-10 md:bottom-16 left-0 w-full px-4 sm:px-6 md:px-12 flex flex-col justify-end z-20 pointer-events-none">
+      <div className="absolute bottom-4 sm:bottom-8 md:bottom-16 left-0 w-full px-4 sm:px-6 md:px-12 flex flex-col justify-end z-20 pointer-events-none">
         <AnimatePresence mode="wait">
             <motion.div 
                 key={`content-${item.id}`}
@@ -205,16 +205,16 @@ const HeroSlider = ({ items }: { items: DramaCard[] }) => {
                 transition={{ duration: 0.5, delay: 0.15 }} 
                 className="pointer-events-auto max-w-3xl w-full"
             >
-              <div className="flex items-center gap-1.5 mb-1.5 sm:mb-2">
+              <div className="flex items-center gap-1.5 mb-1.5">
                   <Check size={11} className="text-cyan-400 p-0.5 bg-cyan-400/20 rounded-full" />
                   <span className="text-[9px] sm:text-[10px] md:text-xs font-black text-cyan-300 tracking-[0.2em] uppercase">Included with Shadow Prime</span>
               </div>
               
-              <h1 className="text-lg sm:text-3xl md:text-5xl font-black text-white leading-tight tracking-tight mb-2 drop-shadow-[0_0_30px_rgba(34,211,238,0.3)] line-clamp-2 max-w-xl">
+              <h1 className="text-xl sm:text-3xl md:text-5xl font-black text-white leading-tight tracking-tight mb-2 drop-shadow-[0_0_30px_rgba(34,211,238,0.3)] line-clamp-2 max-w-xl">
                 {item.title}
               </h1>
 
-              <div className="flex flex-wrap items-center gap-1.5 text-[9px] sm:text-[10px] md:text-[11px] font-black text-cyan-100/80 mb-2.5 sm:mb-4 uppercase tracking-widest">
+              <div className="flex flex-wrap items-center gap-1.5 text-[9px] sm:text-[10px] md:text-[11px] font-black text-cyan-100/80 mb-3 uppercase tracking-widest">
                   <span className="text-black bg-cyan-400 px-2 py-0.5 rounded-full font-black shadow-[0_0_10px_rgba(34,211,238,0.4)]">Top Rated</span>
                   <CountryBadge country={item.country} type={item.type} showFullname />
                   {item.year && <span className="bg-white/10 px-2 py-0.5 rounded-full border border-white/10">{item.year}</span>}
@@ -227,14 +227,14 @@ const HeroSlider = ({ items }: { items: DramaCard[] }) => {
               </p>
               
               {/* Rounded Buttons with proper padding & Play label */}
-              <div className="flex items-center flex-wrap gap-2 mb-2.5 sm:mb-4">
-                <Link href={`/drama-watch/${item.id}`} className="flex items-center justify-center gap-2 bg-cyan-500 hover:bg-cyan-400 text-black font-black text-xs sm:text-sm md:text-base px-4 py-2 sm:px-6 sm:py-2.5 rounded-full transition-all active:scale-95 shadow-[0_0_25px_rgba(34,211,238,0.5)]">
+              <div className="flex items-center flex-wrap gap-2.5 mb-3 sm:mb-4">
+                <Link href={`/drama-watch/${item.id}`} className="flex items-center justify-center gap-2 bg-cyan-500 hover:bg-cyan-400 text-black font-black text-xs sm:text-sm md:text-base px-5 py-2.5 sm:px-6 sm:py-2.5 rounded-full transition-all active:scale-95 shadow-[0_0_25px_rgba(34,211,238,0.5)]">
                   <Play size={15} fill="black" /> Play
                 </Link>
-                <Link href={`/drama-watch/${item.id}`} className="flex items-center justify-center gap-2 bg-white/10 hover:bg-white/20 text-white font-bold text-xs sm:text-sm md:text-base px-4 py-2 sm:px-5 sm:py-2.5 rounded-full transition-all backdrop-blur-md shadow-xl border border-white/20 active:scale-95">
+                <Link href={`/drama-watch/${item.id}`} className="flex items-center justify-center gap-2 bg-white/10 hover:bg-white/20 text-white font-bold text-xs sm:text-sm md:text-base px-4 py-2.5 sm:px-5 sm:py-2.5 rounded-full transition-all backdrop-blur-md shadow-xl border border-white/20 active:scale-95">
                   <Info size={15} /> Details
                 </Link>
-                <button className="flex items-center justify-center w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-white/10 hover:bg-white/20 text-white transition-all backdrop-blur-md border border-white/20 active:scale-95">
+                <button className="flex items-center justify-center w-9 h-9 sm:w-10 sm:h-10 rounded-full bg-white/10 hover:bg-white/20 text-white transition-all backdrop-blur-md border border-white/20 active:scale-95">
                   <Plus size={16} />
                 </button>
               </div>
@@ -242,7 +242,7 @@ const HeroSlider = ({ items }: { items: DramaCard[] }) => {
         </AnimatePresence>
         
         {/* Indicators */}
-        <div className="flex items-center gap-1.5 pointer-events-auto w-fit bg-black/40 backdrop-blur-md px-2.5 py-1 rounded-full border border-white/10">
+        <div className="flex items-center gap-1.5 pointer-events-auto w-fit bg-black/40 backdrop-blur-md px-2.5 py-1 rounded-full border border-white/10 mt-1">
             {items.map((_, i) => (
                 <button 
                     key={i} 
