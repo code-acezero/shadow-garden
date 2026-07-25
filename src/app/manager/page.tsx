@@ -14,7 +14,7 @@ import {
   AlertCircle, MessageSquareWarning, BookOpen, 
   Scroll, Sword, Feather, 
   Bold, Italic, Type, UserCheck, LayoutDashboard,
-  Filter, ArrowDownCircle, Crown, Plus, Upload, Loader2, Menu, X
+  Filter, ArrowDownCircle, Crown, Plus, Upload, Loader2, Menu, X, Layers
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -28,6 +28,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, Dialog
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import RoleTitleManager from '@/components/Admin/RoleTitleManager';
+import GuildBoardsPanel from '@/components/Admin/GuildBoardsPanel';
 import { cn } from '@/lib/utils';
 
 // --- NOTIFICATION HELPER ---
@@ -39,13 +40,14 @@ const notify = (title: string, message: string, type: 'success' | 'error' | 'sys
     }
 };
 
-type Tab = 'GUILD_DESK' | 'GUILD_INFO' | 'ADVENTURERS' | 'TITLES_HIERARCHY' | 'VOICES' | 'NOTICE';
+type Tab = 'GUILD_DESK' | 'GUILD_INFO' | 'ADVENTURERS' | 'TITLES_HIERARCHY' | 'GUILD_BOARDS' | 'VOICES' | 'NOTICE';
 
 const MANAGER_TABS = [
   { id: 'GUILD_DESK', icon: LayoutDashboard, label: 'Desk' },
   { id: 'GUILD_INFO', icon: BookOpen, label: 'Info' },
   { id: 'ADVENTURERS', icon: Sword, label: 'Adventurers' },
   { id: 'TITLES_HIERARCHY', icon: Crown, label: 'Titles & Roles' },
+  { id: 'GUILD_BOARDS', icon: Layers, label: 'Guild Boards' },
   { id: 'VOICES', icon: Mic2, label: 'Echoes' },
   { id: 'NOTICE', icon: Feather, label: 'Notices' },
 ];
@@ -204,6 +206,7 @@ export default function GuildManagerDashboard() {
               <div className={activeTab === 'GUILD_INFO' ? 'block' : 'hidden'}><IdentityTab /></div>
               <div className={activeTab === 'ADVENTURERS' ? 'block' : 'hidden'}><RosterTab /></div>
               <div className={activeTab === 'TITLES_HIERARCHY' ? 'block' : 'hidden'}><RoleTitleManager /></div>
+              <div className={activeTab === 'GUILD_BOARDS' ? 'block' : 'hidden'}><GuildBoardsPanel /></div>
               <div className={activeTab === 'VOICES' ? 'block' : 'hidden'}><VoiceTab /></div>
               <div className={activeTab === 'NOTICE' ? 'block' : 'hidden'}><BroadcastTab /></div>
           </main>

@@ -17,7 +17,7 @@ import {
   AlertCircle, MessageSquareWarning, Folder, FileAudio, Eye,
   Scroll, Sword, BookOpen, Link2, Feather, Play, Pause,
   Bold, Italic, Type, UserCheck, X, LayoutDashboard, Palette,
-  Filter, ArrowDownCircle, Menu
+  Filter, ArrowDownCircle, Menu, Crown, Layers
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -30,6 +30,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from '@/components/ui/dialog';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
+import RoleTitleManager from '@/components/Admin/RoleTitleManager';
+import GuildBoardsPanel from '@/components/Admin/GuildBoardsPanel';
 import { cn } from '@/lib/utils';
 
 // --- NOTIFICATION HELPER ---
@@ -41,12 +43,14 @@ const notify = (title: string, message: string, type: 'success' | 'error' | 'sys
     }
 };
 
-type Tab = 'GUILD_DESK' | 'GUILD_INFO' | 'ADVENTURERS' | 'PALETTES' | 'MOD_APPS' | 'MAGIC_NET' | 'VOICES' | 'NOTICE';
+type Tab = 'GUILD_DESK' | 'GUILD_INFO' | 'ADVENTURERS' | 'TITLES_HIERARCHY' | 'GUILD_BOARDS' | 'PALETTES' | 'MOD_APPS' | 'MAGIC_NET' | 'VOICES' | 'NOTICE';
 
 const MASTER_TABS = [
   { id: 'GUILD_DESK', icon: LayoutDashboard, label: 'Desk' },
   { id: 'GUILD_INFO', icon: BookOpen, label: 'Site Specs' },
   { id: 'ADVENTURERS', icon: Sword, label: 'Adventurers' },
+  { id: 'TITLES_HIERARCHY', icon: Crown, label: 'Titles & Roles' },
+  { id: 'GUILD_BOARDS', icon: Layers, label: 'Guild Boards' },
   { id: 'PALETTES', icon: Palette, label: 'Palettes' },
   { id: 'MOD_APPS', icon: UserCheck, label: 'Mod Apps' },
   { id: 'MAGIC_NET', icon: Globe, label: 'Magic Net' },
@@ -211,6 +215,8 @@ export default function GuildMasterDashboard() {
               <div className={activeTab === 'GUILD_DESK' ? 'block' : 'hidden'}><OverviewTab changeTab={switchTab} /></div>
               <div className={activeTab === 'GUILD_INFO' ? 'block' : 'hidden'}><IdentityTab /></div>
               <div className={activeTab === 'ADVENTURERS' ? 'block' : 'hidden'}><RosterTab /></div>
+              <div className={activeTab === 'TITLES_HIERARCHY' ? 'block' : 'hidden'}><RoleTitleManager /></div>
+              <div className={activeTab === 'GUILD_BOARDS' ? 'block' : 'hidden'}><GuildBoardsPanel /></div>
               <div className={activeTab === 'PALETTES' ? 'block' : 'hidden'}><ThemePaletteTab /></div>
               <div className={activeTab === 'MOD_APPS' ? 'block' : 'hidden'}><ModApplicationsTab /></div>
               <div className={activeTab === 'MAGIC_NET' ? 'block' : 'hidden'}><NetworkTab /></div>
