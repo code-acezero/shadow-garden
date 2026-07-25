@@ -39,12 +39,18 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
   const fetchProfile = useCallback(async (userId: string, userEmail?: string, userMeta?: any) => {
     try {
-      const { data }: { data: any } = await supabase.from("profiles").select("*").eq("id", userId).single();
+      // 4-second timeout to prevent network stalls on rapid reloads
+      const queryPromise = supabase.from("profiles").select("*").eq("id", userId).single();
+      const timeoutPromise = new Promise<{ data: any }>((_, reject) => 
+        setTimeout(() => reject(new Error("Timeout")), 4000)
+      );
+
+      const { data }: { data: any } = await Promise.race([queryPromise, timeoutPromise]);
       if (data) {
         if (!data.avatar_url || !data.username) {
           const updatedName = data.username || userMeta?.full_name || userEmail?.split('@')[0] || getRandomGuestName();
           const updatedAvatar = data.avatar_url || userMeta?.avatar_url || getRandomAvatar(false);
-          await supabase.from("profiles").update({ username: updatedName, avatar_url: updatedAvatar }).eq("id", userId);
+          supabase.from("profiles").update({ username: updatedName, avatar_url: updatedAvatar }).eq("id", userId).catch(() => {});
           return { ...data, username: updatedName, avatar_url: updatedAvatar };
         }
         return data;
@@ -57,7 +63,17 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         role: 'user',
         is_guest: false
       };
-    } catch (e) { return null; }
+    } catch (e) { 
+      // Return fallback profile so user is NEVER disconnected on temporary network stalls or rate limits
+      return {
+        id: userId,
+        username: userMeta?.full_name || userEmail?.split('@')[0] || getRandomGuestName(),
+        email: userEmail,
+        avatar_url: userMeta?.avatar_url || getRandomAvatar(false),
+        role: 'user',
+        is_guest: false
+      };
+    }
   }, []);
 
   useEffect(() => {
@@ -65,13 +81,20 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
     const init = async () => {
       try {
-        const { data: { session } } = await supabase.auth.getSession();
+        const sessionPromise = supabase.auth.getSession();
+        const timeoutPromise = new Promise<any>((resolve) => 
+          setTimeout(() => resolve({ data: { session: null } }), 4000)
+        );
+
+        const { data: { session } } = await Promise.race([sessionPromise, timeoutPromise]);
         if (session?.user && isMounted.current) {
           setUser(session.user);
-          const profileData = await fetchProfile(session.user.id, session.user.email, session.user.user_metadata);
-          if (isMounted.current && profileData) {
-            setProfile(profileData);
-            currentProfileId.current = profileData.id;
+          if (currentProfileId.current !== session.user.id) {
+            const profileData = await fetchProfile(session.user.id, session.user.email, session.user.user_metadata);
+            if (isMounted.current && profileData) {
+              setProfile(profileData);
+              currentProfileId.current = profileData.id;
+            }
           }
         }
       } catch (e) { console.error("Auth Init error", e); }
@@ -83,8 +106,8 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event: AuthChangeEvent, session: Session | null) => {
       if (!isMounted.current) return;
 
-      // Ignore silent refreshes — don't re-fetch profile on token rotation
-      if (event === 'TOKEN_REFRESHED' || event === 'USER_UPDATED') {
+      // Ignore silent refreshes & initial session if already handled
+      if (event === 'TOKEN_REFRESHED' || event === 'USER_UPDATED' || (event === 'INITIAL_SESSION' && currentProfileId.current)) {
         if (session?.user) {
           setUser(prev => (prev?.id === session.user.id ? prev : session.user));
         }
