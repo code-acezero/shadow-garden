@@ -17,6 +17,7 @@ import Link from 'next/link';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useSettings } from '@/hooks/useSettings';
 import { useAuth } from '@/context/AuthContext';
+import { useTravellerProfile, saveTravellerProfile } from '@/hooks/useTravellerProfile';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
 import { useRouter } from 'next/navigation';
@@ -122,22 +123,18 @@ export default function Settings() {
     }
   }, [profile]);
 
+  const traveller = useTravellerProfile();
+
   useEffect(() => {
     if (!isAuthenticated) {
-      const savedName = localStorage.getItem('shadow_traveller_name') || '';
-      const savedAvatar = localStorage.getItem('shadow_traveller_avatar') || getRandomAvatar(true);
-      setTravellerName(savedName);
-      setTravellerAvatar(savedAvatar);
+      setTravellerName(traveller.name);
+      setTravellerAvatar(traveller.avatar);
     }
-  }, [isAuthenticated]);
+  }, [isAuthenticated, traveller.name, traveller.avatar]);
 
   const handleSaveTraveller = () => {
     setIsSavingTraveller(true);
-    localStorage.setItem('shadow_traveller_name', travellerName);
-    localStorage.setItem('shadow_traveller_avatar', travellerAvatar);
-    window.dispatchEvent(new CustomEvent('shadow-traveller-updated', {
-      detail: { name: travellerName, avatar: travellerAvatar }
-    }));
+    saveTravellerProfile({ name: travellerName, avatar: travellerAvatar });
     notifyWhisper('Traveller profile saved!', 'success');
     setTimeout(() => setIsSavingTraveller(false), 600);
   };

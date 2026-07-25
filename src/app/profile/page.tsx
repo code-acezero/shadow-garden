@@ -63,28 +63,20 @@ export default function ProfilePage() {
     }, [profile, user]);
 
     // Traveller profile (localStorage-backed, no auth required)
-    const [travellerName, setTravellerName] = useState('');
-    const [travellerAvatar, setTravellerAvatar] = useState('');
+    const traveller = useTravellerProfile();
     const [travellerAvatarModalOpen, setTravellerAvatarModalOpen] = useState(false);
     const [travellerEditing, setTravellerEditing] = useState(false);
     const [travellerDraft, setTravellerDraft] = useState('');
 
     useEffect(() => {
-        if (!user) {
-            const savedName = localStorage.getItem('shadow_traveller_name') || getRandomGuestName();
-            const savedAvatar = localStorage.getItem('shadow_traveller_avatar') || getRandomAvatar(true);
-            setTravellerName(savedName);
-            setTravellerAvatar(savedAvatar);
-            setTravellerDraft(savedName);
+        if (!user && traveller.name) {
+            setTravellerDraft(traveller.name);
         }
-    }, [user]);
+    }, [user, traveller.name]);
 
     const handleSaveTraveller = () => {
-        const name = travellerDraft.trim() || travellerName;
-        localStorage.setItem('shadow_traveller_name', name);
-        localStorage.setItem('shadow_traveller_avatar', travellerAvatar);
-        setTravellerName(name);
-        window.dispatchEvent(new CustomEvent('shadow-traveller-updated', { detail: { name, avatar: travellerAvatar } }));
+        const name = travellerDraft.trim() || traveller.name;
+        saveTravellerProfile({ name, avatar: traveller.avatar });
         toast.success('Profile saved!');
         setTravellerEditing(false);
     };
@@ -373,8 +365,7 @@ export default function ProfilePage() {
     const handleCropComplete = async (croppedDataUrl: string) => {
         setCropperModalOpen(false);
         if (!user) {
-            setTravellerAvatar(croppedDataUrl);
-            localStorage.setItem('shadow_traveller_avatar', croppedDataUrl);
+            saveTravellerProfile({ avatar: croppedDataUrl });
             toast.success("Guest avatar updated!");
             return;
         }
@@ -402,7 +393,7 @@ export default function ProfilePage() {
             toast.dismiss(tid);
         }
     };
-    
+
     const fetchFollowList = async (type: 'followers'|'following') => {
         if (!user) return;
         const targetField = type === 'followers' ? 'following_id' : 'follower_id';
@@ -438,7 +429,7 @@ export default function ProfilePage() {
                             className="w-28 h-28 rounded-full overflow-hidden border-4 border-white/10 shadow-xl cursor-pointer"
                             onClick={() => setTravellerAvatarModalOpen(true)}
                         >
-                            <img src={travellerAvatar} alt="avatar" className="w-full h-full object-cover" />
+                            <img src={traveller.avatar} alt="avatar" className="w-full h-full object-cover" />
                         </div>
                         <button
                             onClick={() => setTravellerAvatarModalOpen(true)}
@@ -463,8 +454,8 @@ export default function ProfilePage() {
                         </div>
                     ) : (
                         <div className="flex items-center justify-center gap-2">
-                            <h1 className="text-2xl font-black text-white">{travellerName}</h1>
-                            <button onClick={() => { setTravellerDraft(travellerName); setTravellerEditing(true); }} className="p-1.5 rounded-lg text-zinc-500 hover:text-white hover:bg-white/10 transition-colors">
+                            <h1 className="text-2xl font-black text-white">{traveller.name}</h1>
+                            <button onClick={() => { setTravellerDraft(traveller.name); setTravellerEditing(true); }} className="p-1.5 rounded-lg text-zinc-500 hover:text-white hover:bg-white/10 transition-colors">
                                 <Pencil size={14} />
                             </button>
                         </div>
@@ -482,7 +473,7 @@ export default function ProfilePage() {
                     className="w-full max-w-md flex items-center justify-between p-4 bg-white/[0.03] border border-white/5 rounded-2xl hover:bg-white/5 transition-colors mb-6"
                 >
                     <div className="flex items-center gap-3">
-                        <img src={travellerAvatar} alt="" className="w-10 h-10 rounded-xl object-cover border border-white/10" />
+                        <img src={traveller.avatar} alt="" className="w-10 h-10 rounded-xl object-cover border border-white/10" />
                         <div className="text-left">
                             <p className="text-sm font-bold text-white">Change Avatar</p>
                             <p className="text-xs text-zinc-500">Pick from curated anime characters</p>
@@ -508,11 +499,9 @@ export default function ProfilePage() {
                 isOpen={travellerAvatarModalOpen}
                 onClose={() => setTravellerAvatarModalOpen(false)}
                 onSelect={(url) => {
-                    setTravellerAvatar(url);
-                    localStorage.setItem('shadow_traveller_avatar', url);
-                    window.dispatchEvent(new CustomEvent('shadow-traveller-updated', { detail: { name: travellerName, avatar: url } }));
+                    saveTravellerProfile({ avatar: url });
                 }}
-                currentUrl={travellerAvatar}
+                currentUrl={traveller.avatar}
                 isGuest={true}
             />
             {showAuthModal && <AuthModal isOpen={showAuthModal} onClose={() => setShowAuthModal(false)} onAuthSuccess={() => setShowAuthModal(false)} />}
