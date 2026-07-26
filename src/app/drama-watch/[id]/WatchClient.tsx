@@ -27,21 +27,22 @@ import CountryBadge from '@/components/Drama/CountryBadge';
 interface EpisodeButtonProps {
   ep: { id: string; number: number; title: string };
   isCurrent: boolean;
+  isPlayed: boolean;
   percent: number;
   viewMode: 'grid' | 'list' | 'compact';
   onClick: (id: string) => void;
 }
 
-const EpisodeButton = memo(({ ep, isCurrent, percent, viewMode, onClick }: EpisodeButtonProps) => {
-  const isWatched = percent > 0;
+const EpisodeButton = memo(({ ep, isCurrent, isPlayed, percent, viewMode, onClick }: EpisodeButtonProps) => {
   return (
     <motion.button
       layout
       initial={{ opacity: 0, scale: 0.95 }}
-      animate={{ opacity: 1, scale: 1 }}
+      animate={{ opacity: 1, scale: isCurrent ? 1.05 : 1 }}
       exit={{ opacity: 0, scale: 0.95 }}
       transition={{
           layout: { type: "tween", duration: 0.3, ease: "easeInOut" },
+          scale: { type: "spring", stiffness: 300, damping: 25 },
           opacity: { duration: 0.2 }
       }}
       onClick={() => onClick(ep.id)}
@@ -50,17 +51,26 @@ const EpisodeButton = memo(({ ep, isCurrent, percent, viewMode, onClick }: Episo
         viewMode === 'grid' ? "h-9 w-full rounded-2xl flex items-center justify-center text-[11px] font-black" :
           viewMode === 'compact' ? "aspect-square rounded-full flex items-center justify-center text-[9px] font-bold" :
             "w-[98%] mx-auto h-10 rounded-2xl flex items-center px-4 text-[11px] font-bold text-left",
-        isCurrent ? "bg-green-500/20 backdrop-blur-xl border-green-400/50 text-white shadow-[0_0_20px_rgba(34,197,94,0.4)] z-20 scale-105" :
-          isWatched ? "bg-orange-600/10 backdrop-blur-xl border border-orange-500/30 text-orange-500 hover:bg-orange-600/20" :
+        isCurrent ? "bg-green-500/20 backdrop-blur-xl border-green-400/50 text-white shadow-[0_0_20px_rgba(34,197,94,0.4)] z-20" :
+          isPlayed ? "bg-red-500/15 backdrop-blur-xl border-red-400/40 text-red-300 shadow-[0_0_16px_rgba(239,68,68,0.25)]" :
             "bg-white/5 backdrop-blur-xl border-white/10 text-zinc-400 hover:border-white/20 hover:bg-white/10 hover:text-white"
       )}
     >
       <div className="absolute inset-x-0 top-0 h-[40%] bg-gradient-to-b from-white/15 to-transparent pointer-events-none rounded-t-2xl" />
       
+      {/* Current episode — animated green shimmer */}
       {isCurrent && (
           <>
               <div className="absolute inset-0 bg-gradient-to-tr from-green-500/10 via-transparent to-green-400/20 animate-pulse pointer-events-none" />
               <div className="absolute inset-0 bg-[linear-gradient(45deg,transparent_25%,rgba(74,222,128,0.2)_50%,transparent_75%)] bg-[length:250%_250%] animate-shimmer pointer-events-none" />
+          </>
+      )}
+
+      {/* Played episode — animated red shimmer (same style, red palette) */}
+      {isPlayed && !isCurrent && (
+          <>
+              <div className="absolute inset-0 bg-gradient-to-tr from-red-500/10 via-transparent to-red-400/15 animate-pulse pointer-events-none" />
+              <div className="absolute inset-0 bg-[linear-gradient(45deg,transparent_25%,rgba(239,68,68,0.18)_50%,transparent_75%)] bg-[length:250%_250%] animate-shimmer pointer-events-none" />
           </>
       )}
 
@@ -98,6 +108,26 @@ export function DramaWatchContent() {
   const [epProgress, setEpProgress] = useState<Record<number, number>>({});
   const [isAutoNext, setIsAutoNext] = useState(true);
   const chunkSize = 50;
+
+  // ── Played episodes tracking (tap-to-mark via invisible detector) ────────
+  const [playedEpIds, setPlayedEpIds] = useState<Set<string>>(() => {
+    if (typeof window === 'undefined') return new Set();
+    try {
+      const saved = localStorage.getItem(`shadow_drama_played_${slug}`);
+      return saved ? new Set(JSON.parse(saved)) : new Set();
+    } catch { return new Set(); }
+  });
+
+  const markEpPlayed = useCallback((id: string | null) => {
+    if (!id) return;
+    setPlayedEpIds(prev => {
+      if (prev.has(id)) return prev;
+      const next = new Set(prev);
+      next.add(id);
+      try { localStorage.setItem(`shadow_drama_played_${slug}`, JSON.stringify([...next])); } catch {}
+      return next;
+    });
+  }, [slug]);
 
   // Load drama info
   useEffect(() => {
@@ -261,14 +291,15 @@ export function DramaWatchContent() {
       saveDramaProgress();
     };
   }, [saveDramaProgress]);
-
   const activeUrl = stream?.servers?.[activeServerIdx]?.url;
   const activeIframe = activeUrl || currentEp?.embedUrl || currentEp?.url;
 
   const nextEp = currentEpIndex >= 0 && drama && currentEpIndex < drama.episodes.length - 1 ? drama.episodes[currentEpIndex + 1] : null;
   const prevEp = currentEpIndex > 0 ? drama?.episodes[currentEpIndex - 1] : null;
 
+  // Mark previous episode as played when switching, and update URL
   const handleEpClick = useCallback((id: string) => {
+    markEpPlayed(currentEpId);   // mark what was playing before
     setCurrentEpId(id);
     setStream(null);
     if (typeof window !== 'undefined') {
@@ -277,7 +308,12 @@ export function DramaWatchContent() {
       url.searchParams.set('ep', ep ? String(ep.number) : id);
       window.history.replaceState({}, '', url.toString());
     }
-  }, [drama]);
+  }, [drama, currentEpId, markEpPlayed]);
+
+  // Handler: player area tapped → mark current ep as played
+  const handlePlayerTap = useCallback(() => {
+    markEpPlayed(currentEpId);
+  }, [currentEpId, markEpPlayed]);
 
   const episodeChunks = drama ? (() => {
     const eps = drama.episodes || [];
@@ -311,7 +347,13 @@ export function DramaWatchContent() {
 
           {/* Player Column */}
           <div className="xl:col-span-8 w-full flex flex-col gap-2 order-1">
-            <div className={cn("w-full h-[250px] md:h-auto md:aspect-video bg-black/40 backdrop-blur-2xl rounded-[30px] overflow-hidden border border-white/10 shadow-[0_8px_32px_0_rgba(0,0,0,0.37)] relative outline-none focus:ring-1 focus:ring-white/10 transition-all duration-500", dimMode ? "z-[60] ring-2 ring-orange-500/50 shadow-[0_0_50px_rgba(0,0,0,0.9)]" : "z-10")}>
+            {/* Invisible touch detector wraps the player — pointer-events-none so it never blocks the iframe */}
+            <div
+              className={cn("w-full h-[250px] md:h-auto md:aspect-video bg-black/40 backdrop-blur-2xl rounded-[30px] overflow-hidden border border-white/10 shadow-[0_8px_32px_0_rgba(0,0,0,0.37)] relative outline-none focus:ring-1 focus:ring-white/10 transition-all duration-500", dimMode ? "z-[60] ring-2 ring-orange-500/50 shadow-[0_0_50px_rgba(0,0,0,0.9)]" : "z-10")}
+              onClick={handlePlayerTap}
+            >
+              {/* Pass-through tap detector — sits above iframe but doesn't absorb pointer events */}
+              <div className="absolute inset-0 z-[5] pointer-events-none" />
               {isStreamLoading ? (
                 <div className="w-full h-full flex items-center justify-center border-b border-white/5">
                   <PlayerSkeleton />
@@ -484,7 +526,7 @@ export function DramaWatchContent() {
             <div className="xl:flex-1 xl:overflow-y-auto h-auto p-2">
               <div className={cn("p-2 grid", epViewMode === 'grid' ? 'grid-cols-5 gap-2.5' : epViewMode === 'compact' ? 'grid-cols-10 gap-1.5' : 'grid-cols-1 gap-2')}>
                 {episodeChunks[epChunkIndex]?.map((ep) => (
-                  <EpisodeButton key={ep.id} ep={ep} isCurrent={ep.id === currentEpId} percent={epProgress[ep.number] || 0} viewMode={epViewMode} onClick={handleEpClick} />
+                  <EpisodeButton key={ep.id} ep={ep} isCurrent={ep.id === currentEpId} isPlayed={playedEpIds.has(ep.id) && ep.id !== currentEpId} percent={epProgress[ep.number] || 0} viewMode={epViewMode} onClick={handleEpClick} />
                 ))}
               </div>
             </div>

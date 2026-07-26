@@ -162,7 +162,7 @@ const PingPongScroll = memo(({ text, className }: { text: string, className?: st
 });
 PingPongScroll.displayName = "PingPongScroll";
 
-const EpisodeButton = memo(({ ep, isCurrent, isFullyPlayed, percent, viewMode, onClick }: any) => {
+const EpisodeButton = memo(({ ep, isCurrent, isPlayed, isFullyPlayed, percent, viewMode, onClick }: any) => {
     const isWatched = isFullyPlayed || percent > 0;
     return (
         <motion.button
@@ -181,13 +181,15 @@ const EpisodeButton = memo(({ ep, isCurrent, isFullyPlayed, percent, viewMode, o
                 viewMode === 'grid' ? "h-9 w-full rounded-2xl flex items-center justify-center text-[11px] font-black" :
                 viewMode === 'compact' ? "aspect-square rounded-full flex items-center justify-center text-[9px] font-bold" :
                 "w-[98%] mx-auto h-10 rounded-2xl flex items-center px-4 text-[11px] font-bold text-left",
-                isCurrent ? "bg-green-500/20 backdrop-blur-xl border-green-400/50 text-white shadow-[0_0_20px_rgba(34,197,94,0.4)] z-20 scale-105" :
+                isCurrent ? "bg-green-500/20 backdrop-blur-xl border-green-400/50 text-white shadow-[0_0_20px_rgba(34,197,94,0.4)] z-20" :
+                isPlayed ? "bg-red-500/15 backdrop-blur-xl border-red-400/40 text-red-300 shadow-[0_0_16px_rgba(239,68,68,0.25)]" :
                 isWatched ? "bg-emerald-600/10 backdrop-blur-xl border border-emerald-500/30 text-emerald-500 hover:bg-emerald-600/20" :
                 "bg-white/5 backdrop-blur-xl border-white/10 text-zinc-400 hover:border-white/20 hover:bg-white/10 hover:text-white"
             )}
         >
             <div className="absolute inset-x-0 top-0 h-[40%] bg-gradient-to-b from-white/15 to-transparent pointer-events-none rounded-t-2xl" />
             
+            {/* Current episode — green animated shimmer */}
             {isCurrent && (
                 <>
                     <div className="absolute inset-0 bg-gradient-to-tr from-green-500/10 via-transparent to-green-400/20 animate-pulse pointer-events-none" />
@@ -195,11 +197,19 @@ const EpisodeButton = memo(({ ep, isCurrent, isFullyPlayed, percent, viewMode, o
                 </>
             )}
 
+            {/* Played episode — red animated shimmer */}
+            {isPlayed && !isCurrent && (
+                <>
+                    <div className="absolute inset-0 bg-gradient-to-tr from-red-500/10 via-transparent to-red-400/15 animate-pulse pointer-events-none" />
+                    <div className="absolute inset-0 bg-[linear-gradient(45deg,transparent_25%,rgba(239,68,68,0.18)_50%,transparent_75%)] bg-[length:250%_250%] animate-shimmer pointer-events-none" />
+                </>
+            )}
+
             <motion.span layout="position" className={cn("truncate relative z-10 w-full font-bold tracking-wide", viewMode === 'list' ? "text-left" : "text-center")}>
                 {viewMode === 'list' ? `${ep.number}. ${ep.title}` : ep.number}
             </motion.span>
             
-            {isWatched && !isCurrent && (
+            {isWatched && !isCurrent && !isPlayed && (
                 <div className="absolute bottom-0 left-0 h-0.5 bg-emerald-500/50 transition-all pointer-events-none" style={{ width: `${percent}%` }} />
             )}
         </motion.button>
@@ -648,6 +658,26 @@ function WatchContent() {
   const isProgrammaticServerUpdate = useRef(false);
   const isSwitchingEpisode = useRef(false);
 
+  // ── Played episodes tracking (tap-to-mark, no progress tracking for iframe) ──
+  const [playedEpIds, setPlayedEpIds] = useState<Set<string>>(() => {
+    if (typeof window === 'undefined') return new Set();
+    try {
+      const saved = localStorage.getItem(`shadow_donghua_played_${animeId}`);
+      return saved ? new Set(JSON.parse(saved)) : new Set();
+    } catch { return new Set(); }
+  });
+
+  const markEpPlayed = useCallback((id: string | null) => {
+    if (!id) return;
+    setPlayedEpIds(prev => {
+      if (prev.has(id)) return prev;
+      const next = new Set(prev);
+      next.add(id);
+      try { localStorage.setItem(`shadow_donghua_played_${animeId}`, JSON.stringify([...next])); } catch {}
+      return next;
+    });
+  }, [animeId]);
+
   const handleServerChange = useCallback((srvName: string) => {
       setServers((prev: any) => {
           if (!prev) { updateSetting('server', srvName); return prev; }
@@ -774,6 +804,7 @@ function WatchContent() {
   const handlePause = useCallback(() => saveProgress(true), [saveProgress]);
 
   const handleEpisodeClick = useCallback((id: string) => {
+      markEpPlayed(currentEpId);  // mark current ep as played before switching
       saveProgress(true);
       
       const ep = anime?.episodes.find(e => 
@@ -811,7 +842,7 @@ function WatchContent() {
           url.searchParams.set('ep', targetParam);
           window.history.replaceState({}, '', url.toString());
       }
-  }, [animeId, saveProgress, anime, epProgress]);
+  }, [animeId, saveProgress, anime, epProgress, currentEpId, markEpPlayed]);
 
   const resetInterfaceTimer = useCallback(() => {
       if (interfaceTimeoutRef.current) clearTimeout(interfaceTimeoutRef.current);
@@ -819,6 +850,7 @@ function WatchContent() {
   }, []);
 
   const handlePlayerClick = useCallback(() => {
+      markEpPlayed(currentEpId);  // tap on player = mark as played
       if (playerContainerRef.current) playerContainerRef.current.focus();
       if (hideInterface) {
           setHideInterface(false);
@@ -827,7 +859,7 @@ function WatchContent() {
           setHideInterface(true);
           if (interfaceTimeoutRef.current) clearTimeout(interfaceTimeoutRef.current);
       }
-  }, [hideInterface, resetInterfaceTimer]);
+  }, [hideInterface, resetInterfaceTimer, currentEpId, markEpPlayed]);
 
   const handlePlaybackStart = useCallback(() => {
       resetInterfaceTimer();
@@ -1441,8 +1473,9 @@ function WatchContent() {
                                     const percent = epProgress[ep.number] || 0;
                                     const isFullyPlayed = percent >= 80 || percent === 100;
                                     const isCurrent = ep.id === currentEpId;
+                                    const isPlayed = playedEpIds.has(ep.id) && !isCurrent;
                                     return (
-                                        <EpisodeButton key={ep.id} ep={ep} isCurrent={isCurrent} isFullyPlayed={isFullyPlayed} percent={percent} viewMode={epViewMode} onClick={handleEpisodeClick} />
+                                        <EpisodeButton key={ep.id} ep={ep} isCurrent={isCurrent} isPlayed={isPlayed} isFullyPlayed={isFullyPlayed} percent={percent} viewMode={epViewMode} onClick={handleEpisodeClick} />
                                     );
                                 })}
                             </AnimatePresence>

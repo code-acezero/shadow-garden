@@ -166,6 +166,26 @@ export default function WatchClient() {
   const [autoNext, setAutoNext] = useState(true);
   const [autoNextCountdown, setAutoNextCountdown] = useState<number | null>(null);
 
+  // ── Played episode tracking (tap-to-mark for iframe players) ─────────
+  const [playedEpKeys, setPlayedEpKeys] = useState<Set<string>>(() => {
+    if (typeof window === 'undefined') return new Set();
+    try {
+      const saved = localStorage.getItem(`shadow_movie_played_${slug}`);
+      return saved ? new Set(JSON.parse(saved)) : new Set();
+    } catch { return new Set(); }
+  });
+
+  const markEpPlayed = useCallback((season: number, ep: number) => {
+    const key = `s${season}_e${ep}`;
+    setPlayedEpKeys(prev => {
+      if (prev.has(key)) return prev;
+      const next = new Set(prev);
+      next.add(key);
+      try { localStorage.setItem(`shadow_movie_played_${slug}`, JSON.stringify([...next])); } catch {}
+      return next;
+    });
+  }, [slug]);
+
   useEffect(() => {
     if (!slug) return;
     (async () => {
@@ -278,6 +298,7 @@ export default function WatchClient() {
   // When season or episode changes, update the URL for the current server
   const handleEpisodeClick = useCallback((seasonNum: number, epNum: number, serverName: string | null) => {
     if (!movie?.seasons) return;
+    markEpPlayed(activeSeason, activeEpisode);  // mark currently playing ep as played before switching
     const season = movie.seasons.find(s => s.seasonNumber === seasonNum);
     if (!season) return;
     const src = season.sources.find(s => s.name === (serverName || '')) || season.sources[0];
@@ -289,7 +310,7 @@ export default function WatchClient() {
     setActiveServerUrl(updatedUrl);
     setActiveServerName(src.name);
     setAutoNextCountdown(null); // cancel any pending auto-next
-  }, [movie, getUpdatedServerUrl]);
+  }, [movie, getUpdatedServerUrl, activeSeason, activeEpisode, markEpPlayed]);
 
   // Prev episode
   const goToPrevEpisode = useCallback(() => {
@@ -387,7 +408,10 @@ export default function WatchClient() {
               (isSeries || (movie.related && movie.related.length > 0)) ? "xl:col-span-8" : "xl:col-span-12"
             )}>
               {/* Player */}
-              <div className={cn("w-full bg-black/40 backdrop-blur-2xl rounded-[30px] overflow-hidden border border-white/10 shadow-[0_8px_32px_0_rgba(0,0,0,0.37)] relative outline-none focus:ring-1 focus:ring-white/10 transition-all duration-500", dimMode ? "z-[60] ring-2 ring-indigo-500/50 shadow-[0_0_50px_rgba(0,0,0,0.9)]" : "z-10")}>
+              <div
+                className={cn("w-full bg-black/40 backdrop-blur-2xl rounded-[30px] overflow-hidden border border-white/10 shadow-[0_8px_32px_0_rgba(0,0,0,0.37)] relative outline-none focus:ring-1 focus:ring-white/10 transition-all duration-500", dimMode ? "z-[60] ring-2 ring-indigo-500/50 shadow-[0_0_50px_rgba(0,0,0,0.9)]" : "z-10")}
+                onClick={() => markEpPlayed(activeSeason, activeEpisode)}
+              >
                 <div className="w-full aspect-video relative">
                   {activeServerUrl ? (
                     <SafeEmbed url={activeServerUrl} />
@@ -570,36 +594,65 @@ export default function WatchClient() {
                       )}>
                         {episodesList.map((ep) => {
                           const epNum = ep.episodeNumber;
-                          const isActive = activeEpisode === epNum && true;
+                          const isActive = activeEpisode === epNum;
+                          const epKey = `s${activeSeason}_e${epNum}`;
+                          const isPlayed = playedEpKeys.has(epKey) && !isActive;
+                          const isWatched = getEpisodeProgress(activeSeason, epNum) > 0 || isPlayed;
+
                           if (epViewMode === 'list') {
-                            const isWatched = getEpisodeProgress(activeSeason, epNum) > 0;
                             return (
                               <button key={epNum} onClick={() => handleEpisodeClick(activeSeason, epNum, activeServerName)}
                                 className={cn(
-                                  "w-full flex items-center gap-3 px-3 py-2 rounded-xl border text-left transition-all text-[10px] font-bold transform-gpu duration-300",
-                                  isActive ? "bg-indigo-600/90 backdrop-blur-md border-indigo-400 text-white shadow-[0_0_15px_rgba(79,70,229,0.6)] z-20 scale-[1.02]"
-                                    : isWatched ? "bg-indigo-600/40 backdrop-blur-md border border-indigo-500/50 text-white shadow-[inset_0_0_20px_rgba(79,70,229,0.4)]"
+                                  "relative overflow-hidden w-full flex items-center gap-3 px-3 py-2 rounded-xl border text-left transition-all text-[10px] font-bold transform-gpu duration-300",
+                                  isActive ? "bg-green-500/20 backdrop-blur-md border-green-400 text-white shadow-[0_0_15px_rgba(34,197,94,0.5)] z-20 scale-[1.02]"
+                                    : isPlayed ? "bg-red-500/15 backdrop-blur-md border-red-400/40 text-red-300 shadow-[0_0_15px_rgba(239,68,68,0.25)]"
+                                    : isWatched ? "bg-emerald-600/20 backdrop-blur-md border-emerald-500/40 text-emerald-300"
                                     : "bg-white/5 border-white/10 text-zinc-400 hover:border-white/20 hover:text-white"
                                 )}>
-                                <span className={cn("w-6 h-6 rounded-full flex items-center justify-center text-[9px] font-black shrink-0",
-                                  isActive ? "bg-indigo-500 text-black" : isWatched ? "bg-indigo-500/50 text-white" : "bg-white/10 text-zinc-300"
+                                {isActive && (
+                                  <>
+                                    <div className="absolute inset-0 bg-gradient-to-tr from-green-500/10 via-transparent to-green-400/20 animate-pulse pointer-events-none" />
+                                    <div className="absolute inset-0 bg-[linear-gradient(45deg,transparent_25%,rgba(74,222,128,0.2)_50%,transparent_75%)] bg-[length:250%_250%] animate-shimmer pointer-events-none" />
+                                  </>
+                                )}
+                                {isPlayed && !isActive && (
+                                  <>
+                                    <div className="absolute inset-0 bg-gradient-to-tr from-red-500/10 via-transparent to-red-400/15 animate-pulse pointer-events-none" />
+                                    <div className="absolute inset-0 bg-[linear-gradient(45deg,transparent_25%,rgba(239,68,68,0.18)_50%,transparent_75%)] bg-[length:250%_250%] animate-shimmer pointer-events-none" />
+                                  </>
+                                )}
+                                <span className={cn("relative z-10 w-6 h-6 rounded-full flex items-center justify-center text-[9px] font-black shrink-0",
+                                  isActive ? "bg-green-500 text-black" : isPlayed ? "bg-red-500/30 text-red-300" : isWatched ? "bg-emerald-500/50 text-white" : "bg-white/10 text-zinc-300"
                                 )}>{epNum}</span>
-                                <span className="truncate">{ep.title || `Episode ${epNum}`}</span>
+                                <span className="relative z-10 truncate">{ep.title || `Episode ${epNum}`}</span>
                               </button>
                             );
                           }
-                          const isWatched = getEpisodeProgress(activeSeason, epNum) > 0;
+
                           return (
                             <button key={epNum} onClick={() => handleEpisodeClick(activeSeason, epNum, activeServerName)}
                               className={cn(
-                                "rounded-full flex items-center justify-center font-black transition-all border text-[9px] transform-gpu duration-300",
+                                "relative overflow-hidden rounded-full flex items-center justify-center font-black transition-all border text-[9px] transform-gpu duration-300",
                                 epViewMode === 'grid' ? "aspect-square" : "h-7",
                                 isActive
-                                  ? "bg-indigo-600/90 backdrop-blur-md border-indigo-400 text-white shadow-[0_0_15px_rgba(79,70,229,0.6)] z-20 scale-105"
-                                  : isWatched ? "bg-indigo-600/40 backdrop-blur-md border border-indigo-500/50 text-white shadow-[inset_0_0_20px_rgba(79,70,229,0.4)]"
+                                  ? "bg-green-500/20 backdrop-blur-md border-green-400 text-white shadow-[0_0_15px_rgba(34,197,94,0.5)] z-20 scale-105"
+                                  : isPlayed ? "bg-red-500/15 backdrop-blur-md border-red-400/40 text-red-300 shadow-[0_0_15px_rgba(239,68,68,0.25)]"
+                                  : isWatched ? "bg-emerald-600/20 backdrop-blur-md border-emerald-500/40 text-emerald-300"
                                   : "bg-white/5 border-white/10 text-zinc-400 hover:border-white/20 hover:text-white"
                               )}>
-                              {epNum}
+                              {isActive && (
+                                <>
+                                  <div className="absolute inset-0 bg-gradient-to-tr from-green-500/10 via-transparent to-green-400/20 animate-pulse pointer-events-none" />
+                                  <div className="absolute inset-0 bg-[linear-gradient(45deg,transparent_25%,rgba(74,222,128,0.2)_50%,transparent_75%)] bg-[length:250%_250%] animate-shimmer pointer-events-none" />
+                                </>
+                              )}
+                              {isPlayed && !isActive && (
+                                <>
+                                  <div className="absolute inset-0 bg-gradient-to-tr from-red-500/10 via-transparent to-red-400/15 animate-pulse pointer-events-none" />
+                                  <div className="absolute inset-0 bg-[linear-gradient(45deg,transparent_25%,rgba(239,68,68,0.18)_50%,transparent_75%)] bg-[length:250%_250%] animate-shimmer pointer-events-none" />
+                                </>
+                              )}
+                              <span className="relative z-10">{epNum}</span>
                             </button>
                           );
                         })}
