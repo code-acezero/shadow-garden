@@ -3,12 +3,10 @@
 class CinematicAudioEngine {
   private ctx: AudioContext | null = null;
   private isMuted: boolean = false;
-  private spaceDroneGain: GainNode | null = null;
-  private spaceOsc1: OscillatorNode | null = null;
-  private spaceOsc2: OscillatorNode | null = null;
+  private activeNodes: (OscillatorNode | GainNode | AudioBufferSourceNode)[] = [];
 
   constructor() {
-    // Lazy init Web Audio API context upon user gesture
+    // Lazy initialization on user interaction
   }
 
   private initCtx() {
@@ -25,64 +23,113 @@ class CinematicAudioEngine {
 
   public setMuted(muted: boolean) {
     this.isMuted = muted;
-    if (this.spaceDroneGain) {
-      this.spaceDroneGain.gain.setValueAtTime(muted ? 0 : 0.15, this.ctx?.currentTime || 0);
+    if (muted) {
+      this.stopAllAudio();
     }
   }
 
-  // --- PHASE 1: SPACE AMBIENT DRONE ---
+  /**
+   * Complete audio teardown - stops all active oscillators/sources and closes AudioContext
+   * to guarantee no buzzing sound ever persists when navigating away.
+   */
+  public stopAllAudio() {
+    try {
+      this.activeNodes.forEach(node => {
+        try {
+          if ('stop' in node && typeof (node as any).stop === 'function') {
+            (node as any).stop();
+          }
+          node.disconnect();
+        } catch (e) {}
+      });
+      this.activeNodes = [];
+
+      if (this.ctx && this.ctx.state !== 'closed') {
+        this.ctx.close();
+        this.ctx = null;
+      }
+    } catch (e) {
+      console.warn("Error stopping audio engine:", e);
+    }
+  }
+
+  /**
+   * Universal playSound helper function with named sound triggers.
+   */
+  public playSound(soundName: string) {
+    if (this.isMuted) return;
+    this.initCtx();
+
+    switch (soundName) {
+      case 'sfx_ui_hover':
+        this.playUIHover();
+        break;
+      case 'sfx_ui_click':
+        this.playUIClick();
+        break;
+      case 'space_bgm':
+        this.startSpaceDrone();
+        break;
+      case 'sfx_hyper_whoosh':
+        this.playHyperWhoosh();
+        break;
+      case 'sfx_landing':
+        this.playLandingThud();
+        break;
+      case 'sfx_heartbeat':
+        this.playHeartbeat();
+        break;
+      case 'sfx_footstep':
+        this.playFootstep();
+        break;
+      case 'sfx_door_grind':
+        this.playDoorGrind();
+        break;
+      case 'sfx_time_warp':
+        this.playTimeWarp();
+        break;
+      default:
+        break;
+    }
+  }
+
+  // --- AUDIO SYNTHESIS IMPLEMENTATIONS ---
+
   public startSpaceDrone() {
     this.initCtx();
-    if (!this.ctx || this.isMuted || this.spaceOsc1) return;
+    if (!this.ctx || this.isMuted) return;
 
     try {
       const now = this.ctx.currentTime;
-      this.spaceDroneGain = this.ctx.createGain();
-      this.spaceDroneGain.gain.setValueAtTime(0, now);
-      this.spaceDroneGain.gain.linearRampToValueAtTime(0.15, now + 3);
+      const gain = this.ctx.createGain();
+      gain.gain.setValueAtTime(0.001, now);
+      gain.gain.linearRampToValueAtTime(0.08, now + 2);
 
-      this.spaceOsc1 = this.ctx.createOscillator();
-      this.spaceOsc2 = this.ctx.createOscillator();
+      const osc1 = this.ctx.createOscillator();
+      const osc2 = this.ctx.createOscillator();
 
-      this.spaceOsc1.type = 'sine';
-      this.spaceOsc1.frequency.setValueAtTime(55, now); // A1 deep drone
+      osc1.type = 'sine';
+      osc1.frequency.setValueAtTime(55, now); // Deep sub A1
 
-      this.spaceOsc2.type = 'triangle';
-      this.spaceOsc2.frequency.setValueAtTime(110.5, now); // Slightly detuned A2
+      osc2.type = 'triangle';
+      osc2.frequency.setValueAtTime(110.5, now); // Detuned A2
 
       const filter = this.ctx.createBiquadFilter();
       filter.type = 'lowpass';
-      filter.frequency.setValueAtTime(220, now);
+      filter.frequency.setValueAtTime(180, now);
 
-      this.spaceOsc1.connect(filter);
-      this.spaceOsc2.connect(filter);
-      filter.connect(this.spaceDroneGain);
-      this.spaceDroneGain.connect(this.ctx.destination);
+      osc1.connect(filter);
+      osc2.connect(filter);
+      filter.connect(gain);
+      gain.connect(this.ctx.destination);
 
-      this.spaceOsc1.start();
-      this.spaceOsc2.start();
-    } catch (e) {
-      console.warn("Audio Engine space drone error:", e);
-    }
+      osc1.start(now);
+      osc2.start(now);
+
+      this.activeNodes.push(osc1, osc2, gain);
+    } catch (e) {}
   }
 
-  public stopSpaceDrone() {
-    if (this.spaceDroneGain && this.ctx) {
-      try {
-        const now = this.ctx.currentTime;
-        this.spaceDroneGain.gain.linearRampToValueAtTime(0, now + 1.5);
-        setTimeout(() => {
-          this.spaceOsc1?.stop();
-          this.spaceOsc2?.stop();
-          this.spaceOsc1 = null;
-          this.spaceOsc2 = null;
-          this.spaceDroneGain = null;
-        }, 1500);
-      } catch (e) {}
-    }
-  }
-
-  // --- SCI-FI UI HOVER & CLICK SOUNDS ---
   public playUIHover() {
     this.initCtx();
     if (!this.ctx || this.isMuted) return;
@@ -93,15 +140,17 @@ class CinematicAudioEngine {
 
       osc.type = 'sine';
       osc.frequency.setValueAtTime(800, now);
-      osc.frequency.exponentialRampToValueAtTime(1200, now + 0.06);
+      osc.frequency.exponentialRampToValueAtTime(1200, now + 0.05);
 
-      gain.gain.setValueAtTime(0.04, now);
-      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.06);
+      gain.gain.setValueAtTime(0.03, now);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.05);
 
       osc.connect(gain);
       gain.connect(this.ctx.destination);
       osc.start(now);
-      osc.stop(now + 0.06);
+      osc.stop(now + 0.05);
+
+      this.activeNodes.push(osc, gain);
     } catch (e) {}
   }
 
@@ -115,25 +164,26 @@ class CinematicAudioEngine {
 
       osc.type = 'square';
       osc.frequency.setValueAtTime(1200, now);
-      osc.frequency.exponentialRampToValueAtTime(400, now + 0.08);
+      osc.frequency.exponentialRampToValueAtTime(400, now + 0.07);
 
-      gain.gain.setValueAtTime(0.08, now);
-      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.08);
+      gain.gain.setValueAtTime(0.06, now);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.07);
 
       osc.connect(gain);
       gain.connect(this.ctx.destination);
       osc.start(now);
-      osc.stop(now + 0.08);
+      osc.stop(now + 0.07);
+
+      this.activeNodes.push(osc, gain);
     } catch (e) {}
   }
 
-  // --- HYPER-TRAVEL WHOOSH (Phase 3) ---
   public playHyperWhoosh() {
     this.initCtx();
     if (!this.ctx || this.isMuted) return;
     try {
       const now = this.ctx.currentTime;
-      const bufferSize = this.ctx.sampleRate * 2;
+      const bufferSize = this.ctx.sampleRate * 1.8;
       const buffer = this.ctx.createBuffer(1, bufferSize, this.ctx.sampleRate);
       const data = buffer.getChannelData(0);
       for (let i = 0; i < bufferSize; i++) {
@@ -145,25 +195,26 @@ class CinematicAudioEngine {
 
       const filter = this.ctx.createBiquadFilter();
       filter.type = 'bandpass';
-      filter.frequency.setValueAtTime(100, now);
-      filter.frequency.exponentialRampToValueAtTime(3000, now + 1.2);
-      filter.frequency.exponentialRampToValueAtTime(300, now + 2.0);
+      filter.frequency.setValueAtTime(120, now);
+      filter.frequency.exponentialRampToValueAtTime(2500, now + 1.0);
+      filter.frequency.exponentialRampToValueAtTime(200, now + 1.8);
 
       const gain = this.ctx.createGain();
       gain.gain.setValueAtTime(0.001, now);
-      gain.gain.linearRampToValueAtTime(0.2, now + 1.0);
-      gain.gain.exponentialRampToValueAtTime(0.001, now + 2.0);
+      gain.gain.linearRampToValueAtTime(0.18, now + 0.9);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + 1.8);
 
       noise.connect(filter);
       filter.connect(gain);
       gain.connect(this.ctx.destination);
 
       noise.start(now);
-      noise.stop(now + 2.0);
+      noise.stop(now + 1.8);
+
+      this.activeNodes.push(noise, gain);
     } catch (e) {}
   }
 
-  // --- LANDING IMPACT & HEARTBEAT (Phase 5) ---
   public playLandingThud() {
     this.initCtx();
     if (!this.ctx || this.isMuted) return;
@@ -173,20 +224,18 @@ class CinematicAudioEngine {
       const gain = this.ctx.createGain();
 
       osc.type = 'sine';
-      osc.frequency.setValueAtTime(180, now);
-      osc.frequency.exponentialRampToValueAtTime(30, now + 0.4);
+      osc.frequency.setValueAtTime(160, now);
+      osc.frequency.exponentialRampToValueAtTime(28, now + 0.35);
 
-      gain.gain.setValueAtTime(0.4, now);
-      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.4);
+      gain.gain.setValueAtTime(0.35, now);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.35);
 
       osc.connect(gain);
       gain.connect(this.ctx.destination);
       osc.start(now);
-      osc.stop(now + 0.4);
+      osc.stop(now + 0.35);
 
-      // Heartbeat pulse
-      setTimeout(() => this.playHeartbeat(), 500);
-      setTimeout(() => this.playHeartbeat(), 1200);
+      this.activeNodes.push(osc, gain);
     } catch (e) {}
   }
 
@@ -198,20 +247,21 @@ class CinematicAudioEngine {
       const gain = this.ctx.createGain();
 
       osc.type = 'sine';
-      osc.frequency.setValueAtTime(70, now);
-      osc.frequency.exponentialRampToValueAtTime(35, now + 0.15);
+      osc.frequency.setValueAtTime(65, now);
+      osc.frequency.exponentialRampToValueAtTime(30, now + 0.12);
 
-      gain.gain.setValueAtTime(0.2, now);
-      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.15);
+      gain.gain.setValueAtTime(0.15, now);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.12);
 
       osc.connect(gain);
       gain.connect(this.ctx.destination);
       osc.start(now);
-      osc.stop(now + 0.15);
+      osc.stop(now + 0.12);
+
+      this.activeNodes.push(osc, gain);
     } catch (e) {}
   }
 
-  // --- FOOTSTEP (Phase 6) ---
   public playFootstep() {
     this.initCtx();
     if (!this.ctx || this.isMuted) return;
@@ -221,70 +271,45 @@ class CinematicAudioEngine {
       const gain = this.ctx.createGain();
 
       osc.type = 'triangle';
-      osc.frequency.setValueAtTime(120, now);
-      osc.frequency.exponentialRampToValueAtTime(40, now + 0.08);
+      osc.frequency.setValueAtTime(100, now);
+      osc.frequency.exponentialRampToValueAtTime(35, now + 0.07);
 
-      gain.gain.setValueAtTime(0.08, now);
-      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.08);
+      gain.gain.setValueAtTime(0.06, now);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.07);
 
       osc.connect(gain);
       gain.connect(this.ctx.destination);
       osc.start(now);
-      osc.stop(now + 0.08);
+      osc.stop(now + 0.07);
+
+      this.activeNodes.push(osc, gain);
     } catch (e) {}
   }
 
-  // --- STONE DOOR GRINDING & BASS DROP (Phase 7) ---
   public playDoorGrind() {
     this.initCtx();
     if (!this.ctx || this.isMuted) return;
     try {
       const now = this.ctx.currentTime;
-      const bufferSize = this.ctx.sampleRate * 2.5;
-      const buffer = this.ctx.createBuffer(1, bufferSize, this.ctx.sampleRate);
-      const data = buffer.getChannelData(0);
-      for (let i = 0; i < bufferSize; i++) {
-        data[i] = Math.random() * 2 - 1;
-      }
-
-      const noise = this.ctx.createBufferSource();
-      noise.buffer = buffer;
-
-      const filter = this.ctx.createBiquadFilter();
-      filter.type = 'lowpass';
-      filter.frequency.setValueAtTime(400, now);
-      filter.frequency.linearRampToValueAtTime(120, now + 2.5);
-
+      const osc = this.ctx.createOscillator();
       const gain = this.ctx.createGain();
-      gain.gain.setValueAtTime(0.001, now);
-      gain.gain.linearRampToValueAtTime(0.25, now + 0.5);
-      gain.gain.linearRampToValueAtTime(0.001, now + 2.5);
 
-      noise.connect(filter);
-      filter.connect(gain);
+      osc.type = 'sawtooth';
+      osc.frequency.setValueAtTime(80, now);
+      osc.frequency.exponentialRampToValueAtTime(25, now + 1.5);
+
+      gain.gain.setValueAtTime(0.2, now);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + 1.5);
+
+      osc.connect(gain);
       gain.connect(this.ctx.destination);
+      osc.start(now);
+      osc.stop(now + 1.5);
 
-      noise.start(now);
-      noise.stop(now + 2.5);
-
-      // Deep sub bass drop
-      const bassOsc = this.ctx.createOscillator();
-      const bassGain = this.ctx.createGain();
-      bassOsc.type = 'sine';
-      bassOsc.frequency.setValueAtTime(120, now + 0.2);
-      bassOsc.frequency.exponentialRampToValueAtTime(25, now + 2.0);
-
-      bassGain.gain.setValueAtTime(0.35, now + 0.2);
-      bassGain.gain.exponentialRampToValueAtTime(0.001, now + 2.0);
-
-      bassOsc.connect(bassGain);
-      bassGain.connect(this.ctx.destination);
-      bassOsc.start(now + 0.2);
-      bassOsc.stop(now + 2.0);
+      this.activeNodes.push(osc, gain);
     } catch (e) {}
   }
 
-  // --- TIME WARP / VACUUM (Phase 8) ---
   public playTimeWarp() {
     this.initCtx();
     if (!this.ctx || this.isMuted) return;
@@ -295,23 +320,18 @@ class CinematicAudioEngine {
 
       osc.type = 'sawtooth';
       osc.frequency.setValueAtTime(100, now);
-      osc.frequency.exponentialRampToValueAtTime(2400, now + 1.8);
-
-      const filter = this.ctx.createBiquadFilter();
-      filter.type = 'highpass';
-      filter.frequency.setValueAtTime(200, now);
-      filter.frequency.linearRampToValueAtTime(800, now + 1.8);
+      osc.frequency.exponentialRampToValueAtTime(2000, now + 1.5);
 
       gain.gain.setValueAtTime(0.001, now);
-      gain.gain.linearRampToValueAtTime(0.2, now + 1.0);
-      gain.gain.exponentialRampToValueAtTime(0.001, now + 1.8);
+      gain.gain.linearRampToValueAtTime(0.2, now + 0.8);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + 1.5);
 
-      osc.connect(filter);
-      filter.connect(gain);
+      osc.connect(gain);
       gain.connect(this.ctx.destination);
-
       osc.start(now);
-      osc.stop(now + 1.8);
+      osc.stop(now + 1.5);
+
+      this.activeNodes.push(osc, gain);
     } catch (e) {}
   }
 }

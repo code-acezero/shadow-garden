@@ -2,15 +2,14 @@ import { create } from 'zustand';
 
 export type CinematicPhase = 
   | 0  // Merged Cookie & Audio Permission Grant Modal
-  | 1  // The Void & Interstellar Title Fade
+  | 1  // The Void & Interstellar Title Fade ("shadow garden")
   | 2  // Solo Leveling Gender Selection (Male/Female)
-  | 3  // Hyper-Travel & Drone View Orbit around 3D Gate
-  | 4  // System Instructions (3-Page Guide) & Main Landing UI
-  | 5  // First-Person Drop & Confusion (Look down at hands, left/right)
-  | 6  // The Walk down Stone Path & Gate Entrance Quest Prompt
-  | 7  // Pushing the Gate (God-rays, camera shake, door cracking)
-  | 8  // The Black Hole & Time Tunnel Wormhole Sucking Sequence
-  | 9; // Whiteout Flash & Arrival at /home
+  | 3  // Hyper-Travel & Drone Orbit around Open Gate with Black Hole
+  | 4  // System Instructions (3-Page Manual) & High Top-Down Front Camera View + Landing UI
+  | 5  // First-Person Drop & Confusion (Heavy landing, look at hands, look left/right)
+  | 6  // The Walk down Stone Path & Confirmation Quest Prompt ("Are you sure...")
+  | 7  // The Black Hole Suction & Time Tunnel Wormhole Sequence
+  | 8; // Whiteout & Arrival Redirect to /home
 
 export type Gender = 'male' | 'female';
 
@@ -47,7 +46,7 @@ export const useCinematicStore = create<CinematicState>((set, get) => ({
 
   nextPhase: () => {
     const current = get().currentPhase;
-    if (current < 9) {
+    if (current < 8) {
       set({ currentPhase: (current + 1) as CinematicPhase });
     }
   },

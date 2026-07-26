@@ -36,29 +36,30 @@ export function CinematicSystemUI() {
     }
   }, [currentPhase, setPhase]);
 
-  // Phase 9 Whiteout Router Redirect to /home
+  // Phase 8 Whiteout Router Redirect to /home + COMPLETE AUDIO TEARDOWN
   useEffect(() => {
-    if (currentPhase === 9) {
+    if (currentPhase === 8) {
+      cinematicAudio.stopAllAudio(); // Completely stop all Web Audio nodes & oscillators
       const timer = setTimeout(() => {
         router.push('/home');
-      }, 2500);
+      }, 2200);
       return () => clearTimeout(timer);
     }
   }, [currentPhase, router]);
 
   const handleGenderSelect = (selectedGender: Gender) => {
-    cinematicAudio.playUIClick();
+    cinematicAudio.playSound('sfx_ui_click');
     setGender(selectedGender);
     setPhase(3); // Start Hyper-Travel & Drone View
 
     // Auto-advance Phase 3 -> Phase 4 after hyper travel completes
     setTimeout(() => {
       setPhase(4);
-    }, 4000);
+    }, 4200);
   };
 
   const handleEnterTraveler = () => {
-    cinematicAudio.playUIClick();
+    cinematicAudio.playSound('sfx_ui_click');
     setPhase(5); // Start FPV Drop & Confusion
 
     // Auto-advance Phase 5 -> Phase 6 (The Walk) after 3.2s
@@ -68,10 +69,10 @@ export function CinematicSystemUI() {
   };
 
   const handleGatePromptOk = () => {
-    cinematicAudio.playUIClick();
-    setPhase(7); // Start Pushing Gate & God-Rays
+    cinematicAudio.playSound('sfx_ui_click');
+    setPhase(7); // Start Black Hole Suction & Time Tunnel
 
-    // Auto-advance Phase 7 -> Phase 8 (Time Tunnel) after 2.5s
+    // Auto-advance Phase 7 -> Phase 8 (Whiteout & Redirect) after 2.5s
     setTimeout(() => {
       setPhase(8);
     }, 2500);
@@ -80,12 +81,12 @@ export function CinematicSystemUI() {
   return (
     <div className="fixed inset-0 z-30 pointer-events-none overflow-hidden select-none font-sans">
       
-      {/* GLOBAL AUDIO MUTE TOGGLE BUTTON (Phases 1-8) */}
-      {currentPhase > 0 && currentPhase < 9 && (
+      {/* GLOBAL AUDIO MUTE TOGGLE BUTTON (Phases 1-7) */}
+      {currentPhase > 0 && currentPhase < 8 && (
         <div className="absolute top-6 right-6 z-50 pointer-events-auto">
           <button
             onClick={() => {
-              cinematicAudio.playUIClick();
+              cinematicAudio.playSound('sfx_ui_click');
               toggleAudioMute();
               cinematicAudio.setMuted(!audioMuted);
             }}
@@ -110,7 +111,6 @@ export function CinematicSystemUI() {
               transition={{ duration: 0.4 }}
               className="relative w-full max-w-lg bg-[#090912]/90 border-2 border-cyan-500/50 rounded-3xl p-8 shadow-[0_0_50px_rgba(6,182,212,0.4)] overflow-hidden"
             >
-              {/* Solo Leveling Blue Glow Header Bar */}
               <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-cyan-500 via-purple-500 to-cyan-500 animate-pulse" />
               
               <div className="flex items-center gap-3 mb-4">
@@ -136,7 +136,7 @@ export function CinematicSystemUI() {
 
               <button
                 onClick={() => {
-                  cinematicAudio.playUIClick();
+                  cinematicAudio.playSound('sfx_ui_click');
                   permitAudioAndCookies();
                 }}
                 className="w-full py-4 rounded-2xl bg-gradient-to-r from-cyan-600 via-cyan-500 to-blue-600 hover:from-cyan-500 hover:to-blue-500 text-white font-black text-xs uppercase tracking-[0.2em] shadow-[0_0_30px_rgba(6,182,212,0.5)] border border-cyan-300/40 transition-all transform active:scale-95 flex items-center justify-center gap-3 group"
@@ -187,7 +187,6 @@ export function CinematicSystemUI() {
               transition={{ duration: 0.5, type: "spring" }}
               className="relative w-full max-w-md bg-[#0a0a14]/95 border-2 border-purple-500/60 rounded-3xl p-8 shadow-[0_0_60px_rgba(168,85,247,0.5)] overflow-hidden"
             >
-              {/* Header Badge */}
               <div className="flex items-center gap-2 mb-6 border-b border-purple-500/20 pb-4">
                 <Crown className="w-6 h-6 text-purple-400" />
                 <span className="text-xs font-black tracking-[0.2em] text-purple-300 uppercase font-mono">
@@ -200,9 +199,8 @@ export function CinematicSystemUI() {
               </p>
 
               <div className="grid grid-cols-2 gap-4">
-                {/* MALE / HUNTER */}
                 <button
-                  onMouseEnter={() => cinematicAudio.playUIHover()}
+                  onMouseEnter={() => cinematicAudio.playSound('sfx_ui_hover')}
                   onClick={() => handleGenderSelect('male')}
                   className={`p-6 rounded-2xl border transition-all flex flex-col items-center gap-3 group ${
                     gender === 'male'
@@ -217,9 +215,8 @@ export function CinematicSystemUI() {
                   <span className="text-[9px] text-purple-400 font-mono">SHADOW HUNTER</span>
                 </button>
 
-                {/* FEMALE / MONARCH */}
                 <button
-                  onMouseEnter={() => cinematicAudio.playUIHover()}
+                  onMouseEnter={() => cinematicAudio.playSound('sfx_ui_hover')}
                   onClick={() => handleGenderSelect('female')}
                   className={`p-6 rounded-2xl border transition-all flex flex-col items-center gap-3 group ${
                     gender === 'female'
@@ -240,13 +237,11 @@ export function CinematicSystemUI() {
       </AnimatePresence>
 
       {/* ========================================================================= */}
-      {/* PHASE 4: 3-PAGE INSTRUCTION MANUAL & MAIN LANDING UI */}
+      {/* PHASE 4: 3-PAGE INSTRUCTION MANUAL & MAIN LANDING UI (HIGH TOP-DOWN FRONT) */}
       {/* ========================================================================= */}
       <AnimatePresence>
         {currentPhase === 4 && (
           <div className="absolute inset-0 flex flex-col justify-between p-6 pointer-events-auto z-40 bg-gradient-to-t from-black/80 via-transparent to-black/40">
-            
-            {/* Top Bar */}
             <div className="flex items-center justify-between w-full max-w-7xl mx-auto">
               <div className="flex items-center gap-3">
                 <div className="w-3 h-3 rounded-full bg-purple-500 animate-ping" />
@@ -255,7 +250,7 @@ export function CinematicSystemUI() {
 
               <button
                 onClick={() => {
-                  cinematicAudio.playUIClick();
+                  cinematicAudio.playSound('sfx_ui_click');
                   setIsInstructionsOpen(true);
                 }}
                 className="px-4 py-2 rounded-full bg-white/10 border border-white/20 text-xs font-bold text-white hover:bg-purple-900/40 hover:border-purple-400 transition-all flex items-center gap-2"
@@ -265,20 +260,18 @@ export function CinematicSystemUI() {
               </button>
             </div>
 
-            {/* Middle Prompt / Title */}
             <div className="text-center max-w-2xl mx-auto space-y-3 my-auto">
               <span className="text-xs font-black tracking-[0.3em] text-cyan-400 uppercase font-mono">
-                DIMENSION GATE LOCATED
+                GATE THRESHOLD REVEALED
               </span>
               <h2 className="text-4xl md:text-5xl font-black text-white tracking-tight uppercase font-serif drop-shadow-lg">
-                THE FORBIDDEN ARCHIVES
+                THE OPEN ARCHIVES
               </h2>
               <p className="text-xs text-zinc-300 font-mono">
-                The gate stands ready. Prepare for dimensional drop into the sanctuary.
+                The open gate stands before you with its swirling black hole. Initiate traveler drop.
               </p>
             </div>
 
-            {/* Bottom Action Buttons */}
             <div className="flex flex-col sm:flex-row items-center justify-center gap-4 w-full max-w-md mx-auto mb-6">
               <button
                 onClick={handleEnterTraveler}
@@ -290,7 +283,8 @@ export function CinematicSystemUI() {
 
               <button
                 onClick={() => {
-                  cinematicAudio.playUIClick();
+                  cinematicAudio.playSound('sfx_ui_click');
+                  cinematicAudio.stopAllAudio();
                   router.push('/login');
                 }}
                 className="w-full sm:w-auto px-8 py-4 rounded-2xl bg-black/60 hover:bg-white/10 text-zinc-300 hover:text-white font-bold text-xs uppercase tracking-[0.2em] border border-white/20 transition-all flex items-center justify-center gap-2"
@@ -376,7 +370,7 @@ export function CinematicSystemUI() {
       </AnimatePresence>
 
       {/* ========================================================================= */}
-      {/* PHASE 6: GATE ENTRANCE QUEST PROMPT */}
+      {/* PHASE 6: THE CONFIRMATION PROMPT ("Are you sure you want to enter...") */}
       {/* ========================================================================= */}
       <AnimatePresence>
         {currentPhase === 6 && (
@@ -385,24 +379,24 @@ export function CinematicSystemUI() {
               initial={{ opacity: 0, scale: 0.85, y: 30 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.9, y: -20 }}
-              className="relative w-full max-w-md bg-[#0a0a14]/95 border-2 border-red-500/60 rounded-3xl p-8 shadow-[0_0_60px_rgba(239,68,68,0.5)] text-center space-y-6"
+              className="relative w-full max-w-md bg-[#0a0a14]/95 border-2 border-rose-500/60 rounded-3xl p-8 shadow-[0_0_60px_rgba(244,63,94,0.5)] text-center space-y-6"
             >
-              <div className="w-14 h-14 rounded-full bg-red-500/20 border border-red-400 mx-auto flex items-center justify-center">
-                <Crown size={28} className="text-red-400" />
+              <div className="w-14 h-14 rounded-full bg-rose-500/20 border border-rose-400 mx-auto flex items-center justify-center">
+                <Crown size={28} className="text-rose-400" />
               </div>
 
               <div className="space-y-2">
-                <span className="text-[10px] font-black text-red-400 font-mono tracking-[0.25em] uppercase">SYSTEM QUEST PROMPT</span>
+                <span className="text-[10px] font-black text-rose-400 font-mono tracking-[0.25em] uppercase">SYSTEM CONFIRMATION</span>
                 <h3 className="text-lg font-black text-white tracking-wide uppercase">
-                  Are you ready to enter the world of shadow garden?
+                  Are you sure you want to enter the world of shadow garden?
                 </h3>
               </div>
 
               <button
                 onClick={handleGatePromptOk}
-                className="w-full py-4 rounded-2xl bg-gradient-to-r from-red-600 to-rose-600 hover:from-red-500 hover:to-rose-500 text-white font-black text-xs uppercase tracking-[0.25em] shadow-[0_0_35px_rgba(239,68,68,0.6)] border border-red-300/40 transition-all transform active:scale-95"
+                className="w-full py-4 rounded-2xl bg-gradient-to-r from-rose-600 to-purple-600 hover:from-rose-500 hover:to-purple-500 text-white font-black text-xs uppercase tracking-[0.25em] shadow-[0_0_35px_rgba(244,63,94,0.6)] border border-rose-300/40 transition-all transform active:scale-95"
               >
-                OK (PUSH GATE)
+                OK
               </button>
             </motion.div>
           </div>
@@ -410,10 +404,10 @@ export function CinematicSystemUI() {
       </AnimatePresence>
 
       {/* ========================================================================= */}
-      {/* PHASE 9: WHITEOUT FLASH & ARRIVAL ROUTER REDIRECT */}
+      {/* PHASE 8: WHITEOUT FLASH & ARRIVAL ROUTER REDIRECT */}
       {/* ========================================================================= */}
       <AnimatePresence>
-        {currentPhase === 9 && (
+        {currentPhase === 8 && (
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
