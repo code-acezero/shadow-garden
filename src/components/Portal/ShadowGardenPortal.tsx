@@ -1332,7 +1332,7 @@ const AnimationPreferencePopup = React.memo(({
                 initial={{ opacity: 0, scale: 0.95 }} 
                 animate={{ opacity: 1, scale: 1 }} 
                 transition={{ duration: 0.3, ease: "easeOut" }}
-                className="relative max-w-sm sm:max-w-md w-full mx-auto bg-[#0a0505]/95 border border-primary-900/60 p-5 sm:p-6 rounded-2xl shadow-[0_0_50px_rgba(220,38,38,0.3)] overflow-hidden text-center"
+                className="relative max-w-sm sm:max-w-md w-full mx-auto bg-[#0a0505]/95 border border-primary-900/60 p-5 sm:p-6 rounded-2xl shadow-[0_0_50px_rgba(220,38,38,0.3)] overflow-hidden text-center -translate-y-6 sm:-translate-y-10"
             >
                 <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-transparent via-primary-500 to-transparent animate-pulse" />
 
