@@ -98,14 +98,14 @@ const useWatchSettings = () => {
       if (typeof window !== 'undefined') {
           const saved = localStorage.getItem('shadow_watch_settings_anime');
           if (saved) {
-             setSettings(prev => ({ ...prev, ...JSON.parse(saved) }));
+             setSettings((prev: any) => ({ ...prev, ...JSON.parse(saved) }));
           }
           setIsLoaded(true);
       }
   }, []);
 
   const updateSetting = useCallback((key: string, value: any) => {
-      setSettings(prev => {
+      setSettings((prev: any) => {
           const newSettings = { ...prev, [key]: value };
           localStorage.setItem('shadow_watch_settings_anime', JSON.stringify(newSettings));
           return newSettings;
@@ -142,7 +142,7 @@ const PingPongScroll = memo(({ text, className }: { text: string, className?: st
             >
                 {text}
             </span>
-            <style jsx>{`
+            <style>{`
                 @keyframes pingpong-scroll {
                     0% { transform: translateX(0); }
                     15% { transform: translateX(0); }
@@ -320,7 +320,7 @@ const MarqueeTitle = ({ text }: { text: string }) => {
                         {text}
                     </span>
                 </div>
-                <style jsx>{`
+                <style>{`
                     @keyframes pingpong {
                         0% { transform: translateX(0); }
                         10% { transform: translateX(0); }
@@ -645,14 +645,14 @@ function WatchContent() {
   const activePopup = popupIndex >= 0 ? popupHistory[popupIndex] : null;
 
   const navigateToPopup = useCallback((type: 'character'|'actor', id: string) => {
-    setPopupHistory(prev => { const n = prev.slice(0, popupIndex + 1); n.push({ type, id }); return n; });
-    setPopupIndex(prev => prev + 1);
+    setPopupHistory((prev: any[]) => { const n = prev.slice(0, popupIndex + 1); n.push({ type, id }); return n; });
+    setPopupIndex((prev: number) => prev + 1);
   }, [popupIndex]);
 
   const openCharacter = useCallback((id: string) => navigateToPopup('character', id), [navigateToPopup]);
   const openActor = useCallback((id: string) => navigateToPopup('actor', id), [navigateToPopup]);
-  const goBack = useCallback(() => setPopupIndex(prev => Math.max(0, prev - 1)), []);
-  const goForward = useCallback(() => setPopupIndex(prev => Math.min(popupHistory.length - 1, prev + 1)), [popupHistory.length]);
+  const goBack = useCallback(() => setPopupIndex((prev: number) => Math.max(0, prev - 1)), []);
+  const goForward = useCallback(() => setPopupIndex((prev: number) => Math.min(popupHistory.length - 1, prev + 1)), [popupHistory.length]);
   const closeAll = useCallback(() => { setPopupHistory([]); setPopupIndex(-1); }, []);
 
   // --- STATE ---
@@ -669,7 +669,7 @@ function WatchContent() {
   const [servers, setServers] = useState<any>(null);
   const [nextEpSchedule, setNextEpSchedule] = useState<V2EpisodeSchedule | null>(null);
   const [hideInterface, setHideInterface] = useState(false);
-  const interfaceTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const interfaceTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [showSkipNotification, setShowSkipNotification] = useState(false);
   const isSkipToastLocked = useRef(false);
   const isProgrammaticServerUpdate = useRef(false);
@@ -734,7 +734,7 @@ function WatchContent() {
       }
       if (progress <= 0) return;
 
-      const ep = anime.episodes.find(e => e.id === targetEpId || String(e.number) === targetEpId);
+      const ep = anime.episodes.find((e: any) => e.id === targetEpId || String(e.number) === targetEpId);
       if (!ep) return;
       
       const rawDuration = playerRef.current?.getDuration();
@@ -743,7 +743,7 @@ function WatchContent() {
       const percent = Math.min(100, Math.round((progress / duration) * 100));
       const isCompleted = percent >= 98;
 
-      setEpProgress(prev => ({
+      setEpProgress((prev: any) => ({
           ...prev,
           [ep.number]: isCompleted ? 100 : percent,
           [ep.id]: isCompleted ? 100 : percent
@@ -853,7 +853,7 @@ function WatchContent() {
       }
       failedServersRef.current = [];
       
-      const ep = anime?.episodes.find(e => 
+      const ep = anime?.episodes.find((e: any) => 
           String(e.id) === String(id) || 
           String(e.number) === String(id) || 
           Number(e.number) === Number(id) ||
@@ -905,7 +905,7 @@ function WatchContent() {
   // URL Auto Update
   useEffect(() => {
     if (currentEpId && !isLoadingInfo && anime) {
-         const currentEpObj = anime.episodes.find(e => e.id === currentEpId);
+         const currentEpObj = anime.episodes.find((e: any) => e.id === currentEpId);
          const url = new URL(window.location.href);
          const currentParamEp = url.searchParams.get('ep');
          const targetParam = currentEpObj ? String(currentEpObj.number) : currentEpId;
@@ -920,7 +920,7 @@ function WatchContent() {
   const chunkSize = epViewMode === 'compact' ? 100 : 50;
   useEffect(() => {
       if (!currentEpId || !anime) return;
-      const index = anime.episodes.findIndex(e => e.id === currentEpId);
+      const index = anime.episodes.findIndex((e: any) => e.id === currentEpId);
       if (index !== -1) {
           const targetChunk = Math.floor(index / chunkSize);
           setEpChunkIndex(targetChunk);
@@ -1066,7 +1066,7 @@ function WatchContent() {
           if (paramEp && anime.episodes?.length) {
               const paramStr = String(paramEp).trim();
               const paramNum = Number(paramStr);
-              const urlMatch = anime.episodes.find(e => 
+              const urlMatch = anime.episodes.find((e: any) => 
                   String(e.id) === paramStr || 
                   (!isNaN(paramNum) && Number(e.number) === paramNum) ||
                   String(e.number) === paramStr ||
@@ -1090,7 +1090,7 @@ function WatchContent() {
           if (targetEpId && anime.episodes?.length > 0) {
               const epExists = anime.episodes.find((e: any) => e.id === targetEpId);
               if (!epExists) {
-                  const oldData = Object.values(progressBuffer.current).find((p:any) => p.episode_id === targetEpId);
+                  const oldData = Object.values(progressBuffer.current).find((p:any) => p.episode_id === targetEpId) as any;
                   if (oldData && oldData.episode_number) {
                       const match = anime.episodes.find((e: any) => Number(e.number) === Number(oldData.episode_number));
                       targetEpId = match ? match.id : anime.episodes[0].id;
@@ -1133,7 +1133,7 @@ function WatchContent() {
     const paramStr = String(paramEp).trim();
     const paramNum = Number(paramStr);
     
-    const match = anime.episodes.find(e => 
+    const match = anime.episodes.find((e: any) => 
       String(e.id) === paramStr || 
       (!isNaN(paramNum) && Number(e.number) === paramNum) ||
       String(e.number) === paramStr ||
@@ -1175,7 +1175,7 @@ function WatchContent() {
         
         let time = 0; let isUrlOverride = false;
         if (urlTimestamp && urlEpNumber && anime) {
-             const requestedEp = anime.episodes.find(e => e.number === Number(urlEpNumber));
+             const requestedEp = anime.episodes.find((e: any) => e.number === Number(urlEpNumber));
              if (requestedEp && requestedEp.id === currentEpId) { time = Number(urlTimestamp); isUrlOverride = true; }
         }
         if (!isUrlOverride) {
@@ -1295,7 +1295,7 @@ function WatchContent() {
       }
       
       if (isSettingsLoaded && currentEpId) {
-          setFetchTrigger(prev => prev + 1);
+          setFetchTrigger((prev: number) => prev + 1);
       }
   }, [settings.server, settings.category]);
 
@@ -1319,14 +1319,14 @@ function WatchContent() {
       return chunks;
   }, [anime?.episodes, chunkSize]);
 
-  const currentEpIndex = anime?.episodes ? anime.episodes.findIndex(e => e.id === currentEpId) : -1;
+  const currentEpIndex = anime?.episodes ? anime.episodes.findIndex((e: any) => e.id === currentEpId) : -1;
   const currentEpisode = (anime && currentEpIndex >= 0) ? anime.episodes[currentEpIndex] : null;
   const nextEpisode = (anime && currentEpIndex >= 0 && currentEpIndex < anime.episodes.length - 1) ? anime.episodes[currentEpIndex + 1] : null;
   const prevEpisode = (anime && currentEpIndex > 0) ? anime.episodes[currentEpIndex - 1] : null;
 
   const currentChunkIndex = useMemo(() => {
       if(!currentEpId || !anime) return 0;
-      const epIndex = anime.episodes.findIndex(e => e.id === currentEpId);
+      const epIndex = anime.episodes.findIndex((e: any) => e.id === currentEpId);
       return epIndex === -1 ? 0 : Math.floor(epIndex / chunkSize);
   }, [currentEpId, anime, chunkSize]);
 
@@ -1336,7 +1336,7 @@ function WatchContent() {
 
   return (
       <div className="min-h-screen bg-[#050505] text-white flex flex-col font-sans select-none selection:bg-primary-500/30">
-      <style jsx global>{`
+      <style>{`
           .custom-scrollbar::-webkit-scrollbar { width: 6px; height: 6px; display: block; }
           .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
           .custom-scrollbar::-webkit-scrollbar-thumb { background: #dc2626; border-radius: 10px; opacity: 0.8; }
@@ -1360,7 +1360,7 @@ function WatchContent() {
                 </AnimatePresence>
                 {streamUrl ? ( 
                     streamUrl.includes('.m3u8') || streamUrl.includes('.mp4') || streamUrl.includes('/api/proxy') ? (
-                        <AnimePlayer key={currentEpId} ref={playerRef} url={streamUrl || ""} referer={streamReferer} subtitles={subtitles} intro={intro} outro={outro} title={currentEpisode?.title || anime.title} startTime={resumeTime} autoPlay={settings.autoPlay} autoSkip={settings.autoSkip} initialVolume={settings.volume} onProgress={(s:any) => progressRef.current = s.playedSeconds} onSeek={(seekTime) => { progressRef.current = seekTime; saveProgress(true); }} onEnded={() => { saveProgress(true); if(settings.autoNext && nextEpisode) handleEpisodeClick(nextEpisode.id); }} onInteract={() => { if(!hideInterface) resetInterfaceTimer(); }} onPlay={handlePlaybackStart} onPause={handlePause} onSkipIntro={handleSkipIntro} onError={(err) => { console.warn("Player Error, forcing reload..."); failedServersRef.current.push(settings.server.toLowerCase()); setFetchTrigger(prev => prev + 1); }} /> 
+                        <AnimePlayer key={currentEpId} ref={playerRef} url={streamUrl || ""} referer={streamReferer} subtitles={subtitles} intro={intro} outro={outro} title={currentEpisode?.title || anime.title} startTime={resumeTime} autoPlay={settings.autoPlay} autoSkip={settings.autoSkip} initialVolume={settings.volume} onProgress={(s:any) => progressRef.current = s.playedSeconds} onSeek={(seekTime: number) => { progressRef.current = seekTime; saveProgress(true); }} onEnded={() => { saveProgress(true); if(settings.autoNext && nextEpisode) handleEpisodeClick(nextEpisode.id); }} onInteract={() => { if(!hideInterface) resetInterfaceTimer(); }} onPlay={handlePlaybackStart} onPause={handlePause} onSkipIntro={handleSkipIntro} onError={(err: any) => { console.warn("Player Error, forcing reload..."); failedServersRef.current.push(settings.server.toLowerCase()); setFetchTrigger((prev: number) => prev + 1); }} /> 
                     ) : (
                         <iframe src={streamUrl} className="w-full h-full border-0" allowFullScreen allow="autoplay; fullscreen" />
                     )
@@ -1470,7 +1470,7 @@ function WatchContent() {
             
             <div className="xl:col-span-4 w-full h-full bg-black/40 backdrop-blur-2xl rounded-[40px] border border-white/10 overflow-hidden flex flex-col shadow-[0_8px_32px_0_rgba(0,0,0,0.37)] relative z-20 order-2">
                 <div className="p-6 bg-white/5 border-b border-white/5 flex justify-between items-center shrink-0">
-                    <div className="flex items-center gap-3"><h3 className="font-black text-white flex items-center gap-2 uppercase text-sm font-lemon tracking-widest"><Layers size={18} className="text-primary-600"/> Episodes</h3><Badge className="bg-white/10 backdrop-blur-md border border-white/10 text-white font-black text-[10px] px-3 h-5 rounded-full shadow-lg">{anime.episodes.length}</Badge></div>
+                    <div className="flex items-center gap-3"><h3 className="font-black text-white flex items-center gap-2 uppercase text-sm font-lemon tracking-widest"><Layers size={18} className="text-primary-600"/> Episodes</h3><span className="bg-white/10 backdrop-blur-md border border-white/10 text-white font-black text-[10px] px-3 h-5 rounded-full flex items-center shadow-lg">{anime.episodes.length}</span></div>
                     <div className="flex items-center gap-1 bg-black/50 p-1 rounded-xl border border-white/5 relative">
                         {[
                           { mode: 'compact', icon: Grid, label: 'Compact' },
@@ -1499,7 +1499,7 @@ function WatchContent() {
                 </div>
                 <div className="w-full border-b border-white/10 bg-white/5 backdrop-blur-md flex-shrink-0 py-3 relative group/chunks">
                     <div ref={chunksRef} className="flex items-center gap-2 w-full overflow-x-auto no-scrollbar cursor-grab active:cursor-grabbing px-4">
-                        {episodeChunks.map((chunk, idx) => (
+                        {episodeChunks.map((chunk: any[], idx: number) => (
                             <button key={idx} onClick={() => setEpChunkIndex(idx)} className={cn("flex-shrink-0 px-4 py-1.5 text-[10px] font-black rounded-full transition-all border shadow-sm uppercase tracking-wider backdrop-blur-md", epChunkIndex === idx ? "bg-primary-600 text-white border-primary-500 shadow-primary-900/20" : "bg-white/5 border-white/10 text-zinc-400 hover:text-white hover:bg-white/10")}>{getChunkLabel(chunk, (idx * chunkSize) + 1, Math.min((idx + 1) * chunkSize, anime.episodes.length))}</button>
                         ))}
                     </div>
@@ -1508,7 +1508,7 @@ function WatchContent() {
                     <LayoutGroup>
                         <motion.div layout className={cn("p-2 transition-all duration-500 ease-in-out grid", epViewMode === 'grid' ? 'grid-cols-5 gap-2.5' : epViewMode === 'compact' ? 'grid-cols-10 gap-1.5' : 'grid-cols-1 gap-2')}>
                             <AnimatePresence mode="popLayout">
-                                {episodeChunks[epChunkIndex]?.map((ep) => {
+                                {episodeChunks[epChunkIndex]?.map((ep: any) => {
                                     const percent = epProgress[ep.number] || 0;
                                     const isFullyPlayed = percent >= 98;
                                     const isCurrent = ep.id === currentEpId;

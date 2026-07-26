@@ -33,7 +33,8 @@ import {
     ChromaticAberration, 
     ToneMapping, 
     DepthOfField, 
-    Vignette
+    Vignette,
+    Glitch
 } from '@react-three/postprocessing';
 import { ToneMappingMode, BlendFunction } from 'postprocessing';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -70,6 +71,11 @@ declare global {
       portalVortexShader: CustomShaderMaterialProps;
       magmaShader: CustomShaderMaterialProps;
       cloudShader: CustomShaderMaterialProps;
+      fireShader: CustomShaderMaterialProps;
+      blackHoleShader: CustomShaderMaterialProps;
+      auroraShader: CustomShaderMaterialProps;
+      tunnelShader: CustomShaderMaterialProps;
+      runeShader: CustomShaderMaterialProps;
     }
   }
 }
@@ -78,8 +84,8 @@ type AppState = 'checking' | 'cinematic_intro' | 'gender_select' | 'anim_choice'
 type AnimationStage = 
     | 'loading' | 'intro' | 'idle' 
     | 'drop' | 'crouch' | 'stand' | 'confusion' 
-    | 'walk'
-    | 'push' | 'suction' | 'whiteout';
+    | 'walk' | 'brace_popup'
+    | 'push' | 'suction' | 'whiteout' | 'tunnel' | 'tunnel_end' | 'arrival';
 
 type Gender = 'boy' | 'girl';
 type PerformanceTier = 'potato' | 'low' | 'medium' | 'high';
@@ -164,15 +170,126 @@ const MagmaShader = shaderMaterial(
     `varying vec2 vUv;uniform float uTime;uniform vec3 uColor;uniform float uIntensity;void main(){float noise=sin(vUv.y*8.0-uTime*1.2)+cos(vUv.x*15.0);float vein=0.03/abs(vUv.x-0.5+noise*0.04);float pulse=sin(uTime*1.5)*0.25+0.75;vec3 finalColor=uColor*vein*uIntensity;float alpha=smoothstep(0.0,1.0,vein)*pulse*0.8;gl_FragColor=vec4(finalColor,alpha);}`
 );
 
+const TunnelShader = shaderMaterial(
+    {
+        uTime: 0,
+        uProgress: 0,
+        speed: 1.0,
+        ring: 1.0,
+        swirl: 1.0
+    },
+    `varying vec2 vUv;void main(){vUv=uv;gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.0);}`,
+    `varying vec2 vUv;
+    uniform float uTime;
+    uniform float uProgress;
+    uniform float speed;
+    
+    float rand(vec2 n) { return fract(sin(dot(n, vec2(12.9898, 4.1414))) * 43758.5453); }
+    
+    float noise(vec2 p){
+        vec2 ip = floor(p);
+        vec2 u = fract(p);
+        u = u*u*(3.0-2.0*u);
+        return mix(
+            mix(rand(ip),rand(ip+vec2(1.0,0.0)),u.x),
+            mix(rand(ip+vec2(0.0,1.0)),rand(ip+vec2(1.0,1.0)),u.x),u.y);
+    }
+    
+    void main() {
+        float time = uTime * speed * 0.6;
+        vec2 uv = vec2(vUv.x * 20.0 - time, vUv.y * 12.0 + vUv.x * 5.0 + time * 0.3);
+        
+        float n1 = noise(uv * 1.5);
+        float n2 = noise(uv * 3.0 + vec2(time * 0.5, 0.0));
+        float nebula = (n1 + n2 * 0.5) * 0.7;
+        
+        float streak = pow(noise(vec2(vUv.x * 60.0 - time * 6.0, vUv.y * 100.0)), 12.0) * 4.0;
+        
+        vec3 col = mix(vec3(0.01, 0.0, 0.03), vec3(0.1, 0.0, 0.3), nebula);
+        vec3 highlight = mix(vec3(0.0, 0.6, 1.0), vec3(1.0, 0.0, 0.6), sin(vUv.y * 6.28 + time)*0.5+0.5);
+        
+        col += highlight * pow(nebula, 2.5) * 2.0;
+        col += vec3(0.7, 0.9, 1.0) * streak;
+        
+        float startDark = smoothstep(0.0, 0.1, vUv.x);
+        float endWhite = smoothstep(0.85, 1.0, vUv.x);
+        float fadeOut = smoothstep(0.7, 0.95, uProgress);
+        
+        col *= startDark;
+        col = mix(col, vec3(1.0), endWhite + fadeOut);
+        
+        gl_FragColor = vec4(col, 1.0);
+    }`
+);
+
+
+const RuneShader = shaderMaterial(
+    { uTime: 0, uColor: new THREE.Color("#ff3300"), uIntensity: 1.0 },
+    `varying vec2 vUv;void main(){vUv=uv;gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.0);}`,
+    `varying vec2 vUv;uniform float uTime;uniform vec3 uColor;uniform float uIntensity;
+float rand(vec2 n){return fract(sin(dot(n,vec2(12.9898,4.1414)))*43758.5453);}
+void main(){
+    vec2 gUv=vUv*vec2(4.0,8.0);vec2 id=floor(gUv);vec2 f=fract(gUv);
+    float r=rand(id);
+    float pulse=sin(uTime*2.0+r*6.28)*0.5+0.5;
+    float rune1=step(0.4,f.x)*step(f.x,0.6)*step(0.2,f.y)*step(f.y,0.8);
+    float rune2=step(0.2,f.x)*step(f.x,0.8)*step(0.4,f.y)*step(f.y,0.6);
+    float symbol=mix(rune1,max(rune1,rune2),step(0.5,r));
+    float fade=smoothstep(0.0,0.2,vUv.x)*smoothstep(1.0,0.8,vUv.x)*smoothstep(0.0,0.1,vUv.y)*smoothstep(1.0,0.9,vUv.y);
+    float alpha=symbol*pulse*fade*uIntensity;
+    gl_FragColor=vec4(uColor,alpha);
+}`
+);
+
+const TUNNEL_CURVE = new THREE.CatmullRomCurve3([
+    new THREE.Vector3(0, 0, 0),
+    new THREE.Vector3(10, 10, -50),
+    new THREE.Vector3(-30, -20, -120),
+    new THREE.Vector3(40, 30, -220),
+    new THREE.Vector3(-50, -40, -320),
+    new THREE.Vector3(0, 0, -450),
+], false, 'catmullrom', 0.8);
+
 const PortalVortexShader = shaderMaterial(
     {
         uTime: 0,
-        uColor: new THREE.Color("#ff0000"),
+        uColor: new THREE.Color("#d8b4fe"),
         uOpen: 0,
         uSuction: 0
     },
     `varying vec2 vUv;void main(){vUv=uv;gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.0);}`,
-    `varying vec2 vUv;uniform float uTime;uniform vec3 uColor;uniform float uOpen;uniform float uSuction;void main(){vec2 center=vUv-0.5;float dist=length(center);float angle=atan(center.y,center.x);float spiral=sin(angle*6.0+dist*20.0-uTime*(2.0+uSuction*2.0));float rings=sin(dist*30.0-uTime*(2.5+uSuction*3.0));vec3 baseColor=mix(vec3(0.8,0.2,0.2),vec3(1.0,0.7,0.7),smoothstep(0.5,0.2,dist));vec3 finalColor=mix(baseColor,vec3(1.0),uOpen*smoothstep(0.4,0.0,dist));finalColor*=(1.0+spiral*0.3+rings*0.25);float alpha=smoothstep(0.5,0.0,dist)*uOpen*(1.0+rings*0.3);gl_FragColor=vec4(finalColor,alpha);}`
+    `varying vec2 vUv;
+    uniform float uTime;
+    uniform vec3 uColor;
+    uniform float uOpen;
+    uniform float uSuction;
+    void main(){
+        vec2 center = vUv - 0.5;
+        center.x *= (11.5 / 22.0);
+        
+        float dist = length(center);
+        float angle = atan(center.y, center.x);
+        
+        float spiral = sin(angle*12.0 + dist*30.0 - uTime*(5.0 + uSuction*6.0));
+        float rings = sin(dist*50.0 - uTime*(6.0 + uSuction*8.0));
+        
+        vec3 coreColor = vec3(1.0, 1.0, 1.0);
+        vec3 outerColor = uColor;
+        vec3 baseColor = mix(outerColor, coreColor, smoothstep(0.4, 0.0, dist));
+        
+        float spikes = sin(angle * 5.0 - uTime * 2.0) * 0.5 + 0.5;
+        baseColor += outerColor * spikes * smoothstep(0.5, 0.2, dist);
+        
+        vec3 finalColor = baseColor + vec3(spiral * 0.5 + rings * 0.5);
+        
+        float edgeFade = smoothstep(0.0, 0.02, vUv.x) * smoothstep(1.0, 0.98, vUv.x) * 
+                         smoothstep(0.0, 0.02, vUv.y) * smoothstep(1.0, 0.98, vUv.y);
+        
+        float intensity = uOpen * (2.0 + uSuction * 2.0) * edgeFade;
+        float alpha = clamp(intensity * (1.0 - dist*1.5 + rings*0.5 + spiral*0.5), 0.0, 1.0);
+        
+        gl_FragColor = vec4(finalColor, alpha);
+    }`
 );
 
 const CloudShader = shaderMaterial(
@@ -195,11 +312,43 @@ const WarpShader = shaderMaterial(
     `uniform float uTime;uniform vec3 uColor;uniform float uSpeed;varying vec2 vUv;void main(){float streak=sin(vUv.y*80.0+uTime*uSpeed);float opacity=smoothstep(0.92,1.0,streak);opacity*=smoothstep(0.0,0.15,vUv.x)*smoothstep(1.0,0.85,vUv.x);gl_FragColor=vec4(uColor,opacity*0.7);}`
 );
 
-extend({ MagmaShader, PortalVortexShader, CloudShader, WarpShader });
+extend({ MagmaShader, PortalVortexShader, CloudShader, WarpShader, TunnelShader, RuneShader });
 
 // =============================================================================
 // PLAYER RIG (OPTIMIZED)
 // =============================================================================
+
+const WormholeTunnel = React.memo(({ stage, tunnelProgress }: { stage: AnimationStage; tunnelProgress: number }) => {
+    const matRef = useRef<any>(null);
+    const groupRef = useRef<THREE.Group>(null);
+    const isActive = stage === 'tunnel' || stage === 'tunnel_end';
+
+    useFrame((state) => {
+        if (!matRef.current) return;
+        matRef.current.uTime = state.clock.elapsedTime;
+        matRef.current.uProgress = tunnelProgress;
+    });
+
+    if (!isActive) return null;
+    return (
+        <group ref={groupRef} position={[0, 0, -50]}>
+            <mesh>
+                <tubeGeometry args={[TUNNEL_CURVE, 128, 14, 24, false]} />
+                <tunnelShader ref={matRef} uProgress={tunnelProgress} side={THREE.BackSide} depthWrite={false} transparent />
+            </mesh>
+            {/* End bloom */}
+            <mesh position={[0, 0, -450]}>
+                <sphereGeometry args={[20, 16, 16]} />
+                <meshBasicMaterial color="#ffffff" transparent opacity={tunnelProgress > 0.85 ? (tunnelProgress - 0.85) / 0.15 : 0} />
+            </mesh>
+            {/* Black outside void */}
+            <mesh>
+                <sphereGeometry args={[500, 8, 8]} />
+                <meshBasicMaterial color="#000000" side={THREE.BackSide} />
+            </mesh>
+        </group>
+    );
+});
 
 const PlayerRig = React.memo(({ stage }: { stage: AnimationStage }) => {
     const legsRef = useRef<THREE.Group>(null);
@@ -295,12 +444,13 @@ const PortalVortex = React.memo(({ stage }: { stage: AnimationStage }) => {
         matRef.current.uOpen = targetOpen;
         matRef.current.uSuction = targetSuction;
         
-        meshRef.current.rotation.z += delta * (0.4 + matRef.current.uSuction * 1.5);
+        // We do not rotate the mesh if it's rectangular, the shader should handle the swirling.
+        // meshRef.current.rotation.z += delta * (0.4 + matRef.current.uSuction * 1.5);
     });
     
     return (
-        <mesh ref={meshRef} position={[0, 9, -1.5]} rotation={[0, 0, 0]}>
-            <circleGeometry args={[6, 48]} />
+        <mesh ref={meshRef} position={[0, 11, -1.0]} rotation={[0, 0, 0]}>
+            <planeGeometry args={[11.5, 22]} />
             <portalVortexShader 
                 ref={matRef}
                 uColor={new THREE.Color("#ff0000")}
@@ -317,7 +467,7 @@ const PortalVortex = React.memo(({ stage }: { stage: AnimationStage }) => {
 
 PortalVortex.displayName = 'PortalVortex';
 
-const WarpTunnel = React.memo(({ active, quality }: { active: boolean; quality: PerformanceTier }) => {
+const WarpTunnel = React.memo(({ active, quality, stage, glitchIntensity }: { active: boolean; quality: PerformanceTier, stage: AnimationStage, glitchIntensity: number }) => {
     const tunnelRef = useRef<THREE.Group>(null);
     const matRef = useRef<any>(null);
     
@@ -330,7 +480,7 @@ const WarpTunnel = React.memo(({ active, quality }: { active: boolean; quality: 
     });
     
     return (
-        <group ref={tunnelRef} position={[0, 5, -20]} visible={active}>
+        <group ref={tunnelRef} position={[0, 11, -1.5]} visible={active}>
             <mesh rotation={[Math.PI / 2, 0, 0]}>
                 <cylinderGeometry args={[12, 4, 80, segments, 1, true]} />
                 <warpShader 
@@ -342,6 +492,9 @@ const WarpTunnel = React.memo(({ active, quality }: { active: boolean; quality: 
                     blending={THREE.AdditiveBlending} 
                 />
             </mesh>
+            {stage !== 'tunnel' && stage !== 'tunnel_end' && stage !== 'arrival' && (
+                <group /> // Placeholder for GlitchOverlay logic
+            )}
         </group>
     );
 });
@@ -355,11 +508,11 @@ const ConstructedGate = React.memo(({ isOpen, quality }: { isOpen: boolean; qual
         const archCount = quality === 'potato' ? 12 : quality === 'low' ? 16 : 20;
         
         for(let y=0; y<verticalCount; y++) { 
-            b.push({ pos: [-7, y, 0], scale: [2.5, 0.9, 2.5], rot: [0,0,0] }); 
-            b.push({ pos: [7, y, 0], scale: [2.5, 0.9, 2.5], rot: [0,0,0] }); 
+            b.push({ pos: [-7.2, y, 0], scale: [2.9, 0.9, 2.9], rot: [0,0,0] }); 
+            b.push({ pos: [7.2, y, 0], scale: [2.9, 0.9, 2.9], rot: [0,0,0] }); 
         }
-        b.push({ pos: [-7, -1, 0], scale: [3.5, 1.5, 3.5], rot: [0,0,0] }); 
-        b.push({ pos: [7, -1, 0], scale: [3.5, 1.5, 3.5], rot: [0,0,0] });
+        b.push({ pos: [-7.2, -1, 0], scale: [3.9, 1.5, 3.9], rot: [0,0,0] }); 
+        b.push({ pos: [7.2, -1, 0], scale: [3.9, 1.5, 3.9], rot: [0,0,0] });
         
         for(let i=0; i<archCount; i++) { 
             const angle = (i/(archCount-1)) * Math.PI; 
@@ -413,45 +566,24 @@ const ConstructedGate = React.memo(({ isOpen, quality }: { isOpen: boolean; qual
                 ))}
             </Instances>
             
-            <group position={[-7, 0, 0]} ref={leftDoor}>
-                <mesh position={[3.5, 9, 0]} castShadow>
-                    <boxGeometry args={[7, 18, 1]} />
-                    <meshStandardMaterial 
-                        color="#0f0505" 
-                        roughness={0.4} 
-                        metalness={0.6}
-                        emissive="#330000"
-                        emissiveIntensity={0.2}
-                    />
+            <group position={[-5.75, 0, 0]} ref={leftDoor}>
+                <mesh position={[2.875, 11, 0]} castShadow>
+                    <boxGeometry args={[5.75, 22, 1.2]} />
+                    <meshStandardMaterial color="#0f0505" roughness={0.35} metalness={0.65} emissive="#330000" emissiveIntensity={0.3} />
                 </mesh>
-                <mesh position={[0, 0, 0.51]}>
-                    <planeGeometry args={[0.5, 17]} />
-                    <magmaShader 
-                        ref={(el: any) => magmaRefs.current[0] = el}
-                        uColor={new THREE.Color("#ff0000")} 
-                        transparent 
-                    />
+                <mesh position={[2.875, 11, 0.65]}>
+                    <planeGeometry args={[5.5, 21]} />
+                    <runeShader ref={(el: any) => { magmaRefs.current[0] = el; }} uColor={new THREE.Color("#ff2200")} uIntensity={1.5} transparent />
                 </mesh>
             </group>
-            
-            <group position={[7, 0, 0]} ref={rightDoor}>
-                <mesh position={[-3.5, 9, 0]} castShadow>
-                    <boxGeometry args={[7, 18, 1]} />
-                    <meshStandardMaterial 
-                        color="#0f0505" 
-                        roughness={0.4} 
-                        metalness={0.6}
-                        emissive="#330000"
-                        emissiveIntensity={0.2}
-                    />
+            <group position={[5.75, 0, 0]} ref={rightDoor}>
+                <mesh position={[-2.875, 11, 0]} castShadow>
+                    <boxGeometry args={[5.75, 22, 1.2]} />
+                    <meshStandardMaterial color="#0f0505" roughness={0.35} metalness={0.65} emissive="#330000" emissiveIntensity={0.3} />
                 </mesh>
-                <mesh position={[0, 0, 0.51]}>
-                    <planeGeometry args={[0.5, 17]} />
-                    <magmaShader 
-                        ref={(el: any) => magmaRefs.current[1] = el}
-                        uColor={new THREE.Color("#ff0000")} 
-                        transparent 
-                    />
+                <mesh position={[-2.875, 11, 0.65]}>
+                    <planeGeometry args={[5.5, 21]} />
+                    <runeShader ref={(el: any) => { magmaRefs.current[1] = el; }} uColor={new THREE.Color("#ff2200")} uIntensity={1.5} transparent />
                 </mesh>
             </group>
         </group>
@@ -715,11 +847,15 @@ FloatingIsland.displayName = 'FloatingIsland';
 const SceneContent = React.memo(({ 
     stage, 
     quality, 
-    whiteoutProgress 
+    whiteoutProgress,
+    tunnelProgress,
+    onReachDoor
 }: { 
     stage: AnimationStage; 
     quality: PerformanceTier; 
     whiteoutProgress: number;
+    tunnelProgress: number;
+    onReachDoor: () => void;
 }) => {
     const isOpen = stage === 'push' || stage === 'suction';
     const isWarp = stage === 'suction';
@@ -727,7 +863,7 @@ const SceneContent = React.memo(({
 
     return (
         <>
-            <CameraDirector stage={stage} />
+            <CameraDirector stage={stage} tunnelProgress={tunnelProgress} onReachDoor={onReachDoor} />
             <PlayerRig stage={stage} />
             
             <fog attach="fog" args={['#1a0505', 20, 100]} /> 
@@ -778,7 +914,8 @@ const SceneContent = React.memo(({
                 <PortalVortex stage={stage} />
             </group>
             
-            <WarpTunnel active={isWarp} quality={quality} />
+            <WarpTunnel active={isOpen} quality={quality} stage={stage} glitchIntensity={0} />
+            <WormholeTunnel stage={stage} tunnelProgress={tunnelProgress} />
             <FloatingIsland position={[-25, 5, 20]} scale={1.5} whiteout={whiteoutProgress} />
             <FloatingIsland position={[30, 8, 10]} scale={2} whiteout={whiteoutProgress} />
             
@@ -792,12 +929,21 @@ const SceneContent = React.memo(({
                 />
                 <ChromaticAberration 
                     offset={new THREE.Vector2(
-                        isWarp ? 0.04 : 0.0008, 
-                        isWarp ? 0.04 : 0.0008
+                        isWarp ? 0.2 : 0.0008, 
+                        isWarp ? 0.2 : 0.0008
                     )} 
                     radialModulation={false}
                     modulationOffset={0}
                 />
+                {isWarp && (
+                    <Glitch 
+                        delay={new THREE.Vector2(0.05, 0.15)} 
+                        duration={new THREE.Vector2(0.2, 0.6)} 
+                        strength={new THREE.Vector2(0.8, 1.5)} 
+                        active={true}
+                        ratio={0.95}
+                    />
+                )}
                 {quality !== 'potato' && quality !== 'low' ? (
                     <DepthOfField
                         focusDistance={0.02}
@@ -824,12 +970,23 @@ SceneContent.displayName = 'SceneContent';
 // CAMERA DIRECTOR (OPTIMIZED)
 // =============================================================================
 
-const CameraDirector = React.memo(({ stage }: { stage: AnimationStage }) => {
+const CameraDirector = React.memo(({ 
+    stage, 
+    tunnelProgress,
+    onReachDoor
+}: { 
+    stage: AnimationStage; 
+    tunnelProgress: number;
+    onReachDoor: () => void;
+}) => {
     const { camera } = useThree();
     const currentTargetPos = useRef(new THREE.Vector3(0, 80, 80));
     const currentLookAt = useRef(new THREE.Vector3(0, 9, 0));
     const currentFov = useRef(60);
-    const walkTime = useRef(0);
+    const walkStart = useRef<number | null>(null);
+    const tunnelStart = useRef<number | null>(null);
+    const introStart = useRef<number | null>(null);
+    const introStartPos = useRef<THREE.Vector3>(new THREE.Vector3());
     const lookSway = useRef(0);
     const orbitOffset = useRef(0);
 
@@ -840,6 +997,9 @@ const CameraDirector = React.memo(({ stage }: { stage: AnimationStage }) => {
         const desiredPos = new THREE.Vector3();
         const desiredLook = new THREE.Vector3();
         let targetFov = 60;
+        let targetRoll = 0;
+        let posAccel = 1.3;
+        let drag = 1.0;
 
         desiredPos.copy(currentTargetPos.current); 
         desiredLook.copy(currentLookAt.current);
@@ -851,9 +1011,67 @@ const CameraDirector = React.memo(({ stage }: { stage: AnimationStage }) => {
                 break;
             }
             case 'intro': {
-                desiredPos.set(0, 7, 45); 
-                desiredLook.set(0, 9, 0); 
-                orbitOffset.current = t; 
+                if (introStart.current === null) {
+                    introStart.current = t;
+                    const r = Math.random();
+                    if (r < 0.1) introStartPos.current.set(0, -150, 0);       // underground (rare)
+                    else if (r < 0.28) introStartPos.current.set(0, 300, 0);  // top of sky
+                    else if (r < 0.46) introStartPos.current.set(300, 20, 0); // east
+                    else if (r < 0.64) introStartPos.current.set(-300, 20, 0);// west
+                    else if (r < 0.82) introStartPos.current.set(0, 20, -300);// north
+                    else introStartPos.current.set(0, 20, 300);               // south
+                }
+
+                const ft = t - introStart.current;
+                const flyDuration = 12.0; // 12 seconds of cinematic entry
+                const p = Math.min(ft / flyDuration, 1.0);
+                const easeOut = 1 - Math.pow(1 - p, 3);
+                
+                const angle = easeOut * 4 * Math.PI; // 2 laps
+                const radius = 300 * (1 - easeOut) + 42 * easeOut;
+                
+                const sx = introStartPos.current.x;
+                const sy = introStartPos.current.y;
+                const sz = introStartPos.current.z;
+                
+                const targetX = Math.sin(angle) * radius;
+                const targetZ = Math.cos(angle) * radius;
+                const targetY = sy * (1 - easeOut) + 10 * easeOut;
+                
+                desiredPos.set(
+                    sx * (1 - easeOut) + targetX, 
+                    targetY, 
+                    sz * (1 - easeOut) + targetZ
+                );
+                desiredLook.set(0, 9 * easeOut, 0);
+                
+                targetFov = 90 - (easeOut * 30);
+                targetRoll = Math.sin(easeOut * Math.PI) * 0.5;
+                posAccel = 5.0;
+                drag = 0.8;
+                
+                // End intro stage automatically after duration
+                if (p === 1.0) {
+                    orbitOffset.current = t; 
+                }
+                break;
+            }
+            case 'tunnel': {
+                if (tunnelStart.current === null) tunnelStart.current = t;
+                const tt = t - tunnelStart.current;
+                const p1 = TUNNEL_CURVE.getPointAt(Math.min(1.0, tunnelProgress));
+                const p2 = TUNNEL_CURVE.getPointAt(Math.min(1.0, tunnelProgress + 0.05));
+                
+                desiredPos.set(p1.x, p1.y, p1.z - 50);
+                desiredPos.x += Math.sin(tt * 25) * 0.8 + Math.sin(tt * 3) * 3;
+                desiredPos.y += Math.cos(tt * 22) * 0.8 + Math.cos(tt * 3.5) * 3;
+                
+                desiredLook.set(p2.x, p2.y, p2.z - 50);
+                
+                targetFov = 90 + tunnelProgress * 40;
+                targetRoll = Math.sin(tt * 4.0) * 1.5 + tt * 2.5;
+                posAccel = 25;
+                drag = 0.5;
                 break;
             }
             case 'idle': {
@@ -887,15 +1105,20 @@ const CameraDirector = React.memo(({ stage }: { stage: AnimationStage }) => {
                 desiredLook.x += Math.sin(lookSway.current) * 0.8; 
                 break;
             }
-            case 'walk': {
-                walkTime.current += delta * 6;
-                desiredPos.set(
-                    Math.cos(walkTime.current * 0.4) * 0.04, 
-                    1.8 + Math.sin(walkTime.current) * 0.08, 
-                    20 - (walkTime.current * 0.45)
-                );
-                if (desiredPos.z < 6) desiredPos.z = 6;
+            case 'walk':
+            case 'brace_popup': {
+                if (walkStart.current === null && stage === 'walk') walkStart.current = t;
+                const wt = walkStart.current !== null ? t - walkStart.current : 0;
+                const walkSpeed = 5.2; 
+                const forwardZ = Math.max(10.5, 48 - wt * walkSpeed);
+                const headBob = stage === 'walk' ? Math.sin(wt * 6.0) * 0.08 : 0; 
+                const headSway = stage === 'walk' ? Math.sin(wt * 3.0) * 0.06 : 0;
+                desiredPos.set(headSway, 1.8 + headBob, forwardZ);
                 desiredLook.set(0, 7, 0);
+                
+                if (stage === 'walk' && forwardZ <= 10.6) {
+                    onReachDoor();
+                }
                 break;
             }
             case 'push': {
@@ -911,7 +1134,7 @@ const CameraDirector = React.memo(({ stage }: { stage: AnimationStage }) => {
             }
         }
 
-        const smoothSpeed = stage === 'drop' || stage === 'suction' ? 3.5 : 1.3;
+        const smoothSpeed = posAccel;
         currentTargetPos.current.lerp(desiredPos, delta * smoothSpeed);
         currentLookAt.current.lerp(desiredLook, delta * (smoothSpeed * 0.75));
         currentFov.current = THREE.MathUtils.lerp(currentFov.current, targetFov, delta * 1.8);
@@ -956,7 +1179,6 @@ const CinematicTitleIntro = React.memo(({ onComplete }: { onComplete: () => void
             onClick={onComplete}
             className="fixed inset-0 z-[99999] bg-[#000000] flex flex-col items-center justify-center cursor-pointer overflow-hidden select-none touch-none"
         >
-            {/* Deep Space Ambient Glow */}
             <div className="absolute inset-0 bg-[#020205]" />
             <div className="absolute w-[600px] h-[600px] rounded-full bg-primary-950/20 blur-[120px] pointer-events-none" />
 
@@ -968,7 +1190,6 @@ const CinematicTitleIntro = React.memo(({ onComplete }: { onComplete: () => void
                 className="relative z-10 text-center flex flex-col items-center justify-center w-full px-4 max-w-5xl"
             >
                 <div className="relative w-full flex flex-col items-center">
-                    {/* Gradvis Title Text */}
                     <h1 
                         className="text-4xl sm:text-6xl md:text-8xl font-normal font-gradvis text-transparent bg-clip-text bg-gradient-to-r from-white via-red-200 to-zinc-400 tracking-[0.25em] sm:tracking-[0.45em] ml-[0.25em] sm:ml-[0.45em] uppercase drop-shadow-[0_0_35px_rgba(220,38,38,0.5)]" 
                         style={{ fontFamily: 'var(--font-gradvis), serif' }}
@@ -976,12 +1197,9 @@ const CinematicTitleIntro = React.memo(({ onComplete }: { onComplete: () => void
                         SHADOW GARDEN
                     </h1>
                     
-                    {/* Moving Star Lens Flare under the title */}
                     <div className="relative w-full max-w-3xl h-10 mt-3 overflow-visible flex items-center justify-center">
-                        {/* Thin laser guide line under title */}
                         <div className="absolute top-1/2 left-0 right-0 h-[1px] bg-gradient-to-r from-transparent via-red-600/50 to-transparent -translate-y-1/2" />
                         
-                        {/* Flare star moving from left (0%) to end of title (100%) and slowing down as it reaches the end */}
                         <motion.div
                             initial={{ x: "-100%", opacity: 0, scale: 0.3 }}
                             animate={{ 
@@ -991,18 +1209,14 @@ const CinematicTitleIntro = React.memo(({ onComplete }: { onComplete: () => void
                             }}
                             transition={{ 
                                 duration: 4.2, 
-                                ease: [0.1, 0.9, 0.2, 1], // Decelerating cubic-bezier curve
+                                ease: [0.1, 0.9, 0.2, 1],
                                 times: [0, 0.25, 0.6, 0.85, 1]
                             }}
                             className="absolute top-1/2 -translate-y-1/2 flex items-center justify-center pointer-events-none"
                         >
-                            {/* Bright Core Star */}
                             <div className="w-2 h-2 rounded-full bg-white blur-[0.2px] shadow-[0_0_10px_#ffffff,0_0_20px_#ef4444]" />
-                            {/* Horizontal anamorphic flare ray */}
                             <div className="absolute w-24 h-[1px] bg-gradient-to-r from-transparent via-white to-transparent blur-[0.3px]" />
-                            {/* Glowing aura */}
                             <div className="absolute w-8 h-8 rounded-full bg-red-600/40 blur-md" />
-                            {/* Trail */}
                             <div className="absolute right-full w-32 h-[1px] bg-gradient-to-l from-red-400 via-transparent to-transparent opacity-60" />
                         </motion.div>
                     </div>
@@ -1056,17 +1270,19 @@ const GenderSelection = React.memo(({ onSelect }: { onSelect: (g: Gender) => voi
 
                 <div className="grid grid-cols-2 gap-4 sm:gap-6">
                     <button 
-                        onClick={() => onSelect('boy')} 
+                        onClick={() => { sfx.play('glass'); onSelect('boy'); }}
+                        onMouseEnter={() => sfx.play('hover')}
                         className="group p-6 sm:p-8 border border-blue-500/30 bg-blue-950/20 hover:bg-blue-900/40 hover:border-blue-400 rounded-2xl transition-all flex flex-col items-center gap-4 shadow-lg hover:shadow-[0_0_25px_rgba(59,130,246,0.4)]"
                     >
                         <div className="p-4 rounded-full bg-blue-500/20 border border-blue-400/40 group-hover:scale-110 transition-transform">
                             <Sword className="w-8 h-8 text-blue-400" />
                         </div>
                         <span className="text-base sm:text-lg font-bold text-white tracking-widest font-mono">MALE</span>
-                        <span className="text-[10px] text-blue-300/70 font-mono uppercase">SHADOW HUNTER</span>
+                        <span className="text-[10px] text-blue-300/70 font-mono uppercase">SHADOW MONARCH</span>
                     </button>
                     <button 
-                        onClick={() => onSelect('girl')} 
+                        onClick={() => { sfx.play('glass'); onSelect('girl'); }} 
+                        onMouseEnter={() => sfx.play('hover')}
                         className="group p-6 sm:p-8 border border-pink-500/30 bg-pink-950/20 hover:bg-pink-900/40 hover:border-pink-400 rounded-2xl transition-all flex flex-col items-center gap-4 shadow-lg hover:shadow-[0_0_25px_rgba(236,72,153,0.4)]"
                     >
                         <div className="p-4 rounded-full bg-pink-500/20 border border-pink-400/40 group-hover:scale-110 transition-transform">
@@ -1082,6 +1298,48 @@ const GenderSelection = React.memo(({ onSelect }: { onSelect: (g: Gender) => voi
 });
 
 GenderSelection.displayName = 'GenderSelection';
+
+const BracePopup = React.memo(({ onReady, gender }: { onReady: () => void; gender: Gender | null }) => {
+    return (
+        <div className="fixed inset-0 z-[99999] bg-black/80 backdrop-blur-md flex items-center justify-center p-4 overflow-hidden touch-none">
+            <motion.div 
+                initial={{ opacity: 0, scale: 0.95 }} 
+                animate={{ opacity: 1, scale: 1 }} 
+                className="relative max-w-sm sm:max-w-md w-full mx-auto bg-[#0a0505]/95 border border-primary-900/60 p-5 sm:p-6 rounded-2xl shadow-[0_0_50px_rgba(220,38,38,0.3)] text-center"
+            >
+                <div className="flex items-center justify-center gap-3 mb-4 border-b border-primary-900/30 pb-3">
+                    <div className="p-2 bg-primary-950/60 rounded-full border border-primary-500/40">
+                        <Power className="w-5 h-5 text-primary-500 animate-pulse" />
+                    </div>
+                    <div className="text-left">
+                        <h3 className="text-base sm:text-lg text-white font-bold tracking-[0.15em] font-mono uppercase">
+                            DIMENSION ALERT
+                        </h3>
+                    </div>
+                </div>
+
+                <p className="text-gray-300 text-sm mb-5 leading-relaxed font-mono text-left">
+                    We are not going beyond Shadow Garden, we are going beyond our reality and going to a place known as Otakuverse which has the guild Shadow Garden where we will operate everything. Brace yourself and push the door.
+                </p>
+
+                <Button 
+                    onClick={() => {
+                        if (sfx?.play) sfx.play('glass', 0.5);
+                        onReady();
+                    }}
+                    onMouseEnter={() => {
+                        if (sfx?.play) sfx.play('hover', 0.3);
+                    }}
+                    className="w-full bg-primary-900/80 hover:bg-primary-800 text-white border border-primary-500/50 uppercase tracking-widest font-mono pointer-events-auto"
+                >
+                    OK, I'm ready
+                </Button>
+            </motion.div>
+        </div>
+    );
+});
+
+BracePopup.displayName = 'BracePopup';
 
 const AnimationPreferencePopup = React.memo(({ 
     onChoice 
@@ -1135,7 +1393,7 @@ const AnimationPreferencePopup = React.memo(({
                             sfx.play('glass');
                             onChoice(true, never ? 9999 : (pause7 ? 7 : 0));
                         }} 
-                        onMouseEnter={() => sfx.play('crystal')}
+                        onMouseEnter={() => sfx.play('hover')}
                         className="group relative overflow-hidden bg-primary-900/50 hover:bg-primary-700 border border-primary-500/60 hover:border-primary-400 transition-all duration-300 h-10 rounded-xl shadow-md"
                     >
                         <div className="flex items-center justify-center gap-2.5">
@@ -1149,7 +1407,7 @@ const AnimationPreferencePopup = React.memo(({
                             sfx.play('glass');
                             onChoice(false, never ? 9999 : (pause7 ? 7 : 0));
                         }} 
-                        onMouseEnter={() => sfx.play('crystal')}
+                        onMouseEnter={() => sfx.play('hover')}
                         variant="outline" 
                         className="bg-transparent border-white/10 hover:bg-white/10 hover:border-white/20 h-10 rounded-xl"
                     >
@@ -1160,34 +1418,14 @@ const AnimationPreferencePopup = React.memo(({
                     </Button>
                 </div>
 
-                <div className="bg-black/60 rounded-xl p-3 border border-white/10 space-y-2 text-left">
-                    <div className="flex items-center space-x-2.5">
-                        <Checkbox 
-                            id="pause" 
-                            checked={pause7} 
-                            className="border-primary-900/50 data-[state=checked]:bg-primary-900 data-[state=checked]:text-white"
-                            onCheckedChange={(c) => { 
-                                setPause7(!!c); 
-                                if(c) setNever(false); 
-                            }} 
-                        />
-                        <label htmlFor="pause" className="text-xs text-gray-400 font-mono cursor-pointer hover:text-primary-400 transition-colors flex items-center gap-1.5">
-                            <Clock className="w-3 h-3 text-primary-500" /> Skip for 7 days
-                        </label>
+                <div className="bg-black/60 rounded-xl p-3 border border-white/10 flex flex-row items-center justify-between text-left gap-2 flex-nowrap whitespace-nowrap overflow-hidden">
+                    <div className="flex items-center space-x-1 sm:space-x-2 flex-shrink-0">
+                        <Checkbox id="pause" checked={pause7} className="border-primary-900/50 data-[state=checked]:bg-primary-900 data-[state=checked]:text-white flex-shrink-0" onCheckedChange={(c) => { setPause7(!!c); if (c) setNever(false); }} />
+                        <label htmlFor="pause" className="text-[10px] sm:text-xs text-gray-400 font-mono cursor-pointer hover:text-primary-400 transition-colors flex items-center gap-1"><Clock className="w-3 h-3 text-primary-500 hidden sm:block" /> Skip 7 days</label>
                     </div>
-                    <div className="flex items-center space-x-2.5">
-                        <Checkbox 
-                            id="never" 
-                            checked={never} 
-                            className="border-primary-900/50 data-[state=checked]:bg-primary-900 data-[state=checked]:text-white"
-                            onCheckedChange={(c) => { 
-                                setNever(!!c); 
-                                if(c) setPause7(false); 
-                            }} 
-                        />
-                        <label htmlFor="never" className="text-xs text-gray-400 font-mono cursor-pointer hover:text-primary-400 transition-colors">
-                            Always skip intro
-                        </label>
+                    <div className="flex items-center space-x-1 sm:space-x-2 flex-shrink-0">
+                        <Checkbox id="never" checked={never} className="border-primary-900/50 data-[state=checked]:bg-primary-900 data-[state=checked]:text-white flex-shrink-0" onCheckedChange={(c) => { setNever(!!c); if (c) setPause7(false); }} />
+                        <label htmlFor="never" className="text-[10px] sm:text-xs text-gray-400 font-mono cursor-pointer hover:text-primary-400 transition-colors">Always skip</label>
                     </div>
                 </div>
             </motion.div>
@@ -1208,10 +1446,11 @@ export default function ShadowGardenPortal({
 }: Props) {
     const [appState, setAppState] = useState<AppState>('checking');
     const [gender, setGender] = useState<Gender | null>(null);
-    const [progress, setProgress] = useState(0);
     const [stage, setStage] = useState<AnimationStage>('loading');
     const [whiteout, setWhiteout] = useState(false);
     const [whiteoutProgress, setWhiteoutProgress] = useState(0);
+    const [tunnelProgress, setTunnelProgress] = useState(0);
+    const [showBracePopup, setShowBracePopup] = useState(false);
     const [shake, setShake] = useState(0);
     const [skipped, setSkipped] = useState(false);
     
@@ -1311,18 +1550,10 @@ export default function ShadowGardenPortal({
     useEffect(() => {
         if (appState !== 'loading') return;
         sfx.init();
-        
-        // Immediately skip to running state without the artificial loading screen delay
         setAppState('running'); 
         setStage('intro');
         sfx.playRandomBGM(); 
         sfx.play('wind', 0.15, true);
-        
-        // We do not want to use a timeout inside this effect if we mutate appState,
-        // because the cleanup will clear it immediately. Instead we set appState,
-        // and we can have another effect or just use a flag.
-        // Actually, we can just call it directly or rely on the stage change!
-        // But stage is also mutated.
     }, [appState]);
 
     useEffect(() => {
@@ -1330,7 +1561,7 @@ export default function ShadowGardenPortal({
             const timeout = setTimeout(() => {
                 setStage('idle');
                 onSceneReadyRef.current?.(); 
-            }, 4000);
+            }, 12500); // Wait for the 12s cinematic flyover + 0.5s buffer
             return () => clearTimeout(timeout);
         }
     }, [appState, stage]);
@@ -1345,10 +1576,25 @@ export default function ShadowGardenPortal({
     }, [stage]);
 
     useEffect(() => {
+        if (stage === 'tunnel') {
+            const interval = setInterval(() => {
+                setTunnelProgress(prev => Math.min(prev + 0.005, 1.2));
+            }, 30);
+            return () => clearInterval(interval);
+        }
+    }, [stage]);
+
+    useEffect(() => {
         if (startTransition && stage === 'idle') {
             performEntrySequence();
         }
     }, [startTransition, stage]);
+
+    const handleReachDoor = useCallback(() => {
+        setStage('brace_popup');
+        sfx.stop('step'); 
+        setShowBracePopup(true);
+    }, []);
 
     const performEntrySequence = useCallback(() => {
         sfx.init(); 
@@ -1374,26 +1620,44 @@ export default function ShadowGardenPortal({
             setStage('walk'); 
             sfx.play('step', 0.4, true); 
         }, 5500);
+    }, []);
 
-        setTimeout(() => { 
-            setStage('push'); 
-            sfx.stop('step'); 
+    const handleBraceReady = useCallback(() => {
+        const sfx = (window as any).shadowAudio || (window as any).sfx;
+        setShowBracePopup(false);
+        setStage('push');
+        if (sfx?.play) {
             sfx.play('grind', 0.7); 
             sfx.play('boom', 0.6); 
-            setShake(0.8); 
-        }, 9500);
-
+        }
+        setShake(0.8);
+        
         setTimeout(() => { 
             setStage('suction'); 
-            sfx.play('suction', 0.7); 
+            if (sfx?.play) sfx.play('suction', 0.7); 
             setShake(8.0); 
-        }, 11500);
+        }, 2000);
 
-        setTimeout(() => setWhiteout(true), 11800);
+        setTimeout(() => setWhiteout(true), 2300);
+        
+        setTimeout(() => {
+            setStage('tunnel');
+            setTunnelProgress(0);
+            setWhiteout(false); // Fade out the whiteout for the tunnel
+            setShake(0); // Remove camera shake in tunnel
+        }, 5000);
+
+        // Fade back to white smoothly over 1.5s right before tunnel ends
+        setTimeout(() => setWhiteout(true), 10500);
+
         setTimeout(() => { 
-            sfx.stopAll(200); 
+            if (sfx?.stopAll) sfx.stopAll(1500); // fade out over 1.5s
+            setStage('arrival'); 
+        }, 12000); // End of tunnel
+
+        setTimeout(() => {
             onComplete(); 
-        }, 14500);
+        }, 13500); // Complete after 1.5 seconds
     }, [onComplete]);
 
     if (skipped) return null;
@@ -1413,12 +1677,12 @@ export default function ShadowGardenPortal({
             <div className="fixed inset-0 z-0 bg-black pointer-events-none">
 
             <AnimatePresence>
-                {appState === 'cinematic_intro' && (
+                {appState === 'cinematic_intro' ? (
                     <CinematicTitleIntro onComplete={handleCinematicIntroComplete} />
-                )}
+                ) : null}
             </AnimatePresence>
 
-            {appState === 'running' && (
+            {appState === 'running' ? (
                 <motion.div 
                     initial={{ opacity: 0 }}
                     animate={{ opacity: 1 }}
@@ -1450,17 +1714,40 @@ export default function ShadowGardenPortal({
                                 rollFrequency={shake} 
                                 intensity={shake} 
                             />
-                            <SceneContent stage={stage} quality={quality} whiteoutProgress={whiteoutProgress} />
+                            <SceneContent stage={stage} quality={quality} whiteoutProgress={whiteoutProgress} tunnelProgress={tunnelProgress} onReachDoor={handleReachDoor} />
                         </Suspense>
                     </Canvas>
                 </motion.div>
+            ) : null}
+
+            {showBracePopup && (
+                <BracePopup onReady={handleBraceReady} gender={gender} />
             )}
+
+            <AnimatePresence>
+                {stage === 'arrival' && (
+                    <motion.div 
+                        initial={{ opacity: 0, scale: 0.95 }}
+                        animate={{ opacity: 1, scale: 1 }}
+                        exit={{ opacity: 0 }}
+                        transition={{ duration: 0.5, ease: "easeOut" }}
+                        className="absolute inset-0 z-[11000] flex flex-col items-center justify-center pointer-events-none"
+                    >
+                        <h2 className="text-3xl md:text-5xl font-bold font-mono text-black tracking-[0.2em] mb-4">
+                            DESTINATION REACHED
+                        </h2>
+                        <p className="text-purple-700 font-mono font-semibold tracking-widest text-sm md:text-base">
+                            GOOD LUCK, ADVENTURER
+                        </p>
+                    </motion.div>
+                )}
+            </AnimatePresence>
 
             <motion.div 
                 initial={{ opacity: 0 }} 
                 animate={whiteout ? { opacity: 1 } : { opacity: 0 }} 
-                transition={{ duration: 2.5 }} 
-                className="absolute inset-0 bg-white z-[10000]" 
+                transition={{ duration: 1.5 }} 
+                className="absolute inset-0 bg-white z-[10000] pointer-events-none" 
             />
         </div>
         </>

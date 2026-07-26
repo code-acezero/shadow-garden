@@ -61,21 +61,21 @@ export const SimpleGridSkeleton = () => (
 );
 
 export const HeroSliderSkeleton = () => (
-  <div className="relative w-full h-[70vh] md:h-[90vh] bg-[#020617] overflow-hidden flex flex-col items-center justify-end p-6 border-b border-white/5">
+  <div className="relative w-full h-[56vh] sm:h-[62vh] md:h-[68vh] lg:h-[72vh] bg-[#020617] overflow-hidden flex flex-col items-center justify-end p-4 sm:p-6 border-b border-white/5">
     <PulseLayer />
     <div className="absolute inset-0 bg-gradient-to-t from-[#020617] via-[#020617]/60 to-transparent" />
-    <div className="relative z-10 flex flex-col items-center gap-4 w-full max-w-3xl mb-12 text-center">
-      <div className="w-36 h-5 bg-white/10 rounded-full relative overflow-hidden"><PulseLayer /></div>
-      <div className="w-3/4 max-w-xl h-12 sm:h-16 bg-white/10 rounded-2xl relative overflow-hidden"><PulseLayer /></div>
-      <div className="flex gap-2 justify-center w-full">
-        <div className="w-20 h-6 bg-white/10 rounded-full relative overflow-hidden"><PulseLayer /></div>
-        <div className="w-16 h-6 bg-white/10 rounded-full relative overflow-hidden"><PulseLayer /></div>
-        <div className="w-24 h-6 bg-white/10 rounded-full relative overflow-hidden"><PulseLayer /></div>
+    <div className="relative z-10 flex flex-col items-center gap-2 sm:gap-3 w-full max-w-3xl mb-4 sm:mb-8 md:mb-12 text-center">
+      <div className="w-32 sm:w-36 h-4 sm:h-5 bg-white/10 rounded-full relative overflow-hidden mb-1"><PulseLayer /></div>
+      <div className="w-3/4 max-w-xl h-8 sm:h-10 md:h-14 bg-white/10 rounded-2xl relative overflow-hidden mb-1"><PulseLayer /></div>
+      <div className="flex gap-1.5 sm:gap-2 justify-center w-full mb-2">
+        <div className="w-16 sm:w-20 h-5 sm:h-6 bg-white/10 rounded-full relative overflow-hidden"><PulseLayer /></div>
+        <div className="w-12 sm:w-16 h-5 sm:h-6 bg-white/10 rounded-full relative overflow-hidden"><PulseLayer /></div>
+        <div className="w-20 sm:w-24 h-5 sm:h-6 bg-white/10 rounded-full relative overflow-hidden"><PulseLayer /></div>
       </div>
-      <div className="w-full max-w-md h-12 bg-white/5 rounded-xl relative overflow-hidden"><PulseLayer /></div>
-      <div className="flex gap-4 mt-2">
-        <div className="w-36 h-12 bg-emerald-500/20 rounded-full relative overflow-hidden"><PulseLayer /></div>
-        <div className="w-36 h-12 bg-white/10 rounded-full relative overflow-hidden"><PulseLayer /></div>
+      <div className="hidden sm:block w-full max-w-md h-10 sm:h-12 bg-white/5 rounded-xl relative overflow-hidden mb-2"><PulseLayer /></div>
+      <div className="flex gap-2.5 sm:gap-4 mt-1">
+        <div className="w-28 sm:w-36 h-10 sm:h-11 bg-emerald-500/20 rounded-full relative overflow-hidden"><PulseLayer /></div>
+        <div className="w-28 sm:w-36 h-10 sm:h-11 bg-white/10 rounded-full relative overflow-hidden"><PulseLayer /></div>
       </div>
     </div>
   </div>
