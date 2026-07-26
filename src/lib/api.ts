@@ -858,7 +858,18 @@ export class AnimeService {
     }
 
     static async getStream(episodeId: string, server = 'VidPlay-1', category: 'sub' | 'dub' = 'sub') {
-        const [slug, epNumber] = episodeId.split('::');
+        let slug = '';
+        let epNumber = '';
+        if (episodeId.includes('::')) {
+            [slug, epNumber] = episodeId.split('::');
+        } else if (episodeId.includes('-')) {
+            const lastIndex = episodeId.lastIndexOf('-');
+            slug = episodeId.substring(0, lastIndex);
+            epNumber = episodeId.substring(lastIndex + 1);
+        } else {
+            slug = episodeId;
+            epNumber = episodeId;
+        }
         if (!slug || !epNumber) return null;
 
         let data: any = await AnimeAPI_Anikoto.getWatch(slug, epNumber);

@@ -875,8 +875,12 @@ function WatchContent() {
       setStreamUrl(null);
       isSkipToastLocked.current = false;
       const targetParam = ep ? String(ep.number) : targetId;
-      router.push(`/watch/${animeId}?ep=${targetParam}`, { scroll: false });
-  }, [animeId, currentEpId, saveProgress, anime, router]);
+      if (typeof window !== 'undefined') {
+          const url = new URL(window.location.href);
+          url.searchParams.set('ep', targetParam);
+          window.history.replaceState({}, '', url.toString());
+      }
+  }, [animeId, currentEpId, saveProgress, anime]);
 
   const resetInterfaceTimer = useCallback(() => {}, []);
 
@@ -1117,6 +1121,10 @@ function WatchContent() {
   // Sync currentEpId when URL search params change
   useEffect(() => {
     if (!anime?.episodes?.length) return;
+    if (isSwitchingEpisode.current) {
+      isSwitchingEpisode.current = false;
+      return;
+    }
     const paramEp = urlEpId || urlEpNumber;
     if (!paramEp) return;
     

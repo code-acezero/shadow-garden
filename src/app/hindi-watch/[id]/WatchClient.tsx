@@ -889,8 +889,12 @@ function WatchContent() {
       setStreamUrl(null);
       isSkipToastLocked.current = false;
       const targetParam = ep ? String(ep.number) : targetId;
-      router.push(`/hindi-watch/${animeId}?ep=${targetParam}`, { scroll: false });
-  }, [animeId, saveProgress, anime, epProgress, router, currentEpId]);
+      if (typeof window !== 'undefined') {
+          const url = new URL(window.location.href);
+          url.searchParams.set('ep', targetParam);
+          window.history.replaceState({}, '', url.toString());
+      }
+  }, [animeId, saveProgress, anime, epProgress, currentEpId]);
 
   const resetInterfaceTimer = useCallback(() => {}, []);
 
@@ -1181,6 +1185,10 @@ function WatchContent() {
   // Sync currentEpId when URL search params change
   useEffect(() => {
     if (!anime?.episodes?.length) return;
+    if (isSwitchingEpisode.current) {
+      isSwitchingEpisode.current = false;
+      return;
+    }
     const paramEp = urlEpId || urlEpNumber;
     if (!paramEp) return;
     const paramStr = String(paramEp).trim();
