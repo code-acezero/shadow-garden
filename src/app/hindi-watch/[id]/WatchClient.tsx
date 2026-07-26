@@ -1167,7 +1167,7 @@ function WatchContent() {
               targetEpId = anime.episodes[0].id;
           }
 
-          if (targetEpId && targetEpId !== currentEpId) setCurrentEpId(targetEpId);
+          if (targetEpId && !currentEpId) setCurrentEpId(targetEpId);
           setIsResumeLoaded(true);
 
           const urlTime = searchParams.get('timestamp') || searchParams.get('t');

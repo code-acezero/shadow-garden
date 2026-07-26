@@ -1102,7 +1102,7 @@ function WatchContent() {
               targetEpId = anime.episodes[0].id;
           }
 
-          if (targetEpId && targetEpId !== currentEpId) setCurrentEpId(targetEpId);
+          if (targetEpId && !currentEpId) setCurrentEpId(targetEpId);
           setIsResumeLoaded(true);
 
           // Handle Custom Timestamp from URL
