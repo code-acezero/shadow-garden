@@ -1118,13 +1118,15 @@ function WatchContent() {
       syncHistory();
   }, [anime, user?.id, animeId]);
 
-  // Sync currentEpId when URL search params change
+  // Sync currentEpId when URL search params change (browser back/forward navigation only).
+  // NOTE: Do NOT include currentEpId in deps — replaceState (used by handleEpisodeClick)
+  // does NOT update useSearchParams, so if currentEpId is a dep the effect runs after
+  // every click and reverts to the stale URL episode param, causing the bounce-back bug.
+  const currentEpIdRef = useRef(currentEpId);
+  useEffect(() => { currentEpIdRef.current = currentEpId; }, [currentEpId]);
+
   useEffect(() => {
     if (!anime?.episodes?.length) return;
-    if (isSwitchingEpisode.current) {
-      isSwitchingEpisode.current = false;
-      return;
-    }
     const paramEp = urlEpId || urlEpNumber;
     if (!paramEp) return;
     
@@ -1141,7 +1143,7 @@ function WatchContent() {
       String(e.id).includes(`::${paramStr}`)
     );
     
-    if (match && match.id !== currentEpId) {
+    if (match && match.id !== currentEpIdRef.current) {
       const savedRecord = progressBuffer.current[match.id];
       if (savedRecord && !savedRecord.is_completed && savedRecord.progress > 5) {
           progressRef.current = savedRecord.progress;
@@ -1152,7 +1154,8 @@ function WatchContent() {
       }
       setCurrentEpId(match.id);
     }
-  }, [urlEpId, urlEpNumber, anime, currentEpId]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [urlEpId, urlEpNumber, anime]);
 
   const [fetchTrigger, setFetchTrigger] = useState(0);
   const activeFetchRef = useRef(0);

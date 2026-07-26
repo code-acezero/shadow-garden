@@ -1182,13 +1182,13 @@ function WatchContent() {
       syncHistory();
   }, [anime, user?.id, animeId]);
 
-  // Sync currentEpId when URL search params change
+  // Sync currentEpId when URL search params change (browser back/forward navigation only).
+  // NOTE: Do NOT include currentEpId in deps — replaceState does NOT update useSearchParams.
+  const currentEpIdRef = useRef(currentEpId);
+  useEffect(() => { currentEpIdRef.current = currentEpId; }, [currentEpId]);
+
   useEffect(() => {
     if (!anime?.episodes?.length) return;
-    if (isSwitchingEpisode.current) {
-      isSwitchingEpisode.current = false;
-      return;
-    }
     const paramEp = urlEpId || urlEpNumber;
     if (!paramEp) return;
     const paramStr = String(paramEp).trim();
@@ -1202,10 +1202,11 @@ function WatchContent() {
       String(e.id).endsWith(`::${paramStr}`) ||
       String(e.id).includes(`::${paramStr}`)
     );
-    if (match && match.id !== currentEpId) {
+    if (match && match.id !== currentEpIdRef.current) {
       setCurrentEpId(match.id);
     }
-  }, [urlEpId, urlEpNumber, anime, currentEpId]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [urlEpId, urlEpNumber, anime]);
 
   const [fetchTrigger, setFetchTrigger] = useState(0);
   const activeFetchRef = useRef(0);
