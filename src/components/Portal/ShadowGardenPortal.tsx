@@ -1248,9 +1248,9 @@ const GenderSelection = React.memo(({ onSelect }: { onSelect: (g: Gender) => voi
     return (
         <div className="fixed inset-0 z-[99999] bg-black/90 flex items-center justify-center p-4 sm:p-6 overflow-hidden touch-none">
             <motion.div 
-                initial={{ opacity: 0, scale: 0.9, y: 0 }} 
-                animate={{ opacity: 1, scale: 1, y: 0 }} 
-                className="w-full max-w-lg mx-auto border-2 border-primary-900/60 bg-[#0a0505]/95 p-6 sm:p-10 rounded-3xl text-center backdrop-blur-2xl shadow-[0_0_60px_rgba(220,38,38,0.35)] relative overflow-hidden"
+                initial={{ opacity: 0, scale: 0.95 }} 
+                animate={{ opacity: 1, scale: 1 }} 
+                className="w-full max-w-lg mx-auto border-2 border-primary-900/60 bg-[#0a0505]/95 p-6 sm:p-8 rounded-3xl text-center backdrop-blur-2xl shadow-[0_0_60px_rgba(220,38,38,0.35)] relative overflow-hidden -translate-y-6 sm:-translate-y-8"
             >
                 <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-transparent via-primary-500 to-transparent animate-pulse" />
 
@@ -1321,48 +1321,47 @@ const AnimationPreferencePopup = React.memo(({
     }, []);
 
     return (
-        <div className="fixed inset-0 z-[99999] bg-black/90 backdrop-blur-xl flex items-center justify-center p-4 sm:p-6 overflow-hidden touch-none">
-            <div className="absolute inset-0 bg-gradient-to-t from-primary-950/30 via-black to-black pointer-events-none" />
+        <div className="fixed inset-0 z-[99999] bg-black/90 backdrop-blur-xl flex items-center justify-center p-4 overflow-hidden touch-none">
+            <div className="absolute inset-0 bg-gradient-to-t from-primary-950/20 via-black to-black pointer-events-none" />
             
             <motion.div 
-                initial={{ opacity: 0, scale: 0.94 }} 
+                initial={{ opacity: 0, scale: 0.95 }} 
                 animate={{ opacity: 1, scale: 1 }} 
                 transition={{ duration: 0.3, ease: "easeOut" }}
-                className="relative max-w-md w-full mx-auto bg-[#0a0505]/95 border-2 border-primary-900/60 p-6 sm:p-8 rounded-3xl shadow-[0_0_60px_rgba(220,38,38,0.4)] overflow-hidden text-center"
+                className="relative max-w-sm sm:max-w-md w-full mx-auto bg-[#0a0505]/95 border border-primary-900/60 p-5 sm:p-6 rounded-2xl shadow-[0_0_50px_rgba(220,38,38,0.3)] overflow-hidden text-center -translate-y-6 sm:-translate-y-8"
             >
                 <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-transparent via-primary-500 to-transparent animate-pulse" />
 
-                <div className="flex flex-col items-center gap-3 mb-6 border-b border-primary-900/30 pb-5">
-                    <div className="p-3 bg-primary-950/60 rounded-full border border-primary-500/40 shadow-[0_0_20px_rgba(220,38,38,0.3)]">
-                        <Power className="w-6 h-6 text-primary-500 animate-pulse" />
+                <div className="flex items-center justify-center gap-3 mb-4 border-b border-primary-900/30 pb-3">
+                    <div className="p-2 bg-primary-950/60 rounded-full border border-primary-500/40 shadow-[0_0_15px_rgba(220,38,38,0.3)]">
+                        <Power className="w-5 h-5 text-primary-500 animate-pulse" />
                     </div>
-                    <div>
-                        <h3 className="text-xl text-white font-bold tracking-[0.2em] font-mono uppercase">
-                            SANCTUARY RESONANCE DETECTED
+                    <div className="text-left">
+                        <h3 className="text-base sm:text-lg text-white font-bold tracking-[0.15em] font-mono uppercase">
+                            SYSTEM DETECTED
                         </h3>
-                        <p className="text-[10px] text-primary-400/80 uppercase tracking-widest font-mono mt-1">
-                            SHADOW GATE PROTOCOL • LEVEL VII
+                        <p className="text-[10px] text-primary-400/80 uppercase tracking-widest font-mono">
+                            GATE ANIMATION PREFERENCE
                         </p>
                     </div>
                 </div>
 
-                <p className="text-gray-300 text-xs sm:text-sm mb-8 leading-relaxed font-mono">
-                    Monarch signature verified. The dimensional sanctuary awaits your synchronization. <br/><br/>
-                    <span className="text-primary-400 font-bold">COMMAND:</span> Initiate portal immersion sequence?
+                <p className="text-gray-300 text-xs sm:text-sm mb-5 leading-relaxed font-mono">
+                    Would you like to play the portal intro animation before entry?
                 </p>
 
-                <div className="grid grid-cols-1 gap-3 mb-6">
+                <div className="grid grid-cols-1 gap-2.5 mb-4">
                     <Button 
                         onClick={() => {
                             sfx.play('metal');
                             onChoice(true, never ? 9999 : (pause7 ? 7 : 0));
                         }} 
                         onMouseEnter={() => sfx.play('crystal')}
-                        className="group relative overflow-hidden bg-primary-900/40 hover:bg-primary-700 border border-primary-500/60 hover:border-primary-400 transition-all duration-300 h-13 rounded-xl shadow-lg"
+                        className="group relative overflow-hidden bg-primary-900/50 hover:bg-primary-700 border border-primary-500/60 hover:border-primary-400 transition-all duration-300 h-11 rounded-xl shadow-md"
                     >
-                        <div className="flex items-center justify-center gap-3">
-                            <PlayCircle className="w-5 h-5 text-primary-400 group-hover:text-white" />
-                            <span className="text-white font-bold tracking-widest text-xs font-mono">INITIATE SEQUENCE</span>
+                        <div className="flex items-center justify-center gap-2.5">
+                            <PlayCircle className="w-4 h-4 text-primary-400 group-hover:text-white" />
+                            <span className="text-white font-bold tracking-widest text-xs font-mono">PLAY INTRO</span>
                         </div>
                     </Button>
                     
@@ -1373,17 +1372,17 @@ const AnimationPreferencePopup = React.memo(({
                         }} 
                         onMouseEnter={() => sfx.play('crystal')}
                         variant="outline" 
-                        className="bg-transparent border-white/10 hover:bg-white/10 hover:border-white/20 h-12 rounded-xl"
+                        className="bg-transparent border-white/10 hover:bg-white/10 hover:border-white/20 h-10 rounded-xl"
                     >
-                        <div className="flex items-center justify-center gap-3">
-                            <FastForward className="w-4 h-4 text-gray-400" />
-                            <span className="text-gray-300 group-hover:text-white transition-colors tracking-widest text-xs font-mono">BYPASS PROTOCOL (SKIP)</span>
+                        <div className="flex items-center justify-center gap-2.5">
+                            <FastForward className="w-3.5 h-3.5 text-gray-400" />
+                            <span className="text-gray-300 group-hover:text-white transition-colors tracking-widest text-xs font-mono">SKIP INTRO</span>
                         </div>
                     </Button>
                 </div>
 
-                <div className="bg-black/60 rounded-xl p-4 border border-white/10 space-y-3 text-left">
-                    <div className="flex items-center space-x-3">
+                <div className="bg-black/60 rounded-xl p-3 border border-white/10 space-y-2 text-left">
+                    <div className="flex items-center space-x-2.5">
                         <Checkbox 
                             id="pause" 
                             checked={pause7} 
@@ -1393,11 +1392,11 @@ const AnimationPreferencePopup = React.memo(({
                                 if(c) setNever(false); 
                             }} 
                         />
-                        <label htmlFor="pause" className="text-xs text-gray-400 font-mono cursor-pointer hover:text-primary-400 transition-colors flex items-center gap-2">
-                            <Clock className="w-3 h-3 text-primary-500" /> Auto-bypass for 7 cycles (days)
+                        <label htmlFor="pause" className="text-xs text-gray-400 font-mono cursor-pointer hover:text-primary-400 transition-colors flex items-center gap-1.5">
+                            <Clock className="w-3 h-3 text-primary-500" /> Auto-skip for 7 days
                         </label>
                     </div>
-                    <div className="flex items-center space-x-3">
+                    <div className="flex items-center space-x-2.5">
                         <Checkbox 
                             id="never" 
                             checked={never} 
@@ -1408,7 +1407,7 @@ const AnimationPreferencePopup = React.memo(({
                             }} 
                         />
                         <label htmlFor="never" className="text-xs text-gray-400 font-mono cursor-pointer hover:text-primary-400 transition-colors">
-                            Permanently disable gate sequence
+                            Always skip intro
                         </label>
                     </div>
                 </div>
