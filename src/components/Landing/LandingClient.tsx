@@ -227,12 +227,7 @@ const LatestSocialFeedSection = React.memo(() => {
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        {loading ? (
-          [...Array(4)].map((_, i) => (
-            <div key={i} className="h-40 rounded-2xl bg-white/5 animate-pulse border border-white/10" />
-          ))
-        ) : (
-          posts.map((post) => (
+        {posts.map((post) => (
             <div key={post.id} className="p-6 rounded-2xl bg-black/40 border border-white/10 hover:border-primary-500/40 backdrop-blur-md transition-all group hover:-translate-y-1 shadow-lg">
               <div className="flex items-center gap-3 mb-4">
                 <img 
@@ -264,8 +259,7 @@ const LatestSocialFeedSection = React.memo(() => {
                 </span>
               </div>
             </div>
-          ))
-        )}
+          ))}
       </div>
     </section>
   );
@@ -550,20 +544,16 @@ export default function LandingClient() {
                         <h3 className="text-3xl font-normal font-gradvis text-white tracking-widest">TOP BOUNTIES</h3>
                      </div>
                      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-3">
-                        {isLoadingTrending ? (
-                           [...Array(6)].map((_, i) => (<div key={i} className="w-full aspect-[2/3] rounded-3xl bg-white/5 animate-pulse border border-white/10" />))
-                        ) : (
-                           trending.map((anime, i) => (
-                              <Link key={anime.id} href={`/watch/${anime.id}`} className="relative w-full aspect-[2/3] rounded-3xl overflow-hidden cursor-pointer group border border-white/10 hover:border-primary-500/50 transition-all hover:scale-105 hover:shadow-[0_0_20px_rgba(220,38,38,0.3)]">
-                                 <img src={anime.poster} alt={anime.title} loading="lazy" className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110" />
-                                 <div className="absolute inset-0 bg-gradient-to-t from-black via-transparent to-transparent opacity-90" />
-                                 <div className="absolute top-2 right-2 w-7 h-7 rounded-full bg-primary-600/90 backdrop-blur-md flex items-center justify-center font-black text-xs border border-primary-400 shadow-[0_0_10px_red] z-10">{i + 1}</div>
-                                 <div className="absolute bottom-0 w-full p-3 text-center">
-                                    <h4 className="text-xs font-bold text-white mb-1 leading-tight drop-shadow-md line-clamp-2 group-hover:text-primary-400 transition-colors">{anime.title}</h4>
-                                 </div>
-                              </Link>
-                           ))
-                        )}
+                        {trending.map((anime, i) => (
+                           <Link key={anime.id} href={`/watch/${anime.id}`} className="relative w-full aspect-[2/3] rounded-3xl overflow-hidden cursor-pointer group border border-white/10 hover:border-primary-500/50 transition-all hover:scale-105 hover:shadow-[0_0_20px_rgba(220,38,38,0.3)]">
+                              <img src={anime.poster} alt={anime.title} loading="lazy" className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110" />
+                              <div className="absolute inset-0 bg-gradient-to-t from-black via-transparent to-transparent opacity-90" />
+                              <div className="absolute top-2 right-2 w-7 h-7 rounded-full bg-primary-600/90 backdrop-blur-md flex items-center justify-center font-black text-xs border border-primary-400 shadow-[0_0_10px_red] z-10">{i + 1}</div>
+                              <div className="absolute bottom-0 w-full p-3 text-center">
+                                 <h4 className="text-xs font-bold text-white mb-1 leading-tight drop-shadow-md line-clamp-2 group-hover:text-primary-400 transition-colors">{anime.title}</h4>
+                              </div>
+                           </Link>
+                        ))}
                      </div>
                   </div>
                </section>

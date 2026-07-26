@@ -1224,7 +1224,7 @@ const AnimationPreferencePopup = React.memo(({
                 initial={{ opacity: 0, scale: 0.95, y: 10 }} 
                 animate={{ opacity: 1, scale: 1, y: 0 }} 
                 transition={{ duration: 0.4, ease: "circOut" }}
-                className="relative w-full bg-[#080505] border border-primary-900/30 p-1 rounded-sm shadow-[0_0_50px_-10px_rgba(220,38,38,0.2)] overflow-hidden"
+                className="relative max-w-md w-full mx-auto bg-[#080505] border border-primary-900/40 p-1 rounded-2xl shadow-[0_0_50px_-10px_rgba(220,38,38,0.35)] overflow-hidden"
             >
                 <div className="absolute top-0 left-0 w-2 h-2 border-t border-l border-primary-500" />
                 <div className="absolute top-0 right-0 w-2 h-2 border-t border-r border-primary-500" />
@@ -1313,65 +1313,6 @@ const AnimationPreferencePopup = React.memo(({
 
 AnimationPreferencePopup.displayName = 'AnimationPreferencePopup';
 
-const GuildCookieNotice = React.memo(({ 
-    onAccept, 
-    onDecline 
-}: { 
-    onAccept: () => void; 
-    onDecline: () => void;
-}) => {
-    useEffect(() => {
-        const originalOverflow = document.body.style.overflow;
-        document.body.style.overflow = 'hidden';
-        return () => {
-            document.body.style.overflow = originalOverflow;
-        };
-    }, []);
-
-    return (
-        <div className="fixed inset-0 z-[99999] bg-black/85 backdrop-blur-md flex items-center justify-center p-4 sm:p-6 overflow-hidden touch-none pointer-events-auto">
-            <motion.div 
-                initial={{ scale: 0.9, opacity: 0 }} 
-                animate={{ scale: 1, opacity: 1 }} 
-                className="bg-[#0a0505]/95 backdrop-blur-2xl border border-primary-900/60 rounded-3xl p-6 sm:p-8 shadow-[0_0_60px_rgba(220,38,38,0.4)] max-w-md w-full relative overflow-hidden text-center"
-            >
-                <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-transparent via-primary-500 to-transparent animate-pulse" />
-
-                <div className="flex flex-col items-center gap-3 mb-6">
-                    <div className="p-4 bg-gradient-to-br from-primary-900/40 to-black rounded-full border border-primary-500/30 shadow-[0_0_25px_rgba(220,38,38,0.3)]">
-                        <Scroll className="w-7 h-7 text-primary-500" />
-                    </div>
-                    <div>
-                        <h4 className="text-white font-bold tracking-widest text-xl mb-1 font-mono uppercase">
-                            GUILD PERMIT & AUDIO CONTRACT
-                        </h4>
-                        <p className="text-gray-400 text-xs tracking-wide font-mono leading-relaxed max-w-xs mx-auto mt-2">
-                            Shadow Garden requires audio synchronization and cookies to enable spatial acoustic immersion.
-                        </p>
-                    </div>
-                </div>
-                <div className="flex gap-4">
-                    <Button 
-                        onClick={onAccept} 
-                        className="flex-1 bg-primary-700 hover:bg-primary-600 text-white text-xs font-bold border border-primary-500/50 h-12 rounded-xl shadow-lg font-mono tracking-wider"
-                    >
-                        <Fingerprint className="w-4 h-4 mr-2" /> ACCEPT PERMIT
-                    </Button>
-                    <Button 
-                        onClick={onDecline} 
-                        variant="outline" 
-                        className="flex-1 border-white/10 text-gray-400 hover:text-white hover:bg-white/10 h-12 text-xs rounded-xl font-mono tracking-wider"
-                    >
-                        <X className="w-4 h-4 mr-1" /> DECLINE
-                    </Button>
-                </div>
-            </motion.div>
-        </div>
-    );
-});
-
-GuildCookieNotice.displayName = 'GuildCookieNotice';
-
 // =============================================================================
 // MAIN COMPONENT
 // =============================================================================
@@ -1388,7 +1329,6 @@ export default function ShadowGardenPortal({
     const [whiteout, setWhiteout] = useState(false);
     const [whiteoutProgress, setWhiteoutProgress] = useState(0);
     const [shake, setShake] = useState(0);
-    const [showCookie, setShowCookie] = useState(false);
     const [skipped, setSkipped] = useState(false);
     
     const [quality, setQuality] = useState<PerformanceTier>(() => {
@@ -1418,10 +1358,6 @@ export default function ShadowGardenPortal({
         const now = new Date().getTime();
 
         const isSkipActive = neverAsk === 'true' || (pauseUntil && parseInt(pauseUntil) > now);
-
-        if (!localStorage.getItem('SG_GUILD_CONTRACT')) {
-            setTimeout(() => setShowCookie(true), 1500);
-        }
 
         if (!savedGender) {
             setAppState('cinematic_intro');
@@ -1583,23 +1519,6 @@ export default function ShadowGardenPortal({
 
     return (
         <>
-            <AnimatePresence>
-                {showCookie && (
-                    <GuildCookieNotice 
-                        onAccept={() => { 
-                            localStorage.setItem('SG_GUILD_CONTRACT', 'true'); 
-                            localStorage.setItem('shadow_audio_permitted', 'true');
-                            sfx.unlock();
-                            setShowCookie(false); 
-                        }} 
-                        onDecline={() => { 
-                            localStorage.setItem('SG_GUILD_CONTRACT', 'false'); 
-                            setShowCookie(false); 
-                        }} 
-                    />
-                )}
-            </AnimatePresence>
-
             <div className="fixed inset-0 z-0 bg-black pointer-events-none">
 
             <AnimatePresence>
