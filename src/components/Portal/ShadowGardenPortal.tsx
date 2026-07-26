@@ -74,7 +74,7 @@ declare global {
   }
 }
 
-type AppState = 'checking' | 'gender_select' | 'anim_choice' | 'loading' | 'running';
+type AppState = 'checking' | 'cinematic_intro' | 'gender_select' | 'anim_choice' | 'loading' | 'running';
 type AnimationStage = 
     | 'loading' | 'intro' | 'idle' 
     | 'drop' | 'crouch' | 'stand' | 'confusion' 
@@ -107,17 +107,14 @@ const detectPerformanceTier = (): PerformanceTier => {
     const cores = navigator.hardwareConcurrency || 2;
     const memory = (navigator as any).deviceMemory || 2;
     
-    // Very aggressive detection for potato tier (most Android devices)
     if (isLowEndMobile || (isAndroid && cores <= 4) || memory < 3) {
         return 'potato';
     }
     
-    // Low tier for budget devices
     if (isMobile || cores <= 2 || memory < 4) {
         return 'low';
     }
     
-    // Medium tier for average devices
     if (cores <= 4 || memory < 8) {
         return 'medium';
     }
@@ -1031,15 +1028,69 @@ CameraDirector.displayName = 'CameraDirector';
 // UI COMPONENTS
 // =============================================================================
 
-const GenderSelection = React.memo(({ onSelect }: { onSelect: (g: Gender) => void }) => (
-    <div className="fixed inset-0 z-[999] bg-black/90 flex items-center justify-center p-4">
-        <motion.div 
-            initial={{ opacity: 0, scale: 0.9 }} 
-            animate={{ opacity: 1, scale: 1 }} 
-            className="w-full border border-white/10 bg-white/5 p-10 rounded-3xl text-center backdrop-blur-xl"
+const CinematicTitleIntro = React.memo(({ onComplete }: { onComplete: () => void }) => {
+    useEffect(() => {
+        const timer = setTimeout(() => {
+            onComplete();
+        }, 3200);
+        return () => clearTimeout(timer);
+    }, [onComplete]);
+
+    return (
+        <div 
+            onClick={onComplete}
+            className="fixed inset-0 z-[99999] bg-[#030305] flex flex-col items-center justify-center p-6 cursor-pointer overflow-hidden select-none"
         >
-            <div className="flex justify-center items-center gap-2 mb-8">
-                <h2 className="text-3xl text-white font-bold tracking-widest">
+            {/* Eclipse Glow Backdrop */}
+            <div className="absolute w-72 h-72 sm:w-96 sm:h-96 rounded-full bg-gradient-to-r from-red-600 via-purple-600 to-red-600 blur-[90px] opacity-40 animate-pulse pointer-events-none" />
+            <div className="absolute w-48 h-48 sm:w-64 sm:h-64 rounded-full bg-black border-2 border-red-500/30 shadow-[0_0_60px_rgba(220,38,38,0.5)] pointer-events-none" />
+
+            <motion.div
+                initial={{ opacity: 0, scale: 0.85 }}
+                animate={{ opacity: 1, scale: 1 }}
+                exit={{ opacity: 0, scale: 1.1 }}
+                transition={{ duration: 1.2, ease: "easeInOut" }}
+                className="relative z-10 text-center space-y-4 max-w-4xl"
+            >
+                <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-red-950/40 border border-red-500/40 backdrop-blur-md mb-2">
+                    <span className="w-2 h-2 rounded-full bg-red-500 animate-ping" />
+                    <span className="text-red-300 text-[11px] font-mono font-bold uppercase tracking-[0.3em]">
+                        IMMERSION PROTOCOL — ECLIPSE SYNC
+                    </span>
+                </div>
+
+                <h1 className="text-4xl sm:text-6xl md:text-7xl font-black text-transparent bg-clip-text bg-gradient-to-b from-white via-zinc-200 to-zinc-600 tracking-[0.25em] font-mono uppercase drop-shadow-[0_0_40px_rgba(255,255,255,0.4)]">
+                    SHADOW GARDEN
+                </h1>
+
+                <div className="w-36 h-[2px] bg-gradient-to-r from-transparent via-red-500 to-transparent mx-auto opacity-80" />
+
+                <p className="text-xs sm:text-sm text-gray-400 font-mono tracking-[0.3em] uppercase">
+                    [ THE ETERNAL SANCTUARY FOR THE AWAKENED ]
+                </p>
+
+                <span className="text-[10px] text-zinc-500 font-mono tracking-widest block pt-6 animate-pulse">
+                    TAP ANYWHERE TO FAST-FORWARD
+                </span>
+            </motion.div>
+        </div>
+    );
+});
+
+CinematicTitleIntro.displayName = 'CinematicTitleIntro';
+
+const GenderSelection = React.memo(({ onSelect }: { onSelect: (g: Gender) => void }) => (
+    <div className="fixed inset-0 z-[999] bg-black/90 flex items-center justify-center p-4 sm:p-6 overflow-y-auto">
+        <motion.div 
+            initial={{ opacity: 0, scale: 0.9, y: 20 }} 
+            animate={{ opacity: 1, scale: 1, y: 0 }} 
+            className="w-full max-w-lg mx-auto border-2 border-primary-900/60 bg-[#0a0505]/95 p-6 sm:p-10 rounded-3xl text-center backdrop-blur-2xl shadow-[0_0_60px_rgba(220,38,38,0.35)] relative overflow-hidden"
+        >
+            <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-transparent via-primary-500 to-transparent animate-pulse" />
+
+            <div className="flex justify-center items-center gap-2 mb-6 border-b border-primary-900/30 pb-4">
+                <Crown className="w-6 h-6 text-primary-500" />
+                <h2 className="text-xl sm:text-2xl text-white font-bold tracking-widest uppercase font-mono">
                     IDENTITY CONFIRMATION
                 </h2>
                 <TooltipProvider>
@@ -1053,20 +1104,31 @@ const GenderSelection = React.memo(({ onSelect }: { onSelect: (g: Gender) => voi
                     </Tooltip>
                 </TooltipProvider>
             </div>
-            <div className="grid grid-cols-2 gap-8">
+
+            <p className="text-xs text-gray-400 font-mono mb-8 leading-relaxed">
+                Select your monarch vessel before entering the dimensional sanctuary.
+            </p>
+
+            <div className="grid grid-cols-2 gap-4 sm:gap-6">
                 <button 
                     onClick={() => onSelect('boy')} 
-                    className="group p-8 border border-white/5 bg-black/40 hover:border-blue-500 rounded-2xl transition-all flex flex-col items-center gap-6"
+                    className="group p-6 sm:p-8 border border-blue-500/30 bg-blue-950/20 hover:bg-blue-900/40 hover:border-blue-400 rounded-2xl transition-all flex flex-col items-center gap-4 shadow-lg hover:shadow-[0_0_25px_rgba(59,130,246,0.4)]"
                 >
-                    <Sword className="w-12 h-12 text-blue-400" />
-                    <span className="text-xl font-bold text-white tracking-widest">MALE</span>
+                    <div className="p-4 rounded-full bg-blue-500/20 border border-blue-400/40 group-hover:scale-110 transition-transform">
+                        <Sword className="w-8 h-8 text-blue-400" />
+                    </div>
+                    <span className="text-base sm:text-lg font-bold text-white tracking-widest font-mono">MALE</span>
+                    <span className="text-[10px] text-blue-300/70 font-mono uppercase">SHADOW HUNTER</span>
                 </button>
                 <button 
                     onClick={() => onSelect('girl')} 
-                    className="group p-8 border border-white/5 bg-black/40 hover:border-pink-500 rounded-2xl transition-all flex flex-col items-center gap-6"
+                    className="group p-6 sm:p-8 border border-pink-500/30 bg-pink-950/20 hover:bg-pink-900/40 hover:border-pink-400 rounded-2xl transition-all flex flex-col items-center gap-4 shadow-lg hover:shadow-[0_0_25px_rgba(236,72,153,0.4)]"
                 >
-                    <Wand2 className="w-12 h-12 text-pink-400" />
-                    <span className="text-xl font-bold text-white tracking-widest">FEMALE</span>
+                    <div className="p-4 rounded-full bg-pink-500/20 border border-pink-400/40 group-hover:scale-110 transition-transform">
+                        <Wand2 className="w-8 h-8 text-pink-400" />
+                    </div>
+                    <span className="text-base sm:text-lg font-bold text-white tracking-widest font-mono">FEMALE</span>
+                    <span className="text-[10px] text-pink-300/70 font-mono uppercase">CELESTIAL MONARCH</span>
                 </button>
             </div>
         </motion.div>
@@ -1279,7 +1341,7 @@ export default function ShadowGardenPortal({
         }
 
         if (!savedGender) {
-            setAppState('gender_select');
+            setAppState('cinematic_intro');
         } else if (isSkipActive) {
             triggerSkip(); 
         } else {
@@ -1298,6 +1360,8 @@ export default function ShadowGardenPortal({
         setGender(g); 
         localStorage.setItem('guest_gender', g);
         localStorage.setItem('shadow_traveller_gender', g);
+        localStorage.setItem('SG_GUILD_CONTRACT', 'true');
+        localStorage.setItem('shadow_audio_permitted', 'true');
         
         import('@/components/User/AvatarSelectorModal').then(({ getRandomAvatar }) => {
             const avatar = getRandomAvatar(true, g);
@@ -1419,6 +1483,10 @@ export default function ShadowGardenPortal({
     }, [onComplete]);
 
     if (skipped) return null;
+
+    if (appState === 'cinematic_intro') {
+        return <CinematicTitleIntro onComplete={() => setAppState('gender_select')} />;
+    }
 
     if (appState === 'gender_select') {
         return <GenderSelection onSelect={handleGenderSelect} />;
