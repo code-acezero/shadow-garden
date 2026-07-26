@@ -200,30 +200,24 @@ extend({ MagmaShader, PortalVortexShader, CloudShader, WarpShader });
 // =============================================================================
 
 class AudioMatrix {
+    private ctx: AudioContext | null = null;
     private sources: Map<string, HTMLAudioElement> = new Map();
     private active: boolean = false;
     
+    private getCtx(): AudioContext | null {
+        if (!this.ctx && typeof window !== 'undefined') {
+            const Ctx = window.AudioContext || (window as any).webkitAudioContext;
+            if (Ctx) this.ctx = new Ctx();
+        }
+        if (this.ctx && this.ctx.state === 'suspended') {
+            this.ctx.resume().catch(() => {});
+        }
+        return this.ctx;
+    }
+
     init() {
         if (this.active || typeof window === 'undefined') return;
-        
-        const library = { 
-            wind: "https://cdn.freesound.org/previews/442/442827_5121236-lq.mp3",
-            grind: "https://cdn.freesound.org/previews/536/536445_11523163-lq.mp3",
-            boom: "https://cdn.freesound.org/previews/442/442902_5121236-lq.mp3",
-            step: "https://cdn.freesound.org/previews/320/320181_527080-lq.mp3",
-            drop: "https://cdn.freesound.org/previews/442/442900_5121236-lq.mp3",
-            suction: "https://cdn.freesound.org/previews/442/442828_5121236-lq.mp3",
-            metal: "https://cdn.freesound.org/previews/162/162484_2515091-lq.mp3",
-            crystal: "https://cdn.freesound.org/previews/406/406063_266858-lq.mp3"
-        };
-        
-        Object.entries(library).forEach(([k, v]) => { 
-            const a = new Audio(v); 
-            a.preload = 'auto'; 
-            a.volume = 0;
-            a.crossOrigin = 'anonymous';
-            this.sources.set(k, a); 
-        });
+        this.getCtx();
         
         const bgmTracks = [
             "/bgm/bgm1.mp3",
@@ -242,18 +236,128 @@ class AudioMatrix {
         this.active = true;
         if (typeof window !== 'undefined') {
             (window as any).stopShadowBGM = () => this.stopAll(1500);
+            (window as any).sfx = this;
         }
     }
     
     unlock() { 
-        if(typeof window !== 'undefined') { 
-            const Ctx = window.AudioContext || (window as any).webkitAudioContext; 
-            if(Ctx) new Ctx().resume(); 
-        } 
+        this.getCtx();
+    }
+    
+    // Real-Time Web Audio Synthesizers for Guaranteed SFX
+    synthMetal(vol = 0.4) {
+        try {
+            const ctx = this.getCtx();
+            if (!ctx) return;
+            const now = ctx.currentTime;
+            const osc1 = ctx.createOscillator();
+            const osc2 = ctx.createOscillator();
+            const gain = ctx.createGain();
+            osc1.type = 'triangle'; osc2.type = 'sine';
+            osc1.frequency.setValueAtTime(1200, now);
+            osc1.frequency.exponentialRampToValueAtTime(250, now + 0.15);
+            osc2.frequency.setValueAtTime(2400, now);
+            osc2.frequency.exponentialRampToValueAtTime(500, now + 0.15);
+            gain.gain.setValueAtTime(vol * 0.5, now);
+            gain.gain.exponentialRampToValueAtTime(0.001, now + 0.18);
+            osc1.connect(gain); osc2.connect(gain); gain.connect(ctx.destination);
+            osc1.start(now); osc2.start(now); osc1.stop(now + 0.2); osc2.stop(now + 0.2);
+        } catch (e) {}
+    }
+    
+    synthCrystal(vol = 0.3) {
+        try {
+            const ctx = this.getCtx();
+            if (!ctx) return;
+            const now = ctx.currentTime;
+            [1800, 2700, 3600].forEach((freq, idx) => {
+                const osc = ctx.createOscillator();
+                const gain = ctx.createGain();
+                osc.type = 'sine';
+                osc.frequency.setValueAtTime(freq, now + idx * 0.03);
+                gain.gain.setValueAtTime(vol * 0.25, now + idx * 0.03);
+                gain.gain.exponentialRampToValueAtTime(0.001, now + idx * 0.03 + 0.25);
+                osc.connect(gain); gain.connect(ctx.destination);
+                osc.start(now + idx * 0.03); osc.stop(now + idx * 0.03 + 0.3);
+            });
+        } catch (e) {}
+    }
+
+    synthWhoosh(vol = 0.5) {
+        try {
+            const ctx = this.getCtx();
+            if (!ctx) return;
+            const now = ctx.currentTime;
+            const bufferSize = Math.floor(ctx.sampleRate * 0.35);
+            const buffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
+            const data = buffer.getChannelData(0);
+            for (let i = 0; i < bufferSize; i++) data[i] = Math.random() * 2 - 1;
+            const noise = ctx.createBufferSource(); noise.buffer = buffer;
+            const filter = ctx.createBiquadFilter();
+            filter.type = 'bandpass';
+            filter.frequency.setValueAtTime(250, now);
+            filter.frequency.exponentialRampToValueAtTime(1600, now + 0.18);
+            filter.frequency.exponentialRampToValueAtTime(350, now + 0.35);
+            filter.Q.value = 2.5;
+            const gain = ctx.createGain();
+            gain.gain.setValueAtTime(0.01, now);
+            gain.gain.linearRampToValueAtTime(vol * 0.6, now + 0.18);
+            gain.gain.exponentialRampToValueAtTime(0.001, now + 0.35);
+            noise.connect(filter); filter.connect(gain); gain.connect(ctx.destination);
+            noise.start(now); noise.stop(now + 0.35);
+        } catch (e) {}
+    }
+
+    synthStep(vol = 0.4) {
+        try {
+            const ctx = this.getCtx();
+            if (!ctx) return;
+            const now = ctx.currentTime;
+            const osc = ctx.createOscillator();
+            const gain = ctx.createGain();
+            osc.type = 'sine';
+            osc.frequency.setValueAtTime(140, now);
+            osc.frequency.exponentialRampToValueAtTime(35, now + 0.09);
+            gain.gain.setValueAtTime(vol * 0.5, now);
+            gain.gain.exponentialRampToValueAtTime(0.005, now + 0.1);
+            osc.connect(gain); gain.connect(ctx.destination);
+            osc.start(now); osc.stop(now + 0.11);
+        } catch (e) {}
+    }
+
+    synthBreath(vol = 0.3) {
+        try {
+            const ctx = this.getCtx();
+            if (!ctx) return;
+            const now = ctx.currentTime;
+            const bufferSize = Math.floor(ctx.sampleRate * 0.7);
+            const buffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
+            const data = buffer.getChannelData(0);
+            for (let i = 0; i < bufferSize; i++) data[i] = Math.random() * 2 - 1;
+            const noise = ctx.createBufferSource(); noise.buffer = buffer;
+            const filter = ctx.createBiquadFilter();
+            filter.type = 'lowpass';
+            filter.frequency.setValueAtTime(300, now);
+            filter.frequency.linearRampToValueAtTime(700, now + 0.35);
+            filter.frequency.linearRampToValueAtTime(250, now + 0.7);
+            const gain = ctx.createGain();
+            gain.gain.setValueAtTime(0.01, now);
+            gain.gain.linearRampToValueAtTime(vol * 0.35, now + 0.35);
+            gain.gain.linearRampToValueAtTime(0.001, now + 0.7);
+            noise.connect(filter); filter.connect(gain); gain.connect(ctx.destination);
+            noise.start(now); noise.stop(now + 0.7);
+        } catch (e) {}
     }
     
     play(key: string, vol = 1, loop = false, fadeMs = 0) { 
         if(!this.active) this.init(); 
+        
+        if (key === 'metal' || key === 'click' || key === 'drop' || key === 'grind' || key === 'boom') { this.synthMetal(vol); return; }
+        if (key === 'crystal' || key === 'hover') { this.synthCrystal(vol); return; }
+        if (key === 'whoosh' || key === 'camera' || key === 'suction') { this.synthWhoosh(vol); return; }
+        if (key === 'step') { this.synthStep(vol); return; }
+        if (key === 'breath' || key === 'wind') { this.synthBreath(vol); return; }
+        
         const a = this.sources.get(key); 
         if(!a) return; 
         a.loop = loop; 
@@ -1217,93 +1321,95 @@ const AnimationPreferencePopup = React.memo(({
     }, []);
 
     return (
-        <div className="fixed inset-0 z-[99999] bg-black/95 flex items-center justify-center p-4 sm:p-6 overflow-hidden touch-none">
-            <div className="absolute inset-0 bg-gradient-to-t from-primary-900/10 via-black to-black pointer-events-none" />
+        <div className="fixed inset-0 z-[99999] bg-black/90 backdrop-blur-xl flex items-center justify-center p-4 sm:p-6 overflow-hidden touch-none">
+            <div className="absolute inset-0 bg-gradient-to-t from-primary-950/30 via-black to-black pointer-events-none" />
             
             <motion.div 
-                initial={{ opacity: 0, scale: 0.95, y: 10 }} 
-                animate={{ opacity: 1, scale: 1, y: 0 }} 
-                transition={{ duration: 0.4, ease: "circOut" }}
-                className="relative max-w-md w-full mx-auto bg-[#080505] border border-primary-900/40 p-1 rounded-2xl shadow-[0_0_50px_-10px_rgba(220,38,38,0.35)] overflow-hidden"
+                initial={{ opacity: 0, scale: 0.94 }} 
+                animate={{ opacity: 1, scale: 1 }} 
+                transition={{ duration: 0.3, ease: "easeOut" }}
+                className="relative max-w-md w-full mx-auto bg-[#0a0505]/95 border-2 border-primary-900/60 p-6 sm:p-8 rounded-3xl shadow-[0_0_60px_rgba(220,38,38,0.4)] overflow-hidden text-center"
             >
-                <div className="absolute top-0 left-0 w-2 h-2 border-t border-l border-primary-500" />
-                <div className="absolute top-0 right-0 w-2 h-2 border-t border-r border-primary-500" />
-                <div className="absolute bottom-0 left-0 w-2 h-2 border-b border-l border-primary-500" />
-                <div className="absolute bottom-0 right-0 w-2 h-2 border-b border-r border-primary-500" />
+                <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-transparent via-primary-500 to-transparent animate-pulse" />
 
-                <div className="p-8 relative z-10">
-                    <div className="flex items-center gap-3 mb-6 border-b border-primary-900/20 pb-4">
-                        <div className="p-2 bg-primary-950/30 rounded border border-primary-900/50">
-                            <Power className="w-5 h-5 text-primary-500 animate-pulse" />
-                        </div>
-                        <div>
-                            <h3 className="text-lg text-white font-bold tracking-[0.2em] font-mono">
-                                SYSTEM DETECTED
-                            </h3>
-                            <p className="text-[10px] text-primary-400/60 uppercase tracking-widest">
-                                Dimensional Gate Protocol
-                            </p>
-                        </div>
+                <div className="flex flex-col items-center gap-3 mb-6 border-b border-primary-900/30 pb-5">
+                    <div className="p-3 bg-primary-950/60 rounded-full border border-primary-500/40 shadow-[0_0_20px_rgba(220,38,38,0.3)]">
+                        <Power className="w-6 h-6 text-primary-500 animate-pulse" />
                     </div>
-
-                    <p className="text-gray-400 text-sm mb-8 leading-relaxed font-mono">
-                        A returning signal has been identified. The dimensional gate is ready for synchronization. <br/><br/>
-                        <span className="text-primary-400">Query:</span> Initiate full immersion sequence?
-                    </p>
-
-                    <div className="grid grid-cols-1 gap-3 mb-8">
-                        <Button 
-                            onClick={() => onChoice(true, never ? 9999 : (pause7 ? 7 : 0))} 
-                            className="group relative overflow-hidden bg-primary-950/20 hover:bg-primary-900/40 border border-primary-900/50 hover:border-primary-500 transition-all duration-300 h-14"
-                        >
-                            <div className="absolute inset-0 bg-gradient-to-r from-transparent via-primary-500/10 to-transparent translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-700" />
-                            <div className="flex items-center justify-center gap-3">
-                                <PlayCircle className="w-5 h-5 text-primary-500" />
-                                <span className="text-white font-bold tracking-widest text-xs">INITIATE SEQUENCE</span>
-                            </div>
-                        </Button>
-                        
-                        <Button 
-                            onClick={() => onChoice(false, never ? 9999 : (pause7 ? 7 : 0))} 
-                            variant="outline" 
-                            className="bg-transparent border-white/5 hover:bg-white/5 hover:border-white/20 h-12"
-                        >
-                            <div className="flex items-center justify-center gap-3">
-                                <FastForward className="w-4 h-4 text-gray-500" />
-                                <span className="text-gray-400 group-hover:text-white transition-colors tracking-widest text-xs">BYPASS PROTOCOL (SKIP)</span>
-                            </div>
-                        </Button>
+                    <div>
+                        <h3 className="text-xl text-white font-bold tracking-[0.2em] font-mono uppercase">
+                            SANCTUARY RESONANCE DETECTED
+                        </h3>
+                        <p className="text-[10px] text-primary-400/80 uppercase tracking-widest font-mono mt-1">
+                            SHADOW GATE PROTOCOL • LEVEL VII
+                        </p>
                     </div>
+                </div>
 
-                    <div className="bg-black/40 rounded p-4 border border-white/5 space-y-3">
-                        <div className="flex items-center space-x-3">
-                            <Checkbox 
-                                id="pause" 
-                                checked={pause7} 
-                                className="border-primary-900/50 data-[state=checked]:bg-primary-900 data-[state=checked]:text-white"
-                                onCheckedChange={(c) => { 
-                                    setPause7(!!c); 
-                                    if(c) setNever(false); 
-                                }} 
-                            />
-                            <label htmlFor="pause" className="text-xs text-gray-500 font-mono cursor-pointer hover:text-primary-400 transition-colors flex items-center gap-2">
-                                <Clock className="w-3 h-3" /> Auto-bypass for 7 cycles (days)
-                            </label>
+                <p className="text-gray-300 text-xs sm:text-sm mb-8 leading-relaxed font-mono">
+                    Monarch signature verified. The dimensional sanctuary awaits your synchronization. <br/><br/>
+                    <span className="text-primary-400 font-bold">COMMAND:</span> Initiate portal immersion sequence?
+                </p>
+
+                <div className="grid grid-cols-1 gap-3 mb-6">
+                    <Button 
+                        onClick={() => {
+                            sfx.play('metal');
+                            onChoice(true, never ? 9999 : (pause7 ? 7 : 0));
+                        }} 
+                        onMouseEnter={() => sfx.play('crystal')}
+                        className="group relative overflow-hidden bg-primary-900/40 hover:bg-primary-700 border border-primary-500/60 hover:border-primary-400 transition-all duration-300 h-13 rounded-xl shadow-lg"
+                    >
+                        <div className="flex items-center justify-center gap-3">
+                            <PlayCircle className="w-5 h-5 text-primary-400 group-hover:text-white" />
+                            <span className="text-white font-bold tracking-widest text-xs font-mono">INITIATE SEQUENCE</span>
                         </div>
-                        <div className="flex items-center space-x-3">
-                            <Checkbox 
-                                id="never" 
-                                checked={never} 
-                                className="border-primary-900/50 data-[state=checked]:bg-primary-900 data-[state=checked]:text-white"
-                                onCheckedChange={(c) => { 
-                                    setNever(!!c); 
-                                    if(c) setPause7(false); 
-                                }} 
-                            />
-                            <label htmlFor="never" className="text-xs text-gray-500 font-mono cursor-pointer hover:text-primary-400 transition-colors">
-                                Permanently disable gate sequence
-                            </label>
+                    </Button>
+                    
+                    <Button 
+                        onClick={() => {
+                            sfx.play('metal');
+                            onChoice(false, never ? 9999 : (pause7 ? 7 : 0));
+                        }} 
+                        onMouseEnter={() => sfx.play('crystal')}
+                        variant="outline" 
+                        className="bg-transparent border-white/10 hover:bg-white/10 hover:border-white/20 h-12 rounded-xl"
+                    >
+                        <div className="flex items-center justify-center gap-3">
+                            <FastForward className="w-4 h-4 text-gray-400" />
+                            <span className="text-gray-300 group-hover:text-white transition-colors tracking-widest text-xs font-mono">BYPASS PROTOCOL (SKIP)</span>
                         </div>
+                    </Button>
+                </div>
+
+                <div className="bg-black/60 rounded-xl p-4 border border-white/10 space-y-3 text-left">
+                    <div className="flex items-center space-x-3">
+                        <Checkbox 
+                            id="pause" 
+                            checked={pause7} 
+                            className="border-primary-900/50 data-[state=checked]:bg-primary-900 data-[state=checked]:text-white"
+                            onCheckedChange={(c) => { 
+                                setPause7(!!c); 
+                                if(c) setNever(false); 
+                            }} 
+                        />
+                        <label htmlFor="pause" className="text-xs text-gray-400 font-mono cursor-pointer hover:text-primary-400 transition-colors flex items-center gap-2">
+                            <Clock className="w-3 h-3 text-primary-500" /> Auto-bypass for 7 cycles (days)
+                        </label>
+                    </div>
+                    <div className="flex items-center space-x-3">
+                        <Checkbox 
+                            id="never" 
+                            checked={never} 
+                            className="border-primary-900/50 data-[state=checked]:bg-primary-900 data-[state=checked]:text-white"
+                            onCheckedChange={(c) => { 
+                                setNever(!!c); 
+                                if(c) setPause7(false); 
+                            }} 
+                        />
+                        <label htmlFor="never" className="text-xs text-gray-400 font-mono cursor-pointer hover:text-primary-400 transition-colors">
+                            Permanently disable gate sequence
+                        </label>
                     </div>
                 </div>
             </motion.div>

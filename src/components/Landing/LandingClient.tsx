@@ -465,7 +465,7 @@ export default function LandingClient() {
             </motion.div>
 
             {/* HERO SECTION */}
-            <section className="relative min-h-screen flex flex-col items-center justify-center p-4 py-20">
+            <section className="relative flex flex-col items-center justify-center p-4 py-6 md:py-10">
                {FLOATING_STICKERS.map((s, i) => (
                  <motion.img 
                    key={i} src={s.src} alt="Sticker" loading="lazy"
@@ -500,33 +500,58 @@ export default function LandingClient() {
                       <div className="relative p-1 rounded-full bg-gradient-to-r from-primary-900/50 via-primary-600/50 to-primary-900/50 shadow-[0_0_30px_rgba(220,38,38,0.3)]">
                         <div className="bg-black/90 backdrop-blur-xl rounded-full"><SearchBar /></div>
                       </div>
-                   </div>
+                      <div className="flex justify-center items-center gap-4 mb-6 relative z-20 mt-6">
+                        <span className="text-gray-400 font-mono tracking-wider text-sm uppercase">Select Form:</span>
+                        <div className="flex items-center bg-white/5 border border-white/10 rounded-full p-1">
+                          <button 
+                            onMouseEnter={() => (window as any).sfx?.play('crystal')}
+                            onClick={() => { (window as any).sfx?.play('metal'); setSelectedGender('boy'); }} 
+                            className={`px-4 py-1.5 rounded-full text-xs font-bold uppercase transition-all ${selectedGender === 'boy' ? 'bg-blue-600/50 text-white shadow-[0_0_15px_rgba(37,99,235,0.4)]' : 'text-gray-500 hover:text-white'}`}
+                          >Boy</button>
+                          <button 
+                            onMouseEnter={() => (window as any).sfx?.play('crystal')}
+                            onClick={() => { (window as any).sfx?.play('metal'); setSelectedGender('girl'); }} 
+                            className={`px-4 py-1.5 rounded-full text-xs font-bold uppercase transition-all ${selectedGender === 'girl' ? 'bg-pink-600/50 text-white shadow-[0_0_15px_rgba(219,39,119,0.4)]' : 'text-gray-500 hover:text-white'}`}
+                          >Girl</button>
+                          <button 
+                            onMouseEnter={() => (window as any).sfx?.play('crystal')}
+                            onClick={() => { (window as any).sfx?.play('metal'); setSelectedGender('neutral'); }} 
+                            className={`px-4 py-1.5 rounded-full text-xs font-bold uppercase transition-all ${selectedGender === 'neutral' ? 'bg-purple-600/50 text-white shadow-[0_0_15px_rgba(147,51,234,0.4)]' : 'text-gray-500 hover:text-white'}`}
+                          >Random</button>
+                        </div>
+                      </div>
 
-                   <div className="flex justify-center items-center gap-4 mb-6 relative z-20">
-                     <span className="text-gray-400 font-above tracking-wider text-sm uppercase">Select Form:</span>
-                     <div className="flex items-center bg-white/5 border border-white/10 rounded-full p-1">
-                       <button onClick={() => setSelectedGender('boy')} className={`px-4 py-1.5 rounded-full text-xs font-bold uppercase transition-all ${selectedGender === 'boy' ? 'bg-blue-600/50 text-white shadow-[0_0_15px_rgba(37,99,235,0.4)]' : 'text-gray-500 hover:text-white'}`}>Boy</button>
-                       <button onClick={() => setSelectedGender('girl')} className={`px-4 py-1.5 rounded-full text-xs font-bold uppercase transition-all ${selectedGender === 'girl' ? 'bg-pink-600/50 text-white shadow-[0_0_15px_rgba(219,39,119,0.4)]' : 'text-gray-500 hover:text-white'}`}>Girl</button>
-                       <button onClick={() => setSelectedGender('neutral')} className={`px-4 py-1.5 rounded-full text-xs font-bold uppercase transition-all ${selectedGender === 'neutral' ? 'bg-purple-600/50 text-white shadow-[0_0_15px_rgba(147,51,234,0.4)]' : 'text-gray-500 hover:text-white'}`}>Random</button>
-                     </div>
+                      <div className="flex flex-col sm:flex-row gap-5 justify-center items-center relative z-20 max-w-md mx-auto">
+                        <Button 
+                          onMouseEnter={() => (window as any).sfx?.play('crystal')}
+                          onClick={() => { (window as any).sfx?.play('metal'); handleJoinGuildClick(); }} 
+                          className="h-14 rounded-full bg-primary-800 hover:bg-primary-700 text-white font-bold text-lg shadow-[0_0_35px_rgba(220,38,38,0.4)] border border-primary-500/50 backdrop-blur-md tracking-wider w-full"
+                        >
+                          <Crown className="mr-3 h-5 w-5" /> Join The Guild
+                        </Button>
+                        <Button 
+                          onMouseEnter={() => (window as any).sfx?.play('crystal')}
+                          onClick={() => { (window as any).sfx?.play('metal'); handleEnterClick(); }} 
+                          variant="ghost" 
+                          className="h-14 rounded-full text-white/70 hover:text-white hover:bg-white/10 border border-white/10 text-lg hover:border-primary-500/50 backdrop-blur-md transition-all tracking-wider w-full"
+                        >
+                          Enter as Visitor <ArrowRight className="ml-3 w-5 h-5" />
+                        </Button>
+                      </div>
+                      
+                      {installPrompt && (
+                        <div className="flex justify-center mt-6 relative z-20">
+                          <Button 
+                            onMouseEnter={() => (window as any).sfx?.play('crystal')}
+                            onClick={() => { (window as any).sfx?.play('metal'); handleInstallClick(); }} 
+                            variant="outline" 
+                            className="rounded-full bg-blue-900/30 text-blue-300 border-blue-500/40 hover:bg-blue-800/50 hover:text-white backdrop-blur-md font-mono tracking-widest text-xs uppercase h-10 px-6"
+                          >
+                            <Download className="mr-2 w-4 h-4" /> Install App
+                          </Button>
+                        </div>
+                      )}
                    </div>
-
-                   <div className="flex flex-col sm:flex-row gap-5 justify-center items-center relative z-20 max-w-md mx-auto">
-                      <Button onClick={handleJoinGuildClick} className="h-14 rounded-full bg-primary-800 hover:bg-primary-700 text-white font-bold text-lg shadow-[0_0_35px_rgba(220,38,38,0.4)] border border-primary-500/50 backdrop-blur-md font-above tracking-wider w-full">
-                        <Crown className="mr-3 h-5 w-5" /> Join The Guild
-                      </Button>
-                      <Button onClick={handleEnterClick} variant="ghost" className="h-14 rounded-full text-white/70 hover:text-white hover:bg-white/10 border border-white/10 text-lg hover:border-primary-500/50 backdrop-blur-md transition-all font-above tracking-wider w-full">
-                        Enter as Visitor <ArrowRight className="ml-3 w-5 h-5" />
-                      </Button>
-                   </div>
-                   
-                   {installPrompt && (
-                     <div className="flex justify-center mt-6 relative z-20">
-                       <Button onClick={handleInstallClick} variant="outline" className="rounded-full bg-blue-900/30 text-blue-300 border-blue-500/40 hover:bg-blue-800/50 hover:text-white backdrop-blur-md font-mono tracking-widest text-xs uppercase h-10 px-6">
-                         <Download className="mr-2 w-4 h-4" /> Install App
-                       </Button>
-                     </div>
-                   )}
 
                    <GuildStats />
                  </motion.div>
@@ -534,7 +559,7 @@ export default function LandingClient() {
             </section>
 
             {/* EXTENDED CONTENT */}
-            <div className="relative bg-gradient-to-b from-transparent via-[#050505] to-[#050505] pt-12 space-y-32 z-10">
+            <div className="relative bg-gradient-to-b from-transparent via-[#050505] to-[#050505] pt-4 space-y-12 z-10">
                
                {/* TOP RANKING */}
                <section className="w-full py-4 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -562,7 +587,7 @@ export default function LandingClient() {
                <LatestSocialFeedSection />
 
                {/* ARCHIVES */}
-               <section className="py-20 relative overflow-hidden max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+               <section className="py-8 relative overflow-hidden max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
                   <div className="flex flex-col md:flex-row items-center gap-12 relative z-10 w-full">
                      <div className="flex-1 space-y-8">
                         <h3 className="text-4xl font-normal text-primary-600 font-gradvis border-l-4 border-primary-600 pl-6" style={{ fontFamily: 'var(--font-above), serif' }}>THE FORBIDDEN LIBRARY</h3>
@@ -608,7 +633,7 @@ export default function LandingClient() {
                </section>
 
                {/* COMMUNITY HIERARCHY */}
-               <section className="py-20 relative overflow-hidden bg-black/40 border-y border-white/5">
+               <section className="py-8 relative overflow-hidden bg-black/40 border-y border-white/5">
                  <div className="absolute inset-0 bg-gradient-to-b from-transparent via-primary-950/10 to-transparent" />
                  <div className="relative z-10 w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
                    <div className="text-center mb-16">
