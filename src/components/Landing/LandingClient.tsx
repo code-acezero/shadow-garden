@@ -465,7 +465,7 @@ export default function LandingClient() {
             </motion.div>
 
             {/* HERO SECTION */}
-            <section className="relative flex flex-col items-center justify-center p-4 pt-0">
+            <section className="relative flex flex-col items-center pt-8 p-4 min-h-screen">
                {FLOATING_STICKERS.map((s, i) => (
                  <motion.img 
                    key={i} src={s.src} alt="Sticker" loading="lazy"
@@ -478,12 +478,12 @@ export default function LandingClient() {
                ))}
 
                <div className="relative z-20 text-center px-4 w-full max-w-4xl mx-auto">
-                 <motion.div initial={{ y: 30, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ duration: 1, delay: 0.5 }}>
+                 <motion.div initial={{ y: 20, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ duration: 1.5, ease: "easeOut" }}>
                    
                    <div className="relative inline-block mb-6">
                      <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-primary-900/30 border border-primary-500/30 backdrop-blur-md mb-4 animate-pulse">
                         <span className="w-1.5 h-1.5 rounded-full bg-primary-500 shadow-[0_0_8px_red]" />
-                        <span className="text-primary-200 text-[10px] font-bold tracking-widest uppercase font-mono">Guild System Online • v0.1 (beta)</span>
+                        <span className="text-primary-200 text-[10px] font-bold tracking-widest uppercase font-mono">Guild System Online • v3.0 (beta)</span>
                      </div>
                      <h1 className="text-5xl md:text-8xl font-normal tracking-wide font-gradvis text-primary-600 drop-shadow-[0_0_30px_rgba(220,38,38,0.6)] relative z-10" style={{ fontFamily: 'var(--font-gradvis), serif' }}>SHADOW GARDEN</h1>
                      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[120%] h-[120%] opacity-50 z-0 pointer-events-none mix-blend-screen">
@@ -497,30 +497,9 @@ export default function LandingClient() {
                    </p>
 
                    <div className="w-full max-w-xl mx-auto mb-10 transform hover:scale-105 transition-transform duration-300 relative z-20">
-                      <div className="relative p-1 rounded-full bg-gradient-to-r from-primary-900/50 via-primary-600/50 to-primary-900/50 shadow-[0_0_30px_rgba(220,38,38,0.3)]">
+                      <div className="relative p-1 rounded-full bg-gradient-to-r from-primary-900/50 via-primary-600/50 to-primary-900/50 shadow-[0_0_30px_rgba(220,38,38,0.3)] mb-8">
                         <div className="bg-black/90 backdrop-blur-xl rounded-full"><SearchBar /></div>
                       </div>
-                      <div className="flex justify-center items-center gap-4 mb-6 relative z-20 mt-6">
-                        <span className="text-gray-400 font-mono tracking-wider text-sm uppercase">Select Form:</span>
-                        <div className="flex items-center bg-white/5 border border-white/10 rounded-full p-1">
-                          <button 
-                            onMouseEnter={() => (window as any).sfx?.play('crystal')}
-                            onClick={() => { (window as any).sfx?.play('metal'); setSelectedGender('boy'); }} 
-                            className={`px-4 py-1.5 rounded-full text-xs font-bold uppercase transition-all ${selectedGender === 'boy' ? 'bg-blue-600/50 text-white shadow-[0_0_15px_rgba(37,99,235,0.4)]' : 'text-gray-500 hover:text-white'}`}
-                          >Boy</button>
-                          <button 
-                            onMouseEnter={() => (window as any).sfx?.play('crystal')}
-                            onClick={() => { (window as any).sfx?.play('metal'); setSelectedGender('girl'); }} 
-                            className={`px-4 py-1.5 rounded-full text-xs font-bold uppercase transition-all ${selectedGender === 'girl' ? 'bg-pink-600/50 text-white shadow-[0_0_15px_rgba(219,39,119,0.4)]' : 'text-gray-500 hover:text-white'}`}
-                          >Girl</button>
-                          <button 
-                            onMouseEnter={() => (window as any).sfx?.play('crystal')}
-                            onClick={() => { (window as any).sfx?.play('metal'); setSelectedGender('neutral'); }} 
-                            className={`px-4 py-1.5 rounded-full text-xs font-bold uppercase transition-all ${selectedGender === 'neutral' ? 'bg-purple-600/50 text-white shadow-[0_0_15px_rgba(147,51,234,0.4)]' : 'text-gray-500 hover:text-white'}`}
-                          >Random</button>
-                        </div>
-                      </div>
-
                       <div className="flex flex-col sm:flex-row gap-5 justify-center items-center relative z-20 max-w-md mx-auto">
                         <Button 
                           onMouseEnter={() => (window as any).sfx?.play('crystal')}

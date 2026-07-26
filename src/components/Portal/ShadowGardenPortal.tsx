@@ -1462,19 +1462,11 @@ export default function ShadowGardenPortal({
 
     useEffect(() => {
         const savedGender = localStorage.getItem('guest_gender') as Gender;
-        const neverAsk = localStorage.getItem('anim_never_ask');
-        const pauseUntil = localStorage.getItem('anim_pause_until');
-        const now = new Date().getTime();
-
-        const isSkipActive = neverAsk === 'true' || (pauseUntil && parseInt(pauseUntil) > now);
 
         if (!savedGender) {
             setAppState('cinematic_intro');
-        } else if (isSkipActive) {
-            triggerSkip(); 
         } else {
-            setGender(savedGender);
-            setAppState('anim_choice');
+            triggerSkip(); 
         }
     }, [triggerSkip]);
 
