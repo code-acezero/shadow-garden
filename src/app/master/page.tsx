@@ -46,10 +46,11 @@ const notify = (title: string, message: string, type: 'success' | 'error' | 'sys
     }
 };
 
-type Tab = 'GUILD_DESK' | 'GUILD_INFO' | 'ADVENTURERS' | 'TITLES_HIERARCHY' | 'GUILD_BOARDS' | 'PALETTES' | 'MOD_APPS' | 'MAGIC_NET' | 'VOICES' | 'NOTICE';
+type Tab = 'GUILD_DESK' | 'ANALYTICS' | 'GUILD_INFO' | 'ADVENTURERS' | 'TITLES_HIERARCHY' | 'GUILD_BOARDS' | 'PALETTES' | 'MOD_APPS' | 'MAGIC_NET' | 'VOICES' | 'NOTICE';
 
 const MASTER_TABS = [
   { id: 'GUILD_DESK', icon: LayoutDashboard, label: 'Desk' },
+  { id: 'ANALYTICS', icon: Activity, label: 'Analytics' },
   { id: 'GUILD_INFO', icon: BookOpen, label: 'Site Specs' },
   { id: 'ADVENTURERS', icon: Sword, label: 'Adventurers' },
   { id: 'TITLES_HIERARCHY', icon: Crown, label: 'Titles & Roles' },
@@ -88,7 +89,7 @@ export default function GuildMasterDashboard() {
         .font-minomu { font-family: var(--font-minomu), sans-serif; }
       `}</style>
 
-      <div className="min-h-screen bg-[#050505] text-white font-sans flex flex-col md:flex-row relative overflow-x-hidden">
+      <div className="h-screen bg-[#050505] text-white font-sans flex flex-col md:flex-row relative overflow-hidden">
         
         {/* Background Ambient Glow */}
         <div className="fixed top-0 left-0 w-full h-96 bg-primary-900/10 blur-[100px] pointer-events-none z-0" />
@@ -265,7 +266,7 @@ export default function GuildMasterDashboard() {
         {/* ========================================================= */}
         {/* --- RIGHT MAIN CONTENT AREA --- */}
         {/* ========================================================= */}
-        <main className="flex-1 min-w-0 p-4 md:p-8 relative z-10 overflow-y-auto">
+        <main className="flex-1 min-w-0 h-full md:h-screen overflow-y-auto p-4 md:p-8 relative z-10">
           
           {/* iOS Dynamic Header & Telemetry */}
           <header className="relative bg-[#0d0d12]/70 border border-white/10 rounded-[32px] p-6 md:p-8 mb-8 backdrop-blur-3xl shadow-[0_25px_60px_rgba(0,0,0,0.8)] overflow-hidden">
@@ -314,6 +315,7 @@ export default function GuildMasterDashboard() {
           {/* Tab Panel Content */}
           <div className="animate-in fade-in slide-in-from-bottom-4 duration-300 min-h-[500px]">
             <div className={activeTab === 'GUILD_DESK' ? 'block' : 'hidden'}><OverviewTab changeTab={switchTab} /></div>
+            <div className={activeTab === 'ANALYTICS' ? 'block' : 'hidden'}><AnalyticsSection accentColor="red" /></div>
             <div className={activeTab === 'GUILD_INFO' ? 'block' : 'hidden'}><IdentityTab /></div>
             <div className={activeTab === 'ADVENTURERS' ? 'block' : 'hidden'}><RosterTab /></div>
             <div className={activeTab === 'TITLES_HIERARCHY' ? 'block' : 'hidden'}><RoleTitleManager /></div>
@@ -407,6 +409,8 @@ const IdentityTab = memo(() => {
   const { settings, updateSetting, isLoaded } = useSettings();
   const [formData, setFormData] = useState<any>({});
   const [loading, setLoading] = useState(false);
+  const [uploadingCard, setUploadingCard] = useState(false);
+  const socialCardInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => { 
     if (isLoaded) {
@@ -419,11 +423,27 @@ const IdentityTab = memo(() => {
 
   const handleChange = (key: string, val: any) => setFormData((prev: any) => ({ ...prev, [key]: val }));
   
+  const handleSocialCardUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    try {
+      setUploadingCard(true);
+      const uploadedUrl = await ImageAPI.uploadImage(file);
+      if (uploadedUrl) {
+        handleChange('seoImage', uploadedUrl);
+        notify("Success", "Social Card image uploaded successfully", "success");
+      }
+    } catch (err: any) {
+      notify("Upload Failed", err.message || "Failed to upload image", "error");
+    } finally {
+      setUploadingCard(false);
+    }
+  };
+
   const handleSave = async () => {
     setLoading(true);
     await Promise.all(Object.entries(formData).map(([k, v]) => {
         const valToSave = typeof v === 'boolean' ? String(v) : String(v);
-        // ✅ FIX: Cast 'k' to 'any' or specific key type to satisfy TS
         return updateSetting(k as any, valToSave);
     }));
     notify("Success", "Guild Grimoire Updated", 'success');
@@ -458,9 +478,13 @@ const IdentityTab = memo(() => {
                   </div>
 
                   <div className="pt-2">
-                      <p className="text-zinc-400 font-bold mb-2">Social Card</p>
-                      <div className="aspect-video bg-black rounded-lg border border-white/10 overflow-hidden relative">
-                          <img src={formData.seoImage || SITE_CONFIG.ogImage} className="w-full h-full object-cover opacity-80" alt="OG Preview"/>
+                      <p className="text-zinc-400 font-bold mb-2">Social Card Preview (OG:Image)</p>
+                      <div className="aspect-video bg-black rounded-xl border border-white/10 overflow-hidden relative shadow-lg group">
+                          <img src={formData.seoImage || SITE_CONFIG.ogImage} className="w-full h-full object-cover opacity-90 group-hover:scale-105 transition-transform duration-300" alt="OG Preview"/>
+                          <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent flex flex-col justify-end p-3">
+                            <span className="text-[10px] font-bold text-white truncate">{formData.seoTitle || SITE_CONFIG.title}</span>
+                            <span className="text-[8px] text-zinc-400 truncate">{formData.seoDesc || SITE_CONFIG.description}</span>
+                          </div>
                       </div>
                   </div>
               </div>
@@ -478,8 +502,43 @@ const IdentityTab = memo(() => {
         <Section title="Grimoire Configuration" icon={Search}>
           <div className="space-y-6">
             <InputGroup label="Page Title Override" value={formData.seoTitle} onChange={(v: string) => handleChange('seoTitle', v)} />
-            <div className="space-y-2"><label className="text-xs uppercase text-zinc-500 font-bold tracking-wider ml-1">Meta Description Override</label><Textarea value={formData.seoDesc} onChange={e => handleChange('seoDesc', e.target.value)} className="bg-black/40 border-white/10 min-h-[100px] rounded-2xl" /></div>
+            <div className="space-y-2">
+              <label className="text-xs uppercase text-zinc-500 font-bold tracking-wider ml-1">Meta Description Override</label>
+              <Textarea value={formData.seoDesc} onChange={e => handleChange('seoDesc', e.target.value)} className="bg-black/40 border-white/10 min-h-[100px] rounded-2xl" />
+            </div>
             <InputGroup label="Keywords Override" value={formData.seoKeywords} onChange={(v: string) => handleChange('seoKeywords', v)} />
+
+            {/* Social Card Upload & URL */}
+            <div className="space-y-2 pt-2 border-t border-white/5">
+              <label className="text-xs uppercase text-zinc-400 font-bold tracking-wider ml-1 flex items-center justify-between">
+                <span className="flex items-center gap-2 text-white"><ImageIcon size={14} className="text-primary-500" /> Social Card Image (OG:Image)</span>
+                <span className="text-[10px] text-zinc-500 lowercase">Used when link is shared on Discord, Twitter, WhatsApp</span>
+              </label>
+              <div className="flex flex-col sm:flex-row gap-3 items-stretch sm:items-center">
+                <Input 
+                  value={formData.seoImage || ''} 
+                  onChange={e => handleChange('seoImage', e.target.value)} 
+                  placeholder="https://example.com/social-card.png" 
+                  className="bg-black/40 border-white/10 rounded-2xl flex-1 text-xs" 
+                />
+                <input 
+                  type="file" 
+                  ref={socialCardInputRef} 
+                  accept="image/*" 
+                  className="hidden" 
+                  onChange={handleSocialCardUpload} 
+                />
+                <Button 
+                  type="button" 
+                  onClick={() => socialCardInputRef.current?.click()} 
+                  disabled={uploadingCard} 
+                  className="bg-white/10 hover:bg-white/20 border border-white/15 text-white text-xs font-bold rounded-2xl px-5 h-10 gap-2 shrink-0 shadow-md"
+                >
+                  {uploadingCard ? <Loader2 className="w-4 h-4 animate-spin" /> : <Upload className="w-4 h-4 text-primary-500" />}
+                  <span>{uploadingCard ? 'Uploading...' : 'Upload Card'}</span>
+                </Button>
+              </div>
+            </div>
           </div>
         </Section>
         <div className={`border rounded-[2rem] p-6 transition-colors ${formData.maintenanceMode ? 'bg-primary-950/10 border-primary-500/20' : 'bg-white/5 border-white/10'}`}>

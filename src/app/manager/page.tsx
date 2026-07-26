@@ -43,10 +43,11 @@ const notify = (title: string, message: string, type: 'success' | 'error' | 'sys
     }
 };
 
-type Tab = 'GUILD_DESK' | 'GUILD_INFO' | 'ADVENTURERS' | 'TITLES_HIERARCHY' | 'GUILD_BOARDS' | 'VOICES' | 'NOTICE';
+type Tab = 'GUILD_DESK' | 'ANALYTICS' | 'GUILD_INFO' | 'ADVENTURERS' | 'TITLES_HIERARCHY' | 'GUILD_BOARDS' | 'VOICES' | 'NOTICE';
 
 const MANAGER_TABS = [
   { id: 'GUILD_DESK', icon: LayoutDashboard, label: 'Desk' },
+  { id: 'ANALYTICS', icon: Activity, label: 'Analytics' },
   { id: 'GUILD_INFO', icon: BookOpen, label: 'Info' },
   { id: 'ADVENTURERS', icon: Sword, label: 'Adventurers' },
   { id: 'TITLES_HIERARCHY', icon: Crown, label: 'Titles & Roles' },
@@ -82,7 +83,7 @@ export default function GuildManagerDashboard() {
         .font-minomu { font-family: var(--font-minomu), sans-serif; }
       `}</style>
 
-      <div className="min-h-screen bg-[#050505] text-white font-sans flex flex-col md:flex-row relative overflow-x-hidden">
+      <div className="h-screen bg-[#050505] text-white font-sans flex flex-col md:flex-row relative overflow-hidden">
         
         {/* Background Ambient Glow */}
         <div className="fixed top-0 left-0 w-full h-96 bg-fuchsia-900/10 blur-[100px] pointer-events-none z-0" />
@@ -259,7 +260,7 @@ export default function GuildManagerDashboard() {
         {/* ========================================================= */}
         {/* --- RIGHT MAIN CONTENT AREA --- */}
         {/* ========================================================= */}
-        <main className="flex-1 min-w-0 p-4 md:p-8 relative z-10 overflow-y-auto">
+        <main className="flex-1 min-w-0 h-full md:h-screen overflow-y-auto p-4 md:p-8 relative z-10">
           
           {/* iOS Dynamic Header & Telemetry */}
           <header className="relative bg-[#0d0d12]/70 border border-white/10 rounded-[32px] p-6 md:p-8 mb-8 backdrop-blur-3xl shadow-[0_25px_60px_rgba(0,0,0,0.8)] overflow-hidden">
@@ -304,6 +305,7 @@ export default function GuildManagerDashboard() {
           {/* Tab Panel Content */}
           <div className="animate-in fade-in slide-in-from-bottom-4 duration-300 min-h-[500px]">
             <div className={activeTab === 'GUILD_DESK' ? 'block' : 'hidden'}><OverviewTab changeTab={switchTab} /></div>
+            <div className={activeTab === 'ANALYTICS' ? 'block' : 'hidden'}><AnalyticsSection accentColor="fuchsia" /></div>
             <div className={activeTab === 'GUILD_INFO' ? 'block' : 'hidden'}><IdentityTab /></div>
             <div className={activeTab === 'ADVENTURERS' ? 'block' : 'hidden'}><RosterTab /></div>
             <div className={activeTab === 'TITLES_HIERARCHY' ? 'block' : 'hidden'}><RoleTitleManager /></div>
