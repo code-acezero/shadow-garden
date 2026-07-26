@@ -646,6 +646,7 @@ function WatchContent() {
   const recommendationsRef = useDraggable();
   const chunksRef = useDraggable();
   const isProgrammaticServerUpdate = useRef(false);
+  const isSwitchingEpisode = useRef(false);
 
   const handleServerChange = useCallback((srvName: string) => {
       setServers((prev: any) => {
