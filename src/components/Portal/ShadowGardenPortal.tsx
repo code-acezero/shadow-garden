@@ -270,16 +270,20 @@ class AudioMatrix {
             const ctx = this.getCtx();
             if (!ctx) return;
             const now = ctx.currentTime;
-            [1800, 2700, 3600].forEach((freq, idx) => {
-                const osc = ctx.createOscillator();
-                const gain = ctx.createGain();
-                osc.type = 'sine';
-                osc.frequency.setValueAtTime(freq, now + idx * 0.03);
-                gain.gain.setValueAtTime(vol * 0.25, now + idx * 0.03);
-                gain.gain.exponentialRampToValueAtTime(0.001, now + idx * 0.03 + 0.25);
-                osc.connect(gain); gain.connect(ctx.destination);
-                osc.start(now + idx * 0.03); osc.stop(now + idx * 0.03 + 0.3);
-            });
+            
+            const osc = ctx.createOscillator();
+            const gain = ctx.createGain();
+            
+            osc.type = 'sine';
+            osc.frequency.setValueAtTime(600, now);
+            osc.frequency.exponentialRampToValueAtTime(300, now + 0.2);
+            
+            gain.gain.setValueAtTime(0, now);
+            gain.gain.linearRampToValueAtTime(vol * 0.4, now + 0.02);
+            gain.gain.exponentialRampToValueAtTime(0.001, now + 0.3);
+            
+            osc.connect(gain); gain.connect(ctx.destination);
+            osc.start(now); osc.stop(now + 0.35);
         } catch (e) {}
     }
 
@@ -1210,13 +1214,13 @@ const CinematicTitleIntro = React.memo(({ onComplete }: { onComplete: () => void
                             className="absolute top-1/2 -translate-y-1/2 flex items-center justify-center pointer-events-none"
                         >
                             {/* Bright Core Star */}
-                            <div className="w-5 h-5 rounded-full bg-white blur-[0.5px] shadow-[0_0_15px_#ffffff,0_0_30px_#ef4444,0_0_50px_#dc2626]" />
+                            <div className="w-2 h-2 rounded-full bg-white blur-[0.2px] shadow-[0_0_10px_#ffffff,0_0_20px_#ef4444]" />
                             {/* Horizontal anamorphic flare ray */}
-                            <div className="absolute w-64 h-[2px] bg-gradient-to-r from-transparent via-white to-transparent blur-[0.5px]" />
-                            {/* Vertical flare ray */}
-                            <div className="absolute h-14 w-[2px] bg-gradient-to-b from-transparent via-red-300 to-transparent blur-[0.5px]" />
+                            <div className="absolute w-24 h-[1px] bg-gradient-to-r from-transparent via-white to-transparent blur-[0.3px]" />
                             {/* Glowing aura */}
-                            <div className="absolute w-20 h-20 rounded-full bg-red-600/30 blur-xl" />
+                            <div className="absolute w-8 h-8 rounded-full bg-red-600/40 blur-md" />
+                            {/* Trail */}
+                            <div className="absolute right-full w-32 h-[1px] bg-gradient-to-l from-red-400 via-transparent to-transparent opacity-60" />
                         </motion.div>
                     </div>
                 </div>
@@ -1328,7 +1332,7 @@ const AnimationPreferencePopup = React.memo(({
                 initial={{ opacity: 0, scale: 0.95 }} 
                 animate={{ opacity: 1, scale: 1 }} 
                 transition={{ duration: 0.3, ease: "easeOut" }}
-                className="relative max-w-sm sm:max-w-md w-full mx-auto bg-[#0a0505]/95 border border-primary-900/60 p-5 sm:p-6 rounded-2xl shadow-[0_0_50px_rgba(220,38,38,0.3)] overflow-hidden text-center -translate-y-6 sm:-translate-y-8"
+                className="relative max-w-sm sm:max-w-md w-full mx-auto bg-[#0a0505]/95 border border-primary-900/60 p-5 sm:p-6 rounded-2xl shadow-[0_0_50px_rgba(220,38,38,0.3)] overflow-hidden text-center"
             >
                 <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-transparent via-primary-500 to-transparent animate-pulse" />
 
@@ -1341,27 +1345,27 @@ const AnimationPreferencePopup = React.memo(({
                             SYSTEM DETECTED
                         </h3>
                         <p className="text-[10px] text-primary-400/80 uppercase tracking-widest font-mono">
-                            GATE ANIMATION PREFERENCE
+                            ANIMATION SETTINGS
                         </p>
                     </div>
                 </div>
 
-                <p className="text-gray-300 text-xs sm:text-sm mb-5 leading-relaxed font-mono">
-                    Would you like to play the portal intro animation before entry?
+                <p className="text-gray-300 text-xs mb-5 leading-relaxed font-mono">
+                    Play the cinematic portal intro?
                 </p>
 
-                <div className="grid grid-cols-1 gap-2.5 mb-4">
+                <div className="grid grid-cols-2 gap-2.5 mb-4">
                     <Button 
                         onClick={() => {
                             sfx.play('metal');
                             onChoice(true, never ? 9999 : (pause7 ? 7 : 0));
                         }} 
                         onMouseEnter={() => sfx.play('crystal')}
-                        className="group relative overflow-hidden bg-primary-900/50 hover:bg-primary-700 border border-primary-500/60 hover:border-primary-400 transition-all duration-300 h-11 rounded-xl shadow-md"
+                        className="group relative overflow-hidden bg-primary-900/50 hover:bg-primary-700 border border-primary-500/60 hover:border-primary-400 transition-all duration-300 h-10 rounded-xl shadow-md"
                     >
                         <div className="flex items-center justify-center gap-2.5">
                             <PlayCircle className="w-4 h-4 text-primary-400 group-hover:text-white" />
-                            <span className="text-white font-bold tracking-widest text-xs font-mono">PLAY INTRO</span>
+                            <span className="text-white font-bold tracking-widest text-xs font-mono">PLAY</span>
                         </div>
                     </Button>
                     
@@ -1376,7 +1380,7 @@ const AnimationPreferencePopup = React.memo(({
                     >
                         <div className="flex items-center justify-center gap-2.5">
                             <FastForward className="w-3.5 h-3.5 text-gray-400" />
-                            <span className="text-gray-300 group-hover:text-white transition-colors tracking-widest text-xs font-mono">SKIP INTRO</span>
+                            <span className="text-gray-300 group-hover:text-white transition-colors tracking-widest text-xs font-mono">SKIP</span>
                         </div>
                     </Button>
                 </div>
@@ -1393,7 +1397,7 @@ const AnimationPreferencePopup = React.memo(({
                             }} 
                         />
                         <label htmlFor="pause" className="text-xs text-gray-400 font-mono cursor-pointer hover:text-primary-400 transition-colors flex items-center gap-1.5">
-                            <Clock className="w-3 h-3 text-primary-500" /> Auto-skip for 7 days
+                            <Clock className="w-3 h-3 text-primary-500" /> Skip for 7 days
                         </label>
                     </div>
                     <div className="flex items-center space-x-2.5">
