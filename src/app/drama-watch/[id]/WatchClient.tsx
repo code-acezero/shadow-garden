@@ -150,7 +150,12 @@ export function DramaWatchContent() {
     })();
   }, [slug]);
 
-  // Sync currentEpId when URL ep param changes
+  // Sync currentEpId when URL ep param changes (browser back/forward only).
+  // Do NOT include currentEpId in deps — replaceState does not update useSearchParams,
+  // so having it in deps causes a bounce-back after every episode click.
+  const currentEpIdRef = useRef(currentEpId);
+  useEffect(() => { currentEpIdRef.current = currentEpId; }, [currentEpId]);
+
   useEffect(() => {
     if (!drama?.episodes?.length || !urlEp) return;
     const paramStr = String(urlEp).trim();
@@ -160,10 +165,11 @@ export function DramaWatchContent() {
       String(e.number) === paramStr || 
       (!isNaN(paramNum) && Number(e.number) === paramNum)
     );
-    if (found && found.id !== currentEpId) {
+    if (found && found.id !== currentEpIdRef.current) {
       setCurrentEpId(found.id);
     }
-  }, [urlEp, drama, currentEpId]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [urlEp, drama]);
 
   // Load stream when episode changes
   useEffect(() => {
@@ -265,7 +271,13 @@ export function DramaWatchContent() {
   const handleEpClick = useCallback((id: string) => {
     setCurrentEpId(id);
     setStream(null);
-  }, []);
+    if (typeof window !== 'undefined') {
+      const ep = drama?.episodes.find(e => e.id === id);
+      const url = new URL(window.location.href);
+      url.searchParams.set('ep', ep ? String(ep.number) : id);
+      window.history.replaceState({}, '', url.toString());
+    }
+  }, [drama]);
 
   const episodeChunks = drama ? (() => {
     const eps = drama.episodes || [];
