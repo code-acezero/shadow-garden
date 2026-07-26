@@ -37,7 +37,7 @@ import {
 } from '@react-three/postprocessing';
 import { ToneMappingMode, BlendFunction } from 'postprocessing';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Scroll, Fingerprint, X, Sword, Wand2, Info, Power, FastForward, PlayCircle, Clock } from 'lucide-react';
+import { Scroll, Fingerprint, X, Sword, Wand2, Info, Power, FastForward, PlayCircle, Clock, Crown } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
