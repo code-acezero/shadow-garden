@@ -497,7 +497,7 @@ export default function LandingClient() {
                    </p>
 
                    <div className="w-full max-w-xl mx-auto mb-10 transform hover:scale-105 transition-transform duration-300 relative z-20">
-                      <div className="relative p-1 rounded-full bg-gradient-to-r from-primary-900/50 via-primary-600/50 to-primary-900/50 shadow-[0_0_30px_rgba(220,38,38,0.3)] mb-8">
+                      <div className="relative z-50 p-1 rounded-full bg-gradient-to-r from-primary-900/50 via-primary-600/50 to-primary-900/50 shadow-[0_0_30px_rgba(220,38,38,0.3)] mb-8">
                         <div className="bg-black/90 backdrop-blur-xl rounded-full"><SearchBar /></div>
                       </div>
                       <div className="flex flex-col sm:flex-row gap-5 justify-center items-center relative z-20 max-w-md mx-auto">

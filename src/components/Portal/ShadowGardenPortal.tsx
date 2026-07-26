@@ -152,6 +152,8 @@ const perfMonitor = new PerformanceMonitor();
 // OPTIMIZED SHADERS (SIMPLIFIED)
 // =============================================================================
 
+import { sfx } from '@/lib/audioManager';
+
 const MagmaShader = shaderMaterial(
     {
         uTime: 0,
@@ -194,236 +196,6 @@ const WarpShader = shaderMaterial(
 );
 
 extend({ MagmaShader, PortalVortexShader, CloudShader, WarpShader });
-
-// =============================================================================
-// AUDIO MATRIX (OPTIMIZED)
-// =============================================================================
-
-class AudioMatrix {
-    private ctx: AudioContext | null = null;
-    private sources: Map<string, HTMLAudioElement> = new Map();
-    private active: boolean = false;
-    
-    private getCtx(): AudioContext | null {
-        if (!this.ctx && typeof window !== 'undefined') {
-            const Ctx = window.AudioContext || (window as any).webkitAudioContext;
-            if (Ctx) this.ctx = new Ctx();
-        }
-        if (this.ctx && this.ctx.state === 'suspended') {
-            this.ctx.resume().catch(() => {});
-        }
-        return this.ctx;
-    }
-
-    init() {
-        if (this.active || typeof window === 'undefined') return;
-        this.getCtx();
-        
-        const bgmTracks = [
-            "/bgm/bgm1.mp3",
-            "/bgm/bgm2.mp3",
-            "/bgm/shadow_theme.mp3",
-            "https://cdn.pixabay.com/audio/2022/03/10/audio_4f5c0a36b0.mp3"
-        ];
-        
-        bgmTracks.forEach((url, idx) => { 
-            const a = new Audio(url); 
-            a.preload = 'auto';
-            a.crossOrigin = 'anonymous';
-            this.sources.set(`bgm_${idx}`, a); 
-        });
-        
-        this.active = true;
-        if (typeof window !== 'undefined') {
-            (window as any).stopShadowBGM = () => this.stopAll(1500);
-            (window as any).sfx = this;
-        }
-    }
-    
-    unlock() { 
-        this.getCtx();
-    }
-    
-    // Real-Time Web Audio Synthesizers for Guaranteed Glass & Crystal SFX
-    synthMetal(vol = 0.4) {
-        // High-pitched pristine Glass Clink
-        try {
-            const ctx = this.getCtx();
-            if (!ctx) return;
-            const now = ctx.currentTime;
-            const freqs = [1760, 2793, 4400]; // High glass notes (A6, F7, A7)
-            freqs.forEach((freq, idx) => {
-                const osc = ctx.createOscillator();
-                const gain = ctx.createGain();
-                osc.type = 'sine';
-                osc.frequency.setValueAtTime(freq, now);
-                gain.gain.setValueAtTime(vol * (0.35 / (idx + 1)), now);
-                gain.gain.exponentialRampToValueAtTime(0.0001, now + (0.2 + idx * 0.08));
-                osc.connect(gain);
-                gain.connect(ctx.destination);
-                osc.start(now);
-                osc.stop(now + 0.35);
-            });
-        } catch (e) {}
-    }
-    
-    synthCrystal(vol = 0.3) {
-        // Sparkling dual crystal bell chime
-        try {
-            const ctx = this.getCtx();
-            if (!ctx) return;
-            const now = ctx.currentTime;
-            
-            const osc1 = ctx.createOscillator();
-            const osc2 = ctx.createOscillator();
-            const gain = ctx.createGain();
-            
-            osc1.type = 'sine';
-            osc2.type = 'sine';
-            osc1.frequency.setValueAtTime(2093, now); // C7 glass note
-            osc1.frequency.exponentialRampToValueAtTime(2349, now + 0.15); // D7 glass glide
-            osc2.frequency.setValueAtTime(3135, now); // G7 crystal harmonic
-            
-            gain.gain.setValueAtTime(0, now);
-            gain.gain.linearRampToValueAtTime(vol * 0.25, now + 0.015);
-            gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.35);
-            
-            osc1.connect(gain);
-            osc2.connect(gain);
-            gain.connect(ctx.destination);
-            osc1.start(now);
-            osc2.start(now);
-            osc1.stop(now + 0.35);
-            osc2.stop(now + 0.35);
-        } catch (e) {}
-    }
-
-    synthWhoosh(vol = 0.5) {
-        try {
-            const ctx = this.getCtx();
-            if (!ctx) return;
-            const now = ctx.currentTime;
-            const bufferSize = Math.floor(ctx.sampleRate * 0.35);
-            const buffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
-            const data = buffer.getChannelData(0);
-            for (let i = 0; i < bufferSize; i++) data[i] = Math.random() * 2 - 1;
-            const noise = ctx.createBufferSource(); noise.buffer = buffer;
-            const filter = ctx.createBiquadFilter();
-            filter.type = 'bandpass';
-            filter.frequency.setValueAtTime(250, now);
-            filter.frequency.exponentialRampToValueAtTime(1600, now + 0.18);
-            filter.frequency.exponentialRampToValueAtTime(350, now + 0.35);
-            filter.Q.value = 2.5;
-            const gain = ctx.createGain();
-            gain.gain.setValueAtTime(0.01, now);
-            gain.gain.linearRampToValueAtTime(vol * 0.6, now + 0.18);
-            gain.gain.exponentialRampToValueAtTime(0.001, now + 0.35);
-            noise.connect(filter); filter.connect(gain); gain.connect(ctx.destination);
-            noise.start(now); noise.stop(now + 0.35);
-        } catch (e) {}
-    }
-
-    synthStep(vol = 0.4) {
-        try {
-            const ctx = this.getCtx();
-            if (!ctx) return;
-            const now = ctx.currentTime;
-            const osc = ctx.createOscillator();
-            const gain = ctx.createGain();
-            osc.type = 'sine';
-            osc.frequency.setValueAtTime(140, now);
-            osc.frequency.exponentialRampToValueAtTime(35, now + 0.09);
-            gain.gain.setValueAtTime(vol * 0.5, now);
-            gain.gain.exponentialRampToValueAtTime(0.005, now + 0.1);
-            osc.connect(gain); gain.connect(ctx.destination);
-            osc.start(now); osc.stop(now + 0.11);
-        } catch (e) {}
-    }
-
-    synthBreath(vol = 0.3) {
-        try {
-            const ctx = this.getCtx();
-            if (!ctx) return;
-            const now = ctx.currentTime;
-            const bufferSize = Math.floor(ctx.sampleRate * 0.7);
-            const buffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
-            const data = buffer.getChannelData(0);
-            for (let i = 0; i < bufferSize; i++) data[i] = Math.random() * 2 - 1;
-            const noise = ctx.createBufferSource(); noise.buffer = buffer;
-            const filter = ctx.createBiquadFilter();
-            filter.type = 'lowpass';
-            filter.frequency.setValueAtTime(300, now);
-            filter.frequency.linearRampToValueAtTime(700, now + 0.35);
-            filter.frequency.linearRampToValueAtTime(250, now + 0.7);
-            const gain = ctx.createGain();
-            gain.gain.setValueAtTime(0.01, now);
-            gain.gain.linearRampToValueAtTime(vol * 0.35, now + 0.35);
-            gain.gain.linearRampToValueAtTime(0.001, now + 0.7);
-            noise.connect(filter); filter.connect(gain); gain.connect(ctx.destination);
-            noise.start(now); noise.stop(now + 0.7);
-        } catch (e) {}
-    }
-    
-    play(key: string, vol = 1, loop = false, fadeMs = 0) { 
-        if(!this.active) this.init(); 
-        
-        if (key === 'metal' || key === 'click' || key === 'drop' || key === 'grind' || key === 'boom') { this.synthMetal(vol); return; }
-        if (key === 'crystal' || key === 'hover') { this.synthCrystal(vol); return; }
-        if (key === 'whoosh' || key === 'camera' || key === 'suction') { this.synthWhoosh(vol); return; }
-        if (key === 'step') { this.synthStep(vol); return; }
-        if (key === 'breath' || key === 'wind') { this.synthBreath(vol); return; }
-        
-        const a = this.sources.get(key); 
-        if(!a) return; 
-        a.loop = loop; 
-        if(!loop) a.currentTime = 0; 
-        a.volume = fadeMs > 0 ? 0 : vol; 
-        a.play().catch(() => {}); 
-        if(fadeMs > 0) { 
-            let v = 0; 
-            const step = vol / (fadeMs/50); 
-            const i = setInterval(() => { 
-                v = Math.min(vol, v + step); 
-                a.volume = v; 
-                if(v >= vol) clearInterval(i); 
-            }, 50); 
-        } 
-    }
-    
-    playRandomBGM() { 
-        if (!this.active) this.init(); 
-        const randomIdx = Math.floor(Math.random() * 4);
-        const bgmKey = `bgm_${randomIdx}`;
-        if (this.sources.has(bgmKey)) {
-            this.play(bgmKey, 0.25, true, 2000);
-        } else {
-            this.play('bgm_0', 0.25, true, 2000); 
-        }
-    }
-    
-    stop(key: string, fadeMs = 0) { 
-        const a = this.sources.get(key); 
-        if (!a) return; 
-        if (fadeMs > 0) { 
-            const step = a.volume / (fadeMs/50); 
-            const i = setInterval(() => { 
-                a.volume = Math.max(0, a.volume - step); 
-                if(a.volume <= 0) { 
-                    a.pause(); 
-                    clearInterval(i); 
-                } 
-            }, 50); 
-        } else { 
-            a.pause(); 
-        } 
-    }
-    
-    stopAll(fadeMs = 500) { 
-        this.sources.forEach((_, key) => this.stop(key, fadeMs)); 
-    }
-}
-
-const sfx = new AudioMatrix();
 
 // =============================================================================
 // PLAYER RIG (OPTIMIZED)
@@ -1328,7 +1100,7 @@ const AnimationPreferencePopup = React.memo(({
     }, []);
 
     return (
-        <div className="fixed inset-0 z-[99999] bg-black/90 backdrop-blur-xl flex items-center justify-center p-4 pb-[15vh] sm:pb-[20vh] overflow-hidden touch-none">
+        <div className="fixed inset-0 z-[99999] bg-black/90 backdrop-blur-xl flex items-center justify-center p-4 overflow-hidden touch-none">
             <div className="absolute inset-0 bg-gradient-to-t from-primary-950/20 via-black to-black pointer-events-none" />
             
             <motion.div 
@@ -1360,7 +1132,7 @@ const AnimationPreferencePopup = React.memo(({
                 <div className="grid grid-cols-2 gap-2.5 mb-4">
                     <Button 
                         onClick={() => {
-                            sfx.play('metal');
+                            sfx.play('glass');
                             onChoice(true, never ? 9999 : (pause7 ? 7 : 0));
                         }} 
                         onMouseEnter={() => sfx.play('crystal')}
@@ -1374,7 +1146,7 @@ const AnimationPreferencePopup = React.memo(({
                     
                     <Button 
                         onClick={() => {
-                            sfx.play('metal');
+                            sfx.play('glass');
                             onChoice(false, never ? 9999 : (pause7 ? 7 : 0));
                         }} 
                         onMouseEnter={() => sfx.play('crystal')}
@@ -1626,10 +1398,6 @@ export default function ShadowGardenPortal({
 
     if (skipped) return null;
 
-    if (appState === 'cinematic_intro') {
-        return <CinematicTitleIntro onComplete={handleCinematicIntroComplete} />;
-    }
-
     if (appState === 'gender_select') {
         return <GenderSelection onSelect={handleGenderSelect} />;
     }
@@ -1645,7 +1413,9 @@ export default function ShadowGardenPortal({
             <div className="fixed inset-0 z-0 bg-black pointer-events-none">
 
             <AnimatePresence>
-                {/* PortalLoadingScreen removed entirely as requested */}
+                {appState === 'cinematic_intro' && (
+                    <CinematicTitleIntro onComplete={handleCinematicIntroComplete} />
+                )}
             </AnimatePresence>
 
             {appState === 'running' && (

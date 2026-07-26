@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Send, Loader2, X, ScanSearch, Upload, Search, Play, Crop, Volume2, VolumeX, Info } from 'lucide-react';
+import { Send, Loader2, X, ScanSearch, Upload, Search, Play, Crop, Volume2, VolumeX, Info, SkipBack, SkipForward, Music } from 'lucide-react';
 import { usePathname, useRouter } from 'next/navigation';
 import { useAuth } from '@/context/AuthContext';
 import { useUserData } from '@/context/UserDataContext';
@@ -15,6 +15,7 @@ import { useMentions } from '@/hooks/useMentions';
 import MentionDropdown from '@/components/ui/MentionDropdown';
 import { getAlphaDynamicGreeting } from '@/lib/alphaGreetings';
 import { getUserTitle } from '@/components/ui/UserTitleBadge';
+import { sfx } from '@/lib/audioManager';
 
 interface ChatMessage {
     role: 'user' | 'model';
@@ -387,12 +388,45 @@ export default function AlphaWidget() {
     const [state, setState] = useState('greet');
     const [activeMedia, setActiveMedia] = useState<{ type: 'gif' | 'sticker'; url: string } | null>(null);
     const [showImageSearch, setShowImageSearch] = useState(false);
+    const messagesEndRef = useRef<HTMLDivElement>(null);
     const inputRef = useRef<HTMLInputElement>(null);
     const audioRef = useRef<HTMLAudioElement | null>(null);
     const [isPlayingAudio, setIsPlayingAudio] = useState(false);
     const [globalVoiceEnabled, setGlobalVoiceEnabled] = useState(false);
     const [isUserVoiceEnabled, setIsUserVoiceEnabled] = useState(true);
     const [showVoiceUnavailable, setShowVoiceUnavailable] = useState(false);
+    const [isPlayingBGM, setIsPlayingBGM] = useState(false);
+
+    useEffect(() => {
+        if (typeof window !== 'undefined') {
+            const permitted = localStorage.getItem('shadow_audio_permitted') === 'true';
+            if (pathname.includes('/watch')) {
+                sfx.stopAll(1000);
+                setIsPlayingBGM(false);
+            } else if (permitted && !isPlayingBGM) {
+                const startBgm = () => {
+                    if (!isPlayingBGM) {
+                        sfx.playRandomBGM();
+                        setIsPlayingBGM(true);
+                    }
+                    window.removeEventListener('click', startBgm);
+                };
+                window.addEventListener('click', startBgm);
+                
+                const t = setTimeout(() => {
+                    // Check if they haven't manually started it in the meantime
+                    sfx.playRandomBGM();
+                    setIsPlayingBGM(true);
+                }, 1500);
+
+                return () => {
+                    window.removeEventListener('click', startBgm);
+                    clearTimeout(t);
+                };
+            }
+        }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [pathname]);
 
     const {
         mentionState,
@@ -507,6 +541,24 @@ export default function AlphaWidget() {
     const handleSendMessage = async (e?: React.FormEvent) => {
         if (e) e.preventDefault();
         if (!input.trim() || loading) return;
+
+        const lowerInput = input.toLowerCase().trim();
+        const musicCommands = ['/music', '/song', '/bgm', 'play music', 'play a song', 'play bgm'];
+        if (musicCommands.includes(lowerInput)) {
+            const userMessage: ChatMessage = { role: 'user', content: input };
+            const newMessages = [...messages, userMessage, { role: 'model', content: '[state: greet] As you wish. Playing some music from the Shadow Garden archives. Enjoy!' }];
+            setMessages(newMessages as any);
+            setInput('');
+            sfx.playRandomBGM();
+            setIsPlayingBGM(true);
+            
+            if (audioRef.current) {
+                audioRef.current.pause();
+                audioRef.current = null;
+                setIsPlayingAudio(false);
+            }
+            return;
+        }
 
         const userMessage: ChatMessage = { role: 'user', content: input };
         const newMessages = [...messages, userMessage];
@@ -749,6 +801,30 @@ export default function AlphaWidget() {
                                                                 <motion.div animate={{ height: ['4px', '14px', '4px'] }} transition={{ duration: 0.8, delay: 0.1, repeat: Infinity, ease: "easeInOut" }} className="w-1 bg-orange-500 rounded-full shadow-[0_0_6px_rgba(249,115,22,0.8)]" />
                                                             </div>
                                                             <span className="text-[10px] font-black text-orange-200 tracking-wider uppercase">Speaking <span className="opacity-60 lowercase font-normal ml-0.5 text-zinc-400">(stop)</span></span>
+                                                        </motion.div>
+                                                    )}
+                                                    
+                                                    {isPlayingBGM && (
+                                                        <motion.div
+                                                            initial={{ opacity: 0, y: 10, scale: 0.9 }}
+                                                            animate={{ opacity: 1, y: 0, scale: 1 }}
+                                                            exit={{ opacity: 0, y: 10, scale: 0.9 }}
+                                                            className={`absolute -top-4 ${isPlayingAudio ? 'right-28' : '-right-2'} flex items-center gap-2 bg-[#0a0a0a]/95 border border-purple-500/50 px-2 py-1.5 rounded-2xl transition-all backdrop-blur-xl z-40 shadow-[0_0_20px_rgba(168,85,247,0.35)]`}
+                                                        >
+                                                            <button onClick={() => sfx.playPrevBGM()} className="p-1 text-purple-400 hover:text-white transition-colors">
+                                                                <SkipBack size={14} />
+                                                            </button>
+                                                            <div className="flex gap-1 items-end h-3 mx-1" onClick={() => { sfx.stopAll(1000); setIsPlayingBGM(false); }}>
+                                                                <motion.div animate={{ height: ['3px', '10px', '3px'] }} transition={{ duration: 1.2, repeat: Infinity, ease: "easeInOut" }} className="w-1 bg-purple-500 rounded-full" />
+                                                                <motion.div animate={{ height: ['3px', '14px', '3px'] }} transition={{ duration: 1.2, delay: 0.3, repeat: Infinity, ease: "easeInOut" }} className="w-1 bg-fuchsia-400 rounded-full" />
+                                                                <motion.div animate={{ height: ['3px', '8px', '3px'] }} transition={{ duration: 1.2, delay: 0.6, repeat: Infinity, ease: "easeInOut" }} className="w-1 bg-purple-400 rounded-full" />
+                                                            </div>
+                                                            <button onClick={() => sfx.playNextBGM()} className="p-1 text-purple-400 hover:text-white transition-colors">
+                                                                <SkipForward size={14} />
+                                                            </button>
+                                                            <button onClick={() => { sfx.stopAll(1000); setIsPlayingBGM(false); }} className="ml-1 p-1 text-zinc-400 hover:text-red-400 transition-colors">
+                                                                <X size={14} />
+                                                            </button>
                                                         </motion.div>
                                                     )}
                                                 </AnimatePresence>
