@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect } from "react";
+import React, { useEffect, Suspense } from "react";
 import dynamic from "next/dynamic";
 import useSWR from "swr";
 import { useSearchParams, useRouter } from "next/navigation";
@@ -36,7 +36,7 @@ const RecentUpdatesSection = dynamic(
   }
 );
 
-export default function Home() {
+function HomeContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
 
@@ -141,5 +141,13 @@ export default function Home() {
         </div>
       </MobileContainer>
     </>
+  );
+}
+
+export default function Home() {
+  return (
+    <Suspense fallback={<div className="min-h-screen bg-[#050505]" />}>
+      <HomeContent />
+    </Suspense>
   );
 }
