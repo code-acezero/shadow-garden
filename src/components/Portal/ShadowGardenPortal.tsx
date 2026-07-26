@@ -1394,6 +1394,14 @@ export default function ShadowGardenPortal({
         setAppState('loading');
     }, []);
 
+    const handleCinematicIntroComplete = useCallback(() => {
+        if (!gender) {
+            setAppState('gender_select');
+        } else {
+            setAppState('loading');
+        }
+    }, [gender]);
+
     const handleAnimChoice = useCallback((play: boolean, days: number) => {
         sfx.unlock(); 
         localStorage.setItem('anim_preference', play ? 'play' : 'skip');
@@ -1410,7 +1418,7 @@ export default function ShadowGardenPortal({
         }
         
         if (play) {
-            setAppState('loading'); 
+            setAppState('cinematic_intro'); 
         } else {
             triggerSkip();
         }
@@ -1504,7 +1512,7 @@ export default function ShadowGardenPortal({
     if (skipped) return null;
 
     if (appState === 'cinematic_intro') {
-        return <CinematicTitleIntro onComplete={() => setAppState('gender_select')} />;
+        return <CinematicTitleIntro onComplete={handleCinematicIntroComplete} />;
     }
 
     if (appState === 'gender_select') {

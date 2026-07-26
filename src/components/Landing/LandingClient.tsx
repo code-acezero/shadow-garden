@@ -116,7 +116,7 @@ const StatCard = React.memo(({ icon: Icon, label, value, sub, isLive }: any) => 
       <Icon className={`w-6 h-6 ${isLive ? 'text-green-500' : 'text-primary-500'}`} />
     </div>
     <div>
-      <div className="text-2xl font-bold font-gradvis text-white flex items-center gap-2">
+      <div className="text-2xl font-bold font-mono text-white flex items-center gap-2">
         {value}
         {isLive && <span className="w-2.5 h-2.5 rounded-full bg-green-500 animate-pulse shadow-[0_0_10px_#22c55e]" />}
       </div>
@@ -491,7 +491,7 @@ export default function LandingClient() {
                      </div>
                    </div>
                    
-                   <p className="text-base md:text-xl text-gray-400 font-light mb-10 leading-relaxed font-above tracking-wide w-full max-w-2xl mx-auto">
+                   <p className="text-base md:text-xl text-gray-300 font-light mb-10 leading-relaxed font-sans tracking-wide w-full max-w-2xl mx-auto">
                       The ultimate sanctuary for the awakened. <br/>
                       Join the guild. Access the archives. Become legend.
                    </p>
@@ -566,7 +566,7 @@ export default function LandingClient() {
                   <div className="flex flex-col md:flex-row items-center gap-12 relative z-10 w-full">
                      <div className="flex-1 space-y-8">
                         <h3 className="text-4xl font-normal text-primary-600 font-gradvis border-l-4 border-primary-600 pl-6" style={{ fontFamily: 'var(--font-above), serif' }}>THE FORBIDDEN LIBRARY</h3>
-                        <p className="text-gray-400 text-lg leading-relaxed font-above tracking-wide">
+                        <p className="text-gray-300 text-lg leading-relaxed font-sans tracking-wide">
                            Shadow Garden isn't just a website; it's a repository of otaku culture. 
                            We index over 15,000 series, automatically sync with MyAnimeList and AniList.
                         </p>
@@ -613,7 +613,7 @@ export default function LandingClient() {
                  <div className="relative z-10 w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
                    <div className="text-center mb-16">
                      <h2 className="text-4xl md:text-5xl font-normal text-white mb-4 font-gradvis text-primary-600 tracking-wider">GUILD HIERARCHY</h2>
-                     <p className="text-gray-400 text-lg font-above w-full max-w-2xl mx-auto">The structure of the sanctuary. Ascend the ranks and earn your title among the elites.</p>
+                     <p className="text-gray-300 text-lg font-sans w-full max-w-2xl mx-auto">The structure of the sanctuary. Ascend the ranks and earn your title among the elites.</p>
                    </div>
 
                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-12">
@@ -664,7 +664,7 @@ export default function LandingClient() {
                      <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-20 mix-blend-overlay" />
                      <div className="flex-1 relative z-10">
                         <h3 className="text-3xl font-normal text-white mb-4 font-gradvis text-primary-500" style={{ fontFamily: 'var(--font-above), serif' }}>VISIT THE GARDEN LOBBY</h3>
-                        <p className="text-gray-400 mb-8 leading-relaxed font-above">
+                        <p className="text-gray-300 mb-8 leading-relaxed font-sans">
                            Connect with thousands of other agents. Discuss theories, get recommendation, and participate in weekly watch parties.
                         </p>
                         <div className="flex flex-wrap gap-4 justify-center md:justify-start">
