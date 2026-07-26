@@ -8,7 +8,7 @@ import {
   Vignette,
   Glitch
 } from '@react-three/postprocessing';
-import { GlitchMode, BlendFunction } from 'postprocessing';
+import { GlitchMode } from 'postprocessing';
 import * as THREE from 'three';
 import { useCinematicStore } from '@/store/useCinematicStore';
 
@@ -23,41 +23,49 @@ export function CinematicPostProcessing() {
     return new THREE.Vector2(0.002, 0.002);
   }, [currentPhase]);
 
+  const glitchDelay = React.useMemo(() => new THREE.Vector2(0, 0), []);
+  const glitchDuration = React.useMemo(() => new THREE.Vector2(0.1, 0.3), []);
+  const glitchStrength = React.useMemo(() => new THREE.Vector2(0.3, 1.0), []);
+
+  const Composer = EffectComposer as any;
+  const BloomEffect = Bloom as any;
+  const ChromaticEffect = ChromaticAberration as any;
+  const VignetteEffect = Vignette as any;
+  const GlitchEffect = Glitch as any;
+
   return (
-    <EffectComposer disableNormalPass>
-      {/* Bloom glow for space stars, runes, and god-rays */}
-      <Bloom
+    <Composer disableNormalPass>
+      <BloomEffect
         intensity={currentPhase >= 7 ? 2.5 : 1.2}
         luminanceThreshold={0.2}
         luminanceSmoothing={0.9}
         mipmapBlur
       />
 
-      {/* Chromatic Aberration for warp & velocity lens distortion */}
-      <ChromaticAberration
+      <ChromaticEffect
         offset={offsetVector}
         radialModulation={false}
         modulationOffset={0}
       />
 
-      {/* Cinematic Vignette */}
-      <Vignette
+      <VignetteEffect
         eskil={false}
         offset={0.25}
         darkness={currentPhase >= 5 ? 0.75 : 0.55}
       />
 
-      {/* Time Tunnel Glitch (Phase 8) */}
-      {currentPhase === 8 && (
-        <Glitch
-          delay={new THREE.Vector2(0, 0)}
-          duration={new THREE.Vector2(0.1, 0.3)}
-          strength={new THREE.Vector2(0.3, 1.0)}
-          mode={GlitchMode.SPORADIC}
+      {currentPhase === 8 ? (
+        <GlitchEffect
           active
+          delay={glitchDelay}
+          duration={glitchDuration}
+          strength={glitchStrength}
+          mode={GlitchMode.SPORADIC}
           ratio={0.85}
         />
+      ) : (
+        <></>
       )}
-    </EffectComposer>
+    </Composer>
   );
 }
