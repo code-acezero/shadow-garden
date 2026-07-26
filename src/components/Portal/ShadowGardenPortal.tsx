@@ -244,46 +244,57 @@ class AudioMatrix {
         this.getCtx();
     }
     
-    // Real-Time Web Audio Synthesizers for Guaranteed SFX
+    // Real-Time Web Audio Synthesizers for Guaranteed Glass & Crystal SFX
     synthMetal(vol = 0.4) {
+        // High-pitched pristine Glass Clink
         try {
             const ctx = this.getCtx();
             if (!ctx) return;
             const now = ctx.currentTime;
-            const osc1 = ctx.createOscillator();
-            const osc2 = ctx.createOscillator();
-            const gain = ctx.createGain();
-            osc1.type = 'triangle'; osc2.type = 'sine';
-            osc1.frequency.setValueAtTime(1200, now);
-            osc1.frequency.exponentialRampToValueAtTime(250, now + 0.15);
-            osc2.frequency.setValueAtTime(2400, now);
-            osc2.frequency.exponentialRampToValueAtTime(500, now + 0.15);
-            gain.gain.setValueAtTime(vol * 0.5, now);
-            gain.gain.exponentialRampToValueAtTime(0.001, now + 0.18);
-            osc1.connect(gain); osc2.connect(gain); gain.connect(ctx.destination);
-            osc1.start(now); osc2.start(now); osc1.stop(now + 0.2); osc2.stop(now + 0.2);
+            const freqs = [1760, 2793, 4400]; // High glass notes (A6, F7, A7)
+            freqs.forEach((freq, idx) => {
+                const osc = ctx.createOscillator();
+                const gain = ctx.createGain();
+                osc.type = 'sine';
+                osc.frequency.setValueAtTime(freq, now);
+                gain.gain.setValueAtTime(vol * (0.35 / (idx + 1)), now);
+                gain.gain.exponentialRampToValueAtTime(0.0001, now + (0.2 + idx * 0.08));
+                osc.connect(gain);
+                gain.connect(ctx.destination);
+                osc.start(now);
+                osc.stop(now + 0.35);
+            });
         } catch (e) {}
     }
     
     synthCrystal(vol = 0.3) {
+        // Sparkling dual crystal bell chime
         try {
             const ctx = this.getCtx();
             if (!ctx) return;
             const now = ctx.currentTime;
             
-            const osc = ctx.createOscillator();
+            const osc1 = ctx.createOscillator();
+            const osc2 = ctx.createOscillator();
             const gain = ctx.createGain();
             
-            osc.type = 'sine';
-            osc.frequency.setValueAtTime(600, now);
-            osc.frequency.exponentialRampToValueAtTime(300, now + 0.2);
+            osc1.type = 'sine';
+            osc2.type = 'sine';
+            osc1.frequency.setValueAtTime(2093, now); // C7 glass note
+            osc1.frequency.exponentialRampToValueAtTime(2349, now + 0.15); // D7 glass glide
+            osc2.frequency.setValueAtTime(3135, now); // G7 crystal harmonic
             
             gain.gain.setValueAtTime(0, now);
-            gain.gain.linearRampToValueAtTime(vol * 0.4, now + 0.02);
-            gain.gain.exponentialRampToValueAtTime(0.001, now + 0.3);
+            gain.gain.linearRampToValueAtTime(vol * 0.25, now + 0.015);
+            gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.35);
             
-            osc.connect(gain); gain.connect(ctx.destination);
-            osc.start(now); osc.stop(now + 0.35);
+            osc1.connect(gain);
+            osc2.connect(gain);
+            gain.connect(ctx.destination);
+            osc1.start(now);
+            osc2.start(now);
+            osc1.stop(now + 0.35);
+            osc2.stop(now + 0.35);
         } catch (e) {}
     }
 
@@ -1254,7 +1265,7 @@ const GenderSelection = React.memo(({ onSelect }: { onSelect: (g: Gender) => voi
             <motion.div 
                 initial={{ opacity: 0, scale: 0.95 }} 
                 animate={{ opacity: 1, scale: 1 }} 
-                className="w-full max-w-lg mx-auto border-2 border-primary-900/60 bg-[#0a0505]/95 p-6 sm:p-8 rounded-3xl text-center backdrop-blur-2xl shadow-[0_0_60px_rgba(220,38,38,0.35)] relative overflow-hidden -translate-y-6 sm:-translate-y-8"
+                className="w-full max-w-lg mx-auto border-2 border-primary-900/60 bg-[#0a0505]/95 p-6 sm:p-8 rounded-3xl text-center backdrop-blur-2xl shadow-[0_0_60px_rgba(220,38,38,0.35)] relative overflow-hidden -translate-y-16 sm:-translate-y-24"
             >
                 <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-transparent via-primary-500 to-transparent animate-pulse" />
 
@@ -1332,7 +1343,7 @@ const AnimationPreferencePopup = React.memo(({
                 initial={{ opacity: 0, scale: 0.95 }} 
                 animate={{ opacity: 1, scale: 1 }} 
                 transition={{ duration: 0.3, ease: "easeOut" }}
-                className="relative max-w-sm sm:max-w-md w-full mx-auto bg-[#0a0505]/95 border border-primary-900/60 p-5 sm:p-6 rounded-2xl shadow-[0_0_50px_rgba(220,38,38,0.3)] overflow-hidden text-center -translate-y-6 sm:-translate-y-10"
+                className="relative max-w-sm sm:max-w-md w-full mx-auto bg-[#0a0505]/95 border border-primary-900/60 p-5 sm:p-6 rounded-2xl shadow-[0_0_50px_rgba(220,38,38,0.3)] overflow-hidden text-center -translate-y-16 sm:-translate-y-24"
             >
                 <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-transparent via-primary-500 to-transparent animate-pulse" />
 
