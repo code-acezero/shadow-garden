@@ -465,7 +465,7 @@ export default function LandingClient() {
             </motion.div>
 
             {/* HERO SECTION */}
-            <section className="relative flex flex-col items-center pt-8 p-4 min-h-screen">
+            <section className="relative flex flex-col justify-center items-center p-4 min-h-screen">
                {FLOATING_STICKERS.map((s, i) => (
                  <motion.img 
                    key={i} src={s.src} alt="Sticker" loading="lazy"

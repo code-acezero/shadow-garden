@@ -1236,14 +1236,6 @@ const CinematicTitleIntro = React.memo(({ onComplete }: { onComplete: () => void
                     </div>
                 </div>
 
-                <motion.div 
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    transition={{ delay: 2.2, duration: 2 }}
-                    className="mt-14 text-[10px] text-zinc-500 font-mono tracking-[0.3em] uppercase animate-pulse"
-                >
-                    TAP ANYWHERE TO FAST-FORWARD
-                </motion.div>
             </motion.div>
         </div>
     );
@@ -1657,34 +1649,41 @@ export default function ShadowGardenPortal({
             </AnimatePresence>
 
             {appState === 'running' && (
-                <Canvas 
-                    shadows 
-                    dpr={dpr} 
-                    gl={{ 
-                        antialias: quality === 'high',
-                        powerPreference: "high-performance",
-                        alpha: false,
-                        stencil: false,
-                        depth: true,
-                        logarithmicDepthBuffer: false
-                    }}
-                    performance={{ min: 0.3 }}
-                    frameloop="always"
+                <motion.div 
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    transition={{ duration: 2, ease: "easeInOut" }}
+                    className="absolute inset-0"
                 >
-                    <Suspense fallback={null}>
-                        <PerspectiveCamera makeDefault position={[0, 60, 60]} fov={60} />
-                        <CameraShake 
-                            maxYaw={0.04} 
-                            maxPitch={0.04} 
-                            maxRoll={0.04} 
-                            yawFrequency={shake} 
-                            pitchFrequency={shake} 
-                            rollFrequency={shake} 
-                            intensity={shake} 
-                        />
-                        <SceneContent stage={stage} quality={quality} whiteoutProgress={whiteoutProgress} />
-                    </Suspense>
-                </Canvas>
+                    <Canvas 
+                        shadows 
+                        dpr={dpr} 
+                        gl={{ 
+                            antialias: quality === 'high',
+                            powerPreference: "high-performance",
+                            alpha: false,
+                            stencil: false,
+                            depth: true,
+                            logarithmicDepthBuffer: false
+                        }}
+                        performance={{ min: 0.3 }}
+                        frameloop="always"
+                    >
+                        <Suspense fallback={null}>
+                            <PerspectiveCamera makeDefault position={[0, 60, 60]} fov={60} />
+                            <CameraShake 
+                                maxYaw={0.04} 
+                                maxPitch={0.04} 
+                                maxRoll={0.04} 
+                                yawFrequency={shake} 
+                                pitchFrequency={shake} 
+                                rollFrequency={shake} 
+                                intensity={shake} 
+                            />
+                            <SceneContent stage={stage} quality={quality} whiteoutProgress={whiteoutProgress} />
+                        </Suspense>
+                    </Canvas>
+                </motion.div>
             )}
 
             <motion.div 
