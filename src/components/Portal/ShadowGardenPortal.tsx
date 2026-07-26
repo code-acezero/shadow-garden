@@ -212,7 +212,9 @@ class AudioMatrix {
             boom: "https://cdn.freesound.org/previews/442/442902_5121236-lq.mp3",
             step: "https://cdn.freesound.org/previews/320/320181_527080-lq.mp3",
             drop: "https://cdn.freesound.org/previews/442/442900_5121236-lq.mp3",
-            suction: "https://cdn.freesound.org/previews/442/442828_5121236-lq.mp3"
+            suction: "https://cdn.freesound.org/previews/442/442828_5121236-lq.mp3",
+            metal: "https://cdn.freesound.org/previews/162/162484_2515091-lq.mp3",
+            crystal: "https://cdn.freesound.org/previews/406/406063_266858-lq.mp3"
         };
         
         Object.entries(library).forEach(([k, v]) => { 
@@ -1032,46 +1034,59 @@ const CinematicTitleIntro = React.memo(({ onComplete }: { onComplete: () => void
     useEffect(() => {
         const timer = setTimeout(() => {
             onComplete();
-        }, 3200);
+        }, 4500); // Give it a bit more time for the cinematic reveal
         return () => clearTimeout(timer);
     }, [onComplete]);
 
     return (
         <div 
             onClick={onComplete}
-            className="fixed inset-0 z-[99999] bg-[#030305] flex flex-col items-center justify-center p-6 cursor-pointer overflow-hidden select-none"
+            className="fixed inset-0 z-[99999] bg-[#000000] flex flex-col items-center justify-center cursor-pointer overflow-hidden select-none perspective-[1000px]"
         >
-            {/* Eclipse Glow Backdrop */}
-            <div className="absolute w-72 h-72 sm:w-96 sm:h-96 rounded-full bg-gradient-to-r from-red-600 via-purple-600 to-red-600 blur-[90px] opacity-40 animate-pulse pointer-events-none" />
-            <div className="absolute w-48 h-48 sm:w-64 sm:h-64 rounded-full bg-black border-2 border-red-500/30 shadow-[0_0_60px_rgba(220,38,38,0.5)] pointer-events-none" />
+            {/* Deep Space Background */}
+            <div className="absolute inset-0 bg-black" />
+            
+            {/* Curved Earth Horizon Element */}
+            <div 
+                className="absolute -bottom-[60%] sm:-bottom-[50%] left-1/2 -translate-x-1/2 w-[200vw] h-[100vw] rounded-[100%] border-t-[2px] border-[#aaddff] bg-gradient-to-t from-blue-950 via-transparent to-transparent opacity-80 pointer-events-none" 
+                style={{ boxShadow: '0 -30px 120px rgba(100, 200, 255, 0.2)' }} 
+            />
+            
+            {/* Sunrise Lens Flare (Left-sided bias like Gravity) */}
+            <div 
+                className="absolute bottom-[5%] sm:bottom-[15%] left-[25%] sm:left-[35%] -translate-x-1/2 w-[400px] h-[400px] sm:w-[600px] sm:h-[600px] rounded-full bg-gradient-to-r from-transparent via-yellow-400/90 to-transparent blur-[70px] pointer-events-none" 
+                style={{ mixBlendMode: 'screen' }} 
+            />
+            
+            {/* Horizontal Light Streak */}
+            <div 
+                className="absolute bottom-[5%] sm:bottom-[15%] left-[25%] sm:left-[35%] -translate-x-1/2 w-[120vw] h-[6px] bg-gradient-to-r from-transparent via-orange-100 to-transparent blur-[3px] pointer-events-none" 
+                style={{ mixBlendMode: 'screen', transform: 'rotate(-8deg)' }} 
+            />
 
             <motion.div
-                initial={{ opacity: 0, scale: 0.85 }}
-                animate={{ opacity: 1, scale: 1 }}
-                exit={{ opacity: 0, scale: 1.1 }}
-                transition={{ duration: 1.2, ease: "easeInOut" }}
-                className="relative z-10 text-center space-y-4 max-w-4xl"
+                initial={{ opacity: 0, scale: 0.95, z: -100 }}
+                animate={{ opacity: 1, scale: 1, z: 0 }}
+                exit={{ opacity: 0, scale: 1.05 }}
+                transition={{ duration: 4.5, ease: "easeOut" }}
+                className="relative z-10 text-center flex flex-col items-center w-full"
+                style={{ transformStyle: 'preserve-3d' }}
             >
-                <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-red-950/40 border border-red-500/40 backdrop-blur-md mb-2">
-                    <span className="w-2 h-2 rounded-full bg-red-500 animate-ping" />
-                    <span className="text-red-300 text-[11px] font-mono font-bold uppercase tracking-[0.3em]">
-                        IMMERSION PROTOCOL — ECLIPSE SYNC
-                    </span>
-                </div>
-
-                <h1 className="text-4xl sm:text-6xl md:text-7xl font-black text-transparent bg-clip-text bg-gradient-to-b from-white via-zinc-200 to-zinc-600 tracking-[0.25em] font-mono uppercase drop-shadow-[0_0_40px_rgba(255,255,255,0.4)]">
+                <h1 
+                    className="text-4xl sm:text-6xl md:text-8xl font-black text-transparent bg-clip-text bg-gradient-to-t from-[#b8e2ff] via-white to-gray-400 tracking-[0.4em] sm:tracking-[0.7em] ml-[0.4em] sm:ml-[0.7em] uppercase drop-shadow-[0_0_20px_rgba(255,255,255,0.7)] font-serif" 
+                    style={{ transform: 'rotateX(5deg)' }}
+                >
                     SHADOW GARDEN
                 </h1>
-
-                <div className="w-36 h-[2px] bg-gradient-to-r from-transparent via-red-500 to-transparent mx-auto opacity-80" />
-
-                <p className="text-xs sm:text-sm text-gray-400 font-mono tracking-[0.3em] uppercase">
-                    [ THE ETERNAL SANCTUARY FOR THE AWAKENED ]
-                </p>
-
-                <span className="text-[10px] text-zinc-500 font-mono tracking-widest block pt-6 animate-pulse">
+                
+                <motion.div 
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    transition={{ delay: 2.5, duration: 2 }}
+                    className="mt-12 text-[10px] text-zinc-500 font-mono tracking-[0.3em] uppercase animate-pulse"
+                >
                     TAP ANYWHERE TO FAST-FORWARD
-                </span>
+                </motion.div>
             </motion.div>
         </div>
     );

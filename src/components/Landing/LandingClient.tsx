@@ -7,7 +7,7 @@ import { motion, AnimatePresence, useScroll, useTransform } from 'framer-motion'
 import { 
   ArrowRight, Zap, ShieldCheck, Smartphone, 
   Ghost, Terminal, Globe, Crown, Sword, 
-  MessageCircle, Flame, Users, Scroll as ScrollIcon, Activity
+  MessageCircle, Flame, Users, Scroll as ScrollIcon, Activity, Download
 } from 'lucide-react';
 
 // ✅ FIXED IMPORTS
@@ -314,6 +314,7 @@ export default function LandingClient() {
   const [bgImage, setBgImage] = useState(WAIFU_BG_LIST[0]);
   const [isMobile, setIsMobile] = useState(false);
   const [selectedGender, setSelectedGender] = useState<'boy' | 'girl' | 'neutral' | null>(null);
+  const [installPrompt, setInstallPrompt] = useState<any>(null);
   
   const [trending, setTrending] = useState<UniversalAnimeBase[]>([]); 
   const [isLoadingTrending, setIsLoadingTrending] = useState(true);
@@ -328,6 +329,13 @@ export default function LandingClient() {
     if (mobileCheck) {
       setShowLandingUI(true);
     }
+
+    const pwaHandler = (e: any) => {
+      e.preventDefault();
+      setInstallPrompt(e);
+    };
+    window.addEventListener('beforeinstallprompt', pwaHandler);
+
     // 1. Random BG (Client-side only)
     const randomIdx = Math.floor(Math.random() * WAIFU_BG_LIST.length);
     setBgImage(WAIFU_BG_LIST[randomIdx]);
@@ -368,6 +376,8 @@ export default function LandingClient() {
       }
     };
     init();
+
+    return () => window.removeEventListener('beforeinstallprompt', pwaHandler);
   }, [router]);
 
   // Handlers
@@ -411,6 +421,15 @@ export default function LandingClient() {
   }, [initializeAudio, processGenderSelection]);
 
   const handlePortalComplete = useCallback(() => { router.push('/home'); }, [router]);
+
+  const handleInstallClick = async () => {
+    if (!installPrompt) return;
+    installPrompt.prompt();
+    const { outcome } = await installPrompt.userChoice;
+    if (outcome === 'accepted') {
+      setInstallPrompt(null);
+    }
+  };
 
   // Prevent Flash
   if (isCheckingAuth) return <div className="min-h-screen bg-[#050505]" />;
@@ -506,6 +525,14 @@ export default function LandingClient() {
                         Enter as Visitor <ArrowRight className="ml-3 w-5 h-5" />
                       </Button>
                    </div>
+                   
+                   {installPrompt && (
+                     <div className="flex justify-center mt-6 relative z-20">
+                       <Button onClick={handleInstallClick} variant="outline" className="rounded-full bg-blue-900/30 text-blue-300 border-blue-500/40 hover:bg-blue-800/50 hover:text-white backdrop-blur-md font-mono tracking-widest text-xs uppercase h-10 px-6">
+                         <Download className="mr-2 w-4 h-4" /> Install App
+                       </Button>
+                     </div>
+                   )}
 
                    <GuildStats />
                  </motion.div>
