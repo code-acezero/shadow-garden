@@ -1462,13 +1462,12 @@ export default function ShadowGardenPortal({
 
     useEffect(() => {
         const savedGender = localStorage.getItem('guest_gender') as Gender;
-
-        if (!savedGender) {
-            setAppState('cinematic_intro');
-        } else {
-            triggerSkip(); 
+        if (savedGender) {
+            setGender(savedGender);
         }
-    }, [triggerSkip]);
+        // Always start with the cinematic intro
+        setAppState('cinematic_intro');
+    }, []);
 
     useEffect(() => {
         if (skipped && startTransition) {
