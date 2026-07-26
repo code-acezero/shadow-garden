@@ -935,7 +935,7 @@ const SceneContent = React.memo(({
                     radialModulation={false}
                     modulationOffset={0}
                 />
-                {isWarp && (
+                {isWarp ? (
                     <Glitch 
                         delay={new THREE.Vector2(0.05, 0.15)} 
                         duration={new THREE.Vector2(0.2, 0.6)} 
@@ -943,7 +943,7 @@ const SceneContent = React.memo(({
                         active={true}
                         ratio={0.95}
                     />
-                )}
+                ) : <></>}
                 {quality !== 'potato' && quality !== 'low' ? (
                     <DepthOfField
                         focusDistance={0.02}
