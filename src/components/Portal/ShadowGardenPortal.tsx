@@ -226,6 +226,9 @@ class AudioMatrix {
         });
         
         const bgmTracks = [
+            "/bgm/bgm1.mp3",
+            "/bgm/bgm2.mp3",
+            "/bgm/shadow_theme.mp3",
             "https://cdn.pixabay.com/audio/2022/03/10/audio_4f5c0a36b0.mp3"
         ];
         
@@ -237,6 +240,9 @@ class AudioMatrix {
         });
         
         this.active = true;
+        if (typeof window !== 'undefined') {
+            (window as any).stopShadowBGM = () => this.stopAll(1500);
+        }
     }
     
     unlock() { 
@@ -267,7 +273,13 @@ class AudioMatrix {
     
     playRandomBGM() { 
         if (!this.active) this.init(); 
-        this.play('bgm_0', 0.25, true, 2000); 
+        const randomIdx = Math.floor(Math.random() * 4);
+        const bgmKey = `bgm_${randomIdx}`;
+        if (this.sources.has(bgmKey)) {
+            this.play(bgmKey, 0.25, true, 2000);
+        } else {
+            this.play('bgm_0', 0.25, true, 2000); 
+        }
     }
     
     stop(key: string, fadeMs = 0) { 
@@ -1032,58 +1044,84 @@ CameraDirector.displayName = 'CameraDirector';
 
 const CinematicTitleIntro = React.memo(({ onComplete }: { onComplete: () => void }) => {
     useEffect(() => {
+        const originalOverflow = document.body.style.overflow;
+        document.body.style.overflow = 'hidden';
+        
+        sfx.init();
+        sfx.play('crystal', 0.5);
+        
         const timer = setTimeout(() => {
             onComplete();
-        }, 4500); // Give it a bit more time for the cinematic reveal
-        return () => clearTimeout(timer);
+        }, 4800);
+
+        return () => {
+            document.body.style.overflow = originalOverflow;
+            clearTimeout(timer);
+        };
     }, [onComplete]);
 
     return (
         <div 
             onClick={onComplete}
-            className="fixed inset-0 z-[99999] bg-[#000000] flex flex-col items-center justify-center cursor-pointer overflow-hidden select-none perspective-[1000px]"
+            className="fixed inset-0 z-[99999] bg-[#000000] flex flex-col items-center justify-center cursor-pointer overflow-hidden select-none touch-none"
         >
-            {/* Deep Space Background */}
-            <div className="absolute inset-0 bg-black" />
-            
-            {/* Curved Earth Horizon Element */}
-            <div 
-                className="absolute -bottom-[60%] sm:-bottom-[50%] left-1/2 -translate-x-1/2 w-[200vw] h-[100vw] rounded-[100%] border-t-[2px] border-[#aaddff] bg-gradient-to-t from-blue-950 via-transparent to-transparent opacity-80 pointer-events-none" 
-                style={{ boxShadow: '0 -30px 120px rgba(100, 200, 255, 0.2)' }} 
-            />
-            
-            {/* Sunrise Lens Flare (Left-sided bias like Gravity) */}
-            <div 
-                className="absolute bottom-[5%] sm:bottom-[15%] left-[25%] sm:left-[35%] -translate-x-1/2 w-[400px] h-[400px] sm:w-[600px] sm:h-[600px] rounded-full bg-gradient-to-r from-transparent via-yellow-400/90 to-transparent blur-[70px] pointer-events-none" 
-                style={{ mixBlendMode: 'screen' }} 
-            />
-            
-            {/* Horizontal Light Streak */}
-            <div 
-                className="absolute bottom-[5%] sm:bottom-[15%] left-[25%] sm:left-[35%] -translate-x-1/2 w-[120vw] h-[6px] bg-gradient-to-r from-transparent via-orange-100 to-transparent blur-[3px] pointer-events-none" 
-                style={{ mixBlendMode: 'screen', transform: 'rotate(-8deg)' }} 
-            />
+            {/* Deep Space Ambient Glow */}
+            <div className="absolute inset-0 bg-[#020205]" />
+            <div className="absolute w-[600px] h-[600px] rounded-full bg-primary-950/20 blur-[120px] pointer-events-none" />
 
             <motion.div
-                initial={{ opacity: 0, scale: 0.95, z: -100 }}
-                animate={{ opacity: 1, scale: 1, z: 0 }}
-                exit={{ opacity: 0, scale: 1.05 }}
-                transition={{ duration: 4.5, ease: "easeOut" }}
-                className="relative z-10 text-center flex flex-col items-center w-full"
-                style={{ transformStyle: 'preserve-3d' }}
+                initial={{ opacity: 0, scale: 0.94 }}
+                animate={{ opacity: 1, scale: 1 }}
+                exit={{ opacity: 0, scale: 1.04 }}
+                transition={{ duration: 3.5, ease: "easeOut" }}
+                className="relative z-10 text-center flex flex-col items-center justify-center w-full px-4 max-w-5xl"
             >
-                <h1 
-                    className="text-4xl sm:text-6xl md:text-8xl font-black text-transparent bg-clip-text bg-gradient-to-t from-[#b8e2ff] via-white to-gray-400 tracking-[0.4em] sm:tracking-[0.7em] ml-[0.4em] sm:ml-[0.7em] uppercase drop-shadow-[0_0_20px_rgba(255,255,255,0.7)] font-serif" 
-                    style={{ transform: 'rotateX(5deg)' }}
-                >
-                    SHADOW GARDEN
-                </h1>
-                
+                <div className="relative w-full flex flex-col items-center">
+                    {/* Gradvis Title Text */}
+                    <h1 
+                        className="text-4xl sm:text-6xl md:text-8xl font-normal font-gradvis text-transparent bg-clip-text bg-gradient-to-r from-white via-red-200 to-zinc-400 tracking-[0.25em] sm:tracking-[0.45em] ml-[0.25em] sm:ml-[0.45em] uppercase drop-shadow-[0_0_35px_rgba(220,38,38,0.5)]" 
+                        style={{ fontFamily: 'var(--font-gradvis), serif' }}
+                    >
+                        SHADOW GARDEN
+                    </h1>
+                    
+                    {/* Moving Star Lens Flare under the title */}
+                    <div className="relative w-full max-w-3xl h-10 mt-3 overflow-visible flex items-center justify-center">
+                        {/* Thin laser guide line under title */}
+                        <div className="absolute top-1/2 left-0 right-0 h-[1px] bg-gradient-to-r from-transparent via-red-600/50 to-transparent -translate-y-1/2" />
+                        
+                        {/* Flare star moving from left (0%) to end of title (100%) and slowing down as it reaches the end */}
+                        <motion.div
+                            initial={{ x: "-100%", opacity: 0, scale: 0.3 }}
+                            animate={{ 
+                                x: ["-100%", "-30%", "20%", "45%", "50%"], 
+                                opacity: [0, 1, 1, 1, 0.95],
+                                scale: [0.3, 1.2, 1.0, 1.1, 1.0]
+                            }}
+                            transition={{ 
+                                duration: 4.2, 
+                                ease: [0.1, 0.9, 0.2, 1], // Decelerating cubic-bezier curve
+                                times: [0, 0.25, 0.6, 0.85, 1]
+                            }}
+                            className="absolute top-1/2 -translate-y-1/2 flex items-center justify-center pointer-events-none"
+                        >
+                            {/* Bright Core Star */}
+                            <div className="w-5 h-5 rounded-full bg-white blur-[0.5px] shadow-[0_0_15px_#ffffff,0_0_30px_#ef4444,0_0_50px_#dc2626]" />
+                            {/* Horizontal anamorphic flare ray */}
+                            <div className="absolute w-64 h-[2px] bg-gradient-to-r from-transparent via-white to-transparent blur-[0.5px]" />
+                            {/* Vertical flare ray */}
+                            <div className="absolute h-14 w-[2px] bg-gradient-to-b from-transparent via-red-300 to-transparent blur-[0.5px]" />
+                            {/* Glowing aura */}
+                            <div className="absolute w-20 h-20 rounded-full bg-red-600/30 blur-xl" />
+                        </motion.div>
+                    </div>
+                </div>
+
                 <motion.div 
                     initial={{ opacity: 0 }}
                     animate={{ opacity: 1 }}
-                    transition={{ delay: 2.5, duration: 2 }}
-                    className="mt-12 text-[10px] text-zinc-500 font-mono tracking-[0.3em] uppercase animate-pulse"
+                    transition={{ delay: 2.2, duration: 2 }}
+                    className="mt-14 text-[10px] text-zinc-500 font-mono tracking-[0.3em] uppercase animate-pulse"
                 >
                     TAP ANYWHERE TO FAST-FORWARD
                 </motion.div>

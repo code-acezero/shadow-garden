@@ -47,6 +47,13 @@ export default function Home() {
   });
 
   useEffect(() => {
+    // Fade out and stop any playing portal BGM after reaching home
+    if (typeof window !== 'undefined' && (window as any).stopShadowBGM) {
+      (window as any).stopShadowBGM();
+    }
+  }, []);
+
+  useEffect(() => {
     const code = searchParams.get('code');
     if (code) {
       // Exchange code for token
