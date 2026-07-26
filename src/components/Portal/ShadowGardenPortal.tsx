@@ -1094,61 +1094,71 @@ const CinematicTitleIntro = React.memo(({ onComplete }: { onComplete: () => void
 
 CinematicTitleIntro.displayName = 'CinematicTitleIntro';
 
-const GenderSelection = React.memo(({ onSelect }: { onSelect: (g: Gender) => void }) => (
-    <div className="fixed inset-0 z-[999] bg-black/90 flex items-center justify-center p-4 sm:p-6 overflow-y-auto">
-        <motion.div 
-            initial={{ opacity: 0, scale: 0.9, y: 20 }} 
-            animate={{ opacity: 1, scale: 1, y: 0 }} 
-            className="w-full max-w-lg mx-auto border-2 border-primary-900/60 bg-[#0a0505]/95 p-6 sm:p-10 rounded-3xl text-center backdrop-blur-2xl shadow-[0_0_60px_rgba(220,38,38,0.35)] relative overflow-hidden"
-        >
-            <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-transparent via-primary-500 to-transparent animate-pulse" />
+const GenderSelection = React.memo(({ onSelect }: { onSelect: (g: Gender) => void }) => {
+    useEffect(() => {
+        const originalOverflow = document.body.style.overflow;
+        document.body.style.overflow = 'hidden';
+        return () => {
+            document.body.style.overflow = originalOverflow;
+        };
+    }, []);
 
-            <div className="flex justify-center items-center gap-2 mb-6 border-b border-primary-900/30 pb-4">
-                <Crown className="w-6 h-6 text-primary-500" />
-                <h2 className="text-xl sm:text-2xl text-white font-bold tracking-widest uppercase font-mono">
-                    IDENTITY CONFIRMATION
-                </h2>
-                <TooltipProvider>
-                    <Tooltip>
-                        <TooltipTrigger>
-                            <Info className="w-5 h-5 text-gray-400 hover:text-white" />
-                        </TooltipTrigger>
-                        <TooltipContent>
-                            <p>Required to calibrate your visual avatar.</p>
-                        </TooltipContent>
-                    </Tooltip>
-                </TooltipProvider>
-            </div>
+    return (
+        <div className="fixed inset-0 z-[99999] bg-black/90 flex items-center justify-center p-4 sm:p-6 overflow-hidden touch-none">
+            <motion.div 
+                initial={{ opacity: 0, scale: 0.9, y: 0 }} 
+                animate={{ opacity: 1, scale: 1, y: 0 }} 
+                className="w-full max-w-lg mx-auto border-2 border-primary-900/60 bg-[#0a0505]/95 p-6 sm:p-10 rounded-3xl text-center backdrop-blur-2xl shadow-[0_0_60px_rgba(220,38,38,0.35)] relative overflow-hidden"
+            >
+                <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-transparent via-primary-500 to-transparent animate-pulse" />
 
-            <p className="text-xs text-gray-400 font-mono mb-8 leading-relaxed">
-                Select your monarch vessel before entering the dimensional sanctuary.
-            </p>
+                <div className="flex justify-center items-center gap-2 mb-6 border-b border-primary-900/30 pb-4">
+                    <Crown className="w-6 h-6 text-primary-500" />
+                    <h2 className="text-xl sm:text-2xl text-white font-bold tracking-widest uppercase font-mono">
+                        IDENTITY CONFIRMATION
+                    </h2>
+                    <TooltipProvider>
+                        <Tooltip>
+                            <TooltipTrigger>
+                                <Info className="w-5 h-5 text-gray-400 hover:text-white" />
+                            </TooltipTrigger>
+                            <TooltipContent>
+                                <p>Required to calibrate your visual avatar.</p>
+                            </TooltipContent>
+                        </Tooltip>
+                    </TooltipProvider>
+                </div>
 
-            <div className="grid grid-cols-2 gap-4 sm:gap-6">
-                <button 
-                    onClick={() => onSelect('boy')} 
-                    className="group p-6 sm:p-8 border border-blue-500/30 bg-blue-950/20 hover:bg-blue-900/40 hover:border-blue-400 rounded-2xl transition-all flex flex-col items-center gap-4 shadow-lg hover:shadow-[0_0_25px_rgba(59,130,246,0.4)]"
-                >
-                    <div className="p-4 rounded-full bg-blue-500/20 border border-blue-400/40 group-hover:scale-110 transition-transform">
-                        <Sword className="w-8 h-8 text-blue-400" />
-                    </div>
-                    <span className="text-base sm:text-lg font-bold text-white tracking-widest font-mono">MALE</span>
-                    <span className="text-[10px] text-blue-300/70 font-mono uppercase">SHADOW HUNTER</span>
-                </button>
-                <button 
-                    onClick={() => onSelect('girl')} 
-                    className="group p-6 sm:p-8 border border-pink-500/30 bg-pink-950/20 hover:bg-pink-900/40 hover:border-pink-400 rounded-2xl transition-all flex flex-col items-center gap-4 shadow-lg hover:shadow-[0_0_25px_rgba(236,72,153,0.4)]"
-                >
-                    <div className="p-4 rounded-full bg-pink-500/20 border border-pink-400/40 group-hover:scale-110 transition-transform">
-                        <Wand2 className="w-8 h-8 text-pink-400" />
-                    </div>
-                    <span className="text-base sm:text-lg font-bold text-white tracking-widest font-mono">FEMALE</span>
-                    <span className="text-[10px] text-pink-300/70 font-mono uppercase">CELESTIAL MONARCH</span>
-                </button>
-            </div>
-        </motion.div>
-    </div>
-));
+                <p className="text-xs text-gray-400 font-mono mb-8 leading-relaxed">
+                    Select your monarch vessel before entering the dimensional sanctuary.
+                </p>
+
+                <div className="grid grid-cols-2 gap-4 sm:gap-6">
+                    <button 
+                        onClick={() => onSelect('boy')} 
+                        className="group p-6 sm:p-8 border border-blue-500/30 bg-blue-950/20 hover:bg-blue-900/40 hover:border-blue-400 rounded-2xl transition-all flex flex-col items-center gap-4 shadow-lg hover:shadow-[0_0_25px_rgba(59,130,246,0.4)]"
+                    >
+                        <div className="p-4 rounded-full bg-blue-500/20 border border-blue-400/40 group-hover:scale-110 transition-transform">
+                            <Sword className="w-8 h-8 text-blue-400" />
+                        </div>
+                        <span className="text-base sm:text-lg font-bold text-white tracking-widest font-mono">MALE</span>
+                        <span className="text-[10px] text-blue-300/70 font-mono uppercase">SHADOW HUNTER</span>
+                    </button>
+                    <button 
+                        onClick={() => onSelect('girl')} 
+                        className="group p-6 sm:p-8 border border-pink-500/30 bg-pink-950/20 hover:bg-pink-900/40 hover:border-pink-400 rounded-2xl transition-all flex flex-col items-center gap-4 shadow-lg hover:shadow-[0_0_25px_rgba(236,72,153,0.4)]"
+                    >
+                        <div className="p-4 rounded-full bg-pink-500/20 border border-pink-400/40 group-hover:scale-110 transition-transform">
+                            <Wand2 className="w-8 h-8 text-pink-400" />
+                        </div>
+                        <span className="text-base sm:text-lg font-bold text-white tracking-widest font-mono">FEMALE</span>
+                        <span className="text-[10px] text-pink-300/70 font-mono uppercase">CELESTIAL MONARCH</span>
+                    </button>
+                </div>
+            </motion.div>
+        </div>
+    );
+});
 
 GenderSelection.displayName = 'GenderSelection';
 
@@ -1160,8 +1170,16 @@ const AnimationPreferencePopup = React.memo(({
     const [pause7, setPause7] = useState(false); 
     const [never, setNever] = useState(false);
     
+    useEffect(() => {
+        const originalOverflow = document.body.style.overflow;
+        document.body.style.overflow = 'hidden';
+        return () => {
+            document.body.style.overflow = originalOverflow;
+        };
+    }, []);
+
     return (
-        <div className="fixed inset-0 z-[999] bg-black/95 flex items-center justify-center p-6">
+        <div className="fixed inset-0 z-[99999] bg-black/95 flex items-center justify-center p-4 sm:p-6 overflow-hidden touch-none">
             <div className="absolute inset-0 bg-gradient-to-t from-primary-900/10 via-black to-black pointer-events-none" />
             
             <motion.div 
@@ -1263,44 +1281,56 @@ const GuildCookieNotice = React.memo(({
 }: { 
     onAccept: () => void; 
     onDecline: () => void;
-}) => (
-    <div className="fixed bottom-10 left-0 right-0 z-[99999] w-full flex justify-center px-4 pointer-events-none">
-        <motion.div 
-            initial={{ y: 50, opacity: 0 }} 
-            animate={{ y: 0, opacity: 1 }} 
-            className="bg-[#0a0505]/95 backdrop-blur-xl border border-primary-900/50 rounded-xl p-5 shadow-2xl max-w-sm w-full pointer-events-auto"
-        >
-            <div className="flex items-start gap-4 mb-3">
-                <div className="p-3 bg-gradient-to-br from-primary-900/40 to-black rounded-full border border-primary-500/20">
-                    <Scroll className="w-5 h-5 text-primary-500" />
+}) => {
+    useEffect(() => {
+        const originalOverflow = document.body.style.overflow;
+        document.body.style.overflow = 'hidden';
+        return () => {
+            document.body.style.overflow = originalOverflow;
+        };
+    }, []);
+
+    return (
+        <div className="fixed inset-0 z-[99999] bg-black/85 backdrop-blur-md flex items-center justify-center p-4 sm:p-6 overflow-hidden touch-none pointer-events-auto">
+            <motion.div 
+                initial={{ scale: 0.9, opacity: 0 }} 
+                animate={{ scale: 1, opacity: 1 }} 
+                className="bg-[#0a0505]/95 backdrop-blur-2xl border border-primary-900/60 rounded-3xl p-6 sm:p-8 shadow-[0_0_60px_rgba(220,38,38,0.4)] max-w-md w-full relative overflow-hidden text-center"
+            >
+                <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-transparent via-primary-500 to-transparent animate-pulse" />
+
+                <div className="flex flex-col items-center gap-3 mb-6">
+                    <div className="p-4 bg-gradient-to-br from-primary-900/40 to-black rounded-full border border-primary-500/30 shadow-[0_0_25px_rgba(220,38,38,0.3)]">
+                        <Scroll className="w-7 h-7 text-primary-500" />
+                    </div>
+                    <div>
+                        <h4 className="text-white font-bold tracking-widest text-xl mb-1 font-mono uppercase">
+                            GUILD PERMIT & AUDIO CONTRACT
+                        </h4>
+                        <p className="text-gray-400 text-xs tracking-wide font-mono leading-relaxed max-w-xs mx-auto mt-2">
+                            Shadow Garden requires audio synchronization and cookies to enable spatial acoustic immersion.
+                        </p>
+                    </div>
                 </div>
-                <div>
-                    <h4 className="text-white font-bold tracking-widest text-lg mb-1">
-                        GUILD NOTICE
-                    </h4>
-                    <p className="text-gray-400 text-xs tracking-wide">
-                        Shadow Garden employs magical cookies. Accept to synchronize.
-                    </p>
+                <div className="flex gap-4">
+                    <Button 
+                        onClick={onAccept} 
+                        className="flex-1 bg-primary-700 hover:bg-primary-600 text-white text-xs font-bold border border-primary-500/50 h-12 rounded-xl shadow-lg font-mono tracking-wider"
+                    >
+                        <Fingerprint className="w-4 h-4 mr-2" /> ACCEPT PERMIT
+                    </Button>
+                    <Button 
+                        onClick={onDecline} 
+                        variant="outline" 
+                        className="flex-1 border-white/10 text-gray-400 hover:text-white hover:bg-white/10 h-12 text-xs rounded-xl font-mono tracking-wider"
+                    >
+                        <X className="w-4 h-4 mr-1" /> DECLINE
+                    </Button>
                 </div>
-            </div>
-            <div className="flex gap-3">
-                <Button 
-                    onClick={onAccept} 
-                    className="flex-1 bg-primary-700 hover:bg-primary-600 text-white text-xs font-bold border border-primary-500/50 h-10"
-                >
-                    <Fingerprint className="w-3 h-3 mr-2" /> SIGN CONTRACT
-                </Button>
-                <Button 
-                    onClick={onDecline} 
-                    variant="outline" 
-                    className="flex-1 border-white/10 text-gray-400 hover:text-white hover:bg-white/10 h-10 text-xs"
-                >
-                    <X className="w-3 h-3 mr-1" /> DECLINE
-                </Button>
-            </div>
-        </motion.div>
-    </div>
-));
+            </motion.div>
+        </div>
+    );
+});
 
 GuildCookieNotice.displayName = 'GuildCookieNotice';
 
@@ -1520,6 +1550,8 @@ export default function ShadowGardenPortal({
                     <GuildCookieNotice 
                         onAccept={() => { 
                             localStorage.setItem('SG_GUILD_CONTRACT', 'true'); 
+                            localStorage.setItem('shadow_audio_permitted', 'true');
+                            sfx.unlock();
                             setShowCookie(false); 
                         }} 
                         onDecline={() => { 
