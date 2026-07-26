@@ -1554,13 +1554,22 @@ export default function ShadowGardenPortal({
         sfx.playRandomBGM(); 
         sfx.play('wind', 0.15, true);
         
-        const timeout = setTimeout(() => {
-            setStage('idle');
-            onSceneReadyRef.current?.(); 
-        }, 4000);
-        
-        return () => clearTimeout(timeout);
+        // We do not want to use a timeout inside this effect if we mutate appState,
+        // because the cleanup will clear it immediately. Instead we set appState,
+        // and we can have another effect or just use a flag.
+        // Actually, we can just call it directly or rely on the stage change!
+        // But stage is also mutated.
     }, [appState]);
+
+    useEffect(() => {
+        if (appState === 'running' && stage === 'intro') {
+            const timeout = setTimeout(() => {
+                setStage('idle');
+                onSceneReadyRef.current?.(); 
+            }, 4000);
+            return () => clearTimeout(timeout);
+        }
+    }, [appState, stage]);
 
     useEffect(() => {
         if (stage === 'push') {
