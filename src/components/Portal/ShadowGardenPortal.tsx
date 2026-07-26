@@ -1261,11 +1261,11 @@ const GenderSelection = React.memo(({ onSelect }: { onSelect: (g: Gender) => voi
     }, []);
 
     return (
-        <div className="fixed inset-0 z-[99999] bg-black/90 flex items-center justify-center p-4 sm:p-6 overflow-hidden touch-none">
+        <div className="fixed inset-0 z-[99999] bg-black/90 flex items-center justify-center p-4 sm:p-6 pb-[15vh] sm:pb-[20vh] overflow-hidden touch-none">
             <motion.div 
                 initial={{ opacity: 0, scale: 0.95 }} 
                 animate={{ opacity: 1, scale: 1 }} 
-                className="w-full max-w-lg mx-auto border-2 border-primary-900/60 bg-[#0a0505]/95 p-6 sm:p-8 rounded-3xl text-center backdrop-blur-2xl shadow-[0_0_60px_rgba(220,38,38,0.35)] relative overflow-hidden -translate-y-16 sm:-translate-y-24"
+                className="w-full max-w-lg mx-auto border-2 border-primary-900/60 bg-[#0a0505]/95 p-6 sm:p-8 rounded-3xl text-center backdrop-blur-2xl shadow-[0_0_60px_rgba(220,38,38,0.35)] relative overflow-hidden"
             >
                 <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-transparent via-primary-500 to-transparent animate-pulse" />
 
@@ -1336,14 +1336,14 @@ const AnimationPreferencePopup = React.memo(({
     }, []);
 
     return (
-        <div className="fixed inset-0 z-[99999] bg-black/90 backdrop-blur-xl flex items-center justify-center p-4 overflow-hidden touch-none">
+        <div className="fixed inset-0 z-[99999] bg-black/90 backdrop-blur-xl flex items-center justify-center p-4 pb-[15vh] sm:pb-[20vh] overflow-hidden touch-none">
             <div className="absolute inset-0 bg-gradient-to-t from-primary-950/20 via-black to-black pointer-events-none" />
             
             <motion.div 
                 initial={{ opacity: 0, scale: 0.95 }} 
                 animate={{ opacity: 1, scale: 1 }} 
                 transition={{ duration: 0.3, ease: "easeOut" }}
-                className="relative max-w-sm sm:max-w-md w-full mx-auto bg-[#0a0505]/95 border border-primary-900/60 p-5 sm:p-6 rounded-2xl shadow-[0_0_50px_rgba(220,38,38,0.3)] overflow-hidden text-center -translate-y-16 sm:-translate-y-24"
+                className="relative max-w-sm sm:max-w-md w-full mx-auto bg-[#0a0505]/95 border border-primary-900/60 p-5 sm:p-6 rounded-2xl shadow-[0_0_50px_rgba(220,38,38,0.3)] overflow-hidden text-center"
             >
                 <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-transparent via-primary-500 to-transparent animate-pulse" />
 
