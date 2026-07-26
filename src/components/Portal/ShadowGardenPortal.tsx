@@ -1462,12 +1462,21 @@ export default function ShadowGardenPortal({
 
     useEffect(() => {
         const savedGender = localStorage.getItem('guest_gender') as Gender;
-        if (savedGender) {
+        const neverAsk = localStorage.getItem('anim_never_ask');
+        const pauseUntil = localStorage.getItem('anim_pause_until');
+        const now = new Date().getTime();
+
+        const isSkipActive = neverAsk === 'true' || (pauseUntil && parseInt(pauseUntil) > now);
+
+        if (!savedGender) {
+            setAppState('cinematic_intro');
+        } else if (isSkipActive) {
+            triggerSkip(); 
+        } else {
             setGender(savedGender);
+            setAppState('anim_choice');
         }
-        // Always start with the cinematic intro
-        setAppState('cinematic_intro');
-    }, []);
+    }, [triggerSkip]);
 
     useEffect(() => {
         if (skipped && startTransition) {
@@ -1527,25 +1536,19 @@ export default function ShadowGardenPortal({
     useEffect(() => {
         if (appState !== 'loading') return;
         sfx.init();
-        let p = 0;
-        const i = setInterval(() => {
-            p += 2; 
-            setProgress(p);
-            if (p >= 100) {
-                clearInterval(i);
-                setTimeout(() => {
-                    setAppState('running'); 
-                    setStage('intro');
-                    sfx.playRandomBGM(); 
-                    sfx.play('wind', 0.15, true);
-                    setTimeout(() => {
-                        setStage('idle');
-                        onSceneReadyRef.current?.(); 
-                    }, 4000);
-                }, 500);
-            }
-        }, 30);
-        return () => clearInterval(i);
+        
+        // Immediately skip to running state without the artificial loading screen delay
+        setAppState('running'); 
+        setStage('intro');
+        sfx.playRandomBGM(); 
+        sfx.play('wind', 0.15, true);
+        
+        const timeout = setTimeout(() => {
+            setStage('idle');
+            onSceneReadyRef.current?.(); 
+        }, 4000);
+        
+        return () => clearTimeout(timeout);
     }, [appState]);
 
     useEffect(() => {
@@ -1630,9 +1633,7 @@ export default function ShadowGardenPortal({
             <div className="fixed inset-0 z-0 bg-black pointer-events-none">
 
             <AnimatePresence>
-                {appState === 'loading' && (
-                    <PortalLoadingScreen progress={progress} />
-                )}
+                {/* PortalLoadingScreen removed entirely as requested */}
             </AnimatePresence>
 
             {appState === 'running' && (
