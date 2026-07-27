@@ -46,10 +46,9 @@ import { supabase } from "@/lib/supabase";
 
 export class ApiManager {
     private static urls = [
+        'https://anikoto-api-ivory.vercel.app/api',
         'https://omni-api-v1.vercel.app/api',
-        'https://omni-api-v2.vercel.app/api',
-        'https://omni-api-v3.vercel.app/api',
-        'https://omni-api-v4.vercel.app/api'
+        'https://omni-api-v2.vercel.app/api'
     ];
     private static currentIndex = 0;
 
@@ -858,18 +857,29 @@ export class AnimeService {
     }
 
     static async getStream(episodeId: string, server = 'VidPlay-1', category: 'sub' | 'dub' = 'sub') {
-        let slug = '';
-        let epNumber = '';
+        let slug = episodeId;
+        let epNumber = '1';
+
         if (episodeId.includes('::')) {
-            [slug, epNumber] = episodeId.split('::');
+            const parts = episodeId.split('::');
+            slug = parts[0];
+            epNumber = parts[1] || '1';
+        } else if (episodeId.includes('?ep=')) {
+            const parts = episodeId.split('?ep=');
+            slug = parts[0];
+            epNumber = parts[1] || '1';
         } else if (episodeId.includes('-')) {
             const lastIndex = episodeId.lastIndexOf('-');
-            slug = episodeId.substring(0, lastIndex);
-            epNumber = episodeId.substring(lastIndex + 1);
-        } else {
-            slug = episodeId;
-            epNumber = episodeId;
+            const potentialEp = episodeId.substring(lastIndex + 1);
+            if (/^\d+$/.test(potentialEp) && parseInt(potentialEp, 10) <= 2000) {
+                slug = episodeId.substring(0, lastIndex);
+                epNumber = potentialEp;
+            } else {
+                slug = episodeId;
+                epNumber = '1';
+            }
         }
+
         if (!slug || !epNumber) return null;
 
         let data: any = await AnimeAPI_Anikoto.getWatch(slug, epNumber);

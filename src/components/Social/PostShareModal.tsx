@@ -181,102 +181,110 @@ export default function PostShareModal({ isOpen, onClose, post, customUrl, custo
 
   return (
     <AnimatePresence>
-      <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/80 backdrop-blur-md">
+      <div 
+        className="fixed inset-0 z-[100] flex items-end sm:items-center justify-center p-0 sm:p-4 bg-black/80 backdrop-blur-md transition-opacity"
+        onClick={onClose}
+      >
         <motion.div
-          initial={{ opacity: 0, scale: 0.95, y: 10 }}
-          animate={{ opacity: 1, scale: 1, y: 0 }}
-          exit={{ opacity: 0, scale: 0.95, y: 10 }}
-          className="relative w-full max-w-lg bg-[#0d0d0d] border border-white/15 rounded-3xl p-6 shadow-2xl overflow-hidden flex flex-col max-h-[85vh]"
+          initial={{ opacity: 0, y: 40, scale: 0.98 }}
+          animate={{ opacity: 1, y: 0, scale: 1 }}
+          exit={{ opacity: 0, y: 40, scale: 0.98 }}
+          transition={{ type: "spring", stiffness: 350, damping: 28 }}
+          onClick={(e) => e.stopPropagation()}
+          className="relative w-full max-w-full sm:max-w-md bg-[#0c0c0e] border-t sm:border border-white/15 rounded-t-3xl sm:rounded-3xl p-4 sm:p-5 shadow-2xl overflow-hidden flex flex-col max-h-[85vh] sm:max-h-[80vh]"
         >
+          {/* Mobile Handle Indicator */}
+          <div className="w-10 h-1 bg-white/20 rounded-full mx-auto mb-3 sm:hidden" />
+
           {/* Header */}
-          <div className="flex items-center justify-between pb-4 border-b border-white/10">
+          <div className="flex items-center justify-between pb-3 border-b border-white/10">
             <div className="flex items-center gap-2">
-              <Share2 className="w-5 h-5 text-primary-500" />
-              <h3 className="text-base font-bold text-white font-mono uppercase tracking-wider">Share</h3>
+              <Share2 className="w-4 h-4 text-primary-500" />
+              <h3 className="text-sm sm:text-base font-bold text-white font-mono uppercase tracking-wider">Share</h3>
             </div>
             <button
               onClick={onClose}
               className="p-1.5 rounded-full hover:bg-white/10 text-zinc-400 hover:text-white transition-colors"
             >
-              <X size={18} />
+              <X size={16} />
             </button>
           </div>
 
           {/* Body */}
-          <div className="flex-1 overflow-y-auto space-y-6 py-4 pr-1 custom-scrollbar">
+          <div className="flex-1 overflow-y-auto space-y-5 py-3 pr-1 custom-scrollbar">
             {/* Snippet Card */}
-            <div className="p-3.5 rounded-2xl bg-black/50 border border-white/10 flex items-center gap-3">
+            <div className="p-3 rounded-2xl bg-black/60 border border-white/10 flex items-center gap-3">
               {post?.profiles ? (
-                <ProfileAvatar profile={post.profiles} className="w-10 h-10 shrink-0" />
+                <ProfileAvatar profile={post.profiles} className="w-9 h-9 shrink-0" />
               ) : (
-                <div className="w-10 h-10 rounded-full bg-primary-600/30 border border-primary-500/50 flex items-center justify-center text-primary-400 font-bold shrink-0">
-                  <Share2 size={18} />
+                <div className="w-9 h-9 rounded-full bg-primary-600/30 border border-primary-500/50 flex items-center justify-center text-primary-400 font-bold shrink-0">
+                  <Share2 size={16} />
                 </div>
               )}
               <div className="flex-1 min-w-0">
                 <span className="text-xs font-bold text-white block truncate">{shareTitle}</span>
-                <p className="text-xs text-zinc-400 line-clamp-1">{shareText}</p>
+                <p className="text-[11px] text-zinc-400 line-clamp-1">{shareText}</p>
               </div>
             </div>
 
-            {/* Quick Actions: Native Share & Copy Link */}
-            <div className="grid grid-cols-2 gap-3">
+            {/* Quick Actions: More & Copy Link */}
+            <div className="grid grid-cols-2 gap-2.5">
               <button
                 onClick={handleNativeShare}
-                className="py-3 px-4 rounded-2xl bg-primary-600/20 border border-primary-500/40 text-primary-300 hover:bg-primary-600 hover:text-white transition-all font-mono text-xs font-bold uppercase tracking-wider flex items-center justify-center gap-2 shadow-lg"
+                className="py-2.5 px-3 rounded-xl bg-primary-600/20 border border-primary-500/40 text-primary-300 hover:bg-primary-600 hover:text-white transition-all font-mono text-xs font-bold uppercase tracking-wider flex items-center justify-center gap-2 shadow-lg"
               >
-                <Share2 size={16} /> Device Share
+                <Share2 size={15} /> More
               </button>
               <button
                 onClick={handleCopyLink}
-                className="py-3 px-4 rounded-2xl bg-white/5 border border-white/15 text-zinc-200 hover:bg-white/10 transition-all font-mono text-xs font-bold uppercase tracking-wider flex items-center justify-center gap-2"
+                className="py-2.5 px-3 rounded-xl bg-white/5 border border-white/15 text-zinc-200 hover:bg-white/10 transition-all font-mono text-xs font-bold uppercase tracking-wider flex items-center justify-center gap-2"
               >
-                {copied ? <Check size={16} className="text-green-400" /> : <Copy size={16} />}
+                {copied ? <Check size={15} className="text-green-400" /> : <Copy size={15} />}
                 {copied ? 'Copied!' : 'Copy Link'}
               </button>
             </div>
 
             {/* Send in Private Message */}
-            <div className="space-y-3 pt-2 border-t border-white/10">
+            <div className="space-y-2.5 pt-2 border-t border-white/10">
               <div className="flex items-center justify-between">
-                <span className="text-xs font-mono font-bold text-zinc-300 uppercase tracking-wider flex items-center gap-1.5">
-                  <MessageSquare size={14} className="text-primary-500" /> Send in Private Message
+                <span className="text-[11px] font-mono font-bold text-zinc-300 uppercase tracking-wider flex items-center gap-1.5">
+                  <MessageSquare size={13} className="text-primary-500" /> Send in Private Message
                 </span>
               </div>
 
               {/* Search User Input */}
               <div className="relative">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-500" />
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-zinc-500" />
                 <input
                   type="text"
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  placeholder="Search adventurer username..."
-                  className="w-full bg-white/5 border border-white/10 rounded-xl pl-9 pr-4 py-2 text-xs text-white placeholder-zinc-500 focus:outline-none focus:border-primary-500/50"
+                  placeholder="Search username..."
+                  className="w-full bg-white/5 border border-white/10 rounded-xl pl-8 pr-3 py-1.5 text-xs text-white placeholder-zinc-500 focus:outline-none focus:border-primary-500/50"
                 />
               </div>
 
               {/* User List */}
-              <div className="max-h-40 overflow-y-auto space-y-2 pr-1 custom-scrollbar">
+              <div className="max-h-36 overflow-y-auto space-y-1.5 pr-1 custom-scrollbar">
                 {loadingUsers ? (
-                  <div className="text-center py-4 text-xs text-zinc-500">Searching agents...</div>
+                  <div className="text-center py-3 text-[11px] text-zinc-500">Searching agents...</div>
                 ) : users.length === 0 ? (
-                  <div className="text-center py-4 text-xs text-zinc-500">No adventurers found</div>
+                  <div className="text-center py-3 text-[11px] text-zinc-500">No adventurers found</div>
                 ) : (
                   users.map((u) => {
                     const isSent = sentMap[u.id];
                     const isSending = sendingToId === u.id;
 
                     return (
-                      <div key={u.id} className="flex items-center justify-between p-2 rounded-xl bg-white/5 border border-white/5 hover:border-white/15 transition-all">
-                        <div className="flex items-center gap-2.5">
-                          <ProfileAvatar profile={u} className="w-8 h-8" />
+                      <div key={u.id} className="flex items-center justify-between p-1.5 rounded-xl bg-white/5 border border-white/5 hover:border-white/15 transition-all">
+                        <div className="flex items-center gap-2">
+                          <ProfileAvatar profile={u} className="w-7 h-7" />
                           <span className="text-xs font-bold text-zinc-200">{u.username}</span>
                         </div>
                         <button
                           disabled={isSent || isSending}
                           onClick={() => handleSendPrivateMessage(u.id)}
-                          className={`px-3 py-1.5 rounded-lg text-xs font-mono font-bold transition-all flex items-center gap-1.5 ${
+                          className={`px-2.5 py-1 rounded-lg text-[11px] font-mono font-bold transition-all flex items-center gap-1 ${
                             isSent
                               ? 'bg-green-600/20 border border-green-500/40 text-green-400'
                               : 'bg-primary-600/30 border border-primary-500/40 text-primary-300 hover:bg-primary-600 hover:text-white'
@@ -284,13 +292,13 @@ export default function PostShareModal({ isOpen, onClose, post, customUrl, custo
                         >
                           {isSent ? (
                             <>
-                              <Check size={12} /> Sent
+                              <Check size={11} /> Sent
                             </>
                           ) : isSending ? (
                             'Sending...'
                           ) : (
                             <>
-                              <Send size={12} /> Send
+                              <Send size={11} /> Send
                             </>
                           )}
                         </button>
@@ -302,18 +310,18 @@ export default function PostShareModal({ isOpen, onClose, post, customUrl, custo
             </div>
 
             {/* Social Share Buttons */}
-            <div className="space-y-3 pt-2 border-t border-white/10">
-              <span className="text-xs font-mono font-bold text-zinc-300 uppercase tracking-wider flex items-center gap-1.5">
-                <Globe size={14} className="text-primary-500" /> External Platforms
+            <div className="space-y-2.5 pt-2 border-t border-white/10">
+              <span className="text-[11px] font-mono font-bold text-zinc-300 uppercase tracking-wider flex items-center gap-1.5">
+                <Globe size={13} className="text-primary-500" /> External Platforms
               </span>
-              <div className="flex flex-wrap gap-2">
+              <div className="flex flex-wrap gap-1.5">
                 {socialPlatforms.map((platform) => (
                   <a
                     key={platform.name}
                     href={platform.url}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className={`px-3 py-2 rounded-xl border text-xs font-bold font-mono tracking-wider transition-all flex items-center gap-1.5 ${platform.color}`}
+                    className={`px-2.5 py-1.5 rounded-xl border text-[11px] font-bold font-mono tracking-wider transition-all flex items-center gap-1 ${platform.color}`}
                   >
                     {platform.name}
                   </a>

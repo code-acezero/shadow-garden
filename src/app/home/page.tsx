@@ -12,6 +12,8 @@ import Footer from "@/components/Anime/Footer";
 import { AnimeService } from "@/lib/api";
 import { sfx } from "@/lib/audioManager";
 
+import CuteShareBar from "@/components/Home/CuteShareBar";
+
 // Lazy-loaded heavy sections with skeletons
 const ContinueWatching = dynamic(
   () => import("@/components/Home/ContinueWatching"),
@@ -141,6 +143,7 @@ function HomeContent() {
             )}
           </div>
 
+          <CuteShareBar />
           <Footer />
         </div>
       </MobileContainer>

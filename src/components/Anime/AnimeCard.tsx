@@ -125,18 +125,26 @@ export default function AnimeCard({ anime, progress = 0, isHindi = false }: Anim
 
     // Route Logic
     let finalRoute = "";
-    if (anime.targetRoute) {
+    if (anime.targetRoute && anime.targetRoute.includes('?ep=')) {
         finalRoute = anime.targetRoute;
     } else {
+        const isDonghua = (anime.type?.toLowerCase() === 'donghua') || (anime.targetRoute && anime.targetRoute.includes('/donghua-watch/'));
         const baseUrl = (isHindi || anime.isHindi || anime.source === 'hindi') 
             ? `/hindi-watch/${anime.id}` 
+            : isDonghua
+            ? `/donghua-watch/${anime.id}`
             : `/watch/${anime.id}`;
-        if (anime.episodeId) {
-            finalRoute = `${baseUrl}?ep=${anime.episodeId}`;
-        } else if (anime.episode && anime.episode > 0) {
-            finalRoute = `${baseUrl}?ep=${anime.episode}`;
+
+        const latestEpNum = anime.episodeId || anime.latestEpisode || anime.episode || subCount || totalEp;
+
+        if (latestEpNum && latestEpNum !== 0 && latestEpNum !== '0') {
+            const epParam = (typeof latestEpNum === 'string' && (latestEpNum.startsWith('/') || latestEpNum.includes('?'))) 
+                ? latestEpNum 
+                : `?ep=${latestEpNum}`;
+            const targetBase = anime.targetRoute ? anime.targetRoute : baseUrl;
+            finalRoute = targetBase.includes('?ep=') ? targetBase : `${targetBase}${epParam}`;
         } else {
-            finalRoute = baseUrl;
+            finalRoute = anime.targetRoute || baseUrl;
         }
     }
 
