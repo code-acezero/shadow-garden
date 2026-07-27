@@ -583,6 +583,69 @@ class AudioMatrix {
         }
     }
 
+    dimBGM(targetVol = 0.05, fadeMs = 500) {
+        if (this.currentBgmIdx < 0) return;
+        const key = `bgm_${this.currentBgmIdx}`;
+        const a = this.sources.get(key);
+        if (!a) return;
+        
+        if (this.fadeIntervals.has(key)) clearInterval(this.fadeIntervals.get(key) as any);
+        const startVol = a.volume;
+        if (startVol <= targetVol) return;
+        const step = (startVol - targetVol) / (fadeMs / 50);
+        
+        const id = setInterval(() => {
+            a.volume = Math.max(targetVol, a.volume - step);
+            if (a.volume <= targetVol + 0.01) {
+                a.volume = targetVol;
+                clearInterval(id as any);
+                this.fadeIntervals.delete(key);
+            }
+        }, 50);
+        this.fadeIntervals.set(key, id);
+    }
+
+    restoreBGM(targetVol = 0.25, fadeMs = 500) {
+        if (this.currentBgmIdx < 0) return;
+        const key = `bgm_${this.currentBgmIdx}`;
+        const a = this.sources.get(key);
+        if (!a) return;
+        
+        if (this.fadeIntervals.has(key)) clearInterval(this.fadeIntervals.get(key) as any);
+        const startVol = a.volume;
+        if (startVol >= targetVol) return;
+        const step = (targetVol - startVol) / (fadeMs / 50);
+        
+        const id = setInterval(() => {
+            a.volume = Math.min(targetVol, a.volume + step);
+            if (a.volume >= targetVol - 0.01) {
+                a.volume = targetVol;
+                clearInterval(id as any);
+                this.fadeIntervals.delete(key);
+            }
+        }, 50);
+        this.fadeIntervals.set(key, id);
+    }
+
+    pauseBGM() {
+        if (this.currentBgmIdx < 0) return;
+        const key = `bgm_${this.currentBgmIdx}`;
+        const a = this.sources.get(key);
+        if (a) {
+            if (this.fadeIntervals.has(key)) clearInterval(this.fadeIntervals.get(key) as any);
+            a.pause();
+        }
+    }
+
+    resumeBGM() {
+        if (this.currentBgmIdx < 0) return;
+        const key = `bgm_${this.currentBgmIdx}`;
+        const a = this.sources.get(key);
+        if (a) {
+            a.play().catch(e => console.error("BGM Resume Error", e));
+        }
+    }
+
     stopAll(fadeMs = 500) {
         this.sources.forEach((_, key) => this.stop(key, fadeMs));
         this.stopLoop('bhHum', fadeMs);

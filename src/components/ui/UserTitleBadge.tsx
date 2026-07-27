@@ -60,9 +60,12 @@ interface UserTitleBadgeProps {
   showPrefix?: boolean;
 }
 
+// Internal helper for raw online status
 export function isUserOnline(user?: UserTitleProfile | null): boolean {
   if (!user || typeof user !== 'object') return false;
+  // If explicitly set (like in realtime presence), use it
   if (user.is_online === true || user.online === true) return true;
+  // Otherwise, fallback to heartbeat (updated_at)
   if (user.updated_at) {
     const lastActive = new Date(user.updated_at).getTime();
     if (!isNaN(lastActive) && Date.now() - lastActive < 5 * 60 * 1000) {
@@ -72,9 +75,23 @@ export function isUserOnline(user?: UserTitleProfile | null): boolean {
   return false;
 }
 
+import { useAuth } from '@/context/AuthContext';
+
 export function UserOnlinePulse({ user, className = '' }: { user?: UserTitleProfile | null; className?: string }) {
+  const { profile: currentUser } = useAuth();
   const online = isUserOnline(user);
+  
   if (!online) return null;
+
+  // Check privacy settings
+  const hideOnlineStatus = user?.settings?.hideOnlineStatus === true;
+  const isViewerAdminOrMod = currentUser?.role === 'admin' || currentUser?.role === 'moderator' || currentUser?.role === 'leader';
+  const isSelf = currentUser?.id === user?.id;
+
+  // If user hides status, only show it to admins/mods or themselves
+  if (hideOnlineStatus && !isViewerAdminOrMod && !isSelf) {
+    return null;
+  }
 
   return (
     <span className={`inline-flex items-center shrink-0 ml-1 ${className}`} title="Active Real-time">

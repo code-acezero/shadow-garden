@@ -11,9 +11,11 @@ import {
 } from 'lucide-react';
 
 // ✅ FIXED IMPORTS
+import { useAuth } from '@/context/AuthContext';
+import { supabase } from '@/lib/supabase';
+import { AnimeService, UserAPI, UniversalAnimeBase } from '@/lib/api';
 import { Button } from '@/components/ui/button';
-import { UserAPI, AnimeService, UniversalAnimeBase } from '@/lib/api'; 
-import { supabase } from '@/lib/supabase'; // ✅ CRITICAL: Import Singleton directly
+import { sfx } from '@/lib/audioManager'; 
 import AuthModal from '@/components/Auth/AuthModal';
 import SearchBar from '@/components/Anime/SearchBar';
 import ShadowGardenPortal from '@/components/Portal/ShadowGardenPortal';
@@ -318,6 +320,7 @@ export default function LandingClient() {
   const heroScale = useTransform(scrollY, [0, 400], [1, 1.1]);
 
   useEffect(() => {
+    if (typeof window !== 'undefined') sfx.stopAll(1500);
     const mobileCheck = window.innerWidth < 768;
     setIsMobile(mobileCheck);
     if (mobileCheck) {

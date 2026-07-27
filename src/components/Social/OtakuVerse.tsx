@@ -30,7 +30,7 @@ import { formatDistanceToNow } from 'date-fns';
 import ImageLightbox from './ImageLightbox';
 import ClanSystem from './Clans/ClanSystem';
 import ShadowComments from '@/components/Comments/ShadowComments';
-import { RoleTitleBadge } from '@/components/ui/RoleTitleBadge';
+import { UserTitleBadge } from '@/components/ui/UserTitleBadge';
 import Link from 'next/link';
 import Footer from '@/components/Anime/Footer';
 import InstagramPostCard from './InstagramPostCard';
@@ -286,7 +286,7 @@ export default function OtakuVerse({ user, onAuthRequired, highlightId, initialN
         .from('social_posts')
         .select(`
           *,
-          user:profiles(username, avatar_url, role, level, admin_title, title, frame_id, show_level),
+          user:profiles(username, avatar_url, role, level, admin_title, title, frame_id, show_level, settings, updated_at),
           clan:clans(id, name, avatar_url)
         `)
         .order('created_at', { ascending: false });
@@ -414,7 +414,7 @@ export default function OtakuVerse({ user, onAuthRequired, highlightId, initialN
           images: uploadedUrls,
           tags: []
         })
-        .select(`*, user:profiles(username, avatar_url, role, level, admin_title, title, frame_id, show_level)`)
+        .select(`*, user:profiles(username, avatar_url, role, level, admin_title, title, frame_id, show_level, settings, updated_at)`)
         .single();
 
       if (error) throw error;
@@ -487,7 +487,7 @@ export default function OtakuVerse({ user, onAuthRequired, highlightId, initialN
     try {
       const { data, error } = await supabase
         .from('social_comments')
-        .select(`*, user:profiles(username, avatar_url, role, level, admin_title, title, frame_id, show_level)`)
+        .select(`*, user:profiles(username, avatar_url, role, level, admin_title, title, frame_id, show_level, settings, updated_at)`)
         .eq('post_id', postId)
         .order('created_at', { ascending: true });
 
@@ -575,7 +575,7 @@ export default function OtakuVerse({ user, onAuthRequired, highlightId, initialN
     try {
       const { data, error } = await supabase
         .from('comments')
-        .select(`*, user:profiles(username, avatar_url, role, level, admin_title, title, frame_id, show_level)`)
+        .select(`*, user:profiles(username, avatar_url, role, level, admin_title, title, frame_id, show_level, settings, updated_at)`)
         .eq('episode_id', `news_${newsId}`)
         .order('created_at', { ascending: true });
 
@@ -1229,7 +1229,7 @@ const PostItem = React.forwardRef<HTMLDivElement, any>(({ post, highlightId, onL
                       className="font-bold text-sm text-white hover:underline cursor-pointer truncate"
                       onClick={(e) => { e.stopPropagation(); window.location.href = `/profile/${post.user?.username}`; }}
                   >{post.user?.username || 'Otaku Explorer'}</span>
-                  <RoleTitleBadge role={post.user?.role} adminTitle={post.user?.admin_title} className="shrink-0" />
+                  <UserTitleBadge user={post.user} className="shrink-0" />
                   <span className="text-zinc-500 text-xs truncate">@{post.user?.username?.toLowerCase().replace(/\s/g, '')}</span>
                   <span className="text-zinc-500 text-xs">·</span>
                   <span className="text-zinc-500 text-xs shrink-0">{formatDistanceToNow(new Date(post.created_at), { addSuffix: false })}</span>
@@ -1307,7 +1307,7 @@ function FacebookCommentBubble({ comment, onReply, isReply = false }: { comment:
             <span className="font-bold text-xs text-white hover:underline cursor-pointer">
               {comment.user?.username || 'User'}
             </span>
-            <RoleTitleBadge role={comment.user?.role} adminTitle={comment.user?.admin_title} />
+            <UserTitleBadge user={comment.user} />
           </div>
           <p className="text-xs text-zinc-200 mt-1 whitespace-pre-wrap leading-relaxed">
             {isReply && (comment as any).replyToUser && (

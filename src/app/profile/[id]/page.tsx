@@ -280,7 +280,8 @@ export default function PublicProfilePage({ params }: { params: Promise<{ id: st
                             </div>
 
                             <div className="flex gap-2 md:ml-auto">
-                                <Button 
+                                {(profile.settings?.allowRequests !== false || isFollowing) && (
+                                    <Button 
                                     onClick={handleFollowToggle} 
                                     variant={isPartner ? "secondary" : isFollowing ? "secondary" : "default"} 
                                     className={
@@ -291,6 +292,7 @@ export default function PublicProfilePage({ params }: { params: Promise<{ id: st
                                 >
                                     {isPartner ? "Partner" : isFollowing ? "Following" : "Follow"}
                                 </Button>
+                                )}
                                 <div className="relative">
                                     <Button onClick={handleMessageClick} variant="secondary" className="bg-zinc-800 hover:bg-zinc-700 text-white h-8 px-4 font-bold text-sm rounded-lg">Message</Button>
                                     {unreadCount > 0 && (
@@ -416,7 +418,14 @@ export default function PublicProfilePage({ params }: { params: Promise<{ id: st
                     
                     {/* WATCH HISTORY */}
                     <TabsContent value="watchlist" className="mt-4 outline-none">
-                        {watchHistory.length === 0 ? (
+                        {profile.settings?.publicActivity === false ? (
+                            <div className="flex flex-col items-center justify-center py-20 text-zinc-500">
+                                <div className="w-24 h-24 rounded-full border-2 border-zinc-800 flex items-center justify-center mb-6">
+                                    <ShieldAlert size={40} className="text-zinc-700"/>
+                                </div>
+                                <h2 className="text-3xl font-black text-white mb-4 tracking-tighter">History is Private</h2>
+                            </div>
+                        ) : watchHistory.length === 0 ? (
                             <div className="flex flex-col items-center justify-center py-20 text-zinc-500">
                                 <div className="w-24 h-24 rounded-full border-2 border-zinc-800 flex items-center justify-center mb-6">
                                     <History size={40} className="text-zinc-700"/>

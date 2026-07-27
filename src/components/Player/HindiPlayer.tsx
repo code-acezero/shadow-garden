@@ -227,6 +227,9 @@ const HindiPlayer = forwardRef<HindiPlayerRef, HindiPlayerProps>(({
             };
         }
         localStorage.setItem('shadow_player_prefs', JSON.stringify(newState));
+        if (typeof window !== 'undefined') {
+            window.dispatchEvent(new CustomEvent('update_player_prefs', { detail: { playerPrefs: newState } }));
+        }
     };
 
     // --- DYNAMIC CSS ---

@@ -592,13 +592,24 @@ export default function AlphaWidget() {
                 }
                 audioRef.current = audio;
                 
-                audio.onplay = () => setIsPlayingAudio(true);
+                audio.onplay = () => {
+                    setIsPlayingAudio(true);
+                    sfx.dimBGM(0.02, 500);
+                };
                 audio.onended = () => {
                     setIsPlayingAudio(false);
+                    sfx.restoreBGM(0.25, 800);
                 };
-                audio.onerror = () => setIsPlayingAudio(false);
+                audio.onerror = () => {
+                    setIsPlayingAudio(false);
+                    sfx.restoreBGM(0.25, 800);
+                };
                 
-                audio.play().catch(e => console.error("Audio play failed:", e));
+                audio.play().catch(e => {
+                    console.error("Audio play failed:", e);
+                    setIsPlayingAudio(false);
+                    sfx.restoreBGM(0.25, 800);
+                });
             } else if (cleanText) {
                 // If TTS is disabled or fetching is skipped, still stop previous audio if we got a new message
                 if (audioRef.current) {

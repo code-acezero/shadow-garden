@@ -150,6 +150,42 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     return () => { isMounted.current = false; subscription.unsubscribe(); };
   }, [fetchProfile, loadUserProfile]);
 
+  useEffect(() => {
+    if (!user) return;
+    
+    const sendHeartbeat = () => {
+      // Only send heartbeat if the tab is actively visible to prevent ghost online states
+      if (typeof document !== 'undefined' && document.visibilityState === 'visible') {
+        supabase.from('profiles').update({ 
+          is_online: true, 
+          updated_at: new Date().toISOString() 
+        }).eq('id', user.id).catch(() => {});
+      }
+    };
+
+    // Initial heartbeat
+    sendHeartbeat();
+    
+    // Heartbeat every 2 minutes
+    const interval = setInterval(sendHeartbeat, 2 * 60 * 1000);
+    
+    // Mark as offline when tab is closed
+    const handleBeforeUnload = () => {
+      supabase.from('profiles').update({ is_online: false }).eq('id', user.id).catch(() => {});
+    };
+    
+    if (typeof window !== 'undefined') {
+      window.addEventListener('beforeunload', handleBeforeUnload);
+    }
+    
+    return () => {
+      clearInterval(interval);
+      if (typeof window !== 'undefined') {
+        window.removeEventListener('beforeunload', handleBeforeUnload);
+      }
+    };
+  }, [user]);
+
   const signOut = useCallback(async () => {
     try { 
       // Add a 2-second timeout to prevent signOut from hanging indefinitely

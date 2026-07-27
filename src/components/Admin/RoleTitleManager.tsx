@@ -9,6 +9,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import ProfileAvatar from '@/components/User/ProfileAvatar';
+import { UserOnlinePulse } from '@/components/ui/UserTitleBadge';
 import { toast } from '@/lib/toast';
 import { saveCustomTitleGreetings, deleteCustomTitleGreetings } from '@/lib/alphaGreetings';
 
@@ -141,8 +142,9 @@ function UserSelectorDropdown({
                     <div className="flex items-center gap-2.5 min-w-0">
                       <ProfileAvatar profile={m} className="w-7 h-7 border border-white/10 shrink-0" />
                       <div className="min-w-0">
-                        <p className="text-xs font-bold text-white group-hover:text-purple-300 truncate">
+                        <p className="text-xs font-bold text-white group-hover:text-purple-300 truncate flex items-center">
                           {cleanName}
+                          <UserOnlinePulse user={m} />
                         </p>
                         <p className="text-[10px] text-zinc-500 truncate">
                           Lvl {m.level || 1} • {m.role || 'Member'}

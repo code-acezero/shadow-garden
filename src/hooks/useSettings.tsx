@@ -65,6 +65,9 @@ export interface AppSettings {
   // Privacy
   hideOnlineStatus: boolean;
   hideLevelBadge: boolean;
+
+  // Player Prefs Sync
+  playerPrefs?: any;
 }
 
 export const DEFAULT_SETTINGS: AppSettings = {
@@ -187,6 +190,11 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
     // 2. Profile Sync
     if (user && profile?.settings) {
       currentSettings = { ...currentSettings, ...profile.settings };
+      
+      // Override local shadow_player_prefs if DB has newer playerPrefs
+      if (currentSettings.playerPrefs) {
+          localStorage.setItem('shadow_player_prefs', JSON.stringify(currentSettings.playerPrefs));
+      }
     }
 
     // --- ✅ FORCE-ACTIVATE DEFAULT VOICE (HANA) IF MISSING ---
@@ -271,11 +279,21 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
       settings,
       updateSetting,
       resetSettings,
-      isLoaded,
-      storageUsage,
-      clearCache
     };
   }, [settings, isLoaded, storageUsage, updateSetting, resetSettings, clearCache]);
+
+  useEffect(() => {
+    const handlePlayerPrefsUpdate = (e: any) => {
+      if (e.detail && e.detail.playerPrefs) {
+        updateSetting('playerPrefs', e.detail.playerPrefs);
+      }
+    };
+    
+    if (typeof window !== 'undefined') {
+      window.addEventListener('update_player_prefs', handlePlayerPrefsUpdate);
+      return () => window.removeEventListener('update_player_prefs', handlePlayerPrefsUpdate);
+    }
+  }, [updateSetting]);
 
   return (
     <SettingsContext.Provider value={value}>

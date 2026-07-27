@@ -307,6 +307,9 @@ export default function Settings() {
       const newState = { ...current, subStyle: { ...(current.subStyle || {}), ...value } };
       if (key === 'subStyle') setSubStyle(newState.subStyle);
       localStorage.setItem('shadow_player_prefs', JSON.stringify(newState));
+      if (typeof window !== 'undefined') {
+          window.dispatchEvent(new CustomEvent('update_player_prefs', { detail: { playerPrefs: newState } }));
+      }
   };
 
   const handleGlobalAction = (action: string) => {
@@ -606,7 +609,13 @@ export default function Settings() {
                         <div className="bg-[#0f0f0f] rounded-[32px] border border-white/5 p-8 shadow-lg">
                             <h3 className="text-xs font-black text-zinc-500 uppercase tracking-widest flex items-center gap-2 mb-4"><Lock size={14} className="text-primary"/> Security & Privacy</h3>
                             <ToggleRow title="Two-Factor Auth" desc="Secure via Authenticator" checked={settings.twoFactor} onChange={(v: boolean) => updateSetting('twoFactor', v)} />
+                            <ToggleRow title="Login Alerts" desc="Notify me of new sign-ins from unrecognized devices" checked={settings.loginAlerts} onChange={(v: boolean) => updateSetting('loginAlerts', v)} />
+                            <ToggleRow title="Show Active Status" desc="Show green pulse when you are online globally." checked={!settings.hideOnlineStatus} onChange={(v: boolean) => updateSetting('hideOnlineStatus', !v)} />
+                            <ToggleRow title="Incognito Mode" desc="Pause watch history and hide recent activity" checked={settings.incognito} onChange={(v: boolean) => updateSetting('incognito', v)} />
+                            <ToggleRow title="Public Activity" desc="Allow others to see your public stats and watch history" checked={settings.publicActivity} onChange={(v: boolean) => updateSetting('publicActivity', v)} />
+                            <ToggleRow title="Allow Friend Requests" desc="Let other users send you friend requests" checked={settings.allowRequests} onChange={(v: boolean) => updateSetting('allowRequests', v)} />
                             <ToggleRow title="Hide Level Badge" desc="Hide level badge overlay on your avatar" checked={settings.hideLevelBadge || false} onChange={(v: boolean) => updateSetting('hideLevelBadge', v)} />
+                            
                             <div className="pt-4 border-t border-white/5 space-y-3 mt-4">
                                 <label className="text-[10px] font-bold text-zinc-500 uppercase">Change Password</label>
                                 <input type="password" placeholder="New Password" value={passData.newPass} onChange={e => setPassData({...passData, newPass: e.target.value})} className="w-full bg-black/40 border border-white/5 rounded-xl px-4 py-3 text-sm text-white focus:border-primary/50 outline-none" />
