@@ -10,6 +10,7 @@ import MobileContainer from "@/components/Layout/MobileContainer";
 import SpotlightSlider from "@/components/Anime/SpotlightSlider";
 import Footer from "@/components/Anime/Footer";
 import { AnimeService } from "@/lib/api";
+import { sfx } from "@/lib/audioManager";
 
 // Lazy-loaded heavy sections with skeletons
 const ContinueWatching = dynamic(
@@ -48,8 +49,11 @@ function HomeContent() {
 
   useEffect(() => {
     // Fade out and stop any playing portal BGM after reaching home
-    if (typeof window !== 'undefined' && (window as any).stopShadowBGM) {
-      (window as any).stopShadowBGM();
+    if (typeof window !== 'undefined') {
+      sfx.stopAll(1500);
+      if ((window as any).stopShadowBGM) {
+        (window as any).stopShadowBGM();
+      }
     }
   }, []);
 

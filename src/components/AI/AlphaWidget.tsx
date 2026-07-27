@@ -399,33 +399,11 @@ export default function AlphaWidget() {
 
     useEffect(() => {
         if (typeof window !== 'undefined') {
-            const permitted = localStorage.getItem('shadow_audio_permitted') === 'true';
-            if (pathname.includes('/watch')) {
+            if (pathname === '/home' || pathname.includes('/watch')) {
                 sfx.stopAll(1000);
                 setIsPlayingBGM(false);
-            } else if (permitted && !isPlayingBGM) {
-                const startBgm = () => {
-                    if (!isPlayingBGM) {
-                        sfx.playRandomBGM();
-                        setIsPlayingBGM(true);
-                    }
-                    window.removeEventListener('click', startBgm);
-                };
-                window.addEventListener('click', startBgm);
-                
-                const t = setTimeout(() => {
-                    // Check if they haven't manually started it in the meantime
-                    sfx.playRandomBGM();
-                    setIsPlayingBGM(true);
-                }, 1500);
-
-                return () => {
-                    window.removeEventListener('click', startBgm);
-                    clearTimeout(t);
-                };
             }
         }
-        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [pathname]);
 
     const {
