@@ -14,7 +14,6 @@ import {
   ChevronLeft, ChevronRight, Pause, ArrowLeft, ArrowRight, Download, Wand2,
   PlayCircle, StepForward, Share2
 } from 'lucide-react';
-import PostShareModal from '@/components/Social/PostShareModal';
 
 import { AnimeService, UniversalAnime } from '@/lib/api';
 import { dpi } from '@/lib/dpi';
@@ -22,8 +21,8 @@ import { supabase } from '@/lib/supabase';
 import { cn, isRelatedAnime, getChunkLabel, formatAnimeTitle, sanitizeContinueWatchingEntry } from '@/lib/utils';
 import { toast } from '@/lib/toast';
 import { useAuth } from '@/context/AuthContext';
-import { useSettings } from '@/hooks/useSettings';
 import { sfx } from '@/lib/audioManager';
+import PostShareModal from '@/components/Social/PostShareModal';
 
 import AnimePlayer, { AnimePlayerRef } from '@/components/Player/AnimePlayer';
 import WatchListButton from '@/components/Watch/WatchListButton';
@@ -91,28 +90,30 @@ const useDraggable = () => {
 }
 
 const useWatchSettings = () => {
-  const { settings: globalSettings, updateSetting: globalUpdateSetting, isLoaded } = useSettings();
-  const [dimMode, setDimMode] = useState(false);
+  const { user } = useAuth();
+  const [isLoaded, setIsLoaded] = useState(false);
+  const [settings, setSettings] = useState({
+    autoPlay: true, autoNext: true, autoSkip: false, dimMode: false,
+    server: 'VidPlay-1', category: 'sub' as 'sub' | 'dub' | 'raw', volume: 1
+  });
 
-  const settings = {
-    autoPlay: globalSettings.autoPlay,
-    autoNext: globalSettings.autoPlay,
-    autoSkip: globalSettings.autoSkipOpEd,
-    dimMode,
-    server: globalSettings.defaultServer || 'hd-1',
-    category: globalSettings.defaultAudio === 'jp' ? 'sub' : 'dub',
-    volume: globalSettings.defaultVolume !== undefined ? globalSettings.defaultVolume : 1
-  };
+  useEffect(() => {
+      if (typeof window !== 'undefined') {
+          const saved = localStorage.getItem('shadow_watch_settings_donghua');
+          if (saved) {
+             setSettings(prev => ({ ...prev, ...JSON.parse(saved) }));
+          }
+          setIsLoaded(true);
+      }
+  }, []);
 
   const updateSetting = useCallback((key: string, value: any) => {
-    if (key === 'dimMode') setDimMode(value);
-    else if (key === 'autoPlay' || key === 'autoNext') globalUpdateSetting('autoPlay', value);
-    else if (key === 'autoSkip') globalUpdateSetting('autoSkipOpEd', value);
-    else if (key === 'server') globalUpdateSetting('defaultServer', value);
-    else if (key === 'category') globalUpdateSetting('defaultAudio', value === 'sub' ? 'jp' : 'en');
-    else if (key === 'volume') globalUpdateSetting('defaultVolume', value);
-  }, [globalUpdateSetting]);
-
+      setSettings(prev => {
+          const newSettings = { ...prev, [key]: value };
+          localStorage.setItem('shadow_watch_settings_donghua', JSON.stringify(newSettings));
+          return newSettings;
+      });
+  }, []);
   return { settings, updateSetting, isSettingsLoaded: isLoaded };
 };
 
@@ -605,18 +606,8 @@ function WatchContent() {
   const urlType = searchParams.get('type'); 
 
   const { user } = useAuth();
-  const { settings: appSettings } = useSettings();
   const { continueData } = useUserData();
   const { settings, updateSetting, isSettingsLoaded } = useWatchSettings();
-  const [showShareModal, setShowShareModal] = useState(false);
-
-  // Pause BGM when entering Watch Page, resume when leaving
-  useEffect(() => {
-    if (typeof window !== 'undefined') sfx.pauseBGM();
-    return () => {
-      if (typeof window !== 'undefined') sfx.resumeBGM();
-    };
-  }, []);
 
   const [popupHistory, setPopupHistory] = useState<{type: 'character'|'actor', id: string}[]>([]);
   const [popupIndex, setPopupIndex] = useState(-1);
@@ -634,6 +625,16 @@ function WatchContent() {
   const goBack = useCallback(() => setPopupIndex(prev => Math.max(0, prev - 1)), []);
   const goForward = useCallback(() => setPopupIndex(prev => Math.min(popupHistory.length - 1, prev + 1)), [popupHistory.length]);
   const closeAll = useCallback(() => { setPopupHistory([]); setPopupIndex(-1); }, []);
+
+  const [showShareModal, setShowShareModal] = useState(false);
+
+  // Pause BGM when entering Watch Page, resume when leaving
+  useEffect(() => {
+    if (typeof window !== 'undefined') sfx.pauseBGM();
+    return () => {
+      if (typeof window !== 'undefined') sfx.resumeBGM();
+    };
+  }, []);
 
   const [anime, setAnime] = useState<UniversalAnime | null>(null);
   const [isLoadingInfo, setIsLoadingInfo] = useState(true);
@@ -734,8 +735,6 @@ function WatchContent() {
           return { ...prev, [ep.number]: isCompleted ? 100 : percent };
       });
 
-      if (appSettings.incognito) return;
-
       if (user) {
           const episodeImage = (ep as any).image || (ep as any).poster || anime.poster;
           const rawTitle = anime.title || (anime as any).name || (anime as any).jname;
@@ -798,7 +797,7 @@ function WatchContent() {
 
           if (typeof window !== 'undefined') window.dispatchEvent(new CustomEvent('shadow-continue-updated'));
       }
-  }, [anime, currentEpId, user, animeId, settings.server, appSettings.incognito, flushSyncBuffer]);
+  }, [anime, currentEpId, user, animeId, settings.server, flushSyncBuffer]);
 
   // Instant Watch History Registration on Page Visit / Episode Change
   useEffect(() => {

@@ -20,6 +20,7 @@ import { RoleTitleBadge } from '@/components/ui/RoleTitleBadge';
 import { getUserTitle } from '@/components/ui/UserTitleBadge';
 import { useMentions } from '@/hooks/useMentions';
 import MentionDropdown from '@/components/ui/MentionDropdown';
+import { cn } from '@/lib/utils';
 
 export interface ChatMessage {
   id: string;
@@ -218,6 +219,87 @@ function VoiceMessagePlayer({ audioUrl, isMe }: { audioUrl: string; isMe: boolea
   );
 }
 
+function SharedMediaCard({ data, isMe }: { data: any; isMe: boolean }) {
+  const router = useRouter();
+
+  return (
+    <div 
+      onClick={(e) => {
+        e.stopPropagation();
+        if (data.url) router.push(data.url);
+      }}
+      className={cn(
+        "p-3 rounded-2xl border transition-all cursor-pointer group shadow-2xl max-w-xs sm:max-w-sm overflow-hidden mb-1",
+        isMe 
+          ? "bg-black/60 border-primary-500/40 hover:bg-black/80 hover:border-primary-400 text-white" 
+          : "bg-black/80 border-white/15 hover:bg-black/95 hover:border-primary-500/50 text-white"
+      )}
+    >
+      <div className="flex gap-3 items-center">
+        {data.poster ? (
+          <div className="w-14 h-20 shrink-0 rounded-xl overflow-hidden relative border border-white/10 shadow-md">
+            <img 
+              src={data.poster} 
+              alt={data.title || ''} 
+              className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" 
+            />
+            <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+              <Play size={16} className="text-white fill-white" />
+            </div>
+          </div>
+        ) : (
+          <div className="w-14 h-20 shrink-0 rounded-xl bg-primary-950/40 border border-primary-500/30 flex items-center justify-center text-primary-400">
+            <Play size={18} />
+          </div>
+        )}
+
+        <div className="flex-1 min-w-0 flex flex-col justify-between py-0.5">
+          <div>
+            <div className="flex items-center gap-1.5 flex-wrap mb-1">
+              {data.type && (
+                <span className="px-1.5 py-0.5 rounded text-[8px] font-black uppercase tracking-wider bg-primary-600/40 border border-primary-500/40 text-primary-200">
+                  {data.type}
+                </span>
+              )}
+              {data.rating && (
+                <span className="px-1.5 py-0.5 rounded text-[8px] font-black uppercase tracking-wider bg-white/10 border border-white/15 text-zinc-300">
+                  {data.rating}
+                </span>
+              )}
+              {data.totalEpisodes ? (
+                <span className="text-[9px] font-bold text-zinc-400">
+                  {data.totalEpisodes} Eps
+                </span>
+              ) : null}
+            </div>
+
+            <h4 className="text-xs font-black text-white line-clamp-1 group-hover:text-primary-400 transition-colors">
+              {data.title || 'Shared Content'}
+            </h4>
+
+            {data.episodeNumber ? (
+              <span className="text-[10px] font-black text-primary-400 uppercase tracking-widest block mt-0.5">
+                Episode {data.episodeNumber}
+              </span>
+            ) : null}
+
+            {data.synopsis && (
+              <p className="text-[10px] text-zinc-400 line-clamp-2 mt-1 leading-snug">
+                {data.synopsis}
+              </p>
+            )}
+          </div>
+
+          <div className="mt-2 flex items-center gap-1 text-[10px] font-black uppercase tracking-wider text-primary-400 group-hover:translate-x-1 transition-transform">
+            <span>Watch Now</span>
+            <Play size={9} className="fill-primary-400" />
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function ChatSystem() {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -277,8 +359,20 @@ export default function ChatSystem() {
   // Message Actions & Reply State
   const [replyingTo, setReplyingTo] = useState<any | null>(null);
   const [editingMessageId, setEditingMessageId] = useState<string | null>(null);
-  const [selectedMsgForMenu, setSelectedMsgForMenu] = useState<any | null>(null);
+  const [openMsgMenuId, setOpenMsgMenuId] = useState<string | null>(null);
   const [forwardingMsg, setForwardingMsg] = useState<any | null>(null);
+
+  useEffect(() => {
+    const handleGlobalClick = () => {
+      setOpenMsgMenuId(null);
+    };
+    if (openMsgMenuId) {
+      document.addEventListener('click', handleGlobalClick);
+    }
+    return () => {
+      document.removeEventListener('click', handleGlobalClick);
+    };
+  }, [openMsgMenuId]);
 
   const deleteMessage = async (msgId: string) => {
     if (!supabase || !confirm("Delete this message?")) return;
@@ -1515,21 +1609,89 @@ export default function ChatSystem() {
                           </div>
                         )}
 
-                        {/* Desktop 3-Dots Action Trigger Button (Hover / Click) */}
-                        <div className={`opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-1 ${isMe ? 'order-first' : 'order-last'}`}>
+                        {/* 3-Dots Action Mini Menu Trigger (Hover / Click) */}
+                        <div className={`relative opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-1 ${isMe ? 'order-first' : 'order-last'}`}>
                           <button
                             type="button"
-                            onClick={() => setSelectedMsgForMenu(msg)}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setOpenMsgMenuId(openMsgMenuId === msg.id ? null : msg.id);
+                            }}
                             className="w-7 h-7 rounded-full bg-white/10 hover:bg-white/20 border border-white/15 text-zinc-300 flex items-center justify-center backdrop-blur-md cursor-pointer transition-all active:scale-95"
                             title="Message Options"
                           >
                             <MoreVertical size={14} />
                           </button>
+
+                          {openMsgMenuId === msg.id && (
+                            <div 
+                              className={cn(
+                                "absolute bottom-full mb-1.5 z-50 w-32 py-1 bg-[#121218]/95 backdrop-blur-2xl border border-white/15 rounded-2xl shadow-2xl overflow-hidden flex flex-col text-xs font-semibold text-zinc-200 animate-in fade-in zoom-in-95 duration-150",
+                                isMe ? "right-0" : "left-0"
+                              )}
+                              onClick={(e) => e.stopPropagation()}
+                            >
+                              <button
+                                onClick={() => {
+                                  setReplyingTo(msg);
+                                  setOpenMsgMenuId(null);
+                                  const el = document.getElementById('chat-input-field');
+                                  if (el) el.focus();
+                                }}
+                                className="w-full text-left px-3 py-1.5 hover:bg-white/10 flex items-center gap-2 transition-colors cursor-pointer text-zinc-200"
+                              >
+                                <span className="text-primary-400">↩️</span> Reply
+                              </button>
+
+                              <button
+                                onClick={() => {
+                                  setForwardingMsg(msg);
+                                  setOpenMsgMenuId(null);
+                                }}
+                                className="w-full text-left px-3 py-1.5 hover:bg-white/10 flex items-center gap-2 transition-colors cursor-pointer text-zinc-200"
+                              >
+                                <span className="text-blue-400">⏩</span> Forward
+                              </button>
+
+                              {(() => {
+                                const myMessages = messages.filter(m => m.sender_id === user?.id);
+                                const myLastId = myMessages.length > 0 ? myMessages[myMessages.length - 1].id : null;
+                                if (msg.id === myLastId) {
+                                  return (
+                                    <button
+                                      onClick={() => {
+                                        setInputMsg(msg.content || '');
+                                        setEditingMessageId(msg.id);
+                                        setOpenMsgMenuId(null);
+                                        const el = document.getElementById('chat-input-field');
+                                        if (el) el.focus();
+                                      }}
+                                      className="w-full text-left px-3 py-1.5 hover:bg-amber-500/10 flex items-center gap-2 transition-colors cursor-pointer text-amber-300"
+                                    >
+                                      <span>✏️</span> Edit
+                                    </button>
+                                  );
+                                }
+                                return null;
+                              })()}
+
+                              {(msg.sender_id === user?.id || isLeaderOrStaff) && (
+                                <button
+                                  onClick={() => {
+                                    deleteMessage(msg.id);
+                                    setOpenMsgMenuId(null);
+                                  }}
+                                  className="w-full text-left px-3 py-1.5 hover:bg-red-500/10 flex items-center gap-2 transition-colors cursor-pointer text-red-400"
+                                >
+                                  <Trash2 size={13} /> Delete
+                                </button>
+                              )}
+                            </div>
+                          )}
                         </div>
 
                         <div 
-                          onClick={() => setSelectedMsgForMenu(msg)}
-                          className={`max-w-[82%] sm:max-w-[65%] flex flex-col cursor-pointer ${isMe ? 'items-end' : 'items-start'}`}
+                          className={`max-w-[82%] sm:max-w-[65%] flex flex-col ${isMe ? 'items-end' : 'items-start'}`}
                         >
                           {!isMe && isFirstInStack && (
                             <div className="flex items-center gap-1.5 mb-1 ml-1">
@@ -1560,17 +1722,26 @@ export default function ChatSystem() {
                             </div>
                           )}
 
-                          {msg.content && (
-                            <p
-                              className={`text-xs sm:text-sm px-4 py-2.5 leading-relaxed shadow-md ${bubbleClasses} ${
-                                isMe
-                                  ? 'bg-gradient-to-r from-primary-600 to-primary-700 text-white border border-primary-500/30 backdrop-blur-md'
-                                  : 'bg-[#14141a]/90 text-zinc-100 border border-white/10 backdrop-blur-md'
-                              }`}
-                            >
-                              {msg.content}
-                            </p>
-                          )}
+                          {(() => {
+                            if (msg.content && msg.content.includes('[SHADOW_SHARE]') && msg.content.includes('[/SHADOW_SHARE]')) {
+                              try {
+                                const raw = msg.content.split('[SHADOW_SHARE]')[1].split('[/SHADOW_SHARE]')[0];
+                                const parsedData = JSON.parse(raw);
+                                return <SharedMediaCard data={parsedData} isMe={isMe} />;
+                              } catch (e) {}
+                            }
+                            return msg.content ? (
+                              <p
+                                className={`text-xs sm:text-sm px-4 py-2.5 leading-relaxed shadow-md ${bubbleClasses} ${
+                                  isMe
+                                    ? 'bg-gradient-to-r from-primary-600 to-primary-700 text-white border border-primary-500/30 backdrop-blur-md'
+                                    : 'bg-[#14141a]/90 text-zinc-100 border border-white/10 backdrop-blur-md'
+                                }`}
+                              >
+                                {msg.content}
+                              </p>
+                            ) : null;
+                          })()}
                         </div>
                       </motion.div>
                     );
@@ -1961,95 +2132,7 @@ export default function ChatSystem() {
         )}
       </AnimatePresence>
 
-      {/* Message Options Liquid Glass Action Sheet Modal (Mobile & Desktop) */}
-      <AnimatePresence>
-        {selectedMsgForMenu && (
-          <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-4 bg-black/70 backdrop-blur-md">
-            <motion.div
-              initial={{ opacity: 0, y: 100, scale: 0.95 }}
-              animate={{ opacity: 1, y: 0, scale: 1 }}
-              exit={{ opacity: 0, y: 100, scale: 0.95 }}
-              className="w-full max-w-sm bg-[#121218]/95 border border-white/20 rounded-3xl p-5 shadow-[0_25px_60px_-15px_rgba(0,0,0,0.9)] backdrop-blur-3xl"
-            >
-              <div className="flex items-center justify-between pb-3 border-b border-white/10 mb-4">
-                <div className="flex items-center gap-2">
-                  <span className="text-xs font-bold text-white">Message Options</span>
-                  <span className="text-[10px] font-medium text-zinc-400">@{selectedMsgForMenu.sender?.username || 'User'}</span>
-                </div>
-                <button onClick={() => setSelectedMsgForMenu(null)} className="p-1 text-zinc-400 hover:text-white rounded-full hover:bg-white/10 transition-colors">
-                  <X size={16} />
-                </button>
-              </div>
 
-              {/* Message Content Preview */}
-              <div className="p-3 mb-4 rounded-2xl bg-white/5 border border-white/10 text-xs text-zinc-300 italic max-h-20 overflow-y-auto">
-                "{selectedMsgForMenu.content || (selectedMsgForMenu.image_url ? '[Image]' : selectedMsgForMenu.audio_url ? '[Voice]' : '[Media]')}"
-              </div>
-
-              <div className="flex flex-col gap-2">
-                {/* ↩️ Reply Option */}
-                <button
-                  onClick={() => {
-                    setReplyingTo(selectedMsgForMenu);
-                    setSelectedMsgForMenu(null);
-                    const el = document.getElementById('chat-input-field');
-                    if (el) el.focus();
-                  }}
-                  className="w-full py-3 px-4 rounded-2xl bg-white/5 hover:bg-white/10 border border-white/10 text-white text-xs font-bold flex items-center gap-3 transition-all active:scale-95 cursor-pointer"
-                >
-                  <span className="text-primary-400">↩️</span> Reply to Message
-                </button>
-
-                {/* ⏩ Forward Message Option */}
-                <button
-                  onClick={() => {
-                    setForwardingMsg(selectedMsgForMenu);
-                    setSelectedMsgForMenu(null);
-                  }}
-                  className="w-full py-3 px-4 rounded-2xl bg-white/5 hover:bg-white/10 border border-white/10 text-white text-xs font-bold flex items-center gap-3 transition-all active:scale-95 cursor-pointer"
-                >
-                  <span className="text-blue-400">⏩</span> Forward Message
-                </button>
-
-                {/* ✏️ Edit Option - ONLY shown for user's LAST message */}
-                {(() => {
-                  const myMessages = messages.filter(m => m.sender_id === user?.id);
-                  const myLastId = myMessages.length > 0 ? myMessages[myMessages.length - 1].id : null;
-                  const isMyLastMessage = selectedMsgForMenu.id === myLastId;
-
-                  return isMyLastMessage ? (
-                    <button
-                      onClick={() => {
-                        setInputMsg(selectedMsgForMenu.content || '');
-                        setEditingMessageId(selectedMsgForMenu.id);
-                        setSelectedMsgForMenu(null);
-                        const el = document.getElementById('chat-input-field');
-                        if (el) el.focus();
-                      }}
-                      className="w-full py-3 px-4 rounded-2xl bg-amber-500/10 hover:bg-amber-500/20 border border-amber-500/30 text-amber-300 text-xs font-bold flex items-center gap-3 transition-all active:scale-95 cursor-pointer"
-                    >
-                      <span>✏️</span> Edit Message (Last Message)
-                    </button>
-                  ) : null;
-                })()}
-
-                {/* 🗑️ Delete Option */}
-                {(selectedMsgForMenu.sender_id === user?.id || isLeaderOrStaff) && (
-                  <button
-                    onClick={() => {
-                      deleteMessage(selectedMsgForMenu.id);
-                      setSelectedMsgForMenu(null);
-                    }}
-                    className="w-full py-3 px-4 rounded-2xl bg-red-500/10 hover:bg-red-500/20 border border-red-500/30 text-red-400 text-xs font-bold flex items-center gap-3 transition-all active:scale-95 cursor-pointer mt-1"
-                  >
-                    <Trash2 size={16} /> Delete Message
-                  </button>
-                )}
-              </div>
-            </motion.div>
-          </div>
-        )}
-      </AnimatePresence>
 
       {/* Forward Message Picker Modal */}
       <AnimatePresence>

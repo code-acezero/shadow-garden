@@ -4,7 +4,7 @@ import React, { useState, useEffect, useRef, useCallback, memo, Suspense } from 
 import { useParams, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { motion, AnimatePresence, LayoutGroup } from 'framer-motion';
-import { SkipForward, SkipBack, Server as ServerIcon, Layers, Clock, Play, Grid, List, LayoutGrid, ChevronDown, Flame, Info, Loader2, Check, X, Download, AlertTriangle, Lightbulb, RotateCw, StepForward } from 'lucide-react';
+import { SkipForward, SkipBack, Server as ServerIcon, Layers, Clock, Play, Grid, List, LayoutGrid, ChevronDown, Flame, Info, Loader2, Check, X, Download, AlertTriangle, Lightbulb, RotateCw, StepForward, Share2, Users } from 'lucide-react';
 import { WatchPageSkeleton, PlayerSkeleton, SimpleGridSkeleton } from '@/components/UIx/SkeletonLoaders';
 import { omni, DramaDetail, DramaServer, DramaStream } from '@/lib/omni';
 import { cn, formatAnimeTitle } from '@/lib/utils';
@@ -16,6 +16,9 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { Button } from '@/components/ui/button';
 import ShadowComments from '@/components/Comments/ShadowComments';
 import WatchListButton from '@/components/Watch/WatchListButton';
+import PostShareModal from '@/components/Social/PostShareModal';
+import { sfx } from '@/lib/audioManager';
+import { toast } from '@/lib/toast';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/context/AuthContext';
 import { useUserData } from '@/context/UserDataContext';
@@ -108,6 +111,50 @@ export function DramaWatchContent() {
   const [epProgress, setEpProgress] = useState<Record<number, number>>({});
   const [isAutoNext, setIsAutoNext] = useState(true);
   const chunkSize = 50;
+
+  useEffect(() => {
+    sfx.pauseBGM();
+    return () => { sfx.resumeBGM(); };
+  }, []);
+
+  const handleCreateWatchRoom = async () => {
+    if (!user || !supabase) {
+      toast.error("Please log in to start a watch room!");
+      return;
+    }
+
+    try {
+      const code = Math.random().toString(36).substring(2, 8).toUpperCase();
+      const currentEp = drama?.episodes.find(e => e.id === currentEpId);
+      const { data: room, error: roomError } = await supabase
+        .from('watch_rooms')
+        .insert({
+          code,
+          title: drama?.title || 'Drama Room',
+          host_id: user.id,
+          media_id: drama?.id,
+          media_type: 'drama',
+          episode_number: currentEp?.number || 1,
+          is_private: false
+        })
+        .select()
+        .single();
+
+      if (roomError) throw roomError;
+
+      await supabase.from('room_members').insert({
+        room_id: room.id,
+        user_id: user.id,
+        role: 'host'
+      });
+
+      toast.success("Watch room created!");
+      window.location.href = `/rooms/${code}`;
+    } catch (err: any) {
+      console.error("Failed to create room:", err);
+      toast.error("Could not create watch room");
+    }
+  };
 
   // ── Played episodes tracking (tap-to-mark via invisible detector) ────────
   const [playedEpIds, setPlayedEpIds] = useState<Set<string>>(() => {
@@ -408,14 +455,47 @@ export function DramaWatchContent() {
                 </button>
               </div>
 
-              {/* Right: Download + WatchList + Server */}
-              <div className="flex items-center gap-3 flex-shrink-0 border-l border-white/5 pl-4">
+              {/* Right: Download + WatchList + Room + Share + Server */}
+              <div className="flex items-center gap-2 flex-shrink-0 border-l border-white/5 pl-4">
                 {currentEpId && (
-                  <Link href={`/download/drama/${slug}?ep=${currentEpId}`} className="flex items-center gap-2 px-4 h-8 rounded-full border border-white/10 bg-white/5 text-zinc-300 text-[10px] font-black uppercase tracking-widest transition-all hover:bg-orange-600 hover:border-orange-500 hover:text-white whitespace-nowrap shadow-md shadow-orange-900/5">
-                    <Download size={12} /> DOWNLOAD
+                  <Link href={`/download/drama/${slug}?ep=${currentEpId}`} className="hidden sm:flex items-center gap-1.5 px-3 h-8 rounded-full border border-white/10 bg-white/5 text-zinc-300 text-[10px] font-black uppercase tracking-widest transition-all hover:bg-orange-600 hover:border-orange-500 hover:text-white whitespace-nowrap shadow-md shadow-orange-900/5">
+                    <Download size={12} /> <span className="hidden md:inline">DOWNLOAD</span>
                   </Link>
                 )}
                 <WatchListButton animeId={drama.id} animeTitle={drama.title} animeImage={drama.image} currentEp={currentEp?.number} mediaType="drama" />
+
+                <button 
+                  onClick={handleCreateWatchRoom}
+                  className="flex items-center justify-center gap-1.5 h-8 px-3 rounded-full border border-white/10 bg-white/5 text-zinc-300 text-[10px] font-black uppercase tracking-wider transition-all hover:bg-primary-600 hover:border-primary-500 hover:text-white shrink-0 cursor-pointer shadow-md"
+                  title="Create Watch Room"
+                >
+                  <Users size={12} />
+                  <span className="hidden sm:inline">Room</span>
+                </button>
+
+                <PostShareModal
+                  mediaData={{
+                    id: drama.id,
+                    title: drama.title,
+                    poster: (drama as any).poster || drama.image,
+                    synopsis: drama.synopsis || (drama as any).description,
+                    type: 'Drama',
+                    rating: drama.rating || '16+',
+                    totalEpisodes: drama.episodes?.length || 0,
+                    episodeNumber: currentEp?.number || 1,
+                    url: typeof window !== 'undefined' ? window.location.href : `/drama-watch/${drama.id}?ep=${currentEp?.number || 1}`
+                  }}
+                  trigger={
+                    <button 
+                      className="flex items-center justify-center gap-1.5 h-8 px-3 rounded-full border border-white/10 bg-white/5 text-zinc-300 text-[10px] font-black uppercase tracking-wider transition-all hover:bg-primary-600 hover:border-primary-500 hover:text-white shrink-0 cursor-pointer shadow-md"
+                      title="Share Drama"
+                    >
+                      <Share2 size={12} />
+                      <span className="hidden sm:inline">Share</span>
+                    </button>
+                  }
+                />
+
                 {stream && stream.servers.length > 0 && (
                   <DropdownMenu modal={false}>
                     <DropdownMenuTrigger asChild>
@@ -440,7 +520,7 @@ export function DramaWatchContent() {
             </div>
 
             {/* Controls Bar — Mobile */}
-            <div className={cn("flex lg:hidden w-full bg-white/5 backdrop-blur-md border border-white/10 rounded-[30px] shadow-[0_8px_32px_0_rgba(0,0,0,0.2)] py-4 flex-col gap-3 overflow-hidden mt-3 transition-all duration-500", dimMode ? "z-[60] relative" : "relative z-10")}>
+            <div className={cn("flex lg:hidden w-full bg-white/5 backdrop-blur-md border border-white/10 rounded-[30px] shadow-[0_8px_32px_0_rgba(0,0,0,0.2)] py-4 px-3 flex-col gap-3 overflow-hidden mt-3 transition-all duration-500", dimMode ? "z-[60] relative" : "relative z-10")}>
               {/* Row 1: Now Playing title */}
               <div className="flex items-center gap-2 overflow-hidden">
                 <span className="text-[10px] text-orange-500 font-black uppercase shrink-0">NOW:</span>
@@ -464,9 +544,41 @@ export function DramaWatchContent() {
                 <button disabled={!prevEp} onClick={() => prevEp && handleEpClick(prevEp.id)} className="flex-1 bg-white/5 h-8 rounded-full border border-white/5 flex items-center justify-center gap-1 text-zinc-400 text-[10px] font-black uppercase hover:text-white active:bg-white/10"><SkipBack size={14} /> PREV</button>
                 <button disabled={!nextEp} onClick={() => nextEp && handleEpClick(nextEp.id)} className="flex-1 bg-white/5 h-8 rounded-full border border-white/5 flex items-center justify-center gap-1 text-zinc-400 text-[10px] font-black uppercase hover:text-white active:bg-white/10">NEXT <SkipForward size={14} /></button>
               </div>
-              {/* Row 4: Download + Server */}
-              <div className="flex w-full justify-between items-center gap-2 border-t border-white/5 pt-3">
+              {/* Row 4: Room + Share + Download + Server */}
+              <div className="flex w-full justify-between items-center gap-1.5 border-t border-white/5 pt-3 overflow-x-auto custom-scrollbar">
                 <Button onClick={() => setDimMode(v => !v)} variant="ghost" size="icon" className={cn("rounded-full w-8 h-8 transition-all shadow-orange-900/10 flex-shrink-0", dimMode ? "text-yellow-500 bg-yellow-500/10" : "text-zinc-600 hover:bg-white/5 shadow-none")}><Lightbulb size={14} /></Button>
+
+                <button 
+                  onClick={handleCreateWatchRoom}
+                  className="flex items-center justify-center gap-1 h-8 px-2.5 rounded-full border border-white/10 bg-white/5 text-zinc-300 text-[10px] font-black uppercase tracking-wider transition-all hover:bg-primary-600 shrink-0"
+                  title="Create Watch Room"
+                >
+                  <Users size={12} />
+                  <span>Room</span>
+                </button>
+
+                <PostShareModal
+                  mediaData={{
+                    id: drama.id,
+                    title: drama.title,
+                    poster: (drama as any).poster || drama.image,
+                    synopsis: drama.synopsis || (drama as any).description,
+                    type: 'Drama',
+                    rating: drama.rating || '16+',
+                    totalEpisodes: drama.episodes?.length || 0,
+                    episodeNumber: currentEp?.number || 1,
+                    url: typeof window !== 'undefined' ? window.location.href : `/drama-watch/${drama.id}?ep=${currentEp?.number || 1}`
+                  }}
+                  trigger={
+                    <button 
+                      className="flex items-center justify-center gap-1 h-8 px-2.5 rounded-full border border-white/10 bg-white/5 text-zinc-300 text-[10px] font-black uppercase tracking-wider transition-all hover:bg-primary-600 shrink-0"
+                      title="Share Drama"
+                    >
+                      <Share2 size={12} />
+                      <span>Share</span>
+                    </button>
+                  }
+                />
                 {currentEpId && (
                   <Link href={`/download/drama/${slug}?ep=${currentEpId}`} className="flex items-center gap-2 px-4 h-8 rounded-full border border-white/10 bg-white/5 text-zinc-400 text-[10px] font-black uppercase hover:text-white active:bg-white/10">
                     <Download size={14} /> DOWNLOAD

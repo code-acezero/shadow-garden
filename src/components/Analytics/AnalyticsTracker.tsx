@@ -36,9 +36,8 @@ export default function AnalyticsTracker() {
               key: 'total_site_visits',
               value: count.toString(),
               updated_at: new Date().toISOString()
-            }).then(() => {}).catch(() => {});
-          })
-          .catch(() => {});
+            }).then(null, () => {});
+          }, () => {});
       }
     } catch (e) {
       console.warn('Visit tracker error:', e);

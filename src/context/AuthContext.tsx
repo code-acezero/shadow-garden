@@ -50,7 +50,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         if (!data.avatar_url || !data.username) {
           const updatedName = data.username || userMeta?.full_name || userEmail?.split('@')[0] || getRandomGuestName();
           const updatedAvatar = data.avatar_url || userMeta?.avatar_url || getRandomAvatar(false);
-          supabase.from("profiles").update({ username: updatedName, avatar_url: updatedAvatar }).eq("id", userId).catch(() => {});
+          supabase.from("profiles").update({ username: updatedName, avatar_url: updatedAvatar }).eq("id", userId).then(null, () => {});
           return { ...data, username: updatedName, avatar_url: updatedAvatar, _isFallback: false };
         }
         return { ...data, _isFallback: false };
@@ -159,7 +159,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         supabase.from('profiles').update({ 
           is_online: true, 
           updated_at: new Date().toISOString() 
-        }).eq('id', user.id).catch(() => {});
+        }).eq('id', user.id).then(null, () => {});
       }
     };
 
@@ -171,7 +171,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     
     // Mark as offline when tab is closed
     const handleBeforeUnload = () => {
-      supabase.from('profiles').update({ is_online: false }).eq('id', user.id).catch(() => {});
+      supabase.from('profiles').update({ is_online: false }).eq('id', user.id).then(null, () => {});
     };
     
     if (typeof window !== 'undefined') {

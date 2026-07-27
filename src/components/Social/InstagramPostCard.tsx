@@ -14,6 +14,7 @@ import {
 import { motion, AnimatePresence } from 'framer-motion';
 import { toast } from '@/lib/toast';
 import { RenderMentions } from '@/lib/mentions';
+import PostShareModal from '@/components/Social/PostShareModal';
 
 export interface PollOption {
   id: number;
@@ -33,7 +34,7 @@ export interface InstagramPostCardProps {
   highlightId?: string;
   onLike: () => void;
   onComment: () => void;
-  onShare: (platform?: string) => void;
+  onShare?: (platform?: string) => void;
   onBookmark?: () => void;
   onDelete?: () => void;
   onImageClick?: (src: string) => void;
@@ -166,7 +167,13 @@ export default function InstagramPostCard({
             <MoreHorizontal size={18} />
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end" className="bg-[#14141c]/95 backdrop-blur-xl border border-white/10 text-white rounded-2xl shadow-2xl min-w-[140px] p-1.5">
-            <DropdownMenuItem onClick={() => onShare('copy')} className="text-xs font-semibold gap-2 py-2 px-3 hover:bg-white/10 rounded-xl cursor-pointer">
+            <DropdownMenuItem onClick={() => {
+              if (typeof window !== 'undefined') {
+                const shareUrl = `${window.location.origin}/social?post=${post.id}`;
+                navigator.clipboard.writeText(shareUrl);
+                toast.success("Link copied to clipboard");
+              }
+            }} className="text-xs font-semibold gap-2 py-2 px-3 hover:bg-white/10 rounded-xl cursor-pointer">
               <Share2 size={14} /> Copy Link
             </DropdownMenuItem>
             {currentUserId === post.user_id && onDelete && (
@@ -384,13 +391,17 @@ export default function InstagramPostCard({
           </button>
 
           {/* Share Button */}
-          <button 
-            onClick={() => onShare('copy')}
-            className="p-2 rounded-full hover:bg-white/10 hover:text-white transition-all cursor-pointer active:scale-110"
-            title="Share post"
-          >
-            <Send size={20} />
-          </button>
+          <PostShareModal 
+            post={post}
+            trigger={
+              <button 
+                className="p-2 rounded-full hover:bg-white/10 hover:text-white transition-all cursor-pointer active:scale-110"
+                title="Share post"
+              >
+                <Send size={20} />
+              </button>
+            }
+          />
         </div>
 
         {/* Save / Bookmark Button */}

@@ -540,9 +540,7 @@ function normalizeCard(item: any): UniversalAnimeBase {
         },
         rank: item?.rank,
         isAdult,
-        rating: rawRating,
-        episodeId: item?.episodeId || item?.episode_id || '',
-        episode: item?.episode || item?.ep || item?.latestEpisode || 0
+        rating: rawRating
     };
 }
 
@@ -872,7 +870,6 @@ export class AnimeService {
             slug = episodeId;
             epNumber = episodeId;
         }
-
         if (!slug || !epNumber) return null;
 
         let data: any = await AnimeAPI_Anikoto.getWatch(slug, epNumber);

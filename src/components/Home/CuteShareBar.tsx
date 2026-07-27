@@ -1,12 +1,11 @@
 "use client";
 
-import React, { useState } from 'react';
+import React from 'react';
 import { Share2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import PostShareModal from '@/components/Social/PostShareModal';
 
 export default function CuteShareBar() {
-  const [showShareModal, setShowShareModal] = useState(false);
 
   return (
     <section className="w-full max-w-5xl mx-auto px-4 my-8">
@@ -33,22 +32,20 @@ export default function CuteShareBar() {
             <p className="text-xs text-zinc-400 line-clamp-2 sm:line-clamp-none">Share the sanctuary to unlock watch parties, live streams, and 15,000+ anime & donghua.</p>
           </div>
         </div>
-        <Button
-          onClick={() => setShowShareModal(true)}
-          className="w-full sm:w-auto bg-primary-600 hover:bg-primary-500 text-white border-0 h-11 px-6 rounded-2xl font-bold uppercase tracking-wider text-xs shadow-lg shadow-primary-900/30 flex items-center justify-center gap-2 shrink-0 group hover:scale-105 transition-all"
-        >
-          <Share2 size={16} className="group-hover:rotate-12 transition-transform" />
-          Share Garden
-        </Button>
+        <PostShareModal
+          customUrl={typeof window !== 'undefined' ? window.location.origin : 'https://shadow-garden-v2.vercel.app'}
+          customTitle="Shadow Garden - Next-Gen Anime & Donghua Sanctuary"
+          customContent="Stream 15,000+ anime & donghua in ultra HD with 0 ads, join real-time watch rooms, and chat with fellow otakus!"
+          trigger={
+            <Button
+              className="w-full sm:w-auto bg-primary-600 hover:bg-primary-500 text-white border-0 h-11 px-6 rounded-2xl font-bold uppercase tracking-wider text-xs shadow-lg shadow-primary-900/30 flex items-center justify-center gap-2 shrink-0 group hover:scale-105 transition-all"
+            >
+              <Share2 size={16} className="group-hover:rotate-12 transition-transform" />
+              Share Garden
+            </Button>
+          }
+        />
       </div>
-
-      <PostShareModal
-        isOpen={showShareModal}
-        onClose={() => setShowShareModal(false)}
-        customUrl={typeof window !== 'undefined' ? window.location.origin : 'https://shadow-garden-v2.vercel.app'}
-        customTitle="Shadow Garden - Next-Gen Anime & Donghua Sanctuary"
-        customContent="Stream 15,000+ anime & donghua in ultra HD with 0 ads, join real-time watch rooms, and chat with fellow otakus!"
-      />
     </section>
   );
 }

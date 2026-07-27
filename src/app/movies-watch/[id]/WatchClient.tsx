@@ -7,7 +7,7 @@ import { motion } from 'framer-motion';
 import {
   Server as ServerIcon, Play, Download, AlertTriangle, Layers,
   Check, ChevronDown, Grid, LayoutGrid, List, Star, Film, Clapperboard, X,
-  SkipBack, SkipForward, Repeat1, Globe, Users, Lightbulb
+  SkipBack, SkipForward, Repeat1, Globe, Users, Lightbulb, Share2
 } from 'lucide-react';
 import { WatchPageSkeleton, PlayerSkeleton } from '@/components/UIx/SkeletonLoaders';
 import { omni, MovieDetail } from '@/lib/omni';
@@ -17,6 +17,8 @@ import { useUserData } from '@/context/UserDataContext';
 import { cn, formatAnimeTitle } from '@/lib/utils';
 import Footer from '@/components/Anime/Footer';
 import WatchListButton from '@/components/Watch/WatchListButton';
+import PostShareModal from '@/components/Social/PostShareModal';
+import { sfx } from '@/lib/audioManager';
 import SafeEmbed from '@/components/SafeEmbed';
 import { Button } from "@/components/ui/button";
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem } from "@/components/ui/dropdown-menu";
@@ -165,6 +167,49 @@ export default function WatchClient() {
   const [epViewMode, setEpViewMode] = useState<EpViewMode>('compact');
   const [autoNext, setAutoNext] = useState(true);
   const [autoNextCountdown, setAutoNextCountdown] = useState<number | null>(null);
+
+  useEffect(() => {
+    sfx.pauseBGM();
+    return () => { sfx.resumeBGM(); };
+  }, []);
+
+  const handleCreateWatchRoom = async () => {
+    if (!user || !supabase) {
+      toast.error("Please log in to start a watch room!");
+      return;
+    }
+
+    try {
+      const code = Math.random().toString(36).substring(2, 8).toUpperCase();
+      const { data: room, error: roomError } = await supabase
+        .from('watch_rooms')
+        .insert({
+          code,
+          title: movie?.title || 'Movie Room',
+          host_id: user.id,
+          media_id: movie?.id,
+          media_type: 'movie',
+          episode_number: activeEpisode || 1,
+          is_private: false
+        })
+        .select()
+        .single();
+
+      if (roomError) throw roomError;
+
+      await supabase.from('room_members').insert({
+        room_id: room.id,
+        user_id: user.id,
+        role: 'host'
+      });
+
+      toast.success("Watch room created!");
+      window.location.href = `/rooms/${code}`;
+    } catch (err: any) {
+      console.error("Failed to create room:", err);
+      toast.error("Could not create watch room");
+    }
+  };
 
   // ── Played episode tracking (tap-to-mark for iframe players) ─────────
   const [playedEpKeys, setPlayedEpKeys] = useState<Set<string>>(() => {
@@ -553,10 +598,37 @@ export default function WatchClient() {
                     <Download size={11} /><span className="hidden sm:inline">Download</span>
                   </Link>
 
-                  <Link href="/rooms"
-                    className="h-8 w-8 sm:w-auto sm:px-3 flex items-center justify-center gap-1.5 rounded-full bg-primary-600/20 border border-primary-500/30 text-primary-400 hover:bg-primary-600 hover:text-white text-[10px] font-black uppercase tracking-widest transition-all">
+                  <button
+                    onClick={handleCreateWatchRoom}
+                    className="h-8 w-8 sm:w-auto sm:px-3 flex items-center justify-center gap-1.5 rounded-full bg-primary-600/20 border border-primary-500/30 text-primary-400 hover:bg-primary-600 hover:text-white text-[10px] font-black uppercase tracking-widest transition-all cursor-pointer"
+                    title="Create Watch Room"
+                  >
                     <Users size={13} /><span className="hidden sm:inline">Room</span>
-                  </Link>
+                  </button>
+
+                  <PostShareModal
+                    mediaData={{
+                      id: movie.id,
+                      title: movie.title,
+                      poster: movie.image || (movie as any).poster,
+                      synopsis: movie.description || (movie as any).synopsis,
+                      type: 'Movie',
+                      rating: movie.rating || 'PG-13',
+                      totalEpisodes: isSeries ? (episodesList?.length || 1) : 1,
+                      episodeNumber: isSeries ? activeEpisode : 1,
+                      url: typeof window !== 'undefined' ? window.location.href : `/movies-watch/${movie.id}`
+                    }}
+                    trigger={
+                      <button 
+                        className="h-8 w-8 sm:w-auto sm:px-3 flex items-center justify-center gap-1.5 rounded-full bg-white/5 border border-white/10 text-zinc-300 hover:bg-primary-600 hover:text-white text-[10px] font-black uppercase tracking-widest transition-all cursor-pointer"
+                        title="Share Movie"
+                      >
+                        <Share2 size={12} />
+                        <span className="hidden sm:inline">Share</span>
+                      </button>
+                    }
+                  />
+
                   <WatchListButton animeId={movie.id} animeTitle={movie.title} animeImage={movie.image} mediaType="movie" />
                 </div>
               </div>

@@ -9,7 +9,7 @@ import {
   Ghost, Terminal, Globe, Crown, Sword, 
   MessageCircle, Flame, Users, Scroll as ScrollIcon, Activity, Download, Share2
 } from 'lucide-react';
-import PostShareModal from '@/components/Social/PostShareModal';
+
 
 // ✅ FIXED IMPORTS
 import { useAuth } from '@/context/AuthContext';
@@ -308,7 +308,7 @@ export default function LandingClient() {
   const [isCheckingAuth, setIsCheckingAuth] = useState(true);
   const [showAuth, setShowAuth] = useState(false);
   const [showLandingUI, setShowLandingUI] = useState(false);   
-  const [showHomeShareModal, setShowHomeShareModal] = useState(false);
+
   const [triggerEntry, setTriggerEntry] = useState(false);     
   const [bgImage, setBgImage] = useState(WAIFU_BG_LIST[0]);
   const [isMobile, setIsMobile] = useState(false);
@@ -721,13 +721,7 @@ export default function LandingClient() {
       </AnimatePresence>
 
       <AuthModal isOpen={showAuth} onClose={() => setShowAuth(false)} onAuthSuccess={handleEnterClick} />
-      <PostShareModal
-        isOpen={showHomeShareModal}
-        onClose={() => setShowHomeShareModal(false)}
-        customUrl={typeof window !== 'undefined' ? window.location.origin : 'https://shadow-garden-v2.vercel.app'}
-        customTitle="Shadow Garden - Next-Gen Anime & Donghua Sanctuary"
-        customContent="Stream 15,000+ anime & donghua in ultra HD with 0 ads, join real-time watch rooms, and chat with fellow otakus!"
-      />
+
     </main>
   );
 }
