@@ -46,9 +46,10 @@ import { supabase } from "@/lib/supabase";
 
 export class ApiManager {
     private static urls = [
-        'https://anikoto-api-ivory.vercel.app/api',
         'https://omni-api-v1.vercel.app/api',
-        'https://omni-api-v2.vercel.app/api'
+        'https://omni-api-v2.vercel.app/api',
+        'https://omni-api-v3.vercel.app/api',
+        'https://omni-api-v4.vercel.app/api'
     ];
     private static currentIndex = 0;
 
@@ -539,7 +540,9 @@ function normalizeCard(item: any): UniversalAnimeBase {
         },
         rank: item?.rank,
         isAdult,
-        rating: rawRating
+        rating: rawRating,
+        episodeId: item?.episodeId || item?.episode_id || '',
+        episode: item?.episode || item?.ep || item?.latestEpisode || 0
     };
 }
 
@@ -857,27 +860,17 @@ export class AnimeService {
     }
 
     static async getStream(episodeId: string, server = 'VidPlay-1', category: 'sub' | 'dub' = 'sub') {
-        let slug = episodeId;
-        let epNumber = '1';
-
+        let slug = '';
+        let epNumber = '';
         if (episodeId.includes('::')) {
-            const parts = episodeId.split('::');
-            slug = parts[0];
-            epNumber = parts[1] || '1';
-        } else if (episodeId.includes('?ep=')) {
-            const parts = episodeId.split('?ep=');
-            slug = parts[0];
-            epNumber = parts[1] || '1';
+            [slug, epNumber] = episodeId.split('::');
         } else if (episodeId.includes('-')) {
             const lastIndex = episodeId.lastIndexOf('-');
-            const potentialEp = episodeId.substring(lastIndex + 1);
-            if (/^\d+$/.test(potentialEp) && parseInt(potentialEp, 10) <= 2000) {
-                slug = episodeId.substring(0, lastIndex);
-                epNumber = potentialEp;
-            } else {
-                slug = episodeId;
-                epNumber = '1';
-            }
+            slug = episodeId.substring(0, lastIndex);
+            epNumber = episodeId.substring(lastIndex + 1);
+        } else {
+            slug = episodeId;
+            epNumber = episodeId;
         }
 
         if (!slug || !epNumber) return null;
