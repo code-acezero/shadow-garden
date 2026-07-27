@@ -12,8 +12,9 @@ import {
   FastForward, Star, Info, MessageSquare, User,
   Loader2, Globe, Flame, Calendar, Copyright, Check, Mic, X,
   ChevronLeft, ChevronRight, Pause, ArrowLeft, ArrowRight, Download, Wand2,
-  PlayCircle, StepForward
+  PlayCircle, StepForward, Share2
 } from 'lucide-react';
+import PostShareModal from '@/components/Social/PostShareModal';
 
 import { AnimeService, UniversalAnime } from '@/lib/api';
 import { dpi } from '@/lib/dpi';
@@ -607,6 +608,7 @@ function WatchContent() {
   const { settings: appSettings } = useSettings();
   const { continueData } = useUserData();
   const { settings, updateSetting, isSettingsLoaded } = useWatchSettings();
+  const [showShareModal, setShowShareModal] = useState(false);
 
   // Pause BGM when entering Watch Page, resume when leaving
   useEffect(() => {
@@ -1391,6 +1393,9 @@ function WatchContent() {
                                 <Download size={12} />
                             </Link>
                         )}
+                        <button onClick={() => setShowShareModal(true)} className="flex items-center justify-center gap-1.5 px-3 h-8 rounded-full border border-white/10 bg-white/5 text-zinc-300 text-[10px] font-black uppercase tracking-widest transition-all hover:bg-emerald-600 hover:border-emerald-500 hover:text-white whitespace-nowrap shadow-md" title="Share Episode">
+                            <Share2 size={12} /> Share
+                        </button>
                         <div className="flex bg-black/40 rounded-full p-1 border border-white/10 shadow-inner flex-shrink-0">{(['sub', 'dub', 'raw'] as const).map((cat) => { const isAvailable = (servers?.[cat]?.length || 0) > 0; return (<button key={cat} disabled={!isAvailable} onClick={() => updateSetting('category', cat)} className={cn("px-4 py-1 rounded-full text-[10px] font-black uppercase transition-all relative active:scale-95 shadow-sm", settings.category === cat ? "bg-emerald-600 text-white shadow-lg" : "text-zinc-600 hover:text-zinc-300", !isAvailable && "opacity-10")}>{cat}{isAvailable && <span className="absolute -top-0.5 -right-0.5 w-1.5 h-1.5 bg-emerald-600 rounded-full animate-pulse shadow-[0_0_5px_teal]" />}</button>);})}</div>
                         <DropdownMenu modal={false}>
                             <DropdownMenuTrigger asChild>
@@ -1628,6 +1633,13 @@ function WatchContent() {
       </motion.div>
 
       <Footer />
+      <PostShareModal
+        isOpen={showShareModal}
+        onClose={() => setShowShareModal(false)}
+        customUrl={typeof window !== 'undefined' ? window.location.href : ''}
+        customTitle={`${anime?.title || 'Donghua'} - Episode ${currentEpisode?.number || '1'}`}
+        customContent={`Watch ${anime?.title || 'Donghua'} Episode ${currentEpisode?.number || '1'} on Shadow Garden!`}
+      />
     </div>
   );
 }

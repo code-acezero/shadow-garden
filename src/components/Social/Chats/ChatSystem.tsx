@@ -278,6 +278,7 @@ export default function ChatSystem() {
   const [replyingTo, setReplyingTo] = useState<any | null>(null);
   const [editingMessageId, setEditingMessageId] = useState<string | null>(null);
   const [selectedMsgForMenu, setSelectedMsgForMenu] = useState<any | null>(null);
+  const [forwardingMsg, setForwardingMsg] = useState<any | null>(null);
 
   const deleteMessage = async (msgId: string) => {
     if (!supabase || !confirm("Delete this message?")) return;
@@ -1999,20 +2000,15 @@ export default function ChatSystem() {
                   <span className="text-primary-400">↩️</span> Reply to Message
                 </button>
 
-                {/* ⏩ Forward / Copy Option */}
+                {/* ⏩ Forward Message Option */}
                 <button
                   onClick={() => {
-                    if (selectedMsgForMenu.content) {
-                      navigator.clipboard.writeText(selectedMsgForMenu.content);
-                      toast.success('Message copied to clipboard!');
-                    } else {
-                      toast.info('Media message ready');
-                    }
+                    setForwardingMsg(selectedMsgForMenu);
                     setSelectedMsgForMenu(null);
                   }}
                   className="w-full py-3 px-4 rounded-2xl bg-white/5 hover:bg-white/10 border border-white/10 text-white text-xs font-bold flex items-center gap-3 transition-all active:scale-95 cursor-pointer"
                 >
-                  <span className="text-blue-400">⏩</span> Forward / Copy Text
+                  <span className="text-blue-400">⏩</span> Forward Message
                 </button>
 
                 {/* ✏️ Edit Option - ONLY shown for user's LAST message */}
@@ -2048,6 +2044,82 @@ export default function ChatSystem() {
                   >
                     <Trash2 size={16} /> Delete Message
                   </button>
+                )}
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* Forward Message Picker Modal */}
+      <AnimatePresence>
+        {forwardingMsg && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/85 backdrop-blur-xl">
+            <motion.div
+              initial={{ scale: 0.95, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.95, opacity: 0 }}
+              className="w-full max-w-md bg-[#0d0d10]/95 border border-white/15 rounded-3xl p-6 shadow-2xl space-y-4"
+            >
+              <div className="flex items-center justify-between pb-3 border-b border-white/10">
+                <h3 className="text-xs font-black uppercase tracking-widest text-white flex items-center gap-2">
+                  <Send size={16} className="text-blue-400" /> Forward Message
+                </h3>
+                <button onClick={() => setForwardingMsg(null)} className="p-1.5 rounded-full bg-white/5 hover:bg-white/10 text-zinc-400 hover:text-white border border-white/10 cursor-pointer">
+                  <X size={16} />
+                </button>
+              </div>
+
+              <p className="text-xs text-zinc-400 italic">Select a conversation to forward this message to:</p>
+
+              <div className="max-h-60 overflow-y-auto custom-scrollbar space-y-2">
+                {conversations.length === 0 ? (
+                  <div className="text-center py-6 text-zinc-600 text-xs">No active conversations found</div>
+                ) : (
+                  conversations.map(c => {
+                    const otherP = c.participants?.find((p: any) => p.user?.id !== user?.id)?.user;
+                    const name = c.type === 'clan' ? (c.clan?.name || 'Clan Chat') : (otherP?.username || 'Direct Chat');
+
+                    return (
+                      <div
+                        key={c.id}
+                        onClick={async () => {
+                          if (!supabase || !user || !forwardingMsg) return;
+                          try {
+                            const forwardContent = forwardingMsg.content 
+                              ? `[Forwarded]: ${forwardingMsg.content}` 
+                              : '[Forwarded Media]';
+
+                            await supabase.from('chat_messages').insert({
+                              conversation_id: c.id,
+                              sender_id: user.id,
+                              content: forwardContent,
+                              image_url: forwardingMsg.image_url || null,
+                              audio_url: forwardingMsg.audio_url || null,
+                              gif_url: forwardingMsg.gif_url || null
+                            });
+
+                            await supabase.from('chat_conversations').update({
+                              last_message_preview: forwardContent,
+                              updated_at: new Date().toISOString()
+                            }).eq('id', c.id);
+
+                            toast.success(`Message forwarded to ${name}`);
+                            setForwardingMsg(null);
+                          } catch (err: any) {
+                            toast.error('Failed to forward message');
+                          }
+                        }}
+                        className="p-3 bg-white/5 hover:bg-blue-600/20 border border-white/10 hover:border-blue-500/30 rounded-2xl flex items-center justify-between cursor-pointer transition-all"
+                      >
+                        <div className="flex items-center gap-3">
+                          <ProfileAvatar profile={otherP} className="w-8 h-8" />
+                          <span className="text-xs font-bold text-white">{name}</span>
+                        </div>
+                        <span className="text-[10px] text-blue-400 font-bold uppercase bg-blue-500/10 px-2.5 py-1 rounded-full border border-blue-500/20">Send</span>
+                      </div>
+                    );
+                  })
                 )}
               </div>
             </motion.div>

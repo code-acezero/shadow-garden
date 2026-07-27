@@ -28,6 +28,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { toast } from '@/lib/toast';
 import { formatDistanceToNow } from 'date-fns';
 import ImageLightbox from './ImageLightbox';
+import PostShareModal from './PostShareModal';
 import ClanSystem from './Clans/ClanSystem';
 import ShadowComments from '@/components/Comments/ShadowComments';
 import { UserTitleBadge } from '@/components/ui/UserTitleBadge';
@@ -171,6 +172,7 @@ export default function OtakuVerse({ user, onAuthRequired, highlightId, initialN
   const [newsCommentText, setNewsCommentText] = useState('');
   const [newsReplyTarget, setNewsReplyTarget] = useState<{ id: string; name: string } | null>(null);
 
+  const [sharePost, setSharePost] = useState<any | null>(null);
   const [lightbox, setLightbox] = useState<{ isOpen: boolean; src: string }>({ isOpen: false, src: '' });
   const [searchQuery, setSearchQuery] = useState('');
   const [trendingTags, setTrendingTags] = useState<{tag: string, count: number, cat: string}[]>([]);
@@ -826,12 +828,7 @@ export default function OtakuVerse({ user, onAuthRequired, highlightId, initialN
                          highlightId={highlightId}
                          onLike={() => handleLike(post)}
                          onComment={() => { setActivePostForComments(post); fetchComments(post.id); }}
-                         onShare={(platform?: string) => {
-                            if (typeof window !== 'undefined') {
-                               navigator.clipboard.writeText(window.location.href);
-                               toast.success("Post link copied");
-                            }
-                         }}
+                         onShare={() => setSharePost(post)}
                          onBookmark={() => toast.success("Post saved")}
                          onDelete={() => {
                             supabase.from('social_posts').delete().eq('id', post.id).then(() => fetchPosts());
@@ -1184,6 +1181,11 @@ export default function OtakuVerse({ user, onAuthRequired, highlightId, initialN
 
 
 
+      <PostShareModal
+        isOpen={!!sharePost}
+        onClose={() => setSharePost(null)}
+        post={sharePost}
+      />
       <ImageLightbox isOpen={lightbox.isOpen} src={lightbox.src} onClose={() => setLightbox({ isOpen: false, src: '' })} />
     </div>
   );
@@ -1258,7 +1260,7 @@ const PostItem = React.forwardRef<HTMLDivElement, any>(({ post, highlightId, onL
                    <Heart size={16} className={post.is_liked_by_user ? 'fill-current' : ''} />
                    <span className="text-xs font-bold">{post.likes_count > 0 ? post.likes_count : ''}</span>
                 </button>
-                <button onClick={(e) => { e.stopPropagation(); onShare('copy'); }} className="hover:text-white transition-colors">
+                <button onClick={(e) => { e.stopPropagation(); onShare(); }} className="hover:text-white transition-colors">
                    <Share2 size={16} />
                 </button>
             </div>
