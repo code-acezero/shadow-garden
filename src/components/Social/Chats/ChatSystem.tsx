@@ -631,6 +631,19 @@ export default function ChatSystem() {
           setTypingUsers(typing);
         })
         .on(
+          'broadcast',
+          { event: 'new_message' },
+          ({ payload }: { payload: any }) => {
+            if (payload) {
+              setMessages(prev => {
+                if (prev.some(m => m.id === payload.id)) return prev;
+                return [...prev, payload];
+              });
+              markAsRead(activeConv.id);
+            }
+          }
+        )
+        .on(
           'postgres_changes',
           { event: 'INSERT', schema: 'public', table: 'chat_messages', filter: `conversation_id=eq.${activeConv.id}` },
           () => fetchMessages()
@@ -851,7 +864,7 @@ export default function ChatSystem() {
         return;
       }
 
-      await supabase.from('chat_messages').insert({
+      const { data: insertedMsg, error: insertErr } = await supabase.from('chat_messages').insert({
         conversation_id: activeConv.id,
         sender_id: user.id,
         content: txt,
@@ -859,7 +872,38 @@ export default function ChatSystem() {
         audio_url: uploadedAudioUrl || null,
         gif_url: gifUrl || null,
         reply_to_message: currentReplyObj
-      });
+      }).select(`*, sender:profiles(username, avatar_url, frame_id, level, show_level, role, admin_title)`).maybeSingle();
+
+      if (insertErr) {
+        console.error('Failed to send message:', insertErr);
+        toast.error(insertErr.message || 'Failed to send message');
+        return;
+      }
+
+      if (insertedMsg) {
+        setMessages(prev => {
+          if (prev.some(m => m.id === insertedMsg.id)) return prev;
+          return [...prev, insertedMsg];
+        });
+
+        if (chatChannel) {
+          chatChannel.send({
+            type: 'broadcast',
+            event: 'new_message',
+            payload: insertedMsg
+          });
+        }
+      } else {
+        fetchMessages();
+      }
+
+      if (scrollRef.current) {
+        setTimeout(() => {
+          if (scrollRef.current) {
+            scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
+          }
+        }, 50);
+      }
 
       let preview = txt;
       if (!preview) {
