@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState } from 'react';
-import { Share2, Sparkles } from 'lucide-react';
+import { Share2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import PostShareModal from '@/components/Social/PostShareModal';
 
@@ -21,14 +21,13 @@ export default function CuteShareBar() {
                 (e.target as HTMLElement).style.display = 'none';
               }}
             />
-            <Sparkles className="w-8 h-8 text-primary-400 absolute" />
           </div>
           <div>
             <div className="flex items-center gap-2">
               <span className="px-2 py-0.5 rounded-full bg-primary-600/30 border border-primary-500/40 text-primary-400 text-[10px] font-mono font-bold tracking-widest uppercase">
                 Spread The Word
               </span>
-              <span className="text-[11px] text-zinc-400 font-medium">✨ Join the Guild</span>
+              <span className="text-[11px] text-zinc-400 font-medium">Join the Guild</span>
             </div>
             <h4 className="text-base sm:text-lg font-bold text-white mt-1">Invite your friends to Shadow Garden!</h4>
             <p className="text-xs text-zinc-400 line-clamp-2 sm:line-clamp-none">Share the sanctuary to unlock watch parties, live streams, and 15,000+ anime & donghua.</p>
