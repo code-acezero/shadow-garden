@@ -1,9 +1,9 @@
 "use client";
 
-import React, { useEffect } from 'react';
+import React, { useEffect, Suspense } from 'react';
 import ChatSystem from '@/components/Social/Chats/ChatSystem';
 
-export default function MessagesPage() {
+function MessagesContent() {
   useEffect(() => {
     window.dispatchEvent(new CustomEvent('clear_temp_notifications'));
   }, []);
@@ -16,5 +16,13 @@ export default function MessagesPage() {
         <ChatSystem />
       </div>
     </div>
+  );
+}
+
+export default function MessagesPage() {
+  return (
+    <Suspense fallback={<div className="fixed inset-0 bg-[#050505]" />}>
+      <MessagesContent />
+    </Suspense>
   );
 }
