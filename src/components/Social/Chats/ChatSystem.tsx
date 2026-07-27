@@ -1626,7 +1626,8 @@ export default function ChatSystem() {
                           {openMsgMenuId === msg.id && (
                             <div 
                               className={cn(
-                                "absolute bottom-full mb-1.5 z-50 w-32 py-1 bg-[#121218]/95 backdrop-blur-2xl border border-white/15 rounded-2xl shadow-2xl overflow-hidden flex flex-col text-xs font-semibold text-zinc-200 animate-in fade-in zoom-in-95 duration-150",
+                                "absolute z-50 w-32 py-1 bg-[#121218]/95 backdrop-blur-2xl border border-white/15 rounded-2xl shadow-2xl overflow-hidden flex flex-col text-xs font-semibold text-zinc-200 animate-in fade-in zoom-in-95 duration-150",
+                                idx < 3 ? "top-full mt-1.5" : "bottom-full mb-1.5",
                                 isMe ? "right-0" : "left-0"
                               )}
                               onClick={(e) => e.stopPropagation()}
