@@ -11,6 +11,12 @@
     "type-check": "tsc --noEmit"
   },
   "dependencies": {
+    "@capacitor/android": "^6.2.1",
+    "@capacitor/app": "^6.0.3",
+    "@capacitor/core": "^6.2.1",
+    "@capacitor/haptics": "^6.0.3",
+    "@capacitor/keyboard": "^6.0.4",
+    "@capacitor/status-bar": "^6.0.3",
     "@hookform/resolvers": "^3.9.0",
     "@radix-ui/react-accordion": "^1.2.0",
     "@radix-ui/react-alert-dialog": "^1.1.1",
@@ -80,6 +86,7 @@
     "zod": "^3.23.0"
   },
   "devDependencies": {
+    "@capacitor/cli": "^6.2.1",
     "@eslint/eslintrc": "^3.3.3",
     "@next/bundle-analyzer": "^16.1.6",
     "@types/node": "^20.14.0",

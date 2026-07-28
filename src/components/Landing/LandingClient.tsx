@@ -342,12 +342,12 @@ export default function LandingClient() {
 
     // 2. Auth & Data
     const init = async () => {
-      // ✅ HANDOVER PROTOCOL (CRITICAL FIX)
-      // Check for the "Pass" in local storage instantly (0ms)
+      // Check if user already completed first-time intro & portal sequence
+      const hasSeenPortal = typeof window !== 'undefined' && localStorage.getItem('sg_portal_seen') === 'true';
       const hasAuthHint = typeof window !== 'undefined' && localStorage.getItem('shadow_auth_hint') === 'true';
 
-      if (hasAuthHint) {
-        // Assume logged in, redirect immediately
+      if (hasSeenPortal || hasAuthHint) {
+        // Portal already seen on first app opening — redirect directly to /home
         router.replace('/home');
         return;
       }
@@ -420,7 +420,12 @@ export default function LandingClient() {
     setShowAuth(true);
   }, [initializeAudio, processGenderSelection]);
 
-  const handlePortalComplete = useCallback(() => { router.push('/home'); }, [router]);
+  const handlePortalComplete = useCallback(() => { 
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('sg_portal_seen', 'true');
+    }
+    router.push('/home'); 
+  }, [router]);
 
   const handleInstallClick = async () => {
     if (!installPrompt) return;

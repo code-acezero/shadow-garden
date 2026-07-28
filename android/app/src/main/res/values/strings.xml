@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">Shadow Garden</string>
+    <string name="title_activity_main">Shadow Garden</string>
+    <string name="package_name">site.shadowgarden.app</string>
+    <string name="custom_url_scheme">site.shadowgarden.app</string>
+</resources>
