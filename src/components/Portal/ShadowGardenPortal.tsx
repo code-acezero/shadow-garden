@@ -1448,6 +1448,7 @@ export default function ShadowGardenPortal({
     const [gender, setGender] = useState<Gender | null>(null);
     const [stage, setStage] = useState<AnimationStage>('loading');
     const [whiteout, setWhiteout] = useState(false);
+    const [whiteoutOpacity, setWhiteoutOpacity] = useState(0.45);
     const [whiteoutProgress, setWhiteoutProgress] = useState(0);
     const [tunnelProgress, setTunnelProgress] = useState(0);
     const [showBracePopup, setShowBracePopup] = useState(false);
@@ -1638,21 +1639,47 @@ export default function ShadowGardenPortal({
             setShake(8.0); 
         }, 2000);
 
-        setTimeout(() => setWhiteout(true), 2300);
+        setTimeout(() => {
+            setWhiteoutOpacity(0.45); // Reduced opacity for white flash when entering tunnel
+            setWhiteout(true);
+        }, 2300);
         
         setTimeout(() => {
             setStage('tunnel');
             setTunnelProgress(0);
             setWhiteout(false); // Fade out the whiteout for the tunnel
             setShake(0); // Remove camera shake in tunnel
+            if (sfx?.play) {
+                sfx.play('tunnel_wind', 0.5);
+                sfx.play('bh_hum', 0.35);
+            }
         }, 5000);
 
+        setTimeout(() => {
+            if (sfx?.play) sfx.play('tunnel_glitch', 0.5);
+        }, 7500);
+
+        setTimeout(() => {
+            if (sfx?.play) sfx.play('tunnel_end', 0.7);
+        }, 9500);
+
         // Fade back to white smoothly over 1.5s right before tunnel ends
-        setTimeout(() => setWhiteout(true), 10500);
+        setTimeout(() => {
+            setWhiteoutOpacity(0.85);
+            setWhiteout(true);
+        }, 10500);
 
         setTimeout(() => { 
+            if (sfx?.stopLoop) {
+                sfx.stopLoop('tunnelWind');
+                sfx.stopLoop('bhHum');
+            }
             if (sfx?.stopAll) sfx.stopAll(1500); // fade out over 1.5s
             setStage('arrival'); 
+            if (sfx?.play) {
+                sfx.play('arrival', 0.7);
+                sfx.play('popup_chime', 0.6);
+            }
         }, 12000); // End of tunnel
 
         setTimeout(() => {
@@ -1745,7 +1772,7 @@ export default function ShadowGardenPortal({
 
             <motion.div 
                 initial={{ opacity: 0 }} 
-                animate={whiteout ? { opacity: 1 } : { opacity: 0 }} 
+                animate={whiteout ? { opacity: whiteoutOpacity } : { opacity: 0 }} 
                 transition={{ duration: 1.5 }} 
                 className="absolute inset-0 bg-white z-[10000] pointer-events-none" 
             />
