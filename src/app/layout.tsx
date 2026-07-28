@@ -14,6 +14,8 @@ import { UserDataProvider } from '@/context/UserDataContext';
 import AlphaWidget from '@/components/AI/AlphaWidget';
 import GuildBoardPopupRenderer from '@/components/UIx/GuildBoardPopupRenderer';
 import AnalyticsTracker from '@/components/Analytics/AnalyticsTracker';
+import LiquidGlassSplashScreen from '@/components/PWA/LiquidGlassSplashScreen';
+import PWAInstaller from '@/components/PWA/PWAInstaller';
 
 // Import fonts from your library (Optimized: These are just variable definitions now)
 import { 
@@ -178,6 +180,12 @@ export default function RootLayout({
           type="application/ld+json"
           dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
         />
+
+        {/* Dark Liquid Glass PWA Splash Screen */}
+        <LiquidGlassSplashScreen />
+
+        {/* PWA Service Worker & Install Prompt */}
+        <PWAInstaller />
 
         {/* Global Navigation Loader */}
         <Suspense fallback={null}>
