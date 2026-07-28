@@ -388,15 +388,17 @@ PlayerRig.displayName = 'PlayerRig';
 
 const PortalCoreLight = React.memo(({ stage }: { stage: AnimationStage }) => {
     const lightRef = useRef<THREE.PointLight>(null);
+    const strobeRef = useRef<THREE.PointLight>(null);
 
     useFrame((state, delta) => {
         if (!lightRef.current) return;
+        const t = state.clock.elapsedTime;
         
         let targetInt = 0;
         if (stage === 'push') {
             targetInt = 150;
-        } else if (stage === 'suction') {
-            targetInt = 300;
+        } else if (stage === 'suction' || stage === 'tunnel') {
+            targetInt = 350;
         }
 
         lightRef.current.intensity = THREE.MathUtils.lerp(
@@ -404,16 +406,32 @@ const PortalCoreLight = React.memo(({ stage }: { stage: AnimationStage }) => {
             targetInt, 
             delta * 2.5
         );
+
+        if (strobeRef.current) {
+            if (stage === 'suction' || stage === 'tunnel') {
+                const isFlickerOn = (Math.sin(t * 70) + Math.cos(t * 110)) > 0.2;
+                strobeRef.current.intensity = isFlickerOn ? 600 : 0;
+            } else {
+                strobeRef.current.intensity = 0;
+            }
+        }
     });
 
     return (
-        <group position={[0, 5, -0.5]}>
+        <group position={[0, 9, -1.0]}>
             <pointLight 
                 ref={lightRef} 
                 color="#ffffff" 
                 intensity={0} 
                 distance={40} 
                 decay={2} 
+            />
+            <pointLight 
+                ref={strobeRef} 
+                color="#00ffff" 
+                intensity={0} 
+                distance={65} 
+                decay={1.2} 
             />
         </group>
     );
@@ -1655,7 +1673,10 @@ export default function ShadowGardenPortal({
         
         setTimeout(() => { 
             setStage('suction'); 
-            if (sfxObj?.play) sfxObj.play('suction', 0.7); 
+            if (sfxObj?.play) {
+                sfxObj.play('suction', 0.7); 
+                sfxObj.play('glitch', 0.8, true); // Glitch sound starts right from portal suction!
+            }
             setShake(8.0); 
         }, 2000);
 
@@ -1679,10 +1700,6 @@ export default function ShadowGardenPortal({
         }, 5000);
 
         setTimeout(() => {
-            if (sfxObj?.play) sfxObj.play('glitch', 0.8);
-        }, 7500);
-
-        setTimeout(() => {
             if (sfxObj?.play) sfxObj.play('tunnel_end', 0.7);
         }, 9500);
 
@@ -1690,11 +1707,15 @@ export default function ShadowGardenPortal({
         setTimeout(() => {
             setWhiteoutOpacity(0.85);
             setWhiteout(true);
+            if (sfxObj?.stop) {
+                sfxObj.stop('glitch', 500); // Stop glitch sound before destination!
+            }
         }, 10500);
 
         setTimeout(() => { 
             if (sfxObj?.stop) {
                 sfxObj.stop('tunnel', 500);
+                sfxObj.stop('glitch', 300);
             }
             if (sfxObj?.stopLoop) {
                 sfxObj.stopLoop('tunnelWind', 300);
@@ -1713,6 +1734,7 @@ export default function ShadowGardenPortal({
                 sfxObj.stop('tunnel', 100);
                 sfxObj.stop('portal', 100);
                 sfxObj.stop('drone', 100);
+                sfxObj.stop('glitch', 100);
             }
             if (sfxObj?.stopLoop) {
                 sfxObj.stopLoop('tunnelWind', 100);
