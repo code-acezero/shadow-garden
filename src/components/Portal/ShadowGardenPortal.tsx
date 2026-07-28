@@ -321,7 +321,7 @@ extend({ MagmaShader, PortalVortexShader, CloudShader, WarpShader, TunnelShader,
 const WormholeTunnel = React.memo(({ stage, tunnelProgress }: { stage: AnimationStage; tunnelProgress: number }) => {
     const matRef = useRef<any>(null);
     const groupRef = useRef<THREE.Group>(null);
-    const isActive = stage === 'tunnel' || stage === 'tunnel_end';
+    const isActive = stage === 'suction' || stage === 'tunnel' || stage === 'tunnel_end';
 
     useFrame((state) => {
         if (!matRef.current) return;
@@ -479,8 +479,9 @@ const WarpTunnel = React.memo(({ active, quality, stage, glitchIntensity }: { ac
         if (matRef.current) matRef.current.uTime = state.clock.elapsedTime;
     });
     
+    const isVisible = active || stage === 'tunnel';
     return (
-        <group ref={tunnelRef} position={[0, 11, -1.5]} visible={active}>
+        <group ref={tunnelRef} position={[0, 11, -1.5]} visible={isVisible}>
             <mesh rotation={[Math.PI / 2, 0, 0]}>
                 <cylinderGeometry args={[12, 4, 80, segments, 1, true]} />
                 <warpShader 
@@ -1127,9 +1128,10 @@ const CameraDirector = React.memo(({
                 break;
             }
             case 'suction': {
-                desiredPos.set(0, 1.8, -25); 
-                desiredLook.set(0, 9, -50); 
-                targetFov = 110;
+                desiredPos.set(0, 0, -45); 
+                desiredLook.set(0, 0, -100); 
+                targetFov = 105;
+                posAccel = 4.0;
                 break;
             }
         }
@@ -1467,10 +1469,25 @@ export default function ShadowGardenPortal({
 
     useEffect(() => {
         setQuality(detectPerformanceTier());
+        return () => {
+            const sfxObj = (window as any).shadowAudio || (window as any).sfx || sfx;
+            if (sfxObj?.stopLoop) {
+                sfxObj.stopLoop('tunnelWind');
+                sfxObj.stopLoop('bhHum');
+                sfxObj.stopLoop('droneWind');
+            }
+            if (sfxObj?.stopAll) sfxObj.stopAll(300);
+        };
     }, []);
 
     const triggerSkip = useCallback(() => {
-        sfx.stopAll();
+        const sfxObj = (window as any).shadowAudio || (window as any).sfx || sfx;
+        if (sfxObj?.stopLoop) {
+            sfxObj.stopLoop('tunnelWind');
+            sfxObj.stopLoop('bhHum');
+            sfxObj.stopLoop('droneWind');
+        }
+        if (sfxObj?.stopAll) sfxObj.stopAll();
         setSkipped(true);
         onSceneReadyRef.current?.(); 
     }, []);
@@ -1671,10 +1688,11 @@ export default function ShadowGardenPortal({
 
         setTimeout(() => { 
             if (sfx?.stopLoop) {
-                sfx.stopLoop('tunnelWind');
-                sfx.stopLoop('bhHum');
+                sfx.stopLoop('tunnelWind', 300);
+                sfx.stopLoop('bhHum', 300);
+                sfx.stopLoop('droneWind', 300);
             }
-            if (sfx?.stopAll) sfx.stopAll(1500); // fade out over 1.5s
+            if (sfx?.stopAll) sfx.stopAll(1000); // fade out over 1s
             setStage('arrival'); 
             if (sfx?.play) {
                 sfx.play('arrival', 0.7);
@@ -1683,6 +1701,12 @@ export default function ShadowGardenPortal({
         }, 12000); // End of tunnel
 
         setTimeout(() => {
+            if (sfx?.stopLoop) {
+                sfx.stopLoop('tunnelWind', 100);
+                sfx.stopLoop('bhHum', 100);
+                sfx.stopLoop('droneWind', 100);
+            }
+            if (sfx?.stopAll) sfx.stopAll(100);
             onComplete(); 
         }, 13500); // Complete after 1.5 seconds
     }, [onComplete]);
