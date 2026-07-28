@@ -28,6 +28,9 @@ jobs:
         run: pnpm install --no-frozen-lockfile
 
       - name: Build Next.js Application
+        env:
+          NEXT_PUBLIC_SUPABASE_URL: "https://shadowgarden.supabase.co"
+          NEXT_PUBLIC_SUPABASE_ANON_KEY: "dummy-anon-key-for-build"
         run: pnpm run build
 
       - name: Setup Java JDK 17
@@ -67,6 +70,6 @@ jobs:
       - name: Upload Signed Release APK Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: ShadowGarden-Signed-Release-APK
+          name: ShadowGarden-V1-Signed-Release_${{ github.run_number }}
           path: android/app/build/outputs/apk/release/app-release.apk
           retention-days: 30
