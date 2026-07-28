@@ -1,4 +1,4 @@
-name: Build Native Android APK
+name: Build Signed Native Android APK
 
 on:
   push:
@@ -42,17 +42,31 @@ jobs:
       - name: Sync Capacitor Android Assets
         run: pnpm cap sync android
 
+      - name: Generate Official Release Keystore (code:4ce0)
+        run: |
+          keytool -genkeypair -v -keystore android/app/release.keystore \
+            -alias code4ce0 \
+            -keyalg RSA -keysize 2048 -validity 10000 \
+            -storepass "ShadowGarden@4ce0-ak" \
+            -keypass "ShadowGarden@4ce0-ak" \
+            -dname "CN=code:4ce0, O=Shadow Garden, C=US"
+
       - name: Grant Gradle Execute Permissions
         run: chmod +x android/gradlew
 
-      - name: Build APK via Gradle
+      - name: Build Signed Release APK via Gradle
         run: |
           cd android
-          ./gradlew assembleDebug --no-daemon
+          ./gradlew assembleRelease \
+            -Pandroid.injected.signing.store.file=release.keystore \
+            -Pandroid.injected.signing.store.password="ShadowGarden@4ce0-ak" \
+            -Pandroid.injected.signing.key.alias=code4ce0 \
+            -Pandroid.injected.signing.key.password="ShadowGarden@4ce0-ak" \
+            --no-daemon
 
-      - name: Upload Android APK Artifact
+      - name: Upload Signed Release APK Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: ShadowGarden-Android-APK
-          path: android/app/build/outputs/apk/debug/app-debug.apk
+          name: ShadowGarden-Signed-Release-APK
+          path: android/app/build/outputs/apk/release/app-release.apk
           retention-days: 30
