@@ -21,6 +21,7 @@ import AuthModal from '@/components/Auth/AuthModal';
 import SearchBar from '@/components/Anime/SearchBar';
 import ShadowGardenPortal from '@/components/Portal/ShadowGardenPortal';
 import { getRandomAvatar, getRandomGuestName } from '@/components/User/AvatarSelectorModal';
+import { Capacitor } from '@capacitor/core';
 import CuteShareBar from '@/components/Home/CuteShareBar';
 
 
@@ -342,12 +343,24 @@ export default function LandingClient() {
 
     // 2. Auth & Data
     const init = async () => {
-      // Check if user already completed first-time intro & portal sequence
+      // Check if running inside Native App container (Android APK, iOS App, Windows EXE, or Installed PWA)
+      const isNativeContainer = typeof window !== 'undefined' && (
+        Capacitor.isNativePlatform() || 
+        window.matchMedia('(display-mode: standalone)').matches
+      );
       const hasSeenPortal = typeof window !== 'undefined' && localStorage.getItem('sg_portal_seen') === 'true';
       const hasAuthHint = typeof window !== 'undefined' && localStorage.getItem('shadow_auth_hint') === 'true';
 
-      if (hasSeenPortal || hasAuthHint) {
-        // Portal already seen on first app opening — redirect directly to /home
+      // 1. On Native App Container (APK / iOS / EXE):
+      // Intro & 3D portal sequence plays strictly ONCE on first app launch, then bypasses to /home on future launches
+      if (isNativeContainer && (hasSeenPortal || hasAuthHint)) {
+        router.replace('/home');
+        return;
+      }
+
+      // 2. On Main Web Project (https://shadow-garden.site):
+      // Web behavior remains 100% untouched as before
+      if (!isNativeContainer && hasAuthHint) {
         router.replace('/home');
         return;
       }
