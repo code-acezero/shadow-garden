@@ -11,6 +11,7 @@ import {
   Loader2, Cast
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { MagicalWaveParticlesPlayerLoader } from '@/components/Watch/LiquidWatchLoaders';
 
 // --- 1. CONFIGURATION CONSTANTS ---
 const SUB_COLORS = { 
@@ -960,13 +961,16 @@ const AnimePlayer = forwardRef<AnimePlayerRef, AnimePlayerProps>(({
       {seekOverlay && (<div className="absolute inset-0 z-50 flex items-center justify-center pointer-events-none animate-in fade-in zoom-in-50 duration-200"><div className="bg-black/50 backdrop-blur-md py-4 rounded-full text-white font-black text-3xl tracking-widest border border-white/10 shadow-2xl">{seekOverlay}</div></div>)}
       {gestureOverlay && (<div className="absolute inset-0 z-50 flex flex-col items-center justify-center pointer-events-none animate-in fade-in zoom-in-50 duration-200"><div className="bg-black/60 backdrop-blur-md p-6 rounded-full text-white border border-white/10 shadow-2xl mb-4">{gestureOverlay.icon}</div><span className="text-xl font-bold text-white text-shadow">{gestureOverlay.text}</span></div>)}
 
-      {!hasStarted && isBuffering && (
-          <div className="absolute inset-0 z-50 flex flex-col items-center justify-center bg-black/60 backdrop-blur-sm">
-              <div className="relative w-40 h-40 flex items-center justify-center">
-                  <img src="/run-happy.gif" alt="Loading..." className="w-32 h-32 object-contain relative z-10" />
-                  <div className="absolute bottom-4 w-full h-1 bg-gradient-to-r from-transparent via-primary-600/50 to-transparent animate-slide-fast" />
+      {(!hasStarted || isBuffering) && !seekOverlay && !gestureOverlay && (
+          <div className="absolute inset-0 z-50 flex flex-col items-center justify-center bg-black/80 backdrop-blur-md overflow-hidden">
+              <MagicalWaveParticlesPlayerLoader text="INITIALIZING REALITY..." />
+              <div className="absolute inset-0 z-20 flex flex-col items-center justify-center pointer-events-none">
+                  <div className="relative w-36 h-36 flex items-center justify-center">
+                      <img src="/run-happy.gif" alt="Loading..." className="w-28 h-28 object-contain relative z-10 drop-shadow-[0_0_20px_rgba(168,85,247,0.6)]" />
+                      <div className="absolute bottom-2 w-full h-1 bg-gradient-to-r from-transparent via-purple-500 to-transparent animate-pulse" />
+                  </div>
+                  <p className="mt-2 font-lemon text-purple-400 animate-pulse tracking-[0.4em] text-[10px] font-bold uppercase drop-shadow">Loading Reality...</p>
               </div>
-              <p className="mt-4 font-lemon text-primary-500 animate-pulse tracking-[0.4em] text-[10px] font-bold uppercase">Loading Reality...</p>
           </div>
       )}
 

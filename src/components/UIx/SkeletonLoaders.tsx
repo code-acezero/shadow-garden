@@ -22,11 +22,20 @@ export const CardSkeleton = ({ className }: { className?: string }) => (
   </div>
 );
 
+import { MagicalWaveParticlesPlayerLoader } from '@/components/Watch/LiquidWatchLoaders';
+
 export const PlayerSkeleton = ({ className }: { className?: string }) => (
-  <div className={cn("w-full aspect-video bg-black/40 backdrop-blur-2xl rounded-[30px] border border-white/5 overflow-hidden relative shadow-[0_8px_32px_0_rgba(0,0,0,0.37)]", className)}>
-    <PulseLayer />
-    <div className="absolute inset-0 flex items-center justify-center">
-      <div className="w-16 h-16 rounded-full bg-white/5" />
+  <div className={cn("w-full aspect-video bg-black/40 backdrop-blur-2xl rounded-[30px] border border-white/10 overflow-hidden relative shadow-[0_8px_32px_0_rgba(0,0,0,0.37)] flex flex-col items-center justify-center", className)}>
+    <MagicalWaveParticlesPlayerLoader text="INITIALIZING STREAM PORTAL..." />
+    <div className="absolute inset-0 z-20 flex flex-col items-center justify-center pointer-events-none">
+      <div className="relative w-36 h-36 flex items-center justify-center">
+        <img src="/run-happy.gif" alt="Loading..." className="w-28 h-28 object-contain relative z-10 drop-shadow-[0_0_20px_rgba(168,85,247,0.6)]" />
+        <div className="absolute bottom-2 w-full h-1 bg-gradient-to-r from-transparent via-purple-500 to-transparent animate-pulse" />
+      </div>
+      <div className="flex items-center gap-2 mt-1">
+        <span className="w-2 h-2 rounded-full bg-purple-500 animate-ping" />
+        <span className="text-[10px] font-mono font-bold tracking-[0.3em] text-purple-300 uppercase drop-shadow">SUMMONING SHADOW STREAM...</span>
+      </div>
     </div>
   </div>
 );

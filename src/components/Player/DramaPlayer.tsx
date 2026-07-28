@@ -4,6 +4,7 @@ import React, { useEffect, useRef, useState, useCallback, forwardRef, useImperat
 import Hls from 'hls.js';
 import { Play, Pause, Volume2, VolumeX, Settings, Maximize, Subtitles, Gauge, ChevronRight, ChevronLeft, ChevronsLeft, ChevronsRight, Loader2, PictureInPicture, Server as ServerIcon, SkipForward, ToggleLeft, ToggleRight } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { MagicalWaveParticlesPlayerLoader } from '@/components/Watch/LiquidWatchLoaders';
 import IframeAdShield from '@/components/Player/IframeAdShield';
 
 interface DramaPlayerProps {
@@ -315,10 +316,16 @@ const DramaPlayer = forwardRef<DramaPlayerRef, DramaPlayerProps>(({
       />
 
       {/* Buffering */}
-      {isBuffering && !hasStarted && (
-        <div className="absolute inset-0 z-50 flex flex-col items-center justify-center bg-black/70 backdrop-blur-sm">
-          <img src="/run-happy.gif" alt="Loading" className="w-24 h-24 object-contain" />
-          <p className="mt-3 font-lemon text-primary-500 animate-pulse tracking-[0.4em] text-[10px] uppercase">Loading Drama...</p>
+      {(!hasStarted || isBuffering) && (
+        <div className="absolute inset-0 z-50 flex flex-col items-center justify-center bg-black/80 backdrop-blur-md overflow-hidden">
+          <MagicalWaveParticlesPlayerLoader text="INITIALIZING DRAMA STREAM..." />
+          <div className="absolute inset-0 z-20 flex flex-col items-center justify-center pointer-events-none">
+            <div className="relative w-36 h-36 flex items-center justify-center">
+              <img src="/run-happy.gif" alt="Loading..." className="w-28 h-28 object-contain relative z-10 drop-shadow-[0_0_20px_rgba(168,85,247,0.6)]" />
+              <div className="absolute bottom-2 w-full h-1 bg-gradient-to-r from-transparent via-purple-500 to-transparent animate-pulse" />
+            </div>
+            <p className="mt-2 font-lemon text-purple-400 animate-pulse tracking-[0.4em] text-[10px] font-bold uppercase drop-shadow">Loading Reality...</p>
+          </div>
         </div>
       )}
       {isBuffering && hasStarted && (
