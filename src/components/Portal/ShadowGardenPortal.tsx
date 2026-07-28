@@ -1571,7 +1571,7 @@ export default function ShadowGardenPortal({
         setAppState('running'); 
         setStage('intro');
         sfx.playRandomBGM(); 
-        sfx.play('wind', 0.15, true);
+        sfx.play('drone', 0.6, true);
     }, [appState]);
 
     useEffect(() => {
@@ -1611,13 +1611,14 @@ export default function ShadowGardenPortal({
     const handleReachDoor = useCallback(() => {
         setStage('brace_popup');
         sfx.stop('step'); 
+        sfx.stop('drone', 500);
         setShowBracePopup(true);
     }, []);
 
     const performEntrySequence = useCallback(() => {
         sfx.init(); 
         setStage('drop');
-        sfx.play('wind', 0.6); 
+        sfx.play('drone', 0.6, true); 
         
         setTimeout(() => { 
             setStage('crouch'); 
@@ -1641,18 +1642,20 @@ export default function ShadowGardenPortal({
     }, []);
 
     const handleBraceReady = useCallback(() => {
-        const sfx = (window as any).shadowAudio || (window as any).sfx;
+        const sfxObj = (window as any).shadowAudio || (window as any).sfx || sfx;
         setShowBracePopup(false);
         setStage('push');
-        if (sfx?.play) {
-            sfx.play('grind', 0.7); 
-            sfx.play('boom', 0.6); 
+        if (sfxObj?.play) {
+            sfxObj.play('door', 0.8); 
+            sfxObj.play('portal', 0.8, true); 
+            sfxObj.play('grind', 0.5); 
+            sfxObj.play('boom', 0.5); 
         }
         setShake(0.8);
         
         setTimeout(() => { 
             setStage('suction'); 
-            if (sfx?.play) sfx.play('suction', 0.7); 
+            if (sfxObj?.play) sfxObj.play('suction', 0.7); 
             setShake(8.0); 
         }, 2000);
 
@@ -1666,18 +1669,21 @@ export default function ShadowGardenPortal({
             setTunnelProgress(0);
             setWhiteout(false); // Fade out the whiteout for the tunnel
             setShake(0); // Remove camera shake in tunnel
-            if (sfx?.play) {
-                sfx.play('tunnel_wind', 0.5);
-                sfx.play('bh_hum', 0.35);
+            if (sfxObj?.stop) {
+                sfxObj.stop('portal', 500);
+            }
+            if (sfxObj?.play) {
+                sfxObj.play('tunnel', 0.8, true);
+                sfxObj.play('bh_hum', 0.35);
             }
         }, 5000);
 
         setTimeout(() => {
-            if (sfx?.play) sfx.play('tunnel_glitch', 0.5);
+            if (sfxObj?.play) sfxObj.play('glitch', 0.8);
         }, 7500);
 
         setTimeout(() => {
-            if (sfx?.play) sfx.play('tunnel_end', 0.7);
+            if (sfxObj?.play) sfxObj.play('tunnel_end', 0.7);
         }, 9500);
 
         // Fade back to white smoothly over 1.5s right before tunnel ends
@@ -1687,26 +1693,33 @@ export default function ShadowGardenPortal({
         }, 10500);
 
         setTimeout(() => { 
-            if (sfx?.stopLoop) {
-                sfx.stopLoop('tunnelWind', 300);
-                sfx.stopLoop('bhHum', 300);
-                sfx.stopLoop('droneWind', 300);
+            if (sfxObj?.stop) {
+                sfxObj.stop('tunnel', 500);
             }
-            if (sfx?.stopAll) sfx.stopAll(1000); // fade out over 1s
+            if (sfxObj?.stopLoop) {
+                sfxObj.stopLoop('tunnelWind', 300);
+                sfxObj.stopLoop('bhHum', 300);
+                sfxObj.stopLoop('droneWind', 300);
+            }
             setStage('arrival'); 
-            if (sfx?.play) {
-                sfx.play('arrival', 0.7);
-                sfx.play('popup_chime', 0.6);
+            if (sfxObj?.play) {
+                sfxObj.play('destination', 0.9);
+                sfxObj.play('popup_chime', 0.6);
             }
         }, 12000); // End of tunnel
 
         setTimeout(() => {
-            if (sfx?.stopLoop) {
-                sfx.stopLoop('tunnelWind', 100);
-                sfx.stopLoop('bhHum', 100);
-                sfx.stopLoop('droneWind', 100);
+            if (sfxObj?.stop) {
+                sfxObj.stop('tunnel', 100);
+                sfxObj.stop('portal', 100);
+                sfxObj.stop('drone', 100);
             }
-            if (sfx?.stopAll) sfx.stopAll(100);
+            if (sfxObj?.stopLoop) {
+                sfxObj.stopLoop('tunnelWind', 100);
+                sfxObj.stopLoop('bhHum', 100);
+                sfxObj.stopLoop('droneWind', 100);
+            }
+            if (sfxObj?.stopAll) sfxObj.stopAll(100);
             onComplete(); 
         }, 13500); // Complete after 1.5 seconds
     }, [onComplete]);

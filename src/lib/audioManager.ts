@@ -75,6 +75,23 @@ class AudioMatrix {
             this.sources.set(`bgm_${idx}`, a);
         });
 
+        const customSfx: Record<string, string> = {
+            'door': '/sfx/door.mp3',
+            'portal': '/sfx/portal.mp3',
+            'glitch': '/sfx/glitch.mp3',
+            'tunnel': '/sfx/tunnel.mp3',
+            'drone': '/sfx/drone.mp3',
+            'destination': '/sfx/destination.mp3',
+            'title': '/sfx/title.mp3'
+        };
+
+        Object.entries(customSfx).forEach(([name, url]) => {
+            const a = new Audio(url);
+            a.preload = 'auto';
+            a.crossOrigin = 'anonymous';
+            this.sources.set(name, a);
+        });
+
         this.active = true;
         if (typeof window !== 'undefined') {
             (window as any).stopShadowBGM = () => this.stopAll(1500);
@@ -492,6 +509,22 @@ class AudioMatrix {
     // ─── PLAY ROUTER ─────────────────────────────────────────────────────────────
     play(key: string, vol = 1, loop = false, fadeMs = 0) {
         if (!this.active) this.init();
+
+        // Custom HTML Audio files (e.g. door, portal, glitch, tunnel, drone, destination, title)
+        const customAudio = this.sources.get(key);
+        if (customAudio) {
+            customAudio.loop = loop;
+            if (!loop) customAudio.currentTime = 0;
+            customAudio.volume = fadeMs > 0 ? 0 : vol;
+            customAudio.play().catch(() => {});
+            if (fadeMs > 0) {
+                let v = 0; const step = vol / (fadeMs / 50);
+                if (this.fadeIntervals.has(key)) clearInterval(this.fadeIntervals.get(key) as any);
+                const id = setInterval(() => { v = Math.min(vol, v + step); customAudio.volume = v; if (v >= vol) clearInterval(id as any); }, 50);
+                this.fadeIntervals.set(key, id);
+            }
+            return;
+        }
 
         // Synthesized sounds
         if (key === 'glass') { this.synthGlass(vol); return; }
