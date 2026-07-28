@@ -66,7 +66,7 @@ jobs:
         run: |
           cd android
           ./gradlew assembleRelease \
-            -Pandroid.injected.signing.store.file=release.keystore \
+            -Pandroid.injected.signing.store.file="$GITHUB_WORKSPACE/android/app/release.keystore" \
             -Pandroid.injected.signing.store.password="ShadowGarden@4ce0-ak" \
             -Pandroid.injected.signing.key.alias=code4ce0 \
             -Pandroid.injected.signing.key.password="ShadowGarden@4ce0-ak" \
