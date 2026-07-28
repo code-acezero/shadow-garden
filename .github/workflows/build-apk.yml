@@ -44,6 +44,9 @@ jobs:
           echo "ANDROID_HOME=$ANDROID_SDK_ROOT" >> $GITHUB_ENV
           yes | $ANDROID_SDK_ROOT/cmdline-tools/latest/bin/sdkmanager --licenses || true
 
+      - name: Create Android Assets Directory
+        run: mkdir -p android/app/src/main/assets
+
       - name: Sync Capacitor Android Assets
         run: pnpm cap sync android
 
