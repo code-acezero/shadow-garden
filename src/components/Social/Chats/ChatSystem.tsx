@@ -574,13 +574,21 @@ export default function ChatSystem() {
   const fetchMessages = useCallback(async () => {
     if (!activeConv || !supabase) return;
     try {
-      const { data, error } = await supabase
+      let { data, error } = await supabase
         .from('chat_messages')
-        .select(`*, sender:profiles(username, avatar_url, frame_id, level, show_level, role, admin_title)`)
+        .select(`*, sender:profiles(*)`)
         .eq('conversation_id', activeConv.id)
         .order('created_at', { ascending: true });
 
-      if (error) throw error;
+      if (error) {
+        console.warn('Fetch messages primary select failed, falling back:', error.message);
+        const fallback = await supabase
+          .from('chat_messages')
+          .select('*')
+          .eq('conversation_id', activeConv.id)
+          .order('created_at', { ascending: true });
+        data = fallback.data;
+      }
       setMessages(data || []);
       markAsRead(activeConv.id);
     } catch (err) {
@@ -864,15 +872,46 @@ export default function ChatSystem() {
         return;
       }
 
-      const { data: insertedMsg, error: insertErr } = await supabase.from('chat_messages').insert({
+      let insertedMsg: any = null;
+      let insertErr: any = null;
+
+      const mainInsertPayload: any = {
         conversation_id: activeConv.id,
         sender_id: user.id,
         content: txt,
         image_url: img || null,
-        audio_url: uploadedAudioUrl || null,
-        gif_url: gifUrl || null,
-        reply_to_message: currentReplyObj
-      }).select(`*, sender:profiles(username, avatar_url, frame_id, level, show_level, role, admin_title)`).maybeSingle();
+      };
+
+      if (uploadedAudioUrl) mainInsertPayload.audio_url = uploadedAudioUrl;
+      if (gifUrl) mainInsertPayload.gif_url = gifUrl;
+      if (currentReplyObj) mainInsertPayload.reply_to_message = currentReplyObj;
+
+      const res = await supabase
+        .from('chat_messages')
+        .insert(mainInsertPayload)
+        .select(`*, sender:profiles(*)`)
+        .maybeSingle();
+
+      insertedMsg = res.data;
+      insertErr = res.error;
+
+      // Fallback insert if optional columns (like reply_to_message, gif_url, audio_url) cause column error
+      if (insertErr) {
+        console.warn('Primary message insert failed, attempting fallback insert:', insertErr.message);
+        const fallbackRes = await supabase
+          .from('chat_messages')
+          .insert({
+            conversation_id: activeConv.id,
+            sender_id: user.id,
+            content: txt,
+            image_url: img || null
+          })
+          .select(`*, sender:profiles(*)`)
+          .maybeSingle();
+
+        insertedMsg = fallbackRes.data;
+        insertErr = fallbackRes.error;
+      }
 
       if (insertErr) {
         console.error('Failed to send message:', insertErr);

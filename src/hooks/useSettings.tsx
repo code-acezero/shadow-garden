@@ -279,6 +279,9 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
       settings,
       updateSetting,
       resetSettings,
+      isLoaded,
+      storageUsage,
+      clearCache,
     };
   }, [settings, isLoaded, storageUsage, updateSetting, resetSettings, clearCache]);
 

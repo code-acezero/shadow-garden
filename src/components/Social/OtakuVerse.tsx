@@ -288,7 +288,7 @@ export default function OtakuVerse({ user, onAuthRequired, highlightId, initialN
         .from('social_posts')
         .select(`
           *,
-          user:profiles(username, avatar_url, role, level, admin_title, title, frame_id, show_level, settings, updated_at),
+          user:profiles(*),
           clan:clans(id, name, avatar_url)
         `)
         .order('created_at', { ascending: false });
@@ -297,8 +297,17 @@ export default function OtakuVerse({ user, onAuthRequired, highlightId, initialN
         query = query.in('user_id', followedUserIds);
       } 
 
-      const { data, error } = await query;
-      if (error) throw error;
+      let { data, error } = await query;
+
+      // Fallback query if clan relationship or optional column joins fail
+      if (error) {
+        console.warn('Primary posts query failed, trying fallback:', error.message);
+        const fallback = await supabase
+          .from('social_posts')
+          .select('*, user:profiles(*)')
+          .order('created_at', { ascending: false });
+        data = fallback.data;
+      }
 
       const postsWithMetadata = await Promise.all((data || []).map(async (post: any) => {
         let isLiked = false;
