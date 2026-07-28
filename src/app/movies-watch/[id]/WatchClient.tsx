@@ -9,7 +9,7 @@ import {
   Check, ChevronDown, Grid, LayoutGrid, List, Star, Film, Clapperboard, X,
   SkipBack, SkipForward, Repeat1, Globe, Users, Lightbulb, Share2
 } from 'lucide-react';
-import { WatchPageSkeleton, PlayerSkeleton } from '@/components/UIx/SkeletonLoaders';
+import { WatchPageSkeleton, LiquidPlayerSkeleton } from '@/components/UIx/SkeletonLoaders';
 import { omni, MovieDetail } from '@/lib/omni';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/context/AuthContext';
@@ -462,7 +462,7 @@ export default function WatchClient() {
                     <SafeEmbed url={activeServerUrl} />
                   ) : (
                     <div className="w-full h-full flex items-center justify-center border-b border-white/5">
-                      <PlayerSkeleton />
+                      <LiquidPlayerSkeleton text="INITIALIZING MOVIE STREAM..." />
                     </div>
                   )}
 

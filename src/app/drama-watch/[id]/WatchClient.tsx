@@ -5,7 +5,7 @@ import { useParams, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { motion, AnimatePresence, LayoutGroup } from 'framer-motion';
 import { SkipForward, SkipBack, Server as ServerIcon, Layers, Clock, Play, Grid, List, LayoutGrid, ChevronDown, Flame, Info, Loader2, Check, X, Download, AlertTriangle, Lightbulb, RotateCw, StepForward, Share2, Users } from 'lucide-react';
-import { WatchPageSkeleton, PlayerSkeleton, SimpleGridSkeleton } from '@/components/UIx/SkeletonLoaders';
+import { WatchPageSkeleton, LiquidPlayerSkeleton, SimpleGridSkeleton } from '@/components/UIx/SkeletonLoaders';
 import { omni, DramaDetail, DramaServer, DramaStream } from '@/lib/omni';
 import { cn, formatAnimeTitle } from '@/lib/utils';
 import DramaPlayer, { DramaPlayerRef } from '@/components/Player/DramaPlayer';
@@ -403,7 +403,7 @@ export function DramaWatchContent() {
               <div className="absolute inset-0 z-[5] pointer-events-none" />
               {isStreamLoading ? (
                 <div className="w-full h-full flex items-center justify-center border-b border-white/5">
-                  <PlayerSkeleton />
+                  <LiquidPlayerSkeleton text="INITIALIZING DRAMA STREAM..." />
                 </div>
               ) : streamError ? (
                 <div className="w-full h-full flex items-center justify-center bg-black text-zinc-500">
