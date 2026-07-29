@@ -109,9 +109,14 @@ export default function AnimeCard({ anime, progress = 0, isHindi = false }: Anim
     } else if (anime.title) displayTitle = anime.title;
     else if (anime.name) displayTitle = anime.name;
 
-    const subCount = typeof anime.episodes === 'object' ? anime.episodes?.sub : anime.sub || null;
-    const dubCount = typeof anime.episodes === 'object' ? anime.episodes?.dub : anime.dub || null;
-    const totalEp = anime.totalEpisodes || (typeof anime.episodes === 'number' ? anime.episodes : null);
+    const rawSub = typeof anime.episodes === 'object' ? anime.episodes?.sub : (anime.sub ?? anime.subCount ?? null);
+    const rawDub = typeof anime.episodes === 'object' ? anime.episodes?.dub : (anime.dub ?? anime.dubCount ?? null);
+    const totalEp = anime.totalEpisodes || anime.total_episodes || (typeof anime.episodes === 'number' ? anime.episodes : null);
+
+    const isDubMedia = isHindi || anime.isHindi || anime.source === 'hindi' || anime.media_type === 'hindi' || anime.media_type === 'dub' || anime.type?.toLowerCase() === 'dub' || anime.type?.toLowerCase() === 'hindi';
+
+    const subCount = rawSub !== null ? rawSub : (!isDubMedia && totalEp ? totalEp : null);
+    const dubCount = rawDub !== null ? rawDub : (isDubMedia && totalEp ? totalEp : null);
 
     // Initial Adult & Rating Check
     const genresList = Array.isArray(anime.genres) ? anime.genres.map((g: any) => String(g).toLowerCase()) : [];

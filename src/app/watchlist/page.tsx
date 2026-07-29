@@ -347,13 +347,17 @@ function WatchlistContent() {
                                                         onClick={(id, episodeId, type) => router.push(getWatchRoute(id, episodeId, type))}
                                                     />
                                                 ) : (
-                                                    <AnimeCard anime={{ 
-                                                        id: item.anime_id, 
-                                                        title: item.anime_title, 
-                                                        poster: item.anime_image, 
-                                                        type: (item as any).type || (item as any).media_type || "TV", 
-                                                        totalEpisodes: item.total_episodes || (item as any).totalEpisodes || "?"
-                                                    }} />
+                                                     <AnimeCard anime={{ 
+                                                         id: item.anime_id, 
+                                                         title: item.anime_title, 
+                                                         poster: item.anime_image, 
+                                                         type: (item as any).type || (item as any).media_type || "TV", 
+                                                         media_type: (item as any).media_type || (item as any).type || "anime",
+                                                         totalEpisodes: item.total_episodes || (item as any).totalEpisodes || "?",
+                                                         total_episodes: item.total_episodes || (item as any).totalEpisodes,
+                                                         sub: (item as any).sub || (item as any).subCount,
+                                                         dub: (item as any).dub || (item as any).dubCount,
+                                                     }} />
                                                 )}
                                                 {/* QUICK ACTIONS OVERLAY */}
                                                 <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col gap-1 z-[60]">
