@@ -39,6 +39,8 @@ export default function AnalyticsSection({ accentColor = 'red' }: { accentColor?
   });
 
   const [activeTimeframe, setActiveTimeframe] = useState<'7d' | '30d'>('7d');
+  // Use a ref so fetchAnalytics doesn't need realtimeActive as a dep (prevents infinite loop)
+  const realtimeActiveRef = React.useRef(1);
 
   const fetchAnalytics = useCallback(async () => {
     try {
@@ -115,9 +117,10 @@ export default function AnalyticsSection({ accentColor = 'red' }: { accentColor?
         };
       });
 
-      setData({
+      setData(prev => ({
+        ...prev,
         totalAdventurers: totalProfiles || profiles?.length || 0,
-        realtimeActive: Math.max(data.realtimeActive, 1),
+        realtimeActive: Math.max(realtimeActiveRef.current, prev.realtimeActive, 1),
         totalVisits: visits || 350,
         adminsCount: admins,
         modsCount: mods,
@@ -126,34 +129,39 @@ export default function AnalyticsSection({ accentColor = 'red' }: { accentColor?
         newToday: newCount,
         weeklyTrend,
         loading: false,
-      });
+      }));
     } catch (err) {
       console.warn('Failed to load analytics:', err);
       setData(prev => ({ ...prev, loading: false }));
     }
-  }, [data.realtimeActive]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // 3. Realtime Presence Listener for Active Count
   useEffect(() => {
     fetchAnalytics();
 
-    const channel = supabase.channel('shadow_presence_global');
-    
-    channel.on('presence', { event: 'sync' }, () => {
-      const state = channel.presenceState();
-      const activeCount = Object.keys(state).length;
-      setData(prev => ({
-        ...prev,
-        realtimeActive: Math.max(activeCount, 1),
-      }));
-    });
-
-    channel.subscribe();
+    let channel: ReturnType<typeof supabase.channel> | null = null;
+    try {
+      channel = supabase.channel('shadow_presence_admin_' + Math.random().toString(36).slice(2));
+      channel.on('presence', { event: 'sync' }, () => {
+        try {
+          const state = channel!.presenceState();
+          const activeCount = Object.keys(state).length;
+          const safe = Math.max(activeCount, 1);
+          realtimeActiveRef.current = safe;
+          setData(prev => ({ ...prev, realtimeActive: safe }));
+        } catch (e) { /* ignore */ }
+      });
+      channel.subscribe();
+    } catch (e) {
+      console.warn('Presence channel failed (non-fatal):', e);
+    }
 
     return () => {
-      channel.unsubscribe();
+      try { channel?.unsubscribe(); } catch (e) { /* ignore */ }
     };
-  }, []);
+  }, [fetchAnalytics]);
 
   const isRed = accentColor === 'red';
   const themeGlow = isRed ? 'from-primary-600/20 to-rose-900/10 border-primary-500/20' : 'from-fuchsia-600/20 to-purple-900/10 border-fuchsia-500/20';
