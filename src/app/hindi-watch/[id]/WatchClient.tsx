@@ -9,7 +9,7 @@ import {
   Layers, Clock, AlertCircle, Tv, Play,
   Grid, List, Timer, Lightbulb, LayoutGrid,
   ChevronDown, Heart, CheckCircle, XCircle,
-  FastForward, Star, Info, MessageSquare, User,
+  FastForward, Star, Info, MessageSquare, User, Users,
   Loader2, Globe, Flame, Calendar, Copyright, Check, Mic, X,
   ChevronLeft, ChevronRight, Pause, ArrowLeft, ArrowRight, Download, Wand2,
   Zap, PlayCircle, RotateCw, StepForward, Share2
@@ -925,6 +925,43 @@ function WatchContent() {
       }, 3000);
   }, [showSkipNotification]);
 
+  const handleCreateWatchRoom = async () => {
+      if (!user) {
+          toast.error("Log in to create a watch room.");
+          return;
+      }
+      try {
+          const code = Math.random().toString(36).substring(2, 8).toUpperCase();
+          const { data: room, error: roomError } = await supabase
+              .from('watch_rooms')
+              .insert({
+                  code,
+                  title: anime?.title ? `${anime.title} Watch Room` : 'Hindi Anime Watch Room',
+                  host_id: user.id,
+                  media_id: animeId,
+                  media_type: 'hindi',
+                  episode_number: currentEpisode?.number || 1,
+                  is_private: false
+              })
+              .select()
+              .single();
+
+          if (roomError) throw roomError;
+
+          await supabase.from('room_members').insert({
+              room_id: room.id,
+              user_id: user.id,
+              role: 'host'
+          });
+
+          toast.success("Watch room created!");
+          window.location.href = `/rooms/${code}`;
+      } catch (err: any) {
+          console.error("Failed to create room:", err);
+          toast.error("Could not create watch room");
+      }
+  };
+
   // --- EFFECTS ---
 
   // URL Auto Update
@@ -1486,6 +1523,9 @@ function WatchContent() {
                             )}
                             <button onClick={() => setShowShareModal(true)} className="flex items-center justify-center gap-1.5 px-3 h-8 rounded-full border border-white/10 bg-white/5 text-zinc-300 text-[10px] font-black uppercase tracking-widest transition-all hover:bg-orange-600 hover:border-orange-500 hover:text-white whitespace-nowrap shadow-md" title="Share Episode">
                                 <Share2 size={12} /> Share
+                            </button>
+                            <button onClick={handleCreateWatchRoom} className="flex items-center justify-center gap-1.5 px-3 h-8 rounded-full border border-white/10 bg-white/5 text-zinc-300 text-[10px] font-black uppercase tracking-widest transition-all hover:bg-orange-600 hover:border-orange-500 hover:text-white whitespace-nowrap shadow-md cursor-pointer" title="Create Watch Room">
+                                <Users size={12} /> <span className="hidden sm:inline">Room</span>
                             </button>
                             <div className="flex bg-black/40 rounded-full p-1 border border-white/10 shadow-inner flex-shrink-0">{(['sub', 'dub', 'raw'] as const).map((cat) => { const isAvailable = (servers?.[cat]?.length || 0) > 0; return (<button key={cat} disabled={!isAvailable} onClick={() => updateSetting('category', cat)} className={cn("px-4 py-1 rounded-full text-[10px] font-black uppercase transition-all relative active:scale-95 shadow-sm", settings.category === cat ? "bg-orange-600 text-white shadow-lg" : "text-zinc-600 hover:text-zinc-300", !isAvailable && "opacity-10")}>{cat}{isAvailable && <span className="absolute -top-0.5 -right-0.5 w-1.5 h-1.5 bg-orange-600 rounded-full animate-pulse shadow-[0_0_5px_orange]" />}</button>);})}</div>
                             <DropdownMenu modal={false}>
