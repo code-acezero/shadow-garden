@@ -76,12 +76,12 @@ export default function GuildManagerDashboard() {
 
   return (
     <RoleGuard allowedRoles={['admin', 'moderator']}>
-      <style jsx global>{`
+      <style dangerouslySetInnerHTML={{ __html: `
         ::-webkit-scrollbar { display: none; }
         * { -ms-overflow-style: none; scrollbar-width: none; outline: none !important; -webkit-tap-highlight-color: transparent; }
         input:focus, textarea:focus, select:focus, button:focus { box-shadow: none !important; ring: 0 !important; border-color: rgba(220, 38, 38, 0.5) !important; }
         .font-minomu { font-family: var(--font-minomu), sans-serif; }
-      `}</style>
+      ` }} />
 
       <div className="h-screen bg-[#050505] text-white font-sans flex flex-col md:flex-row relative overflow-hidden">
         
@@ -304,14 +304,14 @@ export default function GuildManagerDashboard() {
 
           {/* Tab Panel Content */}
           <div className="animate-in fade-in slide-in-from-bottom-4 duration-300 min-h-[500px]">
-            <div className={activeTab === 'GUILD_DESK' ? 'block' : 'hidden'}><OverviewTab changeTab={switchTab} /></div>
-            <div className={activeTab === 'ANALYTICS' ? 'block' : 'hidden'}><AnalyticsSection accentColor="fuchsia" /></div>
-            <div className={activeTab === 'GUILD_INFO' ? 'block' : 'hidden'}><IdentityTab /></div>
-            <div className={activeTab === 'ADVENTURERS' ? 'block' : 'hidden'}><RosterTab /></div>
-            <div className={activeTab === 'TITLES_HIERARCHY' ? 'block' : 'hidden'}><RoleTitleManager /></div>
-            <div className={activeTab === 'GUILD_BOARDS' ? 'block' : 'hidden'}><GuildBoardsPanel /></div>
-            <div className={activeTab === 'VOICES' ? 'block' : 'hidden'}><VoiceTab /></div>
-            <div className={activeTab === 'NOTICE' ? 'block' : 'hidden'}><BroadcastTab /></div>
+            {activeTab === 'GUILD_DESK' && <OverviewTab changeTab={switchTab} />}
+            {activeTab === 'ANALYTICS' && <AnalyticsSection accentColor="fuchsia" />}
+            {activeTab === 'GUILD_INFO' && <IdentityTab />}
+            {activeTab === 'ADVENTURERS' && <RosterTab />}
+            {activeTab === 'TITLES_HIERARCHY' && <RoleTitleManager />}
+            {activeTab === 'GUILD_BOARDS' && <GuildBoardsPanel />}
+            {activeTab === 'VOICES' && <VoiceTab />}
+            {activeTab === 'NOTICE' && <BroadcastTab />}
           </div>
 
           {/* Footer */}
