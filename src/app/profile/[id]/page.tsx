@@ -4,6 +4,7 @@ import React, { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { useAuth } from '@/context/AuthContext';
 import { supabase } from '@/lib/supabase';
+import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
@@ -75,6 +76,32 @@ export default function PublicProfilePage({ params }: { params: Promise<{ id: st
 
     const avatarFileInputRef = React.useRef<HTMLInputElement>(null);
     const bannerFileInputRef = React.useRef<HTMLInputElement>(null);
+
+    const handleAvatarFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        if (e.target.files && e.target.files[0]) {
+            const file = e.target.files[0];
+            const reader = new FileReader();
+            reader.onload = (ev) => {
+                setAlphaCropperSrc(ev.target?.result as string);
+                setAlphaCropperTarget('avatar');
+                setShowAlphaCropperModal(true);
+            };
+            reader.readAsDataURL(file);
+        }
+    };
+
+    const handleBannerFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        if (e.target.files && e.target.files[0]) {
+            const file = e.target.files[0];
+            const reader = new FileReader();
+            reader.onload = (ev) => {
+                setAlphaCropperSrc(ev.target?.result as string);
+                setAlphaCropperTarget('banner');
+                setShowAlphaCropperModal(true);
+            };
+            reader.readAsDataURL(file);
+        }
+    };
 
     useEffect(() => {
         if (!targetUserId) return;
