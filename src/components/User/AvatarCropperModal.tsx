@@ -52,8 +52,8 @@ export default function AvatarCropperModal({
   const dispWidth = baseWidth * zoom;
   const dispHeight = baseHeight * zoom;
 
-  const maxX = Math.max(0, (dispWidth - CONTAINER_SIZE) / 2);
-  const maxY = Math.max(0, (dispHeight - CONTAINER_SIZE) / 2);
+  const maxX = dispWidth >= CONTAINER_SIZE ? (dispWidth - CONTAINER_SIZE) / 2 : (CONTAINER_SIZE - dispWidth * 0.2) / 2;
+  const maxY = dispHeight >= CONTAINER_SIZE ? (dispHeight - CONTAINER_SIZE) / 2 : (CONTAINER_SIZE - dispHeight * 0.2) / 2;
 
   const clampedX = Math.max(-maxX, Math.min(maxX, position.x));
   const clampedY = Math.max(-maxY, Math.min(maxY, position.y));
@@ -120,7 +120,7 @@ export default function AvatarCropperModal({
   const handleWheel = (e: React.WheelEvent) => {
     e.preventDefault();
     const delta = e.deltaY < 0 ? 0.08 : -0.08;
-    setZoom((z) => Math.min(3, Math.max(1, +(z + delta).toFixed(2))));
+    setZoom((z) => Math.min(3, Math.max(0.3, +(z + delta).toFixed(2))));
   };
 
   useEffect(() => {
@@ -317,7 +317,7 @@ export default function AvatarCropperModal({
 
               <div className="flex items-center gap-3">
                 <button
-                  onClick={() => setZoom((z) => Math.max(1, +(z - 0.1).toFixed(2)))}
+                  onClick={() => setZoom((z) => Math.max(0.3, +(z - 0.1).toFixed(2)))}
                   className="w-8 h-8 rounded-xl bg-white/5 hover:bg-white/10 flex items-center justify-center text-zinc-300 transition-colors"
                 >
                   <ZoomOut size={14} />
@@ -325,7 +325,7 @@ export default function AvatarCropperModal({
 
                 <input
                   type="range"
-                  min="1"
+                  min="0.3"
                   max="3"
                   step="0.02"
                   value={zoom}
