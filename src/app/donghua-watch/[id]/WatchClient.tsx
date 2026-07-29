@@ -1381,7 +1381,7 @@ function WatchContent() {
                         <button onClick={() => updateSetting('autoNext', !settings.autoNext)} className={cn("flex items-center justify-center gap-2 px-6 h-8 rounded-full border text-[9px] sm:text-[10px] font-black uppercase tracking-widest transition-all whitespace-nowrap flex-shrink-0", settings.autoNext ? "bg-emerald-600/20 border-emerald-500/50 text-emerald-500" : "bg-white/5 border-white/10 text-zinc-500 hover:bg-white/10 hover:text-zinc-300")}>
                             <SkipForward size={14} /> AUTO-NEXT
                         </button>
-                        <WatchListButton animeId={anime.id} animeTitle={anime.title} animeImage={anime.poster} currentEp={currentEpisode?.number} mediaType="donghua" />
+                        <WatchListButton animeId={anime.id} animeTitle={anime.title} animeImage={anime.poster} currentEp={currentEpisode?.number} mediaType="donghua" totalEpisodes={anime.episodes?.length || 1} type={(anime as any).type || "Donghua"} />
                     </div>
 
                     {/* Right: Actions, Sub/Dub, Server */}

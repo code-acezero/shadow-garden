@@ -629,7 +629,7 @@ export default function WatchClient() {
                     }
                   />
 
-                  <WatchListButton animeId={movie.id} animeTitle={movie.title} animeImage={movie.image} mediaType="movie" />
+                  <WatchListButton animeId={movie.id} animeTitle={movie.title} animeImage={movie.image} mediaType="movie" totalEpisodes={movie.seasons?.[0]?.episodes?.length || 1} type="Movie" />
                 </div>
               </div>
 

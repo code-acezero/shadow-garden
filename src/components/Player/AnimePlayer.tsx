@@ -846,7 +846,7 @@ const AnimePlayer = forwardRef<AnimePlayerRef, AnimePlayerProps>(({
       ref={containerRef}
       tabIndex={0} 
       className={cn(
-        "group relative w-full bg-black overflow-hidden font-sans select-none rounded-2xl shadow-2xl ring-1 ring-white/10 outline-none focus:outline-none focus-visible:ring-0 max-h-[80dvh]",
+        "group relative w-full min-h-[220px] sm:min-h-[280px] bg-black overflow-hidden font-sans select-none rounded-2xl shadow-2xl ring-1 ring-white/10 outline-none focus:outline-none focus-visible:ring-0 max-h-[80dvh]",
         showControls ? "cursor-auto" : "cursor-none"
       )}
       style={{ touchAction: 'none', aspectRatio: videoAspectRatio ? `${videoAspectRatio}` : '16 / 9' }} 
@@ -968,8 +968,8 @@ const AnimePlayer = forwardRef<AnimePlayerRef, AnimePlayerProps>(({
       )}
 
       {hasStarted && isBuffering && !seekOverlay && !gestureOverlay && (
-          <div className="absolute inset-0 z-50 flex flex-col items-center justify-center bg-black/80 backdrop-blur-md overflow-hidden">
-              <RunHappyPlayerLoader text="LOADING CRYSTALS..." />
+          <div className="absolute inset-0 z-50 flex flex-col items-center justify-center bg-transparent backdrop-blur-none overflow-hidden pointer-events-none">
+              <RunHappyPlayerLoader text="LOADING CRYSTALS..." transparent />
           </div>
       )}
       
@@ -993,13 +993,13 @@ const AnimePlayer = forwardRef<AnimePlayerRef, AnimePlayerProps>(({
       {/* Play Button with Smooth Blur Transition */}
       <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-40">
           {!isBuffering && !seekOverlay && !gestureOverlay && (
-            <div onClick={(e) => { e.stopPropagation(); togglePlay(); }} className={cn("group/playbtn relative w-16 h-16 md:w-20 md:h-20 rounded-full flex items-center justify-center pointer-events-auto cursor-pointer active:scale-95 transition-all duration-500", showControls ? "opacity-100 scale-100 hover:scale-110" : "opacity-0 scale-150 pointer-events-none")}>
+            <div onClick={(e) => { e.stopPropagation(); togglePlay(); }} className={cn("group/playbtn relative w-[clamp(3.5rem,18%,5rem)] h-[clamp(3.5rem,18%,5rem)] rounded-full flex items-center justify-center pointer-events-auto cursor-pointer active:scale-95 transition-all duration-500", showControls ? "opacity-100 scale-100 hover:scale-110" : "opacity-0 scale-150 pointer-events-none")}>
                 {/* Glowing Liquid Glass Background */}
                 <div className="absolute inset-0 rounded-full bg-white/25 backdrop-blur-2xl border border-white/40 shadow-[0_0_30px_rgba(255,255,255,0.3),inset_0_2px_4px_rgba(255,255,255,0.6)] group-hover/playbtn:bg-white/40 group-hover/playbtn:border-white/60 group-hover/playbtn:shadow-[0_0_45px_rgba(255,255,255,0.6)] transition-all duration-500 overflow-hidden">
                     {/* Glass Shine */}
                     <div className="absolute inset-0 bg-gradient-to-b from-white/70 to-transparent opacity-50 -translate-y-[40%] rounded-[100%] pointer-events-none" />
                 </div>
-                {isPlaying ? <Pause fill="white" size={28} className="md:w-8 md:h-8 relative z-10 text-white drop-shadow-[0_2px_8px_rgba(0,0,0,0.8)] transition-transform duration-300 group-hover/playbtn:scale-110" /> : <Play fill="white" size={28} className="ml-1 md:w-8 md:h-8 relative z-10 text-white drop-shadow-[0_2px_8px_rgba(0,0,0,0.8)] transition-transform duration-300 group-hover/playbtn:scale-110" />}
+                {isPlaying ? <Pause fill="white" className="w-[45%] h-[45%] relative z-10 text-white drop-shadow-[0_2px_8px_rgba(0,0,0,0.8)] transition-transform duration-300 group-hover/playbtn:scale-110" /> : <Play fill="white" className="ml-0.5 w-[45%] h-[45%] relative z-10 text-white drop-shadow-[0_2px_8px_rgba(0,0,0,0.8)] transition-transform duration-300 group-hover/playbtn:scale-110" />}
             </div>
           )}
       </div>
@@ -1046,7 +1046,7 @@ const AnimePlayer = forwardRef<AnimePlayerRef, AnimePlayerProps>(({
                   <button onClick={(e) => { e.stopPropagation(); setActiveMenu(activeMenu === 'main' ? 'none' : 'main'); }} className={cn("hover:text-primary-500 transition-colors active:scale-90 group p-2 md:p-0", activeMenu !== 'none' && activeMenu !== 'audio' && activeMenu !== 'subs' && "text-primary-500")}><Settings size={20} className="md:w-5 md:h-5 group-hover:rotate-90 transition-transform duration-500" /></button>
                   
                     {activeMenu === 'main' && (
-                       <div className="absolute bottom-12 right-0 bg-zinc-950/90 backdrop-blur-3xl border border-white/10 ring-1 ring-white/10 rounded-2xl shadow-[0_8px_40px_rgba(0,0,0,0.8)] p-2 w-[180px] sm:w-52 max-h-[160px] sm:max-h-[220px] overflow-y-auto scrollbar-hide z-[70] flex flex-col gap-1 animate-in slide-in-from-bottom-2">
+                       <div className="absolute bottom-12 right-0 bg-zinc-950/90 backdrop-blur-3xl border border-white/10 ring-1 ring-white/10 rounded-2xl shadow-[0_8px_40px_rgba(0,0,0,0.8)] p-2 w-[180px] sm:w-52 max-h-[60%] sm:max-h-[75%] overflow-y-auto scrollbar-hide z-[70] flex flex-col gap-1 animate-in slide-in-from-bottom-2">
                           <button onClick={(e)=>{e.stopPropagation(); setActiveMenu('quality')}} className="flex items-center justify-between w-full px-2.5 py-1.5 rounded-xl hover:bg-white/10 hover:shadow-inner text-left text-[10px] sm:text-xs font-bold transition-all"><div className="flex items-center gap-1.5"><Settings size={13}/> Quality</div><span className="text-zinc-400 text-[9px] sm:text-[10px] truncate ml-2">{currentQuality === -1 ? autoResolutionText : `${qualities.find(q => q.index === currentQuality)?.height}p`}</span></button>
                           <button onClick={(e)=>{e.stopPropagation(); setActiveMenu('speed')}} className="flex items-center justify-between w-full px-2.5 py-1.5 rounded-xl hover:bg-white/10 hover:shadow-inner text-left text-[10px] sm:text-xs font-bold transition-all"><div className="flex items-center gap-1.5"><Gauge size={13}/> Speed</div><span className="text-zinc-400 text-[9px] sm:text-[10px]">{speed}x</span></button>
                           <button onClick={(e)=>{e.stopPropagation(); setActiveMenu('gestures')}} className="flex items-center justify-between w-full px-2.5 py-1.5 rounded-xl hover:bg-white/10 hover:shadow-inner text-left text-[10px] sm:text-xs font-bold transition-all"><div className="flex items-center gap-1.5"><MousePointerClick size={13}/> Gestures</div><span className="text-zinc-400 uppercase text-[9px] sm:text-[10px]">{doubleTapMode}</span></button>
@@ -1099,7 +1099,7 @@ const AnimePlayer = forwardRef<AnimePlayerRef, AnimePlayerProps>(({
                 <div className="relative">
                     <button onClick={(e) => { e.stopPropagation(); setActiveMenu(activeMenu === 'subs' ? 'none' : 'subs'); }} className={cn("hover:text-primary-500 transition-colors active:scale-90 p-2 md:p-0", (activeMenu === 'subs' || currentSubtitle !== -1) ? "text-primary-500 fill-red-500" : "text-white")}><Subtitles size={20} className="md:w-5 md:h-5" /></button>
                     {activeMenu === 'subs' && (
-                        <div className="absolute bottom-12 right-0 bg-zinc-950/90 backdrop-blur-3xl border border-white/10 ring-1 ring-white/10 rounded-2xl shadow-[0_8px_40px_rgba(0,0,0,0.8)] p-2 w-44 sm:w-52 max-h-[160px] sm:max-h-[200px] overflow-hidden z-[70] flex flex-col animate-in slide-in-from-bottom-2">
+                        <div className="absolute bottom-12 right-0 bg-zinc-950/90 backdrop-blur-3xl border border-white/10 ring-1 ring-white/10 rounded-2xl shadow-[0_8px_40px_rgba(0,0,0,0.8)] p-2 w-44 sm:w-52 max-h-[60%] sm:max-h-[75%] overflow-hidden z-[70] flex flex-col animate-in slide-in-from-bottom-2">
                              <button onClick={(e) => { e.stopPropagation(); setActiveMenu('subSettings'); }} className="flex items-center gap-1.5 text-[10px] px-2 py-1 rounded-xl text-left font-black text-primary-500 hover:bg-white/5 transition-all mb-1 border-b border-white/10 shrink-0"><Settings size={12}/> CAPTION SETTINGS</button>
                              <div className="overflow-y-auto flex-1 flex flex-col gap-1 scrollbar-hide">
                                <button onClick={(e) => { e.stopPropagation(); changeSubtitle(-1); }} className={cn("text-[10px] px-2.5 py-1.5 rounded-xl text-left font-bold transition-all active:scale-95 shrink-0", currentSubtitle === -1 ? "bg-gradient-to-r from-primary-600 to-primary-500 text-white shadow-md shadow-primary-500/25 border border-primary-500/50" : "hover:bg-white/10 hover:shadow-inner text-zinc-400")}>Off</button>
@@ -1110,7 +1110,7 @@ const AnimePlayer = forwardRef<AnimePlayerRef, AnimePlayerProps>(({
                         </div>
                     )}
                     {activeMenu === 'subSettings' && (
-                        <div className="absolute bottom-12 right-0 bg-zinc-950/95 backdrop-blur-3xl border border-white/10 ring-1 ring-white/10 rounded-2xl shadow-[0_8px_40px_rgba(0,0,0,0.9)] p-3 w-[220px] sm:w-60 md:w-64 max-h-[180px] sm:max-h-[260px] overflow-y-auto scrollbar-hide z-[70] flex flex-col gap-2.5 animate-in slide-in-from-bottom-2" onClick={(e) => e.stopPropagation()}>
+                        <div className="absolute bottom-12 right-0 bg-zinc-950/95 backdrop-blur-3xl border border-white/10 ring-1 ring-white/10 rounded-2xl shadow-[0_8px_40px_rgba(0,0,0,0.9)] p-3 w-[220px] sm:w-60 md:w-64 max-h-[65%] sm:max-h-[80%] overflow-y-auto scrollbar-hide z-[70] flex flex-col gap-2.5 animate-in slide-in-from-bottom-2" onClick={(e) => e.stopPropagation()}>
                              <div className="flex items-center gap-1.5 text-[10px] sm:text-xs font-black text-zinc-400 border-b border-white/10 pb-1.5"><button onClick={(e)=>{e.stopPropagation(); setActiveMenu('subs')}} className="hover:text-white"><ChevronLeft size={13}/></button> CAPTION STYLE</div>
                              <div className="space-y-1"><span className="text-[9px] sm:text-[10px] font-bold text-zinc-400 uppercase">Color</span><div className="flex gap-1.5 flex-wrap">{Object.keys(SUB_COLORS).map((c) => (<button key={c} onClick={(e) => {e.stopPropagation(); updateLocalPrefs({subStyle: { color: c }})}} className={cn("w-5 h-5 sm:w-6 sm:h-6 rounded-full border transition-all active:scale-90 shrink-0", subStyle.color === c ? "border-white scale-110 shadow-md" : "border-transparent opacity-60")} style={{background: SUB_COLORS[c as keyof typeof SUB_COLORS]}} />))}</div></div>
                              <div className="space-y-1"><span className="text-[9px] sm:text-[10px] font-bold text-zinc-400 uppercase">Size</span><div className="flex gap-1 bg-white/5 rounded-xl p-1">{Object.keys(SUB_SIZES).map((s) => (<button key={s} onClick={(e) => {e.stopPropagation(); updateLocalPrefs({subStyle: { size: s }})}} className={cn("flex-1 py-1 rounded-lg text-[9px] sm:text-[10px] font-bold transition-all active:scale-90 shrink-0", subStyle.size === s ? "bg-white text-black shadow-sm" : "text-zinc-400 hover:text-zinc-200")}>{s}</button>))}</div></div>

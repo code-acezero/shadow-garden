@@ -5,6 +5,7 @@ import Hls from 'hls.js';
 import { Play, Pause, Volume2, VolumeX, Settings, Maximize, Subtitles, Gauge, ChevronRight, ChevronLeft, ChevronsLeft, ChevronsRight, Loader2, PictureInPicture, Server as ServerIcon, SkipForward, ToggleLeft, ToggleRight } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { MagicalWaveParticlesPlayerLoader } from '@/components/Watch/LiquidWatchLoaders';
+import { RunHappyPlayerLoader } from '@/components/UIx/SkeletonLoaders';
 import IframeAdShield from '@/components/Player/IframeAdShield';
 
 interface DramaPlayerProps {
@@ -315,22 +316,17 @@ const DramaPlayer = forwardRef<DramaPlayerRef, DramaPlayerProps>(({
         playsInline
       />
 
-      {/* Buffering */}
-      {(!hasStarted || isBuffering) && (
+      {/* Initial Loading (Liquid Wave Loader with blurred dark background) */}
+      {!hasStarted && (
         <div className="absolute inset-0 z-50 flex flex-col items-center justify-center bg-black/80 backdrop-blur-md overflow-hidden">
           <MagicalWaveParticlesPlayerLoader text="INITIALIZING DRAMA STREAM..." />
-          <div className="absolute inset-0 z-20 flex flex-col items-center justify-center pointer-events-none">
-            <div className="relative w-36 h-36 flex items-center justify-center">
-              <img src="/run-happy.gif" alt="Loading..." className="w-28 h-28 object-contain relative z-10 drop-shadow-[0_0_20px_rgba(168,85,247,0.6)]" />
-              <div className="absolute bottom-2 w-full h-1 bg-gradient-to-r from-transparent via-purple-500 to-transparent animate-pulse" />
-            </div>
-            <p className="mt-2 font-lemon text-purple-400 animate-pulse tracking-[0.4em] text-[10px] font-bold uppercase drop-shadow">Loading Reality...</p>
-          </div>
         </div>
       )}
-      {isBuffering && hasStarted && (
-        <div className="absolute inset-0 z-50 flex items-center justify-center pointer-events-none">
-          <div className="bg-black/40 backdrop-blur-sm p-4 rounded-full"><Loader2 className="w-10 h-10 text-white animate-spin" /></div>
+
+      {/* Network Buffering (Run Happy Loader with completely transparent background) */}
+      {hasStarted && isBuffering && (
+        <div className="absolute inset-0 z-50 flex flex-col items-center justify-center bg-transparent backdrop-blur-none overflow-hidden pointer-events-none">
+          <RunHappyPlayerLoader text="LOADING CRYSTALS..." transparent />
         </div>
       )}
 

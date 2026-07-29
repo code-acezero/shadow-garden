@@ -992,8 +992,15 @@ export class WatchlistAPI {
         return local ? JSON.parse(local) : [];
     }
 
-    static async addToWatchlist(userId: string, animeId: string, status: WatchlistItem['status'], progress: number = 0, episodeId?: string): Promise<boolean> {
-        const item: any = { anime_id: animeId, status, progress, updated_at: new Date().toISOString() };
+    static async addToWatchlist(userId: string, animeId: string, status: WatchlistItem['status'], progress: number = 0, episodeId?: string, totalEpisodes?: number, type?: string): Promise<boolean> {
+        const item: any = { 
+            anime_id: animeId, 
+            status, 
+            progress, 
+            total_episodes: Number(totalEpisodes) || 1, 
+            type: type || "TV", 
+            updated_at: new Date().toISOString() 
+        };
         if (episodeId) item.episode_id = episodeId;
 
         if (supabase && userId !== 'guest') {

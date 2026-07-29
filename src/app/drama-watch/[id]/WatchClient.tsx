@@ -462,7 +462,7 @@ export function DramaWatchContent() {
                     <Download size={12} /> <span className="hidden md:inline">DOWNLOAD</span>
                   </Link>
                 )}
-                <WatchListButton animeId={drama.id} animeTitle={drama.title} animeImage={drama.image} currentEp={currentEp?.number} mediaType="drama" />
+                <WatchListButton animeId={drama.id} animeTitle={drama.title} animeImage={drama.image} currentEp={currentEp?.number} mediaType="drama" totalEpisodes={drama.episodes?.length || 1} type="Drama" />
 
                 <button 
                   onClick={handleCreateWatchRoom}
@@ -537,7 +537,7 @@ export function DramaWatchContent() {
                     <span className={cn("w-1.5 h-1.5 rounded-full transition-all ml-0.5", isAutoNext ? "bg-orange-500 shadow-[0_0_6px_rgba(234,88,12,1)] animate-pulse" : "bg-zinc-600/40")} />
                   </div>
                 </button>
-                <WatchListButton animeId={drama.id} animeTitle={drama.title} animeImage={drama.image} currentEp={currentEp?.number} mediaType="drama" />
+                <WatchListButton animeId={drama.id} animeTitle={drama.title} animeImage={drama.image} currentEp={currentEp?.number} mediaType="drama" totalEpisodes={drama.episodes?.length || 1} type="Drama" />
               </div>
               {/* Row 3: PREV / NEXT */}
               <div className="flex w-full justify-between items-center gap-2 border-t border-white/5 pt-3">

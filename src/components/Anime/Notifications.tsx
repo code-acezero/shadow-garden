@@ -7,6 +7,7 @@ import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/context/AuthContext';
 import { formatDistanceToNow } from 'date-fns';
 import { useRouter } from 'next/navigation';
+import { useSettings } from '@/hooks/useSettings';
 
 export interface NotificationItem {
   id: string;
@@ -23,6 +24,7 @@ export interface NotificationItem {
 
 export default function Notifications() {
   const { user } = useAuth();
+  const { settings } = useSettings();
   const router = useRouter();
   const [isOpen, setIsOpen] = useState(false);
   const [notifications, setNotifications] = useState<NotificationItem[]>([]);
@@ -71,11 +73,21 @@ export default function Notifications() {
   // Combine real and temp notifications for display
   const allNotifications = [...tempNotifications, ...notifications].sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
 
-  // 2. Realtime listener & initial load
+  // 2. Realtime listener, background Oracle check & initial load
   useEffect(() => {
     if (!user || !supabase) return;
 
     fetchNotifications();
+
+    // Trigger background library check at most once every 10 minutes per session
+    try {
+      const lastChecked = sessionStorage.getItem('oracle_checked_timestamp');
+      const now = Date.now();
+      if (!lastChecked || now - Number(lastChecked) > 10 * 60 * 1000) {
+        sessionStorage.setItem('oracle_checked_timestamp', String(now));
+        fetch('/api/oracle').catch(() => {});
+      }
+    } catch (e) {}
 
     const channel = supabase
       .channel(`realtime-notifications-${user.id}`)
@@ -87,8 +99,24 @@ export default function Notifications() {
           table: 'notifications',
           filter: `user_id=eq.${user.id}`,
         },
-        () => {
+        (payload: any) => {
           fetchNotifications();
+          if (payload.eventType === 'INSERT' && payload.new) {
+            if (settings?.pushNotifs !== false && typeof window !== 'undefined' && 'Notification' in window && Notification.permission === 'granted') {
+              try {
+                const notif = new window.Notification('Shadow Garden Alert', {
+                  body: payload.new.content || 'New alert received',
+                  icon: '/icon.png'
+                });
+                notif.onclick = () => {
+                  window.focus();
+                  if (payload.new.link) router.push(payload.new.link);
+                };
+              } catch (err) {
+                console.error('Push notification error:', err);
+              }
+            }
+          }
         }
       )
       .subscribe();
@@ -96,7 +124,7 @@ export default function Notifications() {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [user, fetchNotifications]);
+  }, [user, fetchNotifications, settings?.pushNotifs, router]);
 
   const unreadCount = allNotifications.filter(n => !n.is_read).length;
 

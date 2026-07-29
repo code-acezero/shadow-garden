@@ -506,11 +506,12 @@ export default function ChatSystem() {
           }
         }
 
-        // Fetch unread count
+        // Fetch unread count (only count messages sent by OTHER users after participant_last_read)
         const { count } = await supabase
           .from('chat_messages')
           .select('*', { count: 'exact', head: true })
           .eq('conversation_id', conv.id)
+          .neq('sender_id', user.id)
           .gt('created_at', conv.participant_last_read || '1970-01-01T00:00:00Z');
         
         // Force unread_count = 0 if this conversation is currently open
@@ -1465,7 +1466,15 @@ export default function ChatSystem() {
                   <div className="min-w-0 flex-1 flex flex-col justify-center">
                     <div className="flex items-center justify-between gap-1.5 w-full">
                       <div className="flex items-center gap-1.5 min-w-0 flex-1">
-                        <h4 className="text-sm font-bold text-white truncate">{title}</h4>
+                        <h4 className="text-sm font-bold text-white truncate flex items-center gap-1.5">
+                          {title}
+                          {c.type === 'direct' && isUserOnline && (
+                            <span className="relative flex h-2 w-2 shrink-0">
+                              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                              <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,1)]"></span>
+                            </span>
+                          )}
+                        </h4>
                         {c.type !== 'clan' && userTitle && (
                           <span className="px-2 py-0.5 text-[9px] font-extrabold uppercase tracking-wider text-primary-300 bg-primary-950/60 border border-primary-500/30 rounded-full shrink-0 truncate backdrop-blur-md">
                             {userTitle}
@@ -1547,7 +1556,15 @@ export default function ChatSystem() {
                         </div>
                         <div className="min-w-0 flex-1">
                           <div className="flex items-center gap-2">
-                            <h3 className="text-xs sm:text-sm font-bold text-white leading-tight truncate">{headerTitle}</h3>
+                            <h3 className="text-xs sm:text-sm font-bold text-white leading-tight truncate flex items-center gap-1.5">
+                              {headerTitle}
+                              {!isClan && isUserOnline && (
+                                <span className="relative flex h-2 w-2 shrink-0">
+                                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                                  <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,1)]"></span>
+                                </span>
+                              )}
+                            </h3>
                             {(() => {
                               const headerDisplayTitle = !isClan && otherUser ? getUserTitle(otherUser) : undefined;
 

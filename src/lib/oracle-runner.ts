@@ -11,6 +11,8 @@ interface WatchlistItem {
   anime_image: string;
   media_type?: string;
   last_episode_number?: number;
+  total_episodes?: number;
+  status?: string;
 }
 
 export async function checkAllLibraryUpdates() {
@@ -19,18 +21,17 @@ export async function checkAllLibraryUpdates() {
     return { error: "Database connection failed" };
   }
 
-  console.log("[Oracle] Running 6-hour automated library update check...");
+  console.log("[Oracle] Running automated library update check...");
 
   try {
     const { data: watchlist, error: dbError } = await supabase
       .from('watchlist')
-      .select('user_id, anime_id, anime_title, anime_image, media_type, last_episode_number')
-      .in('status', ['watching', 'plan_to_watch']);
+      .select('user_id, anime_id, anime_title, anime_image, media_type, last_episode_number, total_episodes, status');
 
     if (dbError) throw dbError;
     if (!watchlist || watchlist.length === 0) {
-      console.log("[Oracle] No active tracked items found.");
-      return { notified: 0, message: "No active tracked items" };
+      console.log("[Oracle] No tracked items found.");
+      return { notified: 0, message: "No tracked items" };
     }
 
     const items = watchlist as WatchlistItem[];
@@ -67,7 +68,7 @@ export async function checkAllLibraryUpdates() {
         } else if (mediaType === 'movie' || mediaType === 'series') {
           const info = await omni.movies.getDetail(id);
           if (info) {
-            latestEpCount = info.seasons?.reduce((acc, s) => acc + (s.episodes?.length || 0), 0) || 1;
+            latestEpCount = info.seasons?.reduce((acc: number, s: any) => acc + (s.episodes?.length || 0), 0) || 1;
             title = info.title || title;
             image = info.image || image;
             targetLink = `/movies-watch/${id}`;
@@ -96,16 +97,47 @@ export async function checkAllLibraryUpdates() {
 
       if (latestEpCount > 0) {
         for (const userItem of userItems) {
-          const lastEp = userItem.last_episode_number || 0;
-          if (latestEpCount > lastEp) {
-            notificationsToInsert.push({
-              user_id: userItem.user_id,
-              type: 'EPISODE_ALERT',
-              content: `New episode (${latestEpCount}) of "${title}" is now available!`,
-              image_url: image,
-              link: `${targetLink}?ep=${latestEpCount}`,
-              is_read: false
-            });
+          const storedTotal = Number(userItem.total_episodes) || 0;
+          
+          // If storedTotal is 0 or uninitialized, update DB so future comparisons are accurate
+          if (storedTotal === 0 && latestEpCount > 0) {
+            await supabase
+              .from('watchlist')
+              .update({ total_episodes: latestEpCount })
+              .eq('user_id', userItem.user_id)
+              .eq('anime_id', userItem.anime_id);
+            continue;
+          }
+
+          // If there's a genuinely new episode available
+          if (latestEpCount > storedTotal) {
+            const epLink = `${targetLink}?ep=${latestEpCount}`;
+            
+            // Avoid inserting duplicate notification
+            const { data: existing } = await supabase
+              .from('notifications')
+              .select('id')
+              .eq('user_id', userItem.user_id)
+              .eq('link', epLink)
+              .maybeSingle();
+
+            if (!existing) {
+              notificationsToInsert.push({
+                user_id: userItem.user_id,
+                type: 'EPISODE_ALERT',
+                content: `New episode (${latestEpCount}) of "${title}" is now available!`,
+                image_url: image,
+                link: epLink,
+                is_read: false
+              });
+
+              // Update stored total_episodes in watchlist
+              await supabase
+                .from('watchlist')
+                .update({ total_episodes: latestEpCount })
+                .eq('user_id', userItem.user_id)
+                .eq('anime_id', userItem.anime_id);
+            }
           }
         }
       }
@@ -122,3 +154,4 @@ export async function checkAllLibraryUpdates() {
     return { error: e.message || "Failed to check notifications" };
   }
 }
+

@@ -63,12 +63,22 @@ interface UserTitleBadgeProps {
 // Internal helper for raw online status
 export function isUserOnline(user?: UserTitleProfile | null): boolean {
   if (!user || typeof user !== 'object') return false;
+  // Always force Alpha (First Shadow) to be online 24/7!
+  if (
+    user.id === '5d38da6e-b568-4499-ab67-f588354add5d' || 
+    (user.username && user.username.toLowerCase() === 'alpha') ||
+    user.role === 'ai_leader' ||
+    user.role === 'ai'
+  ) {
+    return true;
+  }
   // If explicitly set (like in realtime presence), use it
   if (user.is_online === true || user.online === true) return true;
-  // Otherwise, fallback to heartbeat (updated_at)
-  if (user.updated_at) {
-    const lastActive = new Date(user.updated_at).getTime();
-    if (!isNaN(lastActive) && Date.now() - lastActive < 5 * 60 * 1000) {
+  // Otherwise, fallback to heartbeat (updated_at, last_seen_at, last_active)
+  const timeSource = user.updated_at || user.last_seen_at || user.last_active;
+  if (timeSource) {
+    const lastActive = new Date(timeSource).getTime();
+    if (!isNaN(lastActive) && Date.now() - lastActive < 15 * 60 * 1000) {
       return true;
     }
   }

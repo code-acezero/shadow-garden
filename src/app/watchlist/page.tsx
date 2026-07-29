@@ -351,8 +351,8 @@ function WatchlistContent() {
                                                         id: item.anime_id, 
                                                         title: item.anime_title, 
                                                         poster: item.anime_image, 
-                                                        type: (item as any).type || "TV", 
-                                                        totalEpisodes: item.total_episodes
+                                                        type: (item as any).type || (item as any).media_type || "TV", 
+                                                        totalEpisodes: item.total_episodes || (item as any).totalEpisodes || "?"
                                                     }} />
                                                 )}
                                                 {/* QUICK ACTIONS OVERLAY */}

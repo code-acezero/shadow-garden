@@ -24,20 +24,26 @@ export const CardSkeleton = ({ className }: { className?: string }) => (
 
 import { MagicalWaveParticlesPlayerLoader } from '@/components/Watch/LiquidWatchLoaders';
 
-export const RunHappyPlayerLoader = ({ text = "LOADING REALITY...", className }: { text?: string; className?: string }) => (
-  <div className={cn("w-full aspect-video bg-black/80 backdrop-blur-2xl rounded-[30px] border border-white/10 overflow-hidden relative shadow-[0_8px_32px_0_rgba(0,0,0,0.37)] flex flex-col items-center justify-center select-none", className)}>
-    <div className="relative w-40 h-40 flex items-center justify-center">
-      <img src="/run-happy.gif" alt="Loading..." className="w-32 h-32 object-contain relative z-10 drop-shadow-[0_0_20px_rgba(168,85,247,0.6)]" />
-      <div className="absolute bottom-4 w-full h-1 bg-gradient-to-r from-transparent via-purple-500 to-transparent animate-pulse" />
+export const RunHappyPlayerLoader = ({ text = "LOADING REALITY...", className, transparent = false }: { text?: string; className?: string; transparent?: boolean }) => (
+  <div className={cn(
+    "w-full h-full flex flex-col items-center justify-center select-none overflow-hidden relative",
+    transparent
+      ? "bg-transparent backdrop-blur-none border-none shadow-none"
+      : "bg-black/80 backdrop-blur-2xl rounded-[30px] border border-white/10 shadow-[0_8px_32px_0_rgba(0,0,0,0.37)] min-h-[180px]",
+    className
+  )}>
+    <div className="relative w-[clamp(3.5rem,25%,8rem)] h-[clamp(3.5rem,25%,8rem)] flex items-center justify-center">
+      <img src="/run-happy.gif" alt="Loading..." className="w-full h-full object-contain relative z-10 drop-shadow-[0_0_20px_rgba(239,68,68,0.6)]" />
+      <div className="absolute bottom-2 w-full h-1 bg-gradient-to-r from-transparent via-red-500 to-transparent animate-pulse" />
     </div>
-    <p className="mt-2 font-lemon text-purple-400 animate-pulse tracking-[0.4em] text-[10px] font-bold uppercase drop-shadow">
+    <p className="mt-2 font-lemon text-red-500 animate-pulse tracking-[0.3em] text-[9px] sm:text-[10px] font-bold uppercase drop-shadow-[0_0_12px_rgba(239,68,68,0.8)] text-center px-4">
       {text}
     </p>
   </div>
 );
 
 export const LiquidPlayerSkeleton = ({ text = "INITIALIZING STREAM...", className }: { text?: string; className?: string }) => (
-  <div className={cn("w-full aspect-video bg-black/40 backdrop-blur-2xl rounded-[30px] border border-white/10 overflow-hidden relative shadow-[0_8px_32px_0_rgba(0,0,0,0.37)] flex flex-col items-center justify-center", className)}>
+  <div className={cn("w-full aspect-video bg-white/[0.04] backdrop-blur-3xl rounded-[30px] border border-white/20 overflow-hidden relative shadow-[0_12px_40px_0_rgba(0,0,0,0.5),inset_0_1px_1px_0_rgba(255,255,255,0.2)] flex flex-col items-center justify-center", className)}>
     <MagicalWaveParticlesPlayerLoader text={text} />
   </div>
 );

@@ -517,6 +517,7 @@ function WhisperIslandContent() {
     if (typeof window !== 'undefined') window.addEventListener('shadow-whisper', handleWhisper);
 
     let channel: any = null;
+    let msgChannel: any = null;
     if (profile?.id) {
         channel = supabase.channel('whisper-realtime').on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'notifications', filter: `user_id=eq.${profile.id}` }, (payload: any) => {
             const dbNotif = payload.new;
@@ -524,11 +525,37 @@ function WhisperIslandContent() {
             if (dbNotif.type === 'GUILD_WARNING') { title = 'Guild Receptionist'; type = 'warning'; }
             window.dispatchEvent(new CustomEvent('shadow-whisper', { detail: { id: Date.now(), type: type, title: title, message: dbNotif.content } }));
         }).subscribe();
+
+        msgChannel = supabase.channel('whisper-msg-realtime').on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'chat_messages' }, (payload: any) => {
+            const msg = payload.new;
+            if (msg && msg.sender_id !== profile.id) {
+              window.dispatchEvent(new CustomEvent('shadow-whisper', { 
+                detail: { 
+                  id: Date.now(), 
+                  type: 'system', 
+                  title: 'New Missive', 
+                  message: msg.content || 'You received a new message' 
+                } 
+              }));
+              window.dispatchEvent(new CustomEvent('add_temp_notification', {
+                detail: {
+                  id: msg.id || String(Date.now()),
+                  user_id: profile.id,
+                  type: 'unread_message',
+                  content: msg.content || 'Sent a new message',
+                  link: `/messages?chatId=${msg.conversation_id}`,
+                  is_read: false,
+                  created_at: msg.created_at || new Date().toISOString()
+                }
+              }));
+            }
+        }).subscribe();
     }
 
     return () => { 
         if (typeof window !== 'undefined') window.removeEventListener('shadow-whisper', handleWhisper);
         if (channel) supabase.removeChannel(channel);
+        if (msgChannel) supabase.removeChannel(msgChannel);
     };
   }, [profile?.id]);
 

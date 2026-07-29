@@ -20,9 +20,11 @@ interface WatchListButtonProps {
     animeImage: string;
     currentEp?: number; 
     mediaType?: string;
+    totalEpisodes?: number;
+    type?: string;
 }
 
-export default function WatchListButton({ animeId, animeTitle, animeImage, currentEp, mediaType = 'anime' }: WatchListButtonProps) {
+export default function WatchListButton({ animeId, animeTitle, animeImage, currentEp, mediaType = 'anime', totalEpisodes, type }: WatchListButtonProps) {
     const { user, isLoading: isAuthLoading } = useAuth();
     const [status, setStatus] = useState<string | null>(null);
     const [loading, setLoading] = useState(false);
@@ -86,6 +88,8 @@ export default function WatchListButton({ animeId, animeTitle, animeImage, curre
                     anime_title: animeTitle,
                     anime_image: animeImage,
                     media_type: mediaType,
+                    type: type || (mediaType === 'movie' ? 'Movie' : mediaType === 'donghua' ? 'Donghua' : 'TV'),
+                    total_episodes: Number(totalEpisodes) || 1,
                     last_episode_number: currentEp || 1, 
                     updated_at: new Date().toISOString()
                 }, { onConflict: 'user_id, anime_id' });

@@ -84,7 +84,9 @@ export const MagicalWaveParticlesPlayerLoader = memo(({ text = "TUNING DIMENSION
   const d2 = "M0,128L48,149.3C96,171,192,213,288,208C384,203,480,149,576,133.3C672,117,768,139,864,165.3C960,192,1056,224,1152,213.3C1248,203,1344,149,1392,122.7L1440,96L1440,320L1392,320C1344,320,1248,320,1152,320C1056,320,960,320,864,320C768,320,672,320,576,320C480,320,384,320,288,320C192,320,96,320,48,320L0,320Z";
 
   return (
-    <div className="w-full h-full min-h-[300px] aspect-video bg-[#050814]/90 backdrop-blur-xl border border-white/10 rounded-[28px] overflow-hidden flex flex-col items-center justify-center relative select-none">
+    <div className="w-full h-full min-h-[300px] aspect-video bg-white/[0.04] backdrop-blur-3xl border border-white/20 shadow-[0_12px_40px_0_rgba(0,0,0,0.5),inset_0_1px_1px_0_rgba(255,255,255,0.2)] rounded-[28px] overflow-hidden flex flex-col items-center justify-center relative select-none">
+      {/* Liquid Glass Highlight Shine */}
+      <div className="absolute inset-0 bg-gradient-to-br from-white/15 via-transparent to-transparent pointer-events-none" />
       {/* Background Magical Wave Gradients */}
       <div className="absolute inset-0 opacity-40 pointer-events-none overflow-hidden">
         <svg className="w-full h-full" viewBox="0 0 1440 320" preserveAspectRatio="none">
