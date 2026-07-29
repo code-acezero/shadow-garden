@@ -327,7 +327,9 @@ export default function LandingClient() {
     if (typeof window !== 'undefined') sfx.stopAll(1500);
     const mobileCheck = window.innerWidth < 768;
     setIsMobile(mobileCheck);
-    if (mobileCheck) {
+    // Only skip portal on WEB mobile. Native APK/iOS always shows portal.
+    const isNative = Capacitor.isNativePlatform();
+    if (mobileCheck && !isNative) {
       setShowLandingUI(true);
     }
 
@@ -423,9 +425,16 @@ export default function LandingClient() {
   const handleEnterClick = useCallback(() => { 
     initializeAudio();
     processGenderSelection();
-    setShowLandingUI(false); 
-    setTriggerEntry(true); 
-  }, [initializeAudio, processGenderSelection]);
+    const isNative = Capacitor.isNativePlatform();
+    if (isMobile && !isNative) {
+      // Web mobile: no portal rendered, navigate directly
+      localStorage.setItem('sg_portal_seen', 'true');
+      router.push('/home');
+    } else {
+      setShowLandingUI(false); 
+      setTriggerEntry(true); 
+    }
+  }, [initializeAudio, processGenderSelection, isMobile, router]);
   
   const handleJoinGuildClick = useCallback(() => {
     initializeAudio();
@@ -456,7 +465,8 @@ export default function LandingClient() {
     <main className={`relative min-h-screen w-full bg-[#050505] text-white overflow-x-hidden selection:bg-primary-900/50   `}>
       
       {/* 1. PORTAL BACKGROUND */}
-      {!isMobile && (
+      {/* Portal: always shown on native app, hidden on web mobile */}
+      {(!isMobile || Capacitor.isNativePlatform()) && (
         <div className="fixed inset-0 z-0">
           <ShadowGardenPortal 
             startTransition={triggerEntry}
