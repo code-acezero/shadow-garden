@@ -49,8 +49,7 @@ const notify = (title: string, message: string, type: 'success' | 'error' | 'sys
 type Tab = 'GUILD_DESK' | 'ANALYTICS' | 'GUILD_INFO' | 'ADVENTURERS' | 'TITLES_HIERARCHY' | 'GUILD_BOARDS' | 'PALETTES' | 'MOD_APPS' | 'MAGIC_NET' | 'VOICES' | 'NOTICE';
 
 const MASTER_TABS = [
-  { id: 'GUILD_DESK', icon: LayoutDashboard, label: 'Desk' },
-  { id: 'ANALYTICS', icon: Activity, label: 'Analytics' },
+  { id: 'GUILD_DESK', icon: LayoutDashboard, label: 'Desk & Analytics' },
   { id: 'GUILD_INFO', icon: BookOpen, label: 'Site Specs' },
   { id: 'ADVENTURERS', icon: Sword, label: 'Adventurers' },
   { id: 'TITLES_HIERARCHY', icon: Crown, label: 'Titles & Roles' },
@@ -71,7 +70,7 @@ export default function GuildMasterDashboard() {
   useEffect(() => {
     if (typeof window !== 'undefined') {
         const saved = localStorage.getItem('guild_master_tab');
-        if (saved) setActiveTab(saved as Tab);
+        if (saved) setActiveTab(saved === 'ANALYTICS' ? 'GUILD_DESK' : (saved as Tab));
     }
   }, []);
 
@@ -315,7 +314,6 @@ export default function GuildMasterDashboard() {
           {/* Tab Panel Content */}
           <div className="animate-in fade-in slide-in-from-bottom-4 duration-300 min-h-[500px]">
             {activeTab === 'GUILD_DESK' && <OverviewTab changeTab={switchTab} />}
-            {activeTab === 'ANALYTICS' && <AnalyticsSection accentColor="red" />}
             {activeTab === 'GUILD_INFO' && <IdentityTab />}
             {activeTab === 'ADVENTURERS' && <RosterTab />}
             {activeTab === 'TITLES_HIERARCHY' && <RoleTitleManager />}
