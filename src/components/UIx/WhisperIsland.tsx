@@ -879,7 +879,7 @@ function WhisperIslandContent() {
             <motion.div className="pointer-events-auto z-40 shrink-0">
                <motion.div layout initial={false} animate={{ width: shouldHideExtras ? 48 : (isMobile ? 150 : 230) }} transition={FLUID_TRANSITION} className={cn(`liquid-glass rounded-full ${ISLAND_HEIGHT} flex items-center shadow-lg overflow-hidden cursor-pointer hover:bg-black/50 relative`)} onClick={() => router.push('/home')}>
                     <div className="absolute inset-0 overflow-hidden rounded-full pointer-events-none"><LightWave trigger={logoState} delay={0} /></div>
-                    <div className="absolute left-1.5 top-1/2 -translate-y-1/2 w-9 h-9 flex items-center justify-center z-50 bg-[#0a0a0a] rounded-full border border-white/10"><ShadowLogo size="w-8 h-8" /></div>
+                    <div className="absolute left-1.5 top-1/2 -translate-y-1/2 w-9 h-9 flex items-center justify-center z-50"><ShadowLogo size="w-9 h-9" /></div>
                     <div className="w-full h-full flex items-center justify-center pl-11 pr-2 relative z-10 overflow-hidden">
                         <AnimatePresence mode="popLayout">
                             <motion.div key={logoState} variants={glitchVariants} initial="initial" animate="animate" exit="exit" className="flex items-center gap-1.5 whitespace-nowrap justify-center">

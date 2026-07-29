@@ -545,7 +545,7 @@ export default function SchedulePage() {
                         className="grid grid-cols-3 gap-x-3 gap-y-12 md:flex md:flex-row md:items-center md:justify-start md:gap-0"
                       >
                           {topChartData.length > 0 ? topChartData.map((anime: any, i: number) => (
-                              <div key={anime.id} className="md:contents last:col-start-2">
+                              <div key={anime.id} className="md:contents [&:nth-child(3n+1):last-child]:col-start-2">
                                 <TopChartCard 
                                     anime={anime} 
                                     rank={i + 1} 
