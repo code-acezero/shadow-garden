@@ -38,7 +38,20 @@ import {
 } from '@react-three/postprocessing';
 import { ToneMappingMode, BlendFunction } from 'postprocessing';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Scroll, Fingerprint, X, Sword, Wand2, Info, Power, FastForward, PlayCircle, Clock, Crown } from 'lucide-react';
+import { 
+    Scroll, 
+    Fingerprint, 
+    X, 
+    Sword, 
+    Wand2, 
+    Info, 
+    Power, 
+    AlertTriangle,
+    FastForward, 
+    PlayCircle, 
+    Clock, 
+    Crown 
+} from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
@@ -80,7 +93,7 @@ declare global {
   }
 }
 
-type AppState = 'checking' | 'cinematic_intro' | 'gender_select' | 'anim_choice' | 'loading' | 'running';
+type AppState = 'checking' | 'audio_permit' | 'cinematic_intro' | 'anim_choice' | 'loading' | 'running';
 type AnimationStage = 
     | 'loading' | 'intro' | 'idle' 
     | 'drop' | 'crouch' | 'stand' | 'confusion' 
@@ -1248,75 +1261,40 @@ const CinematicTitleIntro = React.memo(({ onComplete }: { onComplete: () => void
 
 CinematicTitleIntro.displayName = 'CinematicTitleIntro';
 
-const GenderSelection = React.memo(({ onSelect }: { onSelect: (g: Gender) => void }) => {
-    useEffect(() => {
-        const originalOverflow = document.body.style.overflow;
-        document.body.style.overflow = 'hidden';
-        return () => {
-            document.body.style.overflow = originalOverflow;
-        };
-    }, []);
-
+const AudioPermissionModal = React.memo(({ onGrant }: { onGrant: () => void }) => {
     return (
-        <div className="fixed inset-0 z-[99999] bg-black/90 flex items-center justify-center p-4 sm:p-6 pb-[15vh] sm:pb-[20vh] overflow-hidden touch-none">
+        <div className="fixed inset-0 z-[99999] bg-black/90 backdrop-blur-2xl flex items-center justify-center p-4 overflow-hidden touch-none select-none">
             <motion.div 
                 initial={{ opacity: 0, scale: 0.95 }} 
                 animate={{ opacity: 1, scale: 1 }} 
-                className="w-full max-w-lg mx-auto border-2 border-primary-900/60 bg-[#0a0505]/95 p-6 sm:p-8 rounded-3xl text-center backdrop-blur-2xl shadow-[0_0_60px_rgba(220,38,38,0.35)] relative overflow-hidden"
+                className="relative max-w-sm sm:max-w-md w-full mx-auto bg-[#0a0505]/95 border border-red-500/40 p-6 sm:p-8 rounded-3xl shadow-[0_0_60px_rgba(220,38,38,0.4)] text-center overflow-hidden"
             >
-                <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-transparent via-primary-500 to-transparent animate-pulse" />
-
-                <div className="flex justify-center items-center gap-2 mb-6 border-b border-primary-900/30 pb-4">
-                    <Crown className="w-6 h-6 text-primary-500" />
-                    <h2 className="text-xl sm:text-2xl text-white font-bold tracking-widest uppercase font-mono">
-                        IDENTITY CONFIRMATION
-                    </h2>
-                    <TooltipProvider>
-                        <Tooltip>
-                            <TooltipTrigger>
-                                <Info className="w-5 h-5 text-gray-400 hover:text-white" />
-                            </TooltipTrigger>
-                            <TooltipContent>
-                                <p>Required to calibrate your visual avatar.</p>
-                            </TooltipContent>
-                        </Tooltip>
-                    </TooltipProvider>
+                <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-transparent via-red-500 to-transparent animate-pulse" />
+                
+                <div className="w-14 h-14 rounded-full bg-red-950/60 border border-red-500/40 flex items-center justify-center mx-auto mb-4 text-red-500 shadow-[0_0_20px_rgba(239,68,68,0.5)]">
+                    <Fingerprint className="w-7 h-7 animate-pulse" />
                 </div>
 
-                <p className="text-xs text-gray-400 font-mono mb-8 leading-relaxed">
-                    Select your monarch vessel before entering the dimensional sanctuary.
+                <h3 className="text-lg sm:text-xl text-white font-bold tracking-[0.2em] font-mono uppercase mb-2">
+                    AUDIO PERMISSION
+                </h3>
+
+                <p className="text-gray-300 text-xs sm:text-sm font-mono mb-6 leading-relaxed">
+                    Enable audio for cinematic portal soundscapes, telepathy voices, and spatial effects.
                 </p>
 
-                <div className="grid grid-cols-2 gap-4 sm:gap-6">
-                    <button 
-                        onClick={() => { sfx.play('glass'); onSelect('boy'); }}
-                        onMouseEnter={() => sfx.play('hover')}
-                        className="group p-6 sm:p-8 border border-blue-500/30 bg-blue-950/20 hover:bg-blue-900/40 hover:border-blue-400 rounded-2xl transition-all flex flex-col items-center gap-4 shadow-lg hover:shadow-[0_0_25px_rgba(59,130,246,0.4)]"
-                    >
-                        <div className="p-4 rounded-full bg-blue-500/20 border border-blue-400/40 group-hover:scale-110 transition-transform">
-                            <Sword className="w-8 h-8 text-blue-400" />
-                        </div>
-                        <span className="text-base sm:text-lg font-bold text-white tracking-widest font-mono">MALE</span>
-                        <span className="text-[10px] text-blue-300/70 font-mono uppercase">SHADOW MONARCH</span>
-                    </button>
-                    <button 
-                        onClick={() => { sfx.play('glass'); onSelect('girl'); }} 
-                        onMouseEnter={() => sfx.play('hover')}
-                        className="group p-6 sm:p-8 border border-pink-500/30 bg-pink-950/20 hover:bg-pink-900/40 hover:border-pink-400 rounded-2xl transition-all flex flex-col items-center gap-4 shadow-lg hover:shadow-[0_0_25px_rgba(236,72,153,0.4)]"
-                    >
-                        <div className="p-4 rounded-full bg-pink-500/20 border border-pink-400/40 group-hover:scale-110 transition-transform">
-                            <Wand2 className="w-8 h-8 text-pink-400" />
-                        </div>
-                        <span className="text-base sm:text-lg font-bold text-white tracking-widest font-mono">FEMALE</span>
-                        <span className="text-[10px] text-pink-300/70 font-mono uppercase">CELESTIAL MONARCH</span>
-                    </button>
-                </div>
+                <Button 
+                    onClick={onGrant}
+                    className="w-full bg-red-600 hover:bg-red-500 text-white font-mono font-bold tracking-widest uppercase py-3 rounded-xl shadow-[0_0_25px_rgba(239,68,68,0.6)] transition-all active:scale-95 cursor-pointer"
+                >
+                    ENABLE AUDIO & ENTER
+                </Button>
             </motion.div>
         </div>
     );
 });
 
-GenderSelection.displayName = 'GenderSelection';
+AudioPermissionModal.displayName = 'AudioPermissionModal';
 
 const BracePopup = React.memo(({ onReady, gender }: { onReady: () => void; gender: Gender | null }) => {
     return (
@@ -1328,7 +1306,7 @@ const BracePopup = React.memo(({ onReady, gender }: { onReady: () => void; gende
             >
                 <div className="flex items-center justify-center gap-3 mb-4 border-b border-primary-900/30 pb-3">
                     <div className="p-2 bg-primary-950/60 rounded-full border border-primary-500/40">
-                        <Power className="w-5 h-5 text-primary-500 animate-pulse" />
+                        <AlertTriangle className="w-5 h-5 text-primary-500 animate-pulse" />
                     </div>
                     <div className="text-left">
                         <h3 className="text-base sm:text-lg text-white font-bold tracking-[0.15em] font-mono uppercase">
@@ -1510,55 +1488,34 @@ export default function ShadowGardenPortal({
     }, []);
 
     useEffect(() => {
-        const savedGender = localStorage.getItem('guest_gender') as Gender;
+        const hasAudioPermit = localStorage.getItem('shadow_audio_permitted') === 'true' || localStorage.getItem('guild_audio_permit') === 'true';
         const neverAsk = localStorage.getItem('anim_never_ask');
         const pauseUntil = localStorage.getItem('anim_pause_until');
         const now = new Date().getTime();
 
         const isSkipActive = neverAsk === 'true' || (pauseUntil && parseInt(pauseUntil) > now);
 
-        if (!savedGender) {
-            setAppState('cinematic_intro');
+        if (!hasAudioPermit) {
+            setAppState('audio_permit');
         } else if (isSkipActive) {
             triggerSkip(); 
         } else {
-            setGender(savedGender);
-            setAppState('anim_choice');
+            setAppState('cinematic_intro');
         }
     }, [triggerSkip]);
 
-    useEffect(() => {
-        if (skipped && startTransition) {
-            onComplete();
-        }
-    }, [skipped, startTransition, onComplete]);
-
-    const handleGenderSelect = useCallback((g: Gender) => {
-        setGender(g); 
-        localStorage.setItem('guest_gender', g);
-        localStorage.setItem('shadow_traveller_gender', g);
-        localStorage.setItem('SG_GUILD_CONTRACT', 'true');
+    const handleGrantAudio = useCallback(() => {
         localStorage.setItem('shadow_audio_permitted', 'true');
-        
-        import('@/components/User/AvatarSelectorModal').then(({ getRandomAvatar }) => {
-            const avatar = getRandomAvatar(true, g);
-            localStorage.setItem('shadow_traveller_avatar', avatar);
-            window.dispatchEvent(new CustomEvent('shadow-traveller-updated', { 
-                detail: { avatar, gender: g } 
-            }));
-        }).catch(err => console.error("Failed to load avatar generator", err));
-        
-        sfx.unlock(); 
-        setAppState('loading');
+        localStorage.setItem('guild_audio_permit', 'true');
+        localStorage.setItem('guest_gender', 'boy');
+        localStorage.setItem('shadow_traveller_gender', 'boy');
+        sfx.unlock();
+        setAppState('cinematic_intro');
     }, []);
 
     const handleCinematicIntroComplete = useCallback(() => {
-        if (!gender) {
-            setAppState('gender_select');
-        } else {
-            setAppState('loading');
-        }
-    }, [gender]);
+        setAppState('loading');
+    }, []);
 
     const handleAnimChoice = useCallback((play: boolean, days: number) => {
         sfx.unlock(); 
@@ -1721,10 +1678,11 @@ export default function ShadowGardenPortal({
                 sfxObj.stopLoop('bhHum', 300);
                 sfxObj.stopLoop('droneWind', 300);
             }
+            setWhiteoutOpacity(1);
+            setWhiteout(true);
             setStage('arrival'); 
             if (sfxObj?.play) {
                 sfxObj.play('destination', 0.9);
-                sfxObj.play('popup_chime', 0.6);
             }
         }, 12000); // End of tunnel
 
@@ -1747,8 +1705,8 @@ export default function ShadowGardenPortal({
 
     if (skipped) return null;
 
-    if (appState === 'gender_select') {
-        return <GenderSelection onSelect={handleGenderSelect} />;
+    if (appState === 'audio_permit') {
+        return <AudioPermissionModal onGrant={handleGrantAudio} />;
     }
     
     if (appState === 'anim_choice') {
@@ -1818,10 +1776,10 @@ export default function ShadowGardenPortal({
                         transition={{ duration: 0.5, ease: "easeOut" }}
                         className="absolute inset-0 z-[11000] flex flex-col items-center justify-center pointer-events-none"
                     >
-                        <h2 className="text-3xl md:text-5xl font-bold font-mono text-black tracking-[0.2em] mb-4">
+                        <h2 className="text-3xl md:text-5xl font-extrabold font-mono text-black tracking-[0.25em] mb-4">
                             DESTINATION REACHED
                         </h2>
-                        <p className="text-purple-700 font-mono font-semibold tracking-widest text-sm md:text-base">
+                        <p className="text-red-600 font-mono font-bold tracking-widest text-sm md:text-base drop-shadow-[0_0_10px_rgba(239,68,68,0.6)] uppercase">
                             GOOD LUCK, ADVENTURER
                         </p>
                     </motion.div>
@@ -1832,7 +1790,7 @@ export default function ShadowGardenPortal({
                 initial={{ opacity: 0 }} 
                 animate={whiteout ? { opacity: whiteoutOpacity } : { opacity: 0 }} 
                 transition={{ duration: 1.5 }} 
-                className="absolute inset-0 bg-white z-[10000] pointer-events-none" 
+                className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-white via-white to-red-600/30 shadow-[inset_0_0_120px_rgba(239,68,68,0.4)] z-[10000] pointer-events-none" 
             />
         </div>
         </>

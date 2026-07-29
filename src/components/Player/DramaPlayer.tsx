@@ -341,7 +341,7 @@ const DramaPlayer = forwardRef<DramaPlayerRef, DramaPlayerProps>(({
       {/* Center Play Button */}
       <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-20">
           {!isBuffering && (
-            <div onClick={(e) => { e.stopPropagation(); togglePlay(); }} className={cn("group/playbtn relative w-16 h-16 md:w-20 md:h-20 rounded-full flex items-center justify-center pointer-events-auto cursor-pointer active:scale-95 transition-all duration-500", showControls ? "opacity-100 scale-100 hover:scale-110" : "opacity-0 scale-150 pointer-events-none")}>
+            <div onClick={(e) => { e.stopPropagation(); togglePlay(); }} className={cn("group/playbtn relative w-[clamp(3.5rem,14vw,5rem)] aspect-square rounded-full shrink-0 flex items-center justify-center pointer-events-auto cursor-pointer active:scale-95 transition-all duration-500", showControls ? "opacity-100 scale-100 hover:scale-110" : "opacity-0 scale-150 pointer-events-none")}>
                 {/* Liquid Glass Background */}
                 <div className="absolute inset-0 rounded-full bg-gradient-to-br from-white/20 to-white/5 backdrop-blur-xl border border-white/30 shadow-[0_8px_32px_rgba(0,0,0,0.5),inset_0_2px_4px_rgba(255,255,255,0.4)] group-hover/playbtn:bg-white/30 group-hover/playbtn:border-white/50 transition-all duration-500 overflow-hidden">
                     {/* Glass Shine */}
@@ -438,7 +438,7 @@ const DramaPlayer = forwardRef<DramaPlayerRef, DramaPlayerProps>(({
                 <Settings size={22} />
               </button>
               {showSettings && (
-                <div className="absolute bottom-12 right-0 bg-zinc-950/70 backdrop-blur-3xl border border-white/5 ring-1 ring-white/10 rounded-2xl p-2 w-48 max-h-[220px] sm:max-h-[280px] md:max-h-[350px] overflow-y-auto scrollbar-hide shadow-2xl z-50 flex flex-col gap-1 animate-in slide-in-from-bottom-2" onClick={(e) => e.stopPropagation()}>
+                <div className="absolute bottom-12 right-0 bg-zinc-950/70 backdrop-blur-3xl border border-white/5 ring-1 ring-white/10 rounded-2xl p-2 w-48 max-h-[70%] h-auto min-h-[160px] overflow-y-auto scrollbar-hide shadow-2xl z-50 flex flex-col gap-1 animate-in slide-in-from-bottom-2" onClick={(e) => e.stopPropagation()}>
                   <p className="text-[10px] font-black text-zinc-500 uppercase px-3 pb-1 border-b border-white/10">Quality</p>
                   <button onClick={() => { if (hlsRef.current) hlsRef.current.currentLevel = -1; setCurrentQuality(-1); }} className={cn("text-[11px] px-3 py-2 rounded-full text-left font-bold transition-all", currentQuality === -1 ? "bg-primary-600 text-white" : "hover:bg-white/10 hover:shadow-inner")}>Auto</button>
                   {qualities.map(q => <button key={q.index} onClick={() => { if (hlsRef.current) hlsRef.current.currentLevel = q.index; setCurrentQuality(q.index); }} className={cn("text-[11px] px-3 py-2 rounded-full text-left font-bold transition-all", currentQuality === q.index ? "bg-primary-600 text-white" : "hover:bg-white/10 hover:shadow-inner")}>{q.height}p</button>)}
