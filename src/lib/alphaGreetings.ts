@@ -13,13 +13,13 @@ export const TRAVELLER_GREETINGS: TitleGreetings = {
   initial: [
     `[state: greet] Greetings, traveller. I am Alpha, First Shadow of Shadow Garden. You have stumbled into our domain—step carefully.`,
     `[state: greet] Welcome, wandering soul. The shadows whisper of your arrival. Seek out an official identity to join our garden.`,
-    `[state: inspect] A traveller approaches... I am Alpha. What brings an unsworn wanderer to Shadow Garden?`,
+    `[state: think] A traveller approaches... I am Alpha. What brings an unsworn wanderer to Shadow Garden?`,
     `[state: greet] [sticker: salute] Welcome to the threshold of Shadow Garden, traveller. Honor our code, and you may find wisdom here.`,
     `[state: greet] Greetings. You enter as a traveller, but destiny may make you an operative. Speak your query.`
   ],
   revisit: [
     `[state: greet] Back so soon, traveller? The shadows seem to draw you in. Have you decided to join our ranks?`,
-    `[state: inspect] Ah, the wandering traveller returns today. What further intel do you seek from Alpha?`,
+    `[state: think] Ah, the wandering traveller returns today. What further intel do you seek from Alpha?`,
     `[state: greet] Welcome back, traveller. The garden gates remain open to you for now.`,
     `[state: greet] [sticker: smile] Returning twice in a day? You are becoming quite attached to Shadow Garden, wanderer.`,
     `[state: greet] Greetings once more, traveller. I am listening if you have questions about our realm.`

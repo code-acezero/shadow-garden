@@ -61,8 +61,8 @@ function extractStateAndContent(text: string, currentState: string) {
 
     if (match) {
         newState = match[1].toLowerCase().trim();
-        cleanText = cleanText.replace(stateRegex, '').trim();
     }
+    cleanText = cleanText.replace(/\[state:\s*([a-zA-Z0-9_-]+)\]/gi, '').trim();
 
     if (actionMatch) {
         action = actionMatch[1].toLowerCase();
@@ -580,36 +580,41 @@ export default function AlphaWidget() {
                 setShowImageSearch(true);
             }
 
-            // Fetch and play TTS audio using Fish Audio
             if (cleanText && globalVoiceEnabled && isUserVoiceEnabled) {
-                // Replace markdown and underscores to prevent TTS from pronouncing them
-                const ttsText = cleanText.replace(/_/g, ' ');
-                const audioUrl = `/api/alpha/tts?text=${encodeURIComponent(ttsText)}`;
-                const audio = new Audio(audioUrl);
-                
-                if (audioRef.current) {
-                    audioRef.current.pause();
+                // Strip markdown formatting, URLs, and underscores for clean TTS audio
+                const ttsText = cleanText
+                    .replace(/https?:\/\/\S+/gi, '')
+                    .replace(/[*_~#\[\]`]/g, '')
+                    .replace(/\s+/g, ' ')
+                    .trim();
+                if (ttsText) {
+                    const audioUrl = `/api/alpha/tts?text=${encodeURIComponent(ttsText)}`;
+                    const audio = new Audio(audioUrl);
+                    
+                    if (audioRef.current) {
+                        audioRef.current.pause();
+                    }
+                    audioRef.current = audio;
+                    
+                    audio.onplay = () => {
+                        setIsPlayingAudio(true);
+                        sfx.dimBGM(0.02, 500);
+                    };
+                    audio.onended = () => {
+                        setIsPlayingAudio(false);
+                        sfx.restoreBGM(0.25, 800);
+                    };
+                    audio.onerror = () => {
+                        setIsPlayingAudio(false);
+                        sfx.restoreBGM(0.25, 800);
+                    };
+                    
+                    audio.play().catch(e => {
+                        console.error("Fish Audio play failed:", e);
+                        setIsPlayingAudio(false);
+                        sfx.restoreBGM(0.25, 800);
+                    });
                 }
-                audioRef.current = audio;
-                
-                audio.onplay = () => {
-                    setIsPlayingAudio(true);
-                    sfx.dimBGM(0.02, 500);
-                };
-                audio.onended = () => {
-                    setIsPlayingAudio(false);
-                    sfx.restoreBGM(0.25, 800);
-                };
-                audio.onerror = () => {
-                    setIsPlayingAudio(false);
-                    sfx.restoreBGM(0.25, 800);
-                };
-                
-                audio.play().catch(e => {
-                    console.error("Fish Audio play failed:", e);
-                    setIsPlayingAudio(false);
-                    sfx.restoreBGM(0.25, 800);
-                });
             } else if (cleanText) {
                 // If TTS is disabled or fetching is skipped, still stop previous audio if we got a new message
                 if (audioRef.current) {
