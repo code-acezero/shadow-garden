@@ -3,7 +3,7 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { 
   MessageSquare, Send, Users, User, Image as ImageIcon, Search, Shield, 
-  Loader2, MessageSquarePlus, Heart, ArrowLeft, Plus, Check, CheckCheck, X, Circle, MoreVertical, Trash2, Mic, Square, Ban, Smile, Globe, Play, Pause, Volume2
+  Loader2, MessageSquarePlus, Heart, ArrowLeft, Plus, Check, CheckCheck, X, Circle, MoreVertical, Trash2, Mic, Square, Ban, Smile, Globe, Play, Pause, Volume2, ChevronRight
 } from 'lucide-react';
 import ProfileAvatar from '@/components/User/ProfileAvatar';
 import ClanAvatar from '@/components/Social/Clans/ClanAvatar';
@@ -221,6 +221,7 @@ function VoiceMessagePlayer({ audioUrl, isMe }: { audioUrl: string; isMe: boolea
 
 function SharedMediaCard({ data, isMe }: { data: any; isMe: boolean }) {
   const router = useRouter();
+  const isPost = data.type?.toLowerCase() === 'post';
 
   return (
     <div 
@@ -236,11 +237,27 @@ function SharedMediaCard({ data, isMe }: { data: any; isMe: boolean }) {
       )}
     >
       <div className="flex gap-3 items-center">
-        {data.poster ? (
+        {isPost ? (
+          data.poster ? (
+            <div className="w-14 h-16 shrink-0 rounded-xl overflow-hidden relative border border-white/10 shadow-md bg-zinc-900">
+              <img 
+                src={data.poster} 
+                alt={data.title || ''} 
+                referrerPolicy="no-referrer"
+                className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" 
+              />
+            </div>
+          ) : (
+            <div className="w-12 h-12 shrink-0 rounded-xl bg-purple-950/40 border border-purple-500/30 flex items-center justify-center text-purple-400 shadow-md">
+              <MessageSquare size={18} />
+            </div>
+          )
+        ) : data.poster ? (
           <div className="w-14 h-20 shrink-0 rounded-xl overflow-hidden relative border border-white/10 shadow-md">
             <img 
               src={data.poster} 
               alt={data.title || ''} 
+              referrerPolicy="no-referrer"
               className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" 
             />
             <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
@@ -257,7 +274,12 @@ function SharedMediaCard({ data, isMe }: { data: any; isMe: boolean }) {
           <div>
             <div className="flex items-center gap-1.5 flex-wrap mb-1">
               {data.type && (
-                <span className="px-1.5 py-0.5 rounded text-[8px] font-black uppercase tracking-wider bg-primary-600/40 border border-primary-500/40 text-primary-200">
+                <span className={cn(
+                  "px-1.5 py-0.5 rounded text-[8px] font-black uppercase tracking-wider border",
+                  isPost 
+                    ? "bg-purple-600/40 border-purple-500/40 text-purple-200" 
+                    : "bg-primary-600/40 border-primary-500/40 text-primary-200"
+                )}>
                   {data.type}
                 </span>
               )}
@@ -274,7 +296,7 @@ function SharedMediaCard({ data, isMe }: { data: any; isMe: boolean }) {
             </div>
 
             <h4 className="text-xs font-black text-white line-clamp-1 group-hover:text-primary-400 transition-colors">
-              {data.title || 'Shared Content'}
+              {data.title || (isPost ? 'Shared Post' : 'Shared Content')}
             </h4>
 
             {data.episodeNumber ? (
@@ -290,9 +312,16 @@ function SharedMediaCard({ data, isMe }: { data: any; isMe: boolean }) {
             )}
           </div>
 
-          <div className="mt-2 flex items-center gap-1 text-[10px] font-black uppercase tracking-wider text-primary-400 group-hover:translate-x-1 transition-transform">
-            <span>Watch Now</span>
-            <Play size={9} className="fill-primary-400" />
+          <div className={cn(
+            "mt-2 flex items-center gap-1 text-[10px] font-black uppercase tracking-wider group-hover:translate-x-1 transition-transform",
+            isPost ? "text-purple-400" : "text-primary-400"
+          )}>
+            <span>{isPost ? 'View Post' : 'Watch Now'}</span>
+            {isPost ? (
+              <ChevronRight size={12} />
+            ) : (
+              <Play size={9} className="fill-primary-400" />
+            )}
           </div>
         </div>
       </div>
