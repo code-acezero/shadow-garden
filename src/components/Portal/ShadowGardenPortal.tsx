@@ -1209,7 +1209,15 @@ const CinematicTitleIntro = React.memo(({ onComplete }: { onComplete: () => void
 
     return (
         <div 
-            onClick={onComplete}
+            onClick={() => {
+                sfx.unlock();
+                sfx.play('glass', 0.6);
+                onComplete();
+            }}
+            onMouseEnter={() => {
+                sfx.unlock();
+                sfx.play('crystal', 0.3);
+            }}
             className="fixed inset-0 z-[99999] bg-[#000000] flex flex-col items-center justify-center cursor-pointer overflow-hidden select-none touch-none"
         >
             <div className="absolute inset-0 bg-[#020205]" />
@@ -1284,7 +1292,8 @@ const AudioPermissionModal = React.memo(({ onGrant }: { onGrant: () => void }) =
                 </p>
 
                 <Button 
-                    onClick={onGrant}
+                    onMouseEnter={() => { sfx.unlock(); sfx.play('crystal', 0.4); }}
+                    onClick={() => { sfx.unlock(); sfx.play('glass', 0.6); onGrant(); }}
                     className="w-full bg-red-600 hover:bg-red-500 text-white font-mono font-bold tracking-widest uppercase py-3 rounded-xl shadow-[0_0_25px_rgba(239,68,68,0.6)] transition-all active:scale-95 cursor-pointer"
                 >
                     ENABLE AUDIO & ENTER
@@ -1320,14 +1329,13 @@ const BracePopup = React.memo(({ onReady, gender }: { onReady: () => void; gende
                 </p>
 
                 <Button 
+                    onMouseEnter={() => { sfx.unlock(); sfx.play('crystal', 0.4); }}
                     onClick={() => {
-                        if (sfx?.play) sfx.play('glass', 0.5);
+                        sfx.unlock();
+                        sfx.play('glass', 0.6);
                         onReady();
                     }}
-                    onMouseEnter={() => {
-                        if (sfx?.play) sfx.play('hover', 0.3);
-                    }}
-                    className="w-full bg-primary-900/80 hover:bg-primary-800 text-white border border-primary-500/50 uppercase tracking-widest font-mono pointer-events-auto"
+                    className="w-full bg-primary-900/80 hover:bg-primary-800 text-white border border-primary-500/50 uppercase tracking-widest font-mono pointer-events-auto cursor-pointer"
                 >
                     OK, I'm ready
                 </Button>
@@ -1386,12 +1394,13 @@ const AnimationPreferencePopup = React.memo(({
 
                 <div className="grid grid-cols-2 gap-2.5 mb-4">
                     <Button 
+                        onMouseEnter={() => { sfx.unlock(); sfx.play('crystal', 0.4); }}
                         onClick={() => {
-                            sfx.play('glass');
+                            sfx.unlock();
+                            sfx.play('glass', 0.6);
                             onChoice(true, never ? 9999 : (pause7 ? 7 : 0));
                         }} 
-                        onMouseEnter={() => sfx.play('hover')}
-                        className="group relative overflow-hidden bg-primary-900/50 hover:bg-primary-700 border border-primary-500/60 hover:border-primary-400 transition-all duration-300 h-10 rounded-xl shadow-md"
+                        className="group relative overflow-hidden bg-primary-900/50 hover:bg-primary-700 border border-primary-500/60 hover:border-primary-400 transition-all duration-300 h-10 rounded-xl shadow-md cursor-pointer"
                     >
                         <div className="flex items-center justify-center gap-2.5">
                             <PlayCircle className="w-4 h-4 text-primary-400 group-hover:text-white" />
@@ -1400,13 +1409,14 @@ const AnimationPreferencePopup = React.memo(({
                     </Button>
                     
                     <Button 
+                        onMouseEnter={() => { sfx.unlock(); sfx.play('crystal', 0.4); }}
                         onClick={() => {
-                            sfx.play('glass');
+                            sfx.unlock();
+                            sfx.play('glass', 0.6);
                             onChoice(false, never ? 9999 : (pause7 ? 7 : 0));
                         }} 
-                        onMouseEnter={() => sfx.play('hover')}
                         variant="outline" 
-                        className="bg-transparent border-white/10 hover:bg-white/10 hover:border-white/20 h-10 rounded-xl"
+                        className="bg-transparent border-white/10 hover:bg-white/10 hover:border-white/20 h-10 rounded-xl cursor-pointer"
                     >
                         <div className="flex items-center justify-center gap-2.5">
                             <FastForward className="w-3.5 h-3.5 text-gray-400" />
@@ -1417,12 +1427,44 @@ const AnimationPreferencePopup = React.memo(({
 
                 <div className="bg-black/60 rounded-xl p-3 border border-white/10 flex flex-row items-center justify-between text-left gap-2 flex-nowrap whitespace-nowrap overflow-hidden">
                     <div className="flex items-center space-x-1 sm:space-x-2 flex-shrink-0">
-                        <Checkbox id="pause" checked={pause7} className="border-primary-900/50 data-[state=checked]:bg-primary-900 data-[state=checked]:text-white flex-shrink-0" onCheckedChange={(c) => { setPause7(!!c); if (c) setNever(false); }} />
-                        <label htmlFor="pause" className="text-[10px] sm:text-xs text-gray-400 font-mono cursor-pointer hover:text-primary-400 transition-colors flex items-center gap-1"><Clock className="w-3 h-3 text-primary-500 hidden sm:block" /> Skip 7 days</label>
+                        <Checkbox 
+                            id="pause" 
+                            checked={pause7} 
+                            className="border-primary-900/50 data-[state=checked]:bg-primary-900 data-[state=checked]:text-white flex-shrink-0" 
+                            onCheckedChange={(c) => { 
+                                sfx.unlock(); 
+                                sfx.play('glass', 0.5); 
+                                setPause7(!!c); 
+                                if (c) setNever(false); 
+                            }} 
+                        />
+                        <label 
+                            htmlFor="pause" 
+                            onMouseEnter={() => { sfx.unlock(); sfx.play('crystal', 0.3); }}
+                            className="text-[10px] sm:text-xs text-gray-400 font-mono cursor-pointer hover:text-primary-400 transition-colors flex items-center gap-1"
+                        >
+                            <Clock className="w-3 h-3 text-primary-500 hidden sm:block" /> Skip 7 days
+                        </label>
                     </div>
                     <div className="flex items-center space-x-1 sm:space-x-2 flex-shrink-0">
-                        <Checkbox id="never" checked={never} className="border-primary-900/50 data-[state=checked]:bg-primary-900 data-[state=checked]:text-white flex-shrink-0" onCheckedChange={(c) => { setNever(!!c); if (c) setPause7(false); }} />
-                        <label htmlFor="never" className="text-[10px] sm:text-xs text-gray-400 font-mono cursor-pointer hover:text-primary-400 transition-colors">Always skip</label>
+                        <Checkbox 
+                            id="never" 
+                            checked={never} 
+                            className="border-primary-900/50 data-[state=checked]:bg-primary-900 data-[state=checked]:text-white flex-shrink-0" 
+                            onCheckedChange={(c) => { 
+                                sfx.unlock(); 
+                                sfx.play('glass', 0.5); 
+                                setNever(!!c); 
+                                if (c) setPause7(false); 
+                            }} 
+                        />
+                        <label 
+                            htmlFor="never" 
+                            onMouseEnter={() => { sfx.unlock(); sfx.play('crystal', 0.3); }}
+                            className="text-[10px] sm:text-xs text-gray-400 font-mono cursor-pointer hover:text-primary-400 transition-colors"
+                        >
+                            Always skip
+                        </label>
                     </div>
                 </div>
             </motion.div>

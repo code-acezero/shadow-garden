@@ -99,7 +99,12 @@ class AudioMatrix {
         }
     }
 
-    unlock() { this.getCtx(); }
+    unlock() { 
+        this.init();
+        if (this.ctx && this.ctx.state === 'suspended') {
+            this.ctx.resume().catch(() => {});
+        }
+    }
 
     // ─── SYNTH: METAL CLICK ─────────────────────────────────────────────────────
     synthMetal(vol = 0.4) {
@@ -509,6 +514,7 @@ class AudioMatrix {
     // ─── PLAY ROUTER ─────────────────────────────────────────────────────────────
     play(key: string, vol = 1, loop = false, fadeMs = 0) {
         if (!this.active) this.init();
+        this.unlock();
 
         // Custom HTML Audio files (e.g. door, portal, glitch, tunnel, drone, destination, title)
         const customAudio = this.sources.get(key);
