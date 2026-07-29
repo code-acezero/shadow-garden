@@ -353,7 +353,7 @@ const DaySelector = ({ selectedDate, onSelect }: { selectedDate: Date, onSelect:
     }, [selectedDate]);
 
     return (
-        <div className="w-full border-b border-white/5 bg-[#050505]/80 backdrop-blur-xl z-40 sticky top-0 transition-all">
+        <div className="w-full border-b border-white/5 bg-[#050505]/80 backdrop-blur-xl z-40 sticky top-14 md:top-16 transition-all">
             <div className="px-4 py-3 flex items-center gap-4 w-full">
                 <button 
                     onClick={() => onSelect(new Date())}
@@ -477,7 +477,7 @@ export default function SchedulePage() {
       
       <div className="relative z-10 flex flex-col items-center w-full">
           
-          <div className="w-full px-4 mt-24 mb-10 flex flex-col md:flex-row justify-between items-start md:items-end gap-6">
+          <div className="w-full px-4 pt-16 md:pt-20 pb-4 mb-4 flex flex-col md:flex-row justify-between items-start md:items-end gap-6">
               <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}>
                   <div className="flex items-center gap-3 mb-3">
                       <div className="h-px w-8 bg-primary-600" />
