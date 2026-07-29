@@ -45,18 +45,12 @@ export default function ProfileAvatar({ profile, travellerAvatar, className = "w
         <img
           src={avatarUrl}
           alt=""
-          className="w-full h-full rounded-full object-cover bg-black"
+          className={`w-full h-full rounded-full object-cover bg-black transition-all ${
+            online ? 'ring-2 ring-emerald-500 shadow-[0_0_10px_rgba(16,185,129,0.9)] animate-pulse' : ''
+          }`}
           onError={(e) => { (e.target as HTMLImageElement).src = FALLBACK; }}
         />
       </FantasyFrame>
-
-      {/* GLOBAL REALTIME ACTIVE GREEN PULSE DOT */}
-      {online && (
-        <span className="absolute bottom-0 right-0 z-30 flex h-3 w-3 -translate-x-0.5 -translate-y-0.5">
-          <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-          <span className="relative inline-flex rounded-full h-3 w-3 bg-emerald-500 border-2 border-black shadow-[0_0_8px_rgba(16,185,129,1)]"></span>
-        </span>
-      )}
     </div>
   );
 }

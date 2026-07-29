@@ -529,25 +529,28 @@ function WhisperIslandContent() {
         msgChannel = supabase.channel('whisper-msg-realtime').on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'chat_messages' }, (payload: any) => {
             const msg = payload.new;
             if (msg && msg.sender_id !== profile.id) {
-              window.dispatchEvent(new CustomEvent('shadow-whisper', { 
-                detail: { 
-                  id: Date.now(), 
-                  type: 'system', 
-                  title: 'New Missive', 
-                  message: msg.content || 'You received a new message' 
-                } 
-              }));
-              window.dispatchEvent(new CustomEvent('add_temp_notification', {
-                detail: {
-                  id: msg.id || String(Date.now()),
-                  user_id: profile.id,
-                  type: 'unread_message',
-                  content: msg.content || 'Sent a new message',
-                  link: `/messages?chatId=${msg.conversation_id}`,
-                  is_read: false,
-                  created_at: msg.created_at || new Date().toISOString()
-                }
-              }));
+              const isInsideMessagesPage = typeof window !== 'undefined' && window.location.pathname.startsWith('/messages');
+              if (!isInsideMessagesPage) {
+                window.dispatchEvent(new CustomEvent('shadow-whisper', { 
+                  detail: { 
+                    id: Date.now(), 
+                    type: 'system', 
+                    title: 'New Missive', 
+                    message: msg.content || 'You received a new message' 
+                  } 
+                }));
+                window.dispatchEvent(new CustomEvent('add_temp_notification', {
+                  detail: {
+                    id: msg.id || String(Date.now()),
+                    user_id: profile.id,
+                    type: 'unread_message',
+                    content: msg.content || 'Sent a new message',
+                    link: `/messages?chatId=${msg.conversation_id}`,
+                    is_read: false,
+                    created_at: msg.created_at || new Date().toISOString()
+                  }
+                }));
+              }
             }
         }).subscribe();
     }

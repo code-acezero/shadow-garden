@@ -1454,27 +1454,16 @@ export default function ChatSystem() {
                 >
                   <div className="shrink-0 relative">
                       {c.type === 'direct' ? (
-                        <ProfileAvatar profile={{...otherParticipant, avatar_url: avatar}} className="w-11 h-11" />
+                        <ProfileAvatar profile={{...otherParticipant, avatar_url: avatar, is_online: isUserOnline}} className="w-11 h-11" />
                       ) : (
                         <ClanAvatar clan={{id: c.clan?.id, avatar_url: avatar, level: clanLevel}} className="w-11 h-11" />
-                      )}
-                      {c.type === 'direct' && isUserOnline && (
-                        <span className="absolute bottom-0 right-0 w-3 h-3 bg-emerald-500 border-2 border-[#08080a] rounded-full z-10" />
                       )}
                   </div>
 
                   <div className="min-w-0 flex-1 flex flex-col justify-center">
                     <div className="flex items-center justify-between gap-1.5 w-full">
                       <div className="flex items-center gap-1.5 min-w-0 flex-1">
-                        <h4 className="text-sm font-bold text-white truncate flex items-center gap-1.5">
-                          {title}
-                          {c.type === 'direct' && isUserOnline && (
-                            <span className="relative flex h-2 w-2 shrink-0">
-                              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-                              <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,1)]"></span>
-                            </span>
-                          )}
-                        </h4>
+                        <h4 className="text-sm font-bold text-white truncate">{title}</h4>
                         {c.type !== 'clan' && userTitle && (
                           <span className="px-2 py-0.5 text-[9px] font-extrabold uppercase tracking-wider text-primary-300 bg-primary-950/60 border border-primary-500/30 rounded-full shrink-0 truncate backdrop-blur-md">
                             {userTitle}
@@ -1546,25 +1535,12 @@ export default function ChatSystem() {
                           {isClan ? (
                             <ClanAvatar clan={{...activeConv.clan, avatar_url: headerAvatar}} className="w-11 h-11" />
                           ) : (
-                            <>
-                              <ProfileAvatar profile={{...otherUser, avatar_url: headerAvatar}} className="w-10 h-10" />
-                              {isUserOnline && (
-                                <span className="absolute bottom-0 right-0 w-3 h-3 bg-emerald-500 border-2 border-[#0c0c10] rounded-full z-10" />
-                              )}
-                            </>
+                            <ProfileAvatar profile={{...otherUser, avatar_url: headerAvatar, is_online: isUserOnline}} className="w-10 h-10" />
                           )}
                         </div>
                         <div className="min-w-0 flex-1">
                           <div className="flex items-center gap-2">
-                            <h3 className="text-xs sm:text-sm font-bold text-white leading-tight truncate flex items-center gap-1.5">
-                              {headerTitle}
-                              {!isClan && isUserOnline && (
-                                <span className="relative flex h-2 w-2 shrink-0">
-                                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-                                  <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,1)]"></span>
-                                </span>
-                              )}
-                            </h3>
+                            <h3 className="text-xs sm:text-sm font-bold text-white leading-tight truncate">{headerTitle}</h3>
                             {(() => {
                               const headerDisplayTitle = !isClan && otherUser ? getUserTitle(otherUser) : undefined;
 
