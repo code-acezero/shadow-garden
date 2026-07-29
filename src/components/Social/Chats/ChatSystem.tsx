@@ -1557,8 +1557,8 @@ export default function ChatSystem() {
                             ) : (
                               <>
                                 {isUserOnline ? (
-                                  <span className="text-[10px] text-emerald-400 font-bold flex items-center gap-1 bg-emerald-500/10 px-2 py-0.5 rounded-full border border-emerald-500/20">
-                                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" /> Active Now
+                                  <span className="text-[10px] text-emerald-400 font-bold bg-emerald-500/10 px-2 py-0.5 rounded-full border border-emerald-500/20">
+                                    Active Now
                                   </span>
                                 ) : (
                                   <span className="text-[10px] text-zinc-400 truncate">
