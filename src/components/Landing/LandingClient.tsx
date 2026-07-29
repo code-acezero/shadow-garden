@@ -346,14 +346,21 @@ export default function LandingClient() {
     // 2. Auth & Data
     const init = async () => {
       // Check if running inside Native App container (Android APK, iOS App, Windows EXE, or Installed PWA)
-      const isNativeContainer = typeof window !== 'undefined' && (
+      const isAndroidAPK = typeof window !== 'undefined' && (
         Capacitor.isNativePlatform() || 
-        window.matchMedia('(display-mode: standalone)').matches
+        /wv|Android.*Version\/[0-9.]+/i.test(navigator.userAgent || '') ||
+        (window.matchMedia('(display-mode: standalone)').matches && /Android/i.test(navigator.userAgent || '')) ||
+        typeof (window as any).AndroidInterface !== 'undefined' ||
+        document.referrer.includes('android-app://')
       );
-      const hasSeenPortal = typeof window !== 'undefined' && localStorage.getItem('sg_portal_seen') === 'true';
+      const isNativeContainer = isAndroidAPK || (typeof window !== 'undefined' && window.matchMedia('(display-mode: standalone)').matches);
+      const hasSeenPortal = typeof window !== 'undefined' && (
+        localStorage.getItem('sg_portal_seen') === 'true' ||
+        localStorage.getItem('shadow_apk_intro_completed') === 'true'
+      );
       const hasAuthHint = typeof window !== 'undefined' && localStorage.getItem('shadow_auth_hint') === 'true';
 
-      // 1. On Native App Container (APK / iOS / EXE):
+      // 1. On Native App Container / APK:
       // Intro & 3D portal sequence plays strictly ONCE on first app launch, then bypasses to /home on future launches
       if (isNativeContainer && (hasSeenPortal || hasAuthHint)) {
         router.replace('/home');
@@ -445,6 +452,7 @@ export default function LandingClient() {
   const handlePortalComplete = useCallback(() => { 
     if (typeof window !== 'undefined') {
       localStorage.setItem('sg_portal_seen', 'true');
+      localStorage.setItem('shadow_apk_intro_completed', 'true');
     }
     router.push('/home'); 
   }, [router]);
