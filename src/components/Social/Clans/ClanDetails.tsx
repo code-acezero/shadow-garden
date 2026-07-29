@@ -661,7 +661,7 @@ export default function ClanDetails({ clan, onBack, onUpdate }: { clan: Clan, on
                           className="absolute left-1/2 bottom-0 z-40 flex items-center justify-center pointer-events-none -translate-x-1/2 translate-y-1/2"
                           style={{ width: '40px', height: '44px' }}
                         >
-                          <ClanShieldBadge level={headerClanLevel} className="w-full h-full drop-shadow-2xl" />
+                          <ClanShieldBadge level={headerClanLevel} size={40} className="drop-shadow-2xl" />
                         </div>
                     </div>
 

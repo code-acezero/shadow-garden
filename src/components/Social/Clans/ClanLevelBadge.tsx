@@ -95,16 +95,15 @@ export async function addClanXP(supabase: any, clanId: string, amount: number) {
 }
 
 // ─── Clan Shield SVG Badge (Evolves with Rank) ──────────────────────────────────
-export function ClanShieldBadge({ level = 1, size = 16, showLevel = true, className = '' }: { level?: number | string; size?: number; showLevel?: boolean; className?: string }) {
+export function ClanShieldBadge({ level = 1, size = 32, showLevel = true, className = '' }: { level?: number | string; size?: number; showLevel?: boolean; className?: string }) {
   const numLevel = typeof level === 'string' ? parseInt(level) || 1 : level;
   const info  = getClanBadgeInfo(numLevel);
   const c     = info.color;
   const tier  = info.tier;
   const gradId = `csg_${numLevel}_${Math.random().toString(36).slice(2, 7)}`;
-  const hasCustomSize = className?.includes('w-') || className?.includes('h-');
 
   return (
-    <div className={`relative shrink-0 ${className}`} style={hasCustomSize ? undefined : { width: size, height: size }}>
+    <div className={`relative shrink-0 ${className}`} style={{ width: size, height: size }}>
       <style>{`
         @keyframes csg-glow { 0%,100% { filter: drop-shadow(0 0 3px ${c.glow}); } 50% { filter: drop-shadow(0 0 9px ${c.glow}); } }
         @keyframes csg-float { 0%,100% { transform: translateY(0px); } 50% { transform: translateY(-1px); } }
