@@ -14,6 +14,8 @@ export default function RoleGuard({ children, allowedRoles }: RoleGuardProps) {
   const router = useRouter();
   const { user, profile, isLoading } = useAuth();
 
+  const rolesKey = allowedRoles.join(',');
+
   useEffect(() => {
     if (!isLoading) {
       if (!user) {
@@ -27,7 +29,7 @@ export default function RoleGuard({ children, allowedRoles }: RoleGuardProps) {
         }
       }
     }
-  }, [user, profile, isLoading, router, allowedRoles]);
+  }, [user, profile, isLoading, router, rolesKey]);
 
   if (isLoading) {
     return (

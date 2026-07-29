@@ -332,7 +332,8 @@ function SharedMediaCard({ data, isMe }: { data: any; isMe: boolean }) {
 export default function ChatSystem() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const chatIdParam = searchParams.get('chatId');
+  const chatIdParam = searchParams.get('chatId') || searchParams.get('id');
+  const userIdParam = searchParams.get('userId') || searchParams.get('user');
 
   const { user, profile: rawProfile } = useAuth();
   const profile = rawProfile as any;
@@ -453,13 +454,22 @@ export default function ChatSystem() {
         if (conv && conv.id !== activeConv?.id) {
           setActiveConv(conv);
         }
-      } else if (!chatIdParam && activeConv) {
+      } else if (userIdParam) {
+        const conv = conversations.find((c: any) => {
+          if (c.type !== 'direct') return false;
+          const otherUser = c.participants?.find((p: any) => p.user?.id !== user?.id)?.user;
+          return otherUser?.id === userIdParam || otherUser?.username?.toLowerCase() === userIdParam.toLowerCase();
+        });
+        if (conv && conv.id !== activeConv?.id) {
+          setActiveConv(conv);
+        }
+      } else if (!chatIdParam && !userIdParam && activeConv) {
         if (typeof window !== 'undefined' && window.innerWidth < 768) {
           setActiveConv(null);
         }
       }
     }
-  }, [chatIdParam, conversations, activeConv?.id]);
+  }, [chatIdParam, userIdParam, conversations, activeConv?.id, user?.id]);
 
   // 1. Fetch User Conversations
   const fetchConversations = useCallback(async () => {
@@ -505,8 +515,8 @@ export default function ChatSystem() {
           const otherUser = conv.participants?.find((p: any) => p.user?.id !== user.id)?.user;
           const targetId = otherUser?.id || otherUser?.username;
           if (targetId) {
-            if (seenDirectUserIds.has(targetId)) {
-              continue; // Skip duplicate direct conversation entry
+            if (seenDirectUserIds.has(targetId) && conv.id !== chatIdParam) {
+              continue; // Skip duplicate direct conversation entry unless explicitly requested by chatIdParam!
             }
             seenDirectUserIds.add(targetId);
           }
@@ -514,7 +524,31 @@ export default function ChatSystem() {
         uniqueConvs.push(conv);
       }
 
-      const convs = uniqueConvs;
+      let convs = uniqueConvs;
+
+      // If chatIdParam is specified in URL but missing from user's current conv list (e.g. newly created)
+      if (chatIdParam && !convs.some((c: any) => c.id === chatIdParam)) {
+        const { data: targetConv } = await supabase
+          .from('chat_conversations')
+          .select(`
+            id,
+            type,
+            clan_id,
+            last_message_preview,
+            updated_at,
+            created_at,
+            clan:clans(name, avatar_url, level),
+            participants:chat_participants(
+              user:profiles(id, username, avatar_url, last_seen_at, frame_id, level, show_level, title, role, admin_title)
+            )
+          `)
+          .eq('id', chatIdParam)
+          .maybeSingle();
+
+        if (targetConv) {
+          convs.unshift(targetConv);
+        }
+      }
 
       await Promise.all(convs.map(async (conv: any) => {
         // Fetch last message for preview if not set
@@ -552,20 +586,27 @@ export default function ChatSystem() {
       }));
 
       setConversations(convs);
-      if (convs.length > 0 && !activeConv) {
-        if (chatIdParam) {
-          const match = convs.find((c: any) => c.id === chatIdParam);
-          if (match) setActiveConv(match);
-        } else if (typeof window !== 'undefined' && window.innerWidth >= 768) {
-          setActiveConv(convs[0]);
-        }
+
+      // Instantly open the matching conversation requested by URL
+      if (chatIdParam) {
+        const match = convs.find((c: any) => c.id === chatIdParam);
+        if (match) setActiveConv(match);
+      } else if (userIdParam) {
+        const match = convs.find((c: any) => {
+          if (c.type !== 'direct') return false;
+          const otherUser = c.participants?.find((p: any) => p.user?.id !== user.id)?.user;
+          return otherUser?.id === userIdParam || otherUser?.username?.toLowerCase() === userIdParam.toLowerCase();
+        });
+        if (match) setActiveConv(match);
+      } else if (convs.length > 0 && !activeConv && typeof window !== 'undefined' && window.innerWidth >= 768) {
+        setActiveConv(convs[0]);
       }
     } catch (err: any) {
       console.error('Fetch convs error:', err?.message || err);
     } finally {
       setLoading(false);
     }
-  }, [user, chatIdParam, activeConv, conversations.length]);
+  }, [user, chatIdParam, userIdParam, activeConv, conversations.length]);
 
   const markAsRead = useCallback(async (convId: string) => {
     if (!user || !supabase || !convId) return;
