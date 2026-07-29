@@ -345,13 +345,19 @@ export default function ClanLevelBadge({ level = 1, xp = 0, className = '', show
   const c    = info.color;
   return (
     <span
-      className={`inline-flex items-center gap-1.5 font-mono text-[10px] font-bold px-2.5 py-0.5 rounded-full border backdrop-blur-md ${className}`}
-      style={{ background: `linear-gradient(to right, ${c.secondary}30, ${c.primary}30)`, borderColor: `${c.primary}50`, color: c.stroke, boxShadow: `0 0 8px ${c.glow}` }}
+      className={`inline-flex items-center gap-1 font-mono text-[9px] font-bold rounded-full border backdrop-blur-md ${className}`}
+      style={{ 
+        background: `linear-gradient(to right, ${c.secondary}30, ${c.primary}30)`, 
+        borderColor: `${c.primary}50`, 
+        color: c.stroke, 
+        boxShadow: `0 0 6px ${c.glow}`,
+        padding: '0.10rem 0.35rem'
+      }}
       title={`${info.title}${xp ? ` • ${xp} CP` : ''}`}
     >
-      <ClanShieldBadge level={level} size={20} showLevel={false} />
-      <span className="font-sans text-[10px] uppercase font-black tracking-wider">{info.title}</span>
-      {xp > 0 && <span className="opacity-75 font-mono text-[9px]">({xp} CP)</span>}
+      <ClanShieldBadge level={level} size={14} showLevel={false} />
+      <span className="font-sans text-[9px] uppercase font-black tracking-wider">{info.title}</span>
+      {xp > 0 && <span className="opacity-75 font-mono text-[8px]">({xp} CP)</span>}
     </span>
   );
 }

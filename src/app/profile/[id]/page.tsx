@@ -10,8 +10,10 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem } from '@/components/ui/dropdown-menu';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { 
-    Grid, Heart, Bookmark, MoreHorizontal, Camera, Link as LinkIcon, MessageSquare, History, ArrowLeft, Send, Shield, AlertTriangle, MoreVertical, Flag, Ban, UserMinus, ShieldAlert
+    Grid, Heart, Bookmark, MoreHorizontal, Camera, Link as LinkIcon, MessageSquare, History, ArrowLeft, Send, Shield, AlertTriangle, MoreVertical, Flag, Ban, UserMinus, ShieldAlert, Edit3, Eye, Save, Sparkles
 } from 'lucide-react';
+import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
 import { toast } from '@/lib/toast';
 import AuthModal from '@/components/Auth/AuthModal';
 import Footer from '@/components/Anime/Footer';
@@ -26,7 +28,7 @@ export default function PublicProfilePage({ params }: { params: Promise<{ id: st
     const routeParams = useParams();
     const targetUserId = (routeParams?.id as string) || '';
     
-    const { user, isLoading } = useAuth();
+    const { user, profile: currentUserProfile, isLoading } = useAuth();
     
     const [hasMounted, setHasMounted] = useState(false);
     useEffect(() => { setHasMounted(true); }, []);
@@ -49,6 +51,15 @@ export default function PublicProfilePage({ params }: { params: Promise<{ id: st
     const [followingList, setFollowingList] = useState<any[]>([]);
     const [showFollowersModal, setShowFollowersModal] = useState(false);
     const [showFollowingModal, setShowFollowingModal] = useState(false);
+
+    // Alpha Editing States (For Leader/Admin)
+    const [isEditAlphaMode, setIsEditAlphaMode] = useState(false);
+    const [alphaAvatar, setAlphaAvatar] = useState('');
+    const [alphaBanner, setAlphaBanner] = useState('');
+    const [alphaBio, setAlphaBio] = useState('');
+    const [alphaTitle, setAlphaTitle] = useState('');
+    const [alphaAdminTitle, setAlphaAdminTitle] = useState('');
+    const [alphaFrame, setAlphaFrame] = useState('none');
 
     useEffect(() => {
         if (!targetUserId) return;
@@ -73,6 +84,12 @@ export default function PublicProfilePage({ params }: { params: Promise<{ id: st
 
             if (!pData) return; // Profile not found
             setProfile(pData);
+            setAlphaAvatar(pData.avatar_url || '');
+            setAlphaBanner(pData.banner_url || '');
+            setAlphaBio(pData.bio || '');
+            setAlphaTitle(pData.title || '');
+            setAlphaAdminTitle(pData.admin_title || '');
+            setAlphaFrame(pData.frame_id || 'none');
 
             // Redirect if this is own profile
             if (user && user.id === pData.id) {
@@ -301,6 +318,17 @@ export default function PublicProfilePage({ params }: { params: Promise<{ id: st
                                         </span>
                                     )}
                                 </div>
+
+                                {/* LEADER / ADMIN EDIT ALPHA PROFILE ACCESS */}
+                                {(currentUserProfile?.role === 'leader' || currentUserProfile?.role === 'admin' || currentUserProfile?.username === 'Shadow' || (user as any)?.user_metadata?.username === 'Shadow') && (profile?.username === 'Alpha' || profile?.role === 'ai_leader') && (
+                                    <Button 
+                                        onClick={() => setIsEditAlphaMode(!isEditAlphaMode)} 
+                                        className="bg-purple-900/60 hover:bg-purple-800 text-purple-200 border border-purple-500/50 h-8 px-3 font-bold text-xs rounded-lg flex items-center gap-1.5 shadow-[0_0_15px_rgba(168,85,247,0.4)] transition-all active:scale-95 cursor-pointer ml-1"
+                                    >
+                                        {isEditAlphaMode ? <Eye size={13} /> : <Edit3 size={13} />}
+                                        {isEditAlphaMode ? "Switch to Public View" : "Edit Profile"}
+                                    </Button>
+                                )}
                                 <DropdownMenu>
                                     <DropdownMenuTrigger asChild>
                                         <Button variant="ghost" className="h-8 w-8 p-0 rounded-lg text-white hover:bg-zinc-800"><MoreHorizontal size={20}/></Button>
@@ -321,6 +349,139 @@ export default function PublicProfilePage({ params }: { params: Promise<{ id: st
                                 </DropdownMenu>
                             </div>
                         </div>
+
+                        {/* ALPHA NATIVE EDITING DASHBOARD FOR LEADER/ADMIN */}
+                        {isEditAlphaMode && (
+                            <motion.div 
+                                initial={{ opacity: 0, y: -10 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                className="w-full bg-[#0c0c14]/95 border border-purple-500/30 p-6 rounded-3xl backdrop-blur-2xl shadow-[0_15px_50px_rgba(0,0,0,0.8)] mb-8"
+                            >
+                                <div className="flex items-center justify-between border-b border-purple-500/20 pb-3 mb-5">
+                                    <div className="flex items-center gap-2">
+                                        <Sparkles className="text-purple-400" size={18} />
+                                        <h3 className="text-base font-bold text-white uppercase tracking-wider">Edit Alpha Profile (Leader Access)</h3>
+                                    </div>
+                                    <Button 
+                                        onClick={() => setIsEditAlphaMode(false)} 
+                                        variant="outline" 
+                                        className="bg-transparent border-white/20 hover:bg-white/10 text-xs font-bold gap-1.5 h-8 px-3"
+                                    >
+                                        <Eye size={13} /> Switch to Public View
+                                    </Button>
+                                </div>
+
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-5">
+                                    <div>
+                                        <label className="text-xs font-bold text-zinc-400 uppercase tracking-wider mb-1 block">Avatar URL</label>
+                                        <Input 
+                                            value={alphaAvatar} 
+                                            onChange={(e) => setAlphaAvatar(e.target.value)} 
+                                            placeholder="https://..." 
+                                            className="bg-black/50 border-zinc-800 text-white text-xs h-10 rounded-xl"
+                                        />
+                                    </div>
+
+                                    <div>
+                                        <label className="text-xs font-bold text-zinc-400 uppercase tracking-wider mb-1 block">Cover Banner URL</label>
+                                        <Input 
+                                            value={alphaBanner} 
+                                            onChange={(e) => setAlphaBanner(e.target.value)} 
+                                            placeholder="https://..." 
+                                            className="bg-black/50 border-zinc-800 text-white text-xs h-10 rounded-xl"
+                                        />
+                                    </div>
+
+                                    <div>
+                                        <label className="text-xs font-bold text-zinc-400 uppercase tracking-wider mb-1 block">Admin Title</label>
+                                        <Input 
+                                            value={alphaAdminTitle} 
+                                            onChange={(e) => setAlphaAdminTitle(e.target.value)} 
+                                            placeholder="First Shadow / AI Leader" 
+                                            className="bg-black/50 border-zinc-800 text-white text-xs h-10 rounded-xl"
+                                        />
+                                    </div>
+
+                                    <div>
+                                        <label className="text-xs font-bold text-zinc-400 uppercase tracking-wider mb-1 block">User Title</label>
+                                        <Input 
+                                            value={alphaTitle} 
+                                            onChange={(e) => setAlphaTitle(e.target.value)} 
+                                            placeholder="Alpha / Shadow" 
+                                            className="bg-black/50 border-zinc-800 text-white text-xs h-10 rounded-xl"
+                                        />
+                                    </div>
+
+                                    <div>
+                                        <label className="text-xs font-bold text-zinc-400 uppercase tracking-wider mb-1 block">Fantasy Frame Tier</label>
+                                        <select 
+                                            value={alphaFrame} 
+                                            onChange={(e) => setAlphaFrame(e.target.value)}
+                                            className="w-full bg-black/50 border border-zinc-800 text-white text-xs h-10 rounded-xl px-3 focus:outline-none focus:border-purple-500"
+                                        >
+                                            {['none', 'iron', 'bronze', 'silver', 'crimson', 'sapphire', 'emerald', 'golden', 'shadow', 'celestial', 'divine'].map(f => (
+                                                <option key={f} value={f} className="bg-zinc-900 text-white uppercase">{f}</option>
+                                            ))}
+                                        </select>
+                                    </div>
+
+                                    <div className="md:col-span-2">
+                                        <label className="text-xs font-bold text-zinc-400 uppercase tracking-wider mb-1 block">Bio / System Directive</label>
+                                        <Textarea 
+                                            value={alphaBio} 
+                                            onChange={(e) => setAlphaBio(e.target.value)} 
+                                            placeholder="Alpha's public bio..." 
+                                            className="bg-black/50 border-zinc-800 text-white text-xs rounded-xl h-20 resize-none"
+                                        />
+                                    </div>
+                                </div>
+
+                                <div className="flex justify-end gap-3 border-t border-purple-500/20 pt-4">
+                                    <Button 
+                                        onClick={() => setIsEditAlphaMode(false)} 
+                                        variant="ghost" 
+                                        className="text-zinc-400 hover:text-white hover:bg-white/10 text-xs font-bold h-9 px-4"
+                                    >
+                                        Cancel
+                                    </Button>
+                                    <Button 
+                                        onClick={async () => {
+                                            const { error } = await supabase
+                                                .from('profiles')
+                                                .update({
+                                                    avatar_url: alphaAvatar,
+                                                    banner_url: alphaBanner,
+                                                    bio: alphaBio,
+                                                    title: alphaTitle,
+                                                    admin_title: alphaAdminTitle,
+                                                    frame_id: alphaFrame,
+                                                    updated_at: new Date().toISOString()
+                                                })
+                                                .eq('id', profile.id);
+
+                                            if (error) {
+                                                toast.error("Failed to update Alpha's profile");
+                                            } else {
+                                                toast.success("Alpha's profile updated successfully!");
+                                                setProfile((prev: any) => ({
+                                                    ...prev,
+                                                    avatar_url: alphaAvatar,
+                                                    banner_url: alphaBanner,
+                                                    bio: alphaBio,
+                                                    title: alphaTitle,
+                                                    admin_title: alphaAdminTitle,
+                                                    frame_id: alphaFrame
+                                                }));
+                                                setIsEditAlphaMode(false);
+                                            }
+                                        }} 
+                                        className="bg-purple-600 hover:bg-purple-500 text-white font-bold text-xs h-9 px-5 rounded-xl shadow-lg shadow-purple-600/30 flex items-center gap-1.5"
+                                    >
+                                        <Save size={14} /> Save Alpha Profile
+                                    </Button>
+                                </div>
+                            </motion.div>
+                        )}
 
                         <div className="flex flex-col items-center md:items-start text-sm">
                             {profile.full_name && profile.full_name.toLowerCase() !== profile.username.toLowerCase() && <span className="font-bold text-white">{profile.full_name}</span>}

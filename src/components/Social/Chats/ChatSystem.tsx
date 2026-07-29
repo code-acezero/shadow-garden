@@ -1664,8 +1664,10 @@ export default function ChatSystem() {
                       <motion.div 
                         key={msg.id} 
                         drag="x"
-                        dragConstraints={{ left: 0, right: 60 }}
-                        dragElastic={0.2}
+                        dragSnapToOrigin={true}
+                        dragConstraints={{ left: 0, right: 80 }}
+                        dragElastic={0.15}
+                        transition={{ type: "spring", stiffness: 450, damping: 30 }}
                         onDragEnd={(_, info) => {
                           if (info.offset.x > 35) {
                             if (typeof window !== 'undefined' && 'vibrate' in navigator) {
@@ -1778,12 +1780,21 @@ export default function ChatSystem() {
                           )}
 
                           {/* Nested Quote Reply Box */}
-                          {replyData && (
-                            <div className="mb-1.5 px-3 py-1.5 rounded-2xl bg-white/10 border-l-2 border-primary-500 text-[10px] text-zinc-300 backdrop-blur-md max-w-full truncate shadow-sm">
-                              <span className="font-bold text-primary-400">Replying to @{replyData.username}: </span>
-                              <span className="italic">{replyData.content}</span>
-                            </div>
-                          )}
+                          {replyData && (() => {
+                            const rootMsg = messages.find(m => m.id === replyData.id);
+                            const isDeleted = (rootMsg && (rootMsg as any).is_deleted) || (replyData as any).is_deleted || (replyData as any).deleted || (rootMsg && rootMsg.content === 'This message was deleted') || replyData.content === 'This message was deleted';
+                            
+                            return (
+                              <div className="mb-1.5 px-3 py-1.5 rounded-2xl bg-white/10 border-l-2 border-primary-500 text-[10px] text-zinc-300 backdrop-blur-md max-w-full truncate shadow-sm">
+                                <span className="font-bold text-primary-400">Replying to @{replyData.username || 'User'}: </span>
+                                {isDeleted ? (
+                                  <span className="italic text-zinc-400 font-medium">This message has been removed</span>
+                                ) : (
+                                  <span className="italic">{replyData.content}</span>
+                                )}
+                              </div>
+                            );
+                          })()}
 
                           {msg.image_url && (
                             <img src={msg.image_url} alt="" className={`max-w-xs mb-0.5 border border-white/10 object-cover shadow-lg ${bubbleClasses}`} />
@@ -1844,13 +1855,16 @@ export default function ChatSystem() {
 
             {/* Replying Banner */}
             {replyingTo && (
-              <div className="px-4 py-2 bg-[#121218]/90 border-t border-primary-500/30 flex items-center justify-between backdrop-blur-md animate-in slide-in-from-bottom-2 duration-200 shrink-0">
-                <div className="flex items-center gap-2.5 min-w-0 flex-1">
-                  <div className="w-1 h-7 bg-primary-500 rounded-full shrink-0" />
-                  <div className="min-w-0 flex-1">
-                    <p className="text-[10px] font-bold text-primary-400">Replying to @{replyingTo.sender?.username || 'User'}</p>
-                    <p className="text-xs text-zinc-300 truncate leading-snug">{replyingTo.content || (replyingTo.image_url ? '[Image]' : replyingTo.audio_url ? '[Voice]' : '[Media]')}</p>
-                  </div>
+              <div className="mb-2 p-2 rounded-xl bg-white/10 border-l-4 border-primary-500 flex items-center justify-between gap-2 backdrop-blur-md animate-in fade-in slide-in-from-bottom-1">
+                <div className="min-w-0">
+                  <p className="text-[10px] font-bold text-primary-400">Replying to @{replyingTo.sender?.username || 'User'}</p>
+                  <p className="text-xs text-zinc-300 truncate leading-snug">
+                    {replyingTo.is_deleted || replyingTo.content === 'This message was deleted' ? (
+                      <span className="italic text-zinc-400 font-medium">This message has been removed</span>
+                    ) : (
+                      replyingTo.content || (replyingTo.image_url ? '[Image]' : replyingTo.audio_url ? '[Voice]' : '[Media]')
+                    )}
+                  </p>
                 </div>
                 <button type="button" onClick={() => setReplyingTo(null)} className="p-1 hover:bg-white/10 text-zinc-400 hover:text-white rounded-full transition-colors cursor-pointer">
                   <X size={14} />
