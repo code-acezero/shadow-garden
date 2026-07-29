@@ -11,7 +11,10 @@ const DCard = memo(({ item }: { item: DramaCard }) => {
     <div className="group relative flex flex-col shrink-0 w-full transition-all duration-300 hover:z-50 hover:scale-105 origin-center touch-manipulation">
       <div 
         className="aspect-[2/3] w-full overflow-hidden rounded-2xl bg-[#0f172a] relative shadow-lg group-hover:shadow-[0_0_30px_rgba(34,211,238,0.35)] group-hover:ring-2 group-hover:ring-cyan-400/60 transition-all cursor-pointer" 
-        onClick={() => window.location.href = `/drama-watch/${item.id}`}
+        onClick={() => {
+          const epParam = item.episode ? `?ep=${item.episode}` : '';
+          window.location.href = `/drama-watch/${item.id}${epParam}`;
+        }}
       >
         {item.image ? (
           <img src={item.image} alt={item.title} className="w-full h-full object-cover group-hover:opacity-40 transition-opacity duration-300" loading="lazy" decoding="async" />

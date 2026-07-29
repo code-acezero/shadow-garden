@@ -135,7 +135,10 @@ export default function AnimeCard({ anime, progress = 0, isHindi = false }: Anim
             ? `/donghua-watch/${anime.id}`
             : `/watch/${anime.id}`;
 
-        const latestEpNum = anime.episodeId || anime.latestEpisode || anime.episode || subCount || totalEp;
+        const epVal = typeof anime.episode === 'object' && anime.episode !== null
+            ? (anime.episode.total || anime.episode.sub || anime.episode.dub || 0)
+            : anime.episode;
+        const latestEpNum = anime.episodeId || anime.latestEpisode || epVal || subCount || dubCount || totalEp;
 
         if (latestEpNum && latestEpNum !== 0 && latestEpNum !== '0') {
             const epParam = (typeof latestEpNum === 'string' && (latestEpNum.startsWith('/') || latestEpNum.includes('?'))) 

@@ -211,7 +211,7 @@ export function DramaWatchContent() {
       setDrama(data);
       setIsLoadingInfo(false);
       if (data?.episodes?.length) {
-        let target = data.episodes[0].id;
+        let target = data.episodes[data.episodes.length - 1].id;
         if (urlEp) {
           const paramStr = String(urlEp).trim();
           const paramNum = Number(paramStr);
