@@ -23,6 +23,7 @@ export default function AvatarCropperModal({
 }: AvatarCropperModalProps) {
   const [zoom, setZoom] = useState<number>(1);
   const [position, setPosition] = useState<{ x: number; y: number }>({ x: 0, y: 0 });
+  const [imgSize, setImgSize] = useState<{ width: number; height: number }>({ width: 512, height: 512 });
   const [isDragging, setIsDragging] = useState<boolean>(false);
   const [dragStart, setDragStart] = useState<{ x: number; y: number }>({ x: 0, y: 0 });
   const [isProcessing, setIsProcessing] = useState<boolean>(false);
@@ -30,7 +31,34 @@ export default function AvatarCropperModal({
   const containerRef = useRef<HTMLDivElement>(null);
   const imageRef = useRef<HTMLImageElement>(null);
 
-  // Reset controls when a new image is loaded
+  const displaySrc = (imageSrc && imageSrc.trim() !== '') 
+    ? imageSrc 
+    : 'https://cdn.myanimelist.net/images/characters/9/310307.jpg';
+
+  // Calculate base display dimensions to cover 240x240 container perfectly
+  const CONTAINER_SIZE = 240;
+  const aspect = (imgSize.width && imgSize.height) ? imgSize.width / imgSize.height : 1;
+  
+  let baseWidth = CONTAINER_SIZE;
+  let baseHeight = CONTAINER_SIZE;
+  if (aspect >= 1) {
+    baseHeight = CONTAINER_SIZE;
+    baseWidth = CONTAINER_SIZE * aspect;
+  } else {
+    baseWidth = CONTAINER_SIZE;
+    baseHeight = CONTAINER_SIZE / aspect;
+  }
+
+  const dispWidth = baseWidth * zoom;
+  const dispHeight = baseHeight * zoom;
+
+  const maxX = Math.max(0, (dispWidth - CONTAINER_SIZE) / 2);
+  const maxY = Math.max(0, (dispHeight - CONTAINER_SIZE) / 2);
+
+  const clampedX = Math.max(-maxX, Math.min(maxX, position.x));
+  const clampedY = Math.max(-maxY, Math.min(maxY, position.y));
+
+  // Reset controls when a new image is loaded or modal opens
   useEffect(() => {
     if (isOpen) {
       setZoom(1);
@@ -38,19 +66,28 @@ export default function AvatarCropperModal({
     }
   }, [isOpen, imageSrc]);
 
+  const handleImageLoad = (e: React.SyntheticEvent<HTMLImageElement>) => {
+    const target = e.currentTarget;
+    if (target.naturalWidth && target.naturalHeight) {
+      setImgSize({ width: target.naturalWidth, height: target.naturalHeight });
+    }
+  };
+
   const handleMouseDown = (e: React.MouseEvent) => {
     e.preventDefault();
     setIsDragging(true);
-    setDragStart({ x: e.clientX - position.x, y: e.clientY - position.y });
+    setDragStart({ x: e.clientX - clampedX, y: e.clientY - clampedY });
   };
 
   const handleMouseMove = useCallback((e: MouseEvent) => {
     if (!isDragging) return;
+    const rawX = e.clientX - dragStart.x;
+    const rawY = e.clientY - dragStart.y;
     setPosition({
-      x: e.clientX - dragStart.x,
-      y: e.clientY - dragStart.y,
+      x: Math.max(-maxX, Math.min(maxX, rawX)),
+      y: Math.max(-maxY, Math.min(maxY, rawY)),
     });
-  }, [isDragging, dragStart]);
+  }, [isDragging, dragStart, maxX, maxY]);
 
   const handleMouseUp = useCallback(() => {
     setIsDragging(false);
@@ -60,23 +97,31 @@ export default function AvatarCropperModal({
     if (e.touches.length === 1) {
       setIsDragging(true);
       setDragStart({
-        x: e.touches[0].clientX - position.x,
-        y: e.touches[0].clientY - position.y,
+        x: e.touches[0].clientX - clampedX,
+        y: e.touches[0].clientY - clampedY,
       });
     }
   };
 
   const handleTouchMove = useCallback((e: TouchEvent) => {
     if (!isDragging || e.touches.length !== 1) return;
+    const rawX = e.touches[0].clientX - dragStart.x;
+    const rawY = e.touches[0].clientY - dragStart.y;
     setPosition({
-      x: e.touches[0].clientX - dragStart.x,
-      y: e.touches[0].clientY - dragStart.y,
+      x: Math.max(-maxX, Math.min(maxX, rawX)),
+      y: Math.max(-maxY, Math.min(maxY, rawY)),
     });
-  }, [isDragging, dragStart]);
+  }, [isDragging, dragStart, maxX, maxY]);
 
   const handleTouchEnd = useCallback(() => {
     setIsDragging(false);
   }, []);
+
+  const handleWheel = (e: React.WheelEvent) => {
+    e.preventDefault();
+    const delta = e.deltaY < 0 ? 0.08 : -0.08;
+    setZoom((z) => Math.min(3, Math.max(1, +(z + delta).toFixed(2))));
+  };
 
   useEffect(() => {
     if (isDragging) {
@@ -99,25 +144,24 @@ export default function AvatarCropperModal({
   };
 
   const handleApply = async () => {
-    if (!imageSrc) return;
+    if (!displaySrc) return;
     setIsProcessing(true);
 
     try {
       let img = new Image();
-      let isCorsOk = false;
 
-      // Try loading with CORS first
       try {
-        img.crossOrigin = 'anonymous';
-        img.src = imageSrc;
+        if (!displaySrc.startsWith('data:') && !displaySrc.startsWith('blob:')) {
+          img.crossOrigin = 'anonymous';
+        }
+        img.src = displaySrc;
         await new Promise((resolve, reject) => {
-          img.onload = () => { isCorsOk = true; resolve(true); };
+          img.onload = resolve;
           img.onerror = reject;
         });
       } catch (corsErr) {
-        // If CORS fails, load standard image without crossOrigin
         img = new Image();
-        img.src = imageSrc;
+        img.src = displaySrc;
         await new Promise((resolve, reject) => {
           img.onload = resolve;
           img.onerror = reject;
@@ -125,42 +169,38 @@ export default function AvatarCropperModal({
       }
 
       const canvas = document.createElement('canvas');
-      const size = 512;
-      canvas.width = size;
-      canvas.height = size;
+      const OUTPUT_SIZE = 512;
+      canvas.width = OUTPUT_SIZE;
+      canvas.height = OUTPUT_SIZE;
       const ctx = canvas.getContext('2d');
 
       if (!ctx) throw new Error('Could not get canvas context');
 
-      // Draw circular mask background
+      // Circular clip mask
       ctx.beginPath();
-      ctx.arc(size / 2, size / 2, size / 2, 0, Math.PI * 2);
+      ctx.arc(OUTPUT_SIZE / 2, OUTPUT_SIZE / 2, OUTPUT_SIZE / 2, 0, Math.PI * 2);
       ctx.closePath();
       ctx.clip();
 
-      // Compute display bounds inside 240px container
-      const containerSize = 240;
-      const scaleFactor = size / containerSize;
+      const sf = OUTPUT_SIZE / CONTAINER_SIZE;
+      const drawW = dispWidth * sf;
+      const drawH = dispHeight * sf;
+      const drawX = (OUTPUT_SIZE / 2) - (drawW / 2) + (clampedX * sf);
+      const drawY = (OUTPUT_SIZE / 2) - (drawH / 2) + (clampedY * sf);
 
-      const drawWidth = (img.width || size) * (containerSize / (img.width || size)) * zoom * scaleFactor;
-      const drawHeight = (img.height || size) * (containerSize / (img.height || size)) * zoom * scaleFactor;
+      ctx.drawImage(img, drawX, drawY, drawW, drawH);
 
-      const drawX = (size / 2) - (drawWidth / 2) + (position.x * scaleFactor);
-      const drawY = (size / 2) - (drawHeight / 2) + (position.y * scaleFactor);
-
-      ctx.drawImage(img, drawX, drawY, drawWidth, drawHeight);
-
-      let croppedDataUrl = imageSrc;
+      let croppedDataUrl = displaySrc;
       try {
         croppedDataUrl = canvas.toDataURL('image/png', 0.95);
       } catch (taintedErr) {
-        console.warn('Canvas tainted by CORS, returning original imageSrc:', taintedErr);
+        console.warn('Canvas tainted by CORS, returning original displaySrc:', taintedErr);
       }
 
       onCropComplete(croppedDataUrl);
     } catch (err) {
       console.error('Failed to crop image:', err);
-      onCropComplete(imageSrc);
+      onCropComplete(displaySrc);
     } finally {
       setIsProcessing(false);
     }
@@ -184,7 +224,7 @@ export default function AvatarCropperModal({
               <h3 className="text-base font-black text-white tracking-tight flex items-center gap-2">
                 <Crop size={16} className="text-primary" /> Reposition & Crop Avatar
               </h3>
-              <p className="text-xs text-zinc-400 mt-0.5">Drag to adjust position, slider to zoom</p>
+              <p className="text-xs text-zinc-400 mt-0.5">Drag photo to position, slider or scroll to zoom</p>
             </div>
             <button
               onClick={onClose}
@@ -200,23 +240,30 @@ export default function AvatarCropperModal({
               ref={containerRef}
               onMouseDown={handleMouseDown}
               onTouchStart={handleTouchStart}
-              className="relative w-[240px] h-[240px] rounded-full overflow-hidden border-2 border-primary/50 shadow-[0_0_30px_rgba(168,85,247,0.3)] cursor-grab active:cursor-grabbing select-none group touch-none bg-zinc-950"
+              onWheel={handleWheel}
+              className="relative w-[240px] h-[240px] rounded-full overflow-hidden border-2 border-primary/50 shadow-[0_0_30px_rgba(168,85,247,0.3)] cursor-grab active:cursor-grabbing select-none group touch-none bg-zinc-950 flex items-center justify-center"
             >
-              {/* Image element */}
+              {/* Image Element - Fixed in container, panned via constrained translate */}
               <div
                 className="absolute inset-0 flex items-center justify-center pointer-events-none"
                 style={{
-                  transform: `translate(${position.x}px, ${position.y}px) scale(${zoom})`,
-                  transformOrigin: 'center center',
+                  transform: `translate(${clampedX}px, ${clampedY}px)`,
                   transition: isDragging ? 'none' : 'transform 0.05s ease-out',
                 }}
               >
                 <img
                   ref={imageRef}
-                  src={(imageSrc && imageSrc.trim() !== '') ? imageSrc : 'https://cdn.myanimelist.net/images/characters/9/310307.jpg'}
+                  src={displaySrc}
                   alt="Avatar Crop Preview"
+                  onLoad={handleImageLoad}
                   referrerPolicy="no-referrer"
-                  className="max-w-none max-h-none w-full h-full object-cover"
+                  style={{
+                    width: `${dispWidth}px`,
+                    height: `${dispHeight}px`,
+                    maxWidth: 'none',
+                    maxHeight: 'none',
+                  }}
+                  className="object-cover select-none pointer-events-none shrink-0"
                   draggable={false}
                   onError={(e) => {
                     (e.target as HTMLImageElement).src = 'https://cdn.myanimelist.net/images/characters/9/310307.jpg';
@@ -225,7 +272,7 @@ export default function AvatarCropperModal({
               </div>
 
               {/* Grid Lines Overlay */}
-              <div className="absolute inset-0 border border-white/10 rounded-full pointer-events-none grid grid-cols-3 grid-rows-3 opacity-30 group-hover:opacity-60 transition-opacity">
+              <div className="absolute inset-0 border border-white/10 rounded-full pointer-events-none grid grid-cols-3 grid-rows-3 opacity-30 group-hover:opacity-60 transition-opacity z-10">
                 <div className="border-r border-b border-white/20" />
                 <div className="border-r border-b border-white/20" />
                 <div className="border-b border-white/20" />
@@ -238,7 +285,7 @@ export default function AvatarCropperModal({
               </div>
 
               {/* Drag Hint */}
-              <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none bg-black/20">
+              <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none bg-black/20 z-10">
                 <span className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-black/70 backdrop-blur-md text-[10px] font-bold text-white shadow-lg">
                   <Move size={12} /> Drag to Reposition
                 </span>
