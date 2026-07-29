@@ -668,7 +668,6 @@ export default function OtakuVerse({ user, onAuthRequired, highlightId, initialN
               <div className="lg:hidden"><NavButton icon={<Newspaper size={24} />} label="News" active={activeTab === 'news'} onClick={() => setActiveTab('news')} /></div>
               <NavButton icon={<MessageSquare size={24} />} label="Messages" onClick={() => window.location.href = '/messages'} badge={hasUnreadMessages} />
               <NavButton icon={<Users size={24} />} label="Watch Rooms" onClick={() => window.location.href = '/rooms'} />
-              <NavButton icon={<UserIcon size={24} />} label="Profile" onClick={() => user ? (window.location.href='/profile') : onAuthRequired()} />
 
               <button 
                 type="button"
@@ -678,25 +677,6 @@ export default function OtakuVerse({ user, onAuthRequired, highlightId, initialN
                  <span className="hidden lg:inline uppercase tracking-wider">Post</span>
                  <SendHorizontal size={22} className="lg:hidden" />
               </button>
-           </div>
-
-           {/* Logged in / Guest Profile Header */}
-           <div 
-             className="flex items-center justify-center lg:justify-between gap-3 p-3 rounded-full hover:bg-white/10 cursor-pointer transition-colors mb-4 w-full border border-white/5"
-             onClick={() => user ? (window.location.href='/profile') : onAuthRequired()}
-           >
-              <ProfileAvatar 
-                  profile={profile || travellerProfile} 
-                  className="w-10 h-10 shrink-0 object-cover" 
-              />
-              <div className="hidden lg:block overflow-hidden flex-1">
-                 <p className="font-bold text-white text-sm truncate leading-tight">
-                   {user ? (user.user_metadata?.full_name || 'User') : travellerProfile.name}
-                 </p>
-                 <p className="text-zinc-500 text-xs truncate leading-tight">
-                   @{user ? (user.user_metadata?.preferred_username || 'shadow') : travellerProfile.name}
-                 </p>
-              </div>
            </div>
         </header>
 
@@ -930,7 +910,6 @@ export default function OtakuVerse({ user, onAuthRequired, highlightId, initialN
                     </div>
                     <div>
                       <span className="font-black text-sm text-white uppercase tracking-widest block leading-tight">OtakuVerse</span>
-                      <span className="text-[9px] text-zinc-500 font-mono">Social Realm Navigation</span>
                     </div>
                   </div>
                   <button
@@ -939,24 +918,6 @@ export default function OtakuVerse({ user, onAuthRequired, highlightId, initialN
                   >
                     <X size={18} />
                   </button>
-                </div>
-
-                {/* Profile Card if Logged In / Guest */}
-                <div className="bg-[#14141c] border border-white/10 p-3 rounded-2xl flex items-center gap-3 shadow-md mb-2">
-                  <ProfileAvatar profile={profile || travellerProfile} className="w-11 h-11" />
-                  <div className="min-w-0 flex-1">
-                    <p className="font-bold text-white text-xs truncate leading-tight">
-                      {(profile || travellerProfile).name || 'Agent'}
-                    </p>
-                    <p className="text-[10px] text-zinc-400 truncate mt-0.5">
-                      @{(profile || travellerProfile).username || 'shadow'}
-                    </p>
-                    {user && (
-                      <span className="inline-block mt-1 text-[9px] font-mono font-bold text-primary-400 bg-primary-600/20 px-2 py-0.5 rounded-full border border-primary-500/30">
-                        Lv. {user.user_metadata?.level || 1}
-                      </span>
-                    )}
-                  </div>
                 </div>
 
                 {!user && (
@@ -1027,18 +988,6 @@ export default function OtakuVerse({ user, onAuthRequired, highlightId, initialN
                   >
                     <Users size={18} className="text-zinc-400" />
                     <span>Watch Rooms</span>
-                  </Link>
-
-                  <Link
-                    href={user ? "/profile" : "#"}
-                    onClick={() => {
-                      setIsMobileMenuOpen(false);
-                      if (!user) onAuthRequired();
-                    }}
-                    className="w-full flex items-center gap-3.5 p-3 rounded-2xl text-xs font-bold text-zinc-300 hover:bg-white/5 hover:text-white transition-all"
-                  >
-                    <UserIcon size={18} className="text-zinc-400" />
-                    <span>Profile & Frames</span>
                   </Link>
 
                   <Link
