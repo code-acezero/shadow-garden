@@ -1,15 +1,12 @@
 name: Build & Release Shadow Garden APK
 
 on:
-  push:
-    branches:
-      - main
   workflow_dispatch:
     inputs:
       release_notes:
-        description: 'Release notes for this build'
+        description: 'What changed in this build? (optional)'
         required: false
-        default: 'New Shadow Garden APK release.'
+        default: 'Shadows shift. The garden breathes.'
 
 permissions:
   contents: write
@@ -85,32 +82,55 @@ jobs:
           mv android/app/build/outputs/apk/release/app-release.apk \
              "ShadowGarden-V1-Signed-Release_${{ github.run_number }}.apk"
 
-      # ✅ Always: save APK as workflow artifact (available on every push build)
-      - name: Upload APK as Workflow Artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: ShadowGarden-V1-Signed-Release_${{ github.run_number }}
-          path: "ShadowGarden-V1-Signed-Release_${{ github.run_number }}.apk"
-          retention-days: 30
-
-      # 🚀 Manual trigger only: publish as a proper GitHub Release
       - name: Publish GitHub Release with APK
-        if: github.event_name == 'workflow_dispatch'
         uses: softprops/action-gh-release@v2
         with:
           tag_name: "v1.0-build-${{ github.run_number }}"
-          name: "Shadow Garden V1 — Build ${{ github.run_number }}"
+          name: "🌿 Shadow Garden — Build ${{ github.run_number }}"
           body: |
-            🌿 **Shadow Garden Android APK**
-            
-            **Build**: `#${{ github.run_number }}`
-            **Signed by**: `code:4ce0 | Shadow Garden`
-            **Version**: `1.0.0 (code:4ce0)`
-            
+            ```
+            ░██████╗██╗░░██╗░█████╗░██████╗░░█████╗░░██╗░░░░░░░██╗
+            ██╔════╝██║░░██║██╔══██╗██╔══██╗██╔══██╗░██║░░██╗░░██║
+            ╚█████╗░███████║███████║██║░░██║██║░░██║░╚██╗████╗██╔╝
+            ░╚═══██╗██╔══██║██╔══██║██║░░██║██║░░██║░░████╔═████║░
+            ██████╔╝██║░░██║██║░░██║██████╔╝╚█████╔╝░░╚██╔╝░╚██╔╝
+            ╚═════╝░╚═╝░░╚═╝╚═╝░░╚═╝╚═════╝░░╚════╝░░░░╚═╝░░░╚═╝░
+                              G A R D E N
+            ```
+
+            > *"The gate opens once. The sanctuary remembers."*
+
             ---
+
+            ## 🌑 What Crossed the Portal This Build
+
             ${{ github.event.inputs.release_notes }}
-            
-            > Install on any Android device. Enable "Install from unknown sources" in your phone settings first.
+
+            ---
+
+            ## 📦 Release Metadata
+
+            | Field | Value |
+            |-------|-------|
+            | 🔢 Build | `#${{ github.run_number }}` |
+            | ✒️ Signed By | `code:4ce0` |
+            | 🏛️ Organization | `Shadow Garden` |
+            | 📱 Version | `1.0.0 (code:4ce0)` |
+            | 🔐 Signature | `RSA-2048 · 10,000 day certificate` |
+            | 🤖 Platform | `Android 7.0+ (API 24+)` |
+
+            ---
+
+            ## 🚀 Installation
+
+            1. Download `ShadowGarden-V1-Signed-Release_${{ github.run_number }}.apk` below
+            2. On your Android phone, go to **Settings → Install unknown apps** → allow your browser or file manager
+            3. Open the downloaded file and tap **Install**
+            4. The gate opens. Welcome back.
+
+            ---
+
+            <sub>Built & sealed by the Shadow Garden forge · `code:4ce0` · [shadow-garden.site](https://shadow-garden.site)</sub>
           files: "ShadowGarden-V1-Signed-Release_${{ github.run_number }}.apk"
           draft: false
           prerelease: false
