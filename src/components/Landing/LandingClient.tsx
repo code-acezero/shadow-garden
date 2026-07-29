@@ -354,15 +354,12 @@ export default function LandingClient() {
         document.referrer.includes('android-app://')
       );
       const isNativeContainer = isAndroidAPK || (typeof window !== 'undefined' && window.matchMedia('(display-mode: standalone)').matches);
-      const hasSeenPortal = typeof window !== 'undefined' && (
-        localStorage.getItem('sg_portal_seen') === 'true' ||
-        localStorage.getItem('shadow_apk_intro_completed') === 'true'
-      );
+      const hasSeenPortal = typeof window !== 'undefined' && localStorage.getItem('shadow_apk_intro_completed') === 'true';
       const hasAuthHint = typeof window !== 'undefined' && localStorage.getItem('shadow_auth_hint') === 'true';
 
       // 1. On Native App Container / APK:
-      // Intro & 3D portal sequence plays strictly ONCE on first app launch, then bypasses to /home on future launches
-      if (isNativeContainer && (hasSeenPortal || hasAuthHint)) {
+      // Intro & 3D portal sequence plays ONCE on app launch, then bypasses to /home on future launches
+      if (isNativeContainer && hasSeenPortal) {
         router.replace('/home');
         return;
       }
