@@ -433,6 +433,8 @@ export default function FantasyFrame({
                        : undefined,
               boxShadow: frame.glow !== 'none' ? frame.glow : undefined,
               filter: frameId === 'golden' ? 'url(#heatwave-filter)' : undefined,
+              WebkitMaskImage: transparentBg ? 'radial-gradient(circle closest-side, transparent 79%, black 80%)' : undefined,
+              maskImage: transparentBg ? 'radial-gradient(circle closest-side, transparent 79%, black 80%)' : undefined,
             }}
           />
         )}
