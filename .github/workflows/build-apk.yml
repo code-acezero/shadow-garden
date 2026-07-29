@@ -67,6 +67,29 @@ jobs:
       - name: Grant Gradle Execute Permissions
         run: chmod +x android/gradlew
 
+      - name: Generate Shadow Garden App Icons (all mipmap sizes)
+        run: |
+          sudo apt-get install -y imagemagick
+          ICON_SRC="public/sg-icon.png"
+          declare -A sizes=(
+            ["mipmap-mdpi"]=48
+            ["mipmap-hdpi"]=72
+            ["mipmap-xhdpi"]=96
+            ["mipmap-xxhdpi"]=144
+            ["mipmap-xxxhdpi"]=192
+          )
+          for folder in "${!sizes[@]}"; do
+            size="${sizes[$folder]}"
+            dest="android/app/src/main/res/$folder"
+            mkdir -p "$dest"
+            convert "$ICON_SRC" -resize "${size}x${size}" "$dest/ic_launcher.png"
+            convert "$ICON_SRC" -resize "${size}x${size}" "$dest/ic_launcher_round.png"
+            # Foreground: center the icon on transparent background at 108dp (adaptive icon)
+            fgsize=$(( size * 108 / 72 ))
+            convert "$ICON_SRC" -resize "${fgsize}x${fgsize}" "$dest/ic_launcher_foreground.png"
+          done
+          echo "✅ All mipmap icons generated."
+
       - name: Build Signed Release APK via Gradle
         run: |
           cd android

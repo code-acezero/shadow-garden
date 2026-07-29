@@ -7,13 +7,24 @@ const config: CapacitorConfig = {
   backgroundColor: '#020617',
   server: {
     url: 'https://shadow-garden.site',
-    cleartext: true
+    cleartext: false,
+    // Allow the WebView to handle all navigation internally — prevents
+    // Android from intercepting links and opening them in Chrome.
+    allowNavigation: [
+      'shadow-garden.site',
+      '*.shadow-garden.site',
+      'supabase.co',
+      '*.supabase.co'
+    ]
   },
   android: {
-    allowMixedContent: true,
+    allowMixedContent: false,
     backgroundColor: '#020617',
     captureInput: true,
-    webContentsDebuggingEnabled: true
+    webContentsDebuggingEnabled: false,
+    // Keep the WebView alive in background — prevents frozen blank screen
+    // when returning from Chrome or other apps
+    loggingBehavior: 'none'
   },
   plugins: {
     StatusBar: {

@@ -1182,7 +1182,7 @@ const CinematicTitleIntro = React.memo(({ onComplete }: { onComplete: () => void
         document.body.style.overflow = 'hidden';
         
         sfx.init();
-        sfx.play('crystal', 0.5);
+        sfx.play('title', 0.8);
         
         const timer = setTimeout(() => {
             onComplete();
@@ -1234,7 +1234,6 @@ const CinematicTitleIntro = React.memo(({ onComplete }: { onComplete: () => void
                             }}
                             className="absolute top-1/2 -translate-y-1/2 flex items-center justify-center pointer-events-none"
                         >
-                            <div className="w-2 h-2 rounded-full bg-white blur-[0.2px] shadow-[0_0_10px_#ffffff,0_0_20px_#ef4444]" />
                             <div className="absolute w-24 h-[1px] bg-gradient-to-r from-transparent via-white to-transparent blur-[0.3px]" />
                             <div className="absolute w-8 h-8 rounded-full bg-red-600/40 blur-md" />
                             <div className="absolute right-full w-32 h-[1px] bg-gradient-to-l from-red-400 via-transparent to-transparent opacity-60" />
