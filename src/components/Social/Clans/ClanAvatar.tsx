@@ -39,9 +39,9 @@ export default function ClanAvatar({ clan, className = "w-12 h-12" }: ClanAvatar
 
       {/* Level Shield Badge at Bottom Center */}
       <div 
-        className="absolute left-1/2 bottom-0 z-20 flex items-center justify-center pointer-events-none -translate-x-1/2 translate-y-1/2 w-[0.8rem] h-[0.8rem]"
+        className="absolute left-1/2 bottom-0 z-20 flex items-center justify-center pointer-events-none -translate-x-1/2 translate-y-1/2"
       >
-        <ClanShieldBadge level={clanLevel} className="w-full h-full drop-shadow-md" />
+        <ClanShieldBadge level={clanLevel} size={13} showLevel={false} className="drop-shadow-md" />
       </div>
     </div>
   );
