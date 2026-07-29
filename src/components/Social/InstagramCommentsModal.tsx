@@ -126,15 +126,15 @@ export default function InstagramCommentsModal({
 
   return (
     <Dialog open={!!post} onOpenChange={() => onClose()}>
-      <DialogContent className="bg-[#0a0a0f]/95 backdrop-blur-2xl border border-white/10 text-white sm:rounded-3xl p-0 shadow-2xl overflow-hidden flex flex-col md:flex-row !top-[7.5vh] !translate-y-0 h-[83vh] max-h-[680px] [&>button]:right-4 [&>button]:top-4 [&>button]:text-zinc-400 hover:[&>button]:text-white z-[2000]">
+      <DialogContent className="bg-[#0a0a0f]/95 backdrop-blur-2xl border border-white/10 text-white sm:rounded-3xl p-0 shadow-2xl overflow-hidden flex flex-col md:flex-row !top-[7.5vh] !translate-y-0 h-[83vh] max-h-[680px] max-w-5xl w-[92vw] md:w-[90vw] lg:w-[85vw] [&>button]:right-4 [&>button]:top-4 [&>button]:text-zinc-400 hover:[&>button]:text-white z-[2000]">
         <DialogTitle className="sr-only">Post Comments</DialogTitle>
         {/* --- LEFT SIDE: Post Media Preview (Desktop) --- */}
-        <div className="hidden md:flex flex-1 bg-black/60 backdrop-blur-md items-center justify-center relative overflow-hidden border-r border-white/10">
+        <div className="hidden md:flex flex-1 bg-black/80 backdrop-blur-md items-center justify-center relative overflow-hidden border-r border-white/10 p-4">
           {post.images && post.images.length > 0 ? (
             <img 
               src={post.images[0]} 
               alt="Post attachment" 
-              className="max-h-full max-w-full object-contain"
+              className="max-h-full max-w-full w-auto h-auto object-contain rounded-xl shadow-2xl"
             />
           ) : (
             <div className="p-8 text-center space-y-3 max-w-sm">

@@ -136,7 +136,7 @@ export default function InstagramPostCard({
   const commentsCount = post.comments_count || 0;
 
   return (
-    <div className={`w-full bg-[#0a0a0e]/95 backdrop-blur-xl border border-white/10 sm:rounded-3xl overflow-hidden mb-4 shadow-2xl transition-all ${highlightId === post.id ? 'ring-2 ring-primary-500' : 'hover:border-white/20'}`}>
+    <div id={`post-${post.id}`} className={`w-full bg-[#0a0a0e]/95 backdrop-blur-xl border border-white/10 sm:rounded-3xl overflow-hidden mb-4 shadow-2xl transition-all ${highlightId === post.id ? 'ring-2 ring-primary-500' : 'hover:border-white/20'}`}>
       
       {/* --- INSTAGRAM HEADER --- */}
       <div className="flex items-center justify-between p-3.5 sm:p-4 border-b border-white/5 bg-[#0d0d12]/90 backdrop-blur-md">

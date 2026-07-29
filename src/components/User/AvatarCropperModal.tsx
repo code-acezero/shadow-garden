@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useRef, useEffect, useCallback } from 'react';
+import { createPortal } from 'react-dom';
 import { X, ZoomIn, ZoomOut, RotateCcw, Check, Move, Crop } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import FantasyFrame from './FantasyFrame';
@@ -167,7 +168,7 @@ export default function AvatarCropperModal({
 
   if (!isOpen || !imageSrc) return null;
 
-  return (
+  const modalContent = (
     <AnimatePresence>
       <div className="fixed inset-0 z-[1200] flex items-center justify-center p-4 bg-black/85 backdrop-blur-md">
         <motion.div
@@ -318,4 +319,9 @@ export default function AvatarCropperModal({
       </div>
     </AnimatePresence>
   );
+
+  if (typeof window !== 'undefined') {
+    return createPortal(modalContent, document.body);
+  }
+  return modalContent;
 }

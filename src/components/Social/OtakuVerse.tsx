@@ -76,9 +76,10 @@ interface OtakuVerseProps {
   onAuthRequired: () => void;
   highlightId?: string;
   initialNewsId?: string;
+  initialTab?: string;
 }
 
-export default function OtakuVerse({ user, onAuthRequired, highlightId, initialNewsId }: OtakuVerseProps) {
+export default function OtakuVerse({ user, onAuthRequired, highlightId, initialNewsId, initialTab }: OtakuVerseProps) {
   const { profile } = useAuth();
   const travellerProfile = useTravellerProfile();
   const [posts, setPosts] = useState<SocialPost[]>([]);
@@ -101,7 +102,43 @@ export default function OtakuVerse({ user, onAuthRequired, highlightId, initialN
      }
   }, []);
 
-  const [activeTab, setActiveTab] = useState<'feed' | 'following' | 'news' | 'clans'>('feed');
+  const [activeTab, setActiveTab] = useState<'feed' | 'following' | 'news' | 'clans'>(() => {
+    if (initialTab === 'clans' || initialTab === 'following' || initialTab === 'news' || initialTab === 'feed') {
+      return initialTab;
+    }
+    return 'feed';
+  });
+
+  useEffect(() => {
+    if (initialTab && (initialTab === 'clans' || initialTab === 'following' || initialTab === 'news' || initialTab === 'feed')) {
+      setActiveTab(initialTab);
+    }
+  }, [initialTab]);
+
+  // Issue 1 Fix: Sync activeTab into browser URL query string so refreshing preserves clans list
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const url = new URL(window.location.href);
+      if (url.searchParams.get('tab') !== activeTab) {
+        url.searchParams.set('tab', activeTab);
+        window.history.replaceState(null, '', url.pathname + url.search);
+      }
+    }
+  }, [activeTab]);
+
+  // Issue 4 Fix: Auto-scroll to highlighted post when shared link is opened
+  useEffect(() => {
+    if (highlightId && posts.length > 0) {
+      const timer = setTimeout(() => {
+        const targetPost = document.getElementById(`post-${highlightId}`);
+        if (targetPost) {
+          targetPost.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+      }, 350);
+      return () => clearTimeout(timer);
+    }
+  }, [highlightId, posts.length]);
+
   const [isLoading, setIsLoading] = useState(true);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [hasUnreadMessages, setHasUnreadMessages] = useState(false);

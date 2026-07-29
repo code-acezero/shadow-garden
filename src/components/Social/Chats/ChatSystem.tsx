@@ -1840,9 +1840,6 @@ export default function ChatSystem() {
               {/* Typing Indicator */}
               {Object.keys(typingUsers).length > 0 && (
                 <div className="flex items-end gap-2 mb-4">
-                  <div className="w-7 h-7 rounded-full bg-white/5 border border-white/10 shrink-0 mb-0.5 flex items-center justify-center">
-                    <User size={12} className="text-zinc-500" />
-                  </div>
                   <div className="bg-[#14141a]/90 text-zinc-400 border border-white/10 rounded-3xl rounded-bl-sm px-4 py-2.5 shadow-md flex items-center gap-1.5 w-fit backdrop-blur-md">
                     <span className="text-[9px] font-bold uppercase tracking-wider text-zinc-400 mr-1">Typing</span>
                     <motion.div className="w-1.5 h-1.5 bg-primary-500 rounded-full" animate={{ y: [0, -4, 0] }} transition={{ repeat: Infinity, duration: 0.8, delay: 0 }} />

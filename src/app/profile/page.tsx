@@ -1287,7 +1287,7 @@ export default function ProfilePage() {
 
             {/* AVATAR UPLOAD MODAL (Antigravity Redesign) */}
             <Dialog open={showAvatarModal} onOpenChange={setShowAvatarModal}>
-                <DialogContent className="bg-[#0a0a12]/90 backdrop-blur-3xl border border-white/15 text-white max-w-[420px] rounded-[32px] p-0 overflow-hidden shadow-[0_25px_60px_rgba(0,0,0,0.9)] top-[50%] -translate-y-[50%]" aria-describedby={undefined}>
+                <DialogContent className="bg-[#0a0a12]/90 backdrop-blur-3xl border border-white/15 text-white max-w-[420px] rounded-[32px] p-0 overflow-hidden shadow-[0_25px_60px_rgba(0,0,0,0.9)]" aria-describedby={undefined}>
                     {/* Header with background blur gradient */}
                     <div className="relative px-6 pt-6 pb-4 border-b border-white/10 bg-gradient-to-b from-purple-500/10 via-transparent to-transparent flex items-center justify-between">
                         <div>

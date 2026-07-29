@@ -344,6 +344,13 @@ const TopChartCard = ({ anime, rank, index, mobileActiveIndex, onMobileClick }: 
 const DaySelector = ({ selectedDate, onSelect }: { selectedDate: Date, onSelect: (d: Date) => void }) => {
     const days = useMemo(() => Array.from({ length: 21 }, (_, i) => subDays(new Date(), 14 - i)), []);
     const scrollRef = useRef<HTMLDivElement>(null);
+    const selectedBtnRef = useRef<HTMLButtonElement>(null);
+
+    useEffect(() => {
+        if (selectedBtnRef.current) {
+            selectedBtnRef.current.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' });
+        }
+    }, [selectedDate]);
 
     return (
         <div className="w-full border-b border-white/5 bg-[#050505]/80 backdrop-blur-xl z-40 sticky top-0 transition-all">
@@ -361,7 +368,12 @@ const DaySelector = ({ selectedDate, onSelect }: { selectedDate: Date, onSelect:
                         const isSelected = isSameDay(date, selectedDate);
                         const isToday = isSameDay(date, new Date());
                         return (
-                            <button key={i} onClick={() => onSelect(date)} className={cn("flex flex-col items-center justify-center min-w-[50px] md:min-w-[56px] h-[56px] md:h-[60px] rounded-xl border transition-all duration-300 snap-center shrink-0 relative overflow-hidden group", isSelected ? "bg-white text-black border-white scale-100 z-10 font-bold shadow-lg shadow-white/10" : "bg-white/5 border-white/5 text-zinc-500 hover:bg-white/10 hover:text-zinc-300")}>
+                            <button 
+                                key={i} 
+                                ref={isSelected ? selectedBtnRef : null}
+                                onClick={() => onSelect(date)} 
+                                className={cn("flex flex-col items-center justify-center min-w-[50px] md:min-w-[56px] h-[56px] md:h-[60px] rounded-xl border transition-all duration-300 snap-center shrink-0 relative overflow-hidden group", isSelected ? "bg-white text-black border-white scale-100 z-10 font-bold shadow-lg shadow-white/10" : "bg-white/5 border-white/5 text-zinc-500 hover:bg-white/10 hover:text-zinc-300")}
+                            >
                                 <span className="text-[8px] font-bold uppercase tracking-wider opacity-80">{format(date, 'EEE')}</span>
                                 <span className={cn("text-lg md:text-xl font-black font-lemon leading-none mt-0.5", isSelected ? "text-black" : "text-zinc-400 group-hover:text-white")}>{format(date, 'dd')}</span>
                                 {isToday && !isSelected && <span className="absolute top-1 right-1 w-1.5 h-1.5 bg-primary-500 rounded-full" />}

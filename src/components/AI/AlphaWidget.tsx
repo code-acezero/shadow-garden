@@ -392,7 +392,7 @@ export default function AlphaWidget() {
     const inputRef = useRef<HTMLInputElement>(null);
     const audioRef = useRef<HTMLAudioElement | null>(null);
     const [isPlayingAudio, setIsPlayingAudio] = useState(false);
-    const [globalVoiceEnabled, setGlobalVoiceEnabled] = useState(false);
+    const [globalVoiceEnabled, setGlobalVoiceEnabled] = useState(true);
     const [isUserVoiceEnabled, setIsUserVoiceEnabled] = useState(true);
     const [showVoiceUnavailable, setShowVoiceUnavailable] = useState(false);
     const [isPlayingBGM, setIsPlayingBGM] = useState(false);
@@ -580,7 +580,7 @@ export default function AlphaWidget() {
                 setShowImageSearch(true);
             }
 
-            // Fetch and play TTS audio in the background (using GET for native streaming)
+            // Fetch and play TTS audio using Fish Audio
             if (cleanText && globalVoiceEnabled && isUserVoiceEnabled) {
                 // Replace markdown and underscores to prevent TTS from pronouncing them
                 const ttsText = cleanText.replace(/_/g, ' ');
@@ -606,7 +606,7 @@ export default function AlphaWidget() {
                 };
                 
                 audio.play().catch(e => {
-                    console.error("Audio play failed:", e);
+                    console.error("Fish Audio play failed:", e);
                     setIsPlayingAudio(false);
                     sfx.restoreBGM(0.25, 800);
                 });

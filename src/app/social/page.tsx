@@ -13,6 +13,7 @@ function SocialContent() {
   const searchParams = useSearchParams();
   const newsId = searchParams.get('news');
   const postId = searchParams.get('post');
+  const tabParam = searchParams.get('tab');
 
   return (
     <div className="overflow-visible bg-[#050505] text-white flex flex-col w-full h-full">
@@ -29,6 +30,7 @@ function SocialContent() {
           onAuthRequired={() => setShowAuthModal(true)} 
           highlightId={postId || undefined}
           initialNewsId={newsId || undefined}
+          initialTab={tabParam || undefined}
         />
       </div>
 
