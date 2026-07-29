@@ -1,4 +1,4 @@
-# 👁️ Shadow Garden v2 — Ultimate Project Documentation & Architecture Guide
+# 👁️ Shadow Garden v3 — Ultimate Project Documentation & Architecture Guide
 
 [![Next.js 15](https://img.shields.io/badge/Next.js-15.0-black?style=for-the-badge&logo=next.js)](https://nextjs.org/)
 [![React 19](https://img.shields.io/badge/React-19.0-61DAFB?style=for-the-badge&logo=react)](https://react.dev/)
@@ -12,7 +12,7 @@
 
 ## 📖 Executive Summary & Project Vision
 
-**Shadow Garden v2** is an ultra-premium, dark-mode streaming, social networking, and gaming-tier anime hub. Built with **Antigravity Spatial Design** and **Liquid Glassmorphism**, it bridges multi-category video playback (Anime, Donghua, Hindi Dubs, Asian Drama, Blockbuster Movies) with an immersive social universe known as **OtakuVerse**.
+**Shadow Garden v3** is an ultra-premium, dark-mode streaming, social networking, and gaming-tier anime hub. Built with **Antigravity Spatial Design** and **Liquid Glassmorphism**, it bridges multi-category video playback (Anime, Donghua, Hindi Dubs, Asian Drama, Blockbuster Movies) with an immersive social universe known as **OtakuVerse**.
 
 The application combines real-time database synchronization via Supabase, autonomous AI agents (Alpha Protocol), guild/clan systems, native mobile integration (PWA + Capacitor Android APKs), and a custom HLS.js streaming player.
 
@@ -174,7 +174,7 @@ This repository features an automated GitHub Actions CI/CD workflow (`.github/wo
 ## 📁 Repository Directory Architecture
 
 ```
-shadow-garden-v2/
+shadow-garden-v3/
 ├── .github/
 │   └── workflows/          # GitHub Actions CI/CD (build-apk.yml)
 ├── public/                 # Static assets (/run-happy.gif, favicons, audio)
