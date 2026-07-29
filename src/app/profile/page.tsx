@@ -1402,7 +1402,7 @@ export default function ProfilePage() {
             {/* AVATAR CROPPER & REPOSITIONER MODAL */}
             <AvatarCropperModal
                 isOpen={cropperModalOpen}
-                imageSrc={pendingAvatarSrc}
+                imageSrc={pendingAvatarSrc || profile?.avatar_url || (profile as any)?.avatar || traveller?.avatar || (typeof window !== 'undefined' ? localStorage.getItem('shadow_traveller_avatar') : null) || 'https://cdn.myanimelist.net/images/characters/9/310307.jpg'}
                 activeFrameId={activeFrame || profile?.frame_id}
                 onClose={() => setCropperModalOpen(false)}
                 onCropComplete={handleCropComplete}

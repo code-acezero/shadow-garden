@@ -166,7 +166,7 @@ export default function AvatarCropperModal({
     }
   };
 
-  if (!isOpen || !imageSrc) return null;
+  if (!isOpen) return null;
 
   const modalContent = (
     <AnimatePresence>
@@ -213,8 +213,9 @@ export default function AvatarCropperModal({
               >
                 <img
                   ref={imageRef}
-                  src={imageSrc}
+                  src={imageSrc || 'https://cdn.myanimelist.net/images/characters/9/310307.jpg'}
                   alt="Avatar Crop Preview"
+                  referrerPolicy="no-referrer"
                   className="max-w-none max-h-none w-full h-full object-cover"
                   draggable={false}
                 />
