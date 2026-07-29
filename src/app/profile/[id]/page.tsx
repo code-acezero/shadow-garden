@@ -10,7 +10,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem } from '@/components/ui/dropdown-menu';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { 
-    Grid, Heart, Bookmark, MoreHorizontal, Camera, Link as LinkIcon, MessageSquare, History, ArrowLeft, Send, Shield, AlertTriangle, MoreVertical, Flag, Ban, UserMinus, ShieldAlert, Edit3, Eye, Save, Sparkles
+    Grid, Heart, Bookmark, MoreHorizontal, Camera, Link as LinkIcon, MessageSquare, History, ArrowLeft, Send, Shield, AlertTriangle, MoreVertical, Flag, Ban, UserMinus, ShieldAlert, Edit3, Eye, Save, Sparkles, Upload, Crop, Image as ImageIcon, CheckCircle, RefreshCw, Layers
 } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -21,6 +21,9 @@ import { motion, AnimatePresence } from 'framer-motion';
 import ShadowAvatar from '@/components/User/ShadowAvatar'; 
 import ProfileAvatar from '@/components/User/ProfileAvatar';
 import UserTitleBadge from '@/components/ui/UserTitleBadge';
+import FantasyFrame from '@/components/User/FantasyFrame';
+import AvatarSelectorModal from '@/components/User/AvatarSelectorModal';
+import AvatarCropperModal from '@/components/User/AvatarCropperModal';
 import Link from 'next/link';
 
 export default function PublicProfilePage({ params }: { params: Promise<{ id: string }> }) {
@@ -60,6 +63,18 @@ export default function PublicProfilePage({ params }: { params: Promise<{ id: st
     const [alphaTitle, setAlphaTitle] = useState('');
     const [alphaAdminTitle, setAlphaAdminTitle] = useState('');
     const [alphaFrame, setAlphaFrame] = useState('none');
+    const [alphaGender, setAlphaGender] = useState('female');
+    const [alphaWebsite, setAlphaWebsite] = useState('');
+    const [alphaShowLevel, setAlphaShowLevel] = useState(true);
+
+    // Alpha Image Picker & Cropper Modal States
+    const [showAlphaAvatarModal, setShowAlphaAvatarModal] = useState(false);
+    const [showAlphaCropperModal, setShowAlphaCropperModal] = useState(false);
+    const [alphaCropperSrc, setAlphaCropperSrc] = useState<string | null>(null);
+    const [alphaCropperTarget, setAlphaCropperTarget] = useState<'avatar' | 'banner'>('avatar');
+
+    const avatarFileInputRef = React.useRef<HTMLInputElement>(null);
+    const bannerFileInputRef = React.useRef<HTMLInputElement>(null);
 
     useEffect(() => {
         if (!targetUserId) return;
@@ -84,12 +99,15 @@ export default function PublicProfilePage({ params }: { params: Promise<{ id: st
 
             if (!pData) return; // Profile not found
             setProfile(pData);
-            setAlphaAvatar(pData.avatar_url || '');
+            setAlphaAvatar(pData.avatar_url || '/images/alpha/alpha-av.png');
             setAlphaBanner(pData.banner_url || '');
             setAlphaBio(pData.bio || '');
             setAlphaTitle(pData.title || '');
             setAlphaAdminTitle(pData.admin_title || '');
             setAlphaFrame(pData.frame_id || 'none');
+            setAlphaGender(pData.gender || 'female');
+            setAlphaWebsite(pData.website || '');
+            setAlphaShowLevel(pData.show_level !== false);
 
             // Redirect if this is own profile
             if (user && user.id === pData.id) {
@@ -350,17 +368,32 @@ export default function PublicProfilePage({ params }: { params: Promise<{ id: st
                             </div>
                         </div>
 
-                        {/* ALPHA NATIVE EDITING DASHBOARD FOR LEADER/ADMIN */}
+                        {/* ALPHA NATIVE EDITING DASHBOARD FOR LEADER/ADMIN (FULL USER-LEVEL EDITING SUITE) */}
                         {isEditAlphaMode && (
                             <motion.div 
                                 initial={{ opacity: 0, y: -10 }}
                                 animate={{ opacity: 1, y: 0 }}
-                                className="w-full bg-[#0c0c14]/95 border border-purple-500/30 p-6 rounded-3xl backdrop-blur-2xl shadow-[0_15px_50px_rgba(0,0,0,0.8)] mb-8"
+                                className="w-full bg-[#0c0c14]/95 border border-purple-500/30 p-4 sm:p-6 rounded-3xl backdrop-blur-2xl shadow-[0_15px_50px_rgba(0,0,0,0.8)] mb-8"
                             >
-                                <div className="flex items-center justify-between border-b border-purple-500/20 pb-3 mb-5">
+                                <input 
+                                    type="file" 
+                                    ref={avatarFileInputRef} 
+                                    accept="image/*" 
+                                    className="hidden" 
+                                    onChange={handleAvatarFileChange} 
+                                />
+                                <input 
+                                    type="file" 
+                                    ref={bannerFileInputRef} 
+                                    accept="image/*" 
+                                    className="hidden" 
+                                    onChange={handleBannerFileChange} 
+                                />
+
+                                <div className="flex items-center justify-between border-b border-purple-500/20 pb-4 mb-6">
                                     <div className="flex items-center gap-2">
-                                        <Sparkles className="text-purple-400" size={18} />
-                                        <h3 className="text-base font-bold text-white uppercase tracking-wider">Edit Alpha Profile (Leader Access)</h3>
+                                        <Sparkles className="text-purple-400" size={20} />
+                                        <h3 className="text-base sm:text-lg font-black text-white uppercase tracking-wider">EDIT ALPHA PROFILE (LEADER ACCESS)</h3>
                                     </div>
                                     <Button 
                                         onClick={() => setIsEditAlphaMode(false)} 
@@ -371,27 +404,161 @@ export default function PublicProfilePage({ params }: { params: Promise<{ id: st
                                     </Button>
                                 </div>
 
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-5">
-                                    <div>
-                                        <label className="text-xs font-bold text-zinc-400 uppercase tracking-wider mb-1 block">Avatar URL</label>
-                                        <Input 
-                                            value={alphaAvatar} 
-                                            onChange={(e) => setAlphaAvatar(e.target.value)} 
-                                            placeholder="https://..." 
-                                            className="bg-black/50 border-zinc-800 text-white text-xs h-10 rounded-xl"
-                                        />
+                                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+                                    {/* 1. AVATAR SELECTION & CROPPER CARD */}
+                                    <div className="bg-black/40 border border-white/10 p-4 rounded-2xl flex flex-col gap-4">
+                                        <div className="flex items-center justify-between">
+                                            <span className="text-xs font-black uppercase text-purple-300 tracking-wider flex items-center gap-1.5">
+                                                <Camera size={14} /> Profile Avatar & Frame
+                                            </span>
+                                        </div>
+
+                                        <div className="flex items-center gap-4">
+                                            <div className="relative w-20 h-20 sm:w-24 sm:h-24 shrink-0 flex items-center justify-center">
+                                                <FantasyFrame frameId={alphaFrame} size={96} transparentBg={true}>
+                                                    <img 
+                                                        src={alphaAvatar || '/images/alpha/alpha-av.png'} 
+                                                        alt="Alpha Avatar" 
+                                                        className="w-full h-full object-cover rounded-full"
+                                                        onError={(e) => { (e.currentTarget.src = '/images/alpha/alpha-av.png'); }}
+                                                    />
+                                                </FantasyFrame>
+                                            </div>
+
+                                            <div className="flex flex-col gap-2 flex-1 min-w-0">
+                                                <Button 
+                                                    type="button"
+                                                    onClick={() => setShowAlphaAvatarModal(true)}
+                                                    className="bg-purple-600 hover:bg-purple-500 text-white font-bold text-xs h-9 px-3 rounded-xl flex items-center justify-center gap-1.5 shadow-md shadow-purple-600/30"
+                                                >
+                                                    <Sparkles size={13} /> Browse Anime Avatars
+                                                </Button>
+
+                                                <div className="flex items-center gap-2">
+                                                    <Button 
+                                                        type="button"
+                                                        onClick={() => avatarFileInputRef.current?.click()}
+                                                        variant="outline"
+                                                        className="flex-1 bg-white/5 hover:bg-white/10 border-white/15 text-white text-[11px] font-bold h-8 px-2 rounded-lg flex items-center justify-center gap-1"
+                                                    >
+                                                        <Upload size={12} /> Upload File
+                                                    </Button>
+
+                                                    <Button 
+                                                        type="button"
+                                                        onClick={() => {
+                                                            setAlphaCropperSrc(alphaAvatar || '/images/alpha/alpha-av.png');
+                                                            setAlphaCropperTarget('avatar');
+                                                            setShowAlphaCropperModal(true);
+                                                        }}
+                                                        variant="outline"
+                                                        className="flex-1 bg-white/5 hover:bg-white/10 border-white/15 text-white text-[11px] font-bold h-8 px-2 rounded-lg flex items-center justify-center gap-1"
+                                                    >
+                                                        <Crop size={12} /> Crop Image
+                                                    </Button>
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        <div>
+                                            <label className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider mb-1 block">Or Direct Avatar Image URL</label>
+                                            <Input 
+                                                value={alphaAvatar} 
+                                                onChange={(e) => setAlphaAvatar(e.target.value)} 
+                                                placeholder="https://..." 
+                                                className="bg-black/50 border-zinc-800 text-white text-xs h-9 rounded-xl"
+                                            />
+                                        </div>
                                     </div>
 
-                                    <div>
-                                        <label className="text-xs font-bold text-zinc-400 uppercase tracking-wider mb-1 block">Cover Banner URL</label>
-                                        <Input 
-                                            value={alphaBanner} 
-                                            onChange={(e) => setAlphaBanner(e.target.value)} 
-                                            placeholder="https://..." 
-                                            className="bg-black/50 border-zinc-800 text-white text-xs h-10 rounded-xl"
-                                        />
+                                    {/* 2. COVER BANNER SELECTION & CROPPER CARD */}
+                                    <div className="bg-black/40 border border-white/10 p-4 rounded-2xl flex flex-col gap-4">
+                                        <div className="flex items-center justify-between">
+                                            <span className="text-xs font-black uppercase text-purple-300 tracking-wider flex items-center gap-1.5">
+                                                <ImageIcon size={14} /> Cover Banner Background
+                                            </span>
+                                        </div>
+
+                                        <div className="relative w-full h-24 rounded-xl overflow-hidden border border-white/10 bg-zinc-950 flex items-center justify-center group">
+                                            {alphaBanner ? (
+                                                <img src={alphaBanner} alt="Alpha Banner" className="w-full h-full object-cover" />
+                                            ) : (
+                                                <div className="text-xs text-zinc-500 font-mono">No cover banner set</div>
+                                            )}
+
+                                            <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
+                                                <Button 
+                                                    type="button"
+                                                    onClick={() => bannerFileInputRef.current?.click()}
+                                                    className="bg-purple-600 hover:bg-purple-500 text-white text-xs font-bold h-8 px-3 rounded-lg flex items-center gap-1"
+                                                >
+                                                    <Upload size={12} /> Upload Banner
+                                                </Button>
+
+                                                {alphaBanner && (
+                                                    <Button 
+                                                        type="button"
+                                                        onClick={() => {
+                                                            setAlphaCropperSrc(alphaBanner);
+                                                            setAlphaCropperTarget('banner');
+                                                            setShowAlphaCropperModal(true);
+                                                        }}
+                                                        variant="outline"
+                                                        className="bg-white/10 hover:bg-white/20 border-white/20 text-white text-xs font-bold h-8 px-3 rounded-lg flex items-center gap-1"
+                                                    >
+                                                        <Crop size={12} /> Crop Banner
+                                                    </Button>
+                                                )}
+                                            </div>
+                                        </div>
+
+                                        <div>
+                                            <label className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider mb-1 block">Or Direct Cover Banner URL</label>
+                                            <Input 
+                                                value={alphaBanner} 
+                                                onChange={(e) => setAlphaBanner(e.target.value)} 
+                                                placeholder="https://..." 
+                                                className="bg-black/50 border-zinc-800 text-white text-xs h-9 rounded-xl"
+                                            />
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {/* 3. FANTASY FRAME VISUAL TIER SELECTOR */}
+                                <div className="bg-black/40 border border-white/10 p-4 rounded-2xl mb-6">
+                                    <div className="flex items-center justify-between mb-3">
+                                        <span className="text-xs font-black uppercase text-purple-300 tracking-wider flex items-center gap-1.5">
+                                            <Layers size={14} /> Fantasy Frame Badge Tier
+                                        </span>
+                                        <span className="text-xs text-purple-400 font-bold uppercase">Active: {alphaFrame}</span>
                                     </div>
 
+                                    <div className="grid grid-cols-4 sm:grid-cols-6 lg:grid-cols-13 gap-2 overflow-x-auto p-1 custom-scrollbar">
+                                        {['none', 'iron', 'bronze', 'silver', 'crimson', 'sapphire', 'emerald', 'golden', 'shadow', 'celestial', 'divine', 'admin', 'moderator'].map(f => (
+                                            <button
+                                                key={f}
+                                                type="button"
+                                                onClick={() => setAlphaFrame(f)}
+                                                className={cn(
+                                                    "flex flex-col items-center justify-center p-2 rounded-xl border transition-all cursor-pointer",
+                                                    alphaFrame === f 
+                                                        ? "bg-purple-900/50 border-purple-400 shadow-[0_0_15px_rgba(168,85,247,0.5)] scale-105" 
+                                                        : "bg-white/5 border-white/10 hover:border-white/20 hover:bg-white/10"
+                                                )}
+                                            >
+                                                <div className="w-10 h-10 flex items-center justify-center mb-1">
+                                                    <FantasyFrame frameId={f} size={40} transparentBg={true}>
+                                                        <img src={alphaAvatar || '/images/alpha/alpha-av.png'} alt="preview" className="w-full h-full object-cover rounded-full" />
+                                                    </FantasyFrame>
+                                                </div>
+                                                <span className="text-[9px] font-bold uppercase truncate w-full text-center text-zinc-300">{f}</span>
+                                            </button>
+                                        ))}
+                                    </div>
+                                </div>
+
+                                {/* 4. TITLES, LEVEL, GENDER & LORE LINK METADATA */}
+                                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4 mb-6">
                                     <div>
                                         <label className="text-xs font-bold text-zinc-400 uppercase tracking-wider mb-1 block">Admin Title</label>
                                         <Input 
@@ -407,35 +574,48 @@ export default function PublicProfilePage({ params }: { params: Promise<{ id: st
                                         <Input 
                                             value={alphaTitle} 
                                             onChange={(e) => setAlphaTitle(e.target.value)} 
-                                            placeholder="Alpha / Shadow" 
+                                            placeholder="First Member of Shadow Garden" 
                                             className="bg-black/50 border-zinc-800 text-white text-xs h-10 rounded-xl"
                                         />
                                     </div>
 
                                     <div>
-                                        <label className="text-xs font-bold text-zinc-400 uppercase tracking-wider mb-1 block">Fantasy Frame Tier</label>
+                                        <label className="text-xs font-bold text-zinc-400 uppercase tracking-wider mb-1 block">Gender Identity</label>
                                         <select 
-                                            value={alphaFrame} 
-                                            onChange={(e) => setAlphaFrame(e.target.value)}
+                                            value={alphaGender} 
+                                            onChange={(e) => setAlphaGender(e.target.value)}
                                             className="w-full bg-black/50 border border-zinc-800 text-white text-xs h-10 rounded-xl px-3 focus:outline-none focus:border-purple-500"
                                         >
-                                            {['none', 'iron', 'bronze', 'silver', 'crimson', 'sapphire', 'emerald', 'golden', 'shadow', 'celestial', 'divine'].map(f => (
-                                                <option key={f} value={f} className="bg-zinc-900 text-white uppercase">{f}</option>
-                                            ))}
+                                            <option value="female" className="bg-zinc-900">Female</option>
+                                            <option value="male" className="bg-zinc-900">Male</option>
+                                            <option value="other" className="bg-zinc-900">Other</option>
+                                            <option value="hidden" className="bg-zinc-900">Hidden</option>
                                         </select>
                                     </div>
 
-                                    <div className="md:col-span-2">
-                                        <label className="text-xs font-bold text-zinc-400 uppercase tracking-wider mb-1 block">Bio / System Directive</label>
-                                        <Textarea 
-                                            value={alphaBio} 
-                                            onChange={(e) => setAlphaBio(e.target.value)} 
-                                            placeholder="Alpha's public bio..." 
-                                            className="bg-black/50 border-zinc-800 text-white text-xs rounded-xl h-20 resize-none"
+                                    <div>
+                                        <label className="text-xs font-bold text-zinc-400 uppercase tracking-wider mb-1 block">Website / Lore Link</label>
+                                        <Input 
+                                            value={alphaWebsite} 
+                                            onChange={(e) => setAlphaWebsite(e.target.value)} 
+                                            placeholder="https://shadow-garden.site" 
+                                            className="bg-black/50 border-zinc-800 text-white text-xs h-10 rounded-xl"
                                         />
                                     </div>
                                 </div>
 
+                                {/* 5. BIO / SYSTEM DIRECTIVE */}
+                                <div className="mb-6">
+                                    <label className="text-xs font-bold text-zinc-400 uppercase tracking-wider mb-1 block">Bio / System Directive</label>
+                                    <Textarea 
+                                        value={alphaBio} 
+                                        onChange={(e) => setAlphaBio(e.target.value)} 
+                                        placeholder="First Member and Commander of Shadow Garden. Devoted to Lord Shadow..." 
+                                        className="bg-black/50 border-zinc-800 text-white text-xs rounded-xl h-24 resize-none leading-relaxed"
+                                    />
+                                </div>
+
+                                {/* 6. SAVE & ACTION BUTTONS */}
                                 <div className="flex justify-end gap-3 border-t border-purple-500/20 pt-4">
                                     <Button 
                                         onClick={() => setIsEditAlphaMode(false)} 
@@ -455,6 +635,9 @@ export default function PublicProfilePage({ params }: { params: Promise<{ id: st
                                                     title: alphaTitle,
                                                     admin_title: alphaAdminTitle,
                                                     frame_id: alphaFrame,
+                                                    gender: alphaGender,
+                                                    website: alphaWebsite,
+                                                    show_level: alphaShowLevel,
                                                     updated_at: new Date().toISOString()
                                                 })
                                                 .eq('id', profile.id);
@@ -470,7 +653,10 @@ export default function PublicProfilePage({ params }: { params: Promise<{ id: st
                                                     bio: alphaBio,
                                                     title: alphaTitle,
                                                     admin_title: alphaAdminTitle,
-                                                    frame_id: alphaFrame
+                                                    frame_id: alphaFrame,
+                                                    gender: alphaGender,
+                                                    website: alphaWebsite,
+                                                    show_level: alphaShowLevel
                                                 }));
                                                 setIsEditAlphaMode(false);
                                             }
@@ -662,6 +848,33 @@ export default function PublicProfilePage({ params }: { params: Promise<{ id: st
                 </DialogContent>
             </Dialog>
             
+            {/* ALPHA AVATAR SELECTOR MODAL */}
+            <AvatarSelectorModal
+                isOpen={showAlphaAvatarModal}
+                onClose={() => setShowAlphaAvatarModal(false)}
+                onSelect={(url) => {
+                    setAlphaAvatar(url);
+                    setShowAlphaAvatarModal(false);
+                }}
+                currentUrl={alphaAvatar}
+            />
+
+            {/* ALPHA AVATAR & BANNER CROPPER MODAL */}
+            <AvatarCropperModal
+                isOpen={showAlphaCropperModal}
+                imageSrc={alphaCropperSrc}
+                activeFrameId={alphaCropperTarget === 'avatar' ? alphaFrame : 'none'}
+                onClose={() => setShowAlphaCropperModal(false)}
+                onCropComplete={(croppedUrl) => {
+                    if (alphaCropperTarget === 'avatar') {
+                        setAlphaAvatar(croppedUrl);
+                    } else {
+                        setAlphaBanner(croppedUrl);
+                    }
+                    setShowAlphaCropperModal(false);
+                }}
+            />
+
             <AuthModal isOpen={showAuthModal} onClose={() => setShowAuthModal(false)} onAuthSuccess={() => setShowAuthModal(false)} />
             
             <Footer />
