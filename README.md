@@ -1,108 +1,121 @@
-# 👁️ Shadow Garden v2 — Otakuverse Liquid Glass Hub
+# 👁️ Shadow Garden v2 — Ultimate Project Documentation & Architecture Guide
 
 [![Next.js 15](https://img.shields.io/badge/Next.js-15.0-black?style=for-the-badge&logo=next.js)](https://nextjs.org/)
 [![React 19](https://img.shields.io/badge/React-19.0-61DAFB?style=for-the-badge&logo=react)](https://react.dev/)
+[![TypeScript](https://img.shields.io/badge/TypeScript-5.0-3178C6?style=for-the-badge&logo=typescript)](https://www.typescriptlang.org/)
 [![Tailwind CSS](https://img.shields.io/badge/Tailwind-v3.4-38BDF8?style=for-the-badge&logo=tailwindcss)](https://tailwindcss.com/)
 [![Supabase](https://img.shields.io/badge/Supabase-Realtime-3ECF8E?style=for-the-badge&logo=supabase)](https://supabase.com/)
+[![Capacitor](https://img.shields.io/badge/Capacitor-Android_Native-119EFF?style=for-the-badge&logo=capacitor)](https://capacitorjs.com/)
 [![PWA Ready](https://img.shields.io/badge/PWA-Mobile_Native-5A0FC8?style=for-the-badge&logo=pwa)](https://web.dev/progressive-web-apps/)
 
-**Shadow Garden v2** is an ultra-premium, dark-mode streaming, social, and anime ecosystem built with **Antigravity Spatial Design** and **Liquid Glassmorphism**. It combines high-performance multi-provider video playback across Anime, Donghua, Hindi Dubs, Asian Drama, and Movies with a real-time social universe (OtakuVerse), AI autonomous agents, clan guilds, and real-time watchlist tracking.
+---
+
+## 📖 Executive Summary & Project Vision
+
+**Shadow Garden v2** is an ultra-premium, dark-mode streaming, social networking, and gaming-tier anime hub. Built with **Antigravity Spatial Design** and **Liquid Glassmorphism**, it bridges multi-category video playback (Anime, Donghua, Hindi Dubs, Asian Drama, Blockbuster Movies) with an immersive social universe known as **OtakuVerse**.
+
+The application combines real-time database synchronization via Supabase, autonomous AI agents (Alpha Protocol), guild/clan systems, native mobile integration (PWA + Capacitor Android APKs), and a custom HLS.js streaming player.
 
 ---
 
-## 🎯 Design Architecture & UI/UX Principles
+## ⚙️ Complete Technology Stack & Ecosystem
 
-Built under the **Antigravity Design Engine**, Shadow Garden v2 enforces a spatial, weightless, and dark glass aesthetic:
+### 🌐 Core Web & Application Framework
+- **Next.js 15.0 (App Router)**: Hybrid Server & Client Component architecture with dynamic routes, API endpoints, and streaming SSR.
+- **React 19**: Modern concurrent React hooks (`useCallback`, `useMemo`, `useRef`, `useImperativeHandle`).
+- **TypeScript 5.x**: Strict type checking with 0-tolerance runtime error handling.
 
-- **Liquid Glassmorphism**: Translucent frosted panels (`backdrop-blur-3xl`, `bg-white/[0.04]`), specular glass highlight reflections, and subtle metallic borders (`border-white/20`).
-- **Spatial Weightlessness**: Layered Z-axis depth using soft diffused drop-shadows (`shadow-[0_12px_40px_0_rgba(0,0,0,0.5)]`), floating islands, and parallax ambience.
-- **Fluid Player Responsiveness**: Custom HLS & HTML5 video players featuring auto-scaling control overlays, responsive settings menus (`max-h-[60%] sm:max-h-[75%]`), and fluid Play/Pause buttons (`clamp(2rem, 10vw, 4rem)`).
-- **Pulsing Profile Avatar Frames**: Realtime online status communicated via glowing emerald edge rings (`ring-2 ring-emerald-500 shadow-[0_0_10px_rgba(16,185,129,0.9)] animate-pulse`) bounded tightly inside custom tier frames (Iron, Bronze, Silver, Crimson, Emerald, Golden, Shadow, Divine).
+### 🎨 Styling, Motion & Design Engine
+- **Tailwind CSS v3.4**: Responsive utility foundation paired with dynamic HSL color tokens.
+- **Custom Liquid Glassmorphism**: Translucent frosted panels (`backdrop-blur-3xl`, `bg-white/[0.04]`), glass highlight reflections, and subtle metallic borders (`border-white/20`).
+- **Framer Motion**: Smooth entry animations, gesture overlays, and floating layout transitions.
+- **Lucide Icons**: Semantic UI icon kit.
 
----
+### 📼 Video Engine & Streaming Infrastructure
+- **Custom HLS.js Player Engine**: Native HLS stream parsing (`.m3u8`), resolution quality switching (360p to 1080p), playback speed tuning, audio track selection, and sub-second buffering handling.
+- **SafeEmbed & Ad Shield Protection**: `IframeAdShield.tsx` layer wrapping third-party embeds (Dailymotion, Mp4upload, Filemoon, Streamwish) to block malicious popups and redirect scripts.
+- **Custom Subtitle Renderer**: Customizable captions with configurable font sizes, background overlays, text colors, and opacity adjustments.
 
-## 📚 A-Z Feature Guide
+### 🗄️ Database, Authentication & Realtime Subsystem
+- **Supabase PostgreSQL**: Managed cloud relational database with Row Level Security (RLS).
+- **Supabase Realtime**: Instant WebSocket channels for direct messages, post comments, notifications, and presence tracking.
+- **Supabase Auth**: Authentication handling with persistent sessions and profile syncing.
 
-### 🅰️ **A — Alpha AI Autonomous Agent**
-Integrated AI companion operating 24/7. Alpha moderates discourse, responds to `@alpha` mentions across social posts and comments, and dynamically interacts with clan members.
+### 🤖 AI Autonomous Agent Subsystem
+- **Alpha Protocol**: Autonomous AI agent operating 24/7. Alpha moderates posts, responds to `@alpha` mentions across social feeds/comments, manages clan entry requests, and acts as the First Shadow of OtakuVerse.
 
-### 🅱️ **B — Background Buffering & Loaders**
-- **Initial Stream Loading**: Uses the Liquid Wave Glass Loader (`MagicalWaveParticlesPlayerLoader`) with frosted glass shimmer on Drama & Movie streams.
-- **Network Buffering**: Displays the GIF loader (`RunHappyPlayerLoader`) on a completely transparent background (`bg-transparent backdrop-blur-none`) over active playback so the video stream remains visible.
-
-### 🅾️ **C — Clans & Guild System**
-Create, join, and manage OtakuVerse clans. Clans feature custom banners, level progression, custom member titles, private clan chat channels, and automated entry review by Alpha AI.
-
-### 🇩 **D — Donghua & Drama Dedicated Hubs**
-Specialized streaming portals tailored for Chinese Animation (Donghua) and Asian Dramas with episode selectors, server fallback switches, subtitle tracks, and resume-playback state persistence.
-
-### 🇪 **E — Episode Trackers & Resume Playback**
-Remembers exact timestamp positions for watched episodes across devices, rendering progress indicators on media cards and enabling one-tap resume.
-
-### 🇫 **F — Fantasy Profile Frames & Tier Badges**
-Level-based and exclusive profile frames (Iron to Divine Archon) with dynamic level colors, custom titles, and active status edge rings.
-
-### 🇬 **G — Gesture & Hotkey Controls**
-- **Double Tap / Swipe**: Double-tap left/right to skip 10s, vertical swipe for volume/brightness control, horizontal swipe for episode navigation.
-- **Keyboard Shortcuts**: Space (Play/Pause), F (Fullscreen), M (Mute), Arrow keys (Seek / Volume).
-
-### 🇭 **H — Hindi Dubbed Anime & Movies**
-Dedicated hub for Hindi dubbed & subbed anime series and blockbuster movies with multi-server mirrors and quality resolution pickers (360p to 1080p).
-
-### 🇮 **I — In-App Notifications & Whisper Island**
-Dynamic top navigation notification bell with real-time unread badges, floating toast banners (`shadow-whisper`), and auto-dismissal timers.
-
-### 🇲 **M — Messages & Real-Time Messaging Inbox**
-Full-featured direct messaging system with:
-- Instant message delivery via Supabase Realtime Channels.
-- Unread message counter filtering out self-sent messages (`.neq('sender_id', user.id)`).
-- Automatic `last_read_at` updating on chat view.
-- Smart notification suppression when actively viewing the `/messages` inbox page.
-
-### 🇳 **N — Native Push Notifications**
-Supports native browser system notifications (`Notification.requestPermission()`) for watchlist update alerts and incoming direct messages.
-
-### 🇴 **O — Oracle Background Watchlist Engine**
-Periodic server-side runner (`oracle-runner.ts`) that checks user watchlists against provider APIs, updates stored `total_episodes`, and broadcasts `EPISODE_ALERT` notifications when new episodes release.
-
-### 🇵 **P — PWA & Android APK Pipeline**
-- **PWA Ready**: Service worker registration with `beforeinstallprompt` overlay suppression to prevent obtrusive installation popups.
-- **Automated APK Builds**: GitHub Actions CI/CD workflow (`build-apk.yml`) building native Android APK binaries via Capacitor on code push.
-
-### 🇷 **R — Responsive Schedule Grid**
-Interactive weekly anime release schedule featuring clean sequential card ordering across desktop, tablet, and mobile screens.
-
-### 🇸 **S — Server Fallback & Safe Embed**
-Multi-server selection (Vidstreaming, Streamwish, Mp4upload, Dailymotion, Filemoon) with automatic ad-shield protection (`IframeAdShield.tsx`).
-
-### 🇼 **W — Watchlist Sync & Categorization**
-Bookmark titles into Watching, Completed, On Hold, Dropped, or Planning To Watch lists. Automatically saves total episode counts and media types (`anime`, `hindi`, `donghua`, `movie`, `drama`).
+### 📱 Mobile, PWA & CI/CD Pipelines
+- **Capacitor 6**: Native wrapper bridging web assets into Android APK binaries.
+- **Service Worker (`sw.js`)**: Offline caching, PWA installation lifecycle, and native background sync.
+- **GitHub Actions CI/CD (`build-apk.yml`)**: Automated headless Gradle build pipeline compiling Android APK binaries on repository push.
 
 ---
 
-## 🛠️ Technology Stack
+## 🌟 Major Subsystems & Features Guide
 
-```
-├── Framework       : Next.js 15.0 (App Router) + React 19
-├── Language        : TypeScript 5.x
-├── Styling         : Tailwind CSS v3.4 + Custom CSS Glassmorphism
-├── Database & Auth : Supabase (PostgreSQL + Auth + Realtime Subscriptions)
-├── Video Engine    : HLS.js + HTML5 Custom Video Controls + SafeEmbed
-├── Icons           : Lucide React Icons
-├── Mobile & Native : Capacitor 6 + PWA Service Workers + GitHub Actions CI/CD
-```
+### 1. 🎬 Multi-Category Streaming Engine
+- **Anime Hub**: Subbed and dubbed Japanese anime series with episode selection grids, server switching, auto-next playback, and skip intro/outro capabilities.
+- **Donghua Hub**: Specialized Chinese animation streaming interface sharing the full `AnimePlayer` engine with dedicated provider mirrors.
+- **Hindi Dubbed Portal**: Subbed & Hindi dubbed anime series and movies with dedicated audio stream switching.
+- **Asian Drama Portal**: Korean, Japanese, and Chinese dramas with episode trackers and custom subtitles.
+- **Movies Portal**: Full-length blockbuster feature films with server fallback mirrors.
+
+### 2. ⏳ Player Loading & Buffering States
+- **Initial Stream Loading**: Displays the **Liquid Wave Glass Loader** (`MagicalWaveParticlesPlayerLoader`) featuring frosted glass shimmer and animated gradient wave particles.
+- **Network Buffering**: Displays the **Run Happy GIF Loader** (`RunHappyPlayerLoader`) on a **completely transparent background** (`bg-transparent backdrop-blur-none`) overlay directly over active video playback.
+- **Glowing Red Text Styling**: Loading messages (`LOADING REALITY...` / `LOADING CRYSTALS...`) styled in glowing red typography (`text-red-500` with `drop-shadow-[0_0_12px_rgba(239,68,68,0.8)]`).
+
+### 3. 💬 Messages & Direct Messaging System
+- **Real-Time 1-on-1 & Clan Chats**: Instant message delivery powered by Supabase Realtime Channels.
+- **Self-Message Unread Filtering**: Unread message queries explicitly exclude user's own sent messages (`.neq('sender_id', user.id)`).
+- **Automatic Read Status**: Opening a chat or sending a message automatically updates `participant_last_read` in local state and database.
+- **Smart Notification Suppression**: Real-time whisper banners for incoming messages are automatically suppressed when the user is actively viewing the `/messages` inbox page.
+
+### 4. 🔔 Watchlist, Oracle Engine & Notifications
+- **Watchlist Sync**: Save titles to Watching, Completed, On Hold, Dropped, or Planning To Watch. Automatically records `total_episodes` and `type`.
+- **Oracle Runner (`oracle-runner.ts`)**: Background runner that periodically checks user watchlists against provider APIs, updates stored `total_episodes` in Supabase, and broadcasts `EPISODE_ALERT` notifications when new episodes release.
+- **Top Nav Bell Icon**: Displays real-time unread badge counts for alerts and messages.
+- **Native Browser Push Notifications**: Native system notification prompts (`Notification.requestPermission()`) for episode drops and direct messages.
+
+### 5. 🛡️ OtakuVerse Social Universe & Clans System
+- **Global Social Feed**: Share posts, images, polls, and quizzes. Supports mentions (`@user`, `@alpha`), hashtag discovery, and comment threads.
+- **Clans & Guilds**: Form guilds with custom banners, level progression, role hierarchies (Leader, Co-Leader, Elder, Member), private clan chatrooms, and custom Alpha AI moderation directives.
+- **Profile Frames & Avatar Edge Ring**: Level progression (F-Novice to SSS-Overlord), fantasy profile frames (Iron to Divine Archon), and a thin glowing emerald edge ring (`ring-2 ring-emerald-500 animate-pulse`) attached directly to the circular profile picture (`img`) inside `FantasyFrame` for active/online users and Alpha (active 24/7).
+
+### 6. 📅 Interactive Weekly Schedule
+- **Responsive Release Grid**: Weekly release schedule displaying upcoming anime episodes. Uses a responsive grid layout (`grid-cols-1 sm:grid-cols-2 lg:grid-cols-3`) ensuring rank cards flow sequentially without early wrapping on mobile devices.
+
+### 7. 📲 PWA & Native Android Support
+- **PWA Installation**: Service worker registration with `beforeinstallprompt` overlay suppression to prevent intrusive browser installation popups.
+- **Capacitor Mobile Native**: Full touch optimization, back button handling, and native Android status bar styling.
 
 ---
 
-## ⚡ Quick Start & Setup
+## 🗄️ Supabase Database Schema Overview
+
+| Table Name | Primary Purpose | Key Columns |
+| :--- | :--- | :--- |
+| `profiles` | User accounts & progression | `id`, `username`, `avatar_url`, `role`, `level`, `xp`, `frame_id`, `admin_title`, `title`, `updated_at` |
+| `watchlist` | Saved media titles | `id`, `user_id`, `anime_id`, `status`, `last_episode_number`, `total_episodes`, `type`, `media_type` |
+| `notifications` | System & episode alerts | `id`, `user_id`, `type`, `title`, `content`, `link`, `is_read`, `created_at` |
+| `chat_conversations` | DMs & Clan Chat channels | `id`, `type`, `clan_id`, `created_at`, `updated_at` |
+| `chat_participants` | Conversation members | `id`, `conversation_id`, `user_id`, `last_read_at` |
+| `chat_messages` | Chat messages | `id`, `conversation_id`, `sender_id`, `content`, `image_url`, `audio_url`, `gif_url`, `created_at` |
+| `posts` | OtakuVerse social posts | `id`, `user_id`, `content`, `images`, `poll`, `likes_count`, `comments_count`, `created_at` |
+| `comments` | Post comment threads | `id`, `post_id`, `user_id`, `content`, `parent_id`, `likes_count`, `created_at` |
+| `clans` | Guilds & clans | `id`, `name`, `tag`, `avatar_url`, `banner_url`, `level`, `alpha_settings`, `leader_id` |
+| `clan_members` | Guild membership | `id`, `clan_id`, `user_id`, `role`, `joined_at` |
+
+---
+
+## ⚡ Quick Start & Development Setup
 
 ### Prerequisites
+- **Node.js**: v18.x or v20.x
+- **Package Manager**: `pnpm` (recommended) or `npm`
+- **Supabase**: Active Supabase project with database & auth configured
 
-- Node.js 18.x or 20.x
-- `pnpm` or `npm`
-- A Supabase project with database & auth enabled
-
-### 1. Clone & Install Dependencies
+### 1. Installation
 
 ```bash
 git clone https://github.com/code-acezero/shadow-garden.git
@@ -112,7 +125,7 @@ pnpm install
 
 ### 2. Environment Variables Setup
 
-Create a `.env.local` file in the root directory:
+Create a `.env.local` file in the project root:
 
 ```env
 # Supabase Configuration
@@ -120,75 +133,84 @@ NEXT_PUBLIC_SUPABASE_URL=https://your-supabase-project.supabase.co
 NEXT_PUBLIC_SUPABASE_ANON_KEY=your-supabase-anon-key
 SUPABASE_SERVICE_ROLE_KEY=your-supabase-service-role-key
 
-# App Configuration
+# Application Settings
 NEXT_PUBLIC_APP_URL=http://localhost:3000
 ```
 
-### 3. Run Development Server
+### 3. Running Development Server
 
 ```bash
 pnpm dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) in your browser.
+Visit `http://localhost:3000` in your browser.
 
-### 4. Verify TypeScript & Build
+### 4. Verification & Production Build
 
 ```bash
-# Type-check without emitting files
+# Type check without emitting
 npx tsc --noEmit
 
-# Production Build
+# Compile production build
 pnpm build
 ```
 
 ---
 
-## 📱 Android APK Automated Build
+## 📱 Android APK Build Pipeline
 
-This repository includes a GitHub Actions CI/CD pipeline (`.github/workflows/build-apk.yml`) that automatically compiles an Android APK whenever code is pushed:
+This repository features an automated GitHub Actions CI/CD workflow (`.github/workflows/build-apk.yml`):
 
-```yaml
-name: Build Android APK
-on:
-  push:
-    branches: [ main ]
-```
-
-The compiled APK binary is stored directly under GitHub Workflow Artifacts for instant download and testing on Android devices.
+1. **Trigger**: Automatically runs on every push to the `main` branch.
+2. **Steps**:
+   - Checks out repository and sets up Java JDK 17 & Node 20.
+   - Runs `pnpm install` and compiles Next.js static exports (`pnpm build`).
+   - Copies web assets to Capacitor Android platform (`npx cap copy android`).
+   - Compiles native APK via Gradle (`./gradlew assembleDebug`).
+3. **Artifact**: The resulting APK file (`app-debug.apk`) is published under GitHub Workflow Actions Artifacts for instant download and testing.
 
 ---
 
-## 📁 Directory Architecture
+## 📁 Repository Directory Architecture
 
 ```
 shadow-garden-v2/
-├── .github/workflows/     # CI/CD Workflows (Android APK Build)
-├── public/                # Static assets & PWA manifest (/run-happy.gif, favicons)
+├── .github/
+│   └── workflows/          # GitHub Actions CI/CD (build-apk.yml)
+├── public/                 # Static assets (/run-happy.gif, favicons, audio)
 ├── src/
-│   ├── app/               # Next.js App Router (watch, social, messages, search, profile)
+│   ├── app/                # Next.js App Router
+│   │   ├── (watch)/        # Watch portals (/watch, /hindi-watch, /donghua-watch, /drama-watch, /movies-watch)
+│   │   ├── messages/       # Realtime Direct Messaging Inbox
+│   │   ├── social/         # OtakuVerse Social Portal
+│   │   ├── watchlist/      # User Watchlist Page
+│   │   ├── schedule/       # Release Schedule Page
+│   │   ├── profile/        # User Profile & Fantasy Frames Manager
+│   │   └── api/            # API Endpoints (/api/oracle, /api/alpha/agent, /api/proxy)
 │   ├── components/
-│   │   ├── AI/            # Alpha AI Agent Widget & Directives
-│   │   ├── Anime/         # Anime Cards, Spotlight, Notifications, Footer
-│   │   ├── Player/        # AnimePlayer, HindiPlayer, DramaPlayer, IframeAdShield
-│   │   ├── Portal/        # Portal Sequence Components
-│   │   ├── PWA/           # PWAInstaller & Liquid Glass Splash Screen
-│   │   ├── Schedule/      # Weekly Release Schedule Grid
-│   │   ├── Social/        # OtakuVerse Feed, Chats, Clans, Post Composers
-│   │   ├── UIx/           # Skeleton Loaders & Whisper Island Banner
-│   │   ├── User/          # ProfileAvatar, FantasyFrame, Avatar Pickers
-│   │   └── Watch/         # LiquidWatchLoaders & WatchListButton
-│   ├── context/           # AuthContext & Global App State
-│   ├── hooks/             # Custom Hooks (useSettings, useTravellerProfile)
-│   └── lib/               # API clients, Supabase SDK, Oracle Runner
-├── .env.local             # Environment secrets
-├── capacitor.config.json  # Native Capacitor configuration
-├── next.config.js         # Next.js configuration
-└── tailwind.config.ts     # Design tokens & color system
+│   │   ├── AI/             # Alpha AI Agent Floating Widget
+│   │   ├── Anime/          # Anime Cards, Spotlight, Notifications, Footer
+│   │   ├── Player/         # AnimePlayer, HindiPlayer, DramaPlayer, IframeAdShield
+│   │   ├── Portal/         # Portal Sequence Components
+│   │   ├── PWA/            # PWAInstaller & Liquid Glass Splash Screen
+│   │   ├── Schedule/       # Responsive Weekly Release Grid
+│   │   ├── Social/         # OtakuVerse Feed, Chats, Clans, Post Composers
+│   │   ├── UIx/            # SkeletonLoaders & WhisperIsland Banner
+│   │   ├── User/           # ProfileAvatar, FantasyFrame, UserTitleBadge
+│   │   └── Watch/          # LiquidWatchLoaders & WatchListButton
+│   ├── context/            # AuthContext & Global State
+│   ├── hooks/              # Custom React Hooks (useSettings, useTravellerProfile)
+│   └── lib/                # API Helpers, Supabase SDK, Oracle Runner
+├── .env.local              # Local environment variables
+├── capacitor.config.json   # Capacitor mobile config
+├── next.config.js          # Next.js config
+├── tailwind.config.ts      # Tailwind design system tokens
+└── tsconfig.json           # TypeScript configuration
 ```
 
 ---
 
 ## 📜 License & Credits
 
-Designed & Built with ❤️ for the Otaku Community. Powered by **Shadow Garden Protocol**.
+Built with ❤️ for the Otaku & Streaming Community.
+**Shadow Garden Protocol © 2026**. All rights reserved.
