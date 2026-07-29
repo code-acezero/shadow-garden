@@ -996,12 +996,11 @@ export class WatchlistAPI {
         const item: any = { 
             anime_id: animeId, 
             status, 
-            progress, 
             total_episodes: Number(totalEpisodes) || 1, 
-            type: type || "TV", 
+            media_type: type || "anime", 
             updated_at: new Date().toISOString() 
         };
-        if (episodeId) item.episode_id = episodeId;
+        if (episodeId) item.last_episode_id = episodeId;
 
         if (supabase && userId !== 'guest') {
             const { error } = await supabase.from('watchlist').upsert({ user_id: userId, ...item }, { onConflict: 'user_id, anime_id' });

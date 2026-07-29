@@ -88,7 +88,6 @@ export default function WatchListButton({ animeId, animeTitle, animeImage, curre
                     anime_title: animeTitle,
                     anime_image: animeImage,
                     media_type: mediaType,
-                    type: type || (mediaType === 'movie' ? 'Movie' : mediaType === 'donghua' ? 'Donghua' : 'TV'),
                     total_episodes: Number(totalEpisodes) || 1,
                     last_episode_number: currentEp || 1, 
                     updated_at: new Date().toISOString()
