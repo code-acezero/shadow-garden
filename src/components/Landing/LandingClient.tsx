@@ -369,14 +369,9 @@ export default function LandingClient() {
     if (typeof window !== 'undefined') sfx.stopAll(1500);
     const mobileCheck = window.innerWidth < 768;
     setIsMobile(mobileCheck);
-    // Only skip portal on WEB mobile. Native APK/iOS always shows portal.
-    const isNative = Capacitor.isNativePlatform();
-    if (mobileCheck && !isNative) {
-      setShowLandingUI(true);
-    }
 
     // Safety fallback: reveal landing UI within 1200ms
-    // so desktop visitors never get stranded on a blank canvas or prolonged intro
+    // so visitors never get stranded on a blank canvas or prolonged intro
     const uiTimer = setTimeout(() => {
       setShowLandingUI(true);
     }, 1200);
@@ -483,16 +478,9 @@ export default function LandingClient() {
   const handleEnterClick = useCallback(() => { 
     initializeAudio();
     processGenderSelection();
-    const isNative = Capacitor.isNativePlatform();
-    if (isMobile && !isNative) {
-      // Web mobile: no portal rendered, navigate directly
-      localStorage.setItem('sg_portal_seen', 'true');
-      router.push('/home');
-    } else {
-      setShowLandingUI(false); 
-      setTriggerEntry(true); 
-    }
-  }, [initializeAudio, processGenderSelection, isMobile, router]);
+    setShowLandingUI(false); 
+    setTriggerEntry(true); 
+  }, [initializeAudio, processGenderSelection]);
   
   const handleJoinGuildClick = useCallback(() => {
     initializeAudio();
@@ -508,12 +496,12 @@ export default function LandingClient() {
     router.push('/home'); 
   }, [router]);
 
-  // Safety timeout: if portal transition takes longer than 14s to route to /home, force navigation
+  // Safety timeout: if portal transition takes longer than 40s to route to /home, force navigation
   useEffect(() => {
     if (triggerEntry) {
       const fallbackTimer = setTimeout(() => {
         handlePortalComplete();
-      }, 14000);
+      }, 40000);
       return () => clearTimeout(fallbackTimer);
     }
   }, [triggerEntry, handlePortalComplete]);
@@ -534,18 +522,18 @@ export default function LandingClient() {
     <main className={`relative min-h-screen w-full bg-[#050505] text-white overflow-x-hidden selection:bg-primary-900/50   `}>
       
       {/* 1. PORTAL BACKGROUND */}
-      {/* Portal: always shown on native app, hidden on web mobile */}
-      {(!isMobile || Capacitor.isNativePlatform()) && (
-        <PortalErrorBoundary onError={() => setShowLandingUI(true)}>
-          <div className="fixed inset-0 z-0">
-            <ShadowGardenPortal 
-              startTransition={triggerEntry}
-              onComplete={handlePortalComplete}
-              onSceneReady={handleSceneReady}
-            />
-          </div>
-        </PortalErrorBoundary>
-      )}
+      <PortalErrorBoundary onError={() => {
+        setShowLandingUI(true);
+        if (triggerEntry) handlePortalComplete();
+      }}>
+        <div className="fixed inset-0 z-0">
+          <ShadowGardenPortal 
+            startTransition={triggerEntry}
+            onComplete={handlePortalComplete}
+            onSceneReady={handleSceneReady}
+          />
+        </div>
+      </PortalErrorBoundary>
 
       {/* 2. OVERLAY */}
       <AnimatePresence mode="wait">

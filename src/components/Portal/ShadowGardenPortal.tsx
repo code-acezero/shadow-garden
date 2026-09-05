@@ -1218,7 +1218,7 @@ const CinematicTitleIntro = React.memo(({ onComplete }: { onComplete: () => void
                 sfx.unlock();
                 sfx.play('crystal', 0.3);
             }}
-            className="fixed inset-0 z-[99999] bg-[#000000] flex flex-col items-center justify-center cursor-pointer overflow-hidden select-none touch-none"
+            className="fixed inset-0 z-[99999] bg-[#000000] flex flex-col items-center justify-center cursor-pointer overflow-hidden select-none touch-none pointer-events-auto"
         >
             <div className="absolute inset-0 bg-[#020205]" />
             <div className="absolute w-[600px] h-[600px] rounded-full bg-primary-950/20 blur-[120px] pointer-events-none" />
@@ -1307,7 +1307,7 @@ AudioPermissionModal.displayName = 'AudioPermissionModal';
 
 const BracePopup = React.memo(({ onReady, gender }: { onReady: () => void; gender: Gender | null }) => {
     return (
-        <div className="fixed inset-0 z-[99999] bg-black/80 backdrop-blur-md flex items-center justify-center p-4 overflow-hidden touch-none">
+        <div className="fixed inset-0 z-[99999] bg-black/80 backdrop-blur-md flex items-center justify-center p-4 overflow-hidden touch-none pointer-events-auto">
             <motion.div 
                 initial={{ opacity: 0, scale: 0.95 }} 
                 animate={{ opacity: 1, scale: 1 }} 
@@ -1483,9 +1483,9 @@ export default function ShadowGardenPortal({
     onComplete, 
     onSceneReady 
 }: Props) {
-    const [appState, setAppState] = useState<AppState>('checking');
+    const [appState, setAppState] = useState<AppState>('running');
     const [gender, setGender] = useState<Gender | null>(null);
-    const [stage, setStage] = useState<AnimationStage>('loading');
+    const [stage, setStage] = useState<AnimationStage>('idle');
     const [whiteout, setWhiteout] = useState(false);
     const [whiteoutOpacity, setWhiteoutOpacity] = useState(0.45);
     const [whiteoutProgress, setWhiteoutProgress] = useState(0);
