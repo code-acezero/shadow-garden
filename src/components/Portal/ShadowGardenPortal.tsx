@@ -1538,11 +1538,15 @@ export default function ShadowGardenPortal({
         const isSkipActive = neverAsk === 'true' || (pauseUntil && parseInt(pauseUntil) > now);
 
         if (!hasAudioPermit) {
-            setAppState('audio_permit');
+            setAppState('running');
+            setStage('idle');
+            onSceneReadyRef.current?.();
         } else if (isSkipActive) {
             triggerSkip(); 
         } else {
-            setAppState('cinematic_intro');
+            setAppState('running');
+            setStage('idle');
+            onSceneReadyRef.current?.();
         }
     }, [triggerSkip]);
 
@@ -1618,12 +1622,6 @@ export default function ShadowGardenPortal({
         }
     }, [stage]);
 
-    useEffect(() => {
-        if (startTransition && stage === 'idle') {
-            performEntrySequence();
-        }
-    }, [startTransition, stage]);
-
     const handleReachDoor = useCallback(() => {
         setStage('brace_popup');
         sfx.stop('step'); 
@@ -1656,6 +1654,16 @@ export default function ShadowGardenPortal({
             sfx.play('step', 0.4, true); 
         }, 5500);
     }, []);
+
+    useEffect(() => {
+        if (startTransition) {
+            if (stage === 'idle' || stage === 'intro') {
+                performEntrySequence();
+            } else if (stage === 'loading' || skipped) {
+                onComplete();
+            }
+        }
+    }, [startTransition, stage, skipped, onComplete, performEntrySequence]);
 
     const handleBraceReady = useCallback(() => {
         const sfxObj = (window as any).shadowAudio || (window as any).sfx || sfx;

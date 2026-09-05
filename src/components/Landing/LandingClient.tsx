@@ -23,6 +23,7 @@ import ShadowGardenPortal from '@/components/Portal/ShadowGardenPortal';
 import { getRandomAvatar, getRandomGuestName } from '@/components/User/AvatarSelectorModal';
 import { Capacitor } from '@capacitor/core';
 import CuteShareBar from '@/components/Home/CuteShareBar';
+import { formatAnimeTitle } from '@/lib/utils';
 
 
 // --- ASSETS ---
@@ -141,7 +142,7 @@ const LatestSocialFeedSection = React.memo(() => {
       try {
         const { data, error } = await supabase
           .from('social_posts')
-          .select('id, content, created_at, likes_count, comments_count, profiles:user_id(username, avatar_url, role)')
+          .select('id, content, created_at, profiles:user_id(username, avatar_url, role), social_likes(count), social_comments(count)')
           .order('created_at', { ascending: false })
           .limit(4);
 
@@ -232,24 +233,31 @@ const LatestSocialFeedSection = React.memo(() => {
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        {posts.map((post) => (
+        {posts.map((post) => {
+          const profile = Array.isArray(post.profiles) ? post.profiles[0] : post.profiles;
+          const likes = post.social_likes?.[0]?.count ?? post.likes_count ?? 0;
+          const comments = post.social_comments?.[0]?.count ?? post.comments_count ?? 0;
+          const formattedDate = post.created_at ? new Date(post.created_at).toLocaleDateString() : 'Recent';
+
+          return (
             <div key={post.id} className="p-6 rounded-2xl bg-black/40 border border-white/10 hover:border-primary-500/40 backdrop-blur-md transition-all group hover:-translate-y-1 shadow-lg">
               <div className="flex items-center gap-3 mb-4">
                 <img 
-                  src={post.profiles?.avatar_url || '/images/index/bg-1.jpg'} 
-                  alt={post.profiles?.username || 'Agent'} 
+                  src={profile?.avatar_url || '/images/index/bg-1.jpg'} 
+                  alt={profile?.username || 'Agent'} 
                   className="w-10 h-10 rounded-full object-cover border border-primary-500/40"
+                  onError={(e) => { (e.target as HTMLImageElement).src = '/images/index/bg-1.jpg'; }}
                 />
                 <div>
                   <div className="flex items-center gap-2">
-                    <span className="font-bold text-sm text-white font-mono">{post.profiles?.username || 'Anonymous Agent'}</span>
-                    {post.profiles?.role && (
+                    <span className="font-bold text-sm text-white font-mono">{profile?.username || 'Anonymous Agent'}</span>
+                    {profile?.role && (
                       <span className="text-[9px] px-2 py-0.5 rounded bg-primary-900/40 border border-primary-500/30 text-primary-300 font-mono uppercase">
-                        {post.profiles.role}
+                        {profile.role}
                       </span>
                     )}
                   </div>
-                  <span className="text-[10px] text-gray-500 font-mono">{new Date(post.created_at).toLocaleDateString()}</span>
+                  <span className="text-[10px] text-gray-500 font-mono">{formattedDate}</span>
                 </div>
               </div>
               <p className="text-xs sm:text-sm text-gray-300 font-mono leading-relaxed line-clamp-3 mb-4">
@@ -257,14 +265,15 @@ const LatestSocialFeedSection = React.memo(() => {
               </p>
               <div className="flex items-center gap-4 text-xs text-gray-400 font-mono pt-3 border-t border-white/5">
                 <span className="flex items-center gap-1.5 hover:text-red-400 transition-colors">
-                  <Flame className="w-3.5 h-3.5 text-primary-500" /> {post.likes_count || 0} Likes
+                  <Flame className="w-3.5 h-3.5 text-primary-500" /> {likes} Likes
                 </span>
                 <span className="flex items-center gap-1.5 hover:text-cyan-400 transition-colors">
-                  <MessageCircle className="w-3.5 h-3.5 text-cyan-400" /> {post.comments_count || 0} Comments
+                  <MessageCircle className="w-3.5 h-3.5 text-cyan-400" /> {comments} Comments
                 </span>
               </div>
             </div>
-          ))}
+          );
+        })}
       </div>
     </section>
   );
@@ -302,6 +311,39 @@ const FeatureCard = React.memo(({ icon: Icon, title, desc }: { icon: any, title:
 ));
 FeatureCard.displayName = 'FeatureCard';
 
+// --- ERROR BOUNDARY FOR 3D PORTAL ---
+interface PortalErrorBoundaryProps {
+  children: React.ReactNode;
+  onError?: () => void;
+}
+
+interface PortalErrorBoundaryState {
+  hasError: boolean;
+}
+
+class PortalErrorBoundary extends React.Component<PortalErrorBoundaryProps, PortalErrorBoundaryState> {
+  constructor(props: PortalErrorBoundaryProps) {
+    super(props);
+    this.state = { hasError: false };
+  }
+
+  static getDerivedStateFromError(): PortalErrorBoundaryState {
+    return { hasError: true };
+  }
+
+  componentDidCatch(error: any, errorInfo: any) {
+    console.warn("Portal 3D scene caught by boundary, falling back gracefully:", error, errorInfo);
+    this.props.onError?.();
+  }
+
+  render() {
+    if (this.state.hasError) {
+      return null;
+    }
+    return this.props.children;
+  }
+}
+
 // --- MAIN COMPONENT ---
 
 export default function LandingClient() {
@@ -332,6 +374,12 @@ export default function LandingClient() {
     if (mobileCheck && !isNative) {
       setShowLandingUI(true);
     }
+
+    // Safety fallback: reveal landing UI within 1200ms
+    // so desktop visitors never get stranded on a blank canvas or prolonged intro
+    const uiTimer = setTimeout(() => {
+      setShowLandingUI(true);
+    }, 1200);
 
     const pwaHandler = (e: any) => {
       e.preventDefault();
@@ -372,13 +420,16 @@ export default function LandingClient() {
       }
 
       // If no hint, do the full API check (Fallback)
-      const user = await UserAPI.getCurrentUser();
-      if (user) {
-        if (typeof window !== 'undefined') localStorage.setItem('shadow_auth_hint', 'true');
-        router.replace('/home'); 
-        return;
-      } else {
-        // Confirmed Guest
+      try {
+        const user = await UserAPI.getCurrentUser();
+        if (user) {
+          if (typeof window !== 'undefined') localStorage.setItem('shadow_auth_hint', 'true');
+          router.replace('/home'); 
+          return;
+        }
+      } catch (authErr) {
+        console.warn("Auth initialization check failed:", authErr);
+      } finally {
         setIsCheckingAuth(false);
       }
 
@@ -396,7 +447,10 @@ export default function LandingClient() {
     };
     init();
 
-    return () => window.removeEventListener('beforeinstallprompt', pwaHandler);
+    return () => {
+      clearTimeout(uiTimer);
+      window.removeEventListener('beforeinstallprompt', pwaHandler);
+    };
   }, [router]);
 
   // Handlers
@@ -454,6 +508,16 @@ export default function LandingClient() {
     router.push('/home'); 
   }, [router]);
 
+  // Safety timeout: if portal transition takes longer than 14s to route to /home, force navigation
+  useEffect(() => {
+    if (triggerEntry) {
+      const fallbackTimer = setTimeout(() => {
+        handlePortalComplete();
+      }, 14000);
+      return () => clearTimeout(fallbackTimer);
+    }
+  }, [triggerEntry, handlePortalComplete]);
+
   const handleInstallClick = async () => {
     if (!installPrompt) return;
     installPrompt.prompt();
@@ -472,13 +536,15 @@ export default function LandingClient() {
       {/* 1. PORTAL BACKGROUND */}
       {/* Portal: always shown on native app, hidden on web mobile */}
       {(!isMobile || Capacitor.isNativePlatform()) && (
-        <div className="fixed inset-0 z-0">
-          <ShadowGardenPortal 
-            startTransition={triggerEntry}
-            onComplete={handlePortalComplete}
-            onSceneReady={handleSceneReady}
-          />
-        </div>
+        <PortalErrorBoundary onError={() => setShowLandingUI(true)}>
+          <div className="fixed inset-0 z-0">
+            <ShadowGardenPortal 
+              startTransition={triggerEntry}
+              onComplete={handlePortalComplete}
+              onSceneReady={handleSceneReady}
+            />
+          </div>
+        </PortalErrorBoundary>
       )}
 
       {/* 2. OVERLAY */}
@@ -587,16 +653,19 @@ export default function LandingClient() {
                         <h3 className="text-3xl font-normal font-gradvis text-white tracking-widest">TOP BOUNTIES</h3>
                      </div>
                      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-3">
-                        {trending.map((anime, i) => (
-                           <Link key={anime.id} href={`/watch/${anime.id}`} className="relative w-full aspect-[2/3] rounded-3xl overflow-hidden cursor-pointer group border border-white/10 hover:border-primary-500/50 transition-all hover:scale-105 hover:shadow-[0_0_20px_rgba(220,38,38,0.3)]">
-                              <img src={anime.poster} alt={anime.title} loading="lazy" className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110" />
-                              <div className="absolute inset-0 bg-gradient-to-t from-black via-transparent to-transparent opacity-90" />
-                              <div className="absolute top-2 right-2 w-7 h-7 rounded-full bg-primary-600/90 backdrop-blur-md flex items-center justify-center font-black text-xs border border-primary-400 shadow-[0_0_10px_red] z-10">{i + 1}</div>
-                              <div className="absolute bottom-0 w-full p-3 text-center">
-                                 <h4 className="text-xs font-bold text-white mb-1 leading-tight drop-shadow-md line-clamp-2 group-hover:text-primary-400 transition-colors">{anime.title}</h4>
-                              </div>
-                           </Link>
-                        ))}
+                        {trending.map((anime, i) => {
+                           const titleStr = formatAnimeTitle(anime.title, anime.id);
+                           return (
+                             <Link key={anime.id || i} href={`/watch/${anime.id}`} className="relative w-full aspect-[2/3] rounded-3xl overflow-hidden cursor-pointer group border border-white/10 hover:border-primary-500/50 transition-all hover:scale-105 hover:shadow-[0_0_20px_rgba(220,38,38,0.3)]">
+                                <img src={anime.poster} alt={titleStr} loading="lazy" className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110" />
+                                <div className="absolute inset-0 bg-gradient-to-t from-black via-transparent to-transparent opacity-90" />
+                                <div className="absolute top-2 right-2 w-7 h-7 rounded-full bg-primary-600/90 backdrop-blur-md flex items-center justify-center font-black text-xs border border-primary-400 shadow-[0_0_10px_red] z-10">{i + 1}</div>
+                                <div className="absolute bottom-0 w-full p-3 text-center">
+                                   <h4 className="text-xs font-bold text-white mb-1 leading-tight drop-shadow-md line-clamp-2 group-hover:text-primary-400 transition-colors">{titleStr}</h4>
+                                </div>
+                             </Link>
+                           );
+                        })}
                      </div>
                   </div>
                </section>
