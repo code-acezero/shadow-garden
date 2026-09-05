@@ -32,7 +32,7 @@ const ShadowGardenPortal = dynamic(
         const now = Date.now();
         if (!last || now - parseInt(last, 10) > 10000) {
           sessionStorage.setItem(lockKey, now.toString());
-          if ('caches' in window) {
+          if (typeof caches !== 'undefined') {
             caches.keys().then(keys => Promise.all(keys.map(k => caches.delete(k)))).finally(() => {
               window.location.href = window.location.pathname + '?t=' + Date.now();
             });
@@ -393,14 +393,13 @@ export default function LandingClient() {
   const heroScale = useTransform(scrollY, [0, 400], [1, 1.1]);
 
   useEffect(() => {
-    if (typeof window !== 'undefined') sfx.stopAll(1500);
     const mobileCheck = window.innerWidth < 768;
     setIsMobile(mobileCheck);
 
-    // Safety fallback: reveal landing UI after 25s only if WebGL / 3D portal never triggers scene ready
+    // Safety fallback: reveal landing UI after 60s only if WebGL / 3D portal never triggers scene ready
     const uiTimer = setTimeout(() => {
       setShowLandingUI(true);
-    }, 25000);
+    }, 60000);
 
     const pwaHandler = (e: any) => {
       e.preventDefault();

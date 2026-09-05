@@ -1204,6 +1204,7 @@ const CinematicTitleIntro = React.memo(({ onComplete }: { onComplete: () => void
         return () => {
             document.body.style.overflow = originalOverflow;
             clearTimeout(timer);
+            sfx.stop('title', 300);
         };
     }, [onComplete]);
 
@@ -1270,8 +1271,16 @@ const CinematicTitleIntro = React.memo(({ onComplete }: { onComplete: () => void
 CinematicTitleIntro.displayName = 'CinematicTitleIntro';
 
 const AudioPermissionModal = React.memo(({ onGrant }: { onGrant: () => void }) => {
+    useEffect(() => {
+        const originalOverflow = document.body.style.overflow;
+        document.body.style.overflow = 'hidden';
+        return () => {
+            document.body.style.overflow = originalOverflow;
+        };
+    }, []);
+
     return (
-        <div className="fixed inset-0 z-[99999] bg-black/90 backdrop-blur-2xl flex items-center justify-center p-4 overflow-hidden touch-none select-none">
+        <div className="fixed inset-0 z-[99999] bg-black/90 backdrop-blur-2xl flex items-center justify-center p-4 overflow-hidden touch-none select-none pointer-events-auto">
             <motion.div 
                 initial={{ opacity: 0, scale: 0.95 }} 
                 animate={{ opacity: 1, scale: 1 }} 
@@ -1363,7 +1372,7 @@ const AnimationPreferencePopup = React.memo(({
     }, []);
 
     return (
-        <div className="fixed inset-0 z-[99999] bg-black/90 backdrop-blur-xl flex items-center justify-center p-4 overflow-hidden touch-none">
+        <div className="fixed inset-0 z-[99999] bg-black/90 backdrop-blur-xl flex items-center justify-center p-4 overflow-hidden touch-none pointer-events-auto">
             <div className="absolute inset-0 bg-gradient-to-t from-primary-950/20 via-black to-black pointer-events-none" />
             
             <motion.div 
@@ -1547,7 +1556,7 @@ export default function ShadowGardenPortal({
         } else if (isSkipActive) {
             triggerSkip(); 
         } else {
-            setAppState('cinematic_intro');
+            setAppState('anim_choice');
         }
     }, [triggerSkip]);
 
@@ -1754,7 +1763,7 @@ export default function ShadowGardenPortal({
         }, 13500); // Complete after 1.5 seconds
     }, [onComplete]);
 
-    if (!mounted || skipped) return null;
+    if (!mounted || skipped || appState === 'checking') return null;
 
     if (appState === 'audio_permit') {
         return <AudioPermissionModal onGrant={handleGrantAudio} />;

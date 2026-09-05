@@ -69,8 +69,7 @@ class AudioMatrix {
 
         bgmTracks.forEach((url, idx) => {
             const a = new Audio(url);
-            a.preload = 'none';
-            a.crossOrigin = 'anonymous';
+            a.preload = 'auto';
             a.onended = () => { this.playNextBGM(); };
             this.sources.set(`bgm_${idx}`, a);
         });
@@ -88,7 +87,6 @@ class AudioMatrix {
         Object.entries(customSfx).forEach(([name, url]) => {
             const a = new Audio(url);
             a.preload = 'auto';
-            a.crossOrigin = 'anonymous';
             this.sources.set(name, a);
         });
 
@@ -101,8 +99,9 @@ class AudioMatrix {
 
     unlock() { 
         this.init();
-        if (this.ctx && this.ctx.state === 'suspended') {
-            this.ctx.resume().catch(() => {});
+        const ctx = this.getCtx();
+        if (ctx && ctx.state === 'suspended') {
+            ctx.resume().catch(() => {});
         }
     }
 
@@ -522,11 +521,23 @@ class AudioMatrix {
             customAudio.loop = loop;
             if (!loop) customAudio.currentTime = 0;
             customAudio.volume = fadeMs > 0 ? 0 : vol;
-            customAudio.play().catch(() => {});
+            customAudio.play().catch((err) => {
+                console.warn(`[audioManager] Failed to play audio ${key}:`, err);
+            });
             if (fadeMs > 0) {
                 let v = 0; const step = vol / (fadeMs / 50);
-                if (this.fadeIntervals.has(key)) clearInterval(this.fadeIntervals.get(key) as any);
-                const id = setInterval(() => { v = Math.min(vol, v + step); customAudio.volume = v; if (v >= vol) clearInterval(id as any); }, 50);
+                if (this.fadeIntervals.has(key)) {
+                    clearInterval(this.fadeIntervals.get(key) as any);
+                    this.fadeIntervals.delete(key);
+                }
+                const id = setInterval(() => { 
+                    v = Math.min(vol, v + step); 
+                    customAudio.volume = v; 
+                    if (v >= vol) {
+                        clearInterval(id as any);
+                        this.fadeIntervals.delete(key);
+                    }
+                }, 50);
                 this.fadeIntervals.set(key, id);
             }
             return;

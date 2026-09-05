@@ -28,7 +28,7 @@ export default function ChunkErrorRecovery() {
         // Prevent infinite reload loops (allow at most once every 10 seconds)
         if (!last || now - parseInt(last, 10) > 10000) {
           sessionStorage.setItem(lockKey, now.toString());
-          if ("caches" in window) {
+          if (typeof caches !== "undefined") {
             caches.keys().then((keys) => {
               Promise.all(keys.map((k) => caches.delete(k))).finally(() => {
                 window.location.href = window.location.pathname + "?t=" + Date.now();
