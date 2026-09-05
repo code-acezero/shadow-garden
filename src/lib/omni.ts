@@ -402,6 +402,13 @@ class OmniClient {
       // Prepare verified standard embed servers
       const standardServers: { name: string; url: string; type?: string }[] = [];
       if (imdbId) {
+        // Super Player is the native, dedicated player from HDMovie2 (plays Hindi dubs, cam prints, and unreleased web titles)
+        standardServers.push({
+          name: 'Super Player',
+          url: `https://slast430did.com/play/${imdbId}`,
+          type: 'iframe'
+        });
+
         if (hasRealSeasons) {
           standardServers.push(
             { name: 'VidSrc', url: `https://vidsrc.me/embed/tv?imdb=${imdbId}&season=1&episode=1`, type: 'embed' },
@@ -421,8 +428,8 @@ class OmniClient {
         }
       }
 
-      // Filter out broken/expired hosts (e.g. gemma416okl has expired SSL cert, multiembed returns 404)
-      const brokenKeywords = ['gemma416okl.com', 'multiembed.mov'];
+      // Filter out broken hosts (e.g. multiembed returns 404)
+      const brokenKeywords = ['multiembed.mov'];
       const isBroken = (url: string) => !url || brokenKeywords.some(b => url.toLowerCase().includes(b));
 
       const cleanStreams: { name: string; url: string; type?: string }[] = [...standardServers];
@@ -431,16 +438,21 @@ class OmniClient {
 
       if (Array.isArray(res.streams)) {
         for (const st of res.streams) {
-          if (st && st.url && !isBroken(st.url) && !seenUrls.has(st.url)) {
-            seenUrls.add(st.url);
+          if (!st || !st.url) continue;
+          // Upgrade legacy/expired gemma416okl.com domain to active slast430did.com
+          let url = st.url.replace(/gemma416okl\.com/g, 'slast430did.com');
+          if (isBroken(url)) continue;
+          if (!seenUrls.has(url)) {
+            seenUrls.add(url);
             let name = st.name || 'Server';
+            if (name.toLowerCase() === 'server') name = 'Super Player';
             if (seenNames.has(name)) {
               let count = 2;
               while (seenNames.has(`${name} ${count}`)) count++;
               name = `${name} ${count}`;
             }
             seenNames.add(name);
-            cleanStreams.push({ ...st, name });
+            cleanStreams.push({ ...st, url, name });
           }
         }
       }
@@ -450,6 +462,7 @@ class OmniClient {
         ? seasons.map((season: any) => {
             const seasonNum = season.seasonNumber || 1;
             const sources = imdbId ? [
+              { name: 'Super Player', url: `https://slast430did.com/play/${imdbId}` },
               { name: 'VidSrc', url: `https://vidsrc.me/embed/tv?imdb=${imdbId}&season=${seasonNum}&episode=1` },
               { name: 'VidSrc Pro', url: `https://vidsrc.to/embed/tv/${imdbId}/${seasonNum}/1` },
               { name: 'VidSrc IN', url: `https://vidsrc.in/embed/tv/${imdbId}/${seasonNum}/1` },

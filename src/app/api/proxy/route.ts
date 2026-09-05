@@ -21,7 +21,14 @@ const REFERER_MAP: Record<string, string> = {
     'watchanimeworld': 'https://watchanimeworld.net/',
     'tmdb': 'https://www.themoviedb.org/',
     'image.tmdb': 'https://www.themoviedb.org/',
-    'themoviedb': 'https://www.themoviedb.org/'
+    'themoviedb': 'https://www.themoviedb.org/',
+
+    // --- HDMovie2 / Bollywood Hubs ---
+    'slast430did': 'https://hdmoviesnow.com/',
+    'gemma416okl': 'https://hdmoviesnow.com/',
+    'hutro433fil': 'https://slast430did.com/',
+    'hdmoviesnow': 'https://hdmoviesnow.com/',
+    'hdmoviescloud': 'https://hdmoviesnow.com/'
 };
 
 const DEFAULT_REFERER = "https://megacloud.blog/";
