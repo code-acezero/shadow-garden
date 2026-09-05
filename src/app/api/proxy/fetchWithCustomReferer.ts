@@ -1,4 +1,11 @@
-// src/lib/proxy/fetchWithCustomReferer.ts
+import { Agent } from 'undici';
+
+// Bypass SSL certificate issues for upstream scrapers and CDNs with expired certificates
+const dispatcher = new Agent({
+  connect: {
+    rejectUnauthorized: false
+  }
+});
 
 export async function fetchWithCustomReferer(url: string, refererUrl: string, range?: string | null) {
   if (!url) throw new Error("URL is required");
@@ -16,10 +23,10 @@ export async function fetchWithCustomReferer(url: string, refererUrl: string, ra
     };
     if (range) headers["Range"] = range;
 
-    const response = await fetch(url, {
+    const response = await (fetch as any)(url, {
       headers,
       redirect: 'follow',
-      // Next.js handles timeouts automatically usually, but we can't set it easily in standard fetch
+      dispatcher,
     });
 
     return response;

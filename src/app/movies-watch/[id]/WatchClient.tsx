@@ -266,13 +266,17 @@ export default function WatchClient() {
   }, [slug]);
 
   const getUpdatedServerUrl = useCallback((baseUrl: string, seasonNum: number, epNum: number) => {
-    if (baseUrl.includes('episode=')) {
-      return baseUrl.replace(/episode=\d+/, `episode=${epNum}`);
+    let url = baseUrl;
+    if (/([?&]season=)\d+/i.test(url)) url = url.replace(/([?&]season=)\d+/gi, (_, p1) => p1 + seasonNum);
+    if (/([?&]episode=)\d+/i.test(url)) url = url.replace(/([?&]episode=)\d+/gi, (_, p1) => p1 + epNum);
+    if (/([?&]s=)\d+/i.test(url)) url = url.replace(/([?&]s=)\d+/gi, (_, p1) => p1 + seasonNum);
+    if (/([?&]e=)\d+/i.test(url)) url = url.replace(/([?&]e=)\d+/gi, (_, p1) => p1 + epNum);
+    if (/\/(?:tv|series)\/[^/]+\/\d+\/\d+/i.test(url)) {
+      url = url.replace(/(.*?\/(?:tv|series)\/[^/]+)\/\d+\/\d+/i, (_, prefix) => prefix + '/' + seasonNum + '/' + epNum);
+    } else if (/-\d+-\d+(\?.*)?$/.test(url)) {
+      url = url.replace(/-(\d+)-(\d+)(\?.*)?$/, (_, _s, _e, qs) => '-' + seasonNum + '-' + epNum + (qs || ''));
     }
-    if (baseUrl.includes('e=')) {
-      return baseUrl.replace(/e=\d+/, `e=${epNum}`);
-    }
-    return baseUrl.replace(/-(\d+)-(\d+)$/, `-${seasonNum}-${epNum}`);
+    return url;
   }, []);
 
   const saveMovieProgress = useCallback(async () => {
@@ -521,16 +525,16 @@ export default function WatchClient() {
                       </Button>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="start" className="bg-[#020617] border border-emerald-900/30 rounded-2xl shadow-2xl z-[80] p-1.5 min-w-[150px]">
-                      {movie.streams.map((server: any) => {
+                      {movie.streams.map((server: any, idx: number) => {
                         const serverUrl = isSeries
                           ? (() => {
                               const sd = movie.seasons!.find(s => s.seasonNumber === activeSeason);
-                              const match = sd?.sources.find(src => src.name === server.name);
-                              return match ? getUpdatedServerUrl(match.url, activeSeason, activeEpisode) : server.url;
+                              const match = sd?.sources?.find((src: any) => src.name === server.name);
+                              return match ? getUpdatedServerUrl(match.url, activeSeason, activeEpisode) : getUpdatedServerUrl(server.url, activeSeason, activeEpisode);
                             })()
                           : server.url;
                         return (
-                          <DropdownMenuItem key={server.name} onClick={() => { setActiveServerUrl(serverUrl); setActiveServerName(server.name); }}
+                          <DropdownMenuItem key={`${server.name}-${idx}`} onClick={() => { setActiveServerUrl(serverUrl); setActiveServerName(server.name); }}
                             className={cn("cursor-pointer px-3 py-1.5 rounded-xl text-[10px] uppercase font-bold tracking-wider mb-0.5 transition-all",
                               activeServerName === server.name ? "bg-emerald-500 text-black" : "text-emerald-100/60 hover:text-emerald-300")}>
                             {server.name} {server.lang ? `(${server.lang})` : ''}

@@ -393,11 +393,84 @@ class OmniClient {
         seasons = [];
       }
 
+      // If seasons came back with no episodes or empty, it's really a standalone movie/feature
+      const hasRealSeasons = Array.isArray(seasons) && seasons.length > 0 && seasons.some((s: any) => Array.isArray(s.episodes) && s.episodes.length > 0);
+
+      // Extract IMDb ID safely from res or content
+      const imdbId: string = res.imdbId || (JSON.stringify(res).match(/tt\d{7,8}/) || [])[0] || '';
+
+      // Prepare verified standard embed servers
+      const standardServers: { name: string; url: string; type?: string }[] = [];
+      if (imdbId) {
+        if (hasRealSeasons) {
+          standardServers.push(
+            { name: 'VidSrc', url: `https://vidsrc.me/embed/tv?imdb=${imdbId}&season=1&episode=1`, type: 'embed' },
+            { name: 'VidSrc Pro', url: `https://vidsrc.to/embed/tv/${imdbId}/1/1`, type: 'embed' },
+            { name: 'VidSrc IN', url: `https://vidsrc.in/embed/tv/${imdbId}/1/1`, type: 'embed' },
+            { name: 'AutoEmbed', url: `https://autoembed.co/tv/imdb/${imdbId}-1-1`, type: 'embed' },
+            { name: 'VidSrc CC', url: `https://vidsrc.cc/v2/embed/tv/${imdbId}/1/1`, type: 'embed' }
+          );
+        } else {
+          standardServers.push(
+            { name: 'VidSrc', url: `https://vidsrc.me/embed/movie?imdb=${imdbId}`, type: 'embed' },
+            { name: 'VidSrc Pro', url: `https://vidsrc.to/embed/movie/${imdbId}`, type: 'embed' },
+            { name: 'VidSrc IN', url: `https://vidsrc.in/embed/movie/${imdbId}`, type: 'embed' },
+            { name: 'AutoEmbed', url: `https://autoembed.co/movie/imdb/${imdbId}`, type: 'embed' },
+            { name: 'VidSrc CC', url: `https://vidsrc.cc/v2/embed/movie/${imdbId}`, type: 'embed' }
+          );
+        }
+      }
+
+      // Filter out broken/expired hosts (e.g. gemma416okl has expired SSL cert, multiembed returns 404)
+      const brokenKeywords = ['gemma416okl.com', 'multiembed.mov'];
+      const isBroken = (url: string) => !url || brokenKeywords.some(b => url.toLowerCase().includes(b));
+
+      const cleanStreams: { name: string; url: string; type?: string }[] = [...standardServers];
+      const seenUrls = new Set(standardServers.map(s => s.url));
+      const seenNames = new Set(standardServers.map(s => s.name));
+
+      if (Array.isArray(res.streams)) {
+        for (const st of res.streams) {
+          if (st && st.url && !isBroken(st.url) && !seenUrls.has(st.url)) {
+            seenUrls.add(st.url);
+            let name = st.name || 'Server';
+            if (seenNames.has(name)) {
+              let count = 2;
+              while (seenNames.has(`${name} ${count}`)) count++;
+              name = `${name} ${count}`;
+            }
+            seenNames.add(name);
+            cleanStreams.push({ ...st, name });
+          }
+        }
+      }
+
+      // If seasons exist, populate their sources with working server URLs
+      const processedSeasons = hasRealSeasons
+        ? seasons.map((season: any) => {
+            const seasonNum = season.seasonNumber || 1;
+            const sources = imdbId ? [
+              { name: 'VidSrc', url: `https://vidsrc.me/embed/tv?imdb=${imdbId}&season=${seasonNum}&episode=1` },
+              { name: 'VidSrc Pro', url: `https://vidsrc.to/embed/tv/${imdbId}/${seasonNum}/1` },
+              { name: 'VidSrc IN', url: `https://vidsrc.in/embed/tv/${imdbId}/${seasonNum}/1` },
+              { name: 'AutoEmbed', url: `https://autoembed.co/tv/imdb/${imdbId}-${seasonNum}-1` },
+              { name: 'VidSrc CC', url: `https://vidsrc.cc/v2/embed/tv/${imdbId}/${seasonNum}/1` }
+            ] : (season.sources || []).filter((s: any) => !isBroken(s?.url));
+
+            return {
+              ...season,
+              sources
+            };
+          })
+        : [];
+
       return {
           ...res,
           type: res.type,
+          imdbId,
+          streams: cleanStreams,
           related: Array.isArray(res.related) ? res.related.map(normalizeDramaCard) : [],
-          seasons
+          seasons: processedSeasons
       } as MovieDetail;
     },
 

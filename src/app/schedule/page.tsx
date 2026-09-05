@@ -168,7 +168,7 @@ const QTip = ({ trigger, anime, side = "right" }: { trigger: React.ReactNode, an
 
 const ScheduleCard = ({ anime }: { anime: any }) => {
     return (
-        <motion.div variants={itemVariants} layoutId={`schedule-${anime.id}`} className="relative group">
+        <motion.div variants={itemVariants} className="relative group">
             <MobileInfoBtn anime={anime} />
             <QTip anime={anime} trigger={
                 <Link href={`/watch/${anime.id}`} className="flex w-full items-stretch h-20 md:h-24 rounded-2xl bg-[#0f0f0f] border border-white/5 hover:border-primary-500/30 transition-all active:scale-[0.98] overflow-hidden">
@@ -197,36 +197,42 @@ const ScheduleCard = ({ anime }: { anime: any }) => {
     );
 };
 
-const CompactAnimeCard = ({ anime, rank }: { anime: any, rank?: number }) => (
-    <motion.div variants={itemVariants} className="relative group">
-        <div className="absolute right-1 top-1 z-30">
-            <MobileInfoBtn anime={anime} />
-        </div>
-        <Link href={`/watch/${anime.id}`} className="flex items-center gap-3 p-2 rounded-xl bg-transparent hover:bg-white/5 border border-transparent hover:border-white/10 transition-all">
-            <div className="relative w-10 h-14 md:w-12 md:h-16 shrink-0 rounded-lg overflow-hidden shadow-lg">
-                <img src={anime.poster} alt="" className="w-full h-full object-cover" loading="lazy" decoding="async"/>
-                {rank && (
-                    <div className={cn(
-                        "absolute top-0 left-0 w-5 h-5 flex items-center justify-center text-[9px] font-black text-white rounded-br-lg",
-                        rank === 1 ? "bg-yellow-500" : rank === 2 ? "bg-zinc-400" : rank === 3 ? "bg-amber-700" : "bg-zinc-800"
-                    )}>
-                        {rank}
-                    </div>
-                )}
+const CompactAnimeCard = ({ anime, rank }: { anime: any, rank?: number }) => {
+    const epDisplay = typeof anime?.episodes === 'object'
+        ? (anime.episodes?.sub || anime.episodes?.eps || anime.episodes?.dub || '?')
+        : (anime?.episodes || '?');
+
+    return (
+        <motion.div variants={itemVariants} className="relative group">
+            <div className="absolute right-1 top-1 z-30">
+                <MobileInfoBtn anime={anime} />
             </div>
-            <div className="flex-1 min-w-0 pr-6">
-                <h4 className="text-[11px] md:text-xs font-bold text-zinc-300 truncate group-hover:text-primary-400 transition-colors">
-                    {anime.title}
-                </h4>
-                <div className="flex items-center gap-2 mt-1">
-                    <span className="text-[9px] text-zinc-500 bg-white/5 px-1.5 py-0.5 rounded border border-white/5 uppercase">{anime.type || 'TV'}</span>
-                    <span className="text-[9px] text-zinc-500">{anime.episodes?.sub || anime.episodes || '?'} EPS</span>
+            <Link href={`/watch/${anime.id}`} className="flex items-center gap-3 p-2 rounded-xl bg-transparent hover:bg-white/5 border border-transparent hover:border-white/10 transition-all">
+                <div className="relative w-10 h-14 md:w-12 md:h-16 shrink-0 rounded-lg overflow-hidden shadow-lg">
+                    <img src={anime.poster} alt="" className="w-full h-full object-cover" loading="lazy" decoding="async"/>
+                    {rank && (
+                        <div className={cn(
+                            "absolute top-0 left-0 w-5 h-5 flex items-center justify-center text-[9px] font-black text-white rounded-br-lg",
+                            rank === 1 ? "bg-yellow-500" : rank === 2 ? "bg-zinc-400" : rank === 3 ? "bg-amber-700" : "bg-zinc-800"
+                        )}>
+                            {rank}
+                        </div>
+                    )}
                 </div>
-            </div>
-            <ChevronRight size={14} className="text-zinc-700 group-hover:text-white transition-colors -translate-x-2 opacity-0 group-hover:opacity-100 group-hover:translate-x-0" />
-        </Link>
-    </motion.div>
-);
+                <div className="flex-1 min-w-0 pr-6">
+                    <h4 className="text-[11px] md:text-xs font-bold text-zinc-300 truncate group-hover:text-primary-400 transition-colors">
+                        {anime.title}
+                    </h4>
+                    <div className="flex items-center gap-2 mt-1">
+                        <span className="text-[9px] text-zinc-500 bg-white/5 px-1.5 py-0.5 rounded border border-white/5 uppercase">{anime.type || 'TV'}</span>
+                        <span className="text-[9px] text-zinc-500">{epDisplay} EPS</span>
+                    </div>
+                </div>
+                <ChevronRight size={14} className="text-zinc-700 group-hover:text-white transition-colors -translate-x-2 opacity-0 group-hover:opacity-100 group-hover:translate-x-0" />
+            </Link>
+        </motion.div>
+    );
+};
 
 // --- TOP CHART CARD ---
 interface TopChartCardProps { 
@@ -326,7 +332,7 @@ const TopChartCard = ({ anime, rank, index, mobileActiveIndex, onMobileClick }: 
                     </h3>
                     <div className={cn("flex items-center gap-2 mt-2 transition-opacity duration-300 delay-75", isMobileActive ? "opacity-100" : "opacity-0 group-hover:opacity-100")}>
                         <span className="text-[9px] text-zinc-300 bg-black/50 backdrop-blur-md px-1.5 py-0.5 rounded border border-white/10">
-                            EPS {anime.episodes?.sub || '?'}
+                            EPS {typeof anime.episodes === 'object' ? (anime.episodes?.sub || anime.episodes?.eps || anime.episodes?.dub || '?') : (anime.episodes || '?')}
                         </span>
                         {isMobileActive && (
                             <span className="text-[9px] text-primary-400 font-bold uppercase tracking-wider animate-pulse">
@@ -511,7 +517,7 @@ export default function SchedulePage() {
                               </motion.div>
                           ) : schedule.length > 0 ? (
                               <motion.div key="grid" variants={containerVariants} initial="hidden" animate="show" className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-                                  {schedule.map((anime: any, idx: number) => <ScheduleCard key={`${anime.id}-${idx}`} anime={anime} />)}
+                                  {schedule.map((anime: any, idx: number) => <ScheduleCard key={`${anime.id || 'sched'}-${idx}`} anime={anime} />)}
                               </motion.div>
                           ) : (
                               <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} className="flex flex-col items-center justify-center py-24 border border-dashed border-white/10 rounded-3xl bg-white/[0.02]">
@@ -545,7 +551,7 @@ export default function SchedulePage() {
                         className="grid grid-cols-3 gap-x-3 gap-y-12 md:flex md:flex-row md:items-center md:justify-start md:gap-0"
                       >
                           {topChartData.length > 0 ? topChartData.map((anime: any, i: number) => (
-                              <div key={anime.id} className="md:contents [&:nth-child(3n+1):last-child]:col-start-2">
+                              <div key={`${anime.id || 'top'}-${i}`} className="md:contents [&:nth-child(3n+1):last-child]:col-start-2">
                                 <TopChartCard 
                                     anime={anime} 
                                     rank={i + 1} 
@@ -568,19 +574,19 @@ export default function SchedulePage() {
                   <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6">
                       <div className="bg-[#0a0a0a] border border-white/5 rounded-3xl p-6 shadow-xl">
                           <div className="flex items-center gap-3 mb-6"><div className="p-2 bg-green-900/20 rounded-lg text-green-500"><CheckCircle size={16} /></div><h4 className={`text-lg text-white font-lemon`}>COMPLETED</h4></div>
-                          <div className="space-y-3">{dashboard ? dashboard.completed.map((a: any, i: number) => <CompactAnimeCard key={i} anime={a} rank={i+1}/>) : <div className="h-40 bg-white/5 animate-pulse rounded-xl"/>}</div>
+                          <div className="space-y-3">{dashboard ? dashboard.completed.map((a: any, i: number) => <CompactAnimeCard key={`${a.id || 'comp'}-${i}`} anime={a} rank={i+1}/>) : <div className="h-40 bg-white/5 animate-pulse rounded-xl"/>}</div>
                       </div>
                       <div className="bg-[#0a0a0a] border border-white/5 rounded-3xl p-6 shadow-xl">
                           <div className="flex items-center gap-3 mb-6"><div className="p-2 bg-blue-900/20 rounded-lg text-blue-500"><PlusCircle size={16} /></div><h4 className={`text-lg text-white font-lemon`}>NEWLY ADDED</h4></div>
-                          <div className="space-y-3">{dashboard ? dashboard.newAdded.map((a: any, i: number) => <CompactAnimeCard key={i} anime={a}/>) : <div className="h-40 bg-white/5 animate-pulse rounded-xl"/>}</div>
+                          <div className="space-y-3">{dashboard ? dashboard.newAdded.map((a: any, i: number) => <CompactAnimeCard key={`${a.id || 'new'}-${i}`} anime={a}/>) : <div className="h-40 bg-white/5 animate-pulse rounded-xl"/>}</div>
                       </div>
                       <div className="bg-[#0a0a0a] border border-white/5 rounded-3xl p-6 shadow-xl">
                           <div className="flex items-center gap-3 mb-6"><div className="p-2 bg-purple-900/20 rounded-lg text-purple-500"><Layers size={16} /></div><h4 className={`text-lg text-white font-lemon`}>JUST UPDATED</h4></div>
-                          <div className="space-y-3">{dashboard ? dashboard.released.map((a: any, i: number) => <CompactAnimeCard key={i} anime={a}/>) : <div className="h-40 bg-white/5 animate-pulse rounded-xl"/>}</div>
+                          <div className="space-y-3">{dashboard ? dashboard.released.map((a: any, i: number) => <CompactAnimeCard key={`${a.id || 'rel'}-${i}`} anime={a}/>) : <div className="h-40 bg-white/5 animate-pulse rounded-xl"/>}</div>
                       </div>
                       <div className="bg-[#0a0a0a] border border-white/5 rounded-3xl p-6 shadow-xl">
                           <div className="flex items-center gap-3 mb-6"><div className="p-2 bg-yellow-900/20 rounded-lg text-yellow-500"><Star size={16} /></div><h4 className={`text-lg text-white font-lemon`}>FAN FAVORITES</h4></div>
-                          <div className="space-y-3">{dashboard ? dashboard.popular.map((a: any, i: number) => <CompactAnimeCard key={i} anime={a} rank={i+1}/>) : <div className="h-40 bg-white/5 animate-pulse rounded-xl"/>}</div>
+                          <div className="space-y-3">{dashboard ? dashboard.popular.map((a: any, i: number) => <CompactAnimeCard key={`${a.id || 'pop'}-${i}`} anime={a} rank={i+1}/>) : <div className="h-40 bg-white/5 animate-pulse rounded-xl"/>}</div>
                       </div>
                   </div>
               </section>

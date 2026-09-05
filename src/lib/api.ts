@@ -493,8 +493,6 @@ export class AnimeAPI_Anikoto {
     }
 
     static async getStatus(type: 'currently-airing' | 'finished-airing' | 'not-yet-aired' = 'currently-airing', page = 1) {
-        const directRes = await fetchAnikoto(`/status/${type}`, { page });
-        if (directRes && (Array.isArray(directRes) ? directRes.length > 0 : directRes.results?.length > 0)) return directRes;
         return fetchAnikoto('/status', { type, page });
     }
 
@@ -946,17 +944,18 @@ export class AnimeService {
             let targetDayName: string | null = null;
             const parsed = new Date(date);
             if (!isNaN(parsed.getTime())) {
-                targetLabel = parsed.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: '2-digit' });
-                targetDayName = parsed.toLocaleDateString('en-US', { weekday: 'long' });
+                targetLabel = parsed.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: '2-digit' }).replace(/,/g, '').trim().toLowerCase();
+                targetDayName = parsed.toLocaleDateString('en-US', { weekday: 'long' }).toLowerCase();
             }
 
-            const day = data.find((d: any) => 
-                d && (
-                    d.day === targetLabel || 
-                    d.day?.toLowerCase() === targetLabel?.toLowerCase() ||
-                    d.day?.toLowerCase() === targetDayName?.toLowerCase()
-                )
-            ) || data[0];
+            const day = data.find((d: any) => {
+                if (!d || !d.day) return false;
+                const dDay = String(d.day).replace(/,/g, '').trim().toLowerCase();
+                return (
+                    (targetLabel && dDay === targetLabel) ||
+                    (targetDayName && dDay.includes(targetDayName.slice(0, 3)))
+                );
+            }) || data[0];
 
             const animes = Array.isArray(day?.animes) ? day.animes : [];
 

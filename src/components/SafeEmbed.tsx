@@ -1,5 +1,5 @@
 "use client";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Play, Loader2 } from "lucide-react";
 import IframeAdShield from "@/components/Player/IframeAdShield";
 
@@ -10,6 +10,11 @@ interface SafeEmbedProps {
 export default function SafeEmbed({ url }: SafeEmbedProps) {
   const [hasStarted, setHasStarted] = useState(false);
   const [iframeLoading, setIframeLoading] = useState(true);
+
+  // Reset loading state whenever stream URL changes
+  useEffect(() => {
+    setIframeLoading(true);
+  }, [url]);
 
   // No sandbox attribute = No restrictions.
   // The player has full control, so ads will show, but the video will definitely play.
@@ -31,10 +36,12 @@ export default function SafeEmbed({ url }: SafeEmbedProps) {
           className="absolute inset-0 w-full h-full"
         >
           <iframe
+            key={url}
             src={url}
             onLoad={() => setIframeLoading(false)}
             className="w-full h-full border-0"
             allowFullScreen
+            referrerPolicy="origin"
             loading="lazy"
             allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
             title="Embed Player"
