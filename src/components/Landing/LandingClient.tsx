@@ -433,20 +433,17 @@ export default function LandingClient() {
         return;
       }
 
-      // 2. On Main Web Project (https://shadow-garden.site):
-      // Web behavior remains 100% untouched as before
-      if (!isNativeContainer && hasAuthHint) {
-        router.replace('/home');
-        return;
-      }
-
-      // If no hint, do the full API check (Fallback)
+      // 2. Always do the full API check — the hint approach caused permanent
+      // redirects for logged-out users since the hint was never cleared on logout.
       try {
         const user = await UserAPI.getCurrentUser();
         if (user) {
           if (typeof window !== 'undefined') localStorage.setItem('shadow_auth_hint', 'true');
           router.replace('/home'); 
           return;
+        } else {
+          // User is not logged in — clear stale hint so future checks stay accurate
+          if (typeof window !== 'undefined') localStorage.removeItem('shadow_auth_hint');
         }
       } catch (authErr) {
         console.warn("Auth initialization check failed:", authErr);
