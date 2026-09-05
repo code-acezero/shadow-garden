@@ -174,6 +174,27 @@ export default function RootLayout({
 
   return (
     <html lang="en" className={`dark ${fontVariables}`} suppressHydrationWarning>
+      <head>
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `
+              (function() {
+                try {
+                  if ('caches' in window) {
+                    caches.keys().then(function(keys) {
+                      keys.forEach(function(k) {
+                        if (k.indexOf('v6') === -1) {
+                          caches.delete(k);
+                        }
+                      });
+                    });
+                  }
+                } catch(e) {}
+              })();
+            `,
+          }}
+        />
+      </head>
       <body className={`font-sans bg-[#050505] text-foreground antialiased selection:bg-primary-900/30 selection:text-primary-50`} suppressHydrationWarning>
         
         {/* JSON-LD Script */}

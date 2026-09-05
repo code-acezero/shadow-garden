@@ -11,14 +11,12 @@ export default function PWAInstaller() {
   useEffect(() => {
     if (typeof window === 'undefined') return;
 
-    // Purge any legacy caches immediately on app bootstrap
+    // Purge any caches immediately on app bootstrap to prevent stale chunk errors
     if ('caches' in window) {
       caches.keys().then((keys) => {
         keys.forEach((key) => {
-          if (key !== 'shadow-garden-pwa-v5') {
-            console.log('[PWA] Purging outdated cache store:', key);
-            caches.delete(key);
-          }
+          console.log('[PWA] Purging cache store:', key);
+          caches.delete(key);
         });
       });
     }

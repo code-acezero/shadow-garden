@@ -9,10 +9,6 @@ export default function GlobalError({
   error: Error & { digest?: string };
   reset: () => void;
 }) {
-  useEffect(() => {
-    console.error("Critical Global Error caught by Next.js:", error);
-  }, [error]);
-
   const handleReload = async () => {
     if (typeof window !== 'undefined') {
       try {
@@ -33,6 +29,21 @@ export default function GlobalError({
       window.location.href = '/?t=' + Date.now();
     }
   };
+
+  useEffect(() => {
+    console.error("Critical Global Error caught by Next.js:", error);
+    if (typeof window !== 'undefined') {
+      const msg = error?.message || '';
+      const isChunkOrSwError = msg.includes('Loading chunk') || msg.includes('ChunkLoadError') || msg.includes('addAll');
+      const lockKey = 'global_error_autoheal';
+      const last = sessionStorage.getItem(lockKey);
+      const now = Date.now();
+      if (isChunkOrSwError && (!last || now - parseInt(last, 10) > 10000)) {
+        sessionStorage.setItem(lockKey, now.toString());
+        handleReload();
+      }
+    }
+  }, [error]);
 
   return (
     <html lang="en">
