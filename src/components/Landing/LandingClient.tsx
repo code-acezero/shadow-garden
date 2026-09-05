@@ -375,11 +375,10 @@ export default function LandingClient() {
     const mobileCheck = window.innerWidth < 768;
     setIsMobile(mobileCheck);
 
-    // Safety fallback: reveal landing UI within 1200ms
-    // so visitors never get stranded on a blank canvas or prolonged intro
+    // Safety fallback: reveal landing UI after 25s only if WebGL / 3D portal never triggers scene ready
     const uiTimer = setTimeout(() => {
       setShowLandingUI(true);
-    }, 1200);
+    }, 25000);
 
     const pwaHandler = (e: any) => {
       e.preventDefault();

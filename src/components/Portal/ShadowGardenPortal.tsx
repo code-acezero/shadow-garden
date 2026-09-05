@@ -1484,9 +1484,9 @@ export default function ShadowGardenPortal({
     onSceneReady 
 }: Props) {
     const [mounted, setMounted] = useState(false);
-    const [appState, setAppState] = useState<AppState>('running');
+    const [appState, setAppState] = useState<AppState>('checking');
     const [gender, setGender] = useState<Gender | null>(null);
-    const [stage, setStage] = useState<AnimationStage>('idle');
+    const [stage, setStage] = useState<AnimationStage>('loading');
     const [whiteout, setWhiteout] = useState(false);
     const [whiteoutOpacity, setWhiteoutOpacity] = useState(0.45);
     const [whiteoutProgress, setWhiteoutProgress] = useState(0);
@@ -1543,15 +1543,11 @@ export default function ShadowGardenPortal({
         const isSkipActive = neverAsk === 'true' || (pauseUntil && parseInt(pauseUntil) > now);
 
         if (!hasAudioPermit) {
-            setAppState('running');
-            setStage('idle');
-            onSceneReadyRef.current?.();
+            setAppState('audio_permit');
         } else if (isSkipActive) {
             triggerSkip(); 
         } else {
-            setAppState('running');
-            setStage('idle');
-            onSceneReadyRef.current?.();
+            setAppState('cinematic_intro');
         }
     }, [triggerSkip]);
 
