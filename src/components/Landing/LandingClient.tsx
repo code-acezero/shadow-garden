@@ -19,8 +19,13 @@ import { Button } from '@/components/ui/button';
 import { sfx } from '@/lib/audioManager'; 
 import AuthModal from '@/components/Auth/AuthModal';
 import SearchBar from '@/components/Anime/SearchBar';
-import ShadowGardenPortal from '@/components/Portal/ShadowGardenPortal';
+import dynamic from 'next/dynamic';
 import { getRandomAvatar, getRandomGuestName } from '@/components/User/AvatarSelectorModal';
+
+const ShadowGardenPortal = dynamic(
+  () => import('@/components/Portal/ShadowGardenPortal'),
+  { ssr: false }
+);
 import { Capacitor } from '@capacitor/core';
 import CuteShareBar from '@/components/Home/CuteShareBar';
 import { formatAnimeTitle } from '@/lib/utils';

@@ -1483,6 +1483,7 @@ export default function ShadowGardenPortal({
     onComplete, 
     onSceneReady 
 }: Props) {
+    const [mounted, setMounted] = useState(false);
     const [appState, setAppState] = useState<AppState>('running');
     const [gender, setGender] = useState<Gender | null>(null);
     const [stage, setStage] = useState<AnimationStage>('idle');
@@ -1493,6 +1494,10 @@ export default function ShadowGardenPortal({
     const [showBracePopup, setShowBracePopup] = useState(false);
     const [shake, setShake] = useState(0);
     const [skipped, setSkipped] = useState(false);
+
+    useEffect(() => {
+        setMounted(true);
+    }, []);
     
     const [quality, setQuality] = useState<PerformanceTier>(() => {
         if (typeof window !== 'undefined') return detectPerformanceTier();
@@ -1753,7 +1758,7 @@ export default function ShadowGardenPortal({
         }, 13500); // Complete after 1.5 seconds
     }, [onComplete]);
 
-    if (skipped) return null;
+    if (!mounted || skipped) return null;
 
     if (appState === 'audio_permit') {
         return <AudioPermissionModal onGrant={handleGrantAudio} />;

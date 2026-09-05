@@ -1,6 +1,6 @@
 'use client';
 
-import React from 'react';
+import React, { useEffect } from 'react';
 
 export default function GlobalError({
   error,
@@ -9,6 +9,19 @@ export default function GlobalError({
   error: Error & { digest?: string };
   reset: () => void;
 }) {
+  useEffect(() => {
+    console.error("Critical Global Error caught by Next.js:", error);
+  }, [error]);
+
+  const handleReload = () => {
+    if (typeof window !== 'undefined') {
+      try {
+        localStorage.removeItem('shadow_auth_hint');
+      } catch (_) {}
+      window.location.href = '/';
+    }
+  };
+
   return (
     <html lang="en">
       <body className="m-0 p-0 bg-[#050508] text-white font-sans">
@@ -21,16 +34,30 @@ export default function GlobalError({
             <h1 className="text-3xl font-extrabold tracking-tight text-white mb-2">
               Something went wrong
             </h1>
-            <p className="text-zinc-400 text-sm mb-8 max-w-xs leading-relaxed">
+            <p className="text-zinc-400 text-sm mb-4 max-w-xs leading-relaxed">
               A critical error occurred. Please try reloading the app.
             </p>
 
-            <button
-              onClick={() => reset()}
-              className="py-2.5 px-6 rounded-full bg-purple-600 hover:bg-purple-500 text-white font-bold text-xs tracking-wide shadow-[0_0_20px_rgba(168,85,247,0.4)] active:scale-95 transition-all cursor-pointer"
-            >
-              Try again
-            </button>
+            {error?.message && (
+              <p className="text-xs text-red-400/80 font-mono mb-6 px-3 py-2 bg-red-950/30 border border-red-500/20 rounded-lg max-w-sm break-words">
+                {error.message}
+              </p>
+            )}
+
+            <div className="flex items-center gap-3">
+              <button
+                onClick={() => reset()}
+                className="py-2.5 px-6 rounded-full bg-purple-600 hover:bg-purple-500 text-white font-bold text-xs tracking-wide shadow-[0_0_20px_rgba(168,85,247,0.4)] active:scale-95 transition-all cursor-pointer"
+              >
+                Try again
+              </button>
+              <button
+                onClick={handleReload}
+                className="py-2.5 px-6 rounded-full bg-white/10 hover:bg-white/20 text-white font-bold text-xs tracking-wide border border-white/20 active:scale-95 transition-all cursor-pointer"
+              >
+                Reload App
+              </button>
+            </div>
           </div>
         </div>
       </body>
