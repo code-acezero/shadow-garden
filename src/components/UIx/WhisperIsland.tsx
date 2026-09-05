@@ -954,13 +954,12 @@ function WhisperIslandContent() {
                                 onClick={() => window.dispatchEvent(new CustomEvent('shadow-toggle-alpha'))} 
                                 className={cn(
                                     `relative overflow-hidden flex items-center justify-center group liquid-glass hover:bg-white/10 text-white font-bold rounded-full transition-all shrink-0`,
-                                    `w-11 h-11 md:w-12 md:h-12 sm:w-auto sm:px-3 sm:gap-2 aspect-square sm:aspect-auto p-0`
+                                    `w-11 h-11 md:w-12 md:h-12 aspect-square p-0`
                                 )}
                             >
                                 <div className="absolute inset-0 overflow-hidden pointer-events-none rounded-full"><LightWave trigger={logoState} delay={0.6} /></div>
                                 
-                                <img src="/images/alpha/alpha-av.png" alt="Alpha" className="w-7 h-7 rounded-full object-cover shrink-0" onError={(e) => { e.currentTarget.style.display = 'none'; e.currentTarget.nextElementSibling?.classList.remove('hidden'); }} />
-                                <span className="hidden sm:inline text-[9px] tracking-widest uppercase">ALPHA</span>
+                                <img src="/images/alpha/alpha-av.png" alt="Alpha" className="w-7 h-7 rounded-full object-cover shrink-0" onError={(e) => { e.currentTarget.style.display = 'none'; }} />
                             </button>
                             
                             {/* Notification Button */}

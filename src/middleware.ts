@@ -46,10 +46,7 @@ export async function middleware(request: NextRequest) {
   const isAuthPage = request.nextUrl.pathname === '/'; // The Landing Page
   // const isDashboardPage = request.nextUrl.pathname.startsWith('/home');
 
-  // 1. If User is Logged In -> Kick them off the Landing Page (Send to Home)
-  if (isAuthPage && user) {
-    return NextResponse.redirect(new URL('/home', request.url));
-  }
+  // Landing page is publicly accessible for all users (logged in or not)
 
   // 2. Optional: Protect Dashboard
   /* if (request.nextUrl.pathname.startsWith('/home') && !user) {
