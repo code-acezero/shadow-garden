@@ -1,4 +1,4 @@
-const CACHE_NAME = 'shadow-garden-pwa-v4';
+const CACHE_NAME = 'shadow-garden-pwa-v5';
 const STATIC_ASSETS = [
   '/manifest.json',
   '/icon.svg',
@@ -7,10 +7,11 @@ const STATIC_ASSETS = [
 ];
 
 self.addEventListener('install', (event) => {
+  self.skipWaiting();
   event.waitUntil(
     caches.open(CACHE_NAME).then((cache) => {
       return cache.addAll(STATIC_ASSETS);
-    }).then(() => self.skipWaiting())
+    })
   );
 });
 
@@ -36,8 +37,13 @@ self.addEventListener('message', (event) => {
 });
 
 self.addEventListener('fetch', (event) => {
-  // Pass through non-GET requests and APIs dynamically
-  if (event.request.method !== 'GET' || event.request.url.includes('/api/')) {
+  // Pass through non-GET, APIs, and Next.js internal bundles directly to the browser / CDN
+  // NEVER intercept or cache Next.js chunks in the Service Worker to avoid version mismatch 404s
+  if (
+    event.request.method !== 'GET' ||
+    event.request.url.includes('/api/') ||
+    event.request.url.includes('/_next/')
+  ) {
     return;
   }
 
@@ -67,7 +73,7 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // 2. Static Assets (Images, Icons, Fonts): Stale-While-Revalidate
+  // 2. Static Assets (Images, Icons, Favicons): Stale-While-Revalidate
   event.respondWith(
     caches.match(event.request).then((cachedResponse) => {
       const fetchPromise = fetch(event.request).then((networkResponse) => {

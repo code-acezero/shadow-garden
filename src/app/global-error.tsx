@@ -17,6 +17,7 @@ export default function GlobalError({
     if (typeof window !== 'undefined') {
       try {
         localStorage.removeItem('shadow_auth_hint');
+        sessionStorage.clear();
         if ('caches' in window) {
           const keys = await caches.keys();
           await Promise.all(keys.map(k => caches.delete(k)));
@@ -28,7 +29,8 @@ export default function GlobalError({
           }
         }
       } catch (_) {}
-      window.location.reload();
+      // Force fresh fetch bypassing browser disk cache
+      window.location.href = '/?t=' + Date.now();
     }
   };
 
@@ -61,12 +63,12 @@ export default function GlobalError({
               >
                 Try again
               </button>
-              <button
-                onClick={handleReload}
+              <a
+                href="/home"
                 className="py-2.5 px-6 rounded-full bg-white/10 hover:bg-white/20 text-white font-bold text-xs tracking-wide border border-white/20 active:scale-95 transition-all cursor-pointer"
               >
-                Reload App
-              </button>
+                Go to Home
+              </a>
             </div>
           </div>
         </div>

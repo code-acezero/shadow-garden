@@ -16,6 +16,7 @@ import GuildBoardPopupRenderer from '@/components/UIx/GuildBoardPopupRenderer';
 import AnalyticsTracker from '@/components/Analytics/AnalyticsTracker';
 import LiquidGlassSplashScreen from '@/components/PWA/LiquidGlassSplashScreen';
 import PWAInstaller from '@/components/PWA/PWAInstaller';
+import ChunkErrorRecovery from '@/components/Utils/ChunkErrorRecovery';
 
 // Import fonts from your library (Optimized: These are just variable definitions now)
 import { 
@@ -186,6 +187,9 @@ export default function RootLayout({
 
         {/* PWA Service Worker & Install Prompt */}
         <PWAInstaller />
+
+        {/* Automatic ChunkLoadError Self-Healing */}
+        <ChunkErrorRecovery />
 
         {/* Global Navigation Loader */}
         <Suspense fallback={null}>

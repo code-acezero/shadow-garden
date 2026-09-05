@@ -3,45 +3,75 @@
 import { useEffect } from 'react';
 
 /**
- * Silent PWA installer — registers the service worker and captures the
- * browser's native beforeinstallprompt event so Chrome/Edge can show its
- * own install banner. No custom UI is rendered.
+ * PWAInstaller
+ * Handles service worker lifecycle, automatic skipWaiting, legacy cache cleanup,
+ * and standard PWA install prompts.
  */
 export default function PWAInstaller() {
   useEffect(() => {
-    // Register Service Worker with automatic update & legacy cache cleanup
-    if (typeof window !== 'undefined' && 'serviceWorker' in navigator) {
+    if (typeof window === 'undefined') return;
+
+    // Purge any legacy caches immediately on app bootstrap
+    if ('caches' in window) {
+      caches.keys().then((keys) => {
+        keys.forEach((key) => {
+          if (key !== 'shadow-garden-pwa-v5') {
+            console.log('[PWA] Purging outdated cache store:', key);
+            caches.delete(key);
+          }
+        });
+      });
+    }
+
+    // Register Service Worker with automatic update & claim
+    if ('serviceWorker' in navigator) {
       navigator.serviceWorker.register('/sw.js').then((reg) => {
+        // Check for updates immediately
         reg.update();
+
+        // If a worker is already waiting, tell it to take over
+        if (reg.waiting) {
+          reg.waiting.postMessage({ type: 'SKIP_WAITING' });
+        }
+
+        reg.addEventListener('updatefound', () => {
+          const newWorker = reg.installing;
+          if (newWorker) {
+            newWorker.addEventListener('statechange', () => {
+              if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+                newWorker.postMessage({ type: 'SKIP_WAITING' });
+              }
+            });
+          }
+        });
       }).catch((err) => {
         console.warn('[PWA] ServiceWorker registration failed:', err);
       });
 
-      // Automatically purge legacy broken caches if found in client storage
-      if ('caches' in window) {
-        caches.keys().then((keys) => {
-          keys.forEach((key) => {
-            if (key.includes('v1') || key.includes('v2') || key.includes('v3')) {
-              caches.delete(key);
-            }
-          });
-        });
-      }
+      // Reload when new SW activates and claims clients
+      let refreshing = false;
+      navigator.serviceWorker.addEventListener('controllerchange', () => {
+        if (!refreshing) {
+          refreshing = true;
+          console.log('[PWA] New Service Worker activated. Refreshing page...');
+          window.location.reload();
+        }
+      });
     }
 
-    // Allow the browser to show its own native install prompt — do NOT call
-    // e.preventDefault() so the browser banner appears automatically.
-    const handleBeforeInstallPrompt = (_e: Event) => {
-      // intentionally not calling e.preventDefault()
-      // the browser will show its native install UI on its own
+    // Allow native install prompt
+    const handleBeforeInstallPrompt = (e: Event) => {
+      e.preventDefault();
+      (window as any).__pwaInstallPrompt = e;
+      window.dispatchEvent(new CustomEvent('pwa-prompt-ready'));
     };
 
     window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+
     return () => {
       window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
     };
   }, []);
 
-  // Render nothing
   return null;
 }

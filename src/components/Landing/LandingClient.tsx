@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, Suspense } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { motion, AnimatePresence, useScroll, useTransform } from 'framer-motion';
@@ -23,8 +23,30 @@ import dynamic from 'next/dynamic';
 import { getRandomAvatar, getRandomGuestName } from '@/components/User/AvatarSelectorModal';
 
 const ShadowGardenPortal = dynamic(
-  () => import('@/components/Portal/ShadowGardenPortal'),
-  { ssr: false }
+  () =>
+    import('@/components/Portal/ShadowGardenPortal').catch((err) => {
+      console.warn('[Landing] Chunk load failed for ShadowGardenPortal, self-healing:', err);
+      if (typeof window !== 'undefined') {
+        const lockKey = 'shadow_portal_chunk_reload';
+        const last = sessionStorage.getItem(lockKey);
+        const now = Date.now();
+        if (!last || now - parseInt(last, 10) > 10000) {
+          sessionStorage.setItem(lockKey, now.toString());
+          if ('caches' in window) {
+            caches.keys().then(keys => Promise.all(keys.map(k => caches.delete(k)))).finally(() => {
+              window.location.href = window.location.pathname + '?t=' + Date.now();
+            });
+            return { default: () => null };
+          }
+          window.location.href = window.location.pathname + '?t=' + Date.now();
+        }
+      }
+      return { default: () => null };
+    }),
+  { 
+    ssr: false,
+    loading: () => null
+  }
 );
 import { Capacitor } from '@capacitor/core';
 import CuteShareBar from '@/components/Home/CuteShareBar';
@@ -531,11 +553,13 @@ export default function LandingClient() {
         if (triggerEntry) handlePortalComplete();
       }}>
         <div className="fixed inset-0 z-0">
-          <ShadowGardenPortal 
-            startTransition={triggerEntry}
-            onComplete={handlePortalComplete}
-            onSceneReady={handleSceneReady}
-          />
+          <Suspense fallback={null}>
+            <ShadowGardenPortal 
+              startTransition={triggerEntry}
+              onComplete={handlePortalComplete}
+              onSceneReady={handleSceneReady}
+            />
+          </Suspense>
         </div>
       </PortalErrorBoundary>
 
