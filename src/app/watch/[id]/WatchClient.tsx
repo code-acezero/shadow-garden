@@ -1134,6 +1134,14 @@ function WatchContent() {
                 });
             }
 
+            // If found from history and completed, advance to next episode if user didn't specify ?ep= in URL
+            if (targetEpId && !paramEp && progressBuffer.current[targetEpId]?.is_completed && anime.episodes?.length > 0) {
+                const curIdx = anime.episodes.findIndex((e: any) => e.id === targetEpId || String(e.number) === targetEpId);
+                if (curIdx !== -1 && curIdx < anime.episodes.length - 1) {
+                    targetEpId = anime.episodes[curIdx + 1].id;
+                }
+            }
+
             // Safety Check: Prevent older format 'episodeId' cache from failing lookup
             if (targetEpId && anime.episodes?.length > 0) {
                 const epExists = anime.episodes.find((e: any) => e.id === targetEpId);
@@ -1141,13 +1149,13 @@ function WatchContent() {
                     const oldData = Object.values(progressBuffer.current).find((p: any) => p.episode_id === targetEpId) as any;
                     if (oldData && oldData.episode_number) {
                         const match = anime.episodes.find((e: any) => Number(e.number) === Number(oldData.episode_number));
-                        targetEpId = match ? match.id : anime.episodes[anime.episodes.length - 1].id;
+                        targetEpId = match ? match.id : anime.episodes[0].id;
                     } else {
-                        targetEpId = anime.episodes[anime.episodes.length - 1].id;
+                        targetEpId = anime.episodes[0].id;
                     }
                 }
             } else if (!targetEpId && anime.episodes?.length > 0) {
-                targetEpId = anime.episodes[anime.episodes.length - 1].id;
+                targetEpId = anime.episodes[0].id;
             }
 
             if (targetEpId && !currentEpId) setCurrentEpId(targetEpId);

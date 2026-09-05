@@ -14,6 +14,7 @@ const DonghuaSection = memo(function DonghuaSection({ title, items }: { title: s
     
     // Memoize sanitized results to avoid re-mapping on every parent re-render
     const sanitizedResults = useMemo(() => {
+        const isLatestSection = title.toLowerCase().includes('latest');
         return items.map(anime => {
             let rawUrl: string = anime.poster || anime.image || "";
             let finalUrl = rawUrl;
@@ -23,6 +24,8 @@ const DonghuaSection = memo(function DonghuaSection({ title, items }: { title: s
             
             const rawSub = (typeof anime.episodes === 'object' ? anime.episodes.sub : anime.sub) || 0;
             const rawTotal = anime.totalEpisodes || anime.episodes || 0;
+            const targetEp = isLatestSection ? (rawSub || rawTotal || 0) : 0;
+            const watchParam = targetEp > 0 ? `?ep=${targetEp}` : '';
             
             return {
                 ...anime,
@@ -38,10 +41,10 @@ const DonghuaSection = memo(function DonghuaSection({ title, items }: { title: s
                 sub: rawSub > 0 ? rawSub : null,
                 dub: null,
                 episode: rawSub || rawTotal || 0,
-                targetRoute: `/donghua-watch/${anime.id}`
+                targetRoute: `/donghua-watch/${anime.id}${watchParam}`
             };
         });
-    }, [items]);
+    }, [items, title]);
 
     return (
         <section className="w-full px-4">

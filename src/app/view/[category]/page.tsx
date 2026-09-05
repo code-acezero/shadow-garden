@@ -94,12 +94,19 @@ function ViewAllContent() {
             <SimpleGridSkeleton />
         ) : (
           <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-4 w-full">
-            {data?.results?.map((anime: any) => (
-              <AnimeCard 
-                key={anime.id} 
-                anime={anime} 
-              />
-            ))}
+            {data?.results?.map((anime: any) => {
+              const isRecentCategory = ['recently-updated', 'recent', 'latest-updated', 'updated-all', 'latest-episodes'].includes(category);
+              const latestEp = anime.episodes?.sub || anime.episodes?.dub || anime.episodes?.eps || 0;
+              const cardAnime = isRecentCategory && latestEp > 0 
+                ? { ...anime, targetRoute: `/watch/${anime.id}?ep=${latestEp}` }
+                : anime;
+              return (
+                <AnimeCard 
+                  key={anime.id} 
+                  anime={cardAnime} 
+                />
+              );
+            })}
           </div>
         )}
 

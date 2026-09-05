@@ -72,9 +72,11 @@ export default function HindiAnimeCard({ anime }: { anime: any }) {
     const title = anime.title || "Unknown Title";
     const type = anime.type || "HINDI";
     const epCount = anime.episode || anime.latestEpisode || anime.totalEpisodes || anime.sub || anime.dub || "?";
-    const epParam = (epCount && epCount !== '?' && epCount !== 0 && epCount !== '0') ? `?ep=${epCount}` : '';
     const baseTarget = anime.targetRoute || `/hindi-watch/${anime.id}`;
-    const targetRoute = baseTarget.includes('?ep=') ? baseTarget : `${baseTarget}${epParam}`;
+    let targetRoute = baseTarget;
+    if (!anime.targetRoute && anime.episodeId) {
+      targetRoute = `${baseTarget}?ep=${anime.episodeId}`;
+    }
 
     return { poster: cleanPoster, title, type, targetRoute, epCount, dataId: anime.dataId };
   }, [anime]);
