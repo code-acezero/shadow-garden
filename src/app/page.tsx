@@ -2,6 +2,11 @@ import { Metadata } from 'next';
 import LandingClient from '@/components/Landing/LandingClient'; 
 import LandingErrorBoundary from '@/components/Landing/LandingErrorBoundary';
 
+// Force dynamic rendering so Vercel never serves stale prerendered HTML
+// across deployments (prevents chunk hash mismatch / ChunkLoadError 404s)
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
+
 // --- SERVER SIDE METADATA ---
 export const metadata: Metadata = {
   title: 'Shadow Garden | The Ultimate Sanctuary',
