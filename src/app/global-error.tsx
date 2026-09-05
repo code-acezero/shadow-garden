@@ -13,12 +13,22 @@ export default function GlobalError({
     console.error("Critical Global Error caught by Next.js:", error);
   }, [error]);
 
-  const handleReload = () => {
+  const handleReload = async () => {
     if (typeof window !== 'undefined') {
       try {
         localStorage.removeItem('shadow_auth_hint');
+        if ('caches' in window) {
+          const keys = await caches.keys();
+          await Promise.all(keys.map(k => caches.delete(k)));
+        }
+        if ('serviceWorker' in navigator) {
+          const regs = await navigator.serviceWorker.getRegistrations();
+          for (const reg of regs) {
+            await reg.unregister();
+          }
+        }
       } catch (_) {}
-      window.location.href = '/';
+      window.location.reload();
     }
   };
 
@@ -46,7 +56,7 @@ export default function GlobalError({
 
             <div className="flex items-center gap-3">
               <button
-                onClick={() => reset()}
+                onClick={handleReload}
                 className="py-2.5 px-6 rounded-full bg-purple-600 hover:bg-purple-500 text-white font-bold text-xs tracking-wide shadow-[0_0_20px_rgba(168,85,247,0.4)] active:scale-95 transition-all cursor-pointer"
               >
                 Try again

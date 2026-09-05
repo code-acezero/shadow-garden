@@ -1,5 +1,6 @@
 import { Metadata } from 'next';
-import LandingClient from '@/components/Landing/LandingClient'; // ✅ Moved to components folder
+import LandingClient from '@/components/Landing/LandingClient'; 
+import LandingErrorBoundary from '@/components/Landing/LandingErrorBoundary';
 
 // --- SERVER SIDE METADATA ---
 export const metadata: Metadata = {
@@ -8,7 +9,7 @@ export const metadata: Metadata = {
   openGraph: {
     title: 'Shadow Garden | The Ultimate Sanctuary',
     description: 'Join the guild. Access the archives. Become legend.',
-    images: ['/images/index/bg-1.jpg'], // Make sure this image exists in public/images/index/
+    images: ['/images/index/bg-1.jpg'], 
     type: 'website',
   },
   twitter: {
@@ -20,5 +21,9 @@ export const metadata: Metadata = {
 };
 
 export default function Page() {
-  return <LandingClient />;
+  return (
+    <LandingErrorBoundary>
+      <LandingClient />
+    </LandingErrorBoundary>
+  );
 }

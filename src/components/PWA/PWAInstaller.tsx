@@ -9,11 +9,24 @@ import { useEffect } from 'react';
  */
 export default function PWAInstaller() {
   useEffect(() => {
-    // Register Service Worker
+    // Register Service Worker with automatic update & legacy cache cleanup
     if (typeof window !== 'undefined' && 'serviceWorker' in navigator) {
-      navigator.serviceWorker.register('/sw.js').catch((err) => {
+      navigator.serviceWorker.register('/sw.js').then((reg) => {
+        reg.update();
+      }).catch((err) => {
         console.warn('[PWA] ServiceWorker registration failed:', err);
       });
+
+      // Automatically purge legacy broken caches if found in client storage
+      if ('caches' in window) {
+        caches.keys().then((keys) => {
+          keys.forEach((key) => {
+            if (key.includes('v1') || key.includes('v2') || key.includes('v3')) {
+              caches.delete(key);
+            }
+          });
+        });
+      }
     }
 
     // Allow the browser to show its own native install prompt — do NOT call
