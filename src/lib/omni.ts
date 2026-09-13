@@ -5,7 +5,7 @@
 import { ApiManager } from './api';
 
 const getOmniBase = () => `${ApiManager.getBaseUrl()}/hindidrama`;
-const getMoviesBase = () => `${ApiManager.getBaseUrl()}/hdmovies`;
+const getMoviesBase = () => '/api/hdmovies';
 
 async function fetchOmni<T = any>(
   endpoint: string,
@@ -19,19 +19,20 @@ async function fetchOmni<T = any>(
   const base = endpoint.startsWith('http') ? '' : (endpoint.includes('hdmovies') ? getMoviesBase() : getOmniBase());
   let targetUrl = endpoint.startsWith('http') ? endpoint : `${base}${endpoint.replace('/hdmovies', '')}${queryString}`;
   
-  const proxyUrl =
-    typeof window !== 'undefined'
-      ? `/api/proxy?url=${encodeURIComponent(targetUrl)}`
-      : targetUrl;
+  // Local Next.js API routes (like /api/hdmovies) should be fetched directly, not through /api/proxy
+  const isLocalApi = targetUrl.startsWith('/api/');
+  const fetchUrl = isLocalApi
+    ? targetUrl
+    : (typeof window !== 'undefined' ? `/api/proxy?url=${encodeURIComponent(targetUrl)}` : targetUrl);
 
   try {
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 20000);
-    const response = await fetch(proxyUrl, { signal: controller.signal, cache: 'no-store' });
+    const response = await fetch(fetchUrl, { signal: controller.signal, cache: 'no-store' });
     clearTimeout(timeoutId);
 
     if (!response.ok) {
-      if (retryCount < ApiManager.getAllUrls().length - 1) {
+      if (!isLocalApi && retryCount < ApiManager.getAllUrls().length - 1) {
         ApiManager.rotateUrl();
         return fetchOmni(endpoint, params, retryCount + 1);
       }

@@ -25,8 +25,10 @@ import { sfx } from '@/lib/audioManager';
 import PostShareModal from '@/components/Social/PostShareModal';
 
 import HindiPlayer, { HindiPlayerRef } from '@/components/Player/HindiPlayer';
+import { adManager } from '@/lib/adManager';
 import WatchListButton from '@/components/Watch/WatchListButton';
 import ShadowComments from '@/components/Comments/ShadowComments';
+import AdsterraNativeBanner from '@/components/Ads/AdsterraNativeBanner';
 import Footer from '@/components/Anime/Footer';
 import AnimeCard from '@/components/Anime/AnimeCard';
 import AuthModal from '@/components/Auth/AuthModal';
@@ -668,7 +670,12 @@ function WatchContent() {
   // --- STATE ---
   const [anime, setAnime] = useState<UniversalAnime | null>(null);
   const [isLoadingInfo, setIsLoadingInfo] = useState(true);
-          const [currentEpId, setCurrentEpId] = useState<string | null>(null);
+  const [currentEpId, setCurrentEpId] = useState<string | null>(null);
+  const [playerAspectRatio, setPlayerAspectRatio] = useState<number | null>(null);
+
+  useEffect(() => {
+    setPlayerAspectRatio(null);
+  }, [currentEpId]);
   const [streamUrl, setStreamUrl] = useState<string | null>(null);
   const [streamIsEmbed, setStreamIsEmbed] = useState<boolean>(false);
   const [streamReferer, setStreamReferer] = useState<string | null>(null);
@@ -869,6 +876,9 @@ function WatchContent() {
       failedServersRef.current = [];
       iframeElapsedRef.current = 0;
       if (iframeTimerRef.current) { clearInterval(iframeTimerRef.current); iframeTimerRef.current = null; }
+
+      // Trigger episode switch ad
+      adManager.triggerEpisodeSwitch(id);
       
       const ep = anime?.episodes.find(e => 
           String(e.id) === String(id) || 
@@ -1465,9 +1475,20 @@ function WatchContent() {
 
       <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.8 }} className={cn("w-full flex flex-col items-center relative px-4 pt-0 mt-0 z-10")}>
         <div onClick={() => updateSetting('dimMode', false)} className={cn("fixed inset-0 bg-black/95 transition-opacity duration-500 will-change-[opacity]", settings.dimMode ? 'opacity-100 pointer-events-auto cursor-pointer z-[40]' : 'opacity-0 pointer-events-none z-[40]')} />
-        <div className="w-full flex flex-col xl:grid xl:grid-cols-12 gap-8 items-start">
-            <div className="xl:col-span-8 w-full flex flex-col gap-2 order-1">
-                <div ref={playerContainerRef} tabIndex={0} className={cn("w-full bg-black/40 backdrop-blur-2xl rounded-[30px] overflow-hidden border border-white/10 shadow-[0_8px_32px_0_rgba(0,0,0,0.37)] relative outline-none focus:ring-1 focus:ring-white/10 transition-all duration-500", settings.dimMode ? "z-[60] ring-2 ring-primary-500/50 shadow-[0_0_80px_rgba(0,0,0,0.9)]" : "z-10")} onClick={handlePlayerClick} onKeyDown={(e) => { if (e.code === 'Space') { e.preventDefault(); } }}>
+        <div className="w-full flex flex-col xl:grid xl:grid-cols-12 gap-8 xl:items-stretch">
+            <div className="xl:col-span-8 w-full flex flex-col justify-between gap-2 order-1">
+                <div 
+                    ref={playerContainerRef} 
+                    tabIndex={0} 
+                    style={playerAspectRatio ? { aspectRatio: `${playerAspectRatio}` } : undefined}
+                    className={cn(
+                        "w-full bg-black/40 backdrop-blur-2xl rounded-[30px] overflow-hidden border border-white/10 relative outline-none focus:ring-1 focus:ring-white/10 transition-all duration-300", 
+                        !playerAspectRatio && "aspect-video",
+                        settings.dimMode ? "z-[60] ring-2 ring-orange-500/50 shadow-[0_0_80px_rgba(0,0,0,0.9)]" : "z-10"
+                    )} 
+                    onClick={handlePlayerClick} 
+                    onKeyDown={(e) => { if (e.code === 'Space') { e.preventDefault(); } }}
+                >
                 <AnimatePresence>
                     {showSkipNotification && (
                         <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 10 }} className="absolute bottom-32 lg:bottom-24 left-1/2 -translate-x-1/2 z-[70] bg-black/60 backdrop-blur-md border border-white/10 text-white px-3 py-1 rounded-full flex items-center gap-2 shadow-[0_0_15px_rgba(0,0,0,0.5)] pointer-events-none">
@@ -1479,6 +1500,7 @@ function WatchContent() {
                     <HindiPlayer 
                         key={currentEpId} 
                         ref={playerRef} 
+                        episodeId={currentEpId}
                         url={streamUrl || ""} 
                         isEmbed={streamIsEmbed}
                         isM3U8={!streamIsEmbed && !streamUrl.toLowerCase().includes('.mp4')}
@@ -1498,6 +1520,7 @@ function WatchContent() {
                         onPlay={handlePlaybackStart} 
                         onPause={handlePause} 
                         onSkipIntro={handleSkipIntro} 
+                        onAspectRatioChange={setPlayerAspectRatio}
                         onError={(err) => { console.warn("Player Error, forcing reload..."); failedServersRef.current.push(settings.server.toLowerCase()); setFetchTrigger(prev => prev + 1); }} 
                     /> 
                 ) : streamError ? ( <div className="w-full h-full flex items-center justify-center border-b border-white/5"><div className="text-zinc-500 text-sm font-bold uppercase tracking-widest">{streamError}</div></div> ) : ( <div className="w-full h-full flex items-center justify-center border-b border-white/5"><PlayerSkeleton /></div> )}
@@ -1508,7 +1531,7 @@ function WatchContent() {
                     {/* ROW 1: Main playback controls */}
                     <div className="flex w-full justify-between items-center gap-3">
                         <div className="flex items-center gap-3 w-full">
-                            <button disabled={!prevEpisode} onClick={() => prevEpisode && handleEpisodeClick(prevEpisode.id)} className={cn("flex items-center justify-center gap-2 px-4 h-8 rounded-full border text-[10px] font-black uppercase tracking-tighter transition-all duration-300 shadow-md shadow-black/40 whitespace-nowrap flex-1", prevEpisode ? "bg-white/5 border-white/10 text-zinc-300 hover:bg-orange-600 hover:border-orange-500 hover:text-white" : "opacity-10 border-white/5 text-zinc-600")}><SkipBack size={12}/> PREV</button>
+                            <button disabled={!prevEpisode} onClick={() => prevEpisode && handleEpisodeClick(prevEpisode.id)} className={cn("flex items-center justify-center gap-2 px-4 h-8 rounded-full border text-[10px] font-black uppercase tracking-tighter transition-all duration-300 shadow-md shadow-black/40 whitespace-nowrap flex-1", prevEpisode ? "bg-white/5 border-white/10 text-zinc-300 hover:bg-orange-600 hover:border-orange-500 hover:text-white" : "opacity-10 border-white/5 text-zinc-600")}><SkipBack size={12}/> PREV EP</button>
                             <button onClick={() => updateSetting('autoSkip', !settings.autoSkip)} className="flex items-center justify-center gap-2 px-4 h-8 rounded-full border border-white/5 bg-white/5 text-[10px] font-black uppercase tracking-tighter transition-all flex-1 hover:bg-white/10"><FastForward size={12} className={cn("transition-colors", settings.autoSkip ? "text-orange-500 shadow-[0_0_10px_orange]" : "text-zinc-500")}/><span className={cn(settings.autoSkip ? "text-white" : "text-zinc-500")}>SKIP</span></button>
                             <button onClick={() => updateSetting('autoPlay', !settings.autoPlay)} className="flex items-center justify-center gap-2 px-4 h-8 rounded-full border border-white/5 bg-white/5 text-[10px] font-black uppercase tracking-tighter transition-all flex-1 hover:bg-white/10"><Play size={12} className={cn("transition-colors", settings.autoPlay ? "text-orange-500 shadow-[0_0_10px_orange]" : "text-zinc-500")}/><span className={cn(settings.autoPlay ? "text-white" : "text-zinc-500")}>AUTO</span></button>
                             <button onClick={() => updateSetting('autoNext', !settings.autoNext)} className="flex items-center justify-center gap-2 px-4 h-8 rounded-full border border-white/5 bg-white/5 text-[10px] font-black uppercase tracking-tighter transition-all flex-1 hover:bg-white/10"><SkipForward size={12} className={cn("transition-colors", settings.autoNext ? "text-orange-500 shadow-[0_0_10px_orange]" : "text-zinc-500")}/><span className={cn(settings.autoNext ? "text-white" : "text-zinc-500")}>NEXT</span></button>
@@ -1610,9 +1633,9 @@ function WatchContent() {
             </motion.div>
             </div>
             
-            <div className="xl:col-span-4 w-full xl:h-[650px] h-auto bg-black/40 backdrop-blur-2xl rounded-[40px] border border-white/10 overflow-hidden flex flex-col shadow-[0_8px_32px_0_rgba(0,0,0,0.37)] relative z-20 order-2">
+            <div className="xl:col-span-4 w-full h-full min-h-[420px] max-h-[520px] xl:max-h-none bg-black/40 backdrop-blur-2xl rounded-[30px] border border-white/10 overflow-hidden flex flex-col relative z-20 order-2">
                 <div className="p-6 bg-white/5 border-b border-white/5 flex justify-between items-center shrink-0">
-                    <div className="flex items-center gap-3"><h3 className="font-black text-white flex items-center gap-2 uppercase text-sm font-lemon tracking-widest"><Layers size={18} className="text-orange-600"/> Episodes</h3><Badge className="bg-white/10 backdrop-blur-md border border-white/10 text-white font-black text-[10px] px-3 h-5 rounded-full shadow-lg">{anime.episodes.length}</Badge></div>
+                    <div className="flex items-center gap-3"><h3 className="font-black text-white flex items-center gap-2 uppercase text-sm font-lemon tracking-widest"><Layers size={18} className="text-orange-600"/> Episodes</h3><Badge className="bg-white/10 backdrop-blur-md border border-white/10 text-white font-black text-[10px] px-3 h-5 rounded-full">{anime.episodes.length}</Badge></div>
                     <div className="flex items-center gap-1 bg-black/50 p-1 rounded-lg border border-white/5">
                         <button onClick={() => setEpViewMode('compact')} className={cn("p-1.5 rounded-md transition-all", epViewMode === 'compact' ? "bg-zinc-800 text-white shadow-sm" : "text-zinc-500 hover:text-zinc-300")}><Grid size={14}/></button>
                         <button onClick={() => setEpViewMode('grid')} className={cn("p-1.5 rounded-md transition-all", epViewMode === 'grid' ? "bg-zinc-800 text-white shadow-sm" : "text-zinc-500 hover:text-zinc-300")}><LayoutGrid size={14}/></button>
@@ -1626,7 +1649,7 @@ function WatchContent() {
                         ))}
                     </div>
                 </div>
-                <div className="xl:flex-1 xl:overflow-y-auto h-auto p-2 shadow-inner custom-scrollbar overflow-x-hidden">
+                <div className="flex-1 min-h-0 overflow-y-auto p-2 custom-scrollbar overflow-x-hidden">
                     <LayoutGroup>
                         <motion.div layout className={cn("p-2 transition-all duration-500 ease-in-out grid", epViewMode === 'grid' ? 'grid-cols-5 gap-2.5' : epViewMode === 'compact' ? 'grid-cols-10 gap-1.5' : 'grid-cols-1 gap-2')}>
                             <AnimatePresence mode="popLayout">
@@ -1643,8 +1666,13 @@ function WatchContent() {
                     </LayoutGroup>
                 </div>
             </div>
+
+            {/* Full-width Ads Card Covering both player and episodes section */}
+            <div className="xl:col-span-12 w-full order-3">
+                <AdsterraNativeBanner location="watch" format="native" />
+            </div>
             
-            <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} transition={{ duration: 0.6, delay: 0.4 }} className="xl:col-span-8 w-full h-auto bg-black/40 backdrop-blur-2xl rounded-[40px] border border-white/10 overflow-hidden flex flex-col shadow-[0_8px_32px_0_rgba(0,0,0,0.37)] relative order-3">
+            <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} transition={{ duration: 0.6, delay: 0.4 }} className="xl:col-span-8 w-full h-auto bg-black/40 backdrop-blur-2xl rounded-[40px] border border-white/10 overflow-hidden flex flex-col relative order-4">
                     <div className="flex-shrink-0 relative p-8 flex flex-col sm:flex-row gap-10 bg-gradient-to-b from-orange-600/5 to-transparent">
                         <div className="relative shrink-0 lg:mx-0 flex flex-col gap-6 w-full lg:w-auto items-center lg:items-start text-center lg:text-left">
                             <div className="relative p-[3px] rounded-3xl overflow-hidden group/poster shadow-[0_0_40px_rgba(220,38,38,0.2)] sm:mx-0 w-fit">
@@ -1686,24 +1714,21 @@ function WatchContent() {
                             <div className="mt-auto pt-6 w-full flex justify-end"><StarRating animeId={animeId} initialRating={anime.stats.rating} /></div>
                         </div>
                     </div>
-                    <div className="flex-1 min-h-0 relative sm:px-10 mt-4 overflow-hidden flex flex-col">
-                        <div className="lg:hidden flex flex-wrap gap-2 justify-center mb-6">
-                             {anime.info.genres.map((g: string) => (<Link key={g} href={`/search?type=${g}`} className="text-[8px] px-3 py-1 bg-white/5 rounded-full text-zinc-500 border border-white/5 uppercase font-bold">{g}</Link>))}
+
+                    <div className="p-8 pt-0 border-t border-white/5 mt-auto flex flex-col gap-6">
+                        <div className="flex flex-col gap-2">
+                             <div className="flex items-center gap-2 text-zinc-400 text-xs font-black uppercase tracking-wider mb-1"><Info size={14} className="text-orange-600"/> Synopsis</div>
+                             <p className="text-sm text-zinc-300 font-medium leading-relaxed font-sans line-clamp-3">{anime.description}</p>
                         </div>
-                        <div className="lg:hidden flex justify-center mb-6"><StarRating animeId={animeId} initialRating={anime.stats.rating} /></div>
-                        <h4 className="text-[10px] font-black text-orange-600 uppercase tracking-[0.5em] mb-3 flex items-center gap-2 shadow-sm shrink-0"><Info size={12} className="shadow-sm"/> Synopsis</h4>
-                        <ScrollArea className="flex-1 pr-4 custom-scrollbar shadow-inner shadow-orange-900/5">
-                           <p className="text-zinc-400 text-sm leading-relaxed pb-8 antialiased font-medium opacity-90 drop-shadow-sm shadow-black" dangerouslySetInnerHTML={{ __html: anime.description }} />
-                        </ScrollArea>
-                        {/* RESTORED AND VISIBLE ON PC */}
-                        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 w-full mt-6 mb-6">
-                            <div className="bg-white/5 p-2 rounded-xl border border-white/5 flex flex-col items-center justify-center">
-                                <span className="text-[8px] font-black uppercase tracking-widest text-orange-600 mb-1">Aired</span>
-                                <span className="text-[9px] font-bold text-zinc-300 text-center">{anime.info.aired}</span>
-                            </div>
+                        
+                        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
                             <div className="bg-white/5 p-2 rounded-xl border border-white/5 flex flex-col items-center justify-center">
                                 <span className="text-[8px] font-black uppercase tracking-widest text-orange-600 mb-1">Premiered</span>
-                                <span className="text-[9px] font-bold text-zinc-300">{anime.info.premiered}</span>
+                                <span className="text-[10px] font-bold text-zinc-300 truncate w-full text-center">{anime.info.premiered || '?'}</span>
+                            </div>
+                            <div className="bg-white/5 p-2 rounded-xl border border-white/5 flex flex-col items-center justify-center">
+                                <span className="text-[8px] font-black uppercase tracking-widest text-orange-600 mb-1">Status</span>
+                                <span className="text-[10px] font-bold text-zinc-300 truncate w-full text-center">{anime.info.status || '?'}</span>
                             </div>
                             <DropdownMenu modal={false}>
                                 <DropdownMenuTrigger asChild>
@@ -1727,7 +1752,7 @@ function WatchContent() {
                     </div>
             </motion.div>
                   
-            <div className="xl:col-span-4 w-full h-[500px] xl:h-auto xl:relative xl:self-stretch mt-8 xl:mt-0 order-5 xl:order-4">
+            <div className="xl:col-span-4 w-full h-[500px] xl:h-auto xl:relative xl:self-stretch mt-8 xl:mt-0 order-5">
                 <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} transition={{ duration: 0.6, delay: 0.5 }} className="w-full h-full xl:absolute xl:inset-0 bg-[#0a0a0a] rounded-[40px] border border-white/5 overflow-hidden flex flex-col shadow-2xl shadow-orange-900/10">
                      <div className="p-6 bg-white/5 border-b border-white/5 flex items-center gap-3 shrink-0"><Wand2 size={18} className="text-orange-600"/><h3 className="font-black text-white text-sm font-lemon tracking-widest uppercase">Suggestions</h3></div>
                      <ScrollArea className="flex-1 custom-scrollbar">
@@ -1756,7 +1781,7 @@ function WatchContent() {
               
             {/* RELATED SECTION */}
             {anime.related && anime.related.length > 0 && (
-                <div className="xl:col-span-12 w-full mt-4 bg-[#0a0a0a] rounded-[40px] border border-white/5 p-6 md:p-8 shadow-2xl relative shadow-orange-900/10 order-4 xl:order-5">
+                <div className="xl:col-span-12 w-full mt-4 bg-[#0a0a0a] rounded-[40px] border border-white/5 p-6 md:p-8 shadow-2xl relative shadow-orange-900/10 order-6">
                       <div className="flex items-center gap-3 mb-6">
                           <Layers size={18} className="text-orange-600"/>
                           <h3 className="font-black text-white text-sm font-lemon tracking-widest uppercase">Family Lineage</h3>
@@ -1770,7 +1795,7 @@ function WatchContent() {
             )}
 
             {/* COMMENTS SECTION */}
-            <div className="xl:col-span-12 w-full mt-4 order-6">
+            <div className="xl:col-span-12 w-full mt-4 order-7">
                 <ShadowComments key={user?.id || 'guest'} episodeId={currentEpId || "general"} />
             </div>
         </div>

@@ -8,10 +8,11 @@ import {
   Wand2, AudioWaveform, PictureInPicture, Gauge,
   ChevronRight, ChevronLeft, MousePointerClick, 
   ChevronsLeft, ChevronsRight, Sun, MoveHorizontal, MoveVertical,
-  Loader2, Cast
+  Loader2, Cast, Radio
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { RunHappyPlayerLoader } from '@/components/UIx/SkeletonLoaders';
+import { adManager } from '@/lib/adManager';
 
 // --- 1. CONFIGURATION CONSTANTS ---
 const SUB_COLORS = { 
@@ -40,6 +41,7 @@ const notifyWhisper = (message: string, type: 'success' | 'error' | 'info' = 'su
 
 interface AnimePlayerProps {
   url: string;
+  episodeId?: string | null;
   title?: string;
   poster?: string;
   subtitles?: any[]; 
@@ -69,6 +71,7 @@ interface AnimePlayerProps {
   initialSpeed?: number;
   onSettingsChange?: (key: string, value: any) => void;
   onError?: (error: any) => void;
+  onAspectRatioChange?: (ratio: number) => void;
 }
 
 export interface AnimePlayerRef {
@@ -79,9 +82,9 @@ export interface AnimePlayerRef {
 }
 
 const AnimePlayer = forwardRef<AnimePlayerRef, AnimePlayerProps>(({ 
-  url, iframeUrl, isEmbed, title, poster, intro, outro, referer, isM3U8, autoSkip = false, autoPlay = true, startTime = 0, subtitles = [],
+  url, iframeUrl, isEmbed, episodeId, title, poster, intro, outro, referer, isM3U8, autoSkip = false, autoPlay = true, startTime = 0, subtitles = [],
   onEnded, onNext, onPlay, onSkipIntro, onProgress, onSeek, onInteract, onPause, onBuffer, 
-  controlsTimeout = 3000, onControlsChange, initialVolume = 1, initialSpeed = 1, onSettingsChange, onError
+  controlsTimeout = 3000, onControlsChange, initialVolume = 1, initialSpeed = 1, onSettingsChange, onError, onAspectRatioChange
 }, ref) => {
   // Refs
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -135,6 +138,15 @@ const AnimePlayer = forwardRef<AnimePlayerRef, AnimePlayerProps>(({
   
   const [seekOverlay, setSeekOverlay] = useState<string | null>(null);
   const [gestureOverlay, setGestureOverlay] = useState<{ icon: React.ReactNode, text: string } | null>(null);
+
+  // Mid-roll & Ad State
+  const [showMidRollPrompt, setShowMidRollPrompt] = useState(false);
+  const hasTriggeredMidRollRef = useRef(false);
+
+  useEffect(() => {
+    hasTriggeredMidRollRef.current = false;
+    setShowMidRollPrompt(false);
+  }, [url, episodeId]);
 
   // Settings State
   const [speed, setSpeed] = useState(initialSpeed);
@@ -464,8 +476,14 @@ const AnimePlayer = forwardRef<AnimePlayerRef, AnimePlayerProps>(({
   // --- HANDLERS ---
   const togglePlay = useCallback(() => {
     if (!videoRef.current) return;
-    if (videoRef.current.paused) { videoRef.current.play(); } else { videoRef.current.pause(); if(canSaveRef.current) onInteract?.(); }
-  }, [onInteract]);
+    if (videoRef.current.paused) { 
+      adManager.triggerFirstPlay(episodeId || title || 'episode');
+      videoRef.current.play(); 
+    } else { 
+      videoRef.current.pause(); 
+      if(canSaveRef.current) onInteract?.(); 
+    }
+  }, [episodeId, title, onInteract]);
 
   const seek = (amount: number) => {
     if (videoRef.current) { 
@@ -569,6 +587,25 @@ const AnimePlayer = forwardRef<AnimePlayerRef, AnimePlayerProps>(({
         setShowSkipIntro(true); 
       }
     } else setShowSkipIntro(false);
+
+    // Mid-roll ad check (at ~50% duration of episode)
+    const epIdent = episodeId || title || 'episode';
+    if (
+      !hasTriggeredMidRollRef.current &&
+      video.duration > 120 &&
+      (video.currentTime / video.duration) >= ((adManager.getConfig().midRollPercent || 50) / 100)
+    ) {
+      const config = adManager.getConfig();
+      if (config.enabled && config.smartlinkEnabled && config.smartlinkOnMidRoll && !adManager.isExempt()) {
+        if (!adManager.hasShownMidRoll(epIdent)) {
+          hasTriggeredMidRollRef.current = true;
+          video.pause();
+          setIsPlaying(false);
+          setShowMidRollPrompt(true);
+          showUI();
+        }
+      }
+    }
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
@@ -846,10 +883,10 @@ const AnimePlayer = forwardRef<AnimePlayerRef, AnimePlayerProps>(({
       ref={containerRef}
       tabIndex={0} 
       className={cn(
-        "group relative w-full min-h-[220px] sm:min-h-[280px] bg-black overflow-hidden font-sans select-none rounded-2xl shadow-2xl ring-1 ring-white/10 outline-none focus:outline-none focus-visible:ring-0 max-h-[80dvh]",
+        "group relative w-full h-full bg-black overflow-hidden font-sans select-none rounded-[inherit] shadow-2xl ring-1 ring-white/10 outline-none focus:outline-none focus-visible:ring-0",
         showControls ? "cursor-auto" : "cursor-none"
       )}
-      style={{ touchAction: 'none', aspectRatio: videoAspectRatio ? `${videoAspectRatio}` : '16 / 9' }} 
+      style={{ touchAction: 'none' }} 
       onClick={handleContainerClick} 
       onKeyDown={handleKeyDown}
       onMouseDown={handleMouseDown}
@@ -877,7 +914,10 @@ const AnimePlayer = forwardRef<AnimePlayerRef, AnimePlayerProps>(({
                 setDuration(videoRef.current.duration || 0);
                 if (videoRef.current.videoWidth && videoRef.current.videoHeight) {
                     const r = videoRef.current.videoWidth / videoRef.current.videoHeight;
-                    if (r > 0.3 && r < 3) setVideoAspectRatio(r);
+                    if (r > 0.3 && r < 3) {
+                        setVideoAspectRatio(r);
+                        onAspectRatioChange?.(r);
+                    }
                 }
                 if (startTime > 0 && !hasSeekedStartTimeRef.current) {
                     try {
@@ -972,6 +1012,42 @@ const AnimePlayer = forwardRef<AnimePlayerRef, AnimePlayerProps>(({
               <RunHappyPlayerLoader text="LOADING CRYSTALS..." transparent />
           </div>
       )}
+
+      {/* Mid-Roll Sponsored Intermission Prompt */}
+      {showMidRollPrompt && (
+        <div className="absolute inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-xl p-4 animate-in fade-in zoom-in-95 duration-200">
+          <div className="relative bg-white/8 backdrop-blur-3xl border border-white/15 rounded-[28px] p-6 sm:p-8 max-w-sm sm:max-w-md w-full text-center flex flex-col items-center gap-4 pointer-events-auto overflow-hidden">
+            {/* Glass shine overlay */}
+            <div className="absolute inset-0 bg-gradient-to-b from-white/10 via-transparent to-transparent pointer-events-none rounded-[28px]" />
+            {/* Top highlight line */}
+            <div className="absolute top-0 left-6 right-6 h-px bg-gradient-to-r from-transparent via-white/30 to-transparent" />
+
+            <div className="relative w-12 h-12 sm:w-14 sm:h-14 rounded-2xl bg-white/10 border border-white/15 flex items-center justify-center text-primary-400 backdrop-blur-sm">
+              <Radio size={26} className="animate-pulse" />
+            </div>
+            <div className="relative">
+              <span className="text-[10px] font-black uppercase tracking-[0.25em] text-primary-400">Sponsored Break</span>
+              <h3 className="text-xl sm:text-2xl font-black text-white font-lemon tracking-tight mt-1">Mid-Episode Break</h3>
+              <p className="text-xs text-zinc-300/80 mt-1.5 leading-relaxed font-sans">
+                Supporting Shadow Garden keeps all anime free in 1080p Ultra HD. Click below to continue your episode.
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                adManager.triggerMidRoll(episodeId || title || 'episode');
+                setShowMidRollPrompt(false);
+                videoRef.current?.play().then(() => setIsPlaying(true)).catch(() => {});
+              }}
+              className="relative w-full py-3.5 px-6 rounded-2xl bg-gradient-to-r from-primary-600 to-rose-600 hover:from-primary-500 hover:to-rose-500 text-white font-black text-xs sm:text-sm uppercase tracking-wider active:scale-95 transition-all flex items-center justify-center gap-2 cursor-pointer border border-white/20"
+            >
+              <Play size={18} fill="currentColor" /> Resume Episode
+            </button>
+            <span className="relative text-[10px] text-zinc-500 font-mono">Ad opens in a new background tab</span>
+          </div>
+        </div>
+      )}
       
       {/* Title Island with Cast */}
       <div className={cn("absolute top-2 md:top-4 left-1/2 -translate-x-1/2 z-40 transition-all duration-500 max-w-[90%] w-auto", showControls ? "opacity-100 translate-y-0" : "opacity-0 -translate-y-10")}>
@@ -1046,7 +1122,7 @@ const AnimePlayer = forwardRef<AnimePlayerRef, AnimePlayerProps>(({
                   <button onClick={(e) => { e.stopPropagation(); setActiveMenu(activeMenu === 'main' ? 'none' : 'main'); }} className={cn("hover:text-primary-500 transition-colors active:scale-90 group p-2 md:p-0", activeMenu !== 'none' && activeMenu !== 'audio' && activeMenu !== 'subs' && "text-primary-500")}><Settings size={20} className="md:w-5 md:h-5 group-hover:rotate-90 transition-transform duration-500" /></button>
                   
                      {activeMenu === 'main' && (
-                        <div className="absolute bottom-12 right-0 bg-zinc-950/90 backdrop-blur-3xl border border-white/10 ring-1 ring-white/10 rounded-2xl shadow-[0_8px_40px_rgba(0,0,0,0.8)] p-2 w-40 sm:w-48 max-h-[70%] h-auto min-h-[160px] overflow-y-auto scrollbar-hide z-[70] flex flex-col gap-1 animate-in slide-in-from-bottom-2">
+                        <div className="absolute bottom-12 right-0 bg-zinc-950/90 backdrop-blur-3xl border border-white/10 ring-1 ring-white/10 rounded-2xl shadow-[0_8px_40px_rgba(0,0,0,0.8)] p-2 w-40 sm:w-48 max-h-[280px] sm:max-h-[340px] overflow-y-auto scrollbar-hide z-[70] flex flex-col gap-1 animate-in slide-in-from-bottom-2">
                            <button onClick={(e)=>{e.stopPropagation(); setActiveMenu('quality')}} className="flex items-center justify-between w-full px-2.5 py-1.5 rounded-xl hover:bg-white/10 hover:shadow-inner text-left text-[10px] sm:text-xs font-bold transition-all"><div className="flex items-center gap-1.5"><Settings size={13}/> Quality</div><span className="text-zinc-400 text-[9px] sm:text-[10px] truncate ml-2">{currentQuality === -1 ? autoResolutionText : `${qualities.find(q => q.index === currentQuality)?.height}p`}</span></button>
                            <button onClick={(e)=>{e.stopPropagation(); setActiveMenu('speed')}} className="flex items-center justify-between w-full px-2.5 py-1.5 rounded-xl hover:bg-white/10 hover:shadow-inner text-left text-[10px] sm:text-xs font-bold transition-all"><div className="flex items-center gap-1.5"><Gauge size={13}/> Speed</div><span className="text-zinc-400 text-[9px] sm:text-[10px]">{speed}x</span></button>
                            <button onClick={(e)=>{e.stopPropagation(); setActiveMenu('gestures')}} className="flex items-center justify-between w-full px-2.5 py-1.5 rounded-xl hover:bg-white/10 hover:shadow-inner text-left text-[10px] sm:text-xs font-bold transition-all"><div className="flex items-center gap-1.5"><MousePointerClick size={13}/> Gestures</div><span className="text-zinc-400 uppercase text-[9px] sm:text-[10px]">{doubleTapMode}</span></button>
@@ -1060,46 +1136,46 @@ const AnimePlayer = forwardRef<AnimePlayerRef, AnimePlayerProps>(({
                         </div>
                      )}
                      {activeMenu === 'vGesture' && (
-                        <div className="absolute bottom-12 right-0 bg-zinc-950/90 backdrop-blur-3xl border border-white/10 ring-1 ring-white/10 rounded-2xl shadow-[0_8px_40px_rgba(0,0,0,0.8)] p-2 w-40 sm:w-48 max-h-[70%] h-auto min-h-[160px] overflow-y-auto scrollbar-hide z-[70] flex flex-col gap-1 animate-in slide-in-from-bottom-2">
+                        <div className="absolute bottom-12 right-0 bg-zinc-950/90 backdrop-blur-3xl border border-white/10 ring-1 ring-white/10 rounded-2xl shadow-[0_8px_40px_rgba(0,0,0,0.8)] p-2 w-40 sm:w-48 max-h-[280px] sm:max-h-[340px] overflow-y-auto scrollbar-hide z-[70] flex flex-col gap-1 animate-in slide-in-from-bottom-2">
                             <button onClick={(e)=>{e.stopPropagation(); setActiveMenu('main')}} className="flex items-center gap-1.5 text-[10px] px-2 py-1 font-black text-zinc-400 border-b border-white/10 mb-0.5"><ChevronLeft size={13}/> BACK</button>
                             {['vol_bright', 'fullscreen', 'none'].map(m=>(<button key={m} onClick={(e)=>{e.stopPropagation(); updateLocalPrefs({verticalGesture: m}); setActiveMenu('main')}} className={cn("text-[10px] px-2.5 py-1.5 rounded-xl text-left font-bold uppercase transition-all", verticalGesture===m?"bg-gradient-to-r from-primary-600 to-primary-500 text-white shadow-md shadow-primary-500/25 border border-primary-500/50":"hover:bg-white/10 hover:shadow-inner text-zinc-400")}>{m === 'vol_bright' ? 'Vol/Bri' : m}</button>))}
                         </div>
                      )}
                      {activeMenu === 'hGesture' && (
-                        <div className="absolute bottom-12 right-0 bg-zinc-950/90 backdrop-blur-3xl border border-white/10 ring-1 ring-white/10 rounded-2xl shadow-[0_8px_40px_rgba(0,0,0,0.8)] p-2 w-40 sm:w-48 max-h-[70%] h-auto min-h-[160px] overflow-y-auto scrollbar-hide z-[70] flex flex-col gap-1 animate-in slide-in-from-bottom-2">
+                        <div className="absolute bottom-12 right-0 bg-zinc-950/90 backdrop-blur-3xl border border-white/10 ring-1 ring-white/10 rounded-2xl shadow-[0_8px_40px_rgba(0,0,0,0.8)] p-2 w-40 sm:w-48 max-h-[280px] sm:max-h-[340px] overflow-y-auto scrollbar-hide z-[70] flex flex-col gap-1 animate-in slide-in-from-bottom-2">
                             <button onClick={(e)=>{e.stopPropagation(); setActiveMenu('main')}} className="flex items-center gap-1.5 text-[10px] px-2 py-1 font-black text-zinc-400 border-b border-white/10 mb-0.5"><ChevronLeft size={13}/> BACK</button>
                             {['seek', 'nav', 'volume', 'none'].map(m=>(<button key={m} onClick={(e)=>{e.stopPropagation(); updateLocalPrefs({horizontalGesture: m}); setActiveMenu('main')}} className={cn("text-[10px] px-2.5 py-1.5 rounded-xl text-left font-bold uppercase transition-all", horizontalGesture===m?"bg-gradient-to-r from-primary-600 to-primary-500 text-white shadow-md shadow-primary-500/25 border border-primary-500/50":"hover:bg-white/10 hover:shadow-inner text-zinc-400")}>{m === 'nav' ? 'Next / Prev' : m}</button>))}
                         </div>
                      )}
                     
                      {activeMenu === 'quality' && (
-                        <div className="absolute bottom-12 right-0 bg-zinc-950/90 backdrop-blur-3xl border border-white/10 ring-1 ring-white/10 rounded-2xl shadow-[0_8px_40px_rgba(0,0,0,0.8)] p-2 w-32 sm:w-36 max-h-[70%] h-auto min-h-[160px] overflow-y-auto scrollbar-hide z-[70] flex flex-col gap-1 animate-in slide-in-from-bottom-2">
+                        <div className="absolute bottom-12 right-0 bg-zinc-950/90 backdrop-blur-3xl border border-white/10 ring-1 ring-white/10 rounded-2xl shadow-[0_8px_40px_rgba(0,0,0,0.8)] p-2 w-32 sm:w-36 max-h-[280px] sm:max-h-[340px] overflow-y-auto scrollbar-hide z-[70] flex flex-col gap-1 animate-in slide-in-from-bottom-2">
                             <button onClick={(e)=>{e.stopPropagation(); setActiveMenu('main')}} className="flex items-center gap-1.5 text-[10px] px-2 py-1 font-black text-zinc-400 border-b border-white/10 mb-0.5"><ChevronLeft size={13}/> BACK</button>
                             <button onClick={(e)=>{e.stopPropagation(); changeQuality(-1)}} className={cn("text-[10px] px-2.5 py-1.5 rounded-xl text-left font-bold transition-all", currentQuality===-1?"bg-gradient-to-r from-primary-600 to-primary-500 text-white shadow-md shadow-primary-500/25 border border-primary-500/50":"hover:bg-white/10 hover:shadow-inner text-zinc-400")}>Auto</button>
                             {qualities.map(q=>(<button key={q.index} onClick={(e)=>{e.stopPropagation(); changeQuality(q.index)}} className={cn("text-[10px] px-2.5 py-1.5 rounded-xl text-left font-bold transition-all", currentQuality===q.index?"bg-gradient-to-r from-primary-600 to-primary-500 text-white shadow-md shadow-primary-500/25 border border-primary-500/50":"hover:bg-white/10 hover:shadow-inner text-zinc-400")}>{q.height}p</button>))}
                         </div>
                      )}
                      {activeMenu === 'speed' && (
-                        <div className="absolute bottom-12 right-0 bg-zinc-950/90 backdrop-blur-3xl border border-white/10 ring-1 ring-white/10 rounded-2xl shadow-[0_8px_40px_rgba(0,0,0,0.8)] p-2 w-28 sm:w-32 max-h-[70%] h-auto min-h-[160px] overflow-y-auto scrollbar-hide z-[70] flex flex-col gap-1 animate-in slide-in-from-bottom-2">
+                        <div className="absolute bottom-12 right-0 bg-zinc-950/90 backdrop-blur-3xl border border-white/10 ring-1 ring-white/10 rounded-2xl shadow-[0_8px_40px_rgba(0,0,0,0.8)] p-2 w-28 sm:w-32 max-h-[280px] sm:max-h-[340px] overflow-y-auto scrollbar-hide z-[70] flex flex-col gap-1 animate-in slide-in-from-bottom-2">
                             <button onClick={(e)=>{e.stopPropagation(); setActiveMenu('main')}} className="flex items-center gap-1.5 text-[10px] px-2 py-1 font-black text-zinc-400 border-b border-white/10 mb-0.5"><ChevronLeft size={13}/> BACK</button>
                             {[0.5, 1, 1.25, 1.5, 2].map(r=>(<button key={r} onClick={(e)=>{e.stopPropagation(); changeSpeed(r)}} className={cn("text-[10px] px-2.5 py-1.5 rounded-xl text-left font-bold transition-all", speed===r?"bg-gradient-to-r from-primary-600 to-primary-500 text-white shadow-md shadow-primary-500/25 border border-primary-500/50":"hover:bg-white/10 hover:shadow-inner text-zinc-400")}>{r}x</button>))}
                         </div>
                      )}
                      {activeMenu === 'gestures' && (
-                        <div className="absolute bottom-12 right-0 bg-zinc-950/90 backdrop-blur-3xl border border-white/10 ring-1 ring-white/10 rounded-2xl shadow-[0_8px_40px_rgba(0,0,0,0.8)] p-2 w-40 sm:w-48 max-h-[70%] h-auto min-h-[160px] overflow-y-auto scrollbar-hide z-[70] flex flex-col gap-1 animate-in slide-in-from-bottom-2">
+                        <div className="absolute bottom-12 right-0 bg-zinc-950/90 backdrop-blur-3xl border border-white/10 ring-1 ring-white/10 rounded-2xl shadow-[0_8px_40px_rgba(0,0,0,0.8)] p-2 w-40 sm:w-48 max-h-[280px] sm:max-h-[340px] overflow-y-auto scrollbar-hide z-[70] flex flex-col gap-1 animate-in slide-in-from-bottom-2">
                             <button onClick={(e)=>{e.stopPropagation(); setActiveMenu('main')}} className="flex items-center gap-1.5 text-[10px] px-2 py-1 font-black text-zinc-400 border-b border-white/10 mb-0.5"><ChevronLeft size={13}/> BACK</button>
                             {['seek', 'playpause', 'fullscreen'].map(m=>(<button key={m} onClick={(e)=>{e.stopPropagation(); updateLocalPrefs({doubleTapMode: m}); setActiveMenu('none')}} className={cn("text-[10px] px-2.5 py-1.5 rounded-xl text-left font-bold uppercase transition-all", doubleTapMode===m?"bg-gradient-to-r from-primary-600 to-primary-500 text-white shadow-md shadow-primary-500/25 border border-primary-500/50":"hover:bg-white/10 hover:shadow-inner text-zinc-400")}>{m}</button>))}
                         </div>
                      )}
                 </div>
 
-                {audioTracks.length > 1 && (<div className="relative"><button onClick={(e) => { e.stopPropagation(); setActiveMenu(activeMenu === 'audio' ? 'none' : 'audio'); }} className={cn("hover:text-primary-500 transition-colors active:scale-90 p-2 md:p-0", activeMenu === 'audio' && "text-primary-500")}><AudioWaveform size={20} className="md:w-5 md:h-5" /></button>{activeMenu === 'audio' && (<div className="absolute bottom-12 right-0 bg-zinc-950/90 backdrop-blur-3xl border border-white/10 ring-1 ring-white/10 rounded-2xl shadow-[0_8px_40px_rgba(0,0,0,0.8)] p-2 w-40 sm:w-48 max-h-[70%] h-auto min-h-[160px] overflow-y-auto scrollbar-hide z-[70] flex flex-col gap-1 animate-in slide-in-from-bottom-2">{audioTracks.map((t, i) => (<button key={i} onClick={(e) => { e.stopPropagation(); changeAudio(i); }} className={cn("text-[10px] px-2.5 py-1.5 rounded-xl text-left font-bold transition-all truncate active:scale-95", currentAudio === i ? "bg-gradient-to-r from-primary-600 to-primary-500 text-white shadow-md shadow-primary-500/25 border border-primary-500/50" : "hover:bg-white/10 hover:shadow-inner text-zinc-400")}>{t.name || `Audio ${i+1}`}</button>))}</div>)}</div>)}
+                {audioTracks.length > 1 && (<div className="relative"><button onClick={(e) => { e.stopPropagation(); setActiveMenu(activeMenu === 'audio' ? 'none' : 'audio'); }} className={cn("hover:text-primary-500 transition-colors active:scale-90 p-2 md:p-0", activeMenu === 'audio' && "text-primary-500")}><AudioWaveform size={20} className="md:w-5 md:h-5" /></button>{activeMenu === 'audio' && (<div className="absolute bottom-12 right-0 bg-zinc-950/90 backdrop-blur-3xl border border-white/10 ring-1 ring-white/10 rounded-2xl shadow-[0_8px_40px_rgba(0,0,0,0.8)] p-2 w-40 sm:w-48 max-h-[280px] sm:max-h-[340px] overflow-y-auto scrollbar-hide z-[70] flex flex-col gap-1 animate-in slide-in-from-bottom-2">{audioTracks.map((t, i) => (<button key={i} onClick={(e) => { e.stopPropagation(); changeAudio(i); }} className={cn("text-[10px] px-2.5 py-1.5 rounded-xl text-left font-bold transition-all truncate active:scale-95", currentAudio === i ? "bg-gradient-to-r from-primary-600 to-primary-500 text-white shadow-md shadow-primary-500/25 border border-primary-500/50" : "hover:bg-white/10 hover:shadow-inner text-zinc-400")}>{t.name || `Audio ${i+1}`}</button>))}</div>)}</div>)}
 
                 {trackSubtitles.length > 0 && (
                  <div className="relative">
                      <button onClick={(e) => { e.stopPropagation(); setActiveMenu(activeMenu === 'subs' ? 'none' : 'subs'); }} className={cn("hover:text-primary-500 transition-colors active:scale-90 p-2 md:p-0", (activeMenu === 'subs' || currentSubtitle !== -1) ? "text-primary-500 fill-red-500" : "text-white")}><Subtitles size={20} className="md:w-5 md:h-5" /></button>
                      {activeMenu === 'subs' && (
-                         <div className="absolute bottom-12 right-0 bg-zinc-950/90 backdrop-blur-3xl border border-white/10 ring-1 ring-white/10 rounded-2xl shadow-[0_8px_40px_rgba(0,0,0,0.8)] p-2 w-44 sm:w-52 max-h-[70%] h-auto min-h-[160px] overflow-hidden z-[70] flex flex-col animate-in slide-in-from-bottom-2">
+                         <div className="absolute bottom-12 right-0 bg-zinc-950/90 backdrop-blur-3xl border border-white/10 ring-1 ring-white/10 rounded-2xl shadow-[0_8px_40px_rgba(0,0,0,0.8)] p-2 w-44 sm:w-52 max-h-[280px] sm:max-h-[340px] overflow-hidden z-[70] flex flex-col animate-in slide-in-from-bottom-2">
                               <button onClick={(e) => { e.stopPropagation(); setActiveMenu('subSettings'); }} className="flex items-center gap-1.5 text-[10px] px-2 py-1 rounded-xl text-left font-black text-primary-500 hover:bg-white/5 transition-all mb-1 border-b border-white/10 shrink-0"><Settings size={12}/> CAPTION SETTINGS</button>
                               <div className="overflow-y-auto flex-1 flex flex-col gap-1 scrollbar-hide">
                                 <button onClick={(e) => { e.stopPropagation(); changeSubtitle(-1); }} className={cn("text-[10px] px-2.5 py-1.5 rounded-xl text-left font-bold transition-all active:scale-95 shrink-0", currentSubtitle === -1 ? "bg-gradient-to-r from-primary-600 to-primary-500 text-white shadow-md shadow-primary-500/25 border border-primary-500/50" : "hover:bg-white/10 hover:shadow-inner text-zinc-400")}>Off</button>
@@ -1110,7 +1186,7 @@ const AnimePlayer = forwardRef<AnimePlayerRef, AnimePlayerProps>(({
                          </div>
                      )}
                      {activeMenu === 'subSettings' && (
-                         <div className="absolute bottom-12 right-0 bg-zinc-950/95 backdrop-blur-3xl border border-white/10 ring-1 ring-white/10 rounded-2xl shadow-[0_8px_40px_rgba(0,0,0,0.9)] p-3 w-[220px] sm:w-60 md:w-64 max-h-[70%] h-auto min-h-[180px] overflow-y-auto scrollbar-hide z-[70] flex flex-col gap-2.5 animate-in slide-in-from-bottom-2" onClick={(e) => e.stopPropagation()}>
+                         <div className="absolute bottom-12 right-0 bg-zinc-950/95 backdrop-blur-3xl border border-white/10 ring-1 ring-white/10 rounded-2xl shadow-[0_8px_40px_rgba(0,0,0,0.9)] p-3 w-[220px] sm:w-60 md:w-64 max-h-[300px] sm:max-h-[360px] overflow-y-auto scrollbar-hide z-[70] flex flex-col gap-2.5 animate-in slide-in-from-bottom-2" onClick={(e) => e.stopPropagation()}>
                              <div className="flex items-center gap-1.5 text-[10px] sm:text-xs font-black text-zinc-400 border-b border-white/10 pb-1.5"><button onClick={(e)=>{e.stopPropagation(); setActiveMenu('subs')}} className="hover:text-white"><ChevronLeft size={13}/></button> CAPTION STYLE</div>
                              <div className="space-y-1"><span className="text-[9px] sm:text-[10px] font-bold text-zinc-400 uppercase">Color</span><div className="flex gap-1.5 flex-wrap">{Object.keys(SUB_COLORS).map((c) => (<button key={c} onClick={(e) => {e.stopPropagation(); updateLocalPrefs({subStyle: { color: c }})}} className={cn("w-5 h-5 sm:w-6 sm:h-6 rounded-full border transition-all active:scale-90 shrink-0", subStyle.color === c ? "border-white scale-110 shadow-md" : "border-transparent opacity-60")} style={{background: SUB_COLORS[c as keyof typeof SUB_COLORS]}} />))}</div></div>
                              <div className="space-y-1"><span className="text-[9px] sm:text-[10px] font-bold text-zinc-400 uppercase">Size</span><div className="flex gap-1 bg-white/5 rounded-xl p-1">{Object.keys(SUB_SIZES).map((s) => (<button key={s} onClick={(e) => {e.stopPropagation(); updateLocalPrefs({subStyle: { size: s }})}} className={cn("flex-1 py-1 rounded-lg text-[9px] sm:text-[10px] font-bold transition-all active:scale-90 shrink-0", subStyle.size === s ? "bg-white text-black shadow-sm" : "text-zinc-400 hover:text-zinc-200")}>{s}</button>))}</div></div>

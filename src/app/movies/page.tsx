@@ -331,29 +331,34 @@ export default function MoviesHomePage() {
 
   useEffect(() => {
     (async () => {
-      const home = await omni.movies.getHome();
-      
-      const properTitles = ['Recent Updates', 'Trending Movies', 'Popular Right Now', 'Must Watch', 'New Additions', 'Top Rated'];
-      
-      let loadedSections = home?.sections?.filter((s:any) => s.items && s.items.length > 0).map((s:any, idx:number) => {
-          s.title = properTitles[idx] || `More Suggestions ${idx}`;
-          return s;
-      }) || [];
-      
-      const [bollywood, hollywood, action, animation] = await Promise.all([
-          omni.movies.getByCountry('bollywood'),
-          omni.movies.getByCountry('hollywood'),
-          omni.movies.getByGenre('action'),
-          omni.movies.getByGenre('animation')
-      ]);
+      try {
+        const home = await omni.movies.getHome().catch(() => null);
+        
+        const properTitles = ['Recent Updates', 'Trending Movies', 'Popular Right Now', 'Must Watch', 'New Additions', 'Top Rated'];
+        
+        let loadedSections = home?.sections?.filter((s:any) => s.items && s.items.length > 0).map((s:any, idx:number) => {
+            s.title = properTitles[idx] || `More Suggestions ${idx}`;
+            return s;
+        }) || [];
+        
+        const [bollywood, hollywood, action, animation] = await Promise.all([
+            omni.movies.getByCountry('bollywood').catch(() => null),
+            omni.movies.getByCountry('hollywood').catch(() => null),
+            omni.movies.getByGenre('action').catch(() => null),
+            omni.movies.getByGenre('animation').catch(() => null)
+        ]);
 
-      if (bollywood?.items?.length) loadedSections.push({ title: 'Bollywood Hits', items: bollywood.items.slice(0, 12), query: 'bollywood' });
-      if (hollywood?.items?.length) loadedSections.push({ title: 'Hollywood Blockbusters', items: hollywood.items.slice(0, 12), query: 'hollywood' });
-      if (action?.items?.length) loadedSections.push({ title: 'Action Movies', items: action.items.slice(0, 12), query: 'action' });
-      if (animation?.items?.length) loadedSections.push({ title: 'Animation & Cartoons', items: animation.items.slice(0, 12), query: 'animation' });
+        if (bollywood?.items?.length) loadedSections.push({ title: 'Bollywood Hits', items: bollywood.items.slice(0, 12), query: 'bollywood' });
+        if (hollywood?.items?.length) loadedSections.push({ title: 'Hollywood Blockbusters', items: hollywood.items.slice(0, 12), query: 'hollywood' });
+        if (action?.items?.length) loadedSections.push({ title: 'Action Movies', items: action.items.slice(0, 12), query: 'action' });
+        if (animation?.items?.length) loadedSections.push({ title: 'Animation & Cartoons', items: animation.items.slice(0, 12), query: 'animation' });
 
-      setSections(loadedSections);
-      setLoading(false);
+        setSections(loadedSections);
+      } catch (err) {
+        console.error("Failed to load movies data:", err);
+      } finally {
+        setLoading(false);
+      }
     })();
   }, []);
 

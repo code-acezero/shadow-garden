@@ -20,7 +20,8 @@ export async function GET(req: Request) {
       // Bypassing for testing
     }
 
-    if (!process.env.NEXT_PUBLIC_GEMINI_API_KEY) {
+    const apiKey = process.env.GEMINI_API_KEY || process.env.NEXT_PUBLIC_GEMINI_API_KEY;
+    if (!apiKey) {
       return NextResponse.json({ error: 'Gemini API key missing' }, { status: 500 });
     }
 
@@ -73,7 +74,7 @@ Evaluate each user based on the clan's moderation rules. Decide whether to appro
           toolConfig: { functionCallingConfig: { mode: "ANY" } }
         };
 
-        const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${process.env.NEXT_PUBLIC_GEMINI_API_KEY}`, {
+        const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(geminiReq)
@@ -166,7 +167,7 @@ Only pick ONE action to take. Be mysterious, somewhat arrogant but loyal.`;
         toolConfig: { functionCallingConfig: { mode: "ANY" } } // Force tool call
       };
 
-      const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${process.env.NEXT_PUBLIC_GEMINI_API_KEY}`, {
+      const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(geminiReq)

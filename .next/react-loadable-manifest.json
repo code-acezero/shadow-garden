@@ -1,0 +1,61 @@
+{
+  "..\\node_modules\\.pnpm\\@react-three+drei@10.7.7_@r_381ef0bd84716b7038846e161d73cb90\\node_modules\\@react-three\\drei\\core\\VideoTexture.js -> hls.js": {
+    "id": 96378,
+    "files": []
+  },
+  "..\\node_modules\\.pnpm\\@react-three+drei@10.7.7_@r_381ef0bd84716b7038846e161d73cb90\\node_modules\\@react-three\\drei\\web\\FaceLandmarker.js -> @mediapipe/tasks-vision": {
+    "id": null,
+    "files": []
+  },
+  "..\\node_modules\\.pnpm\\next@15.5.21_@babel+core@7._81b24c4c8084276f47854f01706fcc93\\node_modules\\next\\dist\\client\\index.js -> ../pages/_app": {
+    "id": 17323,
+    "files": [
+      "static/chunks/7323.13cdb876d93967ff.js"
+    ]
+  },
+  "..\\node_modules\\.pnpm\\next@15.5.21_@babel+core@7._81b24c4c8084276f47854f01706fcc93\\node_modules\\next\\dist\\client\\index.js -> ../pages/_error": {
+    "id": 27238,
+    "files": [
+      "static/chunks/7238.4054174cb6fbcaac.js"
+    ]
+  },
+  "app\\home\\page.tsx -> @/components/Home/ContinueWatching": {
+    "id": 19863,
+    "files": [
+      "static/chunks/9863.d4917bb9cd20c4b8.js"
+    ]
+  },
+  "app\\home\\page.tsx -> @/components/Home/RecentUpdatesSection": {
+    "id": 9559,
+    "files": [
+      "static/chunks/511-c333752eafc096eb.js",
+      "static/chunks/6984-80598fddd6729ca7.js",
+      "static/chunks/1435-2efc5dcf7efe9e8d.js",
+      "static/chunks/7755.7ea89fd16ebee0bf.js"
+    ]
+  },
+  "components\\Anime\\AnimeCard.tsx -> @/lib/dpi": {
+    "id": 11879,
+    "files": [
+      "static/chunks/1879.6b099ba87158fbcd.js"
+    ]
+  },
+  "components\\Landing\\LandingClient.tsx -> @/components/Portal/ShadowGardenPortal": {
+    "id": 78903,
+    "files": [
+      "static/chunks/7566a6ad.e904f2ec233666dc.js",
+      "static/chunks/e8867c6f.444b5e00c649c6a6.js",
+      "static/chunks/34ab69bd.6f38f7b21ef111b3.js",
+      "static/chunks/04999935.6a97e5ed0aa6aa38.js",
+      "static/chunks/61962ac1.b77c3e3d649a999d.js",
+      "static/chunks/6418.83fb7074e97c9732.js",
+      "static/chunks/8903.8429346ed2e676ca.js"
+    ]
+  },
+  "components\\UIx\\WhisperIsland.tsx -> @/lib/dpi": {
+    "id": 11879,
+    "files": [
+      "static/chunks/1879.6b099ba87158fbcd.js"
+    ]
+  }
+}

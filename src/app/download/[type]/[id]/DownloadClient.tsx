@@ -12,6 +12,8 @@ import { cn } from '@/lib/utils';
 import { toast } from '@/lib/toast';
 import JSZip from 'jszip';
 import Footer from '@/components/Anime/Footer';
+import { adManager } from '@/lib/adManager';
+import AdsterraNativeBanner from '@/components/Ads/AdsterraNativeBanner';
 
 const api = new AnimeService();
 const DEFAULT_REFERER = 'https://megacloud.blog/';
@@ -473,10 +475,9 @@ iframe{width:100vw;height:100vh;border:none;}</style></head><body>
       {!adFinished && (
         <div className="fixed inset-0 z-50 bg-[#050505] flex flex-col items-center justify-center p-4 md:p-8 overflow-y-auto">
           <div className="w-full flex flex-col items-center text-center gap-6 my-auto">
-            {/* Top Banner Ad Slot Placeholder */}
-            <div id="ad-slot-header" className="w-full aspect-[728/90] bg-white/5 border border-dashed border-orange-500/30 rounded-2xl flex flex-col items-center justify-center p-3 text-zinc-500 text-[10px] font-mono tracking-widest">
-              <span>[ ADVERTISEMENT SPACE - 728x90 BANNER ]</span>
-              <span className="text-[9px] text-zinc-600">Google AdSense / PropellerAds / Adsterra Integration Ready</span>
+            {/* Top Banner Ad Slot */}
+            <div className="w-full max-w-2xl">
+              <AdsterraNativeBanner location="download" format="728x90" />
             </div>
 
             {/* Main Countdown Header */}
@@ -509,13 +510,6 @@ iframe{width:100vw;height:100vh;border:none;}</style></head><body>
               </div>
             </div>
 
-            {/* Main Interstitial Ad Slot Placeholder */}
-            <div id="ad-slot-main" className="w-full aspect-[300/250] bg-white/5 border border-emerald-500/30 rounded-3xl flex flex-col items-center justify-center p-6 text-zinc-500 text-xs font-mono tracking-widest relative overflow-hidden group">
-              <div className="absolute inset-0 bg-gradient-to-b from-orange-500/5 to-transparent pointer-events-none" />
-              <span className="text-orange-400 font-bold mb-1">[ SPONSORED AD / INTERSTITIAL - 300x250 ]</span>
-              <span className="text-[10px] text-zinc-500 max-w-xs leading-relaxed">High-converting Ad Unit Slot for direct monetization (PopAds, Native Banner, Direct Sponsor Ad)</span>
-            </div>
-
             {/* Action Button */}
             <div className="flex items-center gap-3 w-full max-w-md">
               {loading ? (
@@ -526,7 +520,10 @@ iframe{width:100vw;height:100vh;border:none;}</style></head><body>
                 </button>
               ) : adCountdown === 0 ? (
                 <button
-                  onClick={() => setAdFinished(true)}
+                  onClick={() => {
+                    adManager.triggerSmartlink('download_gateway');
+                    setAdFinished(true);
+                  }}
                   className="w-full py-4 rounded-2xl bg-orange-600 hover:bg-orange-500 text-white font-black text-sm uppercase tracking-widest transition-all shadow-xl shadow-orange-900/40 flex items-center justify-center gap-2 animate-bounce">
                   <span>GET DOWNLOAD LINKS</span>
                   <ArrowLeft size={16} className="rotate-180" />
@@ -686,11 +683,11 @@ iframe{width:100vw;height:100vh;border:none;}</style></head><body>
                     ) : (
                       <div className="grid grid-cols-2 gap-3">
                         {availableResolutions.length > 0 ? availableResolutions.map((res) => (
-                          <button key={res} onClick={() => startHlsDownload(hlsTarget, res)} className="flex items-center justify-center gap-2 p-3 rounded-xl bg-white/5 hover:bg-orange-600 hover:text-white transition-all border border-white/5 font-black text-lg">
+                          <button key={res} onClick={() => { adManager.triggerSmartlink('download_res'); startHlsDownload(hlsTarget, res); }} className="flex items-center justify-center gap-2 p-3 rounded-xl bg-white/5 hover:bg-orange-600 hover:text-white transition-all border border-white/5 font-black text-lg">
                             {res}p <Download size={14} />
                           </button>
                         )) : (
-                          <button onClick={() => startHlsDownload(hlsTarget)} className="col-span-2 flex items-center justify-center gap-2 p-3 rounded-xl bg-white/5 hover:bg-orange-600 hover:text-white transition-all border border-white/5 font-black text-lg">
+                          <button onClick={() => { adManager.triggerSmartlink('download_best'); startHlsDownload(hlsTarget); }} className="col-span-2 flex items-center justify-center gap-2 p-3 rounded-xl bg-white/5 hover:bg-orange-600 hover:text-white transition-all border border-white/5 font-black text-lg">
                             Download Best Quality <Download size={14} />
                           </button>
                         )}
@@ -743,6 +740,7 @@ iframe{width:100vw;height:100vh;border:none;}</style></head><body>
                                 href={linkUrl}
                                 target="_blank"
                                 rel="noreferrer"
+                                onClick={() => adManager.triggerSmartlink('download_direct')}
                                 download
                                 className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-black text-[10px] font-black uppercase tracking-wider transition-all shadow-md shadow-emerald-900/30">
                                 <span>Download</span>

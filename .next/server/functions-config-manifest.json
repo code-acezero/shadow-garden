@@ -1,0 +1,22 @@
+{
+  "version": 1,
+  "functions": {
+    "/api/alpha": {},
+    "/api/download/resolve": {},
+    "/api/download/file": {
+      "maxDuration": 300
+    },
+    "/api/donghua/[...endpoint]": {
+      "maxDuration": 30
+    },
+    "/api/hdmovies/[...endpoint]": {
+      "maxDuration": 30
+    },
+    "/api/proxy": {
+      "maxDuration": 30
+    },
+    "/api/download/hls": {
+      "maxDuration": 300
+    }
+  }
+}

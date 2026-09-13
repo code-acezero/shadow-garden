@@ -5,12 +5,18 @@ import Link from 'next/link';
 import { Crown, Copyright } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import ShadowLogo from '@/components/UIx/ShadowLogo';
+import AdsterraNativeBanner from '@/components/Ads/AdsterraNativeBanner';
 
 export default function Footer() {
   const currentYear = new Date().getFullYear();
 
   return (
     <footer className="w-full bg-[#050505] border-t border-white/5 py-4 md:py-8 mt-6 md:mt-12">
+      {/* Bottom Sponsored Ad on every page */}
+      <div className="max-w-7xl mx-auto px-4 w-full mb-4 md:mb-6">
+        <AdsterraNativeBanner location="general" format="native" />
+      </div>
+
       <div className="px-4 flex flex-col md:flex-row items-center justify-between gap-4 md:gap-6 w-full">
         
         {/* Left: Branding */}

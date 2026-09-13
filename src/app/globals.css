@@ -327,8 +327,42 @@ img {
   .drop-shadow-\[0_0_8px_rgba\(220\,38\,38\,0\.5\)\] {
     filter: none !important;
   }
-  /* Remove animate-pulse on large/non-critical elements — keep only on small indicators */
-  .animate-pulse:not(.keep-pulse) {
-    animation: none !important;
+}
+
+/* Adsterra Social Bar Repositioning & Minimal Compact Styling
+   Slightly bigger (scale: 0.88), elevated above bottom nav (bottom: 92px) */
+iframe[id*="container-c39b"],
+iframe[class*="container-c39b"],
+[id*="container-c39b"] {
+  position: fixed !important;
+  inset: auto 20px 105px auto !important;
+  top: auto !important;
+  bottom: 105px !important;
+  right: 20px !important;
+  left: auto !important;
+  background: transparent !important;
+  background-color: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+  outline: none !important;
+  overflow: visible !important;
+  max-width: 360px !important;
+  z-index: 9990 !important;
+  transform: scale(0.96) !important;
+  transform-origin: bottom right !important;
+  transition: transform 0.2s ease, opacity 0.2s ease !important;
+  pointer-events: auto !important;
+}
+
+@media (max-width: 640px) {
+  iframe[id*="container-c39b"],
+  iframe[class*="container-c39b"],
+  [id*="container-c39b"] {
+    inset: auto 12px 92px auto !important;
+    right: 12px !important;
+    bottom: 92px !important;
+    transform: scale(0.90) !important;
+    max-width: calc(100vw - 24px) !important;
   }
 }
+

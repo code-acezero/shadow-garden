@@ -1,4 +1,5 @@
 import { ApiManager } from './api';
+import { getBaseURL } from './utils';
 
 const getDonghuaApiBase = () => `${ApiManager.getBaseUrl()}/donghua`;
 
@@ -61,6 +62,29 @@ async function fetchDonghuaApi<T = any>(endpoint: string, params: Record<string,
     .filter(([, v]) => v !== undefined && v !== null && v !== '')
     .map(([k, v]) => `${encodeURIComponent(k)}=${encodeURIComponent(String(v))}`);
   const queryString = queryParts.length > 0 ? `?${queryParts.join('&')}` : '';
+
+  // 1. First Priority: Try native local route (fast, resilient, 0 CORS issues)
+  if (retryCount === 0) {
+    try {
+      const localBase = typeof window !== 'undefined' ? '' : getBaseURL();
+      const localUrl = `${localBase}/api/donghua${endpoint}${queryString}`;
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 12000);
+      const localRes = await fetch(localUrl, { signal: controller.signal, cache: 'no-store' });
+      clearTimeout(timeoutId);
+
+      if (localRes.ok) {
+        const json = await localRes.json();
+        if (json && json.ok && json.data) {
+          return json.data as T;
+        }
+      }
+    } catch (localErr) {
+      // Gracefully fall back to remote ApiManager
+    }
+  }
+
+  // 2. Second Priority: Fallback to ApiManager remote mirrors
   const targetUrl = `${getDonghuaApiBase()}${endpoint}${queryString}`;
   const proxyUrl = typeof window !== 'undefined'
     ? `/api/proxy?url=${encodeURIComponent(targetUrl)}`
@@ -83,7 +107,16 @@ async function fetchDonghuaApi<T = any>(endpoint: string, params: Record<string,
     const json = await response.json();
 
     if (json && typeof json === 'object') {
-      if ('ok' in json) return json.ok ? (json.data ?? json) : null;
+      if ('ok' in json) {
+        if (!json.ok) {
+          if (retryCount < ApiManager.getAllUrls().length - 1) {
+            ApiManager.rotateUrl();
+            return fetchDonghuaApi(endpoint, params, retryCount + 1);
+          }
+          return null;
+        }
+        return (json.data ?? json) as T;
+      }
       if ('data' in json) return json.data as T;
     }
     return json as T;
@@ -157,17 +190,18 @@ export const dpi = {
         ? (res.sources as any[]).map((s: any, i: number) => ({ name: s.quality || `Server ${i + 1}`, url: s.url || '' }))
         : res?.url ? [{ name: 'Default', url: res.url }] : [];
 
-    let finalUrl = res?.iframe || res?.url || '';
-    let subtitles = res?.subtitles || [];
+    let subtitles = Array.isArray(res?.subtitles) && res.subtitles.length > 0 ? res.subtitles : [];
+    const hlsServer = rawServers.find((s: any) => s.type === 'hls' || s.url?.includes('.m3u8') || s.url?.includes('/api/proxy'));
+    let finalUrl = hlsServer?.url || res?.iframe || res?.url || (rawServers[0]?.url || '');
 
-    if (finalUrl && finalUrl.includes('donghuaplanet.com')) {
+    if (finalUrl && finalUrl.includes('donghuaplanet.com') && !finalUrl.includes('.m3u8')) {
       try {
         const proxyUrl = `/api/proxy?url=${encodeURIComponent(finalUrl)}&referer=${encodeURIComponent('https://donghuaworld.com/')}`;
         const htmlRes = await fetch(proxyUrl);
         const html = await htmlRes.text();
 
-        const sourcesMatch = html.match(/sources:\s*(\[.*?\])/);
-        const tracksMatch = html.match(/const\s+tracks\s*=\s*(\[[\s\S]*?\]);/);
+        const sourcesMatch = html.match(/(?:const\s+sources\s*=\s*|sources:\s*)(\[[\s\S]*?\]);?/i);
+        const tracksMatch = html.match(/(?:const\s+tracks\s*=\s*|tracks:\s*)(\[[\s\S]*?\]);?/i);
 
         if (sourcesMatch) {
           const sources = JSON.parse(sourcesMatch[1]);
@@ -177,7 +211,7 @@ export const dpi = {
           }
         }
 
-        if (tracksMatch) {
+        if (tracksMatch && subtitles.length === 0) {
           const tracks = JSON.parse(tracksMatch[1]);
           subtitles = tracks.filter((t: any) => t.label).map((t: any) => ({ 
             lang: t.label, 
@@ -208,7 +242,7 @@ export const dpi = {
       const detail = info?.detail || info;
       const episodesData: any[] = info?.episodes?.episodes || info?.episodes || [];
       return {
-        id: (detail?.id || id) as string,
+        id: (detail?.id || detail?.slug || id) as string,
         title: (detail?.title || detail?.name || 'Unknown Title') as string,
         nativeTitle: ((detail?.alternativeTitles || [])[0] || '') as string,
         image: (detail?.image || '') as string,
@@ -224,13 +258,18 @@ export const dpi = {
         producers: (detail?.producers || []) as string[],
         genres: (detail?.genres || []) as string[],
         synonyms: (detail?.alternativeTitles || []) as string[],
-        episodes: episodesData.map((e: any) => ({
-          id: (e.id || e.href || String(e.number)) as string,
-          number: String(e.number || '1'),
-          url: (e.href || '') as string,
-          title: (e.title || `Episode ${e.number}`) as string,
-          image: (detail?.image || '') as string
-        })),
+        episodes: episodesData.map((e: any) => {
+          const numRaw = String(e.number || '1');
+          const numMatch = numRaw.match(/^\s*(\d+)/);
+          const numClean = numMatch ? numMatch[1] : (numRaw.replace(/\D/g, '') || numRaw);
+          return {
+            id: (e.id || e.href || numClean) as string,
+            number: numClean,
+            url: (e.href || '') as string,
+            title: (e.title || `Episode ${numClean}`) as string,
+            image: (detail?.image || '') as string
+          };
+        }),
         recommendations: [] as any[],
         downloads: [] as any[],
         satoruId: null

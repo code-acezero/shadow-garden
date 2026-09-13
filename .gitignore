@@ -13,9 +13,11 @@
 # testing
 /coverage
 
-# next.js
-/.next/
-/out/
+# next.js (published build for cPanel hosting)
+.next/cache/
+
+# scratch & test scripts
+/scratch/
 
 # production
 /build

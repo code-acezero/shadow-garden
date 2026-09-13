@@ -25,8 +25,10 @@ import { sfx } from '@/lib/audioManager';
 import PostShareModal from '@/components/Social/PostShareModal';
 
 import AnimePlayer, { AnimePlayerRef } from '@/components/Player/AnimePlayer';
+import { adManager } from '@/lib/adManager';
 import WatchListButton from '@/components/Watch/WatchListButton';
 import ShadowComments from '@/components/Comments/ShadowComments';
+import AdsterraNativeBanner from '@/components/Ads/AdsterraNativeBanner';
 import Footer from '@/components/Anime/Footer';
 import AnimeCard from '@/components/Anime/AnimeCard';
 import AuthModal from '@/components/Auth/AuthModal';
@@ -639,6 +641,11 @@ function WatchContent() {
   const [anime, setAnime] = useState<UniversalAnime | null>(null);
   const [isLoadingInfo, setIsLoadingInfo] = useState(true);
   const [currentEpId, setCurrentEpId] = useState<string | null>(null);
+  const [playerAspectRatio, setPlayerAspectRatio] = useState<number | null>(null);
+
+  useEffect(() => {
+    setPlayerAspectRatio(null);
+  }, [currentEpId]);
   const [streamUrl, setStreamUrl] = useState<string | null>(null);
   const [streamReferer, setStreamReferer] = useState<string | null>(null);
   const [subtitles, setSubtitles] = useState<any[]>([]);
@@ -818,6 +825,9 @@ function WatchContent() {
   const handleEpisodeClick = useCallback((id: string) => {
       markEpPlayed(currentEpId);  // mark current ep as played before switching
       saveProgress(true);
+
+      // Trigger episode switch ad
+      adManager.triggerEpisodeSwitch(id);
       
       const ep = anime?.episodes.find(e => 
           String(e.id) === String(id) || 
@@ -1028,7 +1038,7 @@ function WatchContent() {
                 },
                 episodes: details.episodes.map(e => ({
                     id: e.id,
-                    number: parseInt(e.number, 10) || 1,
+                    number: parseInt(String(e.number).match(/\d+/)?.[0] || '1', 10),
                     title: e.title,
                     url: e.url,
                     isFiller: false
@@ -1131,6 +1141,18 @@ function WatchContent() {
               if (urlMatch) targetEpId = urlMatch.id;
           }
 
+          if (!targetEpId && anime.episodes?.length) {
+              // If route param matches an episode (e.g. user arrived via an episode card URL)
+              const routeEpMatch = anime.episodes.find(e => 
+                  String(e.id) === String(animeId) || 
+                  String(animeId).includes(String(e.id)) || 
+                  String(e.id).includes(String(animeId))
+              );
+              if (routeEpMatch) {
+                  targetEpId = routeEpMatch.id;
+              }
+          }
+
           if (!targetEpId) {
               let maxTime = 0;
               Object.values(progressBuffer.current).forEach((p:any) => {
@@ -1154,13 +1176,13 @@ function WatchContent() {
                   const oldData = Object.values(progressBuffer.current).find((p:any) => p.episode_id === targetEpId);
                   if (oldData && oldData.episode_number) {
                       const match = anime.episodes.find((e: any) => Number(e.number) === Number(oldData.episode_number));
-                      targetEpId = match ? match.id : anime.episodes[0].id;
+                      targetEpId = match ? match.id : anime.episodes[anime.episodes.length - 1]?.id || anime.episodes[0].id;
                   } else {
-                      targetEpId = anime.episodes[0].id;
+                      targetEpId = anime.episodes[anime.episodes.length - 1]?.id || anime.episodes[0].id;
                   }
               }
           } else if (!targetEpId && anime.episodes?.length > 0) {
-              targetEpId = anime.episodes[0].id;
+              targetEpId = anime.episodes[anime.episodes.length - 1]?.id || anime.episodes[0].id;
           }
 
           if (targetEpId && !currentEpId) setCurrentEpId(targetEpId);
@@ -1183,7 +1205,17 @@ function WatchContent() {
   useEffect(() => {
     if (!anime?.episodes?.length) return;
     const paramEp = urlEpId || urlEpNumber;
-    if (!paramEp) return;
+    if (!paramEp) {
+      const match = anime.episodes.find(e => 
+        String(e.id) === String(animeId) || 
+        String(animeId).includes(String(e.id)) || 
+        String(e.id).includes(String(animeId))
+      );
+      if (match && match.id !== currentEpIdRef.current) {
+        setCurrentEpId(match.id);
+      }
+      return;
+    }
     const paramStr = String(paramEp).trim();
     const paramNum = Number(paramStr);
     const match = anime.episodes.find(e => 
@@ -1199,7 +1231,7 @@ function WatchContent() {
       setCurrentEpId(match.id);
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [urlEpId, urlEpNumber, anime]);
+  }, [urlEpId, urlEpNumber, anime, animeId]);
 
   // Keep currentEpIdRef in sync
   const currentEpIdRef = useRef(currentEpId);
@@ -1385,9 +1417,20 @@ function WatchContent() {
             <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.8 }} className="w-full flex flex-col items-center relative z-10 px-4 mt-6">
       <div onClick={() => updateSetting('dimMode', false)} className={cn("fixed inset-0 bg-black/95 transition-opacity duration-500 will-change-[opacity]", settings.dimMode ? 'opacity-100 pointer-events-auto cursor-pointer z-[40]' : 'opacity-0 pointer-events-none z-[40]')} />
 
-        <div className="w-full flex flex-col xl:grid xl:grid-cols-12 gap-8 items-start">
-            <div className="xl:col-span-8 w-full flex flex-col gap-2 order-1">
-                <div ref={playerContainerRef} tabIndex={0} className={cn("w-full aspect-video bg-black/40 backdrop-blur-2xl rounded-[30px] overflow-hidden border border-white/10 shadow-[0_8px_32px_0_rgba(0,0,0,0.37)] relative outline-none focus:ring-1 focus:ring-white/10 transition-all duration-500", settings.dimMode ? "z-[60] ring-2 ring-emerald-500/50 shadow-[0_0_50px_rgba(0,0,0,0.9)]" : "z-10")} onClick={handlePlayerClick} onKeyDown={(e) => { if (e.code === 'Space') { e.preventDefault(); } }}>
+        <div className="w-full flex flex-col xl:grid xl:grid-cols-12 gap-8 xl:items-stretch">
+            <div className="xl:col-span-8 w-full flex flex-col justify-between gap-2 order-1">
+                <div 
+                    ref={playerContainerRef} 
+                    tabIndex={0} 
+                    style={playerAspectRatio ? { aspectRatio: `${playerAspectRatio}` } : undefined}
+                    className={cn(
+                        "w-full bg-black/40 backdrop-blur-2xl rounded-[30px] overflow-hidden border border-white/10 relative outline-none focus:ring-1 focus:ring-white/10 transition-all duration-300", 
+                        !playerAspectRatio && "aspect-video",
+                        settings.dimMode ? "z-[60] ring-2 ring-emerald-500/50" : "z-10"
+                    )} 
+                    onClick={handlePlayerClick} 
+                    onKeyDown={(e) => { if (e.code === 'Space') { e.preventDefault(); } }}
+                >
                 <AnimatePresence>
                     {showSkipNotification && (
                         <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 10 }} className="absolute bottom-32 lg:bottom-24 left-1/2 -translate-x-1/2 z-[70] bg-black/60 backdrop-blur-md border border-white/10 text-white px-3 py-1 rounded-full flex items-center gap-2 shadow-[0_0_15px_rgba(0,0,0,0.5)] pointer-events-none">
@@ -1397,16 +1440,44 @@ function WatchContent() {
                 </AnimatePresence>
                 {streamUrl ? ( 
                     streamUrl.includes('.m3u8') || streamUrl.includes('.mp4') || streamUrl.includes('/api/proxy') ? (
-                        <AnimePlayer key={currentEpId} ref={playerRef} url={streamUrl || ""} referer={streamReferer} subtitles={subtitles} intro={intro} outro={outro} title={currentEpisode?.title || anime.title} startTime={resumeTime} autoPlay={settings.autoPlay} autoSkip={settings.autoSkip} initialVolume={settings.volume} onProgress={(s:any) => progressRef.current = s.playedSeconds} onEnded={() => { saveProgress(true); if(settings.autoNext && nextEpisode) handleEpisodeClick(nextEpisode.id); }} onInteract={() => { if(!hideInterface) resetInterfaceTimer(); }} onPlay={handlePlaybackStart} onPause={handlePause} onSkipIntro={handleSkipIntro} /> 
+                        <AnimePlayer 
+                            key={currentEpId} 
+                            ref={playerRef} 
+                            episodeId={currentEpId} 
+                            url={streamUrl || ""} 
+                            referer={streamReferer} 
+                            subtitles={subtitles} 
+                            intro={intro} 
+                            outro={outro} 
+                            title={currentEpisode?.title || anime.title} 
+                            startTime={resumeTime} 
+                            autoPlay={settings.autoPlay} 
+                            autoSkip={settings.autoSkip} 
+                            initialVolume={settings.volume} 
+                            onProgress={(s:any) => progressRef.current = s.playedSeconds} 
+                            onEnded={() => { saveProgress(true); if(settings.autoNext && nextEpisode) handleEpisodeClick(nextEpisode.id); }} 
+                            onInteract={() => { if(!hideInterface) resetInterfaceTimer(); }} 
+                            onPlay={handlePlaybackStart} 
+                            onPause={handlePause} 
+                            onSkipIntro={handleSkipIntro}
+                            onAspectRatioChange={setPlayerAspectRatio}
+                        /> 
                     ) : (
-                        <iframe ref={iframeRef} src={(() => {
-                            if (!streamUrl) return '';
-                            let finalSrc = streamUrl;
-                            if (finalSrc.includes('dailymotion.com') && !finalSrc.includes('api=')) {
-                                finalSrc += (finalSrc.includes('?') ? '&' : '?') + 'api=postMessage';
-                            }
-                            return finalSrc;
-                        })()} className="w-full h-full border-0" allowFullScreen allow="autoplay; fullscreen" />
+                        <iframe 
+                            ref={iframeRef} 
+                            src={(() => {
+                                if (!streamUrl) return '';
+                                let finalSrc = streamUrl;
+                                if (finalSrc.includes('dailymotion.com') && !finalSrc.includes('api=')) {
+                                    finalSrc += (finalSrc.includes('?') ? '&' : '?') + 'api=postMessage';
+                                }
+                                return finalSrc;
+                            })()} 
+                            className="w-full h-full border-0" 
+                            allowFullScreen 
+                            allow="autoplay; fullscreen; picture-in-picture; encrypted-media" 
+                            referrerPolicy="no-referrer-when-downgrade" 
+                        />
                     )
                 ) : streamError ? (
                      <div className="w-full h-full flex items-center justify-center border-b border-white/5"><div className="text-emerald-500 text-sm font-bold uppercase tracking-widest">{streamError}</div></div>
@@ -1417,8 +1488,8 @@ function WatchContent() {
                 <div className={cn("hidden lg:flex w-full bg-white/5 backdrop-blur-md border border-white/10 rounded-[30px] shadow-[0_8px_32px_0_rgba(0,0,0,0.2)] px-5 py-3 items-center justify-between gap-4 mt-3 transition-all duration-500", settings.dimMode ? "z-[60] relative" : "relative z-10")}>
                     {/* Left: Prev/Next EP */}
                     <div className="flex items-center gap-2 flex-shrink-0">
-                        <button disabled={!prevEpisode} onClick={() => prevEpisode && handleEpisodeClick(prevEpisode.id)} className={cn("flex items-center justify-center gap-2 px-4 h-8 rounded-full border text-[10px] font-black uppercase tracking-tighter transition-all duration-300 shadow-md shadow-black/40 whitespace-nowrap", prevEpisode ? "bg-white/5 border-white/10 text-zinc-300 hover:bg-emerald-600 hover:border-emerald-500 hover:text-white" : "opacity-10 border-white/5 text-zinc-600")}><SkipBack size={12}/> PREV</button>
-                        {nextEpisode ? (<button onClick={() => handleEpisodeClick(nextEpisode.id)} className="flex items-center justify-center gap-2 px-4 h-8 rounded-full border border-white/10 bg-white/5 text-zinc-300 text-[10px] font-black uppercase tracking-widest transition-all hover:bg-emerald-600 whitespace-nowrap group">NEXT <SkipForward size={12} className="group-hover:translate-x-1 transition-transform" /></button>) : (<button disabled className="flex items-center justify-center gap-2 px-4 h-8 rounded-full border border-white/5 bg-white/5 text-zinc-600 text-[10px] font-black uppercase tracking-widest whitespace-nowrap opacity-50 cursor-not-allowed">NEXT <SkipForward size={12}/></button>)}
+                        <button disabled={!prevEpisode} onClick={() => prevEpisode && handleEpisodeClick(prevEpisode.id)} className={cn("flex items-center justify-center gap-2 px-4 h-8 rounded-full border text-[10px] font-black uppercase tracking-tighter transition-all duration-300 shadow-md shadow-black/40 whitespace-nowrap", prevEpisode ? "bg-white/5 border-white/10 text-zinc-300 hover:bg-emerald-600 hover:border-emerald-500 hover:text-white" : "opacity-10 border-white/5 text-zinc-600")}><SkipBack size={12}/> PREV EP</button>
+                        {nextEpisode ? (<button onClick={() => handleEpisodeClick(nextEpisode.id)} className="flex items-center justify-center gap-2 px-4 h-8 rounded-full border border-white/10 bg-white/5 text-zinc-300 text-[10px] font-black uppercase tracking-widest transition-all hover:bg-emerald-600 whitespace-nowrap group">NEXT EP <SkipForward size={12} className="group-hover:translate-x-1 transition-transform" /></button>) : (<button disabled className="flex items-center justify-center gap-2 px-4 h-8 rounded-full border border-white/5 bg-white/5 text-zinc-600 text-[10px] font-black uppercase tracking-widest whitespace-nowrap opacity-50 cursor-not-allowed">NEXT EP <SkipForward size={12}/></button>)}
                     </div>
 
                     {/* Middle: AutoNext & WatchList */}
@@ -1504,7 +1575,7 @@ function WatchContent() {
                                 </Button>
                             </DropdownMenuTrigger>
                             <DropdownMenuContent align="end" className="bg-[#0a0a0a] border border-white/10 rounded-[24px] p-2 shadow-[0_0_25px_-5px_rgba(220,38,38,0.4)] z-[70]">
-                                <ScrollArea className="h-auto max-h-[150px]"><div className="flex flex-col gap-1">{servers?.[settings.category]?.map((srv: any, idx: number) => (<DropdownMenuItem key={srv.serverId} onClick={() => handleServerChange(srv.serverName)} className={cn("text-[10px] uppercase font-bold", settings.server.toLowerCase() === srv.serverName.toLowerCase() ? "bg-emerald-600 text-white" : "text-zinc-400 hover:bg-white/10")}>{srv.serverName}</DropdownMenuItem>))}</div></ScrollArea>
+                                <ScrollArea className="h-auto max-h-[150px]"><div className="flex flex-col gap-1">{servers?.[settings.category]?.map((srv: any, idx: number) => (<DropdownMenuItem key={`${srv.serverName || srv.serverId || 'srv'}-${idx}`} onClick={() => handleServerChange(srv.serverName)} className={cn("text-[10px] uppercase font-bold", settings.server.toLowerCase() === srv.serverName.toLowerCase() ? "bg-emerald-600 text-white" : "text-zinc-400 hover:bg-white/10")}>{srv.serverName}</DropdownMenuItem>))}</div></ScrollArea>
                             </DropdownMenuContent>
                         </DropdownMenu>
                     </div>
@@ -1512,9 +1583,9 @@ function WatchContent() {
             </motion.div>
             </div>
             
-            <div className="xl:col-span-4 w-full xl:h-[650px] h-auto bg-black/40 backdrop-blur-2xl rounded-[40px] border border-white/10 overflow-hidden flex flex-col shadow-[0_8px_32px_0_rgba(0,0,0,0.37)] relative z-20 order-2">
+            <div className="xl:col-span-4 w-full h-full min-h-[420px] max-h-[520px] xl:max-h-none bg-black/40 backdrop-blur-2xl rounded-[30px] border border-white/10 overflow-hidden flex flex-col relative z-20 order-2">
                 <div className="p-6 bg-white/5 border-b border-white/5 flex justify-between items-center shrink-0">
-                    <div className="flex items-center gap-3"><h3 className="font-black text-white flex items-center gap-2 uppercase text-sm font-lemon tracking-widest"><Layers size={18} className="text-emerald-600"/> Episodes</h3><Badge className="bg-white/10 backdrop-blur-md border border-white/10 text-white font-black text-[10px] px-3 h-5 rounded-full shadow-lg">{anime.episodes.length}</Badge></div>
+                    <div className="flex items-center gap-3"><h3 className="font-black text-white flex items-center gap-2 uppercase text-sm font-lemon tracking-widest"><Layers size={18} className="text-emerald-600"/> Episodes</h3><Badge className="bg-white/10 backdrop-blur-md border border-white/10 text-white font-black text-[10px] px-3 h-5 rounded-full">{anime.episodes.length}</Badge></div>
                     <div className="flex items-center gap-1 bg-black/50 p-1 rounded-lg border border-white/5">
                         <button onClick={() => setEpViewMode('compact')} className={cn("p-1.5 rounded-md transition-all", epViewMode === 'compact' ? "bg-zinc-800 text-white shadow-sm" : "text-zinc-500 hover:text-zinc-300")}><Grid size={14}/></button>
                         <button onClick={() => setEpViewMode('grid')} className={cn("p-1.5 rounded-md transition-all", epViewMode === 'grid' ? "bg-zinc-800 text-white shadow-sm" : "text-zinc-500 hover:text-zinc-300")}><LayoutGrid size={14}/></button>
@@ -1528,7 +1599,7 @@ function WatchContent() {
                         ))}
                     </div>
                 </div>
-                <div className="xl:flex-1 xl:overflow-y-auto h-auto p-2 shadow-inner custom-scrollbar overflow-x-hidden">
+                <div className="flex-1 min-h-0 overflow-y-auto p-2 custom-scrollbar overflow-x-hidden">
                     <LayoutGroup>
                         <motion.div layout className={cn("p-2 transition-all duration-500 ease-in-out grid", epViewMode === 'grid' ? 'grid-cols-5 gap-2.5' : epViewMode === 'compact' ? 'grid-cols-10 gap-1.5' : 'grid-cols-1 gap-2')}>
                             <AnimatePresence mode="popLayout">
@@ -1547,7 +1618,12 @@ function WatchContent() {
                 </div>
             </div>
 
-            <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} transition={{ duration: 0.6, delay: 0.4 }} className="xl:col-span-8 w-full h-auto bg-black/40 backdrop-blur-2xl rounded-[40px] border border-white/10 overflow-hidden flex flex-col shadow-[0_8px_32px_0_rgba(0,0,0,0.37)] relative order-3">
+            {/* Full-width Ads Card Covering both player and episodes section */}
+            <div className="xl:col-span-12 w-full order-3">
+                <AdsterraNativeBanner location="watch" format="native" />
+            </div>
+
+            <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} transition={{ duration: 0.6, delay: 0.4 }} className="xl:col-span-8 w-full h-auto bg-black/40 backdrop-blur-2xl rounded-[40px] border border-white/10 overflow-hidden flex flex-col relative order-4">
                     <div className="flex-shrink-0 relative p-8 flex flex-col sm:flex-row gap-10 bg-gradient-to-b from-emerald-600/5 to-transparent">
                         <div className="relative shrink-0 lg:mx-0 flex flex-col gap-6 w-full lg:w-auto items-center lg:items-start text-center lg:text-left">
                             <div className="relative p-[3px] rounded-3xl overflow-hidden group/poster shadow-[0_0_40px_rgba(220,38,38,0.2)] sm:mx-0 w-fit">
@@ -1630,7 +1706,7 @@ function WatchContent() {
                     </div>
             </motion.div>
                   
-            <div className="xl:col-span-4 w-full h-[500px] xl:h-auto xl:relative xl:self-stretch mt-8 xl:mt-0 order-5 xl:order-4">
+            <div className="xl:col-span-4 w-full h-[500px] xl:h-auto xl:relative xl:self-stretch mt-8 xl:mt-0 order-5">
                 <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} transition={{ duration: 0.6, delay: 0.5 }} className="w-full h-full xl:absolute xl:inset-0 bg-[#0a0a0a] rounded-[40px] border border-white/5 overflow-hidden flex flex-col shadow-2xl shadow-emerald-900/10">
                      <div className="p-6 bg-white/5 border-b border-white/5 flex items-center gap-3 shrink-0"><Wand2 size={18} className="text-emerald-600"/><h3 className="font-black text-white text-sm font-lemon tracking-widest uppercase">Suggestions</h3></div>
                      <ScrollArea className="flex-1 custom-scrollbar">

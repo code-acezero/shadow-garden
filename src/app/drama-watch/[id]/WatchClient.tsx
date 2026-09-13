@@ -433,11 +433,11 @@ export function DramaWatchContent() {
             <div className={cn("hidden lg:flex w-full bg-white/5 backdrop-blur-md border border-white/10 rounded-[30px] shadow-[0_8px_32px_0_rgba(0,0,0,0.2)] px-5 py-3 items-center justify-between gap-4 mt-3 transition-all duration-500", dimMode ? "z-[60] relative" : "relative z-10")}>
               {/* Left: Prev / Next EP */}
               <div className="flex items-center gap-2 flex-shrink-0">
-                <button disabled={!prevEp} onClick={() => prevEp && handleEpClick(prevEp.id)} className={cn("flex items-center justify-center gap-2 px-4 h-8 rounded-full border text-[10px] font-black uppercase tracking-tighter transition-all duration-300 shadow-md shadow-black/40 whitespace-nowrap", prevEp ? "bg-white/5 border-white/10 text-zinc-300 hover:bg-orange-600 hover:border-orange-500 hover:text-white" : "opacity-10 border-white/5 text-zinc-600")}><SkipBack size={12} /> PREV</button>
+                <button disabled={!prevEp} onClick={() => prevEp && handleEpClick(prevEp.id)} className={cn("flex items-center justify-center gap-2 px-4 h-8 rounded-full border text-[10px] font-black uppercase tracking-tighter transition-all duration-300 shadow-md shadow-black/40 whitespace-nowrap", prevEp ? "bg-white/5 border-white/10 text-zinc-300 hover:bg-orange-600 hover:border-orange-500 hover:text-white" : "opacity-10 border-white/5 text-zinc-600")}><SkipBack size={12} /> PREV EP</button>
                 {nextEp ? (
-                  <button onClick={() => handleEpClick(nextEp.id)} className="flex items-center justify-center gap-2 px-4 h-8 rounded-full border border-white/10 bg-white/5 text-zinc-300 text-[10px] font-black uppercase tracking-widest transition-all hover:bg-orange-600 whitespace-nowrap group">NEXT <SkipForward size={12} className="group-hover:translate-x-1 transition-transform" /></button>
+                  <button onClick={() => handleEpClick(nextEp.id)} className="flex items-center justify-center gap-2 px-4 h-8 rounded-full border border-white/10 bg-white/5 text-zinc-300 text-[10px] font-black uppercase tracking-widest transition-all hover:bg-orange-600 whitespace-nowrap group">NEXT EP <SkipForward size={12} className="group-hover:translate-x-1 transition-transform" /></button>
                 ) : (
-                  <button disabled className="flex items-center justify-center gap-2 px-4 h-8 rounded-full border border-white/5 bg-white/5 text-zinc-600 text-[10px] font-black uppercase tracking-widest whitespace-nowrap opacity-50 cursor-not-allowed">NEXT <SkipForward size={12} /></button>
+                  <button disabled className="flex items-center justify-center gap-2 px-4 h-8 rounded-full border border-white/5 bg-white/5 text-zinc-600 text-[10px] font-black uppercase tracking-widest whitespace-nowrap opacity-50 cursor-not-allowed">NEXT EP <SkipForward size={12} /></button>
                 )}
                 <Button onClick={() => setDimMode(v => !v)} variant="ghost" size="icon" className={cn("rounded-full w-8 h-8 transition-all hover:scale-110 shadow-orange-900/10 flex-shrink-0", dimMode ? "text-yellow-500 bg-yellow-500/10" : "text-zinc-600 hover:bg-white/5 shadow-none")}><Lightbulb size={14} /></Button>
               </div>
@@ -541,8 +541,8 @@ export function DramaWatchContent() {
               </div>
               {/* Row 3: PREV / NEXT */}
               <div className="flex w-full justify-between items-center gap-2 border-t border-white/5 pt-3">
-                <button disabled={!prevEp} onClick={() => prevEp && handleEpClick(prevEp.id)} className="flex-1 bg-white/5 h-8 rounded-full border border-white/5 flex items-center justify-center gap-1 text-zinc-400 text-[10px] font-black uppercase hover:text-white active:bg-white/10"><SkipBack size={14} /> PREV</button>
-                <button disabled={!nextEp} onClick={() => nextEp && handleEpClick(nextEp.id)} className="flex-1 bg-white/5 h-8 rounded-full border border-white/5 flex items-center justify-center gap-1 text-zinc-400 text-[10px] font-black uppercase hover:text-white active:bg-white/10">NEXT <SkipForward size={14} /></button>
+                <button disabled={!prevEp} onClick={() => prevEp && handleEpClick(prevEp.id)} className="flex-1 bg-white/5 h-8 rounded-full border border-white/5 flex items-center justify-center gap-1 text-zinc-400 text-[10px] font-black uppercase hover:text-white active:bg-white/10"><SkipBack size={14} /> PREV EP</button>
+                <button disabled={!nextEp} onClick={() => nextEp && handleEpClick(nextEp.id)} className="flex-1 bg-white/5 h-8 rounded-full border border-white/5 flex items-center justify-center gap-1 text-zinc-400 text-[10px] font-black uppercase hover:text-white active:bg-white/10">NEXT EP <SkipForward size={14} /></button>
               </div>
               {/* Row 4: Room + Share + Download + Server */}
               <div className="flex w-full justify-between items-center gap-1.5 border-t border-white/5 pt-3 overflow-x-auto custom-scrollbar">

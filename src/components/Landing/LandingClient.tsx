@@ -19,6 +19,7 @@ import { Button } from '@/components/ui/button';
 import { sfx } from '@/lib/audioManager'; 
 import AuthModal from '@/components/Auth/AuthModal';
 import SearchBar from '@/components/Anime/SearchBar';
+import AdsterraNativeBanner from '@/components/Ads/AdsterraNativeBanner';
 import dynamic from 'next/dynamic';
 import { getRandomAvatar, getRandomGuestName } from '@/components/User/AvatarSelectorModal';
 
@@ -497,19 +498,6 @@ export default function LandingClient() {
     }
   }, [selectedGender]);
 
-  const handleEnterClick = useCallback(() => { 
-    initializeAudio();
-    processGenderSelection();
-    setShowLandingUI(false); 
-    setTriggerEntry(true); 
-  }, [initializeAudio, processGenderSelection]);
-  
-  const handleJoinGuildClick = useCallback(() => {
-    initializeAudio();
-    processGenderSelection();
-    setShowAuth(true);
-  }, [initializeAudio, processGenderSelection]);
-
   const handlePortalComplete = useCallback(() => { 
     if (typeof window !== 'undefined') {
       localStorage.setItem('sg_portal_seen', 'true');
@@ -518,12 +506,38 @@ export default function LandingClient() {
     router.push('/home'); 
   }, [router]);
 
-  // Safety timeout: if portal transition takes longer than 40s to route to /home, force navigation
+  const handleEnterClick = useCallback(() => { 
+    initializeAudio();
+    processGenderSelection();
+    
+    // If user has already seen portal or chosen skip preference, route immediately
+    const isSkip = typeof window !== 'undefined' && (
+      localStorage.getItem('anim_never_ask') === 'true' ||
+      localStorage.getItem('anim_preference') === 'skip' ||
+      localStorage.getItem('sg_portal_seen') === 'true'
+    );
+    
+    if (isSkip) {
+      handlePortalComplete();
+      return;
+    }
+
+    setShowLandingUI(false); 
+    setTriggerEntry(true); 
+  }, [initializeAudio, processGenderSelection, handlePortalComplete]);
+  
+  const handleJoinGuildClick = useCallback(() => {
+    initializeAudio();
+    processGenderSelection();
+    setShowAuth(true);
+  }, [initializeAudio, processGenderSelection]);
+
+  // Safety timeout: if portal transition takes longer than 4s to route to /home, force navigation
   useEffect(() => {
     if (triggerEntry) {
       const fallbackTimer = setTimeout(() => {
         handlePortalComplete();
-      }, 40000);
+      }, 4000);
       return () => clearTimeout(fallbackTimer);
     }
   }, [triggerEntry, handlePortalComplete]);
@@ -814,6 +828,11 @@ export default function LandingClient() {
                {/* CUTE SHARE BAR */}
                <CuteShareBar />
 
+               {/* BOTTOM SPONSORED BANNER */}
+               <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 w-full my-6">
+                  <AdsterraNativeBanner location="general" format="native" />
+               </div>
+
                {/* FOOTER */}
                <footer className="py-12 border-t border-white/5 text-center relative overflow-hidden bg-black">
                   <div className="relative z-20 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -835,6 +854,18 @@ export default function LandingClient() {
       </AnimatePresence>
 
       <AuthModal isOpen={showAuth} onClose={() => setShowAuth(false)} onAuthSuccess={handleEnterClick} />
+
+      {triggerEntry && (
+        <div className="fixed bottom-6 right-6 z-[99999] pointer-events-auto">
+          <Button
+            onClick={() => handlePortalComplete()}
+            variant="outline"
+            className="rounded-full bg-black/85 border-primary-500/60 text-white hover:bg-primary-950/80 hover:border-primary-400 backdrop-blur-md px-5 py-2.5 text-xs font-mono tracking-widest uppercase shadow-[0_0_25px_rgba(220,38,38,0.5)] cursor-pointer flex items-center gap-2"
+          >
+            Skip to Sanctuary <ArrowRight className="w-4 h-4 text-primary-400" />
+          </Button>
+        </div>
+      )}
 
     </main>
   );

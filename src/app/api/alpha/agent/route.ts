@@ -45,7 +45,8 @@ export async function POST(req: Request) {
     // action: e.g. "evaluate_mention"
     // data: payload like { message: "suspend user 123", clan_id: "...", user_id: "..." }
 
-    if (!process.env.NEXT_PUBLIC_GEMINI_API_KEY) {
+    const apiKey = process.env.GEMINI_API_KEY || process.env.NEXT_PUBLIC_GEMINI_API_KEY;
+    if (!apiKey) {
       return NextResponse.json({ error: 'Gemini API key missing' }, { status: 500 });
     }
 
@@ -246,7 +247,7 @@ You can use a 'gif_query' if a GIF or sticker would enhance your reply. Be conci
           toolConfig: { functionCallingConfig: { mode: "ANY" } }
         };
 
-        const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${process.env.NEXT_PUBLIC_GEMINI_API_KEY}`, {
+        const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(geminiReq)

@@ -14,6 +14,7 @@ import { UserDataProvider } from '@/context/UserDataContext';
 import AlphaWidget from '@/components/AI/AlphaWidget';
 import GuildBoardPopupRenderer from '@/components/UIx/GuildBoardPopupRenderer';
 import AnalyticsTracker from '@/components/Analytics/AnalyticsTracker';
+import AdScriptInjector from '@/components/Ads/AdScriptInjector';
 import LiquidGlassSplashScreen from '@/components/PWA/LiquidGlassSplashScreen';
 import PWAInstaller from '@/components/PWA/PWAInstaller';
 import ChunkErrorRecovery from '@/components/Utils/ChunkErrorRecovery';
@@ -228,6 +229,7 @@ export default function RootLayout({
           <UserDataProvider>
             <SettingsProvider>
               <AnalyticsTracker />
+              <AdScriptInjector />
               <Navigation />
 
               <main className="min-h-screen relative overflow-clip w-full">

@@ -1,0 +1,295 @@
+{
+  "version": 3,
+  "pages404": true,
+  "caseSensitive": false,
+  "basePath": "",
+  "redirects": [
+    {
+      "source": "/:path+/",
+      "destination": "/:path+",
+      "internal": true,
+      "statusCode": 308,
+      "regex": "^(?:/((?:[^/]+?)(?:/(?:[^/]+?))*))/$"
+    },
+    {
+      "source": "/admin",
+      "destination": "/master",
+      "statusCode": 308,
+      "regex": "^(?!/_next)/admin(?:/)?$"
+    }
+  ],
+  "headers": [],
+  "rewrites": {
+    "beforeFiles": [],
+    "afterFiles": [],
+    "fallback": []
+  },
+  "dynamicRoutes": [
+    {
+      "page": "/api/donghua/[...endpoint]",
+      "regex": "^/api/donghua/(.+?)(?:/)?$",
+      "routeKeys": {
+        "nxtPendpoint": "nxtPendpoint"
+      },
+      "namedRegex": "^/api/donghua/(?<nxtPendpoint>.+?)(?:/)?$"
+    },
+    {
+      "page": "/api/hdmovies/[...endpoint]",
+      "regex": "^/api/hdmovies/(.+?)(?:/)?$",
+      "routeKeys": {
+        "nxtPendpoint": "nxtPendpoint"
+      },
+      "namedRegex": "^/api/hdmovies/(?<nxtPendpoint>.+?)(?:/)?$"
+    },
+    {
+      "page": "/donghua-watch/[id]",
+      "regex": "^/donghua\\-watch/([^/]+?)(?:/)?$",
+      "routeKeys": {
+        "nxtPid": "nxtPid"
+      },
+      "namedRegex": "^/donghua\\-watch/(?<nxtPid>[^/]+?)(?:/)?$"
+    },
+    {
+      "page": "/download/[type]/[id]",
+      "regex": "^/download/([^/]+?)/([^/]+?)(?:/)?$",
+      "routeKeys": {
+        "nxtPtype": "nxtPtype",
+        "nxtPid": "nxtPid"
+      },
+      "namedRegex": "^/download/(?<nxtPtype>[^/]+?)/(?<nxtPid>[^/]+?)(?:/)?$"
+    },
+    {
+      "page": "/drama-watch/[id]",
+      "regex": "^/drama\\-watch/([^/]+?)(?:/)?$",
+      "routeKeys": {
+        "nxtPid": "nxtPid"
+      },
+      "namedRegex": "^/drama\\-watch/(?<nxtPid>[^/]+?)(?:/)?$"
+    },
+    {
+      "page": "/hindi-watch/[id]",
+      "regex": "^/hindi\\-watch/([^/]+?)(?:/)?$",
+      "routeKeys": {
+        "nxtPid": "nxtPid"
+      },
+      "namedRegex": "^/hindi\\-watch/(?<nxtPid>[^/]+?)(?:/)?$"
+    },
+    {
+      "page": "/movies-watch/[id]",
+      "regex": "^/movies\\-watch/([^/]+?)(?:/)?$",
+      "routeKeys": {
+        "nxtPid": "nxtPid"
+      },
+      "namedRegex": "^/movies\\-watch/(?<nxtPid>[^/]+?)(?:/)?$"
+    },
+    {
+      "page": "/profile/[id]",
+      "regex": "^/profile/([^/]+?)(?:/)?$",
+      "routeKeys": {
+        "nxtPid": "nxtPid"
+      },
+      "namedRegex": "^/profile/(?<nxtPid>[^/]+?)(?:/)?$"
+    },
+    {
+      "page": "/rooms/[code]",
+      "regex": "^/rooms/([^/]+?)(?:/)?$",
+      "routeKeys": {
+        "nxtPcode": "nxtPcode"
+      },
+      "namedRegex": "^/rooms/(?<nxtPcode>[^/]+?)(?:/)?$"
+    },
+    {
+      "page": "/social/post/[id]",
+      "regex": "^/social/post/([^/]+?)(?:/)?$",
+      "routeKeys": {
+        "nxtPid": "nxtPid"
+      },
+      "namedRegex": "^/social/post/(?<nxtPid>[^/]+?)(?:/)?$"
+    },
+    {
+      "page": "/view/[category]",
+      "regex": "^/view/([^/]+?)(?:/)?$",
+      "routeKeys": {
+        "nxtPcategory": "nxtPcategory"
+      },
+      "namedRegex": "^/view/(?<nxtPcategory>[^/]+?)(?:/)?$"
+    },
+    {
+      "page": "/watch/[id]",
+      "regex": "^/watch/([^/]+?)(?:/)?$",
+      "routeKeys": {
+        "nxtPid": "nxtPid"
+      },
+      "namedRegex": "^/watch/(?<nxtPid>[^/]+?)(?:/)?$"
+    }
+  ],
+  "staticRoutes": [
+    {
+      "page": "/",
+      "regex": "^/(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/(?:/)?$"
+    },
+    {
+      "page": "/_not-found",
+      "regex": "^/_not\\-found(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/_not\\-found(?:/)?$"
+    },
+    {
+      "page": "/admin",
+      "regex": "^/admin(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/admin(?:/)?$"
+    },
+    {
+      "page": "/ai/imagesearch",
+      "regex": "^/ai/imagesearch(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/ai/imagesearch(?:/)?$"
+    },
+    {
+      "page": "/auth/callback",
+      "regex": "^/auth/callback(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/auth/callback(?:/)?$"
+    },
+    {
+      "page": "/donghua",
+      "regex": "^/donghua(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/donghua(?:/)?$"
+    },
+    {
+      "page": "/drama",
+      "regex": "^/drama(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/drama(?:/)?$"
+    },
+    {
+      "page": "/drama/search",
+      "regex": "^/drama/search(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/drama/search(?:/)?$"
+    },
+    {
+      "page": "/home",
+      "regex": "^/home(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/home(?:/)?$"
+    },
+    {
+      "page": "/icon.svg",
+      "regex": "^/icon\\.svg(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/icon\\.svg(?:/)?$"
+    },
+    {
+      "page": "/manager",
+      "regex": "^/manager(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/manager(?:/)?$"
+    },
+    {
+      "page": "/master",
+      "regex": "^/master(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/master(?:/)?$"
+    },
+    {
+      "page": "/messages",
+      "regex": "^/messages(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/messages(?:/)?$"
+    },
+    {
+      "page": "/movies",
+      "regex": "^/movies(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/movies(?:/)?$"
+    },
+    {
+      "page": "/profile",
+      "regex": "^/profile(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/profile(?:/)?$"
+    },
+    {
+      "page": "/robots.txt",
+      "regex": "^/robots\\.txt(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/robots\\.txt(?:/)?$"
+    },
+    {
+      "page": "/rooms",
+      "regex": "^/rooms(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/rooms(?:/)?$"
+    },
+    {
+      "page": "/schedule",
+      "regex": "^/schedule(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/schedule(?:/)?$"
+    },
+    {
+      "page": "/search",
+      "regex": "^/search(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/search(?:/)?$"
+    },
+    {
+      "page": "/search/donghua",
+      "regex": "^/search/donghua(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/search/donghua(?:/)?$"
+    },
+    {
+      "page": "/search/hindi",
+      "regex": "^/search/hindi(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/search/hindi(?:/)?$"
+    },
+    {
+      "page": "/settings",
+      "regex": "^/settings(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/settings(?:/)?$"
+    },
+    {
+      "page": "/sitemap.xml",
+      "regex": "^/sitemap\\.xml(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/sitemap\\.xml(?:/)?$"
+    },
+    {
+      "page": "/social",
+      "regex": "^/social(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/social(?:/)?$"
+    },
+    {
+      "page": "/watchlist",
+      "regex": "^/watchlist(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/watchlist(?:/)?$"
+    }
+  ],
+  "dataRoutes": [],
+  "rsc": {
+    "header": "rsc",
+    "varyHeader": "rsc, next-router-state-tree, next-router-prefetch, next-router-segment-prefetch",
+    "prefetchHeader": "next-router-prefetch",
+    "didPostponeHeader": "x-nextjs-postponed",
+    "contentTypeHeader": "text/x-component",
+    "suffix": ".rsc",
+    "prefetchSuffix": ".prefetch.rsc",
+    "prefetchSegmentHeader": "next-router-segment-prefetch",
+    "prefetchSegmentSuffix": ".segment.rsc",
+    "prefetchSegmentDirSuffix": ".segments"
+  },
+  "rewriteHeaders": {
+    "pathHeader": "x-nextjs-rewritten-path",
+    "queryHeader": "x-nextjs-rewritten-query"
+  }
+}

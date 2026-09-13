@@ -438,7 +438,7 @@ const DramaPlayer = forwardRef<DramaPlayerRef, DramaPlayerProps>(({
                 <Settings size={22} />
               </button>
               {showSettings && (
-                <div className="absolute bottom-12 right-0 bg-zinc-950/70 backdrop-blur-3xl border border-white/5 ring-1 ring-white/10 rounded-2xl p-2 w-48 max-h-[70%] h-auto min-h-[160px] overflow-y-auto scrollbar-hide shadow-2xl z-50 flex flex-col gap-1 animate-in slide-in-from-bottom-2" onClick={(e) => e.stopPropagation()}>
+                <div className="absolute bottom-12 right-0 bg-zinc-950/70 backdrop-blur-3xl border border-white/5 ring-1 ring-white/10 rounded-2xl p-2 w-48 max-h-[280px] sm:max-h-[340px] overflow-y-auto scrollbar-hide shadow-2xl z-50 flex flex-col gap-1 animate-in slide-in-from-bottom-2" onClick={(e) => e.stopPropagation()}>
                   <p className="text-[10px] font-black text-zinc-500 uppercase px-3 pb-1 border-b border-white/10">Quality</p>
                   <button onClick={() => { if (hlsRef.current) hlsRef.current.currentLevel = -1; setCurrentQuality(-1); }} className={cn("text-[11px] px-3 py-2 rounded-full text-left font-bold transition-all", currentQuality === -1 ? "bg-primary-600 text-white" : "hover:bg-white/10 hover:shadow-inner")}>Auto</button>
                   {qualities.map(q => <button key={q.index} onClick={() => { if (hlsRef.current) hlsRef.current.currentLevel = q.index; setCurrentQuality(q.index); }} className={cn("text-[11px] px-3 py-2 rounded-full text-left font-bold transition-all", currentQuality === q.index ? "bg-primary-600 text-white" : "hover:bg-white/10 hover:shadow-inner")}>{q.height}p</button>)}

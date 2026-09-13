@@ -1,26 +1,27 @@
 export const SITE_CONFIG = {
-  name: "Shadow Garden Guild",
-  title: "Shadow Garden Guild | Sanctuary of Anime Wisdom & Otaku Realm",
-  description: "Enter the Shadow Garden Guild — the ultimate anime streaming platform & otaku sanctuary from another world. Join the Seven Shadows, track your guild quests, discuss in Otakuverse, and analyze scenes with screenshot search.",
+  name: "Shadow Garden",
+  title: "Shadow Garden - Watch Anime Online Free in HD | English Sub & Dub Streaming",
+  description: "Watch anime online free in HD 1080p with English Subbed and Dubbed streams on Shadow Garden. Stream popular seasonal series, movies, Hindi dubbed anime, and Chinese Donghua with ultra-fast servers and zero buffering.",
   keywords: [
-    "Shadow Garden Guild", "Eminence in Shadow", "Shadow Anime", "Cid Kagenou", 
-    "Seven Shadows", "Anime from Another World", "Isekai Streaming",
-    "Otakuverse", "Anime Guild", "Search Anime by Image", "Anime Schedule 2026", "Guild Quests",
-    "nonton anime indonesia", "anime sub indo", "watch anime singapore", "anime streaming korea", 
-    "anime streaming India", "watch anime Bangladesh", "free anime pakistan", "japanese anime streaming", 
-    "watch anime malaysia", "free anime philippines", "anime streaming thailand", "free anime china",
-    "free anime usa", "anime streaming uk", "watch anime online free 1080p no ads"
+    "watch anime online free", "free anime streaming", "watch anime hd", "anime online 1080p",
+    "anime english subbed", "anime english dubbed", "watch anime episodes free", "free anime site 2026",
+    "Shadow Garden anime", "Shadow Garden", "watch hindi anime dubbed", "watch donghua online free",
+    "stream anime free", "watch solo leveling season 2 free", "one piece watch online",
+    "jujutsu kaisen online free", "demon slayer stream", "bleach thousand year blood war stream",
+    "free anime streaming no registration", "best free anime sites", "anime sub indo", 
+    "watch anime usa", "anime streaming uk", "watch anime india", "watch anime philippines"
   ].join(', '),
   ogImage: "/og-image.png",
   
   // JSON-LD Navigation Data
   navigation: [
-    { name: "Home", url: "https://shadow-garden.site/home" },
-    { name: "Otakuverse", description: "Join the Anime Guild Community", url: "https://shadow-garden.site/social" },
-    { name: "Schedule", description: "Incoming Anime Transmissions", url: "https://shadow-garden.site/schedule" },
-    { name: "Image Search", description: "Identify Anime with Lost Technology", url: "https://shadow-garden.site/aisa/imagesearch" },
-    { name: "Enter In Guild", url: "https://shadow-garden.site/login" },
-    { name: "Join The Guild", url: "https://shadow-garden.site/register" }
+    { name: "Home", url: "https://shadow-garden.site/home", description: "Trending & seasonal anime streaming" },
+    { name: "Discover Anime", url: "https://shadow-garden.site/discover", description: "Browse top rated anime by genre and year" },
+    { name: "Movies", url: "https://shadow-garden.site/movies", description: "Watch anime movies in 1080p Full HD" },
+    { name: "Hindi Anime", url: "https://shadow-garden.site/hindi", description: "Watch anime dubbed in Hindi online" },
+    { name: "Donghua", url: "https://shadow-garden.site/donghua", description: "Watch Chinese anime with English subtitles" },
+    { name: "Schedule", url: "https://shadow-garden.site/schedule", description: "Weekly anime release calendar & broadcast times" },
+    { name: "Otakuverse", url: "https://shadow-garden.site/social", description: "Anime community discussion & fan posts" },
   ],
 
   // Locales

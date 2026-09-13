@@ -1667,9 +1667,12 @@ export default function ShadowGardenPortal({
 
     useEffect(() => {
         if (startTransition) {
-            if (stage === 'idle' || stage === 'intro') {
+            if (skipped || stage === 'loading') {
+                onComplete();
+            } else if (stage === 'idle' || stage === 'intro') {
                 performEntrySequence();
-            } else if (stage === 'loading' || skipped) {
+            } else {
+                // If in any other stage, complete smoothly
                 onComplete();
             }
         }
@@ -1823,10 +1826,6 @@ export default function ShadowGardenPortal({
                 </motion.div>
             ) : null}
 
-            {showBracePopup && (
-                <BracePopup onReady={handleBraceReady} gender={gender} />
-            )}
-
             <AnimatePresence>
                 {stage === 'arrival' && (
                     <motion.div 
@@ -1853,6 +1852,10 @@ export default function ShadowGardenPortal({
                 className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-white via-white to-red-600/30 shadow-[inset_0_0_120px_rgba(239,68,68,0.4)] z-[10000] pointer-events-none" 
             />
         </div>
+
+        {showBracePopup && (
+            <BracePopup onReady={handleBraceReady} gender={gender} />
+        )}
         </>
     );
 }

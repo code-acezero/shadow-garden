@@ -19,7 +19,7 @@ import {
   Scroll, Sword, BookOpen, Link2, Feather, Play, Pause,
   Bold, Italic, Type, UserCheck, X, LayoutDashboard, Palette,
   Filter, ArrowDownCircle, Menu, Crown, Layers, ArrowLeft,
-  PanelLeftClose, PanelLeftOpen
+  PanelLeftClose, PanelLeftOpen, DollarSign
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -35,6 +35,7 @@ import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/
 import RoleTitleManager from '@/components/Admin/RoleTitleManager';
 import GuildBoardsPanel from '@/components/Admin/GuildBoardsPanel';
 import AnalyticsSection from '@/components/Admin/AnalyticsSection';
+import AdsMonetizationPanel from '@/components/Admin/AdsMonetizationPanel';
 import { cn } from '@/lib/utils';
 
 // --- NOTIFICATION HELPER ---
@@ -46,10 +47,11 @@ const notify = (title: string, message: string, type: 'success' | 'error' | 'sys
     }
 };
 
-type Tab = 'GUILD_DESK' | 'ANALYTICS' | 'GUILD_INFO' | 'ADVENTURERS' | 'TITLES_HIERARCHY' | 'GUILD_BOARDS' | 'PALETTES' | 'MOD_APPS' | 'MAGIC_NET' | 'VOICES' | 'NOTICE';
+type Tab = 'GUILD_DESK' | 'ANALYTICS' | 'GUILD_INFO' | 'ADVENTURERS' | 'TITLES_HIERARCHY' | 'GUILD_BOARDS' | 'PALETTES' | 'MOD_APPS' | 'MAGIC_NET' | 'VOICES' | 'NOTICE' | 'ADS_MONETIZATION';
 
 const MASTER_TABS = [
   { id: 'GUILD_DESK', icon: LayoutDashboard, label: 'Desk & Analytics' },
+  { id: 'ADS_MONETIZATION', icon: DollarSign, label: 'Monetization' },
   { id: 'GUILD_INFO', icon: BookOpen, label: 'Site Specs' },
   { id: 'ADVENTURERS', icon: Sword, label: 'Adventurers' },
   { id: 'TITLES_HIERARCHY', icon: Crown, label: 'Titles & Roles' },
@@ -323,6 +325,7 @@ export default function GuildMasterDashboard() {
             {activeTab === 'MAGIC_NET' && <NetworkTab />}
             {activeTab === 'VOICES' && <VoiceTab />}
             {activeTab === 'NOTICE' && <BroadcastTab />}
+            {activeTab === 'ADS_MONETIZATION' && <AdsMonetizationPanel onNotify={notify} />}
           </div>
 
           {/* Footer */}
@@ -387,7 +390,8 @@ const OverviewTab = memo(({ changeTab }: { changeTab: (t: Tab) => void }) => {
         
         <div className="col-span-1 md:col-span-2 bg-zinc-900/20 border border-white/5 rounded-[2rem] p-6 md:p-8">
           <h3 className="text-lg font-bold mb-6 flex items-center gap-3 text-white"><Scroll size={20} className="text-primary-500" /> Guild Administration</h3>
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+          <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
+            <CmdTile label="Monetization" icon={DollarSign} onClick={() => changeTab('ADS_MONETIZATION')} color="red" />
             <CmdTile label="Adventurers" icon={Sword} onClick={() => changeTab('ADVENTURERS')} color="red" />
             <CmdTile label="Magic Net" icon={Globe} onClick={() => changeTab('MAGIC_NET')} color="red" />
             <CmdTile label="Echoes" icon={Mic2} onClick={() => changeTab('VOICES')} color="red" />
