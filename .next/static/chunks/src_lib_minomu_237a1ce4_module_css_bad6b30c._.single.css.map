@@ -1,0 +1,6 @@
+{
+  "version": 3,
+  "sources": [],
+  "sections": [
+    {"offset": {"line": 1, "column": 0}, "map": {"version":3,"sources":["turbopack:///[project]/src/lib/minomu_237a1ce4.module.css"],"sourcesContent":["@font-face {\n    font-family: 'minomu';\n    src: url('@vercel/turbopack-next/internal/font/local/font?{%22path%22:%22../assets/fonts/MinomuRegular-4BV0B.otf%22,%22preload%22:false,%22has_size_adjust%22:true}') format('opentype');\n    font-display: swap;\n    font-weight: 400;font-style: normal;\n}\n@font-face {\n    font-family: 'minomu';\n    src: url('@vercel/turbopack-next/internal/font/local/font?{%22path%22:%22../assets/fonts/MinomuBold-rgXoO.otf%22,%22preload%22:false,%22has_size_adjust%22:true}') format('opentype');\n    font-display: swap;\n    font-weight: 700;font-style: normal;\n}\n\n@font-face {\n    font-family: 'minomu Fallback';\n    src: local(\"Arial\");\n    ascent-override: 90.79%;\ndescent-override: 25.94%;\nline-gap-override: 10.38%;\nsize-adjust: 96.38%;\n\n}\n\n.className {\n    font-family: 'minomu', 'minomu Fallback';\n    \n}\n.variable {\n    --font-minomu: 'minomu', 'minomu Fallback';\n}\n\n"],"names":[],"mappings":"AAAA;;;;;;;;AAMA;;;;;;;;AAOA;;;;;;;;;AAUA;;;;AAIA"}}]
+}

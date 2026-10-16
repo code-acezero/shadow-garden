@@ -103,14 +103,12 @@ export default function ContinueWatching() {
         initial={{ opacity: 0, x: -20 }}
         whileInView={{ opacity: 1, x: 0 }}
         viewport={{ once: true }}
-        className="flex items-center justify-between flex-nowrap mb-2 md:mb-6 px-4 gap-4 w-full"
+        className="flex items-center justify-between flex-nowrap mb-2 md:mb-6 gap-4 w-full"
       >
         <div className="flex items-center gap-2 md:gap-3 min-w-0">
-          <div className="p-1.5 md:p-2 bg-primary-600/10 rounded-lg md:rounded-xl border border-primary-500/20 backdrop-blur-md flex-shrink-0">
-            <Clock className="w-3.5 h-3.5 md:w-4 md:h-4 text-primary-500" />
-          </div>
-          <h2 className="text-sm md:text-lg font-black tracking-[0.15em] md:tracking-[0.2em] uppercase font-sans drop-shadow-md bg-gradient-to-r from-primary-500 via-primary-600 to-primary-900 bg-clip-text text-transparent truncate">
-            Continue Adventure
+          <Clock className="w-7 h-7 md:w-9 md:h-9 text-primary-500 shrink-0 drop-shadow-[0_0_12px_rgba(220,38,38,0.5)]" />
+          <h2 className="text-xl md:text-3xl font-black text-white font-lemon uppercase tracking-wide flex items-center gap-2">
+            CONTINUE <span className="text-primary-500">ADVENTURE</span>
           </h2>
         </div>
 
@@ -123,10 +121,10 @@ export default function ContinueWatching() {
         </Link>
       </motion.div>
 
-      {/* Horizontal Scroll Content - Updated max-w to 1350px */}
+      {/* Horizontal Scroll Content */}
       <AnimatePresence mode="wait">
         {loadingData ? (
-          <div className="flex gap-4 overflow-hidden px-4 py-4 md:py-8">
+          <div className="flex gap-4 overflow-hidden py-2 md:py-6">
             {[...Array(6)].map((_, i) => (
               <div key={i} className="flex-shrink-0 w-[42%] md:w-[22%] lg:w-[15%] aspect-[3/4] rounded-[32px] bg-white/5 animate-pulse border border-white/5 shadow-inner" />
             ))}
@@ -136,7 +134,7 @@ export default function ContinueWatching() {
             variants={containerVariants}
             initial="hidden"
             animate="visible"
-            className="w-full overflow-x-auto no-scrollbar py-2 md:py-8 px-4 snap-x snap-mandatory flex gap-4 md:gap-5"
+            className="w-full overflow-x-auto no-scrollbar py-2 md:py-6 snap-x snap-mandatory flex gap-4 md:gap-5"
           >
             {continueData.slice(0, 10).map((anime) => (
               <ContinueAnimeCard 

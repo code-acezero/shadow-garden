@@ -105,7 +105,7 @@ export interface HindiDetails extends AnimeCard {
   status: string;
   rating: string;
   premiered: string;
-  season: string;
+  season?: string;
   aired: string;
   episodesCount: string;
   studios: string[];
@@ -116,6 +116,7 @@ export interface HindiDetails extends AnimeCard {
   related: AnimeCard[];
   downloads: { resolution: string; url: string; host: string }[];
 
+  malScore?: string;
   views?: string;
   likes?: string;
   tags?: string[];
@@ -170,47 +171,87 @@ export interface HindiQtip {
 
 import { ApiManager } from './api';
 
-const getHindiApiBase = () => `${ApiManager.getBaseUrl()}/blakite`;
+const getHindiApiBase = () => {
+  if (typeof window !== 'undefined') return '/api/blakite';
+  return process.env.NEXT_PUBLIC_APP_URL ? `${process.env.NEXT_PUBLIC_APP_URL}/api/blakite` : 'http://localhost:3000/api/blakite';
+};
 
-async function fetchHindiApi<T = any>(endpoint: string, params: Record<string, any> = {}, retryCount = 0): Promise<T | null> {
+async function fetchHindiApi<T = any>(endpoint: string, params: Record<string, any> = {}): Promise<T | null> {
+  // If running on server, call blakite functions directly to bypass loopback fetch issues
+  if (typeof window === 'undefined') {
+    try {
+      const {
+        getBlakiteHome,
+        getBlakiteLatest,
+        searchBlakite,
+        filterBlakite,
+        getBlakiteDetail,
+        getBlakiteStreamUrl
+      } = await import('./blakite');
+
+      const cleanEndpoint = endpoint.startsWith('/') ? endpoint.slice(1) : endpoint;
+      const parts = cleanEndpoint.split('/');
+      const main = parts[0];
+      const sub = parts.slice(1).join('/');
+
+      if (main === 'home') {
+        const data = await getBlakiteHome();
+        return data as unknown as T;
+      }
+      if (main === 'search') {
+        const keyword = params.keyword || params.q || '';
+        const page = parseInt(String(params.page || '1'), 10);
+        const data = await searchBlakite(keyword, page);
+        return data as unknown as T;
+      }
+      if (main === 'filter') {
+        const page = parseInt(String(params.page || '1'), 10);
+        const data = await filterBlakite(params, page);
+        return data as unknown as T;
+      }
+      if (main === 'latest') {
+        const page = parseInt(String(params.page || '1'), 10);
+        const data = await getBlakiteLatest(params.type || 'updated-all', page);
+        return data as unknown as T;
+      }
+      if (main === 'anime') {
+        const id = sub || params.id || '';
+        const data = await getBlakiteDetail(id);
+        return data as unknown as T;
+      }
+      if (main === 'watch') {
+        const slug = sub || params.slug || '';
+        const data = await getBlakiteStreamUrl(slug);
+        return data as unknown as T;
+      }
+    } catch (serverErr) {
+      console.error('[HPI Server-Side Blakite Error]', serverErr);
+    }
+  }
+
   const queryParts = Object.entries(params)
     .filter(([, v]) => v !== undefined && v !== null && v !== '')
     .map(([k, v]) => `${encodeURIComponent(k)}=${encodeURIComponent(String(v))}`);
   const queryString = queryParts.length > 0 ? `?${queryParts.join('&')}` : '';
   const targetUrl = `${getHindiApiBase()}${endpoint}${queryString}`;
-  const proxyUrl = typeof window !== 'undefined'
-    ? `/api/proxy?url=${encodeURIComponent(targetUrl)}`
-    : targetUrl;
 
   try {
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 15000);
-    const response = await fetch(proxyUrl, { signal: controller.signal, cache: 'no-store' });
+    const response = await fetch(targetUrl, { signal: controller.signal, cache: 'no-store' });
     clearTimeout(timeoutId);
     
-    if (!response.ok) {
-        if (retryCount < ApiManager.getAllUrls().length - 1) {
-            ApiManager.rotateUrl();
-            return fetchHindiApi(endpoint, params, retryCount + 1);
-        }
-        return null;
-    }
+    if (!response.ok) return null;
     
     const json = await response.json();
 
-    // The proxy wraps the upstream response — unwrap it
     if (json && typeof json === 'object') {
       if ('ok' in json) return json.ok ? (json.data ?? json) : null;
       if ('data' in json) return json.data as T;
     }
     return json as T;
   } catch (innerError: any) {
-    if (innerError?.name === 'AbortError' || (innerError?.message && innerError.message.includes('fetch'))) {
-        if (retryCount < ApiManager.getAllUrls().length - 1) {
-            ApiManager.rotateUrl();
-            return fetchHindiApi(endpoint, params, retryCount + 1);
-        }
-    }
+    console.error('[HPI fetch error]', innerError);
     return null;
   }
 }
@@ -219,16 +260,19 @@ function normalizeHindiCard(item: any): AnimeCard {
   // The API returns episodes as {sub, dub, total} object, not a number
   const epObj = item?.episodes;
   const epCount = epObj?.total ?? epObj?.dub ?? epObj?.sub ?? undefined;
+  const imgUrl = item?.image || item?.poster || '';
   return {
     id: item?.id || item?.slug || '',
     title: item?.title || item?.name || item?.titleJp || 'Unknown Title',
-    image: item?.image || item?.poster || '',
+    image: imgUrl,
+    poster: imgUrl,
     type: item?.type || 'TV',
     episode: epCount !== undefined ? String(epCount) : undefined,
     episodeCount: epCount !== undefined ? String(epCount) : undefined,
     slug: item?.slug || item?.id || '',
-    dataId: item?.id || item?.slug || ''
-  };
+    dataId: item?.id || item?.slug || '',
+    score: item?.score || 0
+  } as any;
 }
 
 class HPIClient {
@@ -339,7 +383,7 @@ class HPIClient {
         type: info.type || 'TV',
         synopsis: info.synopsis || info.description || '',
         status: info.status || 'Unknown',
-        rating: info.rating || info.malScore || 'N/A',
+        rating: (info.rating && !info.rating.includes('/10') && !/^\d+(\.\d+)?$/.test(String(info.rating).trim()) && !/mal|score/i.test(String(info.rating))) ? info.rating : (info.isAdult ? '18+' : 'PG-13'),
         premiered: info.premiered || info.releaseDate || '',
         season: '',
         aired: info.aired || info.releaseDate || '',

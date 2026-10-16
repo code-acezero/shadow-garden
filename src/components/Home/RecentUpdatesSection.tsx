@@ -1,8 +1,8 @@
 "use client";
 
 import React, { useState, useEffect, useRef } from 'react';
-import { ChevronRight, Zap, Loader2 } from 'lucide-react';
-import { cn } from '@/lib/utils';
+import { ChevronRight, ChevronLeft, Zap, Radio, Loader2 } from 'lucide-react';
+import { cn, slugifyTitle } from '@/lib/utils';
 import AnimeCard from '@/components/Anime/AnimeCard';
 import HindiAnimeCard from '@/components/Anime/HindiAnimeCard'; 
 import { AnimeService } from '@/lib/api';
@@ -18,10 +18,143 @@ interface CacheData {
     }
 }
 
-const CACHE_DURATION = 30000; 
+const CACHE_DURATION = 60000; // 1 min
+
+function sanitizeCard(item: any, category: 'sub' | 'english' | 'hindi' | 'chinese') {
+    let rawUrl: string = item.poster || item.image || "";
+    let finalUrl = rawUrl;
+    
+    if (rawUrl.includes('image.tmdb.org')) {
+        const match = rawUrl.match(/\/t\/p\/.*/);
+        if (match) finalUrl = `https://image.tmdb.org${match[0]}`;
+    } else if (rawUrl.includes('watchanimeworld')) {
+        finalUrl = rawUrl.replace(/([^:]\/)\/+/g, "$1");
+    }
+    
+    if (finalUrl.startsWith('//')) finalUrl = `https:${finalUrl}`;
+    const proxiedUrl = finalUrl ? `/api/proxy?url=${encodeURIComponent(finalUrl)}` : "/images/no-poster.png";
+
+    const safeEpisodes = item.episodes || {};
+    const rawSub = (typeof safeEpisodes === 'object' && safeEpisodes !== null ? safeEpisodes.sub : item.sub) || 0;
+    const rawDub = (typeof safeEpisodes === 'object' && safeEpisodes !== null ? safeEpisodes.dub : item.dub) || 0;
+    const rawTotal = item.totalEpisodes || (typeof safeEpisodes === 'object' && safeEpisodes !== null ? (safeEpisodes.total || safeEpisodes.eps) : 0) || 0;
+
+    let epValue = item.episode;
+    if (typeof epValue === 'object' && epValue !== null) {
+        epValue = epValue.total || epValue.sub || epValue.dub || 0;
+    }
+    if (typeof epValue === 'string') {
+        const match = epValue.match(/\d+/);
+        epValue = match ? parseInt(match[0], 10) : 0;
+    }
+
+    const id = item.id || item.slug || '';
+    const slug = slugifyTitle(item.title || item.name);
+    const routeId = (slug && !String(id).includes('-')) ? `${id}-${slug}` : id;
+
+    let targetRoute = item.targetRoute || '';
+    if (!targetRoute) {
+        if (category === 'hindi') {
+            targetRoute = `/watch/${routeId}?audio=hi`;
+        } else if (category === 'chinese') {
+            targetRoute = `/donghua-watch/${id}`;
+        } else if (category === 'english') {
+            const ep = rawDub || epValue || 1;
+            targetRoute = `/watch/${routeId}?ep=${ep}&type=dub`;
+        } else {
+            const ep = rawSub || epValue || 1;
+            targetRoute = `/watch/${routeId}?ep=${ep}&type=sub`;
+        }
+    } else if (slug && targetRoute.startsWith('/watch/') && !targetRoute.includes('-')) {
+        targetRoute = targetRoute.replace(/^\/watch\/([^?&#]+)/, (_: string, rawId: string) => `/watch/${rawId}-${slug}`);
+    }
+
+    let timestamp = 0;
+    if (item.airingAt) {
+        timestamp = item.airingAt * 1000;
+    } else if (item.dateToUse) {
+        timestamp = item.dateToUse;
+    } else if (item.updatedAt || item.createdAt || item.date) {
+        timestamp = new Date(item.updatedAt || item.createdAt || item.date).getTime();
+    }
+    if (isNaN(timestamp) || timestamp <= 0) {
+        timestamp = Date.now();
+    }
+
+    const isHindiItem = category === 'hindi' || item.isHindi === true || (typeof item.title === 'string' && /hindi/i.test(item.title));
+    const finalDubCount = rawDub > 0 ? rawDub : (isHindiItem ? (epValue || rawTotal || 1) : (category === 'english' ? (epValue || 1) : null));
+
+    let displayTitle = item.title || item.name || 'Unknown Title';
+    if (isHindiItem && !/hindi/i.test(displayTitle)) {
+        displayTitle = `${displayTitle} (Hindi Dub)`;
+    }
+
+    return {
+        ...item,
+        id,
+        title: displayTitle,
+        dataId: item.dataId || id || null,
+        poster: proxiedUrl,
+        image: proxiedUrl,
+        rating: item.rating || null,
+        score: item.score || item.rating || null,
+        isAdult: item.isAdult || item.nsfw || false,
+        episodes: {
+            sub: isHindiItem ? null : (category === 'english' ? null : (rawSub > 0 ? rawSub : epValue || null)),
+            dub: finalDubCount,
+            total: rawTotal || epValue || null
+        },
+        sub: isHindiItem ? null : (rawSub > 0 ? rawSub : epValue || null),
+        dub: finalDubCount,
+        episode: epValue || rawTotal || 1,
+        totalEpisodes: rawTotal || epValue || null,
+        category,
+        isHindi: isHindiItem,
+        isDonghua: category === 'chinese',
+        isDub: category === 'english',
+        targetRoute,
+        timestamp
+    };
+}
+
+function blendUnifiedFeeds(
+    subList: any[],
+    dubList: any[],
+    hindiList: any[],
+    donghuaList: any[]
+): any[] {
+    const s = [...subList];
+    const d = [...dubList];
+    const h = [...hindiList];
+    const c = [...donghuaList];
+
+    const blended: any[] = [];
+    const seenIds = new Set<string>();
+
+    const pushUnique = (item: any) => {
+        if (!item) return;
+        const key = `${item.category}-${item.id}`;
+        if (!seenIds.has(key)) {
+            seenIds.add(key);
+            blended.push(item);
+        }
+    };
+
+    // Perfectly blended interleave pattern: 2 Sub, 1 English Dub, 1 Hindi, 1 Donghua...
+    const maxLen = Math.max(s.length, d.length, h.length, c.length);
+    for (let i = 0; i < maxLen; i++) {
+        if (s.length > 0) pushUnique(s.shift());
+        if (d.length > 0) pushUnique(d.shift());
+        if (s.length > 0) pushUnique(s.shift());
+        if (h.length > 0) pushUnique(h.shift());
+        if (c.length > 0) pushUnique(c.shift());
+    }
+
+    return blended.slice(0, 30);
+}
 
 export default function RecentUpdatesSection({ initialData }: { initialData: any[] }) {
-    const [filter, setFilter] = useState('all');
+    const [filter, setFilter] = useState<'all' | 'sub' | 'english' | 'hindi' | 'chinese'>('all');
     const [data, setData] = useState<any[]>(initialData || []);
     const [loading, setLoading] = useState(false);
     const [isMounted, setIsMounted] = useState(false);
@@ -29,23 +162,30 @@ export default function RecentUpdatesSection({ initialData }: { initialData: any
     const cache = useRef<CacheData>({});
 
     const filters = [
-        { id: 'all', label: 'All' },
-        { id: 'sub', label: 'Sub' },
-        { id: 'dub', label: 'Dub' },
-        { id: 'hindi', label: 'Hindi' },
-        { id: 'donghua', label: 'Donghua' }
+        { id: 'all' as const, label: 'All' },
+        { id: 'sub' as const, label: 'Sub' },
+        { id: 'english' as const, label: 'English' },
+        { id: 'hindi' as const, label: 'Hindi' },
+        { id: 'chinese' as const, label: 'Chinese' }
     ];
+
+    const [page, setPage] = useState(1);
 
     useEffect(() => {
         setIsMounted(true);
         const savedFilter = localStorage.getItem('shadow_recent_filter');
-        if (savedFilter && ['all', 'sub', 'dub', 'hindi', 'donghua'].includes(savedFilter)) {
-            setFilter(savedFilter);
+        if (savedFilter && ['all', 'sub', 'english', 'hindi', 'chinese'].includes(savedFilter)) {
+            setFilter(savedFilter as any);
+        } else if (savedFilter === 'dub') {
+            setFilter('english');
+        } else if (savedFilter === 'donghua') {
+            setFilter('chinese');
         }
     }, []);
 
-    const handleFilterChange = (newFilter: string) => {
+    const handleFilterChange = (newFilter: 'all' | 'sub' | 'english' | 'hindi' | 'chinese') => {
         setFilter(newFilter);
+        setPage(1);
         localStorage.setItem('shadow_recent_filter', newFilter);
     };
 
@@ -53,153 +193,107 @@ export default function RecentUpdatesSection({ initialData }: { initialData: any
         if (!isMounted) return;
 
         const fetchTacticalData = async () => {
-            const cached = cache.current[filter];
-            if (filter !== 'all' && cached && (Date.now() - cached.timestamp < CACHE_DURATION)) {
+            const cacheKey = `${filter}_${page}`;
+            const cached = cache.current[cacheKey];
+            if (cached && (Date.now() - cached.timestamp < CACHE_DURATION)) {
                 setData(cached.data);
                 return;
             }
 
-            if (filter !== 'all') setLoading(true);
+            setLoading(true);
 
             try {
-                let results: any[] = [];
-                
+                let finalResults: any[] = [];
+
                 if (filter === 'all') {
-                    results = initialData || []; 
-                } else {
-                    switch (filter) {
-                        case 'sub': results = await AnimeService.getSubbedAnime(1); break;
-                        case 'dub': results = await AnimeService.getDubbedAnime(1); break;
-                        case 'hindi': 
-                            try {
-                                const hindiHome = await hpi.hindi.getHome();
-                                const latestSection = hindiHome.sections.find((s: any) => s.title === "Recently Updated") || hindiHome.sections[0];
-                                results = latestSection ? latestSection.items : [];
-                            } catch (e) {
-                                console.error("HPI Hindi sector reach failed", e);
-                                results = [];
-                            }
-                            break;
-                        case 'donghua':
-                            try {
-                                const donghuaHome = await dpi.getHome(1);
-                                const latestSection = donghuaHome.sections.find(s => s.title === "Latest Episodes") || donghuaHome.sections[0];
-                                results = latestSection ? latestSection.items : [];
-                            } catch (e) {
-                                console.error("DPI Donghua sector reach failed", e);
-                                results = [];
-                            }
-                            break;
+                    // Parallel sync across all 4 realms: Sub, English, Hindi, Chinese
+                    const [subRes, dubRes, hindiRes, donghuaRes] = await Promise.allSettled([
+                        AnimeService.getSubbedAnime(page),
+                        AnimeService.getDubbedAnime(page),
+                        fetch(`/api/blakite/latest?page=${page}`).then(r => r.json()).then(d => d?.results || d?.data?.results || []).catch(() => []),
+                        AnimeService.getDonghua(page)
+                    ]);
+
+                    const rawSub = subRes.status === 'fulfilled' && Array.isArray(subRes.value) ? subRes.value : (page === 1 ? (initialData || []) : []);
+                    const rawDub = dubRes.status === 'fulfilled' && Array.isArray(dubRes.value) ? dubRes.value : [];
+                    const rawHindi = hindiRes.status === 'fulfilled' && Array.isArray(hindiRes.value) ? hindiRes.value : [];
+                    const rawDonghua = donghuaRes.status === 'fulfilled' && Array.isArray(donghuaRes.value) ? donghuaRes.value : [];
+
+                    const cleanSub = rawSub.map(item => sanitizeCard(item, 'sub'));
+                    const cleanDub = rawDub.map(item => sanitizeCard(item, 'english'));
+                    const cleanHindi = rawHindi.map(item => sanitizeCard(item, 'hindi'));
+                    const cleanDonghua = rawDonghua.map(item => sanitizeCard(item, 'chinese'));
+
+                    finalResults = blendUnifiedFeeds(cleanSub, cleanDub, cleanHindi, cleanDonghua);
+
+                } else if (filter === 'sub') {
+                    const res = await AnimeService.getSubbedAnime(page);
+                    const list = Array.isArray(res) ? res : (page === 1 ? (initialData || []) : []);
+                    finalResults = list.map(item => sanitizeCard(item, 'sub'));
+
+                } else if (filter === 'english') {
+                    const res = await AnimeService.getDubbedAnime(page);
+                    const list = Array.isArray(res) ? res : [];
+                    finalResults = list.map(item => sanitizeCard(item, 'english'));
+
+                } else if (filter === 'hindi') {
+                    try {
+                        const hRes = await fetch(`/api/blakite/latest?page=${page}`);
+                        const hData = await hRes.json();
+                        const list = hData?.results || hData?.data?.results || [];
+                        finalResults = list.map((item: any) => sanitizeCard(item, 'hindi'));
+                    } catch (e) {
+                        console.error("Hindi latest fetch failed", e);
+                        finalResults = [];
+                    }
+
+                } else if (filter === 'chinese') {
+                    try {
+                        const list = await AnimeService.getDonghua(page);
+                        finalResults = (list || []).map(item => sanitizeCard(item, 'chinese'));
+                    } catch (e) {
+                        console.error("Donghua fetch failed", e);
+                        finalResults = [];
                     }
                 }
 
-                const sanitizedResults = results.map(anime => {
-                    // --- Image Proxy Logic ---
-                    let rawUrl: string = anime.poster || anime.image || "";
-                    let finalUrl = rawUrl;
-                    
-                    if (rawUrl.includes('image.tmdb.org')) {
-                        const match = rawUrl.match(/\/t\/p\/.*/);
-                        if (match) finalUrl = `https://image.tmdb.org${match[0]}`;
-                    } else if (rawUrl.includes('watchanimeworld')) {
-                        finalUrl = rawUrl.replace(/([^:]\/)\/+/g, "$1");
-                    }
-                    
-                    if (finalUrl.startsWith('//')) finalUrl = `https:${finalUrl}`;
-                    const proxiedUrl = finalUrl ? `/api/proxy?url=${encodeURIComponent(finalUrl)}` : "/images/placeholder.jpg";
-
-                    // --- Episode Processing ---
-                    const safeEpisodes = anime.episodes || {};
-                    const rawSub = (typeof safeEpisodes === 'object' && safeEpisodes !== null ? safeEpisodes.sub : anime.sub) || 0;
-                    const rawDub = (typeof safeEpisodes === 'object' && safeEpisodes !== null ? safeEpisodes.dub : anime.dub) || 0;
-                    const rawTotal = anime.totalEpisodes || (typeof safeEpisodes === 'object' && safeEpisodes !== null ? safeEpisodes.total : 0) || 0;
-
-                    let epValue = anime.episode;
-                    if (typeof epValue === 'object' && epValue !== null) {
-                        epValue = epValue.total || epValue.sub || epValue.dub || 0;
-                    }
-                    if (typeof epValue === 'string') {
-                        const match = epValue.match(/\d+/);
-                        epValue = match ? parseInt(match[0], 10) : 0;
-                    }
-
-                    let watchParams = "";
-                    let targetEp = 0;
-
-                    if (filter === 'sub') {
-                        targetEp = rawSub;
-                        if (targetEp > 0) watchParams = `?ep=${targetEp}&type=sub`;
-                    } else if (filter === 'dub') {
-                        targetEp = rawDub;
-                        if (targetEp > 0) watchParams = `?ep=${targetEp}&type=dub`;
-                    } else if (filter === 'hindi') {
-                        targetEp = Number(epValue) || rawTotal || 0; 
-                        if (targetEp > 0) watchParams = `?ep=${targetEp}`;
-                    } else if (filter === 'donghua') {
-                        targetEp = rawSub || rawTotal || 0;
-                        if (targetEp > 0) watchParams = `?ep=${targetEp}`;
-                    } else {
-                        targetEp = rawSub || Number(epValue) || 0;
-                        if (targetEp > 0) watchParams = `?ep=${targetEp}`;
-                    }
-
-                    // --- Updated Watch Page Trigger ---
-                    // Redirects Hindi content to the specialized /hindi-watch sector
-                    const baseRoute = (filter === 'hindi' || anime.isHindi) 
-                        ? `/hindi-watch/${anime.id}` 
-                        : (filter === 'donghua')
-                        ? `/donghua-watch/${anime.id}`
-                        : `/watch/${anime.id}`;
-
-                    return {
-                        ...anime,
-                        // dataId must persist for the HindiAnimeCard's HPI Qtip fetch
-                        dataId: anime.dataId || null, 
-                        poster: proxiedUrl,
-                        image: proxiedUrl,
-                        rating: anime.rating || null,
-                        isAdult: anime.isAdult || anime.nsfw || false, 
-                        episodes: {
-                            sub: rawSub > 0 ? rawSub : null,
-                            dub: rawDub > 0 ? rawDub : null
-                        },
-                        sub: rawSub > 0 ? rawSub : null,
-                        dub: rawDub > 0 ? rawDub : null,
-                        episode: (filter === 'hindi' || filter === 'donghua') ? targetEp : (typeof anime.episode === 'object' ? (anime.episode?.total || anime.episode?.sub || 0) : anime.episode), 
-                        targetRoute: `${baseRoute}${watchParams}` 
-                    };
-                });
-
-                const finalData = Array.isArray(sanitizedResults) ? sanitizedResults : [];
-                setData(finalData);
-                
-                if (filter !== 'all') cache.current[filter] = { data: finalData, timestamp: Date.now() };
+                setData(finalResults);
+                cache.current[cacheKey] = { data: finalResults, timestamp: Date.now() };
 
             } catch (error) {
                 console.error("Tactical connection severed:", error);
-                setData([]);
+                setData(page === 1 ? (initialData || []) : []);
             } finally {
                 setLoading(false);
             }
         };
 
         fetchTacticalData();
-    }, [filter, isMounted, initialData]);
+    }, [filter, page, isMounted, initialData]);
+
+    const getViewAllLink = () => {
+        switch (filter) {
+            case 'hindi': return '/search/hindi';
+            case 'chinese': return '/search/donghua';
+            case 'english': return '/search?language=dub';
+            case 'sub': return '/search?language=sub';
+            default: return '/search?sort=recent';
+        }
+    };
 
     return (
-        <section className="w-full relative z-10 animate-in fade-in duration-700 mt-2 md:mt-8 mb-6 md:mb-12 px-4">
+        <section className="w-full relative z-10 animate-in fade-in duration-700 mt-2 md:mt-8 mb-6 md:mb-12">
             
             {/* --- HEADER --- */}
             <div className="flex flex-wrap md:flex-nowrap items-center justify-between mb-3 md:mb-6 gap-y-3 md:gap-4 relative">
                 <div className="flex items-center gap-2 md:gap-3 min-w-0 order-1">
-                    <div className="p-1.5 md:p-2 bg-primary-600/10 rounded-lg md:rounded-xl border border-primary-500/20 backdrop-blur-md flex-shrink-0">
-                        <Zap className="w-3.5 h-3.5 md:w-4 md:h-4 text-primary-500 fill-current" />
-                    </div>
-                    <h2 className="text-sm md:text-lg font-black tracking-[0.15em] md:tracking-[0.2em] uppercase font-sans drop-shadow-md bg-gradient-to-r from-primary-500 via-primary-600 to-primary-800 bg-clip-text text-transparent truncate">
-                        Recent Updates
+                    <Zap className="w-7 h-7 md:w-9 md:h-9 text-primary-500 fill-primary-500 shrink-0 drop-shadow-[0_0_12px_rgba(220,38,38,0.5)]" />
+                    <h2 className="text-xl md:text-3xl font-black text-white font-lemon tracking-wide uppercase flex items-center gap-2">
+                        RECENT <span className="text-primary-500">UPDATES</span>
                     </h2>
                 </div>
 
+                {/* Filter Tabs */}
                 <div className="order-3 w-full md:w-auto md:order-2 md:absolute md:left-1/2 md:-translate-x-1/2 md:z-10 flex justify-start md:justify-center">
                      <div className="flex items-center p-1 rounded-full bg-[#0a0a0a] border border-white/10 shadow-inner w-full md:w-auto overflow-x-auto no-scrollbar">
                         {filters.map((f) => (
@@ -208,9 +302,9 @@ export default function RecentUpdatesSection({ initialData }: { initialData: any
                                 disabled={loading}
                                 onClick={() => handleFilterChange(f.id)}
                                 className={cn(
-                                    "flex-1 md:flex-none px-4 md:px-6 py-1.5 md:py-2 rounded-full text-[9px] md:text-[10px] font-black uppercase tracking-widest transition-all duration-300 disabled:opacity-50 whitespace-nowrap",
+                                    "flex-1 md:flex-none px-4 md:px-5 py-1.5 md:py-2 rounded-full text-[9px] md:text-[10px] font-black uppercase tracking-widest transition-all duration-300 disabled:opacity-50 whitespace-nowrap",
                                     filter === f.id 
-                                        ? "bg-gradient-to-r from-primary-600 to-primary-500 text-white shadow-lg shadow-primary-900/20" 
+                                        ? "bg-gradient-to-r from-primary-600 to-primary-500 text-white shadow-lg shadow-primary-900/40" 
                                         : "text-zinc-500 hover:text-white hover:bg-white/5"
                                 )}
                             >
@@ -220,26 +314,52 @@ export default function RecentUpdatesSection({ initialData }: { initialData: any
                     </div>
                 </div>
 
-                <Link 
-                    href={`/view/${filter === 'all' ? 'recent' : filter === 'hindi' ? 'recent' : filter === 'donghua' ? 'recent' : filter}`} 
-                    className="order-2 md:order-3 group flex-shrink-0 flex items-center gap-0.5 md:gap-1 text-[9px] md:text-[10px] font-bold text-zinc-400 hover:text-white transition-colors uppercase tracking-widest whitespace-nowrap"
-                >
-                    View All
-                    <ChevronRight size={12} className="group-hover:translate-x-1 transition-transform" />
-                </Link>
+                <div className="order-2 md:order-3 flex items-center gap-3">
+                    {/* Simple Page Number & Arrow Buttons */}
+                    <span className="text-xs font-semibold text-zinc-400 select-none">
+                        <span className="text-white font-bold">{page}</span>
+                    </span>
+
+                    <div className="flex items-center gap-1">
+                        <button
+                            onClick={() => setPage(p => Math.max(1, p - 1))}
+                            disabled={page <= 1 || loading}
+                            className="w-8 h-8 rounded-full bg-white/5 hover:bg-primary-600/20 hover:border-primary-500/30 border border-white/10 text-white flex items-center justify-center transition-all disabled:opacity-20 disabled:pointer-events-none active:scale-90"
+                            aria-label="Previous Page"
+                        >
+                            <ChevronLeft size={16} />
+                        </button>
+                        <button
+                            onClick={() => setPage(p => p + 1)}
+                            disabled={loading || data.length < 12}
+                            className="w-8 h-8 rounded-full bg-white/5 hover:bg-primary-600/20 hover:border-primary-500/30 border border-white/10 text-white flex items-center justify-center transition-all disabled:opacity-20 disabled:pointer-events-none active:scale-90"
+                            aria-label="Next Page"
+                        >
+                            <ChevronRight size={16} />
+                        </button>
+                    </div>
+
+                    <Link 
+                        href={getViewAllLink()}
+                        className="group flex-shrink-0 flex items-center gap-1 text-[11px] font-black text-zinc-400 hover:text-white transition-colors uppercase tracking-wider whitespace-nowrap px-3.5 py-1.5 rounded-full bg-white/5 border border-white/5 hover:border-primary-500/30"
+                    >
+                        <span>View All</span>
+                        <ChevronRight size={12} className="group-hover:translate-x-0.5 transition-transform text-primary-500" />
+                    </Link>
+                </div>
             </div>
 
             {/* --- GRID CONTENT --- */}
             {loading ? (
                 <SimpleGridSkeleton />
             ) : data.length > 0 ? (
-                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4 md:gap-6 relative perf-contain">
+                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3 md:gap-6 relative perf-contain">
                     {data.slice(0, 24).map((anime, idx) => (
                         <div 
-                            key={`${anime.id}-${idx}`}
+                            key={`${anime.id}-${anime.category || 'all'}-${idx}`}
                             className="group relative z-10 transform-gpu will-change-transform transition-transform duration-300 hover:scale-[1.03] hover:z-50"
                         >
-                            {filter === 'hindi' ? (
+                            {anime.isHindi ? (
                                 <HindiAnimeCard anime={anime} />
                             ) : (
                                 <AnimeCard anime={anime} />

@@ -5,7 +5,7 @@ import { Loader2, ArrowRight, X, Languages } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useRouter } from 'next/navigation';
 import { hpi } from '@/lib/hpi';
-import { cn } from '@/lib/utils';
+import { cn, getWatchRoute } from '@/lib/utils';
 
 interface HindiSearchProps {
   onClose: () => void;
@@ -89,7 +89,7 @@ export default function HindiSearchBar({ onClose, isActive, setIsActive, onToggl
         {isActive && suggestions.length > 0 && (
             <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 10 }} className="absolute top-[120%] left-0 right-0 bg-[#0a0a0a]/95 border border-orange-500/20 rounded-2xl shadow-2xl p-1 z-50">
                 {suggestions.map((s: any) => (
-                    <div key={s.id} onClick={() => router.push(`/hindi-watch/${s.id}`)} className="flex items-center gap-2 p-1.5 hover:bg-white/10 rounded-xl cursor-pointer group transition-all">
+                    <div key={s.id} onClick={() => router.push(getWatchRoute(s.id, undefined, 'hindi', s.title))} className="flex items-center gap-2 p-1.5 hover:bg-white/10 rounded-xl cursor-pointer group transition-all">
                         {/* Mapped s.image from HPI */}
                         <img src={s.image} className="w-8 h-10 object-cover rounded bg-zinc-800" alt="" />
                         <div className="min-w-0 flex-1">

@@ -28,6 +28,11 @@ export default function WatchListButton({ animeId, animeTitle, animeImage, curre
     const { user, isLoading: isAuthLoading } = useAuth();
     const [status, setStatus] = useState<string | null>(null);
     const [loading, setLoading] = useState(false);
+    const [mounted, setMounted] = useState(false);
+
+    useEffect(() => {
+        setMounted(true);
+    }, []);
 
     // Status Configurations
     const statusMap: any = {
@@ -131,21 +136,29 @@ export default function WatchListButton({ animeId, animeTitle, animeImage, curre
 
     const activeConfig = status ? statusMap[status] : null;
 
+    const triggerButton = (
+        <button 
+            disabled={loading || isAuthLoading}
+            className={cn(
+                "flex items-center justify-center gap-2 rounded-full px-4 h-8 text-[9px] sm:text-[10px] font-black transition-all shadow-lg active:scale-95 border outline-none focus:outline-none focus:ring-0 whitespace-nowrap flex-shrink-0",
+                activeConfig 
+                    ? activeConfig.color 
+                    : "bg-white/5 border-white/10 text-zinc-400 hover:bg-white/10 hover:text-white"
+            )}
+        >
+            {loading ? <Loader2 size={14} className="animate-spin"/> : (activeConfig ? activeConfig.icon : <Plus size={14}/>)}
+            <span className="uppercase tracking-wider">{activeConfig ? activeConfig.label : "Add to List"}</span>
+        </button>
+    );
+
+    if (!mounted) {
+        return triggerButton;
+    }
+
     return (
         <DropdownMenu>
             <DropdownMenuTrigger asChild>
-                <button 
-                    disabled={loading || isAuthLoading}
-                    className={cn(
-                        "flex items-center justify-center gap-2 rounded-full px-4 h-8 text-[9px] sm:text-[10px] font-black transition-all shadow-lg active:scale-95 border outline-none focus:outline-none focus:ring-0 whitespace-nowrap flex-shrink-0",
-                        activeConfig 
-                            ? activeConfig.color 
-                            : "bg-white/5 border-white/10 text-zinc-400 hover:bg-white/10 hover:text-white"
-                    )}
-                >
-                    {loading ? <Loader2 size={14} className="animate-spin"/> : (activeConfig ? activeConfig.icon : <Plus size={14}/>)}
-                    <span className="uppercase tracking-wider">{activeConfig ? activeConfig.label : "Add to List"}</span>
-                </button>
+                {triggerButton}
             </DropdownMenuTrigger>
             <DropdownMenuContent className="bg-[#0a0a0a] border-white/10 text-zinc-300 z-[100] shadow-2xl shadow-primary-900/20 min-w-[150px]">
                 {Object.keys(statusMap).map((key) => (

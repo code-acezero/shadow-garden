@@ -1,0 +1,25 @@
+/* [project]/src/lib/above_af05c187.module.css [app-client] (css) */
+@font-face {
+  font-family: above;
+  src: url("../media/AboveDemoRegular_lJMd-s.8e85cf82.ttf") format("truetype");
+  font-display: swap;
+}
+
+@font-face {
+  font-family: above Fallback;
+  src: local(Arial);
+  ascent-override: 54.49%;
+  descent-override: 18.16%;
+  line-gap-override: 0.0%;
+  size-adjust: 137.65%;
+}
+
+.above_af05c187-module__JRf3kG__className {
+  font-family: above, above Fallback;
+}
+
+.above_af05c187-module__JRf3kG__variable {
+  --font-above: "above", "above Fallback";
+}
+
+/*# sourceMappingURL=src_lib_above_af05c187_module_css_bad6b30c._.single.css.map*/

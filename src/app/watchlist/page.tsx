@@ -5,12 +5,13 @@ import { supabase } from '@/lib/supabase'; // ✅ IMPORT SINGLETON
 import { AnimeService } from '@/lib/api';
 import { useAuth } from '@/context/AuthContext';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { cn, getWatchRoute } from '@/lib/utils';
+import { cn, getWatchRoute, getSafeImageUrl } from '@/lib/utils';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
     Play, Clock, CheckCircle, XCircle, 
     List as ListIcon, Search, LayoutGrid, Calendar,
-    Trash2, History, LogIn, AlertCircle
+    Trash2, History, LogIn, AlertCircle, Info,
+    Users, Star, X, Sparkles, ExternalLink, Loader2
 } from 'lucide-react';
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -117,6 +118,38 @@ function WatchlistContent() {
     const [sortOption, setSortOption] = useState('updated_at');
     const [isAuthOpen, setIsAuthOpen] = useState(false);
     const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
+    const [selectedAnimeId, setSelectedAnimeId] = useState<string | null>(null);
+    const [intelData, setIntelData] = useState<any | null>(null);
+    const [intelLoading, setIntelLoading] = useState(false);
+
+    const handleOpenIntel = async (animeId: string, fallbackTitle?: string, fallbackImage?: string) => {
+        setSelectedAnimeId(animeId);
+        setIntelLoading(true);
+        setIntelData({
+            id: animeId,
+            title: fallbackTitle || 'Loading...',
+            poster: fallbackImage || '',
+            description: 'Fetching comprehensive archive records...',
+            info: { genres: [], status: 'Analyzing...' },
+            stats: { rating: 'PG-13', episodes: { sub: 0, dub: 0 } },
+            characters: []
+        });
+        try {
+            const info = await AnimeService.getAnimeInfo(animeId);
+            if (info) {
+                setIntelData(info);
+            }
+        } catch (e) {
+            console.error("Failed to load intel", e);
+        } finally {
+            setIntelLoading(false);
+        }
+    };
+
+    const handleCloseIntel = () => {
+        setSelectedAnimeId(null);
+        setIntelData(null);
+    };
 
     const handleStatusChange = async (animeId: string, newStatus: string) => {
         if (!user) return;
@@ -361,6 +394,20 @@ function WatchlistContent() {
                                                 )}
                                                 {/* QUICK ACTIONS OVERLAY */}
                                                 <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col gap-1 z-[60]">
+                                                    <button 
+                                                        onClick={(e) => {
+                                                            e.stopPropagation();
+                                                            handleOpenIntel(
+                                                                isContinueItem(item) ? item.anime_id : item.anime_id,
+                                                                isContinueItem(item) ? item.title : item.anime_title,
+                                                                isContinueItem(item) ? item.poster : item.anime_image
+                                                            );
+                                                        }} 
+                                                        title="Intel & Characters"
+                                                        className="w-8 h-8 rounded-full bg-white/10 hover:bg-primary-600 border border-white/20 text-white flex items-center justify-center shadow-xl backdrop-blur-md hover:scale-110 transition-all"
+                                                    >
+                                                        <Info size={14} />
+                                                    </button>
                                                     {!isContinueItem(item) && (
                                                         <Select value={item.status} onValueChange={(v) => handleStatusChange(item.anime_id, v)}>
                                                             <SelectTrigger className="w-8 h-8 rounded-full bg-white/10 hover:bg-primary-600 border border-white/20 text-white p-0 flex items-center justify-center [&>svg]:hidden focus:ring-0 shadow-xl backdrop-blur-md hover:scale-110 transition-all">
@@ -411,7 +458,7 @@ function WatchlistContent() {
                                             <div className="flex-1 min-w-0 flex flex-col justify-center cursor-pointer" onClick={() => {
                                                     if (isContinueItem(item)) router.push(getWatchRoute(item.anime_id, item.episodeId, item.type));
                                                     else router.push(getWatchRoute(item.anime_id, undefined, (item as any).type));
-                                            }}>
+                                             }}>
                                                 <h3 className="font-bold text-white text-sm md:text-lg truncate">{isContinueItem(item) ? item.title : item.anime_title}</h3>
                                                 {isContinueItem(item) ? (
                                                     <p className="text-xs text-primary-500 font-bold uppercase mt-1 tracking-widest">Episode {item.episode}</p>
@@ -423,6 +470,20 @@ function WatchlistContent() {
                                                 )}
                                             </div>
                                             <div className="flex items-center gap-2 shrink-0">
+                                                <button 
+                                                    onClick={(e) => {
+                                                        e.stopPropagation();
+                                                        handleOpenIntel(
+                                                            isContinueItem(item) ? item.anime_id : item.anime_id,
+                                                            isContinueItem(item) ? item.title : item.anime_title,
+                                                            isContinueItem(item) ? item.poster : item.anime_image
+                                                        );
+                                                    }} 
+                                                    title="Intel & Characters"
+                                                    className="w-9 h-9 rounded-lg bg-white/10 border border-white/20 text-white flex items-center justify-center hover:bg-primary-600 transition-colors"
+                                                >
+                                                    <Info size={14} />
+                                                </button>
                                                 {!isContinueItem(item) && (
                                                     <Select value={item.status} onValueChange={(v) => handleStatusChange(item.anime_id, v)}>
                                                         <SelectTrigger className="w-[110px] h-9 bg-black/40 border-white/10 text-[10px] uppercase font-bold text-white rounded-lg">
@@ -452,6 +513,180 @@ function WatchlistContent() {
                     )}
                 </div>
             </div>
+
+            {/* --- ANIME INTEL & CHARACTERS MODAL --- */}
+            <AnimatePresence>
+                {selectedAnimeId && (
+                    <motion.div
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                        className="fixed inset-0 z-[100] bg-black/80 backdrop-blur-xl flex items-center justify-center p-4 sm:p-6"
+                        onClick={handleCloseIntel}
+                    >
+                        <motion.div
+                            initial={{ scale: 0.9, y: 20, opacity: 0 }}
+                            animate={{ scale: 1, y: 0, opacity: 1 }}
+                            exit={{ scale: 0.9, y: 20, opacity: 0 }}
+                            transition={{ type: "spring", damping: 25, stiffness: 300 }}
+                            className="bg-[#0a0a0a] border border-white/10 rounded-[32px] w-full max-w-3xl max-h-[90vh] overflow-hidden flex flex-col shadow-[0_0_60px_rgba(220,38,38,0.15)] relative"
+                            onClick={(e) => e.stopPropagation()}
+                        >
+                            {/* Modal Header Bar */}
+                            <div className="flex items-center justify-between p-5 border-b border-white/5 bg-white/[0.02]">
+                                <div className="flex items-center gap-2">
+                                    <Sparkles size={16} className="text-primary-500" />
+                                    <span className="text-[10px] font-black uppercase tracking-[0.25em] text-primary-500 font-lemon">
+                                        Archive Intelligence
+                                    </span>
+                                </div>
+                                <button
+                                    onClick={handleCloseIntel}
+                                    className="w-8 h-8 rounded-full bg-white/5 hover:bg-white/10 text-zinc-400 hover:text-white flex items-center justify-center transition-colors"
+                                >
+                                    <X size={16} />
+                                </button>
+                            </div>
+
+                            {/* Scrollable Content */}
+                            <div className="flex-1 overflow-y-auto custom-scrollbar p-6 space-y-6">
+                                {/* Top Banner/Info Row */}
+                                <div className="flex flex-col sm:flex-row gap-6">
+                                    <div className="w-32 h-44 sm:w-40 sm:h-56 rounded-2xl overflow-hidden shrink-0 border border-white/10 relative shadow-2xl mx-auto sm:mx-0 bg-zinc-900">
+                                        <img
+                                            src={getSafeImageUrl(intelData?.poster || intelData?.image || '/images/placeholder-no-img.jpg')}
+                                            alt={intelData?.title || 'Anime Poster'}
+                                            className="w-full h-full object-cover"
+                                            onError={(e) => { e.currentTarget.src = '/images/placeholder-no-img.jpg'; }}
+                                        />
+                                    </div>
+                                    <div className="flex-1 min-w-0 flex flex-col justify-between">
+                                        <div>
+                                            <h2 className="text-xl sm:text-2xl font-black text-white leading-tight font-lemon">
+                                                {typeof intelData?.title === 'object' ? (intelData.title.english || intelData.title.userPreferred || intelData.title.romaji) : (intelData?.title || 'Unknown Title')}
+                                            </h2>
+                                            {intelData?.jname && (
+                                                <p className="text-[10px] text-zinc-500 uppercase tracking-widest font-mono mt-1 truncate">
+                                                    {intelData.jname}
+                                                </p>
+                                            )}
+
+                                            {/* Badges */}
+                                            <div className="flex flex-wrap items-center gap-2 mt-3">
+                                                {intelData?.stats?.rating && (
+                                                    <span className="px-2.5 py-1 rounded-full bg-white/5 border border-white/10 text-[10px] font-black uppercase text-primary-400">
+                                                        {intelData.stats.rating}
+                                                    </span>
+                                                )}
+                                                {intelData?.info?.status && (
+                                                    <span className="px-2.5 py-1 rounded-full bg-emerald-950/40 border border-emerald-500/30 text-[10px] font-black uppercase text-emerald-400">
+                                                        {intelData.info.status}
+                                                    </span>
+                                                )}
+                                                {(intelData?.stats?.malScore || intelData?.score) && (
+                                                    <span className="px-2.5 py-1 rounded-full bg-yellow-950/40 border border-yellow-500/30 text-[10px] font-black text-yellow-400 flex items-center gap-1">
+                                                        <Star size={11} className="fill-yellow-400" />
+                                                        {intelData?.stats?.malScore || intelData?.score}
+                                                    </span>
+                                                )}
+                                                {intelData?.stats?.duration && (
+                                                    <span className="px-2.5 py-1 rounded-full bg-white/5 border border-white/10 text-[10px] font-bold text-zinc-400 flex items-center gap-1">
+                                                        <Clock size={11} /> {intelData.stats.duration}
+                                                    </span>
+                                                )}
+                                            </div>
+
+                                            {/* Genres */}
+                                            {Array.isArray(intelData?.info?.genres) && intelData.info.genres.length > 0 && (
+                                                <div className="flex flex-wrap gap-1.5 mt-3">
+                                                    {intelData.info.genres.slice(0, 6).map((g: string) => (
+                                                        <span key={g} className="text-[9px] px-2 py-0.5 rounded-md bg-white/5 border border-white/5 text-zinc-400 font-bold uppercase tracking-wider">
+                                                            {g}
+                                                        </span>
+                                                    ))}
+                                                </div>
+                                            )}
+                                        </div>
+
+                                        <div className="mt-4 pt-4 border-t border-white/5 flex gap-3">
+                                            <Button
+                                                onClick={() => {
+                                                    handleCloseIntel();
+                                                    router.push(getWatchRoute(selectedAnimeId!));
+                                                }}
+                                                className="flex-1 bg-primary-600 hover:bg-primary-500 text-white rounded-xl font-black uppercase tracking-wider text-xs shadow-lg shadow-primary-900/30 gap-2 h-11"
+                                            >
+                                                <Play size={14} className="fill-white" /> Watch Episode
+                                            </Button>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {/* Synopsis */}
+                                <div>
+                                    <h3 className="text-xs font-black uppercase tracking-widest text-zinc-400 mb-2 flex items-center gap-2">
+                                        <Info size={13} className="text-primary-500" /> Synopsis
+                                    </h3>
+                                    <p
+                                        className="text-xs sm:text-sm text-zinc-300 leading-relaxed font-sans opacity-90 max-h-32 overflow-y-auto custom-scrollbar pr-2"
+                                        dangerouslySetInnerHTML={{ __html: intelData?.description || 'No archive description available.' }}
+                                    />
+                                </div>
+
+                                {/* Characters & Voice Cast */}
+                                <div>
+                                    <div className="flex items-center justify-between mb-3">
+                                        <h3 className="text-xs font-black uppercase tracking-widest text-zinc-400 flex items-center gap-2">
+                                            <Users size={14} className="text-primary-500" /> Cast & Characters
+                                        </h3>
+                                        {intelData?.characters && (
+                                            <span className="text-[9px] font-bold text-zinc-500 uppercase">
+                                                {intelData.characters.length} Registered
+                                            </span>
+                                        )}
+                                    </div>
+
+                                    {intelLoading ? (
+                                        <div className="py-8 flex items-center justify-center gap-2 text-zinc-500 text-xs">
+                                            <Loader2 size={16} className="animate-spin text-primary-500" /> Retrieving cast dossiers...
+                                        </div>
+                                    ) : intelData?.characters && intelData.characters.length > 0 ? (
+                                        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2.5 max-h-60 overflow-y-auto custom-scrollbar pr-1">
+                                            {intelData.characters.slice(0, 12).map((char: any) => (
+                                                <div key={char.id} className="bg-white/[0.03] hover:bg-white/[0.08] border border-white/5 rounded-xl p-2 flex items-center justify-between gap-2 transition-colors">
+                                                    <div className="flex items-center gap-2 min-w-0">
+                                                        <div className="w-10 h-12 rounded-lg overflow-hidden shrink-0 bg-zinc-900 border border-white/10">
+                                                            <img
+                                                                src={getSafeImageUrl(char.poster)}
+                                                                alt={char.name}
+                                                                className="w-full h-full object-cover"
+                                                                onError={(e) => { e.currentTarget.src = '/images/placeholder-no-img.jpg'; }}
+                                                            />
+                                                        </div>
+                                                        <div className="min-w-0">
+                                                            <p className="text-[11px] font-bold text-white truncate">{char.name}</p>
+                                                            <span className="text-[8px] font-bold uppercase tracking-wider text-primary-400">{char.role || 'Cast'}</span>
+                                                        </div>
+                                                    </div>
+                                                    {char.voiceActor && (
+                                                        <div className="text-right shrink-0">
+                                                            <p className="text-[9px] font-bold text-zinc-300 truncate max-w-[80px]">{char.voiceActor.name}</p>
+                                                            <span className="text-[7px] text-zinc-500 uppercase">{char.voiceActor.language || 'JP'}</span>
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            ))}
+                                        </div>
+                                    ) : (
+                                        <p className="text-xs text-zinc-500 italic py-3">No character dossiers registered for this entity.</p>
+                                    )}
+                                </div>
+                            </div>
+                        </motion.div>
+                    </motion.div>
+                )}
+            </AnimatePresence>
+
             <AuthModal isOpen={isAuthOpen} onClose={() => setIsAuthOpen(false)} onAuthSuccess={() => window.location.reload()} />
         </div>
     );

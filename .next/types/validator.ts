@@ -344,6 +344,42 @@ type RouteHandlerConfig<Route extends AppRouteHandlerRoutes = AppRouteHandlerRou
   type __Unused = __Check
 }
 
+// Validate ../../src/app/api/anime/airing-today/route.ts
+{
+  type __IsExpected<Specific extends RouteHandlerConfig<"/api/anime/airing-today">> = Specific
+  const handler = {} as typeof import("../../src/app/api/anime/airing-today/route.js")
+  type __Check = __IsExpected<typeof handler>
+  // @ts-ignore
+  type __Unused = __Check
+}
+
+// Validate ../../src/app/api/anime/anilist/route.ts
+{
+  type __IsExpected<Specific extends RouteHandlerConfig<"/api/anime/anilist">> = Specific
+  const handler = {} as typeof import("../../src/app/api/anime/anilist/route.js")
+  type __Check = __IsExpected<typeof handler>
+  // @ts-ignore
+  type __Unused = __Check
+}
+
+// Validate ../../src/app/api/anime/favorite/route.ts
+{
+  type __IsExpected<Specific extends RouteHandlerConfig<"/api/anime/favorite">> = Specific
+  const handler = {} as typeof import("../../src/app/api/anime/favorite/route.js")
+  type __Check = __IsExpected<typeof handler>
+  // @ts-ignore
+  type __Unused = __Check
+}
+
+// Validate ../../src/app/api/anime/stream/route.ts
+{
+  type __IsExpected<Specific extends RouteHandlerConfig<"/api/anime/stream">> = Specific
+  const handler = {} as typeof import("../../src/app/api/anime/stream/route.js")
+  type __Check = __IsExpected<typeof handler>
+  // @ts-ignore
+  type __Unused = __Check
+}
+
 // Validate ../../src/app/api/auth/anilist/route.ts
 {
   type __IsExpected<Specific extends RouteHandlerConfig<"/api/auth/anilist">> = Specific
@@ -357,6 +393,33 @@ type RouteHandlerConfig<Route extends AppRouteHandlerRoutes = AppRouteHandlerRou
 {
   type __IsExpected<Specific extends RouteHandlerConfig<"/api/avatars">> = Specific
   const handler = {} as typeof import("../../src/app/api/avatars/route.js")
+  type __Check = __IsExpected<typeof handler>
+  // @ts-ignore
+  type __Unused = __Check
+}
+
+// Validate ../../src/app/api/blakite/[...endpoint]/route.ts
+{
+  type __IsExpected<Specific extends RouteHandlerConfig<"/api/blakite/[...endpoint]">> = Specific
+  const handler = {} as typeof import("../../src/app/api/blakite/[...endpoint]/route.js")
+  type __Check = __IsExpected<typeof handler>
+  // @ts-ignore
+  type __Unused = __Check
+}
+
+// Validate ../../src/app/api/blakite/check/route.ts
+{
+  type __IsExpected<Specific extends RouteHandlerConfig<"/api/blakite/check">> = Specific
+  const handler = {} as typeof import("../../src/app/api/blakite/check/route.js")
+  type __Check = __IsExpected<typeof handler>
+  // @ts-ignore
+  type __Unused = __Check
+}
+
+// Validate ../../src/app/api/blakite/popular/route.ts
+{
+  type __IsExpected<Specific extends RouteHandlerConfig<"/api/blakite/popular">> = Specific
+  const handler = {} as typeof import("../../src/app/api/blakite/popular/route.js")
   type __Check = __IsExpected<typeof handler>
   // @ts-ignore
   type __Unused = __Check

@@ -1,4 +1,6 @@
 import { supabase } from "@/lib/supabase";
+import { resolveUnifiedStreams, UnifiedStreamResult } from "@/lib/extractors/streamExtractor";
+import { AniListService } from "@/lib/anilist";
 
 // ==========================================================================
 //  MIGRATION NOTE (read this before touching anything below)
@@ -47,9 +49,7 @@ import { supabase } from "@/lib/supabase";
 export class ApiManager {
     private static urls = [
         'https://omni-api-v1.vercel.app/api',
-        'https://omni-api-v2.vercel.app/api',
-        'https://omni-api-v3.vercel.app/api',
-        'https://omni-api-v4.vercel.app/api'
+        'https://omni-api-v2.vercel.app/api'
     ];
     private static currentIndex = 0;
 
@@ -346,6 +346,7 @@ export interface UniversalAnime {
     title: string;
     jname: string;
     poster: string;
+    banner?: string;
     description: string;
     isAdult: boolean;
     stats: {
@@ -365,6 +366,12 @@ export interface UniversalAnime {
         premiered: string;
         japanese: string;
         synonyms: string;
+        nextAiringEpisode?: {
+            airingAt: number;
+            timeUntilAiring: number;
+            episode: number;
+            airingISOTimestamp?: string;
+        } | null;
     };
     episodes: UniversalEpisode[];
     characters: UniversalCharacter[];
@@ -372,6 +379,14 @@ export interface UniversalAnime {
     related: UniversalAnimeBase[];
     seasons: UniversalSeason[];
     trailers: { title: string; source: string; thumbnail: string }[];
+    malId?: number;
+    countryOfOrigin?: string;
+    nextAiringEpisode?: {
+        airingAt: number;
+        timeUntilAiring: number;
+        episode: number;
+        airingISOTimestamp?: string;
+    } | null;
 }
 
 export interface UniversalEpisode {
@@ -380,6 +395,10 @@ export interface UniversalEpisode {
     title: string;
     isFiller: boolean;
     isDub?: boolean;
+    isSub?: boolean;
+    hasDub?: boolean;
+    hasSub?: boolean;
+    malId?: number;
 }
 
 export interface UniversalCharacter {
@@ -401,12 +420,20 @@ export interface UniversalAnimeBase {
     title: string;
     jname?: string;
     poster: string;
+    banner?: string;
     type: string;
+    relationType?: string;
+    status?: string;
+    year?: number | string;
+    seasonYear?: number;
+    episodesCount?: number;
     duration?: string;
     episodes?: { sub: number; dub: number; eps?: number };
     rank?: number;
     isAdult?: boolean;
     rating?: string;
+    ageRating?: string;
+    score?: string | number;
 }
 
 export interface UniversalSeason {
@@ -550,7 +577,11 @@ export class AnimeService {
             number: parseInt(e.number, 10) || 0,
             title: e.title || `Episode ${e.number}`,
             isFiller: false,
-            isDub: !!e.hasDub
+            isDub: !!e.hasDub,
+            isSub: e.hasSub !== undefined ? !!e.hasSub : true,
+            hasDub: !!e.hasDub,
+            hasSub: e.hasSub !== undefined ? !!e.hasSub : true,
+            malId: e.dataMal ? parseInt(e.dataMal, 10) : undefined
         })) : [];
     }
 
@@ -570,15 +601,60 @@ export class AnimeService {
         const slug = data?.slug || data?.id || '';
         const rawRating = data?.rating || data?.rated || data?.ageRating || '';
         const isAdult = data?.isAdult === true || data?.adult === true || ["Rx", "RX", "Hentai", "18+", "R+", "18"].some((t: string) => String(rawRating).toUpperCase().includes(t)) || (Array.isArray(data?.genres) && data.genres.some((g: string) => ["hentai", "ecchi", "erotica"].includes(String(g).toLowerCase())));
+        const rawEps = data?.episodes?.episodes || data?.episodes || [];
+        const detectedMalId = rawEps[0]?.dataMal ? parseInt(rawEps[0].dataMal, 10) : (data?.malId || data?.idMal || data?.mal_id);
+        const genresList = normalizeList(data?.genres);
+        const studiosList = normalizeList(data?.studios);
+        const altTitles = Array.isArray(data?.alternativeTitles) ? data.alternativeTitles : [];
+        const hasChineseStudio = studiosList.some((s: string) => 
+            ['original force', 'wonder cat', 'sparkly key', 'foch', 'b.cmay', 'haoliners', 'tencent', 'bilibili', 'kuang shang', 'l2studio', 'paper plane'].some(cs => s.toLowerCase().includes(cs))
+        );
+        const hasKoreanStudio = studiosList.some((s: string) =>
+            ['studio mir', 'dr movie', 'red dog', 'studio ppuri', 'locus', 'cockroach', 'studio gale', 'iconix'].some(ks => s.toLowerCase().includes(ks))
+        );
+        const hasJapaneseStudio = studiosList.some((s: string) =>
+            ['a-1 pictures', 'a1 pictures', 'mappa', 'ufotable', 'cloverworks', 'wit studio', 'bones', 'madhouse', 'toei animation', 'kyoto animation', 'shaft', 'david production', 'troyca', 'lerche', 'doga kobo', 'white fox', 'silver link', 'j.c.staff', 'jc staff', 'telecom', 'production i.g', 'pierrot', 'sunrise', 'tms entertainment'].some(js => s.toLowerCase().includes(js))
+        );
+        const isJapaneseAnimeTitle = /(?:solo leveling|ore dake level up|tower of god|god of high school|noblesse)\b/i.test(data?.title || '') ||
+            altTitles.some((t: string) => /(?:solo leveling|ore dake level up|tower of god|god of high school|noblesse)\b/i.test(t));
+        const hasChineseChars = altTitles.some((t: string) => /[\u4e00-\u9fa5]/.test(t)) || /[\u4e00-\u9fa5]/.test(data?.synopsis || '');
+        const hasKoreanChars = altTitles.some((t: string) => /[\uac00-\ud7af]/.test(t)) || /[\uac00-\ud7af]/.test(data?.synopsis || '') || /[\uac00-\ud7af]/.test(data?.titleJp || '');
+        const hasJapaneseKana = /[\u3040-\u30ff]/.test(data?.titleJp || '') || /[\u3040-\u30ff]/.test(data?.title || '');
+        const isDonghua = data?.type?.toLowerCase() === 'donghua' || 
+            genresList.some((g: string) => g.toLowerCase().includes('donghua') || g.toLowerCase().includes('chinese')) ||
+            hasChineseStudio ||
+            (hasChineseChars && !hasJapaneseKana) ||
+            (!hasJapaneseKana && altTitles.concat([data?.title || '', data?.titleJp || '', data?.synopsis || '']).some((t: string) => 
+                /(?:\b(?:douluo|dalu|xianxia|wuxia|cultivation|donghua|shiguang|dailiren|shenghuo|chuan|zhuan|xian|qian kun|wan jie|soul land|combat continent|immortal king)\b)/i.test(t)
+            ));
+        const isKorean = !hasJapaneseStudio && !isJapaneseAnimeTitle && (
+            data?.country?.toUpperCase() === 'KR' ||
+            data?.countryOfOrigin?.toUpperCase() === 'KR' ||
+            data?.type?.toLowerCase() === 'korean' ||
+            data?.type?.toLowerCase() === 'aori' ||
+            genresList.some((g: string) => g.toLowerCase() === 'korean') ||
+            hasKoreanStudio ||
+            (!hasJapaneseKana && /(?:lookism)\b/i.test(data?.title || ''))
+        );
+
+        const isChinese = data?.country?.toUpperCase() === 'CN' ||
+            data?.countryOfOrigin?.toUpperCase() === 'CN' ||
+            isDonghua;
+
+        const country = (hasJapaneseStudio || isJapaneseAnimeTitle) ? 'JP' : (isKorean ? 'KR' : (isChinese ? 'CN' : (data?.country || data?.countryOfOrigin || 'JP')));
+
         return {
             id: slug,
             title: data?.title || 'Unknown Title',
             jname: data?.titleJp || '',
             poster: data?.image || '',
+            banner: data?.banner || data?.bannerImage || data?.cover || data?.image || '',
             description: data?.synopsis || '',
             isAdult: isAdult,
+            malId: detectedMalId,
+            countryOfOrigin: country,
             stats: {
-                rating: data?.rating || '?',
+                rating: (data?.rating && !data.rating.includes('/10') && !/^\d+(\.\d+)?$/.test(data.rating.trim())) ? data.rating : (isAdult ? '18+' : 'PG-13'),
                 quality: data?.quality || 'HD',
                 duration: data?.duration || '?',
                 type: data?.type || 'TV',
@@ -590,7 +666,7 @@ export class AnimeService {
             },
             info: {
                 status: data?.status || 'Unknown',
-                genres: normalizeList(data?.genres),
+                genres: genresList,
                 studios: normalizeList(data?.studios),
                 producers: normalizeList(data?.producers),
                 aired: data?.aired || '?',
@@ -607,255 +683,283 @@ export class AnimeService {
         };
     }
 
-    static async getUniversalRecent() {
-        const data: any = await AnimeAPI_Anikoto.getLatestUpdated(1);
-        return extractPaged(data).results.map(normalizeCard);
+    static async getUniversalRecent(page = 1) {
+        return await AniListService.getRecentEpisodes(page, 24);
     }
 
     static async getHomeSections() {
-        const home: any = await AnimeAPI_Anikoto.getHome();
-        const recentData: any = await AnimeAPI_Anikoto.getLatestUpdated(1);
-        const recent = extractPaged(recentData).results.map(normalizeCard);
-
-        if (!home) return { spotlight: [], recent };
-
-        const spotlight = Array.isArray(home.spotlight) ? home.spotlight.map((item: any) => ({
-            ...normalizeCard(item),
-            description: item?.synopsis || item?.description || ''
-        })) : [];
-
-        return { spotlight, recent };
+        return await AniListService.getHomeSections();
     }
 
     static async getTopTen() {
-        const home: any = await AnimeAPI_Anikoto.getHome();
-        if (!home) return null;
-        return {
-            today: Array.isArray(home.topDay) ? home.topDay.map(normalizeCard) : [],
-            week: Array.isArray(home.topWeek) ? home.topWeek.map(normalizeCard) : [],
-            month: Array.isArray(home.topMonth) ? home.topMonth.map(normalizeCard) : []
-        };
+        const [today, week, month] = await Promise.all([
+            AniListService.getTopAiring(1, 10).catch(() => []),
+            AniListService.getMostPopular(1, 10).catch(() => []),
+            AniListService.getMostFavorite(1, 10).catch(() => []),
+        ]);
+        return { today, week, month };
     }
 
     static async getTopSearch() {
-        const home: any = await AnimeAPI_Anikoto.getHome();
-        return Array.isArray(home?.topDay) ? home.topDay.map(normalizeCard) : [];
+        return await AniListService.getMostPopular(1, 10);
     }
 
     static async getRandomAnime() {
-        const sources = [
-            async () => {
-                const randomPage = Math.floor(Math.random() * 5) + 1;
-                return await AnimeAPI_Anikoto.getHomeLatest('random', randomPage);
-            },
-            async () => {
-                const randomPage = Math.floor(Math.random() * 10) + 1;
-                return await AnimeAPI_Anikoto.getLatestUpdated(randomPage);
-            },
-            async () => {
-                const randomPage = Math.floor(Math.random() * 15) + 1;
-                return await AnimeAPI_Anikoto.getAZList(randomPage);
-            },
-            async () => {
-                return await AnimeAPI_Anikoto.getHome();
-            }
-        ];
-
-        for (const fetcher of sources) {
-            try {
-                const data: any = await fetcher();
-                const paged = extractPaged(data);
-                if (paged.results && paged.results.length > 0) {
-                    const validItems = paged.results.filter((i: any) => i && (i.slug || i.id));
-                    if (validItems.length > 0) {
-                        const randomIndex = Math.floor(Math.random() * validItems.length);
-                        const card = normalizeCard(validItems[randomIndex]);
-                        if (card && card.id) {
-                            return card;
-                        }
-                    }
-                }
-            } catch (e) {
-                console.error("getRandomAnime attempt failed", e);
-            }
+        const popular = await AniListService.getMostPopular(Math.floor(Math.random() * 3) + 1, 24);
+        if (popular && popular.length > 0) {
+            return popular[Math.floor(Math.random() * popular.length)];
         }
         return null;
     }
 
     static async getTopUpcoming(page = 1) {
-        const data: any = await AnimeAPI_Anikoto.getStatus('not-yet-aired', page);
-        return extractPaged(data).results.map(normalizeCard);
+        return await AniListService.getTopUpcoming(page, 24);
     }
 
     static async getRecentlyUpdated(page = 1) {
-        const data: any = await AnimeAPI_Anikoto.getLatestUpdated(page);
-        return extractPaged(data).results.map(normalizeCard);
+        return await AniListService.getRecentEpisodes(page, 24);
     }
 
     static async getRecentlyAdded(page = 1) {
-        const data: any = await AnimeAPI_Anikoto.getNewRelease(page);
-        return extractPaged(data).results.map(normalizeCard);
+        return await AniListService.getRecentEpisodes(page, 24);
     }
 
     static async getCompleted(page = 1) {
-        const data: any = await AnimeAPI_Anikoto.getStatus('finished-airing', page);
-        return extractPaged(data).results.map(normalizeCard);
+        return await AniListService.getCompleted(page, 24);
     }
 
     static async getMostFavorite(page = 1) {
-        const data: any = await AnimeAPI_Anikoto.getMostViewed(page);
-        return extractPaged(data).results.map(normalizeCard);
+        return await AniListService.getMostFavorite(page, 24);
+    }
+
+    static async getAiringToday(page = 1) {
+        return await AniListService.getAiringToday(page, 24);
     }
 
     static async getMostPopular(page = 1) {
-        const data: any = await AnimeAPI_Anikoto.getMostViewed(page);
-        return extractPaged(data).results.map(normalizeCard);
+        return await AniListService.getMostPopular(page, 24);
     }
 
     static async getTopAiring(page = 1) {
-        const data: any = await AnimeAPI_Anikoto.getStatus('currently-airing', page);
-        return extractPaged(data).results.map(normalizeCard);
+        return await AniListService.getTopAiring(page, 24);
     }
 
     static async getSubbedAnime(page = 1) {
-        const data: any = await AnimeAPI_Anikoto.filter({ 'language[]': 'sub', page, sort: 'default' });
-        return extractPaged(data).results.map(normalizeCard);
+        return await AniListService.getRecentEpisodes(page, 24);
     }
 
     static async getDubbedAnime(page = 1) {
-        const data: any = await AnimeAPI_Anikoto.filter({ 'language[]': 'dub', page, sort: 'default' });
-        return extractPaged(data).results.map(normalizeCard);
+        return await AniListService.getEnglishDubbed(page, 24);
+    }
+
+    static async getMovies(page = 1) {
+        return await AniListService.getMovies(page, 24);
+    }
+
+    static async getDonghua(page = 1) {
+        return await AniListService.getDonghua(page, 24);
     }
 
     static async getFilteredAnime(category: string, page = 1) {
-        let rawData: any;
-
+        let results: UniversalAnimeBase[] = [];
         switch (category) {
             case 'sub':
-                rawData = await AnimeAPI_Anikoto.filter({ language: ['sub'], page, sort: 'default' });
-                if (!rawData || (Array.isArray(rawData) ? !rawData.length : !rawData.results?.length)) {
-                    rawData = await AnimeAPI_Anikoto.getHomeLatest('updated-sub', page);
-                }
-                break;
             case 'dub':
-                rawData = await AnimeAPI_Anikoto.filter({ language: ['dub'], page, sort: 'default' });
-                if (!rawData || (Array.isArray(rawData) ? !rawData.length : !rawData.results?.length)) {
-                    rawData = await AnimeAPI_Anikoto.getHomeLatest('updated-dub', page);
-                }
-                break;
             case 'latest-updated':
             case 'recent':
             case 'updated-all':
             case 'all':
-                rawData = await AnimeAPI_Anikoto.getLatestUpdated(page);
-                if (!rawData || (Array.isArray(rawData) ? !rawData.length : !rawData.results?.length)) {
-                    rawData = await AnimeAPI_Anikoto.getHomeLatest('updated-all', page);
-                }
+                results = await AniListService.getRecentEpisodes(page, 24);
                 break;
             case 'new-release':
             case 'added':
-                rawData = await AnimeAPI_Anikoto.getNewRelease(page);
+                results = await AniListService.getRecentEpisodes(page, 24);
                 break;
             case 'most-viewed':
             case 'popular':
             case 'trending':
-                rawData = await AnimeAPI_Anikoto.getMostViewed(page);
+                results = await AniListService.getMostPopular(page, 24);
                 break;
             case 'upcoming':
             case 'not-yet-aired':
-                rawData = await AnimeAPI_Anikoto.getStatus('not-yet-aired', page);
+                results = await AniListService.getTopUpcoming(page, 24);
                 break;
             case 'ongoing':
             case 'currently-airing':
-                rawData = await AnimeAPI_Anikoto.getStatus('currently-airing', page);
+                results = await AniListService.getTopAiring(page, 24);
                 break;
             case 'completed':
             case 'finished-airing':
-                rawData = await AnimeAPI_Anikoto.getStatus('finished-airing', page);
+                results = await AniListService.getCompleted(page, 24);
                 break;
             case 'az-list':
-                rawData = await AnimeAPI_Anikoto.getAZList(page);
+                results = await AniListService.getMostPopular(page, 24);
                 break;
             default:
-                rawData = await AnimeAPI_Anikoto.getLatestUpdated(page);
+                results = await AniListService.getMostPopular(page, 24);
                 break;
         }
 
-        const paged = extractPaged(rawData);
         return {
-            results: paged.results.map(normalizeCard),
-            currentPage: paged.currentPage ?? page,
-            hasNextPage: paged.hasNextPage ?? (paged.results.length >= 18),
-            hasPreviousPage: paged.hasPreviousPage ?? (page > 1),
-            maxPage: paged.maxPage || (paged.hasNextPage ? (page + 1) : page),
-            minPage: paged.minPage || 1
+            results,
+            currentPage: page,
+            hasNextPage: results.length >= 24,
+            hasPreviousPage: page > 1,
+            maxPage: results.length >= 24 ? page + 1 : page,
+            minPage: 1
         };
     }
 
     static async getByGenre(genre: string, page = 1) {
-        const data: any = await AnimeAPI_Anikoto.getGenre(genre, page);
-        return extractPaged(data).results.map(normalizeCard);
+        return await AniListService.getByGenre(genre, page, 24);
     }
 
-    static async getByType(type: string, page = 1) {
-        const data: any = await AnimeAPI_Anikoto.getType(type, page);
-        return extractPaged(data).results.map(normalizeCard);
+    static async getByType(_type: string, page = 1) {
+        return await AniListService.getMostPopular(page, 24);
     }
 
     static async search(query: string, page = 1) {
-        const data: any = await AnimeAPI_Anikoto.search(query, page);
-        const paged = extractPaged(data);
-        return {
-            results: paged.results.map(normalizeCard),
-            currentPage: paged.currentPage ?? page,
-            hasNextPage: paged.hasNextPage ?? false,
-            hasPreviousPage: paged.hasPreviousPage ?? false,
-            maxPage: paged.maxPage,
-            minPage: paged.minPage
-        };
+        return await AniListService.search(query, page, 24);
     }
 
     static async getSearchSuggestions(query: string) {
-        const data: any = await AnimeAPI_Anikoto.search(query, 1);
-        const paged = extractPaged(data);
-        return paged.results.slice(0, 8).map((item: any) => ({
-            id: item?.slug || item?.id || '',
-            title: item?.title || 'Unknown Title',
-            poster: item?.image || '',
-            type: item?.type || 'TV',
-            duration: item?.date || '?'
-        }));
+        return await AniListService.getSearchSuggestions(query);
     }
 
     static async filter(params: Record<string, any>) {
-        const data: any = await AnimeAPI_Anikoto.filter(params);
-        return extractPaged(data).results.map(normalizeCard);
+        return await AniListService.filter(params);
     }
 
-    static async getAnimeInfo(slug: string): Promise<UniversalAnime | null> {
-        const [detail, related, recommendations] = await Promise.all([
-            AnimeAPI_Anikoto.getAnimeDetail(slug),
-            AnimeAPI_Anikoto.getRelated(slug).catch(() => null),
-            AnimeAPI_Anikoto.getRecommendations(slug).catch(() => null)
-        ]);
-        if (!detail) return null;
+    static async getAnimeInfo(slugOrId: string): Promise<UniversalAnime | null> {
+        let info = await AniListService.getAnimeInfo(slugOrId).catch(() => null);
+        if (info) return info;
 
-        const normalized = this.normalizeDetail(detail);
-        normalized.related = this.normalizeRelated(related as any);
-        normalized.recommendations = Array.isArray(recommendations) ? (recommendations as any[]).map(normalizeCard) : [];
-        return normalized;
+        // Fallback: Check if slugOrId is a Blakite Hindi entry or numeric Blakite ID
+        try {
+            const rawId = (slugOrId || '').trim();
+            const cleanId = rawId.match(/^(\d+)/)?.[1] || rawId;
+            let blakiteDetail: any = null;
+
+            if (typeof window !== 'undefined') {
+                const res = await fetch(`/api/blakite/anime/${encodeURIComponent(cleanId)}`);
+                if (res.ok) {
+                    const json = await res.json();
+                    if (json.ok && json.data) blakiteDetail = json.data;
+                }
+            } else {
+                const { getBlakiteDetail } = await import('@/lib/blakite');
+                blakiteDetail = await getBlakiteDetail(cleanId).catch(() => null);
+            }
+
+            if (blakiteDetail) {
+                const cleanTitle = (blakiteDetail.title || '')
+                    .replace(/\(Hindi Dubbed\)/i, '')
+                    .replace(/\(Hindi Dub\)/i, '')
+                    .replace(/\[Hindi Dub\]/i, '')
+                    .replace(/Season \d+/i, '')
+                    .trim();
+
+                let anilistMatch: UniversalAnime | null = null;
+                if (cleanTitle) {
+                    anilistMatch = await AniListService.getAnimeInfo(cleanTitle).catch(() => null);
+                }
+
+                if (anilistMatch) {
+                    (anilistMatch as any).hindiDub = {
+                        available: true,
+                        dubType: blakiteDetail.language === 'ORG' ? 'Hindi Official Dub' : 'Hindi Dub',
+                        blakiteId: blakiteDetail.id,
+                        totalEpisodes: blakiteDetail.episodes?.length || 1,
+                        score: blakiteDetail.score
+                    };
+                    return anilistMatch;
+                }
+
+                const eps: UniversalEpisode[] = Array.isArray(blakiteDetail.episodes)
+                    ? blakiteDetail.episodes.map((e: any, idx: number) => ({
+                        id: e.id || `${blakiteDetail.id}::${e.number || (idx + 1)}`,
+                        number: parseInt(e.number, 10) || (idx + 1),
+                        title: e.title || `Episode ${e.number || (idx + 1)}`,
+                        isFiller: false,
+                        isDub: true,
+                        isSub: true,
+                        hasDub: true,
+                        hasSub: true,
+                    }))
+                    : [];
+
+                const uAnime: UniversalAnime = {
+                    id: String(blakiteDetail.id),
+                    title: cleanTitle || blakiteDetail.title,
+                    jname: blakiteDetail.titleJp || blakiteDetail.title,
+                    poster: blakiteDetail.image || '/images/no-poster.png',
+                    banner: blakiteDetail.banner || blakiteDetail.image || '',
+                    description: blakiteDetail.synopsis || '',
+                    isAdult: false,
+                    stats: {
+                        rating: blakiteDetail.rating || 'PG-13',
+                        quality: 'HD',
+                        duration: '24m',
+                        type: blakiteDetail.type || 'TV',
+                        malScore: String(blakiteDetail.score || '8.0'),
+                        episodes: { sub: eps.length, dub: eps.length }
+                    },
+                    info: {
+                        status: blakiteDetail.status || 'Completed',
+                        genres: blakiteDetail.genres || ['Action', 'Animation'],
+                        studios: blakiteDetail.studios || [],
+                        producers: blakiteDetail.producers || [],
+                        aired: blakiteDetail.aired || '?',
+                        premiered: blakiteDetail.premiered || '?',
+                        japanese: blakiteDetail.nativeTitle || '',
+                        synonyms: blakiteDetail.englishTitle || ''
+                    },
+                    episodes: eps,
+                    characters: [],
+                    recommendations: [],
+                    related: [],
+                    seasons: [],
+                    trailers: []
+                };
+                (uAnime as any).hindiDub = {
+                    available: true,
+                    dubType: blakiteDetail.language === 'ORG' ? 'Hindi Official Dub' : 'Hindi Dub',
+                    blakiteId: blakiteDetail.id,
+                    totalEpisodes: eps.length,
+                    score: blakiteDetail.score
+                };
+                return uAnime;
+            }
+        } catch (e) {
+            console.warn("[AnimeService] Blakite fallback failed:", e);
+        }
+
+        return null;
     }
 
-    static async getEpisodes(slug: string): Promise<UniversalEpisode[]> {
-        const data: any = await AnimeAPI_Anikoto.getEpisodes(slug);
-        return data?.episodes ? this.normalizeEpisodeList(data.episodes, data.slug || slug) : [];
+    static async getEpisodes(slugOrId: string): Promise<UniversalEpisode[]> {
+        return await AniListService.getEpisodes(slugOrId);
     }
 
-    static async getCharacters(_slug: string): Promise<UniversalCharacter[]> {
-        return [];
+    static async getCharacters(slugOrId: string): Promise<UniversalCharacter[]> {
+        const info = await AniListService.getAnimeInfo(slugOrId);
+        return info?.characters || [];
     }
 
-    static async getStream(episodeId: string, server = 'VidPlay-1', category: 'sub' | 'dub' = 'sub') {
+    static async getSchedule(date: string, tzOffsetHours = 0) {
+        return await AniListService.getSchedule(date, tzOffsetHours);
+    }
+
+    static async getTooltip(id: string) {
+        return await AniListService.getTooltip(id);
+    }
+
+    static async getStream(
+        episodeId: string, 
+        server = 'MegaCloud', 
+        category: 'sub' | 'dub' | 'raw' | 'jp' | 'en' | 'hi' | 'cn' = 'sub',
+        options?: { malId?: number; title?: string; countryOfOrigin?: string; hasDub?: boolean; excludeServers?: string[] }
+    ) {
         let slug = '';
         let epNumber = '';
         if (episodeId.includes('::')) {
@@ -870,6 +974,94 @@ export class AnimeService {
         }
         if (!slug || !epNumber) return null;
 
+        const countryUpper = options?.countryOfOrigin?.toUpperCase() || 'JP';
+        const isChinese = countryUpper === 'CN';
+        const isKorean = countryUpper === 'KR';
+        const primarySubKey = isChinese ? 'cn' : (isKorean ? 'kr' : 'jp');
+
+        // Map audio category
+        let effectiveAudio = category as string;
+        if (category === 'sub') effectiveAudio = primarySubKey;
+        else if (category === 'dub') effectiveAudio = 'en';
+        else if (['jp', 'cn', 'kr'].includes(effectiveAudio)) {
+            if (effectiveAudio !== primarySubKey && (isChinese || isKorean)) {
+                effectiveAudio = primarySubKey;
+            }
+        }
+
+        // 1. Direct High-Speed Unified Extractor (ZokoAnime + Blakite + Rumble Cloud)
+        try {
+            let unified: UnifiedStreamResult | null = null;
+            if (typeof window !== 'undefined') {
+                const params = new URLSearchParams({
+                    malId: options?.malId ? String(options.malId) : '',
+                    title: options?.title || slug,
+                    ep: String(epNumber),
+                    country: options?.countryOfOrigin || 'JP',
+                    audio: effectiveAudio,
+                    server: server,
+                    exclude: options?.excludeServers?.join(',') || ''
+                });
+                const res = await fetch(`/api/anime/stream?${params.toString()}`);
+                if (res.ok) {
+                    const json = await res.json();
+                    if (json.ok && json.data) {
+                        unified = json.data;
+                    }
+                }
+            } else {
+                unified = await resolveUnifiedStreams({
+                    malId: options?.malId,
+                    title: options?.title || slug,
+                    episode: epNumber,
+                    countryOfOrigin: options?.countryOfOrigin || 'JP',
+                    knownHasDub: options?.hasDub
+                });
+            }
+
+            if (unified && unified.servers) {
+                // IMPORTANT: When English Dub or Hindi Dub is requested, ONLY look at that specific language pool!
+                // NEVER fall back to primarySubKey (which is Japanese Sub) when English Dub is requested!
+                const isSubTrack = ['jp', 'cn', 'kr', 'sub'].includes(effectiveAudio);
+                const available: any[] = (unified.servers[effectiveAudio] || (isSubTrack ? (unified.servers[primarySubKey] || []) : [])) as any[];
+                const excluded = (options?.excludeServers || []).map(s => s.toLowerCase());
+                let matched = available.find((s: any) => s.serverName.toLowerCase() === server.toLowerCase() && !excluded.includes(s.serverName.toLowerCase()))
+                           || available.find((s: any) => !excluded.includes(s.serverName.toLowerCase()))
+                           || available[0];
+
+                if (matched && matched.url) {
+                    // Synthesize legacy server structure for backward compatibility
+                    const legacyServers: any = {
+                        ...unified.servers,
+                        sub: unified.servers[primarySubKey] || unified.servers.sub || [],
+                        dub: unified.servers.en || unified.servers.dub || [],
+                        hi: unified.servers.hi || [],
+                        raw: []
+                    };
+
+                    const isEmbed = matched.type === 'embed' || matched.url.includes('megaplay.buzz');
+
+                    return {
+                        url: matched.url,
+                        iframeUrl: isEmbed ? matched.url : null,
+                        isEmbed: isEmbed,
+                        subtitles: (unified.subtitles || []).map((s: any) => ({ file: s.url, label: s.label, kind: 'captions' })),
+                        server: matched.serverName,
+                        servers: legacyServers,
+                        audioTracks: unified.audioTracks,
+                        isM3U8: matched.type === 'm3u8',
+                        referer: matched.referer || null,
+                        intro: unified.intro,
+                        outro: unified.outro,
+                        skipData: (unified.intro || unified.outro) ? { intro: unified.intro, outro: unified.outro } : null
+                    };
+                }
+            }
+        } catch (err) {
+            console.warn('[AnimeService.getStream] Unified stream extractor fallback:', err);
+        }
+
+        // 2. Fallback to Anikoto Scraper API
         let data: any = await AnimeAPI_Anikoto.getWatch(slug, epNumber);
 
         // Aggressive unwrapping for stringified proxy responses
@@ -885,23 +1077,25 @@ export class AnimeService {
 
         if (!data || !Array.isArray(data)) return null;
 
-        // 1. Group Servers from the EXACT SAME response
+        // Group Servers from response
         const serversBlock = data.find((item: any) => item.type === 'servers');
         const list: any[] = serversBlock && Array.isArray(serversBlock.servers) ? serversBlock.servers : [];
-        const grouped: { sub: any[]; dub: any[]; raw: any[] } = { sub: [], dub: [], raw: [] };
+        const grouped: { sub: any[]; dub: any[]; raw: any[]; [key: string]: any[] } = { sub: [], dub: [], raw: [] };
         for (const s of list) {
             const bucket: 'sub' | 'dub' | 'raw' = s?.type === 'dub' ? 'dub' : s?.type === 'raw' ? 'raw' : 'sub';
             grouped[bucket].push({ serverId: s?.id ?? s?.svId, serverName: s?.name });
         }
+        grouped[primarySubKey] = grouped.sub;
+        grouped['en'] = grouped.dub;
 
-        // 2. Extract Stream Sources
+        // Extract Stream Sources
         const sources = data
             .filter((item: any) => item.type === 'source' && item.source)
             .map((item: any) => item.source);
 
-        const byCategory = sources.filter(s => s?.type === category);
+        const targetCat = (category === 'en' || category === 'dub') ? 'dub' : 'sub';
+        const byCategory = sources.filter(s => s?.type === targetCat);
 
-        // Even if no stream matched, return the server list so UI can render the dropdown
         if (!byCategory.length) return { servers: grouped, url: null };
 
         const matched =
@@ -913,15 +1107,18 @@ export class AnimeService {
 
         const skipBlock = data.find((item: any) => item.type === 'skip_data');
         const skip = skipBlock ? skipBlock.skip_data : null;
+        const isEmbed = !!(matched.url && matched.url.includes('megaplay.buzz'));
 
         return {
             url: matched.proxyUrl || matched.m3u8 || matched.url,
+            iframeUrl: isEmbed ? matched.url : null,
+            isEmbed: isEmbed,
             subtitles: matched.tracks ? matched.tracks.map((t: any) => ({
                 ...t,
                 file: t.proxyUrl || t.file
             })) : [],
             server: matched.server || server,
-            servers: grouped, // ✅ Server list attached to stream payload
+            servers: grouped,
             isM3U8: !!matched.m3u8 || !!(matched.proxyUrl && matched.proxyUrl.includes('m3u8')),
             referer: matched.referer || null,
             intro: skip?.intro || null,
@@ -933,51 +1130,6 @@ export class AnimeService {
     /** @deprecated Now handled dynamically inside getStream to avoid double network requests */
     static async getEpisodeServers(episodeId: string) {
         return null;
-    }
-
-    static async getSchedule(date: string, tzOffsetHours = 0) {
-        try {
-            const data: any = await AnimeAPI_Anikoto.getSchedule(tzOffsetHours, true);
-            if (!Array.isArray(data)) return { scheduledAnimes: [] };
-
-            let targetLabel: string | null = null;
-            let targetDayName: string | null = null;
-            const parsed = new Date(date);
-            if (!isNaN(parsed.getTime())) {
-                targetLabel = parsed.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: '2-digit' }).replace(/,/g, '').trim().toLowerCase();
-                targetDayName = parsed.toLocaleDateString('en-US', { weekday: 'long' }).toLowerCase();
-            }
-
-            const day = data.find((d: any) => {
-                if (!d || !d.day) return false;
-                const dDay = String(d.day).replace(/,/g, '').trim().toLowerCase();
-                return (
-                    (targetLabel && dDay === targetLabel) ||
-                    (targetDayName && dDay.includes(targetDayName.slice(0, 3)))
-                );
-            }) || data[0];
-
-            const animes = Array.isArray(day?.animes) ? day.animes : [];
-
-            return {
-                scheduledAnimes: animes.map((item: any) => ({
-                    id: item?.slug || item?.id || '',
-                    time: item?.date || item?.time || 'TBA',
-                    name: item?.title || item?.name || 'Unknown Title',
-                    jname: item?.titleJp || item?.jname || '',
-                    timestamp: null,
-                    secondsUntilAiring: null,
-                    episode: item?.type || item?.episode || '?'
-                }))
-            };
-        } catch (err) {
-            console.error("[getSchedule] Error fetching schedule:", err);
-            return { scheduledAnimes: [] };
-        }
-    }
-
-    static async getTooltip(id: string) {
-        return AnimeAPI_Anikoto.getTooltip(id);
     }
 }
 

@@ -1,0 +1,25 @@
+/* [project]/src/lib/gradvis_1aef0bd0.module.css [app-client] (css) */
+@font-face {
+  font-family: gradvis;
+  src: url("../media/GradvisRegular_lxoyd-s.57002bd2.ttf") format("truetype");
+  font-display: swap;
+}
+
+@font-face {
+  font-family: gradvis Fallback;
+  src: local(Arial);
+  ascent-override: 72.63%;
+  descent-override: 25.52%;
+  line-gap-override: 0.88%;
+  size-adjust: 103.96%;
+}
+
+.gradvis_1aef0bd0-module__QFordG__className {
+  font-family: gradvis, gradvis Fallback;
+}
+
+.gradvis_1aef0bd0-module__QFordG__variable {
+  --font-gradvis: "gradvis", "gradvis Fallback";
+}
+
+/*# sourceMappingURL=src_lib_gradvis_1aef0bd0_module_css_bad6b30c._.single.css.map*/

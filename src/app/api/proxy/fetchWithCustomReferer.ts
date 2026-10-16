@@ -1,9 +1,51 @@
 import { Agent } from 'undici';
+import dns from 'node:dns';
 
-// Bypass SSL certificate issues for upstream scrapers and CDNs with expired certificates
+// Fallback to high-reliability public resolvers (Google / Cloudflare) if local router DNS fails or times out
+const resolver = new dns.promises.Resolver();
+try {
+  resolver.setServers(['8.8.8.8', '1.1.1.1', '8.8.4.4', '1.0.0.1']);
+} catch {}
+
+const dnsCache = new Map<string, { address: string; family: number; expires: number }>();
+
+function resilientLookup(hostname: string, options: any, callback: any) {
+  if (typeof options === 'function') {
+    callback = options;
+    options = {};
+  }
+  const isAll = !!(options && options.all);
+
+  const cached = dnsCache.get(hostname);
+  if (cached && Date.now() < cached.expires) {
+    if (isAll) {
+      return callback(null, [{ address: cached.address, family: cached.family }]);
+    }
+    return callback(null, cached.address, cached.family);
+  }
+
+  resolver.resolve4(hostname)
+    .then(ips => {
+      if (ips && ips.length > 0) {
+        const ip = ips[0];
+        dnsCache.set(hostname, { address: ip, family: 4, expires: Date.now() + 5 * 60 * 1000 });
+        if (isAll) {
+          return callback(null, [{ address: ip, family: 4 }]);
+        }
+        return callback(null, ip, 4);
+      }
+      dns.lookup(hostname, options, callback);
+    })
+    .catch(() => {
+      dns.lookup(hostname, options, callback);
+    });
+}
+
+// Bypass SSL certificate issues and DNS resolution failures for upstream scrapers and CDNs
 const dispatcher = new Agent({
   connect: {
-    rejectUnauthorized: false
+    rejectUnauthorized: false,
+    lookup: resilientLookup
   }
 });
 

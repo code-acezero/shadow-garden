@@ -1,15 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server';
 
 export const runtime = 'nodejs';
+export const dynamic = 'force-dynamic';
 export const maxDuration = 30;
 
-const BASE_URL = 'https://hdmoviescloud.com';
-
-const HEADERS = {
-  'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
-  'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8',
-  'Accept-Language': 'en-US,en;q=0.9',
-};
+const TMDB_API_KEY = '1cf50e6248dc270629e802686245c2c8';
+const TMDB_BASE = 'https://api.themoviedb.org/3';
+const TMDB_IMAGE_BASE = 'https://image.tmdb.org/t/p/w500';
+const TMDB_BACKDROP_BASE = 'https://image.tmdb.org/t/p/original';
 
 // In-memory cache with 15-minute TTL
 const memoryCache = new Map<string, { data: any; expiry: number }>();
@@ -28,50 +26,83 @@ function setCached(key: string, data: any, ttlSeconds: number = 900) {
   memoryCache.set(key, { data, expiry: Date.now() + ttlSeconds * 1000 });
 }
 
-async function fetchWithTimeout(url: string, headers: any, timeoutMs: number = 10000): Promise<string> {
+async function fetchTmdb(endpoint: string, params: Record<string, string | number> = {}): Promise<any> {
+  const query = new URLSearchParams({
+    api_key: TMDB_API_KEY,
+    ...Object.fromEntries(
+      Object.entries(params)
+        .filter(([, v]) => v !== undefined && v !== null && v !== '')
+        .map(([k, v]) => [k, String(v)])
+    )
+  });
+
+  const url = `${TMDB_BASE}${endpoint}?${query.toString()}`;
   const controller = new AbortController();
-  const id = setTimeout(() => controller.abort(), timeoutMs);
+  const id = setTimeout(() => controller.abort(), 12000);
+
   try {
-    const res = await fetch(url, { headers, signal: controller.signal, cache: 'no-store' });
-    if (res.ok) return await res.text();
-    throw new Error(`HTTP ${res.status}`);
+    const res = await fetch(url, {
+      signal: controller.signal,
+      headers: {
+        'Accept': 'application/json',
+        'User-Agent': 'ShadowGarden/2.0'
+      },
+      next: { revalidate: 600 }
+    });
+    if (!res.ok) {
+      throw new Error(`TMDB HTTP ${res.status}`);
+    }
+    return await res.json();
   } finally {
     clearTimeout(id);
   }
 }
 
-function parseSlug(href: string): string {
-  const clean = href.replace(/\/$/, '').replace(/\.html$/, '');
-  const parts = clean.split('/');
-  return parts[parts.length - 1] || '';
+function mapTmdbToCard(m: any): any {
+  if (!m) return null;
+  const poster = m.poster_path 
+    ? `${TMDB_IMAGE_BASE}${m.poster_path}` 
+    : (m.backdrop_path ? `${TMDB_IMAGE_BASE}${m.backdrop_path}` : '');
+
+  const year = m.release_date ? m.release_date.split('-')[0] : '';
+  const rating = m.vote_average ? Number(m.vote_average).toFixed(1) : '7.5';
+
+  return {
+    id: String(m.id),
+    slug: String(m.id),
+    title: m.title || m.name || m.original_title || 'Untitled',
+    image: poster,
+    poster: poster,
+    backdrop: m.backdrop_path ? `${TMDB_BACKDROP_BASE}${m.backdrop_path}` : poster,
+    rating: rating,
+    year: year,
+    type: 'Movie',
+    country: m.original_language?.toUpperCase() === 'HI' ? 'Bollywood' : (m.original_language?.toUpperCase() === 'JA' ? 'Japan' : 'Hollywood'),
+    overview: m.overview || ''
+  };
 }
 
-function parseCards(html: string): any[] {
-  const regex = /<article[^>]*class="item[^"]*"[^>]*>[\s\S]*?<div class="poster">[\s\S]*?<img [^>]*src="([^"]+)"[^>]*alt="([^"]*)"[\s\S]*?(?:<div class="rating">([^<]*)<\/div>)?[\s\S]*?<a href="([^"]+)"[\s\S]*?<div class="data[^"]*">[\s\S]*?<h3><a[^>]*>([^<]*)<\/a><\/h3>[\s\S]*?(?:<span>(\d{4})<\/span>)?/gi;
-  const cards: any[] = [];
-  for (const m of html.matchAll(regex)) {
-    const rawImg = m[1];
-    const img = rawImg.startsWith('http') ? rawImg : `${BASE_URL}${rawImg.startsWith('/') ? '' : '/'}${rawImg}`;
-    const href = m[4];
-    const slug = parseSlug(href);
-    const title = (m[5] || m[2] || '').trim();
-    const rating = m[3]?.trim() || '';
-    const year = m[6] || '';
-    if (slug && title) {
-      cards.push({
-        id: slug,
-        slug,
-        title,
-        href,
-        image: img,
-        rating,
-        year,
-        type: 'Movie'
-      });
-    }
-  }
-  return cards;
-}
+const GENRE_MAP: Record<string, number> = {
+  action: 28,
+  adventure: 12,
+  animation: 16,
+  comedy: 35,
+  crime: 80,
+  documentary: 99,
+  drama: 18,
+  family: 10751,
+  fantasy: 14,
+  history: 36,
+  horror: 27,
+  music: 10402,
+  mystery: 9648,
+  romance: 10749,
+  'sci-fi': 878,
+  scifi: 878,
+  thriller: 53,
+  war: 10752,
+  western: 37
+};
 
 export async function GET(req: NextRequest, { params }: { params: Promise<{ endpoint: string[] }> }) {
   const { endpoint } = await params;
@@ -83,136 +114,201 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ endp
   if (cached) return NextResponse.json(cached);
 
   try {
-    // 1. HOME
+    // 1. HOME: Rich multi-category curated movie rows
     if (action === 'home') {
-      const html = await fetchWithTimeout(BASE_URL, { ...HEADERS, Referer: `${BASE_URL}/` });
-      const cards = parseCards(html);
+      const [trending, popular, topRated, bollywood, animation] = await Promise.all([
+        fetchTmdb('/trending/movie/week').catch(() => ({ results: [] })),
+        fetchTmdb('/movie/popular').catch(() => ({ results: [] })),
+        fetchTmdb('/movie/top_rated').catch(() => ({ results: [] })),
+        fetchTmdb('/discover/movie', { with_original_language: 'hi', sort_by: 'popularity.desc' }).catch(() => ({ results: [] })),
+        fetchTmdb('/discover/movie', { with_genres: 16, sort_by: 'popularity.desc' }).catch(() => ({ results: [] }))
+      ]);
 
       const sections = [
-        { title: 'Recent Updates', items: cards.slice(0, 12) },
-        { title: 'Trending Movies', items: cards.slice(12, 24) },
-        { title: 'Popular Right Now', items: cards.slice(24, 36) },
-        { title: 'Top Rated', items: cards.slice(36) }
+        {
+          title: 'Recent Updates',
+          items: (trending.results || []).map(mapTmdbToCard).filter(Boolean).slice(0, 18),
+          query: 'trending'
+        },
+        {
+          title: 'Trending Movies',
+          items: (popular.results || []).map(mapTmdbToCard).filter(Boolean).slice(0, 18),
+          query: 'popular'
+        },
+        {
+          title: 'Top Rated Blockbusters',
+          items: (topRated.results || []).map(mapTmdbToCard).filter(Boolean).slice(0, 18),
+          query: 'top_rated'
+        },
+        {
+          title: 'Bollywood Hits',
+          items: (bollywood.results || []).map(mapTmdbToCard).filter(Boolean).slice(0, 18),
+          query: 'bollywood'
+        },
+        {
+          title: 'Animation & Animated Features',
+          items: (animation.results || []).map(mapTmdbToCard).filter(Boolean).slice(0, 18),
+          query: 'animation'
+        }
       ].filter(s => s.items.length > 0);
 
-      const result = { sections: sections.length > 0 ? sections : [{ title: 'Movies & Series', items: cards }] };
+      const result = { sections };
       setCached(cacheKey, result, 900);
       return NextResponse.json(result);
     }
 
     // 2. SEARCH
     if (action === 'search') {
-      const q = urlObj.searchParams.get('q') || urlObj.searchParams.get('story') || '';
+      const q = urlObj.searchParams.get('q') || urlObj.searchParams.get('story') || urlObj.searchParams.get('keyword') || '';
+      const page = parseInt(urlObj.searchParams.get('page') || '1', 10);
       if (!q.trim()) return NextResponse.json({ results: [], total: 0 });
 
-      const searchUrl = `${BASE_URL}/index.php?do=search&subaction=search&story=${encodeURIComponent(q.trim())}`;
-      const html = await fetchWithTimeout(searchUrl, { ...HEADERS, Referer: `${BASE_URL}/` });
-      const results = parseCards(html);
+      const data = await fetchTmdb('/search/movie', { query: q.trim(), page });
+      const results = (data.results || []).map(mapTmdbToCard).filter(Boolean);
 
-      const result = { results, total: results.length, currentPage: 1, hasNextPage: false };
+      const result = {
+        results,
+        total: data.total_results || results.length,
+        currentPage: data.page || page,
+        hasNextPage: (data.page || page) < (data.total_pages || 1)
+      };
       setCached(cacheKey, result, 600);
       return NextResponse.json(result);
     }
 
     // 3. GENRE
     if (action === 'genre') {
-      const genre = urlObj.searchParams.get('genre') || 'action';
-      const page = urlObj.searchParams.get('page') || '1';
-      const path = page === '1' ? `/${genre}/` : `/${genre}/page/${page}/`;
-      const html = await fetchWithTimeout(`${BASE_URL}${path}`, { ...HEADERS, Referer: `${BASE_URL}/` });
-      const results = parseCards(html);
+      const genre = (urlObj.searchParams.get('genre') || 'action').toLowerCase();
+      const page = parseInt(urlObj.searchParams.get('page') || '1', 10);
+      const genreId = GENRE_MAP[genre] || 28;
 
-      const result = { results, currentPage: parseInt(page, 10), hasNextPage: results.length >= 20 };
+      const data = await fetchTmdb('/discover/movie', {
+        with_genres: genreId,
+        page,
+        sort_by: 'popularity.desc'
+      });
+      const results = (data.results || []).map(mapTmdbToCard).filter(Boolean);
+
+      const result = {
+        results,
+        currentPage: data.page || page,
+        hasNextPage: (data.page || page) < (data.total_pages || 1)
+      };
       setCached(cacheKey, result, 900);
       return NextResponse.json(result);
     }
 
-    // 4. COUNTRY
+    // 4. COUNTRY / REGIONAL CATALOGUES
     if (action === 'country') {
-      const country = urlObj.searchParams.get('country') || 'bollywood';
-      const page = urlObj.searchParams.get('page') || '1';
-      const path = page === '1' ? `/${country}/` : `/${country}/page/${page}/`;
-      const html = await fetchWithTimeout(`${BASE_URL}${path}`, { ...HEADERS, Referer: `${BASE_URL}/` });
-      const results = parseCards(html);
+      const country = (urlObj.searchParams.get('country') || 'bollywood').toLowerCase();
+      const page = parseInt(urlObj.searchParams.get('page') || '1', 10);
 
-      const result = { results, currentPage: parseInt(page, 10), hasNextPage: results.length >= 20 };
+      let lang = 'en';
+      if (country.includes('bolly') || country.includes('india') || country.includes('hindi')) lang = 'hi';
+      else if (country.includes('korea')) lang = 'ko';
+      else if (country.includes('japan')) lang = 'ja';
+      else if (country.includes('china')) lang = 'zh';
+      else if (country.includes('thai')) lang = 'th';
+      else if (country.includes('turk')) lang = 'tr';
+
+      const data = await fetchTmdb('/discover/movie', {
+        with_original_language: lang,
+        page,
+        sort_by: 'popularity.desc'
+      });
+      const results = (data.results || []).map(mapTmdbToCard).filter(Boolean);
+
+      const result = {
+        results,
+        currentPage: data.page || page,
+        hasNextPage: (data.page || page) < (data.total_pages || 1)
+      };
       setCached(cacheKey, result, 900);
       return NextResponse.json(result);
     }
 
     // 5. CATEGORY
     if (action === 'category') {
-      const category = urlObj.searchParams.get('category') || 'films';
-      const page = urlObj.searchParams.get('page') || '1';
-      const path = page === '1' ? `/${category}/` : `/${category}/page/${page}/`;
-      const html = await fetchWithTimeout(`${BASE_URL}${path}`, { ...HEADERS, Referer: `${BASE_URL}/` });
-      const results = parseCards(html);
+      const category = (urlObj.searchParams.get('category') || 'popular').toLowerCase();
+      const page = parseInt(urlObj.searchParams.get('page') || '1', 10);
 
-      const result = { results, currentPage: parseInt(page, 10), hasNextPage: results.length >= 20 };
+      let endpointPath = '/movie/popular';
+      if (category.includes('top') || category.includes('rate')) endpointPath = '/movie/top_rated';
+      else if (category.includes('trend')) endpointPath = '/trending/movie/week';
+      else if (category.includes('upcom')) endpointPath = '/movie/upcoming';
+
+      const data = await fetchTmdb(endpointPath, { page });
+      const results = (data.results || []).map(mapTmdbToCard).filter(Boolean);
+
+      const result = {
+        results,
+        currentPage: data.page || page,
+        hasNextPage: (data.page || page) < (data.total_pages || 1)
+      };
       setCached(cacheKey, result, 900);
       return NextResponse.json(result);
     }
 
     // 6. WATCH / DETAIL
     if (action === 'watch' || action === 'detail') {
-      const id = urlObj.searchParams.get('id') || endpoint?.[1] || '';
-      if (!id) return NextResponse.json({ error: 'Missing movie id' }, { status: 400 });
+      const rawId = urlObj.searchParams.get('id') || endpoint?.[1] || '';
+      if (!rawId) return NextResponse.json({ error: 'Missing movie id' }, { status: 400 });
 
-      const detailUrl = id.endsWith('.html') ? `${BASE_URL}/${id}` : `${BASE_URL}/${id}.html`;
-      const html = await fetchWithTimeout(detailUrl, { ...HEADERS, Referer: `${BASE_URL}/` });
+      let tmdbId = rawId;
 
-      const titleMatch = html.match(/<h1[^>]*>([^<]+)<\/h1>/i);
-      const title = (titleMatch?.[1] || id.replace(/-/g, ' ')).trim();
-
-      const posterMatch = html.match(/<div class="poster">[\s\S]*?<img [^>]*src="([^"]+)"/i);
-      const rawPoster = posterMatch?.[1] || '';
-      const image = rawPoster.startsWith('http') ? rawPoster : `${BASE_URL}${rawPoster.startsWith('/') ? '' : '/'}${rawPoster}`;
-
-      const synopsisMatch = html.match(/class="description"[^>]*>([\s\S]*?)<\/div>/i) || html.match(/<p>([\s\S]*?)<\/p>/i);
-      const synopsis = synopsisMatch?.[1]?.replace(/<[^>]+>/g, '').trim() || '';
-
-      const imdbMatch = html.match(/tt\d{7,8}/);
-      const imdbId = imdbMatch?.[0] || '';
-
-      const yearMatch = html.match(/<span>(\d{4})<\/span>/);
-      const year = yearMatch?.[1] || '';
-
-      const ratingMatch = html.match(/class="rating"[^>]*>([^<]+)<\/div>/i);
-      const rating = ratingMatch?.[1]?.trim() || '7.5';
-
-      const type = html.includes('series') || html.includes('Season') || html.includes('Episode') ? 'series' : 'movie';
-
-      // Standard embed servers using imdbId
-      const streams: any[] = [];
-      if (imdbId) {
-        streams.push(
-          { name: 'Super Player', url: `https://slast430did.com/play/${imdbId}`, type: 'iframe' },
-          { name: 'VidSrc', url: type === 'series' ? `https://vidsrc.me/embed/tv?imdb=${imdbId}&season=1&episode=1` : `https://vidsrc.me/embed/movie?imdb=${imdbId}`, type: 'embed' },
-          { name: 'VidSrc Pro', url: type === 'series' ? `https://vidsrc.to/embed/tv/${imdbId}/1/1` : `https://vidsrc.to/embed/movie/${imdbId}`, type: 'embed' },
-          { name: 'VidSrc IN', url: type === 'series' ? `https://vidsrc.in/embed/tv/${imdbId}/1/1` : `https://vidsrc.in/embed/movie/${imdbId}`, type: 'embed' },
-          { name: 'AutoEmbed', url: type === 'series' ? `https://autoembed.co/tv/imdb/${imdbId}-1-1` : `https://autoembed.co/movie/imdb/${imdbId}`, type: 'embed' },
-          { name: 'VidSrc CC', url: type === 'series' ? `https://vidsrc.cc/v2/embed/tv/${imdbId}/1/1` : `https://vidsrc.cc/v2/embed/movie/${imdbId}`, type: 'embed' }
-        );
+      // Handle IMDb ID lookup (e.g. tt1234567)
+      if (rawId.startsWith('tt')) {
+        const findRes = await fetchTmdb(`/find/${rawId}`, { external_source: 'imdb_id' }).catch(() => null);
+        const matched = findRes?.movie_results?.[0];
+        if (matched?.id) {
+          tmdbId = String(matched.id);
+        }
       }
 
-      // Extract related items
-      const related = parseCards(html).slice(0, 10);
+      const movie = await fetchTmdb(`/movie/${tmdbId}`, {
+        append_to_response: 'external_ids,recommendations,credits,videos'
+      });
+
+      if (!movie || !movie.id) {
+        return NextResponse.json({ error: 'Movie not found' }, { status: 404 });
+      }
+
+      const imdbId = movie.external_ids?.imdb_id || movie.imdb_id || '';
+      const poster = movie.poster_path ? `${TMDB_IMAGE_BASE}${movie.poster_path}` : '';
+      const backdrop = movie.backdrop_path ? `${TMDB_BACKDROP_BASE}${movie.backdrop_path}` : poster;
+
+      // Multi-Server High Speed Embed Players
+      const streams = [
+        { name: 'VidSrc Pro', url: `https://vidsrc.to/embed/movie/${imdbId || movie.id}`, type: 'embed' },
+        { name: 'VidLink Pro', url: `https://vidlink.pro/movie/${movie.id}`, type: 'embed' },
+        { name: 'AutoEmbed', url: `https://autoembed.co/movie/tmdb/${movie.id}`, type: 'embed' },
+        { name: 'EmbedSU', url: `https://embed.su/embed/movie/${movie.id}`, type: 'embed' },
+        { name: 'VidSrc CC', url: `https://vidsrc.cc/v2/embed/movie/${movie.id}`, type: 'embed' },
+        { name: 'Super Player', url: `https://slast430did.com/play/${imdbId || movie.id}`, type: 'iframe' },
+        { name: '2Embed', url: `https://www.2embed.cc/embed/${imdbId || movie.id}`, type: 'embed' }
+      ];
+
+      const related = (movie.recommendations?.results || []).map(mapTmdbToCard).filter(Boolean).slice(0, 12);
 
       const result = {
-        id,
-        slug: id,
-        title,
-        image,
-        cover: image,
-        synopsis,
-        description: synopsis,
-        imdbId,
-        year,
-        rating,
-        type,
-        streams,
-        related,
-        genres: ['Action', 'Thriller', 'Drama'],
+        id: String(movie.id),
+        slug: String(movie.id),
+        title: movie.title || movie.original_title || 'Untitled',
+        image: poster,
+        cover: backdrop,
+        synopsis: movie.overview || 'No synopsis available.',
+        description: movie.overview || '',
+        imdbId: imdbId,
+        year: movie.release_date ? movie.release_date.split('-')[0] : '',
+        releaseDate: movie.release_date || '',
+        runtime: movie.runtime ? `${movie.runtime} min` : undefined,
+        rating: movie.vote_average ? Number(movie.vote_average).toFixed(1) : '7.5',
+        type: 'Movie',
+        country: movie.original_language?.toUpperCase() === 'HI' ? 'Bollywood' : 'Hollywood',
+        genres: (movie.genres || []).map((g: any) => g.name),
+        cast: (movie.credits?.cast || []).slice(0, 8).map((c: any) => c.name),
+        streams: streams,
+        related: related,
         downloadLinks: []
       };
 
@@ -222,7 +318,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ endp
 
     return NextResponse.json({ error: `Unknown action: ${action}` }, { status: 404 });
   } catch (error: any) {
-    console.error(`[HDMovies API Error] ${action}:`, error.message);
+    console.error(`[HDMovies TMDB API Error] ${action}:`, error.message);
     return NextResponse.json({ error: error.message || 'Internal Server Error' }, { status: 500 });
   }
 }

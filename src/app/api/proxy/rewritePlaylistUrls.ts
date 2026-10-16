@@ -11,23 +11,20 @@ export function rewritePlaylistUrls(playlistText: string, baseUrl: string, refer
       
       if (!trimmed) return line;
 
-      // 1. HANDLE ENCRYPTION KEYS (The Fix for mon.key error)
-      // Example: #EXT-X-KEY:METHOD=AES-128,URI="https://.../mon.key"
-      if (trimmed.startsWith("#EXT-X-KEY") && trimmed.includes("URI=")) {
-        return trimmed.replace(/URI="([^"]+)"/, (match, uri) => {
+      // 1. HANDLE TAGS WITH URI ATTRIBUTES (Keys, Audio, Subtitles, Init Maps)
+      // Examples: #EXT-X-KEY:...,URI="mon.key", #EXT-X-MEDIA:TYPE=AUDIO,...,URI="aud/a0/index.m3u8", #EXT-X-MAP:URI="init.mp4"
+      if (trimmed.startsWith("#") && trimmed.includes("URI=")) {
+        return trimmed.replace(/URI="([^"]+)"/g, (match, uri) => {
           try {
-            // Resolve relative URLs for keys too
-            const resolvedKeyUrl = new URL(uri, base).href;
-            
-            // Wrap the key URL in your proxy
-            return `URI="/api/proxy?url=${encodeURIComponent(resolvedKeyUrl)}${refererSuffix}"`;
+            const resolvedUrl = new URL(uri, base).href;
+            return `URI="/api/proxy?url=${encodeURIComponent(resolvedUrl)}${refererSuffix}"`;
           } catch (e) {
-            return match; // Keep original if fail
+            return match;
           }
         });
       }
 
-      // 2. SKIP OTHER COMMENTS
+      // 2. SKIP OTHER TAGS / COMMENTS
       if (trimmed.startsWith("#")) {
         return line;
       }

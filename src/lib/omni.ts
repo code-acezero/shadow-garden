@@ -21,8 +21,9 @@ async function fetchOmni<T = any>(
   
   // Local Next.js API routes (like /api/hdmovies) should be fetched directly, not through /api/proxy
   const isLocalApi = targetUrl.startsWith('/api/');
+  const origin = typeof window === 'undefined' ? (process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000') : '';
   const fetchUrl = isLocalApi
-    ? targetUrl
+    ? `${origin}${targetUrl}`
     : (typeof window !== 'undefined' ? `/api/proxy?url=${encodeURIComponent(targetUrl)}` : targetUrl);
 
   try {

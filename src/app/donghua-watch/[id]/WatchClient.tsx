@@ -18,7 +18,7 @@ import {
 import { AnimeService, UniversalAnime } from '@/lib/api';
 import { dpi } from '@/lib/dpi';
 import { supabase } from '@/lib/supabase';
-import { cn, isRelatedAnime, getChunkLabel, formatAnimeTitle, sanitizeContinueWatchingEntry } from '@/lib/utils';
+import { cn, isRelatedAnime, getChunkLabel, formatAnimeTitle, sanitizeContinueWatchingEntry, getSafeImageUrl } from '@/lib/utils';
 import { toast } from '@/lib/toast';
 import { useAuth } from '@/context/AuthContext';
 import { sfx } from '@/lib/audioManager';
@@ -95,7 +95,7 @@ const useWatchSettings = () => {
   const { user } = useAuth();
   const [isLoaded, setIsLoaded] = useState(false);
   const [settings, setSettings] = useState({
-    autoPlay: true, autoNext: true, autoSkip: false, dimMode: false,
+    autoPlay: true, autoNext: true, autoSkip: false, autoSkipOutro: false, dimMode: false,
     server: 'VidPlay-1', category: 'sub' as 'sub' | 'dub' | 'raw', volume: 1
   });
 
@@ -209,9 +209,28 @@ const EpisodeButton = memo(({ ep, isCurrent, isPlayed, isFullyPlayed, percent, v
                 </>
             )}
 
-            <motion.span layout="position" className={cn("truncate relative z-10 w-full font-bold tracking-wide", viewMode === 'list' ? "text-left" : "text-center")}>
-                {viewMode === 'list' ? `${ep.number}. ${ep.title}` : ep.number}
-            </motion.span>
+            {/* Active Micro-Equalizer Indicator for Grid & Compact Modes */}
+            {isCurrent && (viewMode === 'grid' || viewMode === 'compact') && (
+                <span className="absolute top-1 right-1.5 flex items-end gap-[1.5px] h-2 pointer-events-none z-20" aria-label="Now Playing">
+                    <span className="w-[1.5px] bg-green-300 rounded-full animate-[audio-bar-1_0.8s_ease-in-out_infinite]" />
+                    <span className="w-[1.5px] bg-green-300 rounded-full animate-[audio-bar-2_0.8s_ease-in-out_infinite]" />
+                    <span className="w-[1.5px] bg-green-300 rounded-full animate-[audio-bar-3_0.8s_ease-in-out_infinite]" />
+                </span>
+            )}
+
+            <motion.div layout="position" className={cn("truncate relative z-10 w-full font-lemon tracking-wide flex items-center", viewMode === 'list' ? "justify-between" : "justify-center")}>
+                <span className="truncate">{viewMode === 'list' ? `${ep.number}. ${ep.title}` : ep.number}</span>
+                {isCurrent && viewMode === 'list' && (
+                    <span className="ml-2 inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-green-500/20 border border-green-400/50 text-[8px] font-black uppercase text-green-300 shadow-[0_0_10px_rgba(74,222,128,0.3)] shrink-0">
+                        <span className="inline-flex items-end gap-[1.5px] h-2">
+                            <span className="w-[1.5px] bg-green-300 rounded-full animate-[audio-bar-1_0.8s_ease-in-out_infinite]" />
+                            <span className="w-[1.5px] bg-green-300 rounded-full animate-[audio-bar-2_0.8s_ease-in-out_infinite]" />
+                            <span className="w-[1.5px] bg-green-300 rounded-full animate-[audio-bar-3_0.8s_ease-in-out_infinite]" />
+                        </span>
+                        <span>PLAYING</span>
+                    </span>
+                )}
+            </motion.div>
             
             {isWatched && !isCurrent && !isPlayed && (
                 <div className="absolute bottom-0 left-0 h-0.5 bg-emerald-500/50 transition-all pointer-events-none" style={{ width: `${percent}%` }} />
@@ -240,33 +259,100 @@ async function retryOperation<T>(operation: () => Promise<T>, retries = 3, delay
     }
 }
 
-const formatRating = (rating?: string) => {
-    if (!rating) return null;
-    const r = rating.toString().toUpperCase();
-    if (r.includes('R') || r.includes('RX') || r.includes('18+') || r.includes('17+')) return '18+';
-    return rating;
+const formatRating = (rating?: string, genres?: string[], isAdult?: boolean) => {
+    const isAdultFlag = !!isAdult || genres?.some((g: string) => typeof g === 'string' && ['hentai', 'rx', 'adult', 'erotica'].includes(g.toLowerCase()));
+    const isEcchi = genres?.some((g: string) => typeof g === 'string' && ['ecchi', 'fanservice'].includes(g.toLowerCase()));
+    const defaultRating = isAdultFlag ? '18+' : (isEcchi ? 'R-17' : 'PG-13');
+
+    if (!rating) return defaultRating;
+    const r = rating.toString().trim();
+    const rUpper = r.toUpperCase();
+
+    // Intercept any numeric score, MAL score, rating out of 10, or unhelpful placeholders
+    if (
+        rUpper.includes('/10') ||
+        rUpper.includes('MAL') ||
+        rUpper.includes('SCORE') ||
+        rUpper === 'N/A' ||
+        rUpper === '?' ||
+        rUpper === 'UNKNOWN' ||
+        rUpper === 'NONE' ||
+        (/^\d+(\.\d+)?/.test(rUpper) && !rUpper.includes('18') && !rUpper.includes('17') && !rUpper.includes('13'))
+    ) {
+        return defaultRating;
+    }
+
+    if (rUpper.includes('RX') || rUpper.includes('18+') || rUpper.includes('R-18') || rUpper.includes('R18') || rUpper.includes('TV-MA') || rUpper.includes('ADULT')) return '18+';
+    if (rUpper.includes('R-17') || rUpper.includes('R17') || rUpper.includes('R+') || rUpper === 'R' || rUpper.startsWith('R-') || rUpper.startsWith('R ')) return 'R-17';
+    if (rUpper.includes('PG-13') || rUpper.includes('PG13') || rUpper.includes('TV-14') || rUpper.includes('TEEN')) return 'PG-13';
+    if (rUpper.includes('TV-PG') || rUpper === 'PG' || rUpper.startsWith('PG')) return 'PG';
+    if (rUpper.includes('TV-G') || rUpper.includes('TV-Y') || rUpper === 'G') return 'G';
+
+    return defaultRating;
 };
 
 // --- SUB-COMPONENTS ---
 
 const NextEpisodeTimer = ({ schedule, status }: { schedule: any, status: string }) => {
     const [displayText, setDisplayText] = useState<React.ReactNode>("...");
+
     useEffect(() => {
-        if (status?.toLowerCase().includes("finished")) { setDisplayText(<span className="text-[9px] text-emerald-500 font-black">ENDED</span>); return; }
-        if (!schedule?.airingISOTimestamp) { setDisplayText(<span className="text-[9px] text-emerald-500 font-black">UNKNOWN</span>); return; }
+        const isFinished = status?.toLowerCase().includes("finished") || status?.toLowerCase().includes("completed");
+        if (isFinished) {
+            setDisplayText(<span className="text-[9px] text-zinc-400 font-black uppercase tracking-wider">COMPLETED</span>);
+            return;
+        }
+
+        const rawTimestamp = schedule?.airingISOTimestamp 
+            ? new Date(schedule.airingISOTimestamp).getTime()
+            : (schedule?.airingAt ? Number(schedule.airingAt) * 1000 : (schedule?.airingTimestamp ? Number(schedule.airingTimestamp) * 1000 : null));
+
+        if (!rawTimestamp || isNaN(rawTimestamp)) {
+            if (status?.toLowerCase().includes("releasing")) {
+                setDisplayText(<span className="text-[9px] text-amber-400 font-bold uppercase tracking-wider">NEXT EP: TBA</span>);
+            } else {
+                setDisplayText(<span className="text-[9px] text-zinc-500 font-bold uppercase tracking-wider">NEXT EP: TBA</span>);
+            }
+            return;
+        }
+
         const updateTimer = () => {
-            const now = new Date().getTime();
-            const target = new Date(schedule.airingISOTimestamp!).getTime();
-            const diff = target - now;
-            if (diff <= 0) { setDisplayText("Aired"); return; }
+            const now = Date.now();
+            const diff = rawTimestamp - now;
+            if (diff <= 0) {
+                setDisplayText(<span className="text-[9px] text-emerald-400 font-black uppercase tracking-wider">AIRED</span>);
+                return;
+            }
+
+            const days = Math.floor(diff / 86400000);
             const hours = Math.floor((diff % 86400000) / 3600000);
             const minutes = Math.floor((diff % 3600000) / 60000);
-            const days = Math.floor(diff / 86400000);
-            setDisplayText(`${days > 0 ? days + 'd ' : ''}${hours}h ${minutes}m`);
+            const seconds = Math.floor((diff % 60000) / 1000);
+
+            const epPrefix = schedule?.episode ? `EP ${schedule.episode}: ` : 'NEXT EP: ';
+            const timeStr = days > 0
+                ? `${days}d ${hours}h ${minutes}m`
+                : `${hours}h ${minutes}m ${seconds}s`;
+
+            setDisplayText(
+                <span className="text-[9.5px] font-black uppercase tracking-tight flex items-center gap-1">
+                    <span className="text-emerald-400">{epPrefix}</span>
+                    <span className="text-zinc-200">{timeStr}</span>
+                </span>
+            );
         };
-        updateTimer(); const interval = setInterval(updateTimer, 30000); return () => clearInterval(interval);
+
+        updateTimer();
+        const interval = setInterval(updateTimer, 1000);
+        return () => clearInterval(interval);
     }, [schedule, status]);
-    return (<div className="flex items-center gap-2 text-[9px] font-bold bg-white/5 text-zinc-300 px-3 h-7 rounded-full border border-white/5 justify-center min-w-fit max-w-full shadow-emerald-900/5"><Timer className="w-2.5 h-2.5 text-emerald-500 shrink-0" /><span className="truncate whitespace-nowrap">{displayText}</span></div>);
+
+    return (
+        <div className="flex items-center gap-2 text-[9px] font-bold bg-white/5 hover:bg-white/10 text-zinc-300 px-3.5 h-8 rounded-full border border-white/10 transition-colors justify-center min-w-fit shadow-md shadow-black/40">
+            <Timer className="w-3 h-3 text-emerald-500 shrink-0 animate-pulse" />
+            <span className="truncate whitespace-nowrap">{displayText}</span>
+        </div>
+    );
 };
 
 const TrailerSection = ({ videos }: { videos: any[] }) => {
@@ -658,7 +744,12 @@ function WatchContent() {
   const [hideInterface, setHideInterface] = useState(false);
   const interfaceTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const [showSkipNotification, setShowSkipNotification] = useState(false);
+  const [skipNotificationText, setSkipNotificationText] = useState<'Skipped Intro' | 'Skipped Outro'>('Skipped Intro');
   const isSkipToastLocked = useRef(false);
+  const lastAutoSkippedIntroRef = useRef(false);
+  const lastAutoSkippedOutroRef = useRef(false);
+  const lastAutoNextTriggeredRef = useRef(false);
+  const embedDurationRef = useRef<number>(1440);
   const [epViewMode, setEpViewMode] = useState<'grid' | 'list' | 'compact'>('grid');
   const [epChunkIndex, setEpChunkIndex] = useState(0);
   const [epProgress, setEpProgress] = useState<EpisodeProgress>({});
@@ -823,6 +914,10 @@ function WatchContent() {
   const handlePause = useCallback(() => saveProgress(true), [saveProgress]);
 
   const handleEpisodeClick = useCallback((id: string) => {
+      isSwitchingEpisode.current = true;
+      lastAutoSkippedIntroRef.current = false;
+      lastAutoSkippedOutroRef.current = false;
+      lastAutoNextTriggeredRef.current = false;
       markEpPlayed(currentEpId);  // mark current ep as played before switching
       saveProgress(true);
 
@@ -888,6 +983,18 @@ function WatchContent() {
   }, [resetInterfaceTimer]);
 
   const handleSkipIntro = useCallback(() => {
+      setSkipNotificationText('Skipped Intro');
+      if (isSkipToastLocked.current || showSkipNotification) return;
+      setShowSkipNotification(true);
+      isSkipToastLocked.current = true;
+      setTimeout(() => {
+          setShowSkipNotification(false);
+          setTimeout(() => { isSkipToastLocked.current = false; }, 1000);
+      }, 3000);
+  }, [showSkipNotification]);
+
+  const handleSkipOutro = useCallback(() => {
+      setSkipNotificationText('Skipped Outro');
       if (isSkipToastLocked.current || showSkipNotification) return;
       setShowSkipNotification(true);
       isSkipToastLocked.current = true;
@@ -962,7 +1069,10 @@ function WatchContent() {
         setIsLoadingInfo(true);
         try {
             const details = await dpi.bridge.getSmartDetails(animeId);
-            if (!details) throw new Error("Anime not found");
+            if (!details) {
+                console.warn("[DonghuaWatchClient] Anime details not found for", animeId);
+                return;
+            }
 
             let related: any[] = [];
             let recommendations: any[] = [];
@@ -1393,6 +1503,105 @@ function WatchContent() {
   const nextEpisode = currentEpIndex >= 0 && currentEpIndex < (anime?.episodes.length || 0) - 1 ? anime?.episodes[currentEpIndex + 1] : null;
   const prevEpisode = currentEpIndex > 0 ? anime?.episodes[currentEpIndex - 1] : null;
 
+  // Active Embed Tracking: postMessage listener + 1-second playback heartbeat timer for iframe streams
+  useEffect(() => {
+      if (!streamUrl || !currentEpId) return;
+      const isEmbed = !streamUrl.includes('.m3u8') && !streamUrl.includes('.mp4') && !streamUrl.includes('/api/proxy');
+      if (!isEmbed) return;
+
+      const handleMessage = (e: MessageEvent) => {
+          try {
+              let data = e.data;
+              if (typeof data === 'string') {
+                  try { data = JSON.parse(data); } catch { return; }
+              }
+              if (!data || typeof data !== 'object') return;
+
+              const time = data.time ?? data.currentTime ?? data.seconds ?? data.value;
+              const dur = data.duration ?? data.total;
+
+              if (typeof dur === 'number' && dur > 0) {
+                  embedDurationRef.current = dur;
+              }
+
+              if (typeof time === 'number' && time >= 0) {
+                  progressRef.current = time;
+                  const ep = anime?.episodes.find((epItem: any) => epItem.id === currentEpId);
+                  const epDur = embedDurationRef.current || 1440;
+                  const pct = Math.min(100, Math.round((time / epDur) * 100));
+                  if (ep) {
+                      setEpProgress((prev: any) => ({ ...prev, [ep.number]: pct, [ep.id]: pct }));
+                  }
+              }
+
+              if (data.event === 'ended' || data.type === 'ended') {
+                  saveProgress(true);
+                  if (settings.autoNext && nextEpisode) {
+                      handleEpisodeClick(nextEpisode.id);
+                  }
+              }
+          } catch { }
+      };
+
+      window.addEventListener('message', handleMessage);
+
+      const timer = setInterval(() => {
+          if (document.visibilityState !== 'visible') return;
+
+          progressRef.current += 1;
+          const currentPos = progressRef.current;
+          const epDur = embedDurationRef.current || 1440;
+          const pct = Math.min(100, Math.round((currentPos / epDur) * 100));
+
+          const ep = anime?.episodes.find((epItem: any) => epItem.id === currentEpId);
+          if (ep) {
+              setEpProgress((prev: any) => ({
+                  ...prev,
+                  [ep.number]: pct >= 98 ? 100 : pct,
+                  [ep.id]: pct >= 98 ? 100 : pct
+              }));
+          }
+
+          // Auto-skip intro if markers exist
+          if ((settings.autoSkip) && intro?.start && intro?.end) {
+              if (currentPos >= intro.start && currentPos < intro.end && !lastAutoSkippedIntroRef.current) {
+                  lastAutoSkippedIntroRef.current = true;
+                  progressRef.current = intro.end;
+                  handleSkipIntro();
+                  playerRef.current?.seekTo(intro.end);
+              }
+          }
+
+          // Auto-skip outro if markers exist
+          if ((settings.autoSkipOutro ?? settings.autoSkip) && outro?.start !== undefined) {
+              const epOutroEnd = outro.end || epDur;
+              if (currentPos >= outro.start && currentPos <= epOutroEnd && !lastAutoSkippedOutroRef.current) {
+                  lastAutoSkippedOutroRef.current = true;
+                  progressRef.current = epOutroEnd;
+                  handleSkipOutro();
+                  playerRef.current?.seekTo(epOutroEnd);
+                  if (settings.autoNext && nextEpisode) {
+                      handleEpisodeClick(nextEpisode.id);
+                  }
+              }
+          }
+
+          // Auto-next episode near completion
+          if (settings.autoNext && nextEpisode && !lastAutoNextTriggeredRef.current) {
+              if (currentPos >= epDur - 15 || pct >= 98) {
+                  lastAutoNextTriggeredRef.current = true;
+                  saveProgress(true);
+                  handleEpisodeClick(nextEpisode.id);
+              }
+          }
+      }, 1000);
+
+      return () => {
+          window.removeEventListener('message', handleMessage);
+          clearInterval(timer);
+      };
+  }, [streamUrl, currentEpId, anime?.episodes, settings.autoSkip, settings.autoSkipOutro, settings.autoNext, intro, outro, nextEpisode, saveProgress, handleEpisodeClick, handleSkipIntro, handleSkipOutro]);
+
   useEffect(() => {
       if (anime) {
           const epPrefix = currentEpisode ? `Ep ${currentEpisode.number} - ` : '';
@@ -1413,6 +1622,12 @@ function WatchContent() {
           body { overflow-y: auto; } ::-webkit-scrollbar { width: 0px; display: none; } .no-scrollbar::-webkit-scrollbar { display: none; } .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
           @keyframes liquid { 0% { background-position: 0% 50%; } 50% { background-position: 100% 50%; } 100% { background-position: 0% 50%; } } .animate-liquid { background-size: 200% 200%; animation: liquid 4s ease infinite; } .will-change-transform { will-change: transform; }
           @keyframes shimmer { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } } .animate-shimmer { animation: shimmer 3s infinite linear; }
+          @keyframes audio-bar-1 { 0%, 100% { height: 3px; } 50% { height: 11px; } }
+          @keyframes audio-bar-2 { 0%, 100% { height: 9px; } 50% { height: 3px; } }
+          @keyframes audio-bar-3 { 0%, 100% { height: 5px; } 50% { height: 12px; } }
+          @keyframes available-wave-1 { 0%, 100% { height: 2.5px; opacity: 0.45; } 50% { height: 7px; opacity: 1; } }
+          @keyframes available-wave-2 { 0%, 100% { height: 7px; opacity: 1; } 50% { height: 2.5px; opacity: 0.45; } }
+          @keyframes available-sheen { 0% { transform: translateX(-150%); } 100% { transform: translateX(250%); } }
       `}</style>
             <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.8 }} className="w-full flex flex-col items-center relative z-10 px-4 mt-6">
       <div onClick={() => updateSetting('dimMode', false)} className={cn("fixed inset-0 bg-black/95 transition-opacity duration-500 will-change-[opacity]", settings.dimMode ? 'opacity-100 pointer-events-auto cursor-pointer z-[40]' : 'opacity-0 pointer-events-none z-[40]')} />
@@ -1434,51 +1649,39 @@ function WatchContent() {
                 <AnimatePresence>
                     {showSkipNotification && (
                         <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 10 }} className="absolute bottom-32 lg:bottom-24 left-1/2 -translate-x-1/2 z-[70] bg-black/60 backdrop-blur-md border border-white/10 text-white px-3 py-1 rounded-full flex items-center gap-2 shadow-[0_0_15px_rgba(0,0,0,0.5)] pointer-events-none">
-                            <div className="w-3 h-3 bg-white rounded-full flex items-center justify-center"><Check size={8} className="text-black stroke-[4]" /></div><span className="text-[9px] font-bold uppercase tracking-wider">Skipped Intro</span>
+                            <div className="w-3 h-3 bg-white rounded-full flex items-center justify-center"><Check size={8} className="text-black stroke-[4]" /></div><span className="text-[9px] font-bold uppercase tracking-wider">{skipNotificationText}</span>
                         </motion.div>
                     )}
                 </AnimatePresence>
                 {streamUrl ? ( 
-                    streamUrl.includes('.m3u8') || streamUrl.includes('.mp4') || streamUrl.includes('/api/proxy') ? (
-                        <AnimePlayer 
-                            key={currentEpId} 
-                            ref={playerRef} 
-                            episodeId={currentEpId} 
-                            url={streamUrl || ""} 
-                            referer={streamReferer} 
-                            subtitles={subtitles} 
-                            intro={intro} 
-                            outro={outro} 
-                            title={currentEpisode?.title || anime.title} 
-                            startTime={resumeTime} 
-                            autoPlay={settings.autoPlay} 
-                            autoSkip={settings.autoSkip} 
-                            initialVolume={settings.volume} 
-                            onProgress={(s:any) => progressRef.current = s.playedSeconds} 
-                            onEnded={() => { saveProgress(true); if(settings.autoNext && nextEpisode) handleEpisodeClick(nextEpisode.id); }} 
-                            onInteract={() => { if(!hideInterface) resetInterfaceTimer(); }} 
-                            onPlay={handlePlaybackStart} 
-                            onPause={handlePause} 
-                            onSkipIntro={handleSkipIntro}
-                            onAspectRatioChange={setPlayerAspectRatio}
-                        /> 
-                    ) : (
-                        <iframe 
-                            ref={iframeRef} 
-                            src={(() => {
-                                if (!streamUrl) return '';
-                                let finalSrc = streamUrl;
-                                if (finalSrc.includes('dailymotion.com') && !finalSrc.includes('api=')) {
-                                    finalSrc += (finalSrc.includes('?') ? '&' : '?') + 'api=postMessage';
-                                }
-                                return finalSrc;
-                            })()} 
-                            className="w-full h-full border-0" 
-                            allowFullScreen 
-                            allow="autoplay; fullscreen; picture-in-picture; encrypted-media" 
-                            referrerPolicy="no-referrer-when-downgrade" 
-                        />
-                    )
+                    <AnimePlayer 
+                        key={currentEpId} 
+                        ref={playerRef} 
+                        episodeId={currentEpId} 
+                        url={streamUrl.includes('.m3u8') || streamUrl.includes('.mp4') || streamUrl.includes('/api/proxy') ? (streamUrl || "") : ""} 
+                        iframeUrl={!(streamUrl.includes('.m3u8') || streamUrl.includes('.mp4') || streamUrl.includes('/api/proxy')) ? streamUrl : null}
+                        isEmbed={!(streamUrl.includes('.m3u8') || streamUrl.includes('.mp4') || streamUrl.includes('/api/proxy'))}
+                        referer={streamReferer} 
+                        subtitles={subtitles} 
+                        intro={intro} 
+                        outro={outro} 
+                        title={currentEpisode?.title || anime.title} 
+                        startTime={progressRef.current > 0 ? progressRef.current : resumeTime} 
+                        autoPlay={settings.autoPlay} 
+                        autoSkip={settings.autoSkip} 
+                        autoSkipOutro={settings.autoSkipOutro ?? settings.autoSkip}
+                        initialVolume={settings.volume} 
+                        onProgress={(s:any) => progressRef.current = s.playedSeconds} 
+                        onSeek={(seekTime: number) => { progressRef.current = seekTime; saveProgress(true); }}
+                        onEnded={() => { saveProgress(true); if(settings.autoNext && nextEpisode) handleEpisodeClick(nextEpisode.id); }} 
+                        onNext={() => { if(nextEpisode) handleEpisodeClick(nextEpisode.id); }}
+                        onInteract={() => { if(!hideInterface) resetInterfaceTimer(); }} 
+                        onPlay={handlePlaybackStart} 
+                        onPause={handlePause} 
+                        onSkipIntro={handleSkipIntro}
+                        onSkipOutro={handleSkipOutro}
+                        onAspectRatioChange={setPlayerAspectRatio}
+                    /> 
                 ) : streamError ? (
                      <div className="w-full h-full flex items-center justify-center border-b border-white/5"><div className="text-emerald-500 text-sm font-bold uppercase tracking-widest">{streamError}</div></div>
                 ) : ( <div className="w-full h-full flex items-center justify-center border-b border-white/5"><PlayerSkeleton /></div> )}
@@ -1514,7 +1717,55 @@ function WatchContent() {
                         <button onClick={handleCreateWatchRoom} className="flex items-center justify-center gap-1.5 px-3 h-8 rounded-full border border-white/10 bg-white/5 text-zinc-300 text-[10px] font-black uppercase tracking-widest transition-all hover:bg-emerald-600 hover:border-emerald-500 hover:text-white whitespace-nowrap shadow-md cursor-pointer" title="Create Watch Room">
                             <Users size={12} /> <span className="hidden sm:inline">Room</span>
                         </button>
-                        <div className="flex bg-black/40 rounded-full p-1 border border-white/10 shadow-inner flex-shrink-0">{(['sub', 'dub', 'raw'] as const).map((cat) => { const isAvailable = (servers?.[cat]?.length || 0) > 0; return (<button key={cat} disabled={!isAvailable} onClick={() => updateSetting('category', cat)} className={cn("px-4 py-1 rounded-full text-[10px] font-black uppercase transition-all relative active:scale-95 shadow-sm", settings.category === cat ? "bg-emerald-600 text-white shadow-lg" : "text-zinc-600 hover:text-zinc-300", !isAvailable && "opacity-10")}>{cat}{isAvailable && <span className="absolute -top-0.5 -right-0.5 w-1.5 h-1.5 bg-emerald-600 rounded-full animate-pulse shadow-[0_0_5px_teal]" />}</button>);})}</div>
+                        <div className="flex bg-black/50 rounded-full p-1 border border-white/10 shadow-inner flex-shrink-0 relative">
+                            {(['sub', 'dub', 'raw'] as const).map((cat) => {
+                                const isAvailable = (servers?.[cat]?.length || 0) > 0;
+                                const isCurrent = settings.category === cat;
+                                return (
+                                    <button
+                                        key={cat}
+                                        disabled={!isAvailable}
+                                        onClick={() => updateSetting('category', cat)}
+                                        className={cn(
+                                            "px-3.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider transition-all relative active:scale-95 flex items-center justify-center gap-1.5 overflow-hidden",
+                                            isCurrent
+                                                ? "text-white shadow-lg z-10"
+                                                : isAvailable
+                                                    ? "text-zinc-400 hover:text-white hover:bg-white/5"
+                                                    : "opacity-25 pointer-events-none text-zinc-600"
+                                        )}
+                                        title={isAvailable ? `Switch to ${cat}` : `${cat} not available`}
+                                    >
+                                        {isCurrent && (
+                                            <motion.div
+                                                layoutId="activeAudioPillDonghuaDesktop"
+                                                className="absolute inset-0 bg-gradient-to-r from-emerald-600 to-teal-600 rounded-full -z-10 shadow-[0_0_15px_rgba(16,185,129,0.5)]"
+                                                transition={{ type: "spring", stiffness: 450, damping: 35 }}
+                                            />
+                                        )}
+                                        {isAvailable && !isCurrent && (
+                                            <div className="absolute inset-0 -z-10 overflow-hidden pointer-events-none rounded-full opacity-25">
+                                                <div className="w-1/2 h-full bg-gradient-to-r from-transparent via-white/30 to-transparent -skew-x-12 animate-[available-sheen_3.5s_infinite]" />
+                                            </div>
+                                        )}
+                                        <span>{cat}</span>
+                                        {isAvailable && isCurrent && (
+                                            <span className="inline-flex items-end gap-[2px] h-3 ml-0.5" aria-hidden="true">
+                                                <span className="w-[2px] bg-white rounded-full animate-[audio-bar-1_0.8s_ease-in-out_infinite]" />
+                                                <span className="w-[2px] bg-white rounded-full animate-[audio-bar-2_0.8s_ease-in-out_infinite]" />
+                                                <span className="w-[2px] bg-white rounded-full animate-[audio-bar-3_0.8s_ease-in-out_infinite]" />
+                                            </span>
+                                        )}
+                                        {isAvailable && !isCurrent && (
+                                            <span className="inline-flex items-end gap-[1.5px] h-2.5 ml-0.5 opacity-60 group-hover:opacity-100 transition-opacity" title="Available">
+                                                <span className="w-[1.5px] bg-emerald-400 rounded-full animate-[available-wave-1_1.4s_ease-in-out_infinite]" />
+                                                <span className="w-[1.5px] bg-emerald-400 rounded-full animate-[available-wave-2_1.4s_ease-in-out_infinite]" />
+                                            </span>
+                                        )}
+                                    </button>
+                                );
+                            })}
+                        </div>
                         <DropdownMenu modal={false}>
                             <DropdownMenuTrigger asChild>
                                 <Button variant="ghost" className="h-8 gap-2 text-[10px] font-black text-zinc-500 hover:text-white uppercase transition-all shadow-md shadow-emerald-900/5 whitespace-nowrap rounded-full border border-white/5 bg-white/5 px-4">
@@ -1564,7 +1815,54 @@ function WatchContent() {
                     </div>
                     <div className="flex w-full justify-between items-center gap-2 border-t border-white/5 pt-3">
                         <Button onClick={() => updateSetting('dimMode', !settings.dimMode)} variant="ghost" size="icon" className={cn("rounded-full w-8 h-8", settings.dimMode ? "text-yellow-500 bg-yellow-500/10" : "text-zinc-600 bg-white/5")}><Lightbulb size={16} /></Button>
-                        <div className="flex bg-black/40 rounded-full p-1 border border-white/10 shadow-inner flex-1 justify-center">{(['sub', 'dub', 'raw'] as const).map((cat) => { const isAvailable = (servers?.[cat]?.length || 0) > 0; return (<button key={cat} disabled={!isAvailable} onClick={() => updateSetting('category', cat)} className={cn("px-3 py-0.5 rounded-full text-[10px] font-black uppercase transition-all relative active:scale-75 shadow-sm flex-1", settings.category === cat ? "bg-emerald-600 text-white shadow-lg" : "text-zinc-600 hover:text-zinc-300", !isAvailable && "opacity-10")}>{cat}</button>);})}</div>
+                        <div className="flex bg-black/50 rounded-full p-1 border border-white/10 shadow-inner flex-1 justify-center relative">
+                            {(['sub', 'dub', 'raw'] as const).map((cat) => {
+                                const isAvailable = (servers?.[cat]?.length || 0) > 0;
+                                const isCurrent = settings.category === cat;
+                                return (
+                                    <button
+                                        key={cat}
+                                        disabled={!isAvailable}
+                                        onClick={() => updateSetting('category', cat)}
+                                        className={cn(
+                                            "px-2.5 py-1 rounded-full text-[9px] font-black uppercase tracking-wider transition-all relative active:scale-95 shadow-sm flex-1 text-center flex items-center justify-center gap-1 overflow-hidden",
+                                            isCurrent
+                                                ? "text-white shadow-lg z-10"
+                                                : isAvailable
+                                                    ? "text-zinc-400 hover:text-white"
+                                                    : "opacity-25 pointer-events-none text-zinc-600"
+                                        )}
+                                    >
+                                        {isCurrent && (
+                                            <motion.div
+                                                layoutId="activeAudioPillDonghuaMobile"
+                                                className="absolute inset-0 bg-gradient-to-r from-emerald-600 to-teal-600 rounded-full -z-10 shadow-[0_0_12px_rgba(16,185,129,0.5)]"
+                                                transition={{ type: "spring", stiffness: 450, damping: 35 }}
+                                            />
+                                        )}
+                                        {isAvailable && !isCurrent && (
+                                            <div className="absolute inset-0 -z-10 overflow-hidden pointer-events-none rounded-full opacity-25">
+                                                <div className="w-1/2 h-full bg-gradient-to-r from-transparent via-white/30 to-transparent -skew-x-12 animate-[available-sheen_3.5s_infinite]" />
+                                            </div>
+                                        )}
+                                        <span>{cat}</span>
+                                        {isAvailable && isCurrent && (
+                                            <span className="inline-flex items-end gap-[1.5px] h-2.5" aria-hidden="true">
+                                                <span className="w-[1.5px] bg-white rounded-full animate-[audio-bar-1_0.8s_ease-in-out_infinite]" />
+                                                <span className="w-[1.5px] bg-white rounded-full animate-[audio-bar-2_0.8s_ease-in-out_infinite]" />
+                                                <span className="w-[1.5px] bg-white rounded-full animate-[audio-bar-3_0.8s_ease-in-out_infinite]" />
+                                            </span>
+                                        )}
+                                        {isAvailable && !isCurrent && (
+                                            <span className="inline-flex items-end gap-[1.5px] h-2 ml-0.5 opacity-60" title="Available">
+                                                <span className="w-[1.5px] bg-emerald-400 rounded-full animate-[available-wave-1_1.4s_ease-in-out_infinite]" />
+                                                <span className="w-[1.5px] bg-emerald-400 rounded-full animate-[available-wave-2_1.4s_ease-in-out_infinite]" />
+                                            </span>
+                                        )}
+                                    </button>
+                                );
+                            })}
+                        </div>
                         <DropdownMenu modal={false}>
                             <DropdownMenuTrigger asChild>
                                 <Button variant="ghost" className="h-8 gap-2 text-[10px] font-black text-zinc-500 bg-white/5 rounded-full border border-white/5 w-24">
@@ -1606,7 +1904,12 @@ function WatchContent() {
                                 {episodeChunks[epChunkIndex]?.map((ep) => {
                                     const percent = epProgress[ep.number] || 0;
                                     const isFullyPlayed = percent >= 80 || percent === 100;
-                                    const isCurrent = ep.id === currentEpId;
+                                    const isCurrent = ep.id === currentEpId ||
+                                        String(ep.id) === String(currentEpId) ||
+                                        String(ep.number) === String(currentEpId) ||
+                                        String(ep.id).endsWith(`::${currentEpId}`) ||
+                                        String(ep.id).endsWith(`-${currentEpId}`) ||
+                                        String(ep.id).endsWith(`=${currentEpId}`);
                                     const isPlayed = playedEpIds.has(ep.id) && !isCurrent;
                                     return (
                                         <EpisodeButton key={ep.id} ep={ep} isCurrent={isCurrent} isPlayed={isPlayed} isFullyPlayed={isFullyPlayed} percent={percent} viewMode={epViewMode} onClick={handleEpisodeClick} />
@@ -1624,22 +1927,74 @@ function WatchContent() {
             </div>
 
             <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} transition={{ duration: 0.6, delay: 0.4 }} className="xl:col-span-8 w-full h-auto bg-black/40 backdrop-blur-2xl rounded-[40px] border border-white/10 overflow-hidden flex flex-col relative order-4">
-                    <div className="flex-shrink-0 relative p-8 flex flex-col sm:flex-row gap-10 bg-gradient-to-b from-emerald-600/5 to-transparent">
+                    {/* Banner backdrop foreshadow: clear upwards, smoothly darkened towards bottom */}
+                    {((anime as any).banner || anime.poster) && (
+                        <div className="absolute inset-0 pointer-events-none z-0 overflow-hidden rounded-[40px]">
+                            <div
+                                className="absolute inset-0 bg-cover bg-top sm:bg-center opacity-30 sm:opacity-40 scale-105 transition-all duration-700"
+                                style={{ 
+                                    backgroundImage: `url(${getSafeImageUrl((anime as any).banner || anime.poster)})`, 
+                                    filter: 'blur(2px)' 
+                                }}
+                            />
+                            {/* Clear to upwards, smoothly darkened to the bottom */}
+                            <div className="absolute inset-0 bg-gradient-to-b from-transparent via-[#020617]/50 via-35% to-[#020617]" />
+                            {/* Soft side feathering */}
+                            <div className="absolute inset-0 bg-gradient-to-r from-[#020617]/60 via-transparent to-[#020617]/60" />
+                        </div>
+                    )}
+                    <div className="flex-shrink-0 relative z-10 p-8 flex flex-col sm:flex-row gap-10 bg-gradient-to-b from-emerald-600/5 to-transparent">
                         <div className="relative shrink-0 lg:mx-0 flex flex-col gap-6 w-full lg:w-auto items-center lg:items-start text-center lg:text-left">
                             <div className="relative p-[3px] rounded-3xl overflow-hidden group/poster shadow-[0_0_40px_rgba(220,38,38,0.2)] sm:mx-0 w-fit">
-                                <div className="absolute inset-[-150%] bg-[conic-gradient(from_0deg,transparent,30%,#10b981_50%,transparent_70%)] animate-[spin_3s_linear_infinite] opacity-60 blur-[1px]" />
-                                <img src={anime.poster} className="w-44 h-60 rounded-3xl border border-white/10 object-cover relative z-10 shadow-2xl shadow-black" alt={anime.title} loading="lazy" decoding="async"/>
+                                <img
+                                    src={getSafeImageUrl(anime.poster)}
+                                    onError={(e) => {
+                                        if (e.currentTarget.src.startsWith('/api/proxy')) {
+                                            e.currentTarget.src = '/images/placeholder-no-img.jpg';
+                                        } else if (e.currentTarget.src.startsWith('http')) {
+                                            e.currentTarget.src = `/api/proxy?url=${encodeURIComponent(e.currentTarget.src)}`;
+                                        } else {
+                                            e.currentTarget.src = '/images/placeholder-no-img.jpg';
+                                        }
+                                    }}
+                                    className="w-44 h-60 rounded-3xl border border-white/10 object-cover relative z-10 shadow-2xl shadow-black"
+                                    alt={anime.title}
+                                    loading="lazy"
+                                    decoding="async"
+                                />
                             </div>
                             <div className="flex lg:hidden flex-col gap-3 w-full items-center text-center">
                                 <h1 className="text-2xl font-black text-white font-lemon leading-none tracking-tighter drop-shadow-2xl shadow-black scale-[0.85] origin-center">{anime.title}</h1>
                                 <div className="flex flex-wrap gap-3 mt-3 justify-center items-center">
                                     <div className="flex items-center flex-wrap justify-center gap-4 text-[11px] text-zinc-400 font-black bg-white/5 border border-white/5 px-5 py-2 rounded-full uppercase tracking-widest shadow-inner shadow-black/20 max-w-full">
-                                             {formatRating(anime.stats.rating) && (<><span className={cn(formatRating(anime.stats.rating)?.includes('18') || formatRating(anime.stats.rating)?.includes('R') ? "text-emerald-500" : "text-zinc-400")}>{formatRating(anime.stats.rating)}</span><span className="w-1.5 h-1.5 bg-zinc-800 rounded-full"/></>)}
-                                            <span className={cn(anime.info.status.includes('Airing') ? 'text-green-500 animate-pulse' : 'text-zinc-500')}>{anime.info.status}</span>
-                                            <span className="w-1.5 h-1.5 bg-zinc-800 rounded-full"/>
-                                            <div className="flex items-center gap-1.5"><Clock className="w-3.5 h-3.5 text-emerald-600 shadow-emerald-900/20"/> {anime.stats.duration}</div>
-                                            <span className="w-1.5 h-1.5 bg-zinc-800 rounded-full"/>
-                                            <div className="text-yellow-500">MAL: {anime.stats.malScore}</div>
+                                        {formatRating(anime.stats.rating, anime.info.genres, anime.isAdult) && (
+                                            <>
+                                                <span className={cn(formatRating(anime.stats.rating, anime.info.genres, anime.isAdult)?.includes('18') || formatRating(anime.stats.rating, anime.info.genres, anime.isAdult)?.includes('R') ? "text-emerald-500 font-black" : "text-zinc-300 font-bold")}>
+                                                    {formatRating(anime.stats.rating, anime.info.genres, anime.isAdult)}
+                                                </span>
+                                                <span className="w-1.5 h-1.5 bg-zinc-800 rounded-full"/>
+                                            </>
+                                        )}
+                                        {/airing|releasing|ongoing/i.test(anime.info.status || '') ? (
+                                            <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-emerald-500/15 border border-emerald-500/40 text-emerald-400 font-black tracking-wider text-[10px] shadow-[0_0_12px_rgba(16,185,129,0.35)] animate-pulse">
+                                                <span className="relative flex h-2 w-2">
+                                                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                                                    <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+                                                </span>
+                                                RELEASING
+                                            </span>
+                                        ) : /finished|completed|ended/i.test(anime.info.status || '') ? (
+                                            <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-blue-500/10 border border-blue-500/30 text-blue-400 font-black tracking-wider text-[10px]">
+                                                <CheckCircle size={10} className="text-blue-400" />
+                                                FINISHED
+                                            </span>
+                                        ) : (
+                                            <span className="text-zinc-400 font-bold uppercase">{anime.info.status}</span>
+                                        )}
+                                        <span className="w-1.5 h-1.5 bg-zinc-800 rounded-full"/>
+                                        <div className="flex items-center gap-1.5"><Clock className="w-3.5 h-3.5 text-emerald-600 shadow-emerald-900/20"/> {anime.stats.duration}</div>
+                                        <span className="w-1.5 h-1.5 bg-zinc-800 rounded-full"/>
+                                        <div className="text-yellow-500">MAL: {anime.stats.malScore}</div>
                                     </div>
                                 </div>
                                 <div className="flex justify-center w-full"><TrailerSection videos={anime.trailers} /></div>
@@ -1651,25 +2006,47 @@ function WatchContent() {
                             {anime.jname && <p className="text-[10px] text-zinc-600 font-black uppercase tracking-[0.4em] mb-6 opacity-60 drop-shadow-sm">{anime.jname}</p>}
                             <div className="flex flex-wrap gap-4 mt-3 justify-start items-center">
                                 <div className="flex items-center gap-4 text-[11px] text-zinc-400 font-black bg-white/5 border border-white/5 px-5 py-2 rounded-full uppercase tracking-widest shadow-inner shadow-black/20">
-                                     {formatRating(anime.stats.rating) && (<><span className={cn(formatRating(anime.stats.rating)?.includes('18') || formatRating(anime.stats.rating)?.includes('R') ? "text-emerald-500" : "text-zinc-400")}>{formatRating(anime.stats.rating)}</span><span className="w-1.5 h-1.5 bg-zinc-800 rounded-full"/></>)}
-                                     <span className={cn(anime.info.status.includes('Airing') ? 'text-green-500 animate-pulse' : 'text-zinc-500')}>{anime.info.status}</span>
-                                     <span className="w-1.5 h-1.5 bg-zinc-800 rounded-full"/>
-                                     <div className="flex items-center gap-1.5"><Clock className="w-3.5 h-3.5 text-emerald-600 shadow-emerald-900/20"/> {anime.stats.duration}</div>
-                                     <span className="w-1.5 h-1.5 bg-zinc-800 rounded-full"/>
-                                     <div className="text-yellow-500">MAL: {anime.stats.malScore}</div>
+                                    {formatRating(anime.stats.rating, anime.info.genres, anime.isAdult) && (
+                                        <>
+                                            <span className={cn(formatRating(anime.stats.rating, anime.info.genres, anime.isAdult)?.includes('18') || formatRating(anime.stats.rating, anime.info.genres, anime.isAdult)?.includes('R') ? "text-emerald-500 font-black" : "text-zinc-300 font-bold")}>
+                                                {formatRating(anime.stats.rating, anime.info.genres, anime.isAdult)}
+                                            </span>
+                                            <span className="w-1.5 h-1.5 bg-zinc-800 rounded-full"/>
+                                        </>
+                                    )}
+                                    {/airing|releasing|ongoing/i.test(anime.info.status || '') ? (
+                                        <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-emerald-500/15 border border-emerald-500/40 text-emerald-400 font-black tracking-wider text-[10px] shadow-[0_0_12px_rgba(16,185,129,0.35)] animate-pulse">
+                                            <span className="relative flex h-2 w-2">
+                                                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                                                <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+                                            </span>
+                                            RELEASING
+                                        </span>
+                                    ) : /finished|completed|ended/i.test(anime.info.status || '') ? (
+                                        <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-blue-500/10 border border-blue-500/30 text-blue-400 font-black tracking-wider text-[10px]">
+                                            <CheckCircle size={10} className="text-blue-400" />
+                                            FINISHED
+                                        </span>
+                                    ) : (
+                                        <span className="text-zinc-400 font-bold uppercase">{anime.info.status}</span>
+                                    )}
+                                    <span className="w-1.5 h-1.5 bg-zinc-800 rounded-full"/>
+                                    <div className="flex items-center gap-1.5"><Clock className="w-3.5 h-3.5 text-emerald-600 shadow-emerald-900/20"/> {anime.stats.duration}</div>
+                                    <span className="w-1.5 h-1.5 bg-zinc-800 rounded-full"/>
+                                    <div className="text-yellow-500">MAL: {anime.stats.malScore}</div>
                                 </div>
                             </div>
                             <div className="flex flex-wrap gap-2 mt-6 justify-start">
                                 {anime.info.genres.map((g: string) => (<Link key={g} href={`/search?type=${g}`} className="text-[9px] px-4 py-1.5 bg-white/5 rounded-full text-zinc-500 border border-white/5 hover:text-white hover:bg-emerald-600 transition-all font-black uppercase tracking-widest active:scale-90 shadow-sm hover:shadow-emerald-900/20 shadow-emerald-900/10">{g}</Link>))}
                             </div>
-                            <div className="mt-auto pt-6 w-full flex justify-end"><StarRating animeId={animeId} initialRating={anime.stats.rating} /></div>
+                            <div className="mt-auto pt-6 w-full flex justify-end"><StarRating animeId={animeId} initialRating={anime.stats.malScore && !isNaN(Number(anime.stats.malScore)) ? (parseFloat(anime.stats.malScore) / 2) : 0} /></div>
                         </div>
                     </div>
                     <div className="flex-1 min-h-0 relative sm:px-10 mt-4 overflow-hidden flex flex-col">
                         <div className="lg:hidden flex flex-wrap gap-2 justify-center mb-6">
                              {anime.info.genres.map((g: string) => (<Link key={g} href={`/search?type=${g}`} className="text-[8px] px-3 py-1 bg-white/5 rounded-full text-zinc-500 border border-white/5 uppercase font-bold">{g}</Link>))}
                         </div>
-                        <div className="lg:hidden flex justify-center mb-6"><StarRating animeId={animeId} initialRating={anime.stats.rating} /></div>
+                        <div className="lg:hidden flex justify-center mb-6"><StarRating animeId={animeId} initialRating={anime.stats.malScore && !isNaN(Number(anime.stats.malScore)) ? (parseFloat(anime.stats.malScore) / 2) : 0} /></div>
                         <h4 className="text-[10px] font-black text-emerald-600 uppercase tracking-[0.5em] mb-3 flex items-center gap-2 shadow-sm shrink-0"><Info size={12} className="shadow-sm"/> Synopsis</h4>
                         <ScrollArea className="flex-1 pr-4 custom-scrollbar shadow-inner shadow-emerald-900/5">
                            <p className="text-zinc-400 text-sm leading-relaxed pb-8 antialiased font-medium opacity-90 drop-shadow-sm shadow-black" dangerouslySetInnerHTML={{ __html: anime.description }} />
@@ -1714,7 +2091,7 @@ function WatchContent() {
                              {anime.recommendations && anime.recommendations.length > 0 ? (
                                  anime.recommendations.slice(0, 10).map((rec: any) => (
                                      <Link key={rec.id} href={`/donghua-watch/${rec.id}`} className="flex gap-4 bg-white/5 border border-white/5 rounded-2xl p-2 hover:bg-white/10 hover:border-white/10 transition-colors group shadow-sm">
-                                         <div className="w-16 h-24 sm:w-20 sm:h-28 shrink-0 rounded-xl overflow-hidden relative shadow-md shadow-black/40"><img src={rec.poster} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" alt={rec.title} loading="lazy" decoding="async"/><div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center"><Play size={20} className="text-white"/></div></div>
+                                         <div className="w-16 h-24 sm:w-20 sm:h-28 shrink-0 rounded-xl overflow-hidden relative shadow-md shadow-black/40"><img src={getSafeImageUrl(rec.poster)} onError={(e) => { if (e.currentTarget.src.startsWith('/api/proxy')) { e.currentTarget.src = '/images/placeholder-no-img.jpg'; } else if (e.currentTarget.src.startsWith('http')) { e.currentTarget.src = `/api/proxy?url=${encodeURIComponent(e.currentTarget.src)}`; } else { e.currentTarget.src = '/images/placeholder-no-img.jpg'; } }} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" alt={rec.title} loading="lazy" decoding="async"/><div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center"><Play size={20} className="text-white"/></div></div>
                                          <div className="flex-1 min-w-0 py-1 flex flex-col justify-center gap-1">
                                              <h4 className="text-xs sm:text-sm font-black text-white line-clamp-2 leading-tight group-hover:text-emerald-500 transition-colors">{rec.title}</h4>
                                              {rec.jname && <p className="text-[9px] text-zinc-500 truncate uppercase font-bold tracking-wider">{rec.jname}</p>}

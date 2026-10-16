@@ -9,7 +9,7 @@ import {
 } from 'lucide-react';
 import { motion, AnimatePresence, Variants } from 'framer-motion';
 import { hpi } from '@/lib/hpi'; 
-import { cn } from '@/lib/utils';
+import { cn, getSafeImageUrl, slugifyTitle } from '@/lib/utils';
 
 // --- TYPES ---
 interface QTipData {
@@ -68,14 +68,27 @@ export default function HindiAnimeCard({ anime }: { anime: any }) {
 
   // --- 1. DATA NORMALIZATION ---
   const normalized = useMemo(() => {
-    const cleanPoster = anime.poster ? anime.poster.replace(/([^:]\/)\/+/g, "$1") : "/images/placeholder-no-img.jpg";
+    const rawPoster = anime.poster || anime.image;
+    const cleanPoster = getSafeImageUrl(rawPoster ? rawPoster.replace(/([^:]\/)\/+/g, "$1") : "/images/no-poster.png");
     const title = anime.title || "Unknown Title";
     const type = anime.type || "HINDI";
     const epCount = anime.episode || anime.latestEpisode || anime.totalEpisodes || anime.sub || anime.dub || "?";
-    const baseTarget = anime.targetRoute || `/hindi-watch/${anime.id}`;
-    let targetRoute = baseTarget;
-    if (!anime.targetRoute && anime.episodeId) {
-      targetRoute = `${baseTarget}?ep=${anime.episodeId}`;
+
+    const cleanTitle = (title || "").replace(/\(Hindi Dubbed\)/i, '').replace(/\(Hindi Dub\)/i, '').replace(/\[Hindi Dub\]/i, '').trim();
+    const titleSlug = slugifyTitle(cleanTitle || title);
+    const routeId = (titleSlug && !String(anime.id).includes('-')) ? `${anime.id}-${titleSlug}` : anime.id;
+
+    let targetRoute = anime.targetRoute;
+    if (!targetRoute) {
+      targetRoute = `/watch/${routeId}?audio=hi`;
+      if (anime.episodeId || anime.episode) {
+        targetRoute = `/watch/${routeId}?ep=${anime.episodeId || anime.episode}&audio=hi`;
+      }
+    } else if (targetRoute.startsWith('/hindi-watch/')) {
+      targetRoute = targetRoute.replace('/hindi-watch/', '/watch/');
+      if (!targetRoute.includes('audio=')) {
+        targetRoute += `${targetRoute.includes('?') ? '&' : '?'}audio=hi`;
+      }
     }
 
     return { poster: cleanPoster, title, type, targetRoute, epCount, dataId: anime.dataId };
@@ -170,17 +183,37 @@ export default function HindiAnimeCard({ anime }: { anime: any }) {
               loading="lazy"
               decoding="async"
               className="w-full h-full object-cover transform-gpu transition-transform duration-700 ease-out group-hover:scale-110 will-change-transform"
-              onError={(e) => { (e.target as HTMLImageElement).src = "/images/placeholder-no-img.jpg"; }}
+              onError={(e) => {
+                const img = e.currentTarget;
+                if (img.src.startsWith('/api/proxy')) {
+                  img.src = '/images/placeholder-no-img.jpg';
+                } else if (img.src.startsWith('http')) {
+                  img.src = `/api/proxy?url=${encodeURIComponent(img.src)}`;
+                } else {
+                  img.src = '/images/placeholder-no-img.jpg';
+                }
+              }}
             />
             <div className="absolute inset-0 bg-gradient-to-t from-black via-black/30 to-transparent opacity-80 group-hover:opacity-60 transition-opacity duration-300" />
           </div>
 
           {/* BADGES & INFO */}
           <div className="absolute top-2.5 left-2.5 md:top-3 md:left-3 z-20">
-             <div className="h-4 md:h-5 px-2 flex items-center justify-center rounded-full bg-primary-600/90 backdrop-blur-md border border-primary-500/50 text-[8px] md:text-[9px] font-black text-white uppercase tracking-wider shadow-lg shadow-primary-900/20">
-               {normalized.type}
+             <div className="h-4 md:h-5 px-2 flex items-center justify-center rounded-full bg-white/10 backdrop-blur-md border border-white/10 text-white text-[8px] md:text-[9px] font-black uppercase tracking-wider shadow-sm">
+               {(anime.type || anime.format || 'TV').toUpperCase()}
              </div>
           </div>
+
+
+          {/* Top-Center: Prominent MAL Rating */}
+          {anime.score && Number(anime.score) > 0 && (
+            <div className="absolute top-2.5 md:top-3 left-1/2 -translate-x-1/2 z-30 pointer-events-none">
+              <div className="h-4 md:h-5 px-2 flex items-center justify-center gap-0.5 rounded-full bg-black/75 backdrop-blur-md border border-yellow-500/40 text-yellow-400 font-black text-[9px] md:text-[10px] tracking-tight shadow-md select-none">
+                <span className="text-[9px] md:text-[10px]">★</span>
+                <span>{Number(anime.score).toFixed(1)}</span>
+              </div>
+            </div>
+          )}
 
           <div className="absolute top-2.5 right-2.5 md:top-3 md:right-3 z-40">
              <button onClick={handleMobileInfoToggle} className="md:hidden w-5 h-5 md:w-6 md:h-6 rounded-full bg-white/10 backdrop-blur-md border border-white/20 flex items-center justify-center text-white active:scale-90 transition-all hover:bg-white/20">
@@ -205,18 +238,23 @@ export default function HindiAnimeCard({ anime }: { anime: any }) {
             </h3>
             
             <div className="flex items-center justify-between gap-1.5">
-                <div className="flex-shrink-0 flex items-center gap-1 h-5 md:h-6 px-1.5 md:px-2.5 rounded-md md:rounded-full bg-white/10 backdrop-blur-md border border-white/10 shadow-sm min-w-0">
-                    <div className="flex items-center gap-0.5 text-[8px] md:text-[9px] font-bold text-white uppercase">
-                        <Mic size={8} className="text-zinc-300 md:w-3 md:h-3" /> 
-                        <span>HINDI</span>
-                    </div>
+                <div className="flex-shrink-0 flex items-center gap-1 h-5 md:h-5.5 px-2 rounded-md bg-white/10 backdrop-blur-md border border-white/15 shadow-sm min-w-0">
+                    <Mic size={9} className="text-yellow-400 shrink-0" /> 
+                    <span className="text-[8px] md:text-[9px] font-black text-yellow-400 uppercase tracking-wider">
+                        HINDI
+                    </span>
+                    <span className="text-white font-bold text-[8px] md:text-[9px] ml-0.5">
+                        EP {normalized.epCount}
+                    </span>
                 </div>
 
-                <div className="flex-shrink-0 bg-white/10 backdrop-blur-md border border-white/10 h-5 md:h-6 px-1.5 md:px-2.5 rounded-md md:rounded-full flex items-center justify-center gap-1">
-                    <ListVideo size={10} className="text-zinc-300 md:w-3 md:h-3" />
-                    <span className="text-[8px] md:text-[9px] font-bold text-white tracking-wide uppercase">
-                       EP {normalized.epCount}
-                    </span>
+                <div className="flex items-center gap-1.5 shrink-0">
+                  <div className="flex-shrink-0 bg-white/10 backdrop-blur-md border border-white/10 h-5 md:h-6 px-1.5 md:px-2.5 rounded-md md:rounded-full flex items-center justify-center gap-1">
+                      <ListVideo size={10} className="text-zinc-300 md:w-3 md:h-3" />
+                      <span className="text-[8px] md:text-[9px] font-bold text-white tracking-wide uppercase">
+                         EP {normalized.epCount}
+                      </span>
+                  </div>
                 </div>
             </div>
           </div>

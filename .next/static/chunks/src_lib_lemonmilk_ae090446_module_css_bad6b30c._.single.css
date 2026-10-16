@@ -1,0 +1,35 @@
+/* [project]/src/lib/lemonmilk_ae090446.module.css [app-client] (css) */
+@font-face {
+  font-family: lemonMilk;
+  src: url("../media/LemonMilkRegular_X3XE2-s.56b4d762.otf") format("opentype");
+  font-display: swap;
+  font-weight: 400;
+  font-style: normal;
+}
+
+@font-face {
+  font-family: lemonMilk;
+  src: url("../media/LemonMilkBold_gx2B3-s.f5ffd1e8.otf") format("opentype");
+  font-display: swap;
+  font-weight: 700;
+  font-style: normal;
+}
+
+@font-face {
+  font-family: lemonMilk Fallback;
+  src: local(Arial);
+  ascent-override: 78.43%;
+  descent-override: 17.7%;
+  line-gap-override: 1.77%;
+  size-adjust: 137.96%;
+}
+
+.lemonmilk_ae090446-module__rhsSoG__className {
+  font-family: lemonMilk, lemonMilk Fallback;
+}
+
+.lemonmilk_ae090446-module__rhsSoG__variable {
+  --font-lemon-milk: "lemonMilk", "lemonMilk Fallback";
+}
+
+/*# sourceMappingURL=src_lib_lemonmilk_ae090446_module_css_bad6b30c._.single.css.map*/

@@ -9,7 +9,7 @@ import {
 } from 'lucide-react';
 import { motion, AnimatePresence, Variants } from 'framer-motion';
 import { AnimeService } from '@/lib/api';
-import { cn } from '@/lib/utils';
+import { cn, getSafeImageUrl, slugifyTitle } from '@/lib/utils';
 
 // --- TYPES ---
 interface UnifiedAnimeData {
@@ -101,7 +101,7 @@ export default function AnimeCard({ anime, progress = 0, isHindi = false }: Anim
 
   // --- 1. MEMOIZED NORMALIZATION ---
   const normalized = useMemo(() => {
-    const displayImage = anime.poster || anime.image || anime.cover || "/images/placeholder-no-img.jpg";
+    const displayImage = getSafeImageUrl(anime.poster || anime.image || anime.cover || "/images/placeholder-no-img.jpg");
     
     let displayTitle = "Unknown Title";
     if (typeof anime.title === 'object') {
@@ -111,9 +111,10 @@ export default function AnimeCard({ anime, progress = 0, isHindi = false }: Anim
 
     const rawSub = typeof anime.episodes === 'object' ? anime.episodes?.sub : (anime.sub ?? anime.subCount ?? null);
     const rawDub = typeof anime.episodes === 'object' ? anime.episodes?.dub : (anime.dub ?? anime.dubCount ?? null);
-    const totalEp = anime.totalEpisodes || anime.total_episodes || (typeof anime.episodes === 'number' ? anime.episodes : null);
+    const totalEp = anime.totalEpisodes || anime.total_episodes || (typeof anime.episodes === 'object' ? anime.episodes?.eps : null) || (typeof anime.episodes === 'number' ? anime.episodes : null) || anime.subCount || null;
 
-    const isDubMedia = isHindi || anime.isHindi || anime.source === 'hindi' || anime.media_type === 'hindi' || anime.media_type === 'dub' || anime.type?.toLowerCase() === 'dub' || anime.type?.toLowerCase() === 'hindi';
+    const isHindiMedia = isHindi || anime.isHindi || anime.category === 'hindi' || anime.source === 'hindi' || anime.media_type === 'hindi' || anime.type?.toLowerCase() === 'hindi' || (typeof displayTitle === 'string' && /hindi/i.test(displayTitle));
+    const isDubMedia = isHindiMedia || anime.media_type === 'dub' || anime.type?.toLowerCase() === 'dub';
 
     const subCount = rawSub !== null ? rawSub : (!isDubMedia && totalEp ? totalEp : null);
     const dubCount = rawDub !== null ? rawDub : (isDubMedia && totalEp ? totalEp : null);
@@ -121,32 +122,42 @@ export default function AnimeCard({ anime, progress = 0, isHindi = false }: Anim
     // Initial Adult & Rating Check
     const genresList = Array.isArray(anime.genres) ? anime.genres.map((g: any) => String(g).toLowerCase()) : [];
     const hasAdultGenre = genresList.some((g: string) => ['ecchi', 'erotica', 'hentai', 'adult'].includes(g));
-    const rawRatingGiven = anime.rating || anime.ageRating || "";
+    let rawRatingGiven = anime.ageRating || "";
+    if (!rawRatingGiven && anime.rating && !/^\d+(\.\d+)?(\/10)?$/.test(String(anime.rating).trim())) {
+      rawRatingGiven = anime.rating;
+    }
     const rawUpper = rawRatingGiven.toUpperCase().trim();
     const isAdult = anime.isAdult === true || hasAdultGenre || 
         ["RX", "HENTAI", "18", "R+", "R -", "R-17", "R17", "NC-17", "MATURE", "SEX"].some((t: string) => rawUpper.includes(t)) ||
         rawUpper === "R" || rawUpper.startsWith("R");
-    const rawRating = rawRatingGiven || (isAdult ? "18+" : "");
+    const rawRating = rawRatingGiven || (isAdult ? "18+" : "PG-13");
 
     // Route Logic
     let finalRoute = "";
+    const titleSlug = slugifyTitle(displayTitle);
+    const routeId = (titleSlug && !String(anime.id).includes('-')) ? `${anime.id}-${titleSlug}` : anime.id;
+
     if (anime.targetRoute) {
         finalRoute = anime.targetRoute;
+        if (titleSlug && finalRoute.startsWith('/watch/') && !finalRoute.includes('-')) {
+            finalRoute = finalRoute.replace(/^\/watch\/([^?&#]+)/, (_, rawId) => `/watch/${rawId}-${titleSlug}`);
+        }
     } else {
         const isDonghua = (anime.type?.toLowerCase() === 'donghua') || anime.source === 'donghua';
-        const baseUrl = (isHindi || anime.isHindi || anime.source === 'hindi') 
-            ? `/hindi-watch/${anime.id}` 
-            : isDonghua
+        const isHindiItem = isHindiMedia;
+        const baseUrl = isDonghua
             ? `/donghua-watch/${anime.id}`
-            : `/watch/${anime.id}`;
+            : `/watch/${routeId}`;
 
-        if (anime.episodeId) {
-            const epParam = (typeof anime.episodeId === 'string' && (anime.episodeId.startsWith('/') || anime.episodeId.includes('?'))) 
-                ? anime.episodeId 
-                : `?ep=${anime.episodeId}`;
-            finalRoute = `${baseUrl}${epParam}`;
+        const targetEp = anime.episodeId || anime.episode;
+        if (targetEp) {
+            const epParam = (typeof targetEp === 'string' && (targetEp.startsWith('/') || targetEp.includes('?'))) 
+                ? targetEp 
+                : `?ep=${targetEp}`;
+            const audioParam = isHindiItem ? (epParam.includes('?') ? '&audio=hi' : '?audio=hi') : '';
+            finalRoute = `${baseUrl}${epParam}${audioParam}`;
         } else {
-            finalRoute = baseUrl;
+            finalRoute = isHindiItem ? `${baseUrl}?audio=hi` : baseUrl;
         }
     }
 
@@ -157,9 +168,34 @@ export default function AnimeCard({ anime, progress = 0, isHindi = false }: Anim
         isAdult, 
         rawRating,
         targetRoute: finalRoute, 
-        type: anime.type || "TV" 
+        type: anime.type || "TV",
+        isHindiMedia
     };
   }, [anime, isHindi]);
+
+  // --- MEMOIZED SCORE EXTRACTOR (Yellow text, no container) ---
+  const score = useMemo(() => {
+    if (anime.score !== undefined && anime.score !== null && anime.score !== '') {
+      const s = String(anime.score).replace('/10', '').trim();
+      if (!isNaN(Number(s)) && Number(s) > 0) return Number(s).toFixed(1);
+    }
+    if (anime.malScore !== undefined && anime.malScore !== null) {
+      const s = String(anime.malScore).replace('/10', '').trim();
+      if (!isNaN(Number(s)) && Number(s) > 0) return Number(s).toFixed(1);
+    }
+    if (anime.averageScore) {
+      return (Number(anime.averageScore) / 10).toFixed(1);
+    }
+    if (anime.rank) {
+      const r = Number(anime.rank);
+      if (r > 10) return (r / 10).toFixed(1);
+      if (r > 0) return r.toFixed(1);
+    }
+    if (typeof anime.rating === 'string' && /^\d+(\.\d+)?(\/10)?$/.test(anime.rating.trim())) {
+      return Number(anime.rating.replace('/10', '').trim()).toFixed(1);
+    }
+    return null;
+  }, [anime]);
 
   // --- SMART RATING SELECTOR ---
   const getDisplayRating = () => {
@@ -183,17 +219,19 @@ export default function AnimeCard({ anime, progress = 0, isHindi = false }: Anim
   // --- HELPER: AGE TAG ---
   const AgeTag = ({ adult, rating }: { adult: boolean, rating?: string }) => {
     const r = rating ? rating.toUpperCase().trim() : "";
-    if (!r && !adult) return null;
-
-    let label = ""; 
+    let label = "PG-13"; 
     let isRed = false;
 
-    if (adult || r.includes("RX") || r.includes("HENTAI") || r.includes("R+") || r.includes("18") || r.includes("TV-MA") || r.includes("SEX") || r.includes("MATURE") || r === "R" || r.startsWith("R") || r.includes("17+")) {
+    if (adult || r.includes("RX") || r.includes("HENTAI") || r.includes("R+") || r.includes("18") || r.includes("TV-MA") || r.includes("SEX") || r.includes("MATURE") || r.includes("NC-17")) {
         label = (r.includes("RX") || r.includes("HENTAI")) ? "Rx" : "18+";
         isRed = true;
     } 
+    else if (r.includes("17") || r.includes("R-17") || r.includes("R17") || r === "R" || r.startsWith("R")) {
+        label = "R-17";
+        isRed = true;
+    }
     else if (r.includes("13") || r.includes("PG-13") || r.includes("TEEN")) {
-        label = "PG 13";
+        label = "PG-13";
         isRed = false;
     }
     else if (r.includes("PG")) {
@@ -204,21 +242,17 @@ export default function AnimeCard({ anime, progress = 0, isHindi = false }: Anim
         label = "G";
         isRed = false;
     }
-    else if (rating && rating !== "?" && rating !== "Unknown") {
+    else if (rating && rating !== "?" && rating !== "Unknown" && !/^\d+(\.\d+)?$/.test(rating)) {
         label = rating.replace("PG-", "PG ").replace("R-", "").trim();
         isRed = false;
-    } else {
-        if (!adult) return null;
-        label = "18+";
-        isRed = true;
     }
 
     return (
       <span className={cn(
-        "h-5 px-2 flex items-center justify-center rounded-full border text-[9px] font-black shadow-lg backdrop-blur-md transition-colors",
+        "h-5 px-2 flex items-center justify-center rounded-full border text-[9px] font-black shadow-lg backdrop-blur-md transition-colors tracking-wide",
         isRed 
           ? "bg-red-600 border-red-500 text-white shadow-[0_0_10px_rgba(220,38,38,0.6)]" 
-          : "bg-black/60 border-white/10 text-white"
+          : "bg-black/60 border-white/20 text-white shadow-black/50"
       )}>
         {label}
       </span>
@@ -356,6 +390,15 @@ export default function AnimeCard({ anime, progress = 0, isHindi = false }: Anim
               alt={normalized.displayTitle}
               loading="lazy"
               decoding="async"
+              onError={(e) => {
+                if (e.currentTarget.src.startsWith('/api/proxy')) {
+                  e.currentTarget.src = '/images/placeholder-no-img.jpg';
+                } else if (e.currentTarget.src.startsWith('http')) {
+                  e.currentTarget.src = `/api/proxy?url=${encodeURIComponent(e.currentTarget.src)}`;
+                } else {
+                  e.currentTarget.src = '/images/placeholder-no-img.jpg';
+                }
+              }}
               className="w-full h-full object-cover transform-gpu transition-transform duration-700 ease-out group-hover:scale-110 will-change-transform"
             />
             <div className="absolute inset-0 bg-gradient-to-t from-black via-black/30 to-transparent opacity-80 group-hover:opacity-60 transition-opacity duration-300" />
@@ -363,10 +406,21 @@ export default function AnimeCard({ anime, progress = 0, isHindi = false }: Anim
           </div>
 
           <div className="absolute top-2.5 left-2.5 md:top-3 md:left-3 z-20">
-              <div className="h-4 md:h-5 px-2 flex items-center justify-center rounded-full bg-white/10 backdrop-blur-md border border-white/10 text-[8px] md:text-[9px] font-black text-white uppercase tracking-wider shadow-sm">
-                {normalized.type}
+              <div className="h-4 md:h-5 px-2 flex items-center justify-center rounded-full bg-white/10 backdrop-blur-md border border-white/10 text-white text-[8px] md:text-[9px] font-black uppercase tracking-wider shadow-sm">
+                {normalized.type || "TV"}
               </div>
           </div>
+
+
+          {/* Top-Center: Prominent MAL Rating */}
+          {score && (
+            <div className="absolute top-2.5 md:top-3 left-1/2 -translate-x-1/2 z-30 pointer-events-none">
+              <div className="h-4 md:h-5 px-2 flex items-center justify-center gap-0.5 rounded-full bg-black/75 backdrop-blur-md border border-yellow-500/40 text-yellow-400 font-black text-[9px] md:text-[10px] tracking-tight shadow-md select-none">
+                <span className="text-[9px] md:text-[10px]">★</span>
+                <span>{score}</span>
+              </div>
+            </div>
+          )}
 
           <div className="absolute top-2.5 right-2.5 md:top-3 md:right-3 z-40 flex items-center gap-1.5 md:gap-2">
               <button onClick={handleMobileInfoToggle} className="md:hidden w-5 h-5 md:w-6 md:h-6 rounded-full bg-white/10 backdrop-blur-md border border-white/20 flex items-center justify-center text-white active:scale-90 transition-all hover:bg-white/20">
@@ -390,8 +444,16 @@ export default function AnimeCard({ anime, progress = 0, isHindi = false }: Anim
             </h3>
 
             <div className="flex items-center justify-between gap-1 w-full overflow-hidden">
-                <div className="flex-shrink-0 flex items-center gap-1 h-5 md:h-6 px-1.5 md:px-2.5 rounded-md md:rounded-full bg-white/10 backdrop-blur-md border border-white/10 shadow-sm min-w-0">
-                   {(normalized.subCount || normalized.dubCount) ? (
+                <div className="flex-shrink-0 flex items-center gap-1 h-5 md:h-5.5 px-1.5 md:px-2 rounded-md bg-white/10 backdrop-blur-md border border-white/15 shadow-sm min-w-0">
+                   {normalized.isHindiMedia ? (
+                       <div className="flex items-center gap-1 text-[8px] md:text-[9px] font-black text-yellow-400 uppercase tracking-wider">
+                           <Mic size={9} className="text-yellow-400 shrink-0" />
+                           <span>HINDI</span>
+                           {(normalized.dubCount || normalized.totalEp) ? (
+                             <span className="text-white font-bold ml-0.5">EP {normalized.dubCount || normalized.totalEp}</span>
+                           ) : null}
+                       </div>
+                   ) : (normalized.subCount || normalized.dubCount) ? (
                        <>
                            {Number(normalized.subCount) > 0 && (
                              <div className="flex items-center gap-0.5 text-[8px] md:text-[9px] font-bold text-white">
@@ -412,11 +474,14 @@ export default function AnimeCard({ anime, progress = 0, isHindi = false }: Anim
                    )}
                 </div>
 
-                <div className="flex-shrink-0 bg-white/10 backdrop-blur-md border border-white/10 h-5 md:h-6 px-1.5 md:px-2.5 rounded-md md:rounded-full flex items-center justify-center gap-1">
-                    <ListVideo size={10} className="text-zinc-300 md:w-3 md:h-3" />
-                    <span className="text-[8px] md:text-[9px] font-bold text-white tracking-wide uppercase">
-                       {normalized.totalEp || "?"}
-                    </span>
+                {/* Bottom right: Total episodes count */}
+                <div className="flex items-center gap-1.5 md:gap-2 shrink-0">
+                    <div className="flex-shrink-0 bg-white/10 backdrop-blur-md border border-white/10 h-5 md:h-6 px-1.5 md:px-2.5 rounded-md md:rounded-full flex items-center justify-center gap-1">
+                        <ListVideo size={10} className="text-zinc-300 md:w-3 md:h-3" />
+                        <span className="text-[8px] md:text-[9px] font-bold text-white tracking-wide uppercase">
+                           {normalized.totalEp || "?"}
+                        </span>
+                    </div>
                 </div>
             </div>
 
@@ -472,50 +537,70 @@ export default function AnimeCard({ anime, progress = 0, isHindi = false }: Anim
               exit="exit"
               onMouseEnter={handleMouseEnter} 
               onMouseLeave={handleMouseLeave}
-              className={`hidden md:block absolute top-0 w-[280px] lg:w-[320px] z-50 ${popupPosition === 'right' ? 'left-[105%]' : 'right-[105%]'}`}
+              className={`hidden md:block absolute top-0 w-[300px] lg:w-[330px] z-50 ${popupPosition === 'right' ? 'left-[105%]' : 'right-[105%]'}`}
           >
-              <div className="bg-[#0f0f0f]/95 backdrop-blur-xl border border-white/10 rounded-2xl p-5 shadow-[0_20px_60px_rgba(0,0,0,0.8)] relative overflow-hidden">
-                 <div className="mb-3">
+              <div className="bg-[#0b0c10]/95 backdrop-blur-2xl border border-white/15 rounded-3xl p-5 shadow-[0_25px_60px_rgba(0,0,0,0.9)] relative overflow-hidden group/qtip ring-1 ring-white/5">
+                 {/* Ambient glowing backlight */}
+                 <div className="absolute -top-12 -right-12 w-36 h-36 bg-primary-600/20 blur-[50px] rounded-full pointer-events-none" />
+                 <div className="absolute -bottom-10 -left-10 w-32 h-32 bg-amber-500/10 blur-[50px] rounded-full pointer-events-none" />
+
+                 <div className="relative z-10 mb-2.5">
                     <Link href={normalized.targetRoute}>
-                      <h4 className="text-white font-black text-base lg:text-lg leading-tight mb-1 cursor-pointer hover:text-primary-500 transition-colors">
+                      <h4 className="text-white font-black text-base lg:text-lg leading-tight mb-1 cursor-pointer hover:text-primary-400 transition-colors line-clamp-2">
                         {normalized.displayTitle}
                       </h4>
                     </Link>
-                    <p className="text-primary-500/80 text-xs font-bold italic line-clamp-1">{qtip?.jname}</p>
-                 </div>
-                 <div className="flex items-center gap-3 mb-3 text-xs font-bold">
-                    <div className="flex items-center">
-                       <AgeTag adult={currentRatingData.isAdult || false} rating={currentRatingData.rating} />
-                    </div>
-                    <div className="flex items-center gap-1 text-zinc-400">
-                       <MonitorPlay size={12} />
-                       <span>{qtip?.quality || "HD"}</span>
-                    </div>
-                    <div className="ml-auto text-zinc-500 font-mono text-[10px] uppercase">
-                       {qtip?.season || "ANIME"}
-                    </div>
-                 </div>
-                 <div className="mb-4 min-h-[60px]">
-                    {loading && !qtip ? (
-                       <div className="space-y-1.5 animate-pulse">
-                           <div className="h-2 bg-white/10 rounded w-full"/>
-                           <div className="h-2 bg-white/10 rounded w-5/6"/>
-                           <div className="h-2 bg-white/10 rounded w-4/6"/>
-                       </div>
-                    ) : (
-                       <p className="text-[11px] text-zinc-400 leading-relaxed line-clamp-4">
-                           {qtip?.description || "Description unavailable."}
-                       </p>
+                    {qtip?.jname && (
+                      <p className="text-primary-400/80 text-xs font-semibold italic line-clamp-1">{qtip.jname}</p>
                     )}
                  </div>
-                 <div className="flex flex-wrap gap-1.5 pt-3 border-t border-white/5">
+
+                 <div className="relative z-10 flex flex-wrap items-center gap-2 mb-3 text-xs">
+                    <AgeTag adult={currentRatingData.isAdult || false} rating={currentRatingData.rating} />
+                    
+                    {score && (
+                      <span className="text-yellow-400 font-extrabold text-xs flex items-center gap-0.5">
+                        <span>★</span> {score}
+                      </span>
+                    )}
+
+                    <div className="flex items-center gap-1 text-zinc-300 bg-white/5 border border-white/10 px-2 py-0.5 rounded-full text-[10px] font-bold">
+                       <MonitorPlay size={11} className="text-primary-400" />
+                       <span>{qtip?.quality || "HD"}</span>
+                    </div>
+
+                    <div className="ml-auto text-zinc-400 font-mono text-[9px] uppercase tracking-wider bg-white/5 px-2 py-0.5 rounded-md border border-white/5">
+                       {qtip?.season || normalized.type}
+                    </div>
+                 </div>
+
+                 <div className="relative z-10 mb-3 min-h-[45px]">
+                    <p className="text-[11.5px] text-zinc-300/90 leading-relaxed line-clamp-3">
+                        {qtip?.description || "Description unavailable."}
+                    </p>
+                 </div>
+
+                 <div className="relative z-10 flex flex-wrap gap-1.5 pt-2.5 border-t border-white/10 mb-3.5">
                     {(qtip?.genres || []).slice(0, 3).map(g => (
-                       <span key={g} className="text-[9px] px-2.5 py-0.5 rounded-full bg-white/5 border border-white/10 text-zinc-300">
+                       <span key={g} className="text-[9px] font-medium px-2.5 py-0.5 rounded-full bg-white/5 border border-white/10 text-zinc-300">
                            {g}
                        </span>
                     ))}
+                    {qtip?.studios && (
+                       <span className="text-[9px] font-semibold px-2 py-0.5 rounded-full bg-primary-950/40 border border-primary-500/20 text-primary-300 ml-auto line-clamp-1 max-w-[120px]">
+                           {qtip.studios}
+                       </span>
+                    )}
                  </div>
-                 <div className="absolute -top-10 -right-10 w-32 h-32 bg-primary-600/10 blur-[60px] rounded-full pointer-events-none" />
+
+                 <div className="relative z-10">
+                    <Link 
+                      href={normalized.targetRoute}
+                      className="w-full py-2.5 px-4 rounded-xl bg-gradient-to-r from-primary-600 to-red-600 hover:from-primary-500 hover:to-red-500 text-white font-black text-xs uppercase tracking-wider flex items-center justify-center gap-2 shadow-lg shadow-primary-900/30 active:scale-98 transition-all"
+                    >
+                      <Play size={13} fill="currentColor" /> Watch Now
+                    </Link>
+                 </div>
               </div>
           </motion.div>
         )}

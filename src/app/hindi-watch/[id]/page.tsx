@@ -85,59 +85,12 @@ export async function generateMetadata(
   };
 }
 
+import { redirect } from 'next/navigation';
+
 export default async function Page(props: Props) {
   const params = await props.params;
   const searchParams = await props.searchParams;
-  const id = params.id;
-  const ep = searchParams?.ep ? String(searchParams.ep) : null;
-
-  const data = await hpi.hindi.getDetails(id).catch(() => null);
-  const cleanTitle = data?.title || 'Hindi Anime';
-  const cleanDesc = (data?.synopsis || `Watch ${cleanTitle} Hindi Dubbed on Shadow Garden.`)
-    .replace(/<[^>]*>?/gm, '')
-    .slice(0, 250);
-  const posterUrl = data?.image || 'https://shadow-garden.site/og-image.png';
-  const pageUrl = `https://shadow-garden.site/hindi-watch/${encodeURIComponent(id)}`;
-
-  const jsonLd = {
-    "@context": "https://schema.org",
-    "@graph": [
-      {
-        "@type": "TVSeries",
-        "name": `${cleanTitle} (Hindi Dubbed)`,
-        "url": pageUrl,
-        "image": posterUrl,
-        "description": cleanDesc,
-        "inLanguage": ["hi", "en"],
-        "potentialAction": {
-          "@type": "WatchAction",
-          "target": {
-            "@type": "EntryPoint",
-            "urlTemplate": pageUrl,
-            "inLanguage": "hi"
-          }
-        }
-      },
-      {
-        "@type": "VideoObject",
-        "name": `Watch ${cleanTitle}${ep ? ` Episode ${ep}` : ''} Hindi Dubbed`,
-        "description": `Stream ${cleanTitle} in Hindi audio online free on Shadow Garden.`,
-        "thumbnailUrl": [posterUrl],
-        "uploadDate": new Date().toISOString(),
-        "contentUrl": pageUrl,
-        "embedUrl": pageUrl
-      }
-    ]
-  };
-
-  return (
-    <>
-      <script
-        type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
-      />
-      <WatchClient />
-    </>
-  );
+  const ep = searchParams?.ep ? `&ep=${searchParams.ep}` : '';
+  redirect(`/watch/${params.id}?audio=hi${ep}`);
 }
 

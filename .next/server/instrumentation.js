@@ -1,1 +1,5 @@
-"use strict";(()=>{var a={};a.id=6183,a.ids=[6183],a.modules={2215:(a,b,c)=>{async function d(){console.log("[Instrumentation] Registering 6-hour Oracle Cron Job for Node.js server..."),setTimeout(async()=>{try{let{checkAllLibraryUpdates:a}=await c.e(8390).then(c.bind(c,58390));await a()}catch(a){console.error("[Instrumentation] Initial Oracle Run Error:",a)}},6e4),setInterval(async()=>{try{let{checkAllLibraryUpdates:a}=await c.e(8390).then(c.bind(c,58390));await a()}catch(a){console.error("[Instrumentation] Scheduled Oracle Run Error:",a)}},216e5)}c.r(b),c.d(b,{register:()=>d})}};var b=require("./webpack-runtime.js");b.C(a);var c=b(b.s=2215);module.exports=c})();
+var R=require("./chunks/[turbopack]_runtime.js")("server/instrumentation.js")
+R.c("server/chunks/[root-of-the-server]__7c583700._.js")
+R.c("server/chunks/src_instrumentation_ts_18ea1a8f._.js")
+R.m("[project]/src/instrumentation.ts [instrumentation] (ecmascript)")
+module.exports=R.m("[project]/src/instrumentation.ts [instrumentation] (ecmascript)").exports

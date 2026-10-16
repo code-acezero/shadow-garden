@@ -19,8 +19,9 @@ export interface AppSettings {
   resumePlayback: boolean;
   volumeBoost: boolean; 
   defaultServer: 'hd-1' | 'hd-2' | 'mirror-1' | 'mirror-2';
-  defaultQuality: '1080p' | '720p' | '480p' | '360p' | 'Auto';
-  defaultAudio: 'jp' | 'en' | 'es' | 'pt'; 
+  defaultQuality?: '1080p' | '720p' | '480p' | 'Auto';
+  defaultAudio: 'jp' | 'en' | 'hi' | 'cn' | 'es' | 'pt'; 
+  preferredAudio?: 'jp' | 'en' | 'hi' | 'cn';
   subLanguage: 'en' | 'es' | 'fr' | 'none';
   defaultVolume: number;
   haptics: boolean;

@@ -115,11 +115,47 @@ export function isRelatedAnime(currentId: string, currentTitle: string, targetId
     return false;
 }
 
-export function getWatchRoute(animeId: string, episodeId?: string, type?: string): string {
+export function slugifyTitle(title?: string | null): string {
+    if (!title || typeof title !== 'string') return '';
+    return title
+        .toLowerCase()
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '')
+        .replace(/['’]/g, '')
+        .replace(/[^a-z0-9]+/g, '-')
+        .replace(/^-+|-+$/g, '')
+        .slice(0, 80);
+}
+
+export function getAnimeWatchUrl(
+    id: string | number, 
+    title?: string | null, 
+    episodeIdOrNum?: string | number | null, 
+    audio?: string | null
+): string {
+    const rawId = String(id || '').trim();
+    const slug = slugifyTitle(title);
+    const routeId = (!rawId.includes('-') && slug) ? `${rawId}-${slug}` : rawId;
+    const queryParts: string[] = [];
+    if (episodeIdOrNum !== undefined && episodeIdOrNum !== null && episodeIdOrNum !== '') {
+        const epStr = String(episodeIdOrNum);
+        queryParts.push(`ep=${encodeURIComponent(epStr.replace(/^\/?watch\//, ''))}`);
+    }
+    if (audio) {
+        queryParts.push(`audio=${encodeURIComponent(audio)}`);
+    }
+    const queryString = queryParts.length > 0 ? `?${queryParts.join('&')}` : '';
+    return `/watch/${routeId}${queryString}`;
+}
+
+export function getWatchRoute(animeId: string, episodeId?: string, type?: string, title?: string): string {
     const t = (type || '').toLowerCase();
     const epQuery = episodeId ? `?ep=${encodeURIComponent(episodeId)}` : '';
+    const slug = slugifyTitle(title);
+    const routeId = (!animeId.includes('-') && slug) ? `${animeId}-${slug}` : animeId;
+
     if (t === 'hindi' || t === 'hindi-anime') {
-        return `/hindi-watch/${animeId}${epQuery}`;
+        return `/watch/${routeId}${episodeId ? `?ep=${encodeURIComponent(episodeId)}&audio=hi` : '?audio=hi'}`;
     }
     if (t === 'donghua') {
         return `/donghua-watch/${animeId}${epQuery}`;
@@ -130,7 +166,7 @@ export function getWatchRoute(animeId: string, episodeId?: string, type?: string
     if (t === 'movie' || t === 'movies') {
         return `/movies-watch/${animeId}`;
     }
-    return `/watch/${animeId}${epQuery}`;
+    return `/watch/${routeId}${epQuery}`;
 }
 
 export function formatAnimeTitle(rawTitle?: string | null | any, animeId?: string | null): string {
@@ -204,4 +240,22 @@ export function sanitizeContinueWatchingEntry(p: any, fallbackUserId?: string) {
         age_rating: p.age_rating || p.ageRating || null,
         is_adult: Boolean(p.is_adult || p.isAdult)
     };
+}
+
+/**
+ * Automatically proxies images from known CDNs that fail client DNS resolution (e.g. anipixcdn.co)
+ * or returns a safe fallback.
+ */
+export function getSafeImageUrl(url?: string | null): string {
+    if (!url || typeof url !== 'string') return '/images/placeholder-no-img.jpg';
+    const trimmed = url.trim();
+    if (!trimmed) return '/images/placeholder-no-img.jpg';
+    if (trimmed.startsWith('/api/proxy') || trimmed.startsWith('/images/')) return trimmed;
+    
+    // Domains known to fail client-side router DNS resolution or have strict hotlink policies
+    if (trimmed.includes('cdn.anipixcdn.co') || trimmed.includes('anipixcdn.co')) {
+        return `/api/proxy?url=${encodeURIComponent(trimmed)}`;
+    }
+    
+    return trimmed;
 }

@@ -8,7 +8,7 @@ import {
 import { useRouter } from 'next/navigation'; 
 import { motion, AnimatePresence } from 'framer-motion';
 import { AnimeService } from '@/lib/api'; 
-import { cn } from '@/lib/utils';
+import { cn, slugifyTitle } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
@@ -148,7 +148,9 @@ export default function SearchBar() {
       const anime = await AnimeService.getRandomAnime();
       if (anime?.id) {
         setShowFilters(false);
-        router.push(`/watch/${anime.id}`);
+        const slug = slugifyTitle(anime.title || (anime as any).name);
+        const routeId = (slug && !String(anime.id).includes('-')) ? `${anime.id}-${slug}` : anime.id;
+        router.push(`/watch/${routeId}`);
       }
     } catch (error) {
       console.error("Failed to summon random anime");
@@ -157,9 +159,11 @@ export default function SearchBar() {
     }
   };
 
-  const handleSuggestionClick = (animeId: string) => {
+  const handleSuggestionClick = (animeId: string, animeTitle?: string) => {
     setShowResults(false);
-    router.push(`/watch/${animeId}`);
+    const slug = slugifyTitle(animeTitle);
+    const routeId = (slug && !String(animeId).includes('-')) ? `${animeId}-${slug}` : animeId;
+    router.push(`/watch/${routeId}`);
   };
 
   const handleFilterChange = (key: string, value: string) => {
@@ -412,7 +416,7 @@ export default function SearchBar() {
               {suggestions.map((item) => (
                 <div 
                   key={item.id}
-                  onClick={() => handleSuggestionClick(item.id)}
+                  onClick={() => handleSuggestionClick(item.id, item.title)}
                   className="group relative flex items-center gap-4 p-2 rounded-xl cursor-pointer transition-all hover:bg-white/5"
                 >
                   <div className="relative w-10 h-14 rounded-md overflow-hidden flex-shrink-0 border border-white/10 shadow-lg bg-zinc-900">

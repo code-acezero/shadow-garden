@@ -1,0 +1,3 @@
+{
+  "/api/blakite/[...endpoint]/route": "app/api/blakite/[...endpoint]/route.js"
+}

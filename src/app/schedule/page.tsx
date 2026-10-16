@@ -11,7 +11,7 @@ import {
   CheckCircle, PlusCircle, Flame, Clock, Captions, Mic, Info, X 
 } from 'lucide-react';
 import { format, subDays, isSameDay } from 'date-fns';
-import { cn } from '@/lib/utils';
+import { cn, slugifyTitle } from '@/lib/utils';
 import { AnimeService } from '@/lib/api';
 import Footer from '@/components/Anime/Footer';
 import { HoverCard, HoverCardContent, HoverCardTrigger } from "@/components/ui/hover-card";
@@ -171,27 +171,33 @@ const ScheduleCard = ({ anime }: { anime: any }) => {
         <motion.div variants={itemVariants} className="relative group">
             <MobileInfoBtn anime={anime} />
             <QTip anime={anime} trigger={
-                <Link href={`/watch/${anime.id}`} className="flex w-full items-stretch h-20 md:h-24 rounded-2xl bg-[#0f0f0f] border border-white/5 hover:border-primary-500/30 transition-all active:scale-[0.98] overflow-hidden">
-                    <div className="w-16 md:w-20 bg-white/5 flex flex-col items-center justify-center border-r border-white/5 group-hover:bg-primary-600/10 group-hover:border-primary-500/20 transition-colors">
-                        <span className="text-sm md:text-lg font-black text-white">{anime.time}</span>
-                        <span className="text-[8px] font-bold text-zinc-500 uppercase tracking-wider group-hover:text-primary-400">JST</span>
-                    </div>
-                    <div className="flex-1 flex flex-col justify-center px-4 py-2 min-w-0">
-                        <h3 className="text-xs md:text-sm font-bold text-zinc-200 group-hover:text-white transition-colors line-clamp-1 mb-1 pr-6">
-                            {anime.name}
-                        </h3>
-                        <p className="text-[10px] text-zinc-500 line-clamp-1 italic mb-2">{anime.jname}</p>
-                        <div className="flex items-center gap-2">
-                            <span className="px-2 py-0.5 bg-white/5 rounded text-[9px] font-bold text-zinc-400 border border-white/5 group-hover:border-primary-500/20 group-hover:text-primary-400 transition-colors">
-                                EP {anime.episode || '?'}
-                            </span>
-                            <div className="w-4 h-4 rounded-full bg-primary-600 flex items-center justify-center opacity-0 -translate-x-2 group-hover:opacity-100 group-hover:translate-x-0 transition-all duration-300">
-                                <PlayCircle size={10} className="text-white fill-white" />
+                (() => {
+                    const slug = slugifyTitle(anime.name || anime.title);
+                    const routeId = (slug && !String(anime.id).includes('-')) ? `${anime.id}-${slug}` : anime.id;
+                    return (
+                        <Link href={`/watch/${routeId}${anime.episode ? `?ep=${anime.episode}` : ''}`} className="flex w-full items-stretch h-20 md:h-24 rounded-2xl bg-[#0f0f0f] border border-white/5 hover:border-primary-500/30 transition-all active:scale-[0.98] overflow-hidden">
+                            <div className="w-16 md:w-20 bg-white/5 flex flex-col items-center justify-center border-r border-white/5 group-hover:bg-primary-600/10 group-hover:border-primary-500/20 transition-colors">
+                                <span className="text-sm md:text-lg font-black text-white">{anime.time}</span>
+                                <span className="text-[8px] font-bold text-zinc-500 uppercase tracking-wider group-hover:text-primary-400">JST</span>
                             </div>
-                        </div>
-                    </div>
-                    <div className="absolute inset-0 bg-gradient-to-r from-transparent via-transparent to-primary-900/10 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none" />
-                </Link>
+                            <div className="flex-1 flex flex-col justify-center px-4 py-2 min-w-0">
+                                <h3 className="text-xs md:text-sm font-bold text-zinc-200 group-hover:text-white transition-colors line-clamp-1 mb-1 pr-6">
+                                    {anime.name}
+                                </h3>
+                                <p className="text-[10px] text-zinc-500 line-clamp-1 italic mb-2">{anime.jname}</p>
+                                <div className="flex items-center gap-2">
+                                    <span className="px-2 py-0.5 bg-white/5 rounded text-[9px] font-bold text-zinc-400 border border-white/5 group-hover:border-primary-500/20 group-hover:text-primary-400 transition-colors">
+                                        EP {anime.episode || '?'}
+                                    </span>
+                                    <div className="w-4 h-4 rounded-full bg-primary-600 flex items-center justify-center opacity-0 -translate-x-2 group-hover:opacity-100 group-hover:translate-x-0 transition-all duration-300">
+                                        <PlayCircle size={10} className="text-white fill-white" />
+                                    </div>
+                                </div>
+                            </div>
+                            <div className="absolute inset-0 bg-gradient-to-r from-transparent via-transparent to-primary-900/10 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none" />
+                        </Link>
+                    );
+                })()
             } />
         </motion.div>
     );
@@ -201,13 +207,15 @@ const CompactAnimeCard = ({ anime, rank }: { anime: any, rank?: number }) => {
     const epDisplay = typeof anime?.episodes === 'object'
         ? (anime.episodes?.sub || anime.episodes?.eps || anime.episodes?.dub || '?')
         : (anime?.episodes || '?');
+    const slug = slugifyTitle(anime.title || anime.name);
+    const routeId = (slug && !String(anime.id).includes('-')) ? `${anime.id}-${slug}` : anime.id;
 
     return (
         <motion.div variants={itemVariants} className="relative group">
             <div className="absolute right-1 top-1 z-30">
                 <MobileInfoBtn anime={anime} />
             </div>
-            <Link href={`/watch/${anime.id}`} className="flex items-center gap-3 p-2 rounded-xl bg-transparent hover:bg-white/5 border border-transparent hover:border-white/10 transition-all">
+            <Link href={`/watch/${routeId}`} className="flex items-center gap-3 p-2 rounded-xl bg-transparent hover:bg-white/5 border border-transparent hover:border-white/10 transition-all">
                 <div className="relative w-10 h-14 md:w-12 md:h-16 shrink-0 rounded-lg overflow-hidden shadow-lg">
                     <img src={anime.poster} alt="" className="w-full h-full object-cover" loading="lazy" decoding="async"/>
                     {rank && (
@@ -317,31 +325,37 @@ const TopChartCard = ({ anime, rank, index, mobileActiveIndex, onMobileClick }: 
             </div>
 
             {/* QTip Removed for Top 10 List - Direct Link Used */}
-            <Link href={`/watch/${anime.id}`} className={cn(
-                "block w-full h-full relative bg-[#0a0a0a] rounded-xl overflow-hidden shadow-[0_10px_30px_-5px_rgba(0,0,0,0.8)] transition-all ring-1 ring-white/10",
-                isMobileActive ? "ring-red-500/50 shadow-[0_20px_50px_rgba(220,38,38,0.3)]" : "group-hover:ring-red-500/50 group-hover:shadow-[0_20px_50px_rgba(220,38,38,0.3)]"
-            )}>
-                <div className="absolute inset-0 rounded-xl border-r border-t border-white/20 z-20 pointer-events-none" />
-                <div className="absolute inset-y-0 left-0 w-1/3 bg-gradient-to-r from-black/90 to-transparent z-20 pointer-events-none mix-blend-multiply" />
-                <img src={anime.poster} alt={anime.title} className="w-full h-full object-cover opacity-80 group-hover:opacity-100 transition-opacity" loading="lazy" />
-                <div className={cn("absolute inset-0 bg-gradient-to-tr from-white/10 to-transparent opacity-0 transition-opacity duration-500 pointer-events-none z-30", isMobileActive ? "opacity-100" : "group-hover:opacity-100")} />
-                <div className="absolute inset-0 bg-gradient-to-t from-black via-black/20 to-transparent z-10" />
-                <div className={cn("absolute bottom-0 left-0 w-full p-3 md:p-4 transform transition-transform duration-300 z-30", isMobileActive ? "translate-y-0" : "translate-y-2 group-hover:translate-y-0")}>
-                    <h3 className={cn("text-xs md:text-sm font-bold text-white line-clamp-2 leading-tight transition-colors drop-shadow-md pr-2", isMobileActive ? "text-primary-200" : "group-hover:text-primary-200")}>
-                        {anime.title}
-                    </h3>
-                    <div className={cn("flex items-center gap-2 mt-2 transition-opacity duration-300 delay-75", isMobileActive ? "opacity-100" : "opacity-0 group-hover:opacity-100")}>
-                        <span className="text-[9px] text-zinc-300 bg-black/50 backdrop-blur-md px-1.5 py-0.5 rounded border border-white/10">
-                            EPS {typeof anime.episodes === 'object' ? (anime.episodes?.sub || anime.episodes?.eps || anime.episodes?.dub || '?') : (anime.episodes || '?')}
-                        </span>
-                        {isMobileActive && (
-                            <span className="text-[9px] text-primary-400 font-bold uppercase tracking-wider animate-pulse">
-                                Watch
-                            </span>
-                        )}
-                    </div>
-                </div>
-            </Link>
+            {(() => {
+                const slug = slugifyTitle(anime.title || anime.name);
+                const routeId = (slug && !String(anime.id).includes('-')) ? `${anime.id}-${slug}` : anime.id;
+                return (
+                    <Link href={`/watch/${routeId}`} className={cn(
+                        "block w-full h-full relative bg-[#0a0a0a] rounded-xl overflow-hidden shadow-[0_10px_30px_-5px_rgba(0,0,0,0.8)] transition-all ring-1 ring-white/10",
+                        isMobileActive ? "ring-red-500/50 shadow-[0_20px_50px_rgba(220,38,38,0.3)]" : "group-hover:ring-red-500/50 group-hover:shadow-[0_20px_50px_rgba(220,38,38,0.3)]"
+                    )}>
+                        <div className="absolute inset-0 rounded-xl border-r border-t border-white/20 z-20 pointer-events-none" />
+                        <div className="absolute inset-y-0 left-0 w-1/3 bg-gradient-to-r from-black/90 to-transparent z-20 pointer-events-none mix-blend-multiply" />
+                        <img src={anime.poster} alt={anime.title} className="w-full h-full object-cover opacity-80 group-hover:opacity-100 transition-opacity" loading="lazy" />
+                        <div className={cn("absolute inset-0 bg-gradient-to-tr from-white/10 to-transparent opacity-0 transition-opacity duration-500 pointer-events-none z-30", isMobileActive ? "opacity-100" : "group-hover:opacity-100")} />
+                        <div className="absolute inset-0 bg-gradient-to-t from-black via-black/20 to-transparent z-10" />
+                        <div className={cn("absolute bottom-0 left-0 w-full p-3 md:p-4 transform transition-transform duration-300 z-30", isMobileActive ? "translate-y-0" : "translate-y-2 group-hover:translate-y-0")}>
+                            <h3 className={cn("text-xs md:text-sm font-bold text-white line-clamp-2 leading-tight transition-colors drop-shadow-md pr-2", isMobileActive ? "text-primary-200" : "group-hover:text-primary-200")}>
+                                {anime.title}
+                            </h3>
+                            <div className={cn("flex items-center gap-2 mt-2 transition-opacity duration-300 delay-75", isMobileActive ? "opacity-100" : "opacity-0 group-hover:opacity-100")}>
+                                <span className="text-[9px] text-zinc-300 bg-black/50 backdrop-blur-md px-1.5 py-0.5 rounded border border-white/10">
+                                    EPS {typeof anime.episodes === 'object' ? (anime.episodes?.sub || anime.episodes?.eps || anime.episodes?.dub || '?') : (anime.episodes || '?')}
+                                </span>
+                                {isMobileActive && (
+                                    <span className="text-[9px] text-primary-400 font-bold uppercase tracking-wider animate-pulse">
+                                        Watch
+                                    </span>
+                                )}
+                            </div>
+                        </div>
+                    </Link>
+                );
+            })()}
         </motion.div>
     );
 };
@@ -606,14 +620,20 @@ export default function SchedulePage() {
                           <div key={`${anime.id}-${idx}`} className="relative group">
                               <MobileInfoBtn anime={anime} />
                               <QTip anime={anime} trigger={
-                                  <Link href={`/watch/${anime.id}`} className="group relative aspect-[2/3] block rounded-xl overflow-hidden bg-zinc-900 border border-white/5 hover:border-primary-500/50 hover:shadow-[0_0_20px_rgba(220,38,38,0.2)] transition-all">
-                                      <img src={anime.poster} className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110 opacity-70 group-hover:opacity-100 grayscale group-hover:grayscale-0" loading="lazy" />
-                                      <div className="absolute inset-0 bg-gradient-to-t from-black via-transparent to-transparent" />
-                                      <div className="absolute bottom-0 left-0 w-full p-3">
-                                          <h4 className="text-xs font-bold text-white line-clamp-2">{anime.title}</h4>
-                                          <span className="text-[10px] text-zinc-400 mt-1 block">{anime.duration || 'TBA'}</span>
-                                      </div>
-                                  </Link>
+                                  (() => {
+                                      const slug = slugifyTitle(anime.title);
+                                      const routeId = (slug && !String(anime.id).includes('-')) ? `${anime.id}-${slug}` : anime.id;
+                                      return (
+                                          <Link href={`/watch/${routeId}`} className="group relative aspect-[2/3] block rounded-xl overflow-hidden bg-zinc-900 border border-white/5 hover:border-primary-500/50 hover:shadow-[0_0_20px_rgba(220,38,38,0.2)] transition-all">
+                                              <img src={anime.poster} className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110 opacity-70 group-hover:opacity-100 grayscale group-hover:grayscale-0" loading="lazy" />
+                                              <div className="absolute inset-0 bg-gradient-to-t from-black via-transparent to-transparent" />
+                                              <div className="absolute bottom-0 left-0 w-full p-3">
+                                                  <h4 className="text-xs font-bold text-white line-clamp-2">{anime.title}</h4>
+                                                  <span className="text-[10px] text-zinc-400 mt-1 block">{anime.duration || 'TBA'}</span>
+                                              </div>
+                                          </Link>
+                                      );
+                                  })()
                               } />
                           </div>
                       )) : [...Array(5)].map((_, i) => <div key={i} className="aspect-[2/3] rounded-xl bg-white/5 animate-pulse border border-white/5"/>)}

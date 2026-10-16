@@ -43,7 +43,7 @@ function HindiSearchContent() {
           type: item.type || 'TV',
           episodes: { sub: 0, dub: item.episodeCount || item.episodes || 0 },
           isHindi: true,
-          targetRoute: `/hindi-watch/${item.id || item.slug}`,
+          targetRoute: `/watch/${item.id || item.slug}?audio=hi`,
         })));
         setHasNextPage(items.length >= 20);
       } else {
@@ -57,7 +57,7 @@ function HindiSearchContent() {
           type: item.type || 'TV',
           episodes: { sub: 0, dub: item.episodeCount || item.episodes || 0 },
           isHindi: true,
-          targetRoute: `/hindi-watch/${item.id || item.slug}`,
+          targetRoute: `/watch/${item.id || item.slug}?audio=hi`,
         })));
         setHasNextPage(items.length >= 20);
       }

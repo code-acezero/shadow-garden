@@ -39,6 +39,59 @@ const RecentUpdatesSection = dynamic(
   }
 );
 
+const AllTimeFavoriteCarousel = dynamic(
+  () => import("@/components/Home/AllTimeFavoriteCarousel"),
+  { 
+    ssr: false,
+    loading: () => (
+      <div className="w-full px-4 md:px-0">
+        <div className="h-64 bg-white/5 rounded-xl animate-pulse" />
+      </div>
+    )
+  }
+);
+
+const StreamingTodaySection = dynamic(
+  () => import("@/components/Home/StreamingTodaySection"),
+  { 
+    ssr: false,
+    loading: () => (
+      <div className="w-full px-4 md:px-0">
+        <div className="h-64 bg-white/5 rounded-xl animate-pulse" />
+      </div>
+    )
+  }
+);
+
+const MultiverseShowcase = dynamic(
+  () => import("@/components/Home/MultiverseShowcase"),
+  { 
+    ssr: false,
+    loading: () => (
+      <div className="w-full px-4 md:px-0">
+        <div className="h-64 bg-white/5 rounded-xl animate-pulse" />
+      </div>
+    )
+  }
+);
+
+const HindiHomeSection = dynamic(
+  () => import("@/components/Home/HindiHomeSection"),
+  { 
+    ssr: false,
+    loading: () => (
+      <div className="w-full px-4 md:px-0">
+        <div className="h-64 bg-white/5 rounded-xl animate-pulse" />
+      </div>
+    )
+  }
+);
+
+const AZNavigationBar = dynamic(
+  () => import("@/components/Home/AZNavigationBar"),
+  { ssr: false }
+);
+
 function HomeContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
@@ -91,6 +144,9 @@ function HomeContent() {
 
   const spotlightData = data?.spotlight ?? [];
   const recentData = data?.recent ?? [];
+  const trendingData = data?.trending ?? [];
+  const topAiringData = data?.topAiring ?? [];
+  const upcomingData = data?.upcoming ?? [];
 
   return (
     <>
@@ -118,11 +174,8 @@ function HomeContent() {
         {/* Main Content Wrapper */}
         <div className="min-h-full flex flex-col relative z-10">
           
-          {/* Top Spacing - Increased by ~10-15% (h-20 on mobile, h-14 on desktop) */}
-          
-
           {/* Spotlight Slider */}
-          <div className="w-full mb-2 md:mb-10 px-0">
+          <div className="w-full mb-2 md:mb-6 px-0 sm:px-6 lg:px-8 max-w-[1440px] mx-auto">
             {!isLoading && spotlightData.length > 0 ? (
               <SpotlightSlider animes={spotlightData} />
             ) : (
@@ -130,20 +183,39 @@ function HomeContent() {
             )}
           </div>
 
-          {/* Main Content Area */}
-          <div className="flex-1 flex flex-col gap-3 md:gap-12">
+          {/* Main Content Area with Rich Staggered Sections */}
+          <div className="flex-1 flex flex-col gap-6 md:gap-14 px-4 sm:px-6 lg:px-8 max-w-[1440px] w-full mx-auto">
             <ContinueWatching />
 
+            {/* All Time Favorite Hall */}
+            <AllTimeFavoriteCarousel />
+
+            {/* Streaming Today (Broadcast Radar) */}
+            <StreamingTodaySection />
+
+            {/* Recent Episode Updates with Synchronized Tabs */}
             {!isLoading ? (
               <RecentUpdatesSection initialData={recentData} />
             ) : (
-              <div className="px-4 w-full">
+              <div className="w-full">
                 <div className="h-64 bg-white/5 rounded-2xl animate-pulse" />
               </div>
             )}
+
+            {/* Dedicated Hindi Realm */}
+            <HindiHomeSection />
+
+            {/* Beyond Broadcast: Movies, Donghua, Dramas, and Community Whispers */}
+            <MultiverseShowcase />
+
+            {/* Alphabetical Archive Codex (A-Z Directory) */}
+            <AZNavigationBar />
+
+            <div className="mt-2 md:mt-4">
+              <CuteShareBar />
+            </div>
           </div>
 
-          <CuteShareBar />
           <Footer />
         </div>
       </MobileContainer>

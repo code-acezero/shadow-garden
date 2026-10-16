@@ -16,6 +16,26 @@ const REFERER_MAP: Record<string, string> = {
     'kwik': 'https://kwik.cx/',
     'uwucdn': 'https://kwik.cx/',
     'animepahe': 'https://animepahe.ru/',
+
+    // --- ZokoAnime CDNs (Critical for JP Sub & EN Dub streams) ---
+    'dramahot': 'https://zokoanime.video/',
+    'drama1': 'https://zokoanime.video/',
+    'zokoanime': 'https://zokoanime.video/',
+    'otakustream': 'https://zokoanime.video/',
+
+    // --- MegaPlay / Anikoto CDNs (Critical for EN Dub streams) ---
+    'nexabloom': 'https://megaplay.buzz/',
+    'shiora': 'https://megaplay.buzz/',
+    'silentvoyage': 'https://megaplay.buzz/',
+    'broforgotsave': 'https://megaplay.buzz/',
+    'megaplay': 'https://megaplay.buzz/',
+    'megap': 'https://megaplay.buzz/',
+    'tcdn': 'https://megaplay.buzz/',
+    'anikoto': 'https://anikoto.net/',
+
+    // --- Blakite / Rumble Cloud (Hindi & Special Dubs) ---
+    'blakite': 'https://blakiteapi.xyz/',
+    'rumble': 'https://blakiteapi.xyz/',
     
     // --- ✅ HINDI IMAGE HUB ACCESS ---
     'watchanimeworld': 'https://watchanimeworld.net/',
@@ -54,17 +74,38 @@ export async function GET(request: NextRequest) {
 
     const decodedUrl = decodeURIComponent(url);
     const isM3U8 = decodedUrl.includes('.m3u8');
-    const isImage = /\.(jpg|jpeg|png|webp|gif|svg)$/i.test(decodedUrl) || decodedUrl.includes('image');
+    // Disguised video segments (.jpg/.html on streaming CDNs) must NOT be treated as images
+    const isVideoSegment = /(?:seg-|\.ts$|\.ts\?|\.m4s|\.mp4|\/anime\/.*(?:seg-|\.jpg|\.html|\.png|\.webp))/i.test(decodedUrl);
+    const isImage = !isVideoSegment && (/\.(jpg|jpeg|png|webp|gif|svg)$/i.test(decodedUrl) || decodedUrl.includes('/images/') || decodedUrl.includes('image.tmdb'));
 
-    // Prefer a referer the source itself told us to use (this is how the new
-    // Anikoto-backed sources tell us what they need) over guessing from a
-    // hardcoded domain list, which only covers the old backend's CDNs.
-    const dynamicReferer = explicitReferer ? decodeURIComponent(explicitReferer) : determineReferer(decodedUrl);
+    // Check if the URL belongs to a known strict CDN (e.g. dramahot / drama1 / zokoanime)
+    const mappedReferer = determineReferer(decodedUrl);
+    const isStrictKnownCdn = /dramahot|drama1|zokoanime|otakustream/i.test(decodedUrl);
+    const dynamicReferer = (isStrictKnownCdn && mappedReferer !== DEFAULT_REFERER)
+        ? mappedReferer
+        : (explicitReferer ? decodeURIComponent(explicitReferer) : mappedReferer);
 
     try {
         // We use your custom fetcher to maintain consistency
         const rangeHeader = request.headers.get('range');
-        const response = await fetchWithCustomReferer(decodedUrl, dynamicReferer, rangeHeader);
+        let response = await fetchWithCustomReferer(decodedUrl, dynamicReferer, rangeHeader);
+
+        // If upstream returns 403 or 401, retry with mappedReferer or known subtitle referers
+        if ((response.status === 403 || response.status === 401) && dynamicReferer !== mappedReferer && mappedReferer !== DEFAULT_REFERER) {
+            response = await fetchWithCustomReferer(decodedUrl, mappedReferer, rangeHeader);
+        }
+        if ((response.status === 403 || response.status === 401) && (decodedUrl.includes('.vtt') || decodedUrl.includes('/subs/'))) {
+            const fallbackSubs = ['https://zokoanime.video/', 'https://megacloud.blog/'];
+            for (const fb of fallbackSubs) {
+                if (fb !== dynamicReferer && fb !== mappedReferer) {
+                    const retryRes = await fetchWithCustomReferer(decodedUrl, fb, rangeHeader);
+                    if (retryRes.ok) {
+                        response = retryRes;
+                        break;
+                    }
+                }
+            }
+        }
 
         if (!response.ok && response.status !== 206) {
             return NextResponse.json({
@@ -99,7 +140,7 @@ export async function GET(request: NextRequest) {
                 headers: {
                     "Content-Type": "application/vnd.apple.mpegurl",
                     "Access-Control-Allow-Origin": "*",
-                    "Cache-Control": "public, max-age=600"
+                    "Cache-Control": "no-cache, no-store, must-revalidate"
                 }
             });
         }
@@ -119,8 +160,19 @@ export async function GET(request: NextRequest) {
         }
 
         // --- PHASE D: VIDEO SEGMENTS / OTHERS ---
+        let segContentType = contentType;
+        if (isVideoSegment || decodedUrl.includes('seg-') || decodedUrl.includes('.ts')) {
+            segContentType = "video/mp2t";
+        } else if (decodedUrl.includes('.m4s')) {
+            segContentType = "video/iso.segment";
+        } else if (decodedUrl.includes('.vtt') || decodedUrl.includes('/subs/')) {
+            segContentType = "text/vtt; charset=utf-8";
+        } else if (!segContentType || segContentType.includes('text/html') || segContentType.includes('image/')) {
+            segContentType = "application/octet-stream";
+        }
+
         const passthroughHeaders: Record<string, string> = {
-            "Content-Type": contentType || "application/octet-stream",
+            "Content-Type": segContentType,
             "Access-Control-Allow-Origin": "*",
             "Access-Control-Expose-Headers": "Content-Length, Content-Range, Accept-Ranges",
             "Accept-Ranges": response.headers.get("Accept-Ranges") || "bytes",

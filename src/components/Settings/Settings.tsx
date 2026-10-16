@@ -845,9 +845,19 @@ export default function Settings() {
                     <h3 className="text-xs font-black text-zinc-500 uppercase tracking-widest flex items-center gap-2"><Server size={14} className="text-primary"/> Preferences</h3>
                     <div className="grid grid-cols-2 gap-4">
                         <SelectCard icon={Server} label="Server" value={settings.defaultServer} options={['hd-1', 'hd-2', 'mirror-1']} displayOptions={['Portal 1', 'Portal 2', 'Portal 3']} onChange={(v: any) => updateSetting('defaultServer', v)} />
-                        <SelectCard icon={Monitor} label="Quality" value={settings.defaultQuality} options={['1080p', '720p', '480p', 'Auto']} onChange={(v: any) => updateSetting('defaultQuality', v)} />
-                        <SelectCard icon={Speaker} label="Audio" value={settings.defaultAudio} options={['Japanese', 'English']} onChange={(v: any) => updateSetting('defaultAudio', v)} />
-                        <SelectCard icon={Type} label="Subtitles" value={settings.subLanguage} options={['English', 'Spanish', 'None']} onChange={(v: any) => updateSetting('subLanguage', v)} />
+                        <SelectCard icon={Monitor} label="Quality" value={(settings as any).defaultQuality || '1080p'} options={['1080p', '720p', '480p', 'Auto']} onChange={(v: any) => updateSetting('defaultQuality', v)} />
+                        <SelectCard 
+                            icon={Speaker} 
+                            label="Audio Preference" 
+                            value={settings.defaultAudio} 
+                            options={['jp', 'en', 'hi', 'cn']} 
+                            displayOptions={['Japanese (JP)', 'English (EN)', 'Hindi (HI)', 'Chinese (CN)']} 
+                            onChange={(v: any) => {
+                                updateSetting('defaultAudio', v);
+                                updateSetting('preferredAudio', v);
+                            }} 
+                        />
+                        <SelectCard icon={Type} label="Subtitles" value={settings.subLanguage} options={['en', 'es', 'fr', 'none']} displayOptions={['English', 'Spanish', 'French', 'None']} onChange={(v: any) => updateSetting('subLanguage', v)} />
                     </div>
                 </div>
             </div>

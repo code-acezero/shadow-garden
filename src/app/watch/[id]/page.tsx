@@ -1,5 +1,6 @@
 import { Metadata, ResolvingMetadata } from 'next';
 import { AnimeService } from '@/lib/api';
+import { slugifyTitle } from '@/lib/utils';
 import WatchClient from './WatchClient';
 
 type Props = {
@@ -13,11 +14,12 @@ export async function generateMetadata(
 ): Promise<Metadata> {
   const params = await props.params;
   const searchParams = await props.searchParams;
-  const id = params.id;
+  const rawId = params.id;
+  const cleanId = rawId ? (rawId.match(/^(\d+)/)?.[1] || rawId) : '';
   const ep = searchParams?.ep ? String(searchParams.ep) : null;
   
   // Fetch anime metadata
-  const data = await AnimeService.getAnimeInfo(id).catch(() => null);
+  const data = await AnimeService.getAnimeInfo(cleanId || rawId).catch(() => null);
 
   if (!data) {
     return {
@@ -36,7 +38,9 @@ export async function generateMetadata(
   const seoTitle = `Watch ${cleanTitle}${epTitle} Online Free HD (English Sub & Dub)`;
   const seoDesc = `Watch ${cleanTitle}${epTitle} online for free with English Subbed and Dubbed streams in 1080p Full HD. Stream all episodes with multiple fast servers and zero lag. ${cleanDesc}...`;
 
-  const canonicalUrl = `https://shadow-garden.site/watch/${encodeURIComponent(id)}${ep ? `?ep=${ep}` : ''}`;
+  const slug = slugifyTitle(cleanTitle);
+  const canonicalId = slug ? `${data.id}-${slug}` : String(data.id);
+  const canonicalUrl = `https://shadow-garden.site/watch/${encodeURIComponent(canonicalId)}${ep ? `?ep=${ep}` : ''}`;
   const posterUrl = data.poster || 'https://shadow-garden.site/og-image.png';
 
   const keywords = [
@@ -100,17 +104,20 @@ export async function generateMetadata(
 export default async function Page(props: Props) {
   const params = await props.params;
   const searchParams = await props.searchParams;
-  const id = params.id;
+  const rawId = params.id;
+  const cleanId = rawId ? (rawId.match(/^(\d+)/)?.[1] || rawId) : '';
   const ep = searchParams?.ep ? String(searchParams.ep) : null;
 
-  const data = await AnimeService.getAnimeInfo(id).catch(() => null);
+  const data = await AnimeService.getAnimeInfo(cleanId || rawId).catch(() => null);
 
   const cleanTitle = data?.title || 'Anime';
   const cleanDesc = (data?.description || `Watch ${cleanTitle} online in HD on Shadow Garden.`)
     .replace(/<[^>]*>?/gm, '')
     .slice(0, 250);
   const posterUrl = data?.poster || 'https://shadow-garden.site/og-image.png';
-  const pageUrl = `https://shadow-garden.site/watch/${encodeURIComponent(id)}`;
+  const slug = slugifyTitle(cleanTitle);
+  const canonicalId = slug ? `${data?.id || cleanId}-${slug}` : String(data?.id || cleanId);
+  const pageUrl = `https://shadow-garden.site/watch/${encodeURIComponent(canonicalId)}`;
 
   const jsonLd = {
     "@context": "https://schema.org",
@@ -176,7 +183,7 @@ export default async function Page(props: Props) {
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
       />
-      <WatchClient />
+      <WatchClient initialAnime={data} />
     </>
   );
 }

@@ -1,0 +1,3 @@
+{
+  "/api/donghua/[...endpoint]/route": "app/api/donghua/[...endpoint]/route.js"
+}

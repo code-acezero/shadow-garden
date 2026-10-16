@@ -1,0 +1,6 @@
+{
+  "version": 3,
+  "sources": [],
+  "sections": [
+    {"offset": {"line": 3, "column": 0}, "map": {"version":3,"sources":["file:///D:/ACE%20ZERO/My%20web%20Project%20Data/Ace%20Web%20Project/shadow-garden-v2/node_modules/.pnpm/next%4015.5.21_%40babel%2Bcore%407._81b24c4c8084276f47854f01706fcc93/node_modules/next/error.js"],"sourcesContent":["module.exports = require('./dist/pages/_error')\n"],"names":[],"mappings":"AAAA,OAAO,OAAO","ignoreList":[0],"debugId":null}}]
+}

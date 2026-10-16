@@ -79,7 +79,7 @@ export async function checkAllLibraryUpdates() {
             latestEpCount = info.episodes.length;
             title = info.title || title;
             image = info.image || image;
-            targetLink = `/hindi-watch/${id}`;
+            targetLink = `/watch/${id}?audio=hi`;
           }
         } else {
           const info = await AnimeService.getAnimeInfo(id);

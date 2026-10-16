@@ -181,7 +181,7 @@ function SearchContent() {
 
   const keyword = searchParams.get('keyword') || '';
   const genresParam = searchParams.get('genres') || '';
-  const sortParam = searchParams.get('sort') || 'newest';
+  const sortParam = searchParams.get('sort') || (['donghua', 'hindi', 'drama', 'movies'].includes(searchParams.get('library') || '') ? 'newest' : 'default');
   const pageParam = parseInt(searchParams.get('page') || '1');
   const modeParam = searchParams.get('mode') || '';
   const libraryParam = searchParams.get('library') || 'main';
@@ -209,6 +209,15 @@ function SearchContent() {
   const [epMin, setEpMin] = useState('');
   const [epMax, setEpMax] = useState('');
   const [selectedSort, setSelectedSort] = useState(sortParam);
+
+  useEffect(() => {
+    setCurrentPage(pageParam);
+    setSelectedLibrary(libraryParam);
+    setQuery(keyword);
+    setSelectedGenres(genresParam ? genresParam.split(',') : []);
+    setExcludedGenres(excludedParam ? excludedParam.split(',') : []);
+    setSelectedSort(sortParam);
+  }, [pageParam, libraryParam, keyword, genresParam, excludedParam, sortParam]);
 
   const fetchResults = useCallback(async () => {
     setLoading(true);
@@ -279,9 +288,9 @@ function SearchContent() {
       } else {
         if (modeParam === 'az' && !keyword && !selectedGenres.length && (!selectedSort || selectedSort === 'default')) {
           data = await AnimeService.getFilteredAnime('az-list', currentPage);
-        } else if (keyword && !selectedGenres.length && !excludedGenres.length && !selectedType && !selectedStatus && !selectedSeason && !selectedYear && !selectedLanguage && !selectedRating && !selectedSource && !epMin && !epMax && (!selectedSort || selectedSort === 'default')) {
+        } else if (keyword && !selectedGenres.length && !excludedGenres.length && !selectedType && !selectedStatus && !selectedSeason && !selectedYear && !selectedLanguage && !selectedRating && !selectedSource && !epMin && !epMax && (!selectedSort || selectedSort === 'default' || selectedSort === 'newest')) {
           data = await AnimeService.search(keyword, currentPage);
-        } else if (selectedGenres.length > 0 || excludedGenres.length > 0 || selectedType || selectedStatus || selectedSeason || selectedYear || selectedLanguage || selectedRating || selectedSource || epMin || epMax || (selectedSort && selectedSort !== 'default')) {
+        } else if (selectedGenres.length > 0 || excludedGenres.length > 0 || selectedType || selectedStatus || selectedSeason || selectedYear || selectedLanguage || selectedRating || selectedSource || epMin || epMax || (selectedSort && selectedSort !== 'default' && selectedSort !== 'newest')) {
           const params: Record<string, any> = { page: currentPage };
           if (keyword) params.keyword = keyword;
           if (selectedGenres.length) params.genres = selectedGenres.join(',');
@@ -301,7 +310,7 @@ function SearchContent() {
             const azRes = await AnimeService.getFilteredAnime('az-list', currentPage);
             filterResults = azRes.results || [];
           }
-          data = { results: filterResults, currentPage, hasNextPage: filterResults.length >= 18 };
+          data = { results: filterResults, currentPage, hasNextPage: filterResults.length >= 24 };
         } else {
           const sortStr = selectedSort as string;
           data = await AnimeService.getFilteredAnime(sortStr === 'most-viewed' ? 'popular' : sortStr === 'latest-added' ? 'added' : 'recent', currentPage);
