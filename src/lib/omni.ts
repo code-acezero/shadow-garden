@@ -1,62 +1,42 @@
 // src/lib/omni.ts
-// Client for the omni-api hindidrama scraper (hindidrama.net)
-// Mirrors the shape of hpi.ts and dpi.ts for consistency.
+// Direct client for Shadow Garden self-hosted Drama & Movies APIs
+// Routes directly to /api/drama and /api/hdmovies with 0 external dependencies or middleman proxies.
 
-import { ApiManager } from './api';
-
-const getOmniBase = () => `${ApiManager.getBaseUrl()}/hindidrama`;
+const getOmniBase = () => '/api/drama';
 const getMoviesBase = () => '/api/hdmovies';
 
 async function fetchOmni<T = any>(
   endpoint: string,
-  params: Record<string, any> = {},
-  retryCount = 0
+  params: Record<string, any> = {}
 ): Promise<T | null> {
   const queryParts = Object.entries(params)
     .filter(([, v]) => v !== undefined && v !== null && v !== '')
     .map(([k, v]) => `${encodeURIComponent(k)}=${encodeURIComponent(String(v))}`);
   const queryString = queryParts.length > 0 ? `?${queryParts.join('&')}` : '';
   const base = endpoint.startsWith('http') ? '' : (endpoint.includes('hdmovies') ? getMoviesBase() : getOmniBase());
-  let targetUrl = endpoint.startsWith('http') ? endpoint : `${base}${endpoint.replace('/hdmovies', '')}${queryString}`;
+  const cleanEndpoint = endpoint.replace('/hdmovies', '');
+  const targetUrl = endpoint.startsWith('http') ? endpoint : `${base}${cleanEndpoint}${queryString}`;
   
-  // Local Next.js API routes (like /api/hdmovies) should be fetched directly, not through /api/proxy
-  const isLocalApi = targetUrl.startsWith('/api/');
   const origin = typeof window === 'undefined' ? (process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000') : '';
-  const fetchUrl = isLocalApi
-    ? `${origin}${targetUrl}`
-    : (typeof window !== 'undefined' ? `/api/proxy?url=${encodeURIComponent(targetUrl)}` : targetUrl);
+  const fetchUrl = targetUrl.startsWith('http') ? targetUrl : `${origin}${targetUrl}`;
 
   try {
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 20000);
+    const timeoutId = setTimeout(() => controller.abort(), 15000);
     const response = await fetch(fetchUrl, { signal: controller.signal, cache: 'no-store' });
     clearTimeout(timeoutId);
 
     if (!response.ok) {
-      if (!isLocalApi && retryCount < ApiManager.getAllUrls().length - 1) {
-        ApiManager.rotateUrl();
-        return fetchOmni(endpoint, params, retryCount + 1);
-      }
       return null;
     }
 
     const json = await response.json();
-    // Unwrap proxy wrapper if present
     if (json && typeof json === 'object') {
       if ('ok' in json) return json.ok ? (json.data ?? json) : null;
       if ('data' in json && !('results' in json) && !('servers' in json)) return json.data as T;
     }
     return json as T;
-  } catch (err: any) {
-    if (
-      err?.name === 'AbortError' ||
-      (err?.message && err.message.includes('fetch'))
-    ) {
-      if (retryCount < ApiManager.getAllUrls().length - 1) {
-        ApiManager.rotateUrl();
-        return fetchOmni(endpoint, params, retryCount + 1);
-      }
-    }
+  } catch {
     return null;
   }
 }
@@ -65,12 +45,23 @@ async function fetchOmni<T = any>(
 
 export interface DramaCard {
   id: string;           // slug used in URL
+  slug?: string;
   title: string;
   image: string;
+  poster?: string;
+  backdrop?: string;
+  overview?: string;
+  synopsis?: string;
   type?: string;
+  category?: 'drama' | 'series' | 'movie';
+  isMovie?: boolean;
   episode?: string;
   year?: string;
   country?: string;
+  isHindi?: boolean;
+  audio?: string;
+  score?: string;
+  relationType?: string;
 }
 
 export interface DramaSection {
@@ -90,6 +81,34 @@ export interface DramaEpisode {
   url: string;
   embedUrl?: string;
   image?: string;
+  season?: number;
+}
+
+export interface DramaSeason {
+  seasonNumber: number;
+  name: string;
+  episodeCount: number;
+}
+
+export interface DramaCharacter {
+  id: string;
+  name: string;
+  character?: string;
+  role?: string;
+  profile?: string | null;
+  profileLarge?: string | null;
+  image?: string | null;
+  popularity?: number;
+  department?: string;
+}
+
+export interface DramaTrailer {
+  id: string;
+  key: string;
+  url: string;
+  embedUrl: string;
+  name?: string;
+  type?: string;
 }
 
 export interface DramaDetail {
@@ -97,16 +116,34 @@ export interface DramaDetail {
   slug: string;
   title: string;
   image: string;
+  poster?: string;
   banner?: string;
+  backdrop?: string;
   synopsis: string;
+  overview?: string;
   status: string;
   type: string;
+  isMovie?: boolean;
   rating?: string;
   year?: string;
   country?: string;
   genres: string[];
+  cast?: any[];
+  characters?: DramaCharacter[];
+  runtime?: string;
+  imdbId?: string;
   episodes: DramaEpisode[];
+  seasons?: DramaSeason[];
   recommendations: DramaCard[];
+  related?: DramaCard[];
+  trailer?: DramaTrailer | null;
+  isHindi?: boolean;
+  originalLanguage?: string;
+  tagline?: string;
+  releaseDate?: string;
+  voteCount?: string;
+  studios?: { name: string; logo?: string | null; country?: string }[];
+  director?: string;
   embedUrl?: string;  // base embed URL for stream fetching
 }
 
@@ -118,6 +155,9 @@ export interface DramaServer {
 
 export interface DramaStream {
   servers: DramaServer[];
+  ogServers?: DramaServer[];
+  multiServers?: DramaServer[];
+  hasMultiAudio?: boolean;
   hlsUrl?: string;     // first HLS url if available
   iframeUrl?: string;  // first iframe url as fallback
 }
@@ -161,13 +201,24 @@ export interface MovieDetail {
 
 function normalizeDramaCard(item: any): DramaCard {
   return {
-    id: item?.slug || item?.id || '',
+    id: String(item?.slug || item?.id || ''),
+    slug: String(item?.slug || item?.id || ''),
     title: item?.title || item?.name || 'Unknown',
     image: item?.image || item?.poster || item?.thumbnail || '',
+    poster: item?.poster || item?.image || item?.thumbnail || '',
+    backdrop: item?.backdrop || item?.banner || item?.cover || '',
+    overview: item?.overview || item?.synopsis || item?.description || '',
+    synopsis: item?.synopsis || item?.overview || item?.description || '',
     type: item?.type || item?.country || '',
+    category: item?.category,
+    isMovie: Boolean(item?.isMovie || item?.category === 'movie' || item?.type === 'Movie'),
     episode: item?.episode !== undefined ? String(item.episode) : undefined,
     year: item?.year ? String(item.year) : undefined,
     country: item?.country || '',
+    isHindi: Boolean(item?.isHindi),
+    audio: item?.audio || (item?.isHindi ? 'Hindi Dub' : undefined),
+    score: item?.score ? String(item.score) : undefined,
+    relationType: item?.relationType,
   };
 }
 
@@ -184,7 +235,8 @@ class OmniClient {
           if (section.title && Array.isArray(section.items) && section.items.length > 0) {
             sections.push({
               title: section.title,
-              items: section.items.map(normalizeDramaCard)
+              items: section.items.map(normalizeDramaCard),
+              query: section.query
             });
           }
         });
@@ -192,10 +244,62 @@ class OmniClient {
 
       // Final fallback
       if (sections.length === 0) {
-        sections.push({ title: 'Drama', items: [] });
+        sections.push({ title: 'Drama & Movies', items: [] });
       }
 
       return { sections };
+    },
+
+    getDramas: async (country = 'all', page = 1) => {
+      const res: any = await fetchOmni('/dramas', { country, page });
+      const items = Array.isArray(res?.results) ? res.results.map(normalizeDramaCard) : [];
+      return {
+        items,
+        pagination: {
+          currentPage: res?.currentPage || page,
+          hasNextPage: res?.hasNextPage ?? items.length >= 20,
+          totalPages: 10,
+        },
+      };
+    },
+
+    getSeries: async (category = 'all', page = 1) => {
+      const res: any = await fetchOmni('/series', { category, page });
+      const items = Array.isArray(res?.results) ? res.results.map(normalizeDramaCard) : [];
+      return {
+        items,
+        pagination: {
+          currentPage: res?.currentPage || page,
+          hasNextPage: res?.hasNextPage ?? items.length >= 20,
+          totalPages: 10,
+        },
+      };
+    },
+
+    getMovies: async (category = 'all', page = 1) => {
+      const res: any = await fetchOmni('/movies', { category, page });
+      const items = Array.isArray(res?.results) ? res.results.map(normalizeDramaCard) : [];
+      return {
+        items,
+        pagination: {
+          currentPage: res?.currentPage || page,
+          hasNextPage: res?.hasNextPage ?? items.length >= 20,
+          totalPages: 10,
+        },
+      };
+    },
+
+    getHindi: async (sub = 'all', page = 1) => {
+      const res: any = await fetchOmni('/hindi', { sub, page });
+      const items = Array.isArray(res?.results) ? res.results.map(normalizeDramaCard) : [];
+      return {
+        items,
+        pagination: {
+          currentPage: res?.currentPage || page,
+          hasNextPage: res?.hasNextPage ?? false,
+          totalPages: 10,
+        },
+      };
     },
 
     search: async (query: string, page = 1) => {
@@ -213,8 +317,11 @@ class OmniClient {
       };
     },
 
-    getDetail: async (slug: string): Promise<DramaDetail | null> => {
-      const res: any = await fetchOmni(`/info/${encodeURIComponent(slug)}`);
+    getDetail: async (slug: string, type?: string, season?: number | string): Promise<DramaDetail | null> => {
+      const q: any = {};
+      if (type) q.type = type;
+      if (season) q.season = season;
+      const res: any = await fetchOmni(`/info/${encodeURIComponent(slug)}`, Object.keys(q).length > 0 ? q : undefined);
       if (!res) return null;
 
       const episodes: DramaEpisode[] = (res.episodes || []).map((e: any, i: number) => ({
@@ -224,11 +331,14 @@ class OmniClient {
         url: e.url || e.href || e.embedUrl || '',
         embedUrl: e.embedUrl || e.url || e.href || '',
         image: e.image || res.image || '',
+        season: e.season || (season ? Number(season) : 1),
       }));
 
-      const recommendations: DramaCard[] = (res.recommendations || res.related || []).map(normalizeDramaCard);
+      const recommendations: DramaCard[] = (res.recommendations || []).map(normalizeDramaCard);
+      const related: DramaCard[] = (res.related || []).map(normalizeDramaCard);
+      const characters = Array.isArray(res.characters) ? res.characters : (Array.isArray(res.cast) ? res.cast : []);
 
-      let finalTitle = res.title || res.name || 'Unknown Drama';
+      let finalTitle = res.title || res.name || 'Unknown Title';
       if (finalTitle === 'FAQs') {
         finalTitle = slug
           .replace('watch-', '')
@@ -245,41 +355,60 @@ class OmniClient {
         slug,
         title: finalTitle,
         image: res.image || res.poster || res.thumbnail || '',
-        banner: res.banner || res.cover || res.image || '',
-        synopsis: res.description || res.synopsis || res.plot || '',
+        poster: res.poster || res.image || '',
+        banner: res.banner || res.backdrop || res.cover || res.image || '',
+        backdrop: res.backdrop || res.banner || '',
+        synopsis: res.synopsis || res.description || res.plot || '',
+        overview: res.overview || res.synopsis || res.description || '',
         status: finalStatus,
         type: res.type || res.country || 'Drama',
+        isMovie: Boolean(res.isMovie),
         rating: res.rating ? String(res.rating) : undefined,
         year: res.year ? String(res.year) : undefined,
+        runtime: res.runtime ? String(res.runtime) : undefined,
         country: res.country || '',
+        cast: Array.isArray(res.cast) ? res.cast : [],
+        characters,
         genres: Array.isArray(res.genres) ? res.genres : [],
         episodes,
+        seasons: Array.isArray(res.seasons) ? res.seasons : undefined,
         recommendations,
+        related,
+        imdbId: res.imdbId,
+        isHindi: Boolean(res.isHindi),
+        originalLanguage: res.originalLanguage || res.original_language,
         embedUrl: res.embedUrl || res.embed_url || undefined,
       };
     },
 
-    getStream: async (embedUrl: string): Promise<DramaStream> => {
+    getStream: async (embedUrl: string, id?: string, season?: number | string, episode?: number | string, isMovie?: boolean, title?: string, audio?: 'og' | 'multi', imdbId?: string): Promise<DramaStream> => {
       const res: any = await fetchOmni(
         '/servers',
-        { url: embedUrl }
+        { url: embedUrl, id, season, episode, isMovie, title, audio, imdbId }
       );
 
-      const servers: DramaServer[] = Array.isArray(res?.servers)
-        ? res.servers.map((s: any) => ({
+      const mapServers = (arr: any[]): DramaServer[] => Array.isArray(arr)
+        ? arr.map((s: any) => ({
             name: s.name || 'Server',
             url: s.url || '',
             type: s.type === 'hls' ? 'hls' : 'iframe',
           }))
         : [];
 
+      const servers = mapServers(res?.servers);
+      const ogServers = mapServers(res?.ogServers);
+      const multiServers = mapServers(res?.multiServers);
+
       const hlsServer = servers.find((s) => s.type === 'hls');
       const iframeServer = servers.find((s) => s.type === 'iframe');
 
       return {
         servers,
-        hlsUrl: hlsServer?.url,
-        iframeUrl: iframeServer?.url,
+        ogServers,
+        multiServers,
+        hasMultiAudio: Boolean(res?.hasMultiAudio || multiServers.length > 0),
+        hlsUrl: res?.hlsUrl || hlsServer?.url,
+        iframeUrl: res?.iframeUrl || iframeServer?.url,
       };
     },
 

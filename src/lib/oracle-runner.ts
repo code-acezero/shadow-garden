@@ -63,7 +63,7 @@ export async function checkAllLibraryUpdates() {
             latestEpCount = info.episodes.length;
             title = info.title || title;
             image = info.image || image;
-            targetLink = `/drama-watch/${id}`;
+            targetLink = `/stream/${id}`;
           }
         } else if (mediaType === 'movie' || mediaType === 'series') {
           const info = await omni.movies.getDetail(id);
@@ -71,7 +71,7 @@ export async function checkAllLibraryUpdates() {
             latestEpCount = info.seasons?.reduce((acc: number, s: any) => acc + (s.episodes?.length || 0), 0) || 1;
             title = info.title || title;
             image = info.image || image;
-            targetLink = `/movies-watch/${id}`;
+            targetLink = `/stream/${id}${mediaType === 'movie' ? '?type=movie' : ''}`;
           }
         } else if (mediaType === 'hindi') {
           const info = await hpi.hindi.getDetails(id);

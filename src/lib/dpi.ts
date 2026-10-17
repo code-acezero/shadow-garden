@@ -1,7 +1,4 @@
-import { ApiManager } from './api';
 import { getBaseURL } from './utils';
-
-const getDonghuaApiBase = () => `${ApiManager.getBaseUrl()}/donghua`;
 
 export interface DonghuaAnimeCard {
   id: string;
@@ -57,76 +54,30 @@ export interface DonghuaStreamResult {
   referer?: string | null;
 }
 
-async function fetchDonghuaApi<T = any>(endpoint: string, params: Record<string, any> = {}, retryCount = 0): Promise<T | null> {
+async function fetchDonghuaApi<T = any>(endpoint: string, params: Record<string, any> = {}): Promise<T | null> {
   const queryParts = Object.entries(params)
     .filter(([, v]) => v !== undefined && v !== null && v !== '')
     .map(([k, v]) => `${encodeURIComponent(k)}=${encodeURIComponent(String(v))}`);
   const queryString = queryParts.length > 0 ? `?${queryParts.join('&')}` : '';
 
-  // 1. First Priority: Try native local route (fast, resilient, 0 CORS issues)
-  if (retryCount === 0) {
-    try {
-      const localBase = typeof window !== 'undefined' ? '' : getBaseURL();
-      const localUrl = `${localBase}/api/donghua${endpoint}${queryString}`;
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 12000);
-      const localRes = await fetch(localUrl, { signal: controller.signal, cache: 'no-store' });
-      clearTimeout(timeoutId);
-
-      if (localRes.ok) {
-        const json = await localRes.json();
-        if (json && json.ok && json.data) {
-          return json.data as T;
-        }
-      }
-    } catch (localErr) {
-      // Gracefully fall back to remote ApiManager
-    }
-  }
-
-  // 2. Second Priority: Fallback to ApiManager remote mirrors
-  const targetUrl = `${getDonghuaApiBase()}${endpoint}${queryString}`;
-  const proxyUrl = typeof window !== 'undefined'
-    ? `/api/proxy?url=${encodeURIComponent(targetUrl)}`
-    : targetUrl;
-
   try {
+    const localBase = typeof window !== 'undefined' ? '' : getBaseURL();
+    const localUrl = `${localBase}/api/donghua${endpoint}${queryString}`;
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 15000);
-    const response = await fetch(proxyUrl, { signal: controller.signal, cache: 'no-store' });
+    const timeoutId = setTimeout(() => controller.abort(), 12000);
+    const localRes = await fetch(localUrl, { signal: controller.signal, cache: 'no-store' });
     clearTimeout(timeoutId);
-    
-    if (!response.ok) {
-        if (retryCount < ApiManager.getAllUrls().length - 1) {
-            ApiManager.rotateUrl();
-            return fetchDonghuaApi(endpoint, params, retryCount + 1);
-        }
-        return null;
-    }
 
-    const json = await response.json();
-
-    if (json && typeof json === 'object') {
-      if ('ok' in json) {
-        if (!json.ok) {
-          if (retryCount < ApiManager.getAllUrls().length - 1) {
-            ApiManager.rotateUrl();
-            return fetchDonghuaApi(endpoint, params, retryCount + 1);
-          }
-          return null;
-        }
-        return (json.data ?? json) as T;
+    if (localRes.ok) {
+      const json = await localRes.json();
+      if (json && json.ok && json.data) {
+        return json.data as T;
       }
-      if ('data' in json) return json.data as T;
+      if (json && 'data' in json) return json.data as T;
+      return json as T;
     }
-    return json as T;
-  } catch (innerError: any) {
-    if (innerError?.name === 'AbortError' || (innerError?.message && innerError.message.includes('fetch'))) {
-        if (retryCount < ApiManager.getAllUrls().length - 1) {
-            ApiManager.rotateUrl();
-            return fetchDonghuaApi(endpoint, params, retryCount + 1);
-        }
-    }
+    return null;
+  } catch {
     return null;
   }
 }
@@ -237,9 +188,10 @@ export const dpi = {
 
   bridge: {
     getSmartDetails: async (id: string) => {
-      const info = await fetchDonghuaApi<any>(`/info/${encodeURIComponent(id)}`);
-      if (!info) throw new Error('Anime not found');
-      const detail = info?.detail || info;
+      try {
+        const info = await fetchDonghuaApi<any>(`/info/${encodeURIComponent(id)}`);
+        if (!info) return null;
+        const detail = info?.detail || info;
       const episodesData: any[] = info?.episodes?.episodes || info?.episodes || [];
       return {
         id: (detail?.id || detail?.slug || id) as string,
@@ -274,6 +226,9 @@ export const dpi = {
         downloads: [] as any[],
         satoruId: null
       };
+      } catch {
+        return null;
+      }
     }
   }
 };

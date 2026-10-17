@@ -1,19 +1,6 @@
-import WatchClient from './WatchClient';
-import { omni } from '@/lib/omni';
+import { redirect } from 'next/navigation';
 
-export async function generateMetadata({ params }: { params: Promise<{ id: string }> }) {
+export default async function MovieWatchPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  const data = await omni.movies.getDetail(id);
-  if (!data) return { title: 'Not Found | Shadow Garden' };
-  return {
-    title: `Watch ${data.title} | Shadow Garden`,
-    description: data.description || 'Watch movies and series online on Shadow Garden.',
-    openGraph: {
-      images: [data.image],
-    },
-  };
-}
-
-export default function Page() {
-  return <WatchClient />;
+  redirect(`/stream/${id}?type=movie`);
 }

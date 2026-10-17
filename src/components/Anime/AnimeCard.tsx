@@ -345,8 +345,7 @@ export default function AnimeCard({ anime, progress = 0, isHindi = false }: Anim
             });
         }
       }
-    } catch (e) { 
-        console.error("Failed to fetch qtip info", e);
+    } catch {
         setQtip({
             jname: normalized.displayTitle,
             rating: normalized.rawRating || "?",
@@ -380,11 +379,11 @@ export default function AnimeCard({ anime, progress = 0, isHindi = false }: Anim
       onMouseEnter={handleMouseEnter}
       onMouseLeave={handleMouseLeave}
     >
-      <div className="w-full h-full relative rounded-[20px] md:rounded-[24px] overflow-hidden bg-[#0a0a0a] ring-1 ring-white/10 shadow-lg transition-all duration-500 hover:shadow-2xl hover:shadow-primary-900/20 hover:ring-red-500/30">
+      <div className="w-full h-full relative rounded-[26px] md:rounded-[28px] overflow-hidden bg-[#0c1322] border border-white/[0.08] shadow-[0_12px_32px_rgba(0,0,0,0.65),inset_0_1px_1px_rgba(255,255,255,0.1)] transition-all duration-300 hover:shadow-2xl hover:shadow-primary-900/30 hover:border-primary-500/40 will-change-transform">
         
         <Link href={normalized.targetRoute} className="block w-full h-full relative">
           
-          <div className="absolute inset-0 overflow-hidden rounded-[20px] md:rounded-[24px]">
+          <div className="absolute inset-0 overflow-hidden rounded-[26px] md:rounded-[28px]">
             <img
               src={normalized.displayImage}
               alt={normalized.displayTitle}
@@ -401,12 +400,12 @@ export default function AnimeCard({ anime, progress = 0, isHindi = false }: Anim
               }}
               className="w-full h-full object-cover transform-gpu transition-transform duration-700 ease-out group-hover:scale-110 will-change-transform"
             />
-            <div className="absolute inset-0 bg-gradient-to-t from-black via-black/30 to-transparent opacity-80 group-hover:opacity-60 transition-opacity duration-300" />
+            <div className="absolute inset-0 bg-gradient-to-t from-[#060a14] via-[#060a14]/40 to-transparent opacity-85 group-hover:opacity-65 transition-opacity duration-300" />
             <div className="absolute inset-0 bg-gradient-to-b from-black/60 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
           </div>
 
           <div className="absolute top-2.5 left-2.5 md:top-3 md:left-3 z-20">
-              <div className="h-4 md:h-5 px-2 flex items-center justify-center rounded-full bg-white/10 backdrop-blur-md border border-white/10 text-white text-[8px] md:text-[9px] font-black uppercase tracking-wider shadow-sm">
+              <div className="h-4 md:h-5 px-2 flex items-center justify-center rounded-full bg-[#0e1628]/95 border border-white/15 text-white text-[8px] md:text-[9px] font-black uppercase tracking-wider shadow-sm">
                 {normalized.type || "TV"}
               </div>
           </div>
@@ -415,7 +414,7 @@ export default function AnimeCard({ anime, progress = 0, isHindi = false }: Anim
           {/* Top-Center: Prominent MAL Rating */}
           {score && (
             <div className="absolute top-2.5 md:top-3 left-1/2 -translate-x-1/2 z-30 pointer-events-none">
-              <div className="h-4 md:h-5 px-2 flex items-center justify-center gap-0.5 rounded-full bg-black/75 backdrop-blur-md border border-yellow-500/40 text-yellow-400 font-black text-[9px] md:text-[10px] tracking-tight shadow-md select-none">
+              <div className="h-4 md:h-5 px-2 flex items-center justify-center gap-0.5 rounded-full bg-[#0c1322]/95 border border-yellow-500/40 text-yellow-400 font-black text-[9px] md:text-[10px] tracking-tight shadow-md select-none">
                 <span className="text-[9px] md:text-[10px]">★</span>
                 <span>{score}</span>
               </div>
@@ -423,7 +422,7 @@ export default function AnimeCard({ anime, progress = 0, isHindi = false }: Anim
           )}
 
           <div className="absolute top-2.5 right-2.5 md:top-3 md:right-3 z-40 flex items-center gap-1.5 md:gap-2">
-              <button onClick={handleMobileInfoToggle} className="md:hidden w-5 h-5 md:w-6 md:h-6 rounded-full bg-white/10 backdrop-blur-md border border-white/20 flex items-center justify-center text-white active:scale-90 transition-all hover:bg-white/20">
+              <button onClick={handleMobileInfoToggle} className="md:hidden w-5 h-5 md:w-6 md:h-6 rounded-full bg-[#131c30]/90 border border-white/20 flex items-center justify-center text-white active:scale-90 transition-all hover:bg-white/20 atrax-squish-tap">
                 <Info size={10} className="md:w-3 md:h-3" />
               </button>
               <AgeTag adult={currentRatingData.isAdult || false} rating={currentRatingData.rating} />
@@ -444,7 +443,7 @@ export default function AnimeCard({ anime, progress = 0, isHindi = false }: Anim
             </h3>
 
             <div className="flex items-center justify-between gap-1 w-full overflow-hidden">
-                <div className="flex-shrink-0 flex items-center gap-1 h-5 md:h-5.5 px-1.5 md:px-2 rounded-md bg-white/10 backdrop-blur-md border border-white/15 shadow-sm min-w-0">
+                <div className="flex-shrink-0 flex items-center gap-1 h-5 md:h-5.5 px-2 rounded-full bg-[#0e1628]/95 border border-white/15 shadow-sm min-w-0">
                    {normalized.isHindiMedia ? (
                        <div className="flex items-center gap-1 text-[8px] md:text-[9px] font-black text-yellow-400 uppercase tracking-wider">
                            <Mic size={9} className="text-yellow-400 shrink-0" />
@@ -476,7 +475,7 @@ export default function AnimeCard({ anime, progress = 0, isHindi = false }: Anim
 
                 {/* Bottom right: Total episodes count */}
                 <div className="flex items-center gap-1.5 md:gap-2 shrink-0">
-                    <div className="flex-shrink-0 bg-white/10 backdrop-blur-md border border-white/10 h-5 md:h-6 px-1.5 md:px-2.5 rounded-md md:rounded-full flex items-center justify-center gap-1">
+                    <div className="flex-shrink-0 bg-[#0e1628]/95 border border-white/15 h-5 md:h-6 px-2 md:px-2.5 rounded-full flex items-center justify-center gap-1 shadow-sm">
                         <ListVideo size={10} className="text-zinc-300 md:w-3 md:h-3" />
                         <span className="text-[8px] md:text-[9px] font-bold text-white tracking-wide uppercase">
                            {normalized.totalEp || "?"}
@@ -493,11 +492,11 @@ export default function AnimeCard({ anime, progress = 0, isHindi = false }: Anim
           </div>
         </Link>
 
-        {/* --- MOBILE INFO OVERLAY --- */}
+        {/* --- MOBILE INFO OVERLAY (ATRAX SQUIRCLE) --- */}
         <AnimatePresence>
           {showMobileInfo && (
-            <motion.div variants={mobileOverlayVariants} initial="hidden" animate="visible" exit="exit" className="absolute inset-0 z-50 bg-black/95 backdrop-blur-xl p-4 flex flex-col gap-3 md:hidden">
-               <button onClick={handleMobileInfoToggle} className="absolute top-3 right-3 w-8 h-8 flex items-center justify-center rounded-full bg-white/10 text-white active:bg-primary-600 transition-colors z-50">
+            <motion.div variants={mobileOverlayVariants} initial="hidden" animate="visible" exit="exit" className="absolute inset-0 z-50 bg-[#0c1322] border border-white/[0.12] rounded-[26px] p-4 flex flex-col gap-3 md:hidden shadow-2xl">
+               <button onClick={handleMobileInfoToggle} className="absolute top-3 right-3 w-8 h-8 flex items-center justify-center rounded-full bg-[#141d30] border border-white/15 text-white active:bg-primary-600 transition-colors z-50 atrax-squish-tap">
                  <X size={16} />
                </button>
                <div className="flex-1 overflow-y-auto no-scrollbar pt-2">
@@ -514,11 +513,11 @@ export default function AnimeCard({ anime, progress = 0, isHindi = false }: Anim
                   </p>
                   <div className="flex flex-wrap gap-1.5 mt-3">
                     {(qtip?.genres || []).slice(0, 4).map(g => (
-                      <span key={g} className="text-[9px] px-2 py-1 rounded-full bg-white/5 border border-white/10 text-zinc-300">{g}</span>
+                      <span key={g} className="text-[9px] px-2.5 py-1 rounded-full bg-[#141d30] border border-white/10 text-zinc-300">{g}</span>
                     ))}
                   </div>
                </div>
-               <button onClick={(e) => { handlePlay(e); }} className="w-full py-3 bg-primary-600 rounded-full font-black text-white text-sm uppercase tracking-widest shadow-lg shadow-primary-900/40 flex items-center justify-center gap-2 active:scale-95 transition-transform">
+               <button onClick={(e) => { handlePlay(e); }} className="w-full py-3 bg-primary-600 rounded-full font-black text-white text-sm uppercase tracking-widest shadow-lg shadow-primary-900/40 flex items-center justify-center gap-2 active:scale-95 transition-transform atrax-bubbly-btn atrax-squish-tap">
                  <Play size={16} fill="currentColor" /> Watch Now
                </button>
             </motion.div>
@@ -539,7 +538,7 @@ export default function AnimeCard({ anime, progress = 0, isHindi = false }: Anim
               onMouseLeave={handleMouseLeave}
               className={`hidden md:block absolute top-0 w-[300px] lg:w-[330px] z-50 ${popupPosition === 'right' ? 'left-[105%]' : 'right-[105%]'}`}
           >
-              <div className="bg-[#0b0c10]/95 backdrop-blur-2xl border border-white/15 rounded-3xl p-5 shadow-[0_25px_60px_rgba(0,0,0,0.9)] relative overflow-hidden group/qtip ring-1 ring-white/5">
+              <div className="bg-[#0c1322] border border-white/[0.14] rounded-[30px] p-5 shadow-[0_25px_60px_rgba(0,0,0,0.95),inset_0_1px_1px_rgba(255,255,255,0.12)] relative overflow-hidden group/qtip">
                  {/* Ambient glowing backlight */}
                  <div className="absolute -top-12 -right-12 w-36 h-36 bg-primary-600/20 blur-[50px] rounded-full pointer-events-none" />
                  <div className="absolute -bottom-10 -left-10 w-32 h-32 bg-amber-500/10 blur-[50px] rounded-full pointer-events-none" />

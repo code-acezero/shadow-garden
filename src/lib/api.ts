@@ -47,32 +47,15 @@ import { AniListService } from "@/lib/anilist";
 // ==========================================
 
 export class ApiManager {
-    private static urls = [
-        'https://omni-api-v1.vercel.app/api',
-        'https://omni-api-v2.vercel.app/api'
-    ];
+    private static urls = ['/api'];
     private static currentIndex = 0;
 
     static getBaseUrl() {
-        if (typeof window !== 'undefined') {
-            const savedIndex = localStorage.getItem('shadow_api_index');
-            if (savedIndex !== null) {
-                const idx = parseInt(savedIndex, 10);
-                if (!isNaN(idx) && idx < this.urls.length) {
-                    this.currentIndex = idx;
-                }
-            }
-        }
-        return this.urls[this.currentIndex];
+        return '/api';
     }
 
     static rotateUrl() {
-        this.currentIndex = (this.currentIndex + 1) % this.urls.length;
-        if (typeof window !== 'undefined') {
-            localStorage.setItem('shadow_api_index', this.currentIndex.toString());
-        }
-        console.warn(`[ApiManager] Rotated API URL to: ${this.urls[this.currentIndex]}`);
-        return this.urls[this.currentIndex];
+        return '/api';
     }
 
     static getAllUrls() {
@@ -113,164 +96,12 @@ const normalizeList = (item: any): string[] => {
  * the `{ ok, data }` / `{ ok, cached, data }` envelope every Anikoto
  * endpoint returns (or raw arrays like /api/watch).
  */
-async function fetchAnikoto<T = any>(endpoint: string, params: Record<string, any> = {}, retryCount = 0): Promise<T | null> {
-    const queryParts: string[] = [];
-    for (const [key, value] of Object.entries(params)) {
-        if (value === undefined || value === null || value === '') continue;
-        if (Array.isArray(value)) {
-            for (const v of value) {
-                if (v === undefined || v === null || v === '') continue;
-                queryParts.push(`${encodeURIComponent(key)}[]=${encodeURIComponent(String(v))}`);
-            }
-        } else {
-            queryParts.push(`${encodeURIComponent(key)}=${encodeURIComponent(String(value))}`);
-        }
-    }
-    const queryString = queryParts.length > 0 ? `?${queryParts.join('&')}` : '';
-    const targetUrl = `${ApiManager.getBaseUrl()}${endpoint}${queryString}`;
-    const proxyUrl = typeof window !== 'undefined' ? `/api/proxy?url=${encodeURIComponent(targetUrl)}` : targetUrl;
-
-    try {
-        const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 20000);
-
-        try {
-            const response = await fetch(proxyUrl, { signal: controller.signal });
-            clearTimeout(timeoutId);
-
-            if (!response.ok) {
-                if (retryCount < ApiManager.getAllUrls().length - 1) {
-                    ApiManager.rotateUrl();
-                    return fetchAnikoto(endpoint, params, retryCount + 1);
-                }
-                return null;
-            }
-
-            const json = await response.json();
-
-            if (json && typeof json === 'object') {
-                if ('ok' in json) {
-                    return json.ok ? (json.data ?? json) : null;
-                }
-                if ('data' in json && Array.isArray(json.data)) {
-                    return json.data;
-                }
-            }
-            return json as T;
-
-        } catch (innerError: any) {
-            if (innerError.name === 'AbortError' || (innerError.message && innerError.message.includes('fetch'))) {
-                if (retryCount < ApiManager.getAllUrls().length - 1) {
-                    ApiManager.rotateUrl();
-                    return fetchAnikoto(endpoint, params, retryCount + 1);
-                }
-                return null;
-            }
-            throw innerError;
-        }
-    } catch {
-        if (retryCount < ApiManager.getAllUrls().length - 1) {
-            ApiManager.rotateUrl();
-            return fetchAnikoto(endpoint, params, retryCount + 1);
-        }
-        return null;
-    }
+async function fetchAnikoto<T = any>(_endpoint: string, _params: Record<string, any> = {}): Promise<T | null> {
+    return null;
 }
 
-/**
- * SSE (Server-Sent Events) fetcher for the Anikoto /watch endpoint.
- * The /watch endpoint returns data as an SSE stream (`data: {...}\n\n`)
- * instead of standard JSON. This function reads the full response as text,
- * parses each `data: ` prefixed line as JSON, and collects all parsed
- * objects into an array — matching the shape getStream expects.
- */
-async function fetchAnikotoSSE(endpoint: string, params: Record<string, any> = {}, retryCount = 0): Promise<any[] | null> {
-    const queryParts: string[] = [];
-    for (const [key, value] of Object.entries(params)) {
-        if (value === undefined || value === null || value === '') continue;
-        if (Array.isArray(value)) {
-            for (const v of value) {
-                if (v === undefined || v === null || v === '') continue;
-                queryParts.push(`${encodeURIComponent(key)}[]=${encodeURIComponent(String(v))}`);
-            }
-        } else {
-            queryParts.push(`${encodeURIComponent(key)}=${encodeURIComponent(String(value))}`);
-        }
-    }
-    const queryString = queryParts.length > 0 ? `?${queryParts.join('&')}` : '';
-    const targetUrl = `${ApiManager.getBaseUrl()}${endpoint}${queryString}`;
-    const proxyUrl = typeof window !== 'undefined' ? `/api/proxy?url=${encodeURIComponent(targetUrl)}` : targetUrl;
-
-    try {
-        const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 25000);
-
-        try {
-            const response = await fetch(proxyUrl, { signal: controller.signal });
-            clearTimeout(timeoutId);
-
-            if (!response.ok) {
-                if (retryCount < ApiManager.getAllUrls().length - 1) {
-                    ApiManager.rotateUrl();
-                    return fetchAnikotoSSE(endpoint, params, retryCount + 1);
-                }
-                return null;
-            }
-
-            const text = await response.text();
-
-            try {
-                const json = JSON.parse(text);
-                // Unwrap { ok, data } envelope if present
-                if (json && typeof json === 'object' && !Array.isArray(json)) {
-                    if ('ok' in json) {
-                        const inner = json.ok ? (json.data ?? json) : null;
-                        return inner ? (Array.isArray(inner) ? inner : [inner]) : null;
-                    }
-                    if ('data' in json && Array.isArray(json.data)) {
-                        return json.data;
-                    }
-                }
-                return Array.isArray(json) ? json : [json];
-            } catch {
-                // Not valid JSON — parse as SSE stream
-            }
-
-            // Parse SSE: each event is `data: <json>\n\n`
-            const results: any[] = [];
-            const lines = text.split('\n');
-            for (const line of lines) {
-                const trimmed = line.trim();
-                if (!trimmed.startsWith('data:')) continue;
-                const jsonStr = trimmed.slice(5).trim(); // Remove 'data:' prefix
-                if (!jsonStr) continue;
-                if (jsonStr === '[DONE]') continue;
-                try {
-                    const parsed = JSON.parse(jsonStr);
-                    results.push(parsed);
-                } catch {
-                    // Skip malformed lines
-                }
-            }
-            return results.length > 0 ? results : null;
-
-        } catch (innerError: any) {
-            if (innerError.name === 'AbortError' || (innerError.message && innerError.message.includes('fetch'))) {
-                if (retryCount < ApiManager.getAllUrls().length - 1) {
-                    ApiManager.rotateUrl();
-                    return fetchAnikotoSSE(endpoint, params, retryCount + 1);
-                }
-                return null;
-            }
-            throw innerError;
-        }
-    } catch {
-        if (retryCount < ApiManager.getAllUrls().length - 1) {
-            ApiManager.rotateUrl();
-            return fetchAnikotoSSE(endpoint, params, retryCount + 1);
-        }
-        return null;
-    }
+async function fetchAnikotoSSE(_endpoint: string, _params: Record<string, any> = {}): Promise<any[] | null> {
+    return null;
 }
 
 export const ANIKOTO_GENRE_MAP: Record<string, string> = {
@@ -434,6 +265,7 @@ export interface UniversalAnimeBase {
     rating?: string;
     ageRating?: string;
     score?: string | number;
+    malId?: number;
 }
 
 export interface UniversalSeason {
@@ -1061,70 +893,7 @@ export class AnimeService {
             console.warn('[AnimeService.getStream] Unified stream extractor fallback:', err);
         }
 
-        // 2. Fallback to Anikoto Scraper API
-        let data: any = await AnimeAPI_Anikoto.getWatch(slug, epNumber);
-
-        // Aggressive unwrapping for stringified proxy responses
-        if (typeof data === 'string') {
-            try { data = JSON.parse(data); } catch (e) { }
-        }
-        if (data && typeof data === 'object' && !Array.isArray(data)) {
-            if (data.data) data = data.data;
-        }
-        if (typeof data === 'string') {
-            try { data = JSON.parse(data); } catch (e) { }
-        }
-
-        if (!data || !Array.isArray(data)) return null;
-
-        // Group Servers from response
-        const serversBlock = data.find((item: any) => item.type === 'servers');
-        const list: any[] = serversBlock && Array.isArray(serversBlock.servers) ? serversBlock.servers : [];
-        const grouped: { sub: any[]; dub: any[]; raw: any[]; [key: string]: any[] } = { sub: [], dub: [], raw: [] };
-        for (const s of list) {
-            const bucket: 'sub' | 'dub' | 'raw' = s?.type === 'dub' ? 'dub' : s?.type === 'raw' ? 'raw' : 'sub';
-            grouped[bucket].push({ serverId: s?.id ?? s?.svId, serverName: s?.name });
-        }
-        grouped[primarySubKey] = grouped.sub;
-        grouped['en'] = grouped.dub;
-
-        // Extract Stream Sources
-        const sources = data
-            .filter((item: any) => item.type === 'source' && item.source)
-            .map((item: any) => item.source);
-
-        const targetCat = (category === 'en' || category === 'dub') ? 'dub' : 'sub';
-        const byCategory = sources.filter(s => s?.type === targetCat);
-
-        if (!byCategory.length) return { servers: grouped, url: null };
-
-        const matched =
-            byCategory.find(s => s?.server?.toLowerCase() === server.toLowerCase() && (s.proxyUrl || s.m3u8 || s.url)) ||
-            byCategory.find(s => s.proxyUrl || s.m3u8 || s.url) ||
-            byCategory[0];
-
-        if (!matched) return { servers: grouped, url: null };
-
-        const skipBlock = data.find((item: any) => item.type === 'skip_data');
-        const skip = skipBlock ? skipBlock.skip_data : null;
-        const isEmbed = !!(matched.url && matched.url.includes('megaplay.buzz'));
-
-        return {
-            url: matched.proxyUrl || matched.m3u8 || matched.url,
-            iframeUrl: isEmbed ? matched.url : null,
-            isEmbed: isEmbed,
-            subtitles: matched.tracks ? matched.tracks.map((t: any) => ({
-                ...t,
-                file: t.proxyUrl || t.file
-            })) : [],
-            server: matched.server || server,
-            servers: grouped,
-            isM3U8: !!matched.m3u8 || !!(matched.proxyUrl && matched.proxyUrl.includes('m3u8')),
-            referer: matched.referer || null,
-            intro: skip?.intro || null,
-            outro: skip?.outro || null,
-            skipData: skip
-        };
+        return null;
     }
 
     /** @deprecated Now handled dynamically inside getStream to avoid double network requests */

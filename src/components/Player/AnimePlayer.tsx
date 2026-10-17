@@ -1494,7 +1494,7 @@ const AnimePlayer = forwardRef<AnimePlayerRef, AnimePlayerProps>(({
             onPointerMove={(e) => e.stopPropagation()}
             onPointerDown={(e) => e.stopPropagation()}
             onMouseDown={(e) => e.stopPropagation()}
-            className="absolute bottom-20 sm:bottom-24 left-4 sm:left-6 liquid-glass hover:bg-white text-white hover:text-black px-4 sm:px-5 py-2 rounded-full font-black text-[10px] sm:text-xs uppercase tracking-widest flex items-center gap-2 shadow-xl backdrop-blur-md transition-all animate-in slide-in-from-left duration-300 z-[80] active:scale-95 cursor-pointer pointer-events-auto"
+            className="absolute bottom-20 sm:bottom-24 left-4 sm:left-6 bg-[#0c1322] border border-white/[0.14] hover:bg-white text-white hover:text-black px-4 sm:px-5 py-2 rounded-full font-black text-[10px] sm:text-xs uppercase tracking-widest flex items-center gap-2 shadow-[0_12px_30px_rgba(0,0,0,0.6)] transition-all animate-in slide-in-from-left duration-300 z-[80] atrax-bubbly-btn atrax-squish-tap cursor-pointer pointer-events-auto"
           >
             <FastForward size={14} className="text-amber-400" /> Skip Intro
           </button>
@@ -1507,7 +1507,7 @@ const AnimePlayer = forwardRef<AnimePlayerRef, AnimePlayerProps>(({
             onClick={(e) => { 
               e.stopPropagation(); 
               hasSkippedOutroRef.current = true;
-              setShowSkipOutro(false);
+              setShowSkipOutro(false); 
               notifyWhisper("Skipped Outro", "success"); 
               onSkipOutro?.(); 
               if (onNext) onNext();
@@ -1522,7 +1522,7 @@ const AnimePlayer = forwardRef<AnimePlayerRef, AnimePlayerProps>(({
             onPointerMove={(e) => e.stopPropagation()}
             onPointerDown={(e) => e.stopPropagation()}
             onMouseDown={(e) => e.stopPropagation()}
-            className="absolute bottom-20 sm:bottom-24 right-4 sm:right-6 liquid-glass hover:bg-white text-white hover:text-black px-4 sm:px-5 py-2 rounded-full font-black text-[10px] sm:text-xs uppercase tracking-widest flex items-center gap-2 shadow-xl backdrop-blur-md transition-all animate-in slide-in-from-right duration-300 z-[80] active:scale-95 cursor-pointer pointer-events-auto"
+            className="absolute bottom-20 sm:bottom-24 right-4 sm:right-6 bg-[#0c1322] border border-white/[0.14] hover:bg-white text-white hover:text-black px-4 sm:px-5 py-2 rounded-full font-black text-[10px] sm:text-xs uppercase tracking-widest flex items-center gap-2 shadow-[0_12px_30px_rgba(0,0,0,0.6)] transition-all animate-in slide-in-from-right duration-300 z-[80] atrax-bubbly-btn atrax-squish-tap cursor-pointer pointer-events-auto"
           >
             <SkipForward size={14} className="text-indigo-400" /> Skip Outro
           </button>
@@ -1532,7 +1532,7 @@ const AnimePlayer = forwardRef<AnimePlayerRef, AnimePlayerProps>(({
         {onNext && currentTime >= (duration > 0 ? duration - 25 : 1415) && (
           <button 
             onClick={(e) => { e.stopPropagation(); onNext(); }} 
-            className="absolute bottom-16 sm:bottom-20 right-4 sm:right-6 liquid-glass bg-primary-600/90 hover:bg-primary-500 text-white px-4 sm:px-5 py-2 rounded-full font-black text-[10px] sm:text-xs uppercase tracking-widest flex items-center gap-2 shadow-[0_0_25px_rgba(220,38,38,0.5)] backdrop-blur-md transition-all animate-bounce z-50 active:scale-95 cursor-pointer"
+            className="absolute bottom-16 sm:bottom-20 right-4 sm:right-6 bg-primary-600 hover:bg-primary-500 text-white px-4 sm:px-5 py-2 rounded-full font-black text-[10px] sm:text-xs uppercase tracking-widest flex items-center gap-2 shadow-[0_0_25px_rgba(220,38,38,0.5)] border border-primary-400/40 transition-all animate-bounce z-50 atrax-bubbly-btn atrax-squish-tap cursor-pointer"
           >
             Next Episode <ChevronRight size={14}/>
           </button>
@@ -1990,7 +1990,7 @@ const AnimePlayer = forwardRef<AnimePlayerRef, AnimePlayerProps>(({
 
            <div className="flex items-center gap-2 md:gap-5 relative">
               <div className="relative">
-                  <button onClick={(e) => { e.stopPropagation(); setActiveMenu(activeMenu === 'main' ? 'none' : 'main'); }} className={cn("hover:text-primary-500 transition-colors active:scale-90 group p-2 md:p-0", activeMenu !== 'none' && activeMenu !== 'audio' && activeMenu !== 'subs' && "text-primary-500")}><Settings size={20} className="md:w-5 md:h-5 group-hover:rotate-90 transition-transform duration-500" /></button>
+                  <button onClick={(e) => { e.stopPropagation(); setActiveMenu(activeMenu === 'main' ? 'none' : 'main'); }} className={cn("hover:text-primary-500 transition-colors active:scale-90 group p-2 md:p-0", activeMenu !== 'none' && activeMenu !== 'audio' && activeMenu !== 'subs' && "text-primary-500")}><Settings size={20} className={cn("md:w-5 md:h-5 transition-transform duration-300", (activeMenu !== 'none' && activeMenu !== 'audio' && activeMenu !== 'subs') ? "rotate-90 text-primary-500" : "rotate-0")} /></button>
                   
                      {activeMenu === 'main' && (
                         <div className="absolute bottom-12 right-0 bg-zinc-950/90 backdrop-blur-3xl border border-white/10 ring-1 ring-white/10 rounded-2xl shadow-[0_8px_40px_rgba(0,0,0,0.8)] p-2 w-44 sm:w-52 max-h-[300px] sm:max-h-[360px] overflow-y-auto scrollbar-hide z-[70] flex flex-col gap-1 animate-in slide-in-from-bottom-2">
@@ -2164,7 +2164,7 @@ const AnimePlayer = forwardRef<AnimePlayerRef, AnimePlayerProps>(({
           onPointerMove={(e) => e.stopPropagation()}
           onPointerDown={(e) => e.stopPropagation()}
           onMouseDown={(e) => e.stopPropagation()}
-          className="absolute bottom-20 sm:bottom-24 left-4 sm:left-6 liquid-glass hover:bg-white text-white hover:text-black px-4 sm:px-5 py-2 rounded-full font-black text-[10px] sm:text-xs uppercase tracking-widest flex items-center gap-2 shadow-xl backdrop-blur-md transition-all animate-in slide-in-from-left duration-300 z-[80] active:scale-95 cursor-pointer pointer-events-auto"
+          className="absolute bottom-20 sm:bottom-24 left-4 sm:left-6 bg-[#0c1322] border border-white/[0.14] hover:bg-white text-white hover:text-black px-4 sm:px-5 py-2 rounded-full font-black text-[10px] sm:text-xs uppercase tracking-widest flex items-center gap-2 shadow-[0_12px_30px_rgba(0,0,0,0.6)] transition-all animate-in slide-in-from-left duration-300 z-[80] atrax-bubbly-btn atrax-squish-tap cursor-pointer pointer-events-auto"
         >
           <FastForward size={14} className="text-amber-400" /> Skip Intro
         </button>
@@ -2191,7 +2191,7 @@ const AnimePlayer = forwardRef<AnimePlayerRef, AnimePlayerProps>(({
           onPointerMove={(e) => e.stopPropagation()}
           onPointerDown={(e) => e.stopPropagation()}
           onMouseDown={(e) => e.stopPropagation()}
-          className="absolute bottom-20 sm:bottom-24 right-4 sm:right-6 liquid-glass hover:bg-white text-white hover:text-black px-4 sm:px-5 py-2 rounded-full font-black text-[10px] sm:text-xs uppercase tracking-widest flex items-center gap-2 shadow-xl backdrop-blur-md transition-all animate-in slide-in-from-right duration-300 z-[80] active:scale-95 cursor-pointer pointer-events-auto"
+          className="absolute bottom-20 sm:bottom-24 right-4 sm:right-6 bg-[#0c1322] border border-white/[0.14] hover:bg-white text-white hover:text-black px-4 sm:px-5 py-2 rounded-full font-black text-[10px] sm:text-xs uppercase tracking-widest flex items-center gap-2 shadow-[0_12px_30px_rgba(0,0,0,0.6)] transition-all animate-in slide-in-from-right duration-300 z-[80] atrax-bubbly-btn atrax-squish-tap cursor-pointer pointer-events-auto"
         >
           <SkipForward size={14} className="text-indigo-400" /> Skip Outro
         </button>
@@ -2203,7 +2203,7 @@ const AnimePlayer = forwardRef<AnimePlayerRef, AnimePlayerProps>(({
           onMouseMove={(e) => e.stopPropagation()}
           onMouseEnter={(e) => e.stopPropagation()}
           onMouseOver={(e) => e.stopPropagation()}
-          className="absolute bottom-24 right-6 liquid-glass text-white py-3 px-5 rounded-full font-black text-xs uppercase tracking-widest hover:scale-105 transition-transform flex items-center gap-2 shadow-[0_0_30px_white] z-50 animate-bounce active:scale-95 cursor-pointer pointer-events-auto"
+          className="absolute bottom-24 right-6 bg-primary-600 hover:bg-primary-500 text-white py-3 px-5 rounded-full font-black text-xs uppercase tracking-widest hover:scale-105 transition-transform flex items-center gap-2 shadow-[0_0_30px_rgba(220,38,38,0.6)] border border-primary-400/40 z-50 animate-bounce atrax-bubbly-btn atrax-squish-tap cursor-pointer pointer-events-auto"
         >
           Next Episode <ChevronRight size={14}/>
         </button>

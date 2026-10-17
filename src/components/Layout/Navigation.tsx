@@ -69,8 +69,7 @@ export default function Navigation() {
     { id: 'search', icon: Search, label: 'Search', path: '/search' },
     { id: 'social', icon: MessageCircle, label: 'Otakuverse', path: '/social' },
     { id: 'schedule', icon: Calendar, label: 'Schedule', path: '/schedule' },
-    { id: 'drama', icon: Clapperboard, label: 'Drama', path: '/drama' },
-    { id: 'movies', icon: Film, label: 'Movies & Series', path: '/movies' },
+    { id: 'cinema', icon: Clapperboard, label: 'Flix', path: '/cinema' },
   ];
 
   return (
@@ -79,19 +78,31 @@ export default function Navigation() {
         <MemoizedWhisperIsland />
       </Suspense>
 
-      <nav className="hidden md:block fixed bottom-3 left-1/2 transform -translate-x-1/2 z-[90] w-[95%] max-w-2xl">
-        <div className="relative liquid-glass rounded-full shadow-[0_10px_40px_rgba(0,0,0,0.8)] px-8 py-4">
-          <div className="absolute -inset-1 bg-gradient-to-r from-transparent via-primary-900/10 to-transparent blur-xl -z-10" />
-          <div className="flex justify-between items-center">
+      <nav className="hidden md:block fixed bottom-4 left-1/2 transform -translate-x-1/2 z-[90] w-auto">
+        <div className="relative bg-[#0c1322]/95 border border-white/[0.12] rounded-full shadow-[0_18px_50px_rgba(0,0,0,0.85),inset_0_1px_1px_rgba(255,255,255,0.15)] px-4 py-2">
+          <div className="flex items-center gap-1.5">
             {navItems.map((item) => {
               const Icon = item.icon;
-              const isActive = activeTab === item.path; 
+              const isCinemaActive = pathname.startsWith('/cinema') || pathname.startsWith('/drama') || pathname.startsWith('/movies') || pathname.startsWith('/stream');
+              const isActive = item.id === 'cinema' ? isCinemaActive : (activeTab === item.path); 
               return (
-                <Link key={item.id} href={item.path} prefetch={true} onClick={() => setActiveTab(item.path)} className="relative group flex flex-col items-center justify-center w-10 sm:w-12">
-                  <div className={`transition-[transform,color,opacity] duration-200 ease-out ${isActive ? 'text-primary-500 transform -translate-y-2 scale-110' : 'text-zinc-400 group-hover:text-white'}`}>
-                    <Icon size={24} />
+                <Link 
+                  key={item.id} 
+                  href={item.path} 
+                  prefetch={true} 
+                  onClick={() => setActiveTab(item.path)} 
+                  className={`relative group flex items-center justify-center h-10 px-3.5 rounded-full select-none transition-all duration-200 active:scale-95 ${isActive ? 'text-white font-bold' : 'text-zinc-400 hover:text-white'}`}
+                  aria-label={item.label}
+                >
+                  {isActive && (
+                    <span className="absolute inset-0 bg-primary-600 rounded-full shadow-[0_4px_16px_rgba(220,38,38,0.45)] -z-10" />
+                  )}
+                  <div className="flex items-center gap-2">
+                    <Icon size={18} strokeWidth={isActive ? 2.5 : 2} className={`transition-transform duration-200 ${isActive ? 'scale-105' : 'group-hover:scale-105'}`} />
+                    <span className="text-xs font-black uppercase tracking-wider whitespace-nowrap">
+                      {item.label}
+                    </span>
                   </div>
-                  <span className={`absolute -bottom-2 w-1 h-1 bg-primary-500 rounded-full shadow-[0_0_5px_red] transition-all duration-300 ${isActive ? 'opacity-100 scale-100' : 'opacity-0 scale-0'}`} />
                 </Link>
               );
             })}

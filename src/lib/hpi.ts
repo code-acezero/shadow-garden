@@ -169,8 +169,6 @@ export interface HindiQtip {
  * ==========================================
  */
 
-import { ApiManager } from './api';
-
 const getHindiApiBase = () => {
   if (typeof window !== 'undefined') return '/api/blakite';
   return process.env.NEXT_PUBLIC_APP_URL ? `${process.env.NEXT_PUBLIC_APP_URL}/api/blakite` : 'http://localhost:3000/api/blakite';
@@ -421,7 +419,7 @@ class HPIClient {
         const rawUrl = s.url || s.m3u8 || '';
         if (rawUrl) seenRawUrls.add(rawUrl);
         const isMp4 = rawUrl.toLowerCase().includes('.mp4');
-        // Use the API-provided proxyUrl (omni-api), which is Edge-enabled and supports Range requests
+        // Use the API-provided proxyUrl, which is Edge-enabled and supports Range requests
         const bestUrl = s.proxyUrl || toPlayableUrl(rawUrl, s.referer);
         return {
           name: s.server || `Server ${idx + 1}`,

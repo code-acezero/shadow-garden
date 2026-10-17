@@ -174,18 +174,28 @@ const ScheduleCard = ({ anime }: { anime: any }) => {
                 (() => {
                     const slug = slugifyTitle(anime.name || anime.title);
                     const routeId = (slug && !String(anime.id).includes('-')) ? `${anime.id}-${slug}` : anime.id;
+                    const targetHref = anime.watchUrl || `/watch/${routeId}${anime.episode ? `?ep=${anime.episode}` : ''}${anime.dubType ? `&audio=hi&type=dub` : ''}`;
                     return (
-                        <Link href={`/watch/${routeId}${anime.episode ? `?ep=${anime.episode}` : ''}`} className="flex w-full items-stretch h-20 md:h-24 rounded-2xl bg-[#0f0f0f] border border-white/5 hover:border-primary-500/30 transition-all active:scale-[0.98] overflow-hidden">
+                        <Link href={targetHref} className="flex w-full items-stretch h-20 md:h-24 rounded-2xl bg-[#0f0f0f] border border-white/5 hover:border-primary-500/30 transition-all active:scale-[0.98] overflow-hidden">
                             <div className="w-16 md:w-20 bg-white/5 flex flex-col items-center justify-center border-r border-white/5 group-hover:bg-primary-600/10 group-hover:border-primary-500/20 transition-colors">
-                                <span className="text-sm md:text-lg font-black text-white">{anime.time}</span>
-                                <span className="text-[8px] font-bold text-zinc-500 uppercase tracking-wider group-hover:text-primary-400">JST</span>
+                                <span className="text-sm md:text-lg font-black text-white">{anime.time || '12:00'}</span>
+                                <span className="text-[8px] font-bold text-zinc-500 uppercase tracking-wider group-hover:text-primary-400">
+                                    {anime.dubType ? 'IST' : 'JST'}
+                                </span>
                             </div>
                             <div className="flex-1 flex flex-col justify-center px-4 py-2 min-w-0">
                                 <h3 className="text-xs md:text-sm font-bold text-zinc-200 group-hover:text-white transition-colors line-clamp-1 mb-1 pr-6">
-                                    {anime.name}
+                                    {anime.name || anime.title}
                                 </h3>
-                                <p className="text-[10px] text-zinc-500 line-clamp-1 italic mb-2">{anime.jname}</p>
+                                <p className="text-[10px] text-zinc-500 line-clamp-1 italic mb-2">
+                                    {anime.jname || anime.status || ''}
+                                </p>
                                 <div className="flex items-center gap-2">
+                                    {anime.dubType && (
+                                        <span className="px-1.5 py-0.5 rounded text-[8px] font-black uppercase tracking-wider bg-gradient-to-r from-orange-500/20 to-amber-500/20 text-orange-400 border border-orange-500/30">
+                                            {anime.dubType}
+                                        </span>
+                                    )}
                                     <span className="px-2 py-0.5 bg-white/5 rounded text-[9px] font-bold text-zinc-400 border border-white/5 group-hover:border-primary-500/20 group-hover:text-primary-400 transition-colors">
                                         EP {anime.episode || '?'}
                                     </span>
@@ -408,6 +418,7 @@ const DaySelector = ({ selectedDate, onSelect }: { selectedDate: Date, onSelect:
 
 export default function SchedulePage() {
   const [selectedDate, setSelectedDate] = useState(new Date());
+  const [scheduleType, setScheduleType] = useState<'sub' | 'hindi'>('sub');
   const [upcomingPage, setUpcomingPage] = useState(1);
   const [topTab, setTopTab] = useState<'today'|'week'|'month'>('week');
   const [mobileActiveIndex, setMobileActiveIndex] = useState<number | null>(null);
@@ -424,9 +435,26 @@ export default function SchedulePage() {
   }, []);
 
   const { data: scheduleData, isLoading: loadingSchedule } = useSWR(
-    ['schedule', format(selectedDate, 'yyyy-MM-dd')],
-    async ([_, date]) => {
+    ['schedule', format(selectedDate, 'yyyy-MM-dd'), scheduleType],
+    async ([_, date, type]) => {
         try {
+            if (type === 'hindi') {
+                const res = await fetch(`/api/blakite/schedule?date=${date}`);
+                if (res.ok) {
+                    const json = await res.json();
+                    if (json.ok && json.data) {
+                        const items = json.data.scheduledAnimes?.length > 0
+                            ? json.data.scheduledAnimes
+                            : (json.data.allRecent || []);
+                        return {
+                            scheduledAnimes: items,
+                            isFallback: json.data.scheduledAnimes?.length === 0,
+                            ongoing: json.data.ongoing || []
+                        };
+                    }
+                }
+                return { scheduledAnimes: [] };
+            }
             return await AnimeService.getSchedule(date);
         } catch (err) {
             console.error("Failed to load schedule", err);
@@ -522,7 +550,51 @@ export default function SchedulePage() {
 
               {/* SECTION 1: SCHEDULE GRID */}
               <section>
-                  <SectionHeader title="Broadcast Schedule" icon={Calendar} subtitle={`Operations for ${format(selectedDate, 'EEEE, MMMM do')}`} />
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
+                      <SectionHeader 
+                          title={scheduleType === 'hindi' ? "Hindi Dub Schedule" : "Broadcast Schedule"} 
+                          icon={Calendar} 
+                          subtitle={scheduleType === 'hindi' 
+                              ? ((scheduleData as any)?.isFallback 
+                                  ? `Active ongoing & recent Hindi dub updates` 
+                                  : `Hindi Dub releases for ${format(selectedDate, 'EEEE, MMMM do')}`)
+                              : `Operations for ${format(selectedDate, 'EEEE, MMMM do')}`
+                          } 
+                      />
+
+                      <div className="flex items-center p-1 bg-white/5 rounded-xl border border-white/5 self-start sm:self-auto">
+                          <button
+                              onClick={() => setScheduleType('sub')}
+                              className={cn(
+                                  "px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all",
+                                  scheduleType === 'sub' 
+                                      ? "bg-primary-600 text-white shadow-md shadow-primary-900/30" 
+                                      : "text-zinc-400 hover:text-white"
+                              )}
+                          >
+                              Japanese Airing
+                          </button>
+                          <button
+                              onClick={() => setScheduleType('hindi')}
+                              className={cn(
+                                  "px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all",
+                                  scheduleType === 'hindi' 
+                                      ? "bg-gradient-to-r from-orange-500 to-amber-500 text-white shadow-md shadow-orange-500/20" 
+                                      : "text-zinc-400 hover:text-white"
+                              )}
+                          >
+                              Hindi Dub Track
+                          </button>
+                      </div>
+                  </div>
+
+                  {scheduleType === 'hindi' && (scheduleData as any)?.isFallback && (
+                      <div className="mb-4 px-4 py-2.5 rounded-xl bg-orange-500/10 border border-orange-500/20 text-orange-300 text-xs flex items-center gap-2">
+                          <Info size={14} className="shrink-0 text-orange-400" />
+                          <span>No Hindi dub release logged for this exact calendar date. Showing active ongoing and recent Hindi dub updates:</span>
+                      </div>
+                  )}
+
                   <div className="min-h-[300px]">
                       <AnimatePresence mode="wait">
                           {loadingSchedule ? (
@@ -530,7 +602,7 @@ export default function SchedulePage() {
                                   {[...Array(8)].map((_, i) => <div key={i} className="h-24 bg-white/5 rounded-2xl animate-pulse border border-white/5" />)}
                               </motion.div>
                           ) : schedule.length > 0 ? (
-                              <motion.div key="grid" variants={containerVariants} initial="hidden" animate="show" className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+                              <motion.div key={`${scheduleType}-${format(selectedDate, 'yyyy-MM-dd')}`} variants={containerVariants} initial="hidden" animate="show" className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
                                   {schedule.map((anime: any, idx: number) => <ScheduleCard key={`${anime.id || 'sched'}-${idx}`} anime={anime} />)}
                               </motion.div>
                           ) : (

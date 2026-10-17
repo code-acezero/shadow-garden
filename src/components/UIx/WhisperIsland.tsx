@@ -31,11 +31,13 @@ import { useSettings } from '@/hooks/useSettings';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { hpi } from '@/lib/hpi';
 import { AnimeService } from '@/lib/api'; // Ensure AnimeService is imported
+import MascotPerch from '@/components/Mascot/MascotPerch';
+import { ATRAX_CAPSULE_SPRING, ATRAX_BUBBLY_SPRING, atraxSquishTapVariants } from '@/lib/atraxMotion';
 
 // --- CONFIG ---
 const PLACEHOLDERS = ["Summon Solo Leveling...", "Find One Piece...", "Search Jujutsu Kaisen...", "Explore Shadow Garden..."];
 const ISLAND_HEIGHT = "h-11 md:h-12"; 
-const FLUID_TRANSITION: Transition = { type: "spring", stiffness: 320, damping: 30, mass: 1 };
+const FLUID_TRANSITION: Transition = ATRAX_CAPSULE_SPRING;
 
 // --- ANIMATIONS ---
 
@@ -875,9 +877,9 @@ function WhisperIslandContent() {
     <div ref={wrapperRef} className="fixed top-0 left-0 right-0 z-[9999] pt-[0.08rem] px-2 sm:px-4 pointer-events-none font-sans h-auto min-h-[64px]">
         <div className="w-full flex items-start justify-between gap-2 pointer-events-none relative transition-all duration-500 ease-in-out">
             
-            {/* LOGO */}
-            <motion.div className="pointer-events-auto z-40 shrink-0">
-               <motion.div layout initial={false} animate={{ width: shouldHideExtras ? 48 : (isMobile ? 150 : 230) }} transition={FLUID_TRANSITION} className={cn(`liquid-glass rounded-full ${ISLAND_HEIGHT} flex items-center shadow-lg overflow-hidden cursor-pointer hover:bg-black/50 relative`)} onClick={() => router.push('/home')}>
+            {/* LOGO & GUILD MASCOT */}
+            <motion.div className="pointer-events-auto z-40 shrink-0 flex items-center gap-1.5">
+               <motion.div layout initial={false} animate={{ width: shouldHideExtras ? 48 : (isMobile ? 150 : 230) }} transition={FLUID_TRANSITION} className={cn(`bg-[#0c1322]/95 border border-white/[0.12] rounded-full ${ISLAND_HEIGHT} flex items-center shadow-[0_12px_32px_rgba(0,0,0,0.65),inset_0_1px_1px_rgba(255,255,255,0.12)] overflow-hidden cursor-pointer hover:bg-[#121c32] active:scale-95 transition-all relative`)} onClick={() => router.push('/home')}>
                     <div className="absolute inset-0 overflow-hidden rounded-full pointer-events-none"><LightWave trigger={logoState} delay={0} /></div>
                     <div className="absolute left-1.5 top-1/2 -translate-y-1/2 w-9 h-9 flex items-center justify-center z-50"><ShadowLogo size="w-9 h-9" /></div>
                     <div className="w-full h-full flex items-center justify-center pl-11 pr-2 relative z-10 overflow-hidden">
@@ -914,17 +916,20 @@ function WhisperIslandContent() {
                         </AnimatePresence>
                     </div>
                 </motion.div>
+                {!shouldHideExtras && (
+                    <MascotPerch className="shrink-0 hidden sm:flex" />
+                )}
             </motion.div>
 
             {/* MIDDLE (SEARCH) */}
             <div className="flex-1 flex items-start justify-center pointer-events-auto z-50 min-w-0 w-full">
                 <LayoutGroup>
                     <div className="flex items-start justify-center gap-2 w-full h-full relative">
-                        {centerMode === 'SEARCH_SOLO' && (<motion.div layoutId="main-capsule" transition={FLUID_TRANSITION} onClick={() => isMobile && setIsMobileSearchExpanded(true)} className={cn(`relative liquid-glass !overflow-visible shadow-xl rounded-[2rem] ${ISLAND_HEIGHT} flex items-center w-full`)}><div className="absolute left-1 h-full w-10 flex items-center justify-center z-10 pointer-events-none">{isLoadingSearch ? <Loader2 className="w-4 h-4 animate-spin text-primary-500"/> : <Search size={16} className="text-zinc-400" />}</div><SearchBarContent query={query} setQuery={setQuery} searchMode={searchMode} setSearchMode={(mode: any) => { setSearchMode(mode); setShowFilters(false); }} showFilters={showFilters} setShowFilters={setShowFilters} isLoadingSearch={isLoadingSearch} handleSearchSubmit={handleSearchSubmit} filters={filters} setFilters={setFilters} toggleGenre={toggleGenre} suggestions={suggestions} handleSuggestionClick={handleSuggestionClick} router={router} compact={isMobile && !isMobileSearchExpanded} onCloseMobile={closeMobileExpand} onReset={resetFilters} waveTrigger={logoState} handleRandomSummon={handleRandomSummon} isRandomLoading={isRandomLoading} /></motion.div>)}
+                        {centerMode === 'SEARCH_SOLO' && (<motion.div layoutId="main-capsule" transition={FLUID_TRANSITION} onClick={() => isMobile && setIsMobileSearchExpanded(true)} className={cn(`relative bg-[#0c1322]/95 border border-white/[0.12] !overflow-visible shadow-[0_14px_36px_rgba(0,0,0,0.7),inset_0_1px_1px_rgba(255,255,255,0.12)] rounded-[30px] ${ISLAND_HEIGHT} flex items-center w-full`)}><div className="absolute left-1 h-full w-10 flex items-center justify-center z-10 pointer-events-none">{isLoadingSearch ? <Loader2 className="w-4 h-4 animate-spin text-primary-500"/> : <Search size={16} className="text-zinc-400" />}</div><SearchBarContent query={query} setQuery={setQuery} searchMode={searchMode} setSearchMode={(mode: any) => { setSearchMode(mode); setShowFilters(false); }} showFilters={showFilters} setShowFilters={setShowFilters} isLoadingSearch={isLoadingSearch} handleSearchSubmit={handleSearchSubmit} filters={filters} setFilters={setFilters} toggleGenre={toggleGenre} suggestions={suggestions} handleSuggestionClick={handleSuggestionClick} router={router} compact={isMobile && !isMobileSearchExpanded} onCloseMobile={closeMobileExpand} onReset={resetFilters} waveTrigger={logoState} handleRandomSummon={handleRandomSummon} isRandomLoading={isRandomLoading} /></motion.div>)}
                         {(centerMode === 'ISLAND_FOCUSED' || centerMode === 'ISLAND_DETAILS') && activeNotif && (
                             <>
-                                <motion.div layoutId="search-bubble" transition={FLUID_TRANSITION} onClick={activateSearchFocus} className={cn("flex items-center justify-center rounded-full liquid-glass hover:bg-white/10 shadow-[0_0_15px_-5px_rgba(255,255,255,0.1)] w-11 h-11 md:w-12 md:h-12 aspect-square shrink-0 cursor-pointer z-40")}><Search size={16} className="text-zinc-300" /></motion.div>
-                                <motion.div layoutId="main-capsule" transition={FLUID_TRANSITION} onClick={activateIslandDetails} className={cn("relative overflow-hidden bg-[#0a0a0a]/95 border-primary-500/30 shadow-[0_0_20px_-5px_rgba(220,38,38,0.5)] rounded-[2rem] cursor-pointer z-50", isSwitchingNotif ? "w-11 h-11 md:w-12 md:h-12 aspect-square flex items-center justify-center" : centerMode === 'ISLAND_DETAILS' ? "w-[95vw] max-w-lg p-5 flex flex-col gap-3 h-auto" : `${ISLAND_HEIGHT} px-4 w-fit min-w-[250px] max-w-full flex items-center justify-center`)}>
+                                <motion.div layoutId="search-bubble" transition={FLUID_TRANSITION} onClick={activateSearchFocus} className={cn("flex items-center justify-center rounded-full bg-[#0c1322]/95 border border-white/[0.12] hover:bg-[#121c32] active:scale-90 transition-all shadow-[0_8px_20px_rgba(0,0,0,0.6)] w-11 h-11 md:w-12 md:h-12 aspect-square shrink-0 cursor-pointer z-40")}><Search size={16} className="text-zinc-300" /></motion.div>
+                                <motion.div layoutId="main-capsule" transition={FLUID_TRANSITION} onClick={activateIslandDetails} className={cn("relative overflow-hidden bg-[#0c1322]/95 border border-primary-500/40 shadow-[0_12px_32px_rgba(220,38,38,0.35),inset_0_1px_1px_rgba(255,255,255,0.15)] rounded-[28px] cursor-pointer z-50", isSwitchingNotif ? "w-11 h-11 md:w-12 md:h-12 aspect-square flex items-center justify-center" : centerMode === 'ISLAND_DETAILS' ? "w-[95vw] max-w-lg p-5 flex flex-col gap-3 h-auto" : `${ISLAND_HEIGHT} px-4 w-fit min-w-[250px] max-w-full flex items-center justify-center`)}>
                                     <AnimatePresence mode="wait">
                                         {isSwitchingNotif ? <motion.div key="switch-icon" initial={{scale:0.8, opacity:0}} animate={{scale:1, opacity:1}} exit={{scale:0.8, opacity:0}}>{getNotifIcon(activeNotif.type)}</motion.div> : centerMode === 'ISLAND_DETAILS' ? (<motion.div key="details" layout="position" initial={{opacity:0, y:10}} animate={{opacity:1, y:0}} exit={{opacity:0, y:-5}} className="w-full"><div className="flex justify-between items-start w-full mb-3"><div className="flex items-center gap-3"><div className="p-2 rounded-full bg-white/5 border border-white/10">{getNotifIcon(activeNotif.type)}</div><span className={`text-lg text-white font-lemon tracking-wide`}>{activeNotif.title}</span></div><div role="button" onClick={dismissNotification} className="p-2 hover:bg-white/10 rounded-full bg-white/5 border border-white/5 transition-colors"><X size={16} className="text-white/70 hover:text-white"/></div></div><p className="text-sm text-zinc-300 leading-relaxed mb-4 font-normal normal-case text-center">{activeNotif.content}</p>{activeNotif.link && <Button size="sm" onClick={(e)=>{e.stopPropagation(); router.push(activeNotif.link!)}} className="w-full h-9 bg-primary-600/20 text-primary-400 hover:bg-primary-600 hover:text-white border border-primary-500/20 font-bold uppercase tracking-wider text-xs">View Intel</Button>}</motion.div>) : (<motion.div key="compact" layout="position" initial={{opacity:0}} animate={{opacity:1}} exit={{opacity:0}} className="flex items-center justify-center gap-3 w-full whitespace-nowrap"><div className="shrink-0">{getNotifIcon(activeNotif.type)}</div><div className="flex flex-col min-w-0 flex-1 overflow-hidden items-center"><span className={`text-xs text-white truncate font-lemon tracking-wider`}>{activeNotif.title}</span><span className="text-[10px] text-zinc-400 truncate normal-case">{activeNotif.content}</span></div></motion.div>)}
                                     </AnimatePresence>
@@ -933,11 +938,11 @@ function WhisperIslandContent() {
                         )}
                         {centerMode === 'SEARCH_FOCUSED' && activeNotif && (
                             <>
-                                <motion.div layoutId="main-capsule" transition={FLUID_TRANSITION} className={cn(`relative liquid-glass !overflow-visible shadow-xl rounded-[2rem] w-full ${ISLAND_HEIGHT} flex items-center`)}>
+                                <motion.div layoutId="main-capsule" transition={FLUID_TRANSITION} className={cn(`relative bg-[#0c1322]/95 border border-white/[0.12] !overflow-visible shadow-[0_14px_36px_rgba(0,0,0,0.7),inset_0_1px_1px_rgba(255,255,255,0.12)] rounded-[30px] w-full ${ISLAND_HEIGHT} flex items-center`)}>
                                     <div className="absolute left-1 h-full w-10 flex items-center justify-center z-10 pointer-events-none">{isLoadingSearch ? <Loader2 className="w-4 h-4 animate-spin text-primary-500"/> : <Search size={16} className="text-zinc-400" />}</div>
                                     <SearchBarContent query={query} setQuery={setQuery} searchMode={searchMode} setSearchMode={(mode: any) => { setSearchMode(mode); setShowFilters(false); }} showFilters={showFilters} setShowFilters={setShowFilters} isLoadingSearch={isLoadingSearch} handleSearchSubmit={handleSearchSubmit} filters={filters} setFilters={setFilters} toggleGenre={toggleGenre} suggestions={suggestions} handleSuggestionClick={handleSuggestionClick} router={router} onReset={resetFilters} waveTrigger={logoState} handleRandomSummon={handleRandomSummon} isRandomLoading={isRandomLoading} />
                                 </motion.div>
-                                <motion.div layoutId="island-body" transition={FLUID_TRANSITION} onClick={activateIslandFocus} className={cn("flex items-center justify-center rounded-full bg-[#0a0a0a]/95 border border-primary-500/30 hover:border-primary-500 shadow-[0_0_20px_-5px_rgba(220,38,38,0.5)] w-11 h-11 md:w-12 md:h-12 aspect-square shrink-0 cursor-pointer")}><motion.div layout="position">{getNotifIcon(activeNotif.type)}</motion.div></motion.div>
+                                <motion.div layoutId="island-body" transition={FLUID_TRANSITION} onClick={activateIslandFocus} className={cn("flex items-center justify-center rounded-full bg-[#0c1322]/95 border border-primary-500/40 hover:border-primary-500 shadow-[0_10px_25px_rgba(220,38,38,0.4)] w-11 h-11 md:w-12 md:h-12 aspect-square shrink-0 cursor-pointer active:scale-90 transition-all")}><motion.div layout="position">{getNotifIcon(activeNotif.type)}</motion.div></motion.div>
                             </>
                         )}
                     </div>
@@ -953,7 +958,7 @@ function WhisperIslandContent() {
                             <button 
                                 onClick={() => window.dispatchEvent(new CustomEvent('shadow-toggle-alpha'))} 
                                 className={cn(
-                                    `relative overflow-hidden flex items-center justify-center group liquid-glass hover:bg-white/10 text-white font-bold rounded-full transition-all shrink-0`,
+                                    `relative overflow-hidden flex items-center justify-center group bg-[#0c1322]/95 hover:bg-[#131c30] border border-white/[0.12] shadow-[0_8px_24px_rgba(0,0,0,0.6),inset_0_1px_1px_rgba(255,255,255,0.12)] text-white font-bold rounded-full transition-all shrink-0 active:scale-90`,
                                     `w-11 h-11 md:w-auto md:h-12 aspect-square md:aspect-auto p-0 md:px-3.5 md:py-1.5 md:gap-2`
                                 )}
                                 title="Chat with Alpha AI"
@@ -978,14 +983,14 @@ function WhisperIslandContent() {
                     <div className="absolute inset-0 pointer-events-none overflow-hidden rounded-full"><LightWave trigger={logoState} delay={0.8} /></div>
                     <DropdownMenu modal={false} onOpenChange={setSettingsOpen}>
                         <DropdownMenuTrigger asChild>
-                            <button className={cn("relative outline-none w-11 h-11 md:w-12 md:h-12 aspect-square rounded-full p-[2px] flex items-center justify-center shrink-0")}>
-                                <div className="absolute inset-0 liquid-glass rounded-full pointer-events-none" />
+                            <button className={cn("relative outline-none w-11 h-11 md:w-12 md:h-12 aspect-square rounded-full p-[2px] flex items-center justify-center shrink-0 active:scale-90 transition-transform")}>
+                                <div className="absolute inset-0 bg-[#0c1322] border border-white/[0.12] rounded-full pointer-events-none shadow-[inset_0_1px_1px_rgba(255,255,255,0.15)]" />
                                 <div className="relative z-10 w-full h-full shrink-0">
                                     <ProfileAvatar profile={profile} travellerAvatar={!isAuthenticated ? travellerProfile.avatar : undefined} className="w-full h-full" />
                                 </div>
                             </button>
                         </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end" className={cn("bg-black/95 backdrop-blur-2xl border border-white/10 text-zinc-300 p-3 rounded-2xl z-[101] shadow-[0_10px_50px_rgba(0,0,0,0.9)]", isAuthenticated ? "w-64" : "w-52")}>
+                        <DropdownMenuContent align="end" className={cn("bg-[#0c1322] border border-white/[0.12] text-zinc-300 p-3.5 rounded-[28px] z-[101] shadow-[0_18px_50px_rgba(0,0,0,0.85),inset_0_1px_1px_rgba(255,255,255,0.12)]", isAuthenticated ? "w-64" : "w-52")}>
                             {isAuthenticated ? (
                                 <div className="space-y-3">
                                     <div className="flex items-center gap-3 px-2 py-1">

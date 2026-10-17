@@ -101,7 +101,7 @@ export function getCountryInfo(raw?: string, fallbackType?: string): CountryInfo
     };
   }
 
-  if (query.includes('hindi') || query.includes('india') || query.includes('in')) {
+  if (query.includes('hindi') || query.includes('india') || query.includes('bolly') || query.includes('in')) {
     return {
       code: 'IN',
       name: 'Hindi',
@@ -112,6 +112,49 @@ export function getCountryInfo(raw?: string, fallbackType?: string): CountryInfo
           <rect y="8" width="36" height="8" fill="#ffffff" />
           <rect y="16" width="36" height="8" fill="#138808" />
           <circle cx="18" cy="12" r="2.5" fill="none" stroke="#000080" strokeWidth="0.8" />
+        </svg>
+      ),
+    };
+  }
+
+  if (query.includes('holly') || query.includes('us') || query.includes('english')) {
+    return {
+      code: 'US',
+      name: 'Hollywood',
+      shortName: 'Hollywood',
+      flagSvg: (
+        <svg viewBox="0 0 36 24" className="w-4 h-3 rounded-[2px] shrink-0 shadow-sm border border-white/10" aria-hidden="true">
+          <rect width="36" height="24" fill="#b22234" />
+          <path d="M0,3.7h36M0,7.4h36M0,11.1h36M0,14.8h36M0,18.5h36M0,22.2h36" stroke="#ffffff" strokeWidth="1.8" />
+          <rect width="14" height="13" fill="#3c3b6e" />
+        </svg>
+      ),
+    };
+  }
+
+  if (query.includes('series') || query.includes('tv')) {
+    return {
+      code: 'SERIES',
+      name: 'Web Series',
+      shortName: 'Series',
+      flagSvg: (
+        <svg viewBox="0 0 24 24" className="w-3.5 h-3.5 text-cyan-400 shrink-0" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+          <rect width="20" height="15" x="2" y="7" rx="2" ry="2" />
+          <polyline points="17 2 12 7 7 2" />
+        </svg>
+      ),
+    };
+  }
+
+  if (query.includes('movie')) {
+    return {
+      code: 'MOVIE',
+      name: 'Movie',
+      shortName: 'Movie',
+      flagSvg: (
+        <svg viewBox="0 0 24 24" className="w-3.5 h-3.5 text-emerald-400 shrink-0" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+          <rect width="18" height="18" x="3" y="3" rx="2" />
+          <path d="M7 3v18M17 3v18M3 7.5h4M3 12h18M3 16.5h4M17 7.5h4M17 16.5h4" />
         </svg>
       ),
     };
@@ -138,9 +181,9 @@ export default function CountryBadge({ country, type, showFullname = false, clas
   const info = getCountryInfo(country, type);
 
   return (
-    <div className={`inline-flex items-center gap-1.5 bg-black/75 backdrop-blur-md px-2 py-0.5 rounded-full border border-cyan-500/30 z-10 shadow-sm ${className}`}>
+    <div className={`inline-flex items-center gap-1.5 bg-black/60 backdrop-blur-md px-2 py-0.5 rounded-full border border-white/10 z-10 shadow-sm ${className}`}>
       {info.flagSvg}
-      <span className="text-[9px] font-black text-white uppercase tracking-wider">
+      <span className="text-[8.5px] font-bold text-zinc-200 uppercase tracking-wider">
         {showFullname ? info.name : info.shortName}
       </span>
     </div>

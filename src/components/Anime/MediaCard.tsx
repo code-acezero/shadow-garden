@@ -40,7 +40,7 @@ export const MediaCard = memo(({ item, theme }: { item: any, theme: string }) =>
       btnShadow: 'shadow-[0_0_15px_rgba(16,185,129,0.4)]'
   };
 
-  const href = isDrama ? `/drama-watch/${item.id}` : `/movies-watch/${item.id}`;
+  const href = isDrama ? `/stream/${item.id}` : `/stream/${item.id}?type=movie`;
 
   return (
     <Link href={href} className="group relative flex flex-col shrink-0 w-full sm:w-[160px] md:w-[200px] transition-all duration-300 hover:z-50 hover:scale-110 origin-bottom touch-manipulation block">

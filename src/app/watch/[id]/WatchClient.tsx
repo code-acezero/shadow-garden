@@ -24,6 +24,7 @@ import { sfx } from '@/lib/audioManager';
 import PostShareModal from '@/components/Social/PostShareModal';
 
 import AnimePlayer, { AnimePlayerRef } from '@/components/Player/AnimePlayer';
+import CastDetailModal, { CastModalData } from '@/components/Watch/CastDetailModal';
 import { adManager } from '@/lib/adManager';
 import WatchListButton from '@/components/Watch/WatchListButton';
 import ShadowComments from '@/components/Comments/ShadowComments';
@@ -827,6 +828,146 @@ const VoiceActorDetailsDialog = ({
     );
 };
 
+// ── Multi-Tab Anime Characters & Voice Cast Block (12 Characters Per Tab) ─────
+const AnimeCharactersBlock = ({ characters }: { characters?: any[] }) => {
+    const [activeTab, setActiveTab] = useState(0);
+    const [selectedCharacter, setSelectedCharacter] = useState<CastModalData | null>(null);
+    const itemsPerPage = 12;
+
+    const list = characters || [];
+    const totalTabs = Math.max(1, Math.ceil(list.length / itemsPerPage));
+
+    useEffect(() => {
+        if (activeTab >= totalTabs) setActiveTab(0);
+    }, [list.length, totalTabs, activeTab]);
+
+    if (!list || list.length === 0) return null;
+
+    const currentChars = list.slice(activeTab * itemsPerPage, (activeTab + 1) * itemsPerPage);
+
+    return (
+        <div className="xl:col-span-12 w-full mt-4 bg-[#0a0a0a] rounded-[40px] border border-white/5 p-6 md:p-8 shadow-2xl relative shadow-primary-900/10 order-4 xl:order-5">
+            <div className="flex items-center justify-between mb-6 flex-wrap gap-3">
+                <div className="flex items-center gap-3">
+                    <Users size={18} className="text-primary-600" />
+                    <div>
+                        <h3 className="font-black text-white text-sm font-lemon tracking-widest uppercase">Cast & Characters</h3>
+                        <p className="text-[10px] text-zinc-400 mt-0.5">Anime characters and voice cast</p>
+                    </div>
+                </div>
+
+                {/* Top-Right Multi-Tab Controls */}
+                <div className="flex items-center gap-2">
+                    <span className="text-[10px] font-black text-zinc-400 uppercase tracking-wider">
+                        {activeTab * itemsPerPage + 1}–{Math.min((activeTab + 1) * itemsPerPage, list.length)} of {list.length}
+                    </span>
+
+                    <div className="flex items-center gap-1 bg-black/60 p-1 rounded-xl border border-white/10">
+                        <button
+                            onClick={() => setActiveTab(prev => Math.max(0, prev - 1))}
+                            disabled={activeTab === 0}
+                            className="p-1 rounded-lg text-zinc-400 hover:text-white hover:bg-white/10 disabled:opacity-20 disabled:hover:bg-transparent disabled:hover:text-zinc-400 transition-all active:scale-95"
+                            title="Previous characters"
+                            aria-label="Previous characters"
+                        >
+                            <ChevronLeft size={14} />
+                        </button>
+                        <span className="text-[10px] font-black text-primary-400 px-1.5 min-w-[28px] text-center">
+                            {activeTab + 1}/{totalTabs}
+                        </span>
+                        <button
+                            onClick={() => setActiveTab(prev => Math.min(totalTabs - 1, prev + 1))}
+                            disabled={activeTab >= totalTabs - 1}
+                            className="p-1 rounded-lg text-zinc-400 hover:text-white hover:bg-white/10 disabled:opacity-20 disabled:hover:bg-transparent disabled:hover:text-zinc-400 transition-all active:scale-95"
+                            title="Next characters"
+                            aria-label="Next characters"
+                        >
+                            <ChevronRight size={14} />
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 md:gap-4">
+                {currentChars.map((char: any, idx: number) => {
+                    const charName = char.name || 'Unknown Character';
+                    const charRole = char.role ? (char.role === 'MAIN' ? 'Main Character' : (char.role === 'SUPPORTING' ? 'Supporting Role' : char.role)) : 'Character';
+                    const charPoster = getSafeImageUrl(char.poster);
+                    const va = char.voiceActor;
+
+                    return (
+                        <div 
+                            key={char.id || `${charName}-${idx}`} 
+                            onClick={() => setSelectedCharacter({
+                                name: charName,
+                                role: charRole,
+                                image: charPoster,
+                                profileLarge: charPoster,
+                                department: 'Character',
+                                popularity: char.favorites,
+                                voiceActor: va ? {
+                                    name: va.name,
+                                    poster: getSafeImageUrl(va.poster),
+                                    language: va.language || 'Japanese'
+                                } : null
+                            })}
+                            className="cursor-pointer flex items-center justify-between bg-white/[0.03] hover:bg-white/[0.08] border border-white/5 hover:border-primary-500/30 rounded-2xl p-2.5 transition-all duration-300 group shadow-sm active:scale-[0.99]"
+                        >
+                            {/* Character side */}
+                            <div className="flex items-center gap-2.5 min-w-0">
+                                <div className="w-11 h-14 rounded-xl overflow-hidden shrink-0 border border-white/10 relative bg-zinc-900 shadow-md">
+                                    <img
+                                        src={charPoster}
+                                        alt={charName}
+                                        className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300"
+                                        onError={(e) => { e.currentTarget.src = '/images/placeholder-no-img.jpg'; }}
+                                    />
+                                </div>
+                                <div className="min-w-0 flex flex-col">
+                                    <h4 className="text-xs font-black text-white truncate group-hover:text-primary-400 transition-colors">
+                                        {charName}
+                                    </h4>
+                                    <p className="text-[10px] text-zinc-400 truncate mt-0.5 font-medium">
+                                        {charRole}
+                                    </p>
+                                </div>
+                            </div>
+
+                            {/* Voice Actor side */}
+                            {va && (
+                                <div className="flex items-center gap-2 text-right shrink-0 pl-2 border-l border-white/5">
+                                    <div className="min-w-0 max-w-[85px] sm:max-w-[95px]">
+                                        <h5 className="text-[10px] font-bold text-zinc-300 truncate">
+                                            {va.name}
+                                        </h5>
+                                        <span className="text-[8px] text-zinc-500 uppercase font-semibold">
+                                            {va.language || 'Japanese'}
+                                        </span>
+                                    </div>
+                                    <div className="w-9 h-12 rounded-xl overflow-hidden shrink-0 border border-white/10 bg-zinc-900 shadow-md">
+                                        <img
+                                            src={getSafeImageUrl(va.poster)}
+                                            alt={va.name}
+                                            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                                            onError={(e) => { e.currentTarget.src = '/images/placeholder-no-img.jpg'; }}
+                                        />
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+                    );
+                })}
+            </div>
+
+            <CastDetailModal 
+                isOpen={Boolean(selectedCharacter)} 
+                onClose={() => setSelectedCharacter(null)} 
+                data={selectedCharacter} 
+            />
+        </div>
+    );
+};
+
 // ==========================================
 //  4. MAIN COMPONENT (WatchContent)
 // ==========================================
@@ -1472,10 +1613,10 @@ function WatchContent({ initialAnime }: { initialAnime?: UniversalAnime | null }
             const paramEp = urlEpId || urlEpNumber;
             let targetEpId: string | null = null;
 
-            if (paramEp && anime.episodes?.length) {
+            if (paramEp && anime.episodes) {
                 const paramStr = String(paramEp).trim();
                 const paramNum = Number(paramStr);
-                const urlMatch = anime.episodes.find((e: any) =>
+                let urlMatch = anime.episodes.find((e: any) =>
                     String(e.id) === paramStr ||
                     (!isNaN(paramNum) && Number(e.number) === paramNum) ||
                     String(e.number) === paramStr ||
@@ -1484,6 +1625,21 @@ function WatchContent({ initialAnime }: { initialAnime?: UniversalAnime | null }
                     String(e.id).endsWith(`::${paramStr}`) ||
                     String(e.id).includes(`::${paramStr}`)
                 );
+                if (!urlMatch && !isNaN(paramNum) && paramNum > 0) {
+                    const synthEp = {
+                        id: `${anime.id}::${paramNum}`,
+                        number: paramNum,
+                        title: `Episode ${paramNum}`,
+                        isFiller: false,
+                        isDub: true,
+                        isSub: true,
+                        hasDub: true,
+                        hasSub: true,
+                        malId: anime.malId
+                    };
+                    anime.episodes.push(synthEp);
+                    urlMatch = synthEp;
+                }
                 if (urlMatch) targetEpId = urlMatch.id;
             }
 
@@ -1543,14 +1699,14 @@ function WatchContent({ initialAnime }: { initialAnime?: UniversalAnime | null }
     useEffect(() => { currentEpIdRef.current = currentEpId; }, [currentEpId]);
 
     useEffect(() => {
-        if (!anime?.episodes?.length) return;
+        if (!anime?.episodes) return;
         const paramEp = urlEpId || urlEpNumber;
         if (!paramEp) return;
 
         const paramStr = String(paramEp).trim();
         const paramNum = Number(paramStr);
 
-        const match = anime.episodes.find((e: any) =>
+        let match = anime.episodes.find((e: any) =>
             String(e.id) === paramStr ||
             (!isNaN(paramNum) && Number(e.number) === paramNum) ||
             String(e.number) === paramStr ||
@@ -1559,6 +1715,22 @@ function WatchContent({ initialAnime }: { initialAnime?: UniversalAnime | null }
             String(e.id).endsWith(`::${paramStr}`) ||
             String(e.id).includes(`::${paramStr}`)
         );
+
+        if (!match && !isNaN(paramNum) && paramNum > 0) {
+            const synthEp = {
+                id: `${anime.id}::${paramNum}`,
+                number: paramNum,
+                title: `Episode ${paramNum}`,
+                isFiller: false,
+                isDub: true,
+                isSub: true,
+                hasDub: true,
+                hasSub: true,
+                malId: anime.malId
+            };
+            anime.episodes.push(synthEp);
+            match = synthEp;
+        }
 
         if (match && match.id !== currentEpIdRef.current) {
             const savedRecord = progressBuffer.current[match.id];
@@ -1620,36 +1792,70 @@ function WatchContent({ initialAnime }: { initialAnime?: UniversalAnime | null }
                 const origin = isSoloLevelingOrJp ? 'JP' : (anime?.countryOfOrigin || initialAnime?.countryOfOrigin || 'JP').toUpperCase();
                 const nativeAudio: 'jp' | 'cn' | 'kr' = origin === 'CN' ? 'cn' : (origin === 'KR' ? 'kr' : 'jp');
 
+                const currentEp = anime?.episodes?.find((e: any) => e.id === currentEpId || String(e.number) === currentEpId);
+                const currentEpNum = Number(currentEp?.number || 1);
+
+                const hasEnDub = Boolean(
+                    currentEp?.hasDub || 
+                    currentEp?.isDub || 
+                    (anime as any)?.hasDub || 
+                    ((anime as any)?.stats?.episodes?.dub > 0) || 
+                    ((anime as any)?.episodes?.dub > 0) ||
+                    ((servers as any)?.en?.length > 0) ||
+                    ((servers as any)?.dub?.length > 0)
+                );
+
+                const hindiObj = (anime as any)?.hindiDub;
+                const hindiTotalEps = Number(hindiObj?.totalEpisodes || 0);
+                const isAnimeHindiAvailable = Boolean(hindiObj?.available);
+                const hasHiServer = Boolean((servers as any)?.hi?.length > 0);
+                const isHindiForEpisode = hasHiServer || (isAnimeHindiAvailable && (hindiTotalEps === 0 || currentEpNum <= hindiTotalEps));
+
                 if (!urlAudioHandledRef.current && urlAudio && ['jp', 'en', 'hi', 'cn', 'kr', 'raw'].includes(urlAudio.toLowerCase())) {
                     urlAudioHandledRef.current = true;
                     targetAudio = urlAudio.toLowerCase() as any;
                     targetCategory = (targetAudio === 'en' || targetAudio === 'hi') ? 'dub' : 'sub';
-                    if (currentFetch === activeFetchRef.current && settings.audio !== targetAudio) {
-                        updateSetting('audio', targetAudio);
-                        updateSetting('category', targetCategory);
-                    }
                 } else if (!urlAudioHandledRef.current && (urlType === 'dub' || urlType === 'sub') && settings.category !== urlType) {
                     urlAudioHandledRef.current = true;
                     targetCategory = urlType;
-                    targetAudio = urlType === 'dub' ? 'en' : nativeAudio;
-                    if (currentFetch === activeFetchRef.current) {
-                        updateSetting('category', urlType);
-                        updateSetting('audio', targetAudio);
-                    }
-                } else {
-                    // When preferred audio is a Sub track (jp, cn, kr) or category is sub,
-                    // automatically adapt to this anime's native language!
-                    if (targetCategory === 'sub' || ['jp', 'cn', 'kr'].includes(targetAudio)) {
+                    targetAudio = urlType === 'dub' ? (hasEnDub ? 'en' : nativeAudio) : nativeAudio;
+                }
+
+                // --- INTELLIGENT PRE-FLIGHT AUDIO FALLBACK ---
+                if (targetAudio === 'hi' && !isHindiForEpisode) {
+                    if (hasEnDub) {
+                        console.log(`[WatchClient] Hindi dub not available for this anime. Falling back to English Dub.`);
+                        toast.info("Hindi Dub not available for this anime. Switched to English Dub.");
+                        targetAudio = 'en';
+                        targetCategory = 'dub';
+                    } else {
+                        console.log(`[WatchClient] Hindi dub not available for this anime. Falling back to Sub.`);
+                        toast.info("Hindi Dub not available for this anime. Switched to Sub.");
                         targetAudio = nativeAudio;
                         targetCategory = 'sub';
-                        if (currentFetch === activeFetchRef.current && settings.audio !== nativeAudio) {
-                            updateSetting('audio', nativeAudio);
-                            updateSetting('category', 'sub');
-                        }
+                    }
+                    if (currentFetch === activeFetchRef.current) {
+                        updateSetting('audio', targetAudio);
+                        updateSetting('category', targetCategory);
+                    }
+                } else if (targetAudio === 'en' && anime && anime.episodes?.length > 0 && !hasEnDub) {
+                    console.log(`[WatchClient] English dub not available for this anime. Falling back to Sub.`);
+                    toast.info("English Dub not available for this anime. Switched to Sub.");
+                    targetAudio = nativeAudio;
+                    targetCategory = 'sub';
+                    if (currentFetch === activeFetchRef.current) {
+                        updateSetting('audio', targetAudio);
+                        updateSetting('category', targetCategory);
+                    }
+                } else if (targetCategory === 'sub' || ['jp', 'cn', 'kr'].includes(targetAudio)) {
+                    targetAudio = nativeAudio;
+                    targetCategory = 'sub';
+                    if (currentFetch === activeFetchRef.current && settings.audio !== nativeAudio) {
+                        updateSetting('audio', nativeAudio);
+                        updateSetting('category', 'sub');
                     }
                 }
 
-                const currentEp = anime?.episodes.find((e: any) => e.id === currentEpId || String(e.number) === currentEpId);
                 const streamOpts = {
                     malId: currentEp?.malId || anime?.malId,
                     title: anime?.title,
@@ -1694,51 +1900,77 @@ function WatchContent({ initialAnime }: { initialAnime?: UniversalAnime | null }
 
                 if (currentFetch !== activeFetchRef.current) return;
 
+                // --- MULTI-TIER FAILOVER AUDIO CASCADE ---
                 if (!streamData?.url) {
-                    const isDubAudio = targetAudio === 'en' || targetAudio === 'hi' || targetCategory === 'dub';
-                    const hasConfirmedDub = targetAudio === 'hi'
-                        ? Boolean(streamData?.audioTracks?.some((t: any) => t.id === 'hi' && t.available) || (streamData?.servers?.hi?.length > 0))
-                        : (!!streamOpts.hasDub || 
-                           !!(anime as any)?.hasDub || 
-                           ((anime as any)?.stats?.episodes?.dub > 0) || 
-                           ((anime as any)?.episodes?.dub > 0) || 
-                           streamData?.audioTracks?.some((t: any) => t.id === 'en' && t.available));
+                    if (targetAudio === 'hi') {
+                        const nextFallback = hasEnDub ? 'en' : nativeAudio;
+                        const nextCat = hasEnDub ? 'dub' : 'sub';
+                        const fallbackLabel = hasEnDub ? 'English Dub' : 'Sub';
+                        console.warn(`[Stream] Hindi Dub stream unavailable. Cascading fallback to ${fallbackLabel}.`);
+                        toast.info(`Hindi Dub unavailable. Switched to ${fallbackLabel}.`);
 
-                    if (isDubAudio && !hasConfirmedDub) {
-                        const reason = targetAudio === 'hi' ? 'Hindi Dub' : 'Dub';
-                        console.warn(`[Stream] Episode has no ${reason} track, switching to Sub`);
-                        toast.info(`${reason} not available for this episode. Switching to Sub.`);
-                        targetCategory = 'sub';
-                        const fallbackAudio = nativeAudio;
-
-                        let subServers = [];
-                        if (Array.isArray(servers)) {
-                            subServers = servers;
-                        } else if (servers && typeof servers === 'object') {
-                            subServers = servers[fallbackAudio] || servers['sub'] || [];
+                        let fallbackServers = [];
+                        if (servers && typeof servers === 'object') {
+                            fallbackServers = servers[nextFallback] || servers[nextCat] || [];
                         }
+                        let fbAttemptList = fallbackServers.length > 0 ? fallbackServers.map((s: any) => s.serverName) : [settings.server];
+                        fbAttemptList = fbAttemptList.filter((s: string) => !failedServersRef.current.includes(s.toLowerCase()));
+                        if (fbAttemptList.length === 0) fbAttemptList = [settings.server];
 
-                        let subAttemptList = subServers.length > 0 ? subServers.map((s: any) => s.serverName) : [settings.server];
-                        subAttemptList = subAttemptList.filter((s: string) => !failedServersRef.current.includes(s.toLowerCase()));
-                        for (let srv of subAttemptList) {
+                        for (let srv of fbAttemptList) {
                             if (currentFetch !== activeFetchRef.current) return;
                             try {
-                                streamData = await AnimeService.getStream(currentEpId, srv, fallbackAudio as any, streamOpts);
+                                streamData = await AnimeService.getStream(currentEpId, srv, nextFallback as any, streamOpts);
                                 if (streamData?.url) {
+                                    targetAudio = nextFallback;
+                                    targetCategory = nextCat;
+                                    updateSetting('audio', nextFallback);
+                                    updateSetting('category', nextCat);
+                                    break;
+                                }
+                            } catch (e) { console.warn(`Fallback ${srv} failed`); }
+                        }
+
+                        // If English Dub was tried and ALSO returned no URL, cascade further to native Sub
+                        if (!streamData?.url && nextFallback === 'en') {
+                            console.warn(`[Stream] English Dub also failed. Cascading fallback to Native Sub.`);
+                            toast.info(`Dub unavailable. Switched to Sub.`);
+                            let subServers = servers?.[nativeAudio] || servers?.['sub'] || [];
+                            let subList = subServers.length > 0 ? subServers.map((s: any) => s.serverName) : [settings.server];
+                            for (let srv of subList) {
+                                if (currentFetch !== activeFetchRef.current) return;
+                                try {
+                                    streamData = await AnimeService.getStream(currentEpId, srv, nativeAudio as any, streamOpts);
+                                    if (streamData?.url) {
+                                        targetAudio = nativeAudio;
+                                        targetCategory = 'sub';
+                                        updateSetting('audio', nativeAudio);
+                                        updateSetting('category', 'sub');
+                                        break;
+                                    }
+                                } catch (e) {}
+                            }
+                        }
+                    } else if (targetAudio === 'en' || targetCategory === 'dub') {
+                        console.warn(`[Stream] English Dub stream unavailable. Cascading fallback to Native Sub.`);
+                        toast.info(`English Dub unavailable. Switched to Sub.`);
+                        let subServers = servers?.[nativeAudio] || servers?.['sub'] || [];
+                        let subList = subServers.length > 0 ? subServers.map((s: any) => s.serverName) : [settings.server];
+                        for (let srv of subList) {
+                            if (currentFetch !== activeFetchRef.current) return;
+                            try {
+                                streamData = await AnimeService.getStream(currentEpId, srv, nativeAudio as any, streamOpts);
+                                if (streamData?.url) {
+                                    targetAudio = nativeAudio;
+                                    targetCategory = 'sub';
+                                    updateSetting('audio', nativeAudio);
                                     updateSetting('category', 'sub');
-                                    updateSetting('audio', fallbackAudio);
                                     break;
                                 }
                             } catch (e) { console.warn(`Sub Server ${srv} failed`); }
                         }
-                    } else if (isDubAudio) {
-                        // User explicitly selected English/Hindi Dub and anime has dub:
-                        // NEVER silently downgrade to Sub!
-                        console.warn(`[Failover] All servers exhausted for ${targetAudio} dub. Resetting server failures.`);
-                        failedServersRef.current = [];
-                    } else {
-                        failedServersRef.current = [];
                     }
+                    failedServersRef.current = [];
                 }
 
                 if (streamData) {
@@ -2117,18 +2349,19 @@ function WatchContent({ initialAnime }: { initialAnime?: UniversalAnime | null }
                         </div>
 
                         <motion.div initial={{ y: -20, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ duration: 0.5, delay: 0.2 }} className="w-full transition-all duration-500 will-change-transform">
-                            <div className={cn("hidden lg:flex w-full bg-white/5 backdrop-blur-md border border-white/10 rounded-[30px] shadow-[0_8px_32px_0_rgba(0,0,0,0.2)] px-5 py-3.5 flex-col gap-3 overflow-visible mt-3 transition-all duration-500", settings.dimMode ? "z-[96] relative" : "relative z-10")}>
+                            {/* ATRAX-UI DESKTOP CONTROL COCKPIT */}
+                            <div className={cn("hidden lg:flex w-full bg-[#0c1322] border border-white/[0.12] rounded-[32px] shadow-[0_16px_45px_rgba(0,0,0,0.7),inset_0_1px_1px_rgba(255,255,255,0.12)] px-5 py-3.5 flex-col gap-3 overflow-visible mt-3 transition-all duration-500", settings.dimMode ? "z-[96] relative" : "relative z-10")}>
                                 {/* ROW 1: Playback Navigation, Automations & Audio Selector */}
                                 <div className="flex w-full justify-between items-center gap-3">
-                                    {/* Left: Playback & Automation Buttons */}
+                                    {/* Left: Playback & Automation Buttons with Atrax Bubbly Spring */}
                                     <div className="flex items-center gap-1.5 md:gap-2 flex-nowrap shrink-0">
                                         <button
                                             disabled={!prevEpisode}
                                             onClick={() => prevEpisode && handleEpisodeClick(prevEpisode.id)}
                                             className={cn(
-                                                "flex items-center justify-center gap-1.5 px-3.5 h-8 rounded-full border text-[10px] font-black uppercase tracking-tighter transition-all duration-300 shadow-md shadow-black/40 whitespace-nowrap",
+                                                "flex items-center justify-center gap-1.5 px-3.5 h-8 rounded-full border text-[10px] font-black uppercase tracking-tighter transition-all duration-300 shadow-md whitespace-nowrap atrax-bubbly-btn atrax-squish-tap",
                                                 prevEpisode
-                                                    ? "bg-white/5 border-white/10 text-zinc-300 hover:bg-primary-600 hover:border-primary-500 hover:text-white"
+                                                    ? "bg-[#141d30] border-white/10 text-zinc-300 hover:bg-primary-600 hover:border-primary-500 hover:text-white"
                                                     : "opacity-20 border-white/5 text-zinc-600 cursor-not-allowed"
                                             )}
                                         >
@@ -2136,7 +2369,7 @@ function WatchContent({ initialAnime }: { initialAnime?: UniversalAnime | null }
                                         </button>
                                         <button
                                             onClick={() => updateSetting('autoSkip', !settings.autoSkip)}
-                                            className="flex items-center justify-center gap-1.5 px-3 h-8 rounded-full border border-white/5 bg-white/5 text-[10px] font-black uppercase tracking-tighter transition-all hover:bg-white/10 whitespace-nowrap"
+                                            className="flex items-center justify-center gap-1.5 px-3 h-8 rounded-full border border-white/10 bg-[#141d30] text-[10px] font-black uppercase tracking-tighter transition-all hover:bg-white/10 whitespace-nowrap atrax-bubbly-btn atrax-squish-tap"
                                             title="Auto Skip Intro"
                                         >
                                             <FastForward size={12} className={cn("transition-colors", settings.autoSkip ? "text-amber-400 drop-shadow-[0_0_8px_rgba(251,191,36,0.8)]" : "text-zinc-500")} />
@@ -2144,7 +2377,7 @@ function WatchContent({ initialAnime }: { initialAnime?: UniversalAnime | null }
                                         </button>
                                         <button
                                             onClick={() => updateSetting('autoSkipOutro', !(settings.autoSkipOutro ?? settings.autoSkip))}
-                                            className="flex items-center justify-center gap-1.5 px-3 h-8 rounded-full border border-white/5 bg-white/5 text-[10px] font-black uppercase tracking-tighter transition-all hover:bg-white/10 whitespace-nowrap"
+                                            className="flex items-center justify-center gap-1.5 px-3 h-8 rounded-full border border-white/10 bg-[#141d30] text-[10px] font-black uppercase tracking-tighter transition-all hover:bg-white/10 whitespace-nowrap atrax-bubbly-btn atrax-squish-tap"
                                             title="Auto Skip Outro"
                                         >
                                             <SkipForward size={12} className={cn("transition-colors", (settings.autoSkipOutro ?? settings.autoSkip) ? "text-indigo-400 drop-shadow-[0_0_8px_rgba(129,140,248,0.8)]" : "text-zinc-500")} />
@@ -2152,7 +2385,7 @@ function WatchContent({ initialAnime }: { initialAnime?: UniversalAnime | null }
                                         </button>
                                         <button
                                             onClick={() => updateSetting('autoPlay', !settings.autoPlay)}
-                                            className="flex items-center justify-center gap-1.5 px-3 h-8 rounded-full border border-white/5 bg-white/5 text-[10px] font-black uppercase tracking-tighter transition-all hover:bg-white/10 whitespace-nowrap"
+                                            className="flex items-center justify-center gap-1.5 px-3 h-8 rounded-full border border-white/10 bg-[#141d30] text-[10px] font-black uppercase tracking-tighter transition-all hover:bg-white/10 whitespace-nowrap atrax-bubbly-btn atrax-squish-tap"
                                             title="Auto Play"
                                         >
                                             <Play size={12} className={cn("transition-colors", settings.autoPlay ? "text-primary-500 shadow-[0_0_10px_red]" : "text-zinc-500")} />
@@ -2160,7 +2393,7 @@ function WatchContent({ initialAnime }: { initialAnime?: UniversalAnime | null }
                                         </button>
                                         <button
                                             onClick={() => updateSetting('autoNext', !settings.autoNext)}
-                                            className="flex items-center justify-center gap-1.5 px-3 h-8 rounded-full border border-white/5 bg-white/5 text-[10px] font-black uppercase tracking-tighter transition-all hover:bg-white/10 whitespace-nowrap"
+                                            className="flex items-center justify-center gap-1.5 px-3 h-8 rounded-full border border-white/10 bg-[#141d30] text-[10px] font-black uppercase tracking-tighter transition-all hover:bg-white/10 whitespace-nowrap atrax-bubbly-btn atrax-squish-tap"
                                             title="Auto Next"
                                         >
                                             <SkipForward size={12} className={cn("transition-colors", settings.autoNext ? "text-primary-500 shadow-[0_0_10px_red]" : "text-zinc-500")} />
@@ -2169,7 +2402,7 @@ function WatchContent({ initialAnime }: { initialAnime?: UniversalAnime | null }
                                         {nextEpisode ? (
                                             <button
                                                 onClick={() => handleEpisodeClick(nextEpisode.id)}
-                                                className="flex items-center justify-center gap-1.5 px-3.5 h-8 rounded-full border border-white/10 bg-white/5 text-zinc-300 text-[10px] font-black uppercase tracking-widest transition-all hover:bg-primary-600 whitespace-nowrap group"
+                                                className="flex items-center justify-center gap-1.5 px-3.5 h-8 rounded-full border border-primary-500/30 bg-primary-600/20 text-primary-300 hover:bg-primary-600 hover:text-white text-[10px] font-black uppercase tracking-widest transition-all whitespace-nowrap group atrax-bubbly-btn atrax-squish-tap"
                                             >
                                                 NEXT EP <SkipForward size={12} className="group-hover:translate-x-1 transition-transform" />
                                             </button>
@@ -2189,13 +2422,13 @@ function WatchContent({ initialAnime }: { initialAnime?: UniversalAnime | null }
                                             onClick={() => updateSetting('dimMode', !settings.dimMode)}
                                             variant="ghost"
                                             size="icon"
-                                            className={cn("rounded-full w-8 h-8 transition-all hover:scale-110 flex-shrink-0 border", settings.dimMode ? "text-yellow-400 bg-yellow-500/15 border-yellow-500/40" : "text-zinc-500 hover:text-zinc-200 bg-white/5 border-white/5 hover:bg-white/10")}
+                                            className={cn("rounded-full w-8 h-8 transition-all hover:scale-110 flex-shrink-0 border atrax-bubbly-btn atrax-squish-tap", settings.dimMode ? "text-yellow-400 bg-yellow-500/15 border-yellow-500/40" : "text-zinc-400 hover:text-zinc-200 bg-[#141d30] border-white/10 hover:bg-white/10")}
                                             title="Theater Dim Mode"
                                         >
                                             <Lightbulb size={13} />
                                         </Button>
 
-                                        <div className="flex bg-black/50 rounded-full p-1 border border-white/10 shadow-inner flex-shrink-0 relative">
+                                        <div className="flex bg-[#090e18] rounded-full p-1 border border-white/[0.08] shadow-inner flex-shrink-0 relative">
                                             {audioTrackOptions.map((track) => {
                                                 const isCurrent = currentAudio === track.id;
                                                 return (
@@ -2204,7 +2437,7 @@ function WatchContent({ initialAnime }: { initialAnime?: UniversalAnime | null }
                                                         disabled={!track.available}
                                                         onClick={() => handleAudioChange(track.id)}
                                                         className={cn(
-                                                            "px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wider transition-all relative active:scale-95 flex items-center justify-center gap-1.5 overflow-hidden",
+                                                            "px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wider transition-all relative flex items-center justify-center gap-1.5 overflow-hidden atrax-squish-tap",
                                                             isCurrent
                                                                 ? "text-white shadow-lg z-10"
                                                                 : track.available
@@ -2247,7 +2480,7 @@ function WatchContent({ initialAnime }: { initialAnime?: UniversalAnime | null }
                                 </div>
 
                                 {/* ROW 2: Episode Context, Countdown Timer, Actions & Server Selector */}
-                                <div className="flex w-full justify-between items-center gap-3 border-t border-white/5 pt-2.5">
+                                <div className="flex w-full justify-between items-center gap-3 border-t border-white/[0.08] pt-2.5">
                                     {/* Left: Episode info & live countdown timer */}
                                     <div className="flex-1 min-w-0 flex items-center gap-3 overflow-hidden">
                                         <div className="min-w-0 max-w-[280px] xl:max-w-[380px] flex items-center">
@@ -2274,7 +2507,7 @@ function WatchContent({ initialAnime }: { initialAnime?: UniversalAnime | null }
                                         {currentEpId && (
                                             <Link
                                                 href={`/download/anime/${anime.id}?ep=${currentEpId}`}
-                                                className="flex items-center justify-center px-3.5 h-8 rounded-full border border-white/10 bg-white/5 text-zinc-300 text-[10px] font-black uppercase tracking-widest transition-all hover:bg-orange-600 hover:border-orange-500 hover:text-white whitespace-nowrap shadow-md shadow-orange-900/5 gap-1.5"
+                                                className="flex items-center justify-center px-3.5 h-8 rounded-full border border-white/10 bg-[#141d30] text-zinc-300 text-[10px] font-black uppercase tracking-widest transition-all hover:bg-orange-600 hover:border-orange-500 hover:text-white whitespace-nowrap shadow-md gap-1.5 atrax-bubbly-btn atrax-squish-tap"
                                                 title="Download Episode"
                                             >
                                                 <Download size={12} /> <span className="hidden xl:inline">Download</span>
@@ -2282,14 +2515,14 @@ function WatchContent({ initialAnime }: { initialAnime?: UniversalAnime | null }
                                         )}
                                         <button
                                             onClick={() => setShowShareModal(true)}
-                                            className="flex items-center justify-center gap-1.5 px-3.5 h-8 rounded-full border border-white/10 bg-white/5 text-zinc-300 text-[10px] font-black uppercase tracking-widest transition-all hover:bg-primary-600 hover:border-primary-500 hover:text-white whitespace-nowrap shadow-md"
+                                            className="flex items-center justify-center gap-1.5 px-3.5 h-8 rounded-full border border-white/10 bg-[#141d30] text-zinc-300 text-[10px] font-black uppercase tracking-widest transition-all hover:bg-primary-600 hover:border-primary-500 hover:text-white whitespace-nowrap shadow-md atrax-bubbly-btn atrax-squish-tap"
                                             title="Share Episode"
                                         >
                                             <Share2 size={12} /> Share
                                         </button>
                                         <button
                                             onClick={handleCreateWatchRoom}
-                                            className="flex items-center justify-center gap-1.5 px-3.5 h-8 rounded-full border border-white/10 bg-white/5 text-zinc-300 text-[10px] font-black uppercase tracking-widest transition-all hover:bg-primary-600 hover:border-primary-500 hover:text-white whitespace-nowrap shadow-md cursor-pointer"
+                                            className="flex items-center justify-center gap-1.5 px-3.5 h-8 rounded-full border border-white/10 bg-[#141d30] text-zinc-300 text-[10px] font-black uppercase tracking-widest transition-all hover:bg-primary-600 hover:border-primary-500 hover:text-white whitespace-nowrap shadow-md cursor-pointer atrax-bubbly-btn atrax-squish-tap"
                                             title="Create Watch Room"
                                         >
                                             <Users size={12} /> Room
@@ -2299,7 +2532,7 @@ function WatchContent({ initialAnime }: { initialAnime?: UniversalAnime | null }
                                         {mounted ? (
                                             <DropdownMenu modal={false}>
                                                 <DropdownMenuTrigger asChild>
-                                                    <Button variant="ghost" className="h-8 gap-2 text-[10px] font-black text-zinc-300 hover:text-white uppercase transition-all shadow-md shadow-primary-900/5 whitespace-nowrap rounded-full border border-white/10 bg-white/5 hover:bg-white/10 px-3.5">
+                                                    <Button variant="ghost" className="h-8 gap-2 text-[10px] font-black text-zinc-300 hover:text-white uppercase transition-all shadow-md whitespace-nowrap rounded-full border border-white/10 bg-[#141d30] hover:bg-white/15 px-3.5 atrax-bubbly-btn atrax-squish-tap">
                                                         <ServerIcon size={12} className="text-primary-500" />
                                                         {currentAudioServers && currentAudioServers.length > 0
                                                             ? (() => {
@@ -2310,7 +2543,7 @@ function WatchContent({ initialAnime }: { initialAnime?: UniversalAnime | null }
                                                         <ChevronDown size={11} className="text-zinc-500" />
                                                     </Button>
                                                 </DropdownMenuTrigger>
-                                                <DropdownMenuContent align="end" className="bg-[#050505] border border-white/10 rounded-[24px] shadow-[0_0_25px_-5px_rgba(220,38,38,0.4)] z-[40] min-w-[150px] w-auto h-auto max-h-[220px] p-2">
+                                                <DropdownMenuContent align="end" className="bg-[#0c1322] border border-white/15 rounded-[26px] shadow-[0_20px_50px_rgba(0,0,0,0.9),inset_0_1px_1px_rgba(255,255,255,0.12)] z-[40] min-w-[150px] w-auto h-auto max-h-[220px] p-2">
                                                     <ScrollArea className="h-auto max-h-[190px] custom-scrollbar">
                                                         <div className="flex flex-col gap-1">
                                                             {currentAudioServers.map((srv: any, idx: number) => (
@@ -2318,7 +2551,7 @@ function WatchContent({ initialAnime }: { initialAnime?: UniversalAnime | null }
                                                                     key={srv.serverId || idx}
                                                                     onClick={() => handleServerChange(srv.serverName, true)}
                                                                     className={cn(
-                                                                        "cursor-pointer focus:bg-primary-600 focus:text-white px-3 py-1.5 rounded-full text-[9px] uppercase font-bold tracking-wider mb-1 transition-all",
+                                                                        "cursor-pointer focus:bg-primary-600 focus:text-white px-3 py-1.5 rounded-full text-[9px] uppercase font-bold tracking-wider mb-1 transition-all atrax-squish-tap",
                                                                         settings.server.toLowerCase() === srv.serverName.toLowerCase()
                                                                             ? "bg-primary-600 text-white shadow-lg"
                                                                             : "text-zinc-400 hover:text-white hover:bg-white/5"
@@ -2332,7 +2565,7 @@ function WatchContent({ initialAnime }: { initialAnime?: UniversalAnime | null }
                                                 </DropdownMenuContent>
                                             </DropdownMenu>
                                         ) : (
-                                            <Button variant="ghost" className="h-8 gap-2 text-[10px] font-black text-zinc-300 hover:text-white uppercase transition-all shadow-md shadow-primary-900/5 whitespace-nowrap rounded-full border border-white/10 bg-white/5 px-3.5">
+                                            <Button variant="ghost" className="h-8 gap-2 text-[10px] font-black text-zinc-300 hover:text-white uppercase transition-all shadow-md whitespace-nowrap rounded-full border border-white/10 bg-[#141d30] px-3.5">
                                                 <ServerIcon size={12} />
                                                 {currentAudioServers && currentAudioServers.length > 0
                                                     ? (() => {
@@ -2347,44 +2580,44 @@ function WatchContent({ initialAnime }: { initialAnime?: UniversalAnime | null }
                                 </div>
                             </div>
 
-                            {/* MOBILE CONTROLS */}
-                            <div className={cn("flex lg:hidden w-full bg-white/5 backdrop-blur-md border border-white/10 rounded-[24px] shadow-[0_8px_32px_0_rgba(0,0,0,0.2)] px-3 py-3 flex-col gap-2.5 overflow-hidden mt-3 transition-all duration-500", settings.dimMode ? "z-[96] relative" : "relative z-10")}>
+                            {/* ATRAX-UI MOBILE CONTROLS COCKPIT */}
+                            <div className={cn("flex lg:hidden w-full bg-[#0c1322] border border-white/[0.12] rounded-[28px] shadow-[0_16px_40px_rgba(0,0,0,0.7),inset_0_1px_1px_rgba(255,255,255,0.12)] px-3 py-3 flex-col gap-2.5 overflow-hidden mt-3 transition-all duration-500", settings.dimMode ? "z-[96] relative" : "relative z-10")}>
                                 {/* Row 1: Playback Navigation & Automation Toggles */}
                                 <div className="flex w-full justify-between items-center gap-1.5">
-                                    <button disabled={!prevEpisode} onClick={() => prevEpisode && handleEpisodeClick(prevEpisode.id)} className="flex-1 bg-white/5 h-8 sm:h-9 rounded-full border border-white/5 flex items-center justify-center text-zinc-400 hover:text-white active:scale-95 disabled:opacity-30 disabled:pointer-events-none transition-all" title="Previous Episode"><SkipBack size={13} /></button>
-                                    <button onClick={() => updateSetting('autoSkip', !settings.autoSkip)} className={cn("flex-1 h-8 sm:h-9 rounded-full border flex items-center justify-center transition-all relative active:scale-95", settings.autoSkip ? "bg-amber-500/20 border-amber-500/60 text-amber-400 shadow-[0_0_12px_rgba(251,191,36,0.25)]" : "bg-white/5 border-white/5 text-zinc-400 hover:text-zinc-200")} title={`Auto Skip Intro: ${settings.autoSkip ? 'ON' : 'OFF'}`}>
+                                    <button disabled={!prevEpisode} onClick={() => prevEpisode && handleEpisodeClick(prevEpisode.id)} className="flex-1 bg-[#141d30] h-8 sm:h-9 rounded-full border border-white/10 flex items-center justify-center text-zinc-300 hover:text-white active:scale-95 disabled:opacity-30 disabled:pointer-events-none transition-all atrax-bubbly-btn atrax-squish-tap" title="Previous Episode"><SkipBack size={13} /></button>
+                                    <button onClick={() => updateSetting('autoSkip', !settings.autoSkip)} className={cn("flex-1 h-8 sm:h-9 rounded-full border flex items-center justify-center transition-all relative active:scale-95 atrax-bubbly-btn atrax-squish-tap", settings.autoSkip ? "bg-amber-500/20 border-amber-500/60 text-amber-400 shadow-[0_0_12px_rgba(251,191,36,0.25)]" : "bg-[#141d30] border-white/10 text-zinc-400 hover:text-zinc-200")} title={`Auto Skip Intro: ${settings.autoSkip ? 'ON' : 'OFF'}`}>
                                         <div className="relative flex items-center justify-center">
                                             <FastForward size={13} className={cn("transition-transform", settings.autoSkip && "scale-110")} />
                                             <span className={cn("absolute -top-1 -right-1.5 w-1.5 h-1.5 rounded-full transition-all", settings.autoSkip ? "bg-amber-400 shadow-[0_0_6px_rgba(251,191,36,1)] animate-pulse" : "bg-zinc-600/40")} />
                                         </div>
                                     </button>
-                                    <button onClick={() => updateSetting('autoSkipOutro', !(settings.autoSkipOutro ?? settings.autoSkip))} className={cn("flex-1 h-8 sm:h-9 rounded-full border flex items-center justify-center transition-all relative active:scale-95", (settings.autoSkipOutro ?? settings.autoSkip) ? "bg-indigo-500/20 border-indigo-500/60 text-indigo-400 shadow-[0_0_12px_rgba(129,140,248,0.25)]" : "bg-white/5 border-white/5 text-zinc-400 hover:text-zinc-200")} title={`Auto Skip Outro: ${(settings.autoSkipOutro ?? settings.autoSkip) ? 'ON' : 'OFF'}`}>
+                                    <button onClick={() => updateSetting('autoSkipOutro', !(settings.autoSkipOutro ?? settings.autoSkip))} className={cn("flex-1 h-8 sm:h-9 rounded-full border flex items-center justify-center transition-all relative active:scale-95 atrax-bubbly-btn atrax-squish-tap", (settings.autoSkipOutro ?? settings.autoSkip) ? "bg-indigo-500/20 border-indigo-500/60 text-indigo-400 shadow-[0_0_12px_rgba(129,140,248,0.25)]" : "bg-[#141d30] border-white/10 text-zinc-400 hover:text-zinc-200")} title={`Auto Skip Outro: ${(settings.autoSkipOutro ?? settings.autoSkip) ? 'ON' : 'OFF'}`}>
                                         <div className="relative flex items-center justify-center">
                                             <SkipForward size={13} className={cn("transition-transform", (settings.autoSkipOutro ?? settings.autoSkip) && "scale-110")} />
                                             <span className={cn("absolute -top-1 -right-1.5 w-1.5 h-1.5 rounded-full transition-all", (settings.autoSkipOutro ?? settings.autoSkip) ? "bg-indigo-400 shadow-[0_0_6px_rgba(129,140,248,1)] animate-pulse" : "bg-zinc-600/40")} />
                                         </div>
                                     </button>
-                                    <button onClick={() => updateSetting('autoPlay', !settings.autoPlay)} className={cn("flex-1 h-8 sm:h-9 rounded-full border flex items-center justify-center transition-all relative active:scale-95", settings.autoPlay ? "bg-primary-600/20 border-primary-500/60 text-primary-400 shadow-[0_0_12px_rgba(220,38,38,0.25)]" : "bg-white/5 border-white/5 text-zinc-400 hover:text-zinc-200")} title={`Auto Play: ${settings.autoPlay ? 'ON' : 'OFF'}`}>
+                                    <button onClick={() => updateSetting('autoPlay', !settings.autoPlay)} className={cn("flex-1 h-8 sm:h-9 rounded-full border flex items-center justify-center transition-all relative active:scale-95 atrax-bubbly-btn atrax-squish-tap", settings.autoPlay ? "bg-primary-600/20 border-primary-500/60 text-primary-400 shadow-[0_0_12px_rgba(220,38,38,0.25)]" : "bg-[#141d30] border-white/10 text-zinc-400 hover:text-zinc-200")} title={`Auto Play: ${settings.autoPlay ? 'ON' : 'OFF'}`}>
                                         <div className="relative flex items-center justify-center">
                                             <PlayCircle size={13} className={cn("transition-transform", settings.autoPlay && "scale-110")} />
                                             <span className={cn("absolute -top-1 -right-1.5 w-1.5 h-1.5 rounded-full transition-all", settings.autoPlay ? "bg-primary-500 shadow-[0_0_6px_rgba(220,38,38,1)] animate-pulse" : "bg-zinc-600/40")} />
                                         </div>
                                     </button>
-                                    <button onClick={() => updateSetting('autoNext', !settings.autoNext)} className={cn("flex-1 h-8 sm:h-9 rounded-full border flex items-center justify-center transition-all relative active:scale-95", settings.autoNext ? "bg-primary-600/20 border-primary-500/60 text-primary-400 shadow-[0_0_12px_rgba(220,38,38,0.25)]" : "bg-white/5 border-white/5 text-zinc-400 hover:text-zinc-200")} title={`Auto Next Episode: ${settings.autoNext ? 'ON' : 'OFF'}`}>
+                                    <button onClick={() => updateSetting('autoNext', !settings.autoNext)} className={cn("flex-1 h-8 sm:h-9 rounded-full border flex items-center justify-center transition-all relative active:scale-95 atrax-bubbly-btn atrax-squish-tap", settings.autoNext ? "bg-primary-600/20 border-primary-500/60 text-primary-400 shadow-[0_0_12px_rgba(220,38,38,0.25)]" : "bg-[#141d30] border-white/10 text-zinc-400 hover:text-zinc-200")} title={`Auto Next Episode: ${settings.autoNext ? 'ON' : 'OFF'}`}>
                                         <div className="relative flex items-center justify-center">
                                             <StepForward size={13} className={cn("transition-transform", settings.autoNext && "scale-110")} />
                                             <span className={cn("absolute -top-1 -right-1.5 w-1.5 h-1.5 rounded-full transition-all", settings.autoNext ? "bg-primary-500 shadow-[0_0_6px_rgba(220,38,38,1)] animate-pulse" : "bg-zinc-600/40")} />
                                         </div>
                                     </button>
-                                    <button disabled={!nextEpisode} onClick={() => nextEpisode && handleEpisodeClick(nextEpisode.id)} className="flex-1 bg-white/5 h-8 sm:h-9 rounded-full border border-white/5 flex items-center justify-center text-zinc-400 hover:text-white active:scale-95 disabled:opacity-30 disabled:pointer-events-none transition-all" title="Next Episode"><SkipForward size={13} /></button>
+                                    <button disabled={!nextEpisode} onClick={() => nextEpisode && handleEpisodeClick(nextEpisode.id)} className="flex-1 bg-[#141d30] h-8 sm:h-9 rounded-full border border-white/10 flex items-center justify-center text-zinc-300 hover:text-white active:scale-95 disabled:opacity-30 disabled:pointer-events-none transition-all atrax-bubbly-btn atrax-squish-tap" title="Next Episode"><SkipForward size={13} /></button>
                                 </div>
 
                                 {/* Row 2: Theater Dim Mode & Audio Track Selection */}
                                 <div className="flex w-full items-center gap-2">
-                                    <Button onClick={() => updateSetting('dimMode', !settings.dimMode)} variant="ghost" size="icon" className={cn("rounded-full w-8 h-8 shrink-0 border", settings.dimMode ? "text-yellow-400 bg-yellow-500/15 border-yellow-500/40" : "text-zinc-400 bg-white/5 border-white/5")} title="Theater Dim Mode">
+                                    <Button onClick={() => updateSetting('dimMode', !settings.dimMode)} variant="ghost" size="icon" className={cn("rounded-full w-8 h-8 shrink-0 border atrax-bubbly-btn atrax-squish-tap", settings.dimMode ? "text-yellow-400 bg-yellow-500/15 border-yellow-500/40" : "text-zinc-400 bg-[#141d30] border-white/10")} title="Theater Dim Mode">
                                         <Lightbulb size={14} />
                                     </Button>
-                                    <div className="flex bg-black/50 rounded-full p-1 border border-white/10 shadow-inner flex-1 justify-center relative">
+                                    <div className="flex bg-[#090e18] rounded-full p-1 border border-white/[0.08] shadow-inner flex-1 justify-center relative">
                                         {audioTrackOptions.map((track) => {
                                             const isCurrent = currentAudio === track.id;
                                             return (
@@ -2393,7 +2626,7 @@ function WatchContent({ initialAnime }: { initialAnime?: UniversalAnime | null }
                                                     disabled={!track.available}
                                                     onClick={() => handleAudioChange(track.id)}
                                                     className={cn(
-                                                        "px-2.5 py-1 rounded-full text-[9px] font-black uppercase tracking-wider transition-all relative active:scale-95 shadow-sm flex-1 text-center flex items-center justify-center gap-1 overflow-hidden",
+                                                        "px-2.5 py-1 rounded-full text-[9px] font-black uppercase tracking-wider transition-all relative active:scale-95 shadow-sm flex-1 text-center flex items-center justify-center gap-1 overflow-hidden atrax-squish-tap",
                                                         isCurrent
                                                             ? "text-white shadow-lg z-10"
                                                             : track.available
@@ -2422,13 +2655,13 @@ function WatchContent({ initialAnime }: { initialAnime?: UniversalAnime | null }
                                 </div>
 
                                 {/* Row 4: Actions & Server Selector */}
-                                <div className="flex w-full items-center justify-between gap-2 pt-1 border-t border-white/5">
+                                <div className="flex w-full items-center justify-between gap-2 pt-1 border-t border-white/[0.08]">
                                     <div className="flex items-center gap-1.5 shrink-0">
                                         <WatchListButton animeId={anime.id} animeTitle={anime.title} animeImage={anime.poster} currentEp={currentEpisode?.number} totalEpisodes={anime.episodes?.length || 1} type={(anime as any).type || (anime.info as any)?.stats?.type || "TV"} />
-                                        <button onClick={() => setShowShareModal(true)} className="flex items-center justify-center p-2 h-8 w-8 rounded-full border border-white/10 bg-white/5 text-zinc-300 hover:bg-primary-600 transition-all shadow-sm" title="Share Episode">
+                                        <button onClick={() => setShowShareModal(true)} className="flex items-center justify-center p-2 h-8 w-8 rounded-full border border-white/10 bg-[#141d30] text-zinc-300 hover:bg-primary-600 transition-all shadow-sm atrax-bubbly-btn atrax-squish-tap" title="Share Episode">
                                             <Share2 size={12} />
                                         </button>
-                                        <button onClick={handleCreateWatchRoom} className="flex items-center justify-center p-2 h-8 w-8 rounded-full border border-white/10 bg-white/5 text-zinc-300 hover:bg-primary-600 transition-all shadow-sm" title="Create Watch Room">
+                                        <button onClick={handleCreateWatchRoom} className="flex items-center justify-center p-2 h-8 w-8 rounded-full border border-white/10 bg-[#141d30] text-zinc-300 hover:bg-primary-600 transition-all shadow-sm atrax-bubbly-btn atrax-squish-tap" title="Create Watch Room">
                                             <Users size={12} />
                                         </button>
                                     </div>
@@ -2436,7 +2669,7 @@ function WatchContent({ initialAnime }: { initialAnime?: UniversalAnime | null }
                                     {mounted ? (
                                         <DropdownMenu modal={false}>
                                             <DropdownMenuTrigger asChild>
-                                                <Button variant="ghost" className="h-8 gap-1.5 text-[9px] font-black text-zinc-300 bg-white/5 rounded-full border border-white/10 px-3 flex-1 justify-between max-w-[170px]">
+                                                <Button variant="ghost" className="h-8 gap-1.5 text-[9px] font-black text-zinc-300 bg-[#141d30] rounded-full border border-white/10 px-3 flex-1 justify-between max-w-[170px] atrax-bubbly-btn atrax-squish-tap">
                                                     <span className="flex items-center gap-1.5 truncate">
                                                         <ServerIcon size={11} className="text-primary-500 shrink-0" />
                                                         <span className="truncate">
@@ -2451,7 +2684,7 @@ function WatchContent({ initialAnime }: { initialAnime?: UniversalAnime | null }
                                                     <ChevronDown size={10} className="text-zinc-500 shrink-0" />
                                                 </Button>
                                             </DropdownMenuTrigger>
-                                            <DropdownMenuContent align="end" className="bg-[#0a0a0a] border border-white/10 rounded-[20px] p-1.5 shadow-[0_0_25px_-5px_rgba(220,38,38,0.4)] z-[70] min-w-[140px]">
+                                            <DropdownMenuContent align="end" className="bg-[#0c1322] border border-white/15 rounded-[24px] p-1.5 shadow-[0_20px_50px_rgba(0,0,0,0.9),inset_0_1px_1px_rgba(255,255,255,0.12)] z-[70] min-w-[140px]">
                                                 <ScrollArea className="h-auto max-h-[160px]">
                                                     <div className="flex flex-col gap-1">
                                                         {currentAudioServers.map((srv: any, idx: number) => (
@@ -2459,7 +2692,7 @@ function WatchContent({ initialAnime }: { initialAnime?: UniversalAnime | null }
                                                                 key={srv.serverId || idx}
                                                                 onClick={() => handleServerChange(srv.serverName, true)}
                                                                 className={cn(
-                                                                    "text-[9px] uppercase font-bold px-2.5 py-1.5 rounded-full cursor-pointer",
+                                                                    "text-[9px] uppercase font-bold px-2.5 py-1.5 rounded-full cursor-pointer atrax-squish-tap",
                                                                     settings.server.toLowerCase() === srv.serverName.toLowerCase() ? "bg-primary-600 text-white" : "text-zinc-400 hover:bg-white/10"
                                                                 )}
                                                             >
@@ -2471,7 +2704,7 @@ function WatchContent({ initialAnime }: { initialAnime?: UniversalAnime | null }
                                             </DropdownMenuContent>
                                         </DropdownMenu>
                                     ) : (
-                                        <Button variant="ghost" className="h-8 gap-1.5 text-[9px] font-black text-zinc-400 bg-white/5 rounded-full border border-white/5 px-2.5">
+                                        <Button variant="ghost" className="h-8 gap-1.5 text-[9px] font-black text-zinc-400 bg-[#141d30] rounded-full border border-white/10 px-2.5">
                                             <ServerIcon size={11} />
                                             <span>Server</span>
                                         </Button>
@@ -2481,10 +2714,11 @@ function WatchContent({ initialAnime }: { initialAnime?: UniversalAnime | null }
                         </motion.div>
                     </div>
 
-                    <div className="xl:col-span-4 w-full h-full min-h-[420px] max-h-[520px] xl:max-h-none bg-black/40 backdrop-blur-2xl rounded-[30px] border border-white/10 overflow-hidden flex flex-col relative z-20 order-2">
-                        <div className="p-6 bg-white/5 border-b border-white/5 flex justify-between items-center shrink-0">
-                            <div className="flex items-center gap-3"><h3 className="font-black text-white flex items-center gap-2 uppercase text-sm font-lemon tracking-widest"><Layers size={18} className="text-primary-600" /> Episodes</h3><span className="bg-white/10 backdrop-blur-md border border-white/10 text-white font-black text-[10px] px-3 h-5 rounded-full flex items-center shadow-lg">{anime.episodes.length}</span></div>
-                            <div className="flex items-center gap-1 bg-black/50 p-1 rounded-xl border border-white/5 relative">
+                    {/* ATRAX-UI EPISODES SIDEBAR */}
+                    <div className="xl:col-span-4 w-full h-full min-h-[420px] max-h-[520px] xl:max-h-none bg-[#0c1322] rounded-[32px] border border-white/[0.12] shadow-[0_16px_45px_rgba(0,0,0,0.7),inset_0_1px_1px_rgba(255,255,255,0.12)] overflow-hidden flex flex-col relative z-20 order-2">
+                        <div className="p-5 bg-[#0e1628] border-b border-white/[0.08] flex justify-between items-center shrink-0">
+                            <div className="flex items-center gap-3"><h3 className="font-black text-white flex items-center gap-2 uppercase text-sm font-lemon tracking-widest"><Layers size={18} className="text-primary-600" /> Episodes</h3><span className="bg-[#162138] border border-white/15 text-white font-black text-[10px] px-3 h-5 rounded-full flex items-center shadow-sm">{anime.episodes.length}</span></div>
+                            <div className="flex items-center gap-1 bg-[#090e18] p-1 rounded-full border border-white/[0.08] relative">
                                 {[
                                     { mode: 'compact', icon: Grid, label: 'Compact' },
                                     { mode: 'grid', icon: LayoutGrid, label: 'Grid' },
@@ -2760,67 +2994,7 @@ function WatchContent({ initialAnime }: { initialAnime?: UniversalAnime | null }
 
                     {/* CHARACTERS & VOICE CAST */}
                     {anime.characters && anime.characters.length > 0 && (
-                        <div className="xl:col-span-12 w-full mt-4 bg-[#0a0a0a] rounded-[40px] border border-white/5 p-6 md:p-8 shadow-2xl relative shadow-primary-900/10 order-4 xl:order-5">
-                            <div className="flex items-center justify-between mb-6">
-                                <div className="flex items-center gap-3">
-                                    <Users size={18} className="text-primary-600" />
-                                    <h3 className="font-black text-white text-sm font-lemon tracking-widest uppercase">Cast & Characters</h3>
-                                </div>
-                                <span className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest">
-                                    {anime.characters.length} Characters
-                                </span>
-                            </div>
-                            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 md:gap-4">
-                                {anime.characters.slice(0, 16).map((char: any) => (
-                                    <div key={char.id} className="flex items-center justify-between bg-white/[0.03] hover:bg-white/[0.08] border border-white/5 hover:border-primary-500/30 rounded-2xl p-2.5 transition-all duration-300 group">
-                                        {/* Character side */}
-                                        <div className="flex items-center gap-2.5 min-w-0">
-                                            <div className="w-11 h-14 rounded-xl overflow-hidden shrink-0 border border-white/10 relative bg-zinc-900">
-                                                <img
-                                                    src={getSafeImageUrl(char.poster)}
-                                                    alt={char.name}
-                                                    className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300"
-                                                    onError={(e) => { e.currentTarget.src = '/images/placeholder-no-img.jpg'; }}
-                                                />
-                                            </div>
-                                            <div className="min-w-0">
-                                                <h4 className="text-xs font-black text-white truncate group-hover:text-primary-400 transition-colors">
-                                                    {char.name}
-                                                </h4>
-                                                <span className={cn(
-                                                    "text-[8px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded-full inline-block mt-0.5",
-                                                    char.role === 'MAIN' ? "bg-primary-900/30 text-primary-400 border border-primary-800/40" : "bg-white/5 text-zinc-400"
-                                                )}>
-                                                    {char.role || 'Cast'}
-                                                </span>
-                                            </div>
-                                        </div>
-
-                                        {/* Voice Actor side */}
-                                        {char.voiceActor && (
-                                            <div className="flex items-center gap-2 text-right shrink-0 pl-2">
-                                                <div className="min-w-0 max-w-[85px] sm:max-w-[95px]">
-                                                    <h5 className="text-[10px] font-bold text-zinc-300 truncate">
-                                                        {char.voiceActor.name}
-                                                    </h5>
-                                                    <span className="text-[8px] text-zinc-500 uppercase font-semibold">
-                                                        {char.voiceActor.language || 'Japanese'}
-                                                    </span>
-                                                </div>
-                                                <div className="w-9 h-12 rounded-xl overflow-hidden shrink-0 border border-white/10 bg-zinc-900">
-                                                    <img
-                                                        src={getSafeImageUrl(char.voiceActor.poster)}
-                                                        alt={char.voiceActor.name}
-                                                        className="w-full h-full object-cover"
-                                                        onError={(e) => { e.currentTarget.src = '/images/placeholder-no-img.jpg'; }}
-                                                    />
-                                                </div>
-                                            </div>
-                                        )}
-                                    </div>
-                                ))}
-                            </div>
-                        </div>
+                        <AnimeCharactersBlock characters={anime.characters} />
                     )}
 
                     {/* RELATED SECTION (FAMILY LINEAGE) */}

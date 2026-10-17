@@ -43,7 +43,7 @@ export default function SafeEmbed({ url }: SafeEmbedProps) {
             allowFullScreen
             referrerPolicy="origin"
             loading="lazy"
-            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+            allow="autoplay *; fullscreen *; encrypted-media *; picture-in-picture *; accelerometer; gyroscope; clipboard-write; web-share"
             title="Embed Player"
           />
         </IframeAdShield>

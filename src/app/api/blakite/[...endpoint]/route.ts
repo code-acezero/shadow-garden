@@ -5,7 +5,9 @@ import {
   searchBlakite, 
   filterBlakite, 
   getBlakiteDetail, 
-  getBlakiteStreamUrl 
+  getBlakiteStreamUrl,
+  getHindiDubSchedule,
+  getHindiReleasingToday
 } from '@/lib/blakite';
 
 export const dynamic = 'force-dynamic';
@@ -47,6 +49,18 @@ export async function GET(
       const type = searchParams.get('type') || 'updated-all';
       const data = await getBlakiteLatest(type, page);
       return NextResponse.json({ ok: true, success: true, results: data?.results || [], data });
+    }
+
+    if (mainEndpoint === 'schedule') {
+      const date = searchParams.get('date') || undefined;
+      const data = await getHindiDubSchedule(date);
+      return NextResponse.json({ ok: true, success: true, data });
+    }
+
+    if (mainEndpoint === 'releasing-today') {
+      const limit = parseInt(searchParams.get('limit') || '24', 10);
+      const data = await getHindiReleasingToday(limit);
+      return NextResponse.json({ ok: true, success: true, results: data });
     }
 
     if (mainEndpoint === 'anime') {

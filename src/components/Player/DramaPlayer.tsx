@@ -2,7 +2,7 @@
 
 import React, { useEffect, useRef, useState, useCallback, forwardRef, useImperativeHandle } from 'react';
 import Hls from 'hls.js';
-import { Play, Pause, Volume2, VolumeX, Settings, Maximize, Subtitles, Gauge, ChevronRight, ChevronLeft, ChevronsLeft, ChevronsRight, Loader2, PictureInPicture, Server as ServerIcon, SkipForward, ToggleLeft, ToggleRight } from 'lucide-react';
+import { Play, Pause, Volume2, VolumeX, Settings, Maximize, Subtitles, Gauge, ChevronRight, ChevronLeft, ChevronsLeft, ChevronsRight, Loader2, PictureInPicture, Server as ServerIcon, SkipForward, ToggleLeft, ToggleRight, RotateCw, AlertTriangle } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { MagicalWaveParticlesPlayerLoader } from '@/components/Watch/LiquidWatchLoaders';
 import { RunHappyPlayerLoader } from '@/components/UIx/SkeletonLoaders';
@@ -18,6 +18,7 @@ interface DramaPlayerProps {
   referer?: string | null;
   autoPlay?: boolean;
   startTime?: number;
+  subtitles?: { url: string; lang?: string; label?: string }[];
   onEnded?: () => void;
   onPlay?: () => void;
   onPause?: () => void;
@@ -42,7 +43,7 @@ export interface DramaPlayerRef {
 }
 
 const DramaPlayer = forwardRef<DramaPlayerRef, DramaPlayerProps>(({
-  url, iframeUrl, title, poster, referer, autoPlay = true, startTime = 0,
+  url, iframeUrl, title, poster, referer, autoPlay = true, startTime = 0, subtitles = [],
   onEnded, onPlay, onPause, onProgress, onInteract, initialVolume = 1,
   episodes = [], currentEpId, onEpisodeSelect, isAutoNext = true, servers = [], activeServerIdx = 0, onServerSelect, setIsAutoNext
 }, ref) => {
@@ -68,11 +69,69 @@ const DramaPlayer = forwardRef<DramaPlayerRef, DramaPlayerProps>(({
   const [currentQuality, setCurrentQuality] = useState(-1);
   const [speed, setSpeed] = useState(1);
   const [showSettings, setShowSettings] = useState(false);
+  const [showSubtitles, setShowSubtitles] = useState(false);
+  const [availableSubtitles, setAvailableSubtitles] = useState<{ id: number; label: string; lang: string }[]>([]);
+  const [currentSubtitle, setCurrentSubtitle] = useState<number>(-1);
   const [showEpisodes, setShowEpisodes] = useState(false);
   const [showServers, setShowServers] = useState(false);
   const [hlsFailed, setHlsFailed] = useState(false);
+  const [serverError, setServerError] = useState<string | null>(null);
+  const [autoSwitching, setAutoSwitching] = useState(false);
+
+  const switchNextServer = useCallback((reason?: string) => {
+    if (!servers || servers.length <= 1 || !onServerSelect) return;
+    const nextIdx = (activeServerIdx + 1) % servers.length;
+    setAutoSwitching(true);
+    setServerError(reason || `Switching to server: ${servers[nextIdx]?.name || nextIdx + 1}...`);
+    setTimeout(() => {
+      onServerSelect(nextIdx);
+      setAutoSwitching(false);
+      setServerError(null);
+    }, 1500);
+  }, [servers, activeServerIdx, onServerSelect]);
+
+  // Listen for iframe embed error events and video-not-found postMessages
+  useEffect(() => {
+    const handleMsg = (e: MessageEvent) => {
+      try {
+        const d = e.data;
+        if (!d) return;
+        const isErr = 
+          (typeof d === 'string' && (d.includes('error') || d.includes('not_found') || d.includes('failed') || d.includes('Video not found'))) ||
+          (typeof d === 'object' && (d.event === 'error' || d.type === 'error' || d.status === 'error' || d.error));
+
+        if (isErr && servers.length > 1) {
+          console.warn('[DramaPlayer] Embed stream error detected:', d);
+          switchNextServer('Video not found on current server. Auto-switching...');
+        }
+      } catch {}
+    };
+
+    window.addEventListener('message', handleMsg);
+    return () => window.removeEventListener('message', handleMsg);
+  }, [servers, switchNextServer]);
+
+  // Reset iframe state when URL changes
+  useEffect(() => {
+    setIframeLoading(true);
+    setServerError(null);
+    setAutoSwitching(false);
+  }, [iframeUrl]);
 
   const controlsTimer = useRef<NodeJS.Timeout | null>(null);
+
+  const changeSubtitle = (idx: number) => {
+    setCurrentSubtitle(idx);
+    if (hlsRef.current) {
+      hlsRef.current.subtitleTrack = idx;
+    }
+    if (videoRef.current && videoRef.current.textTracks) {
+      for (let i = 0; i < videoRef.current.textTracks.length; i++) {
+        videoRef.current.textTracks[i].mode = i === idx ? 'showing' : 'disabled';
+      }
+    }
+    setShowSubtitles(false);
+  };
 
   useImperativeHandle(ref, () => ({
     getCurrentTime: () => videoRef.current?.currentTime || 0,
@@ -180,6 +239,15 @@ const DramaPlayer = forwardRef<DramaPlayerRef, DramaPlayerProps>(({
     if (!m) videoRef.current.volume = 1;
   };
 
+  const changeVolume = (v: number) => {
+    setVolume(v);
+    setIsMuted(v === 0);
+    if (videoRef.current) {
+      videoRef.current.volume = v;
+      videoRef.current.muted = (v === 0);
+    }
+  };
+
   const toggleFullscreen = async () => {
     if (!containerRef.current) return;
     try {
@@ -219,7 +287,7 @@ const DramaPlayer = forwardRef<DramaPlayerRef, DramaPlayerProps>(({
   // Iframe mode
   if (useIframe && iframeUrl) {
     return (
-      <div className="relative w-full aspect-video bg-black rounded-2xl overflow-hidden ring-1 ring-white/10">
+      <div className="relative w-full aspect-video bg-black rounded-2xl overflow-hidden ring-1 ring-white/10 group">
         {iframeLoading && (
             <div className="absolute inset-0 z-50 flex items-center justify-center pointer-events-none">
                 <div className="bg-black/40 backdrop-blur-[2px] p-4 rounded-full shadow-xl animate-in fade-in zoom-in-90 duration-300">
@@ -227,15 +295,46 @@ const DramaPlayer = forwardRef<DramaPlayerRef, DramaPlayerProps>(({
                 </div>
             </div>
         )}
+
+        {/* Server auto-switch error notification */}
+        {serverError && (
+          <div className="absolute top-4 left-1/2 -translate-x-1/2 z-50 bg-rose-950/90 backdrop-blur-md border border-rose-500/60 text-white rounded-full px-4 py-1.5 flex items-center gap-2 shadow-2xl animate-in fade-in slide-in-from-top-2">
+            <AlertTriangle size={13} className="text-yellow-400 shrink-0" />
+            <span className="text-[10px] font-black uppercase tracking-wider text-rose-100">{serverError}</span>
+            <Loader2 size={12} className="animate-spin text-rose-300 shrink-0" />
+          </div>
+        )}
+
+        {/* In-player Fast Server Switch Button */}
+        {servers && servers.length > 1 && onServerSelect && (
+          <div className="absolute top-3 right-3 z-40 opacity-80 hover:opacity-100 transition-opacity">
+            <button
+              onClick={() => switchNextServer()}
+              disabled={autoSwitching}
+              className="flex items-center gap-1.5 px-3 py-1 bg-black/80 hover:bg-cyan-500 hover:text-black border border-white/20 hover:border-cyan-400 rounded-full text-[10px] font-black uppercase text-zinc-300 transition-all shadow-xl active:scale-95 group/btn"
+              title="Switch to next streaming server"
+            >
+              <RotateCw size={11} className={cn("transition-transform", autoSwitching ? "animate-spin text-cyan-400" : "group-hover/btn:rotate-180")} />
+              <span>Switch Server ({activeServerIdx + 1}/{servers.length})</span>
+            </button>
+          </div>
+        )}
+
         <IframeAdShield
           className="absolute inset-0 w-full h-full"
         >
           <iframe
+            key={iframeUrl}
             src={iframeUrl}
             onLoad={() => setIframeLoading(false)}
+            onError={() => {
+              setIframeLoading(false);
+              switchNextServer('Server connection failed. Switching to next server...');
+            }}
             className="absolute inset-0 w-full h-full border-0"
             allowFullScreen
-            allow="autoplay; fullscreen; encrypted-media"
+            allow="autoplay *; fullscreen *; encrypted-media *; picture-in-picture *; accelerometer; gyroscope; clipboard-write; web-share"
+            referrerPolicy="origin"
             title={title || 'Drama Player'}
           />
         </IframeAdShield>
@@ -262,9 +361,11 @@ const DramaPlayer = forwardRef<DramaPlayerRef, DramaPlayerProps>(({
       ref={containerRef}
       tabIndex={0}
       className={cn("group relative w-full aspect-video bg-black overflow-hidden font-sans select-none rounded-2xl shadow-2xl ring-1 ring-white/10 outline-none", showControls ? "cursor-auto" : "cursor-none")}
-      style={{ touchAction: 'none' }}
       onClick={() => { if (showControls) setShowControls(false); else showUI(); }}
       onMouseMove={showUI}
+      onWheel={(e) => {
+        window.scrollBy({ top: e.deltaY, behavior: 'instant' as any });
+      }}
       onKeyDown={(e) => {
         if (['Space', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'KeyF', 'KeyM'].includes(e.code)) {
             e.preventDefault();
@@ -371,9 +472,10 @@ const DramaPlayer = forwardRef<DramaPlayerRef, DramaPlayerProps>(({
 
         {/* Controls Row */}
         <div className="flex items-center justify-between pointer-events-auto mt-2">
-          <div className="flex items-center gap-2 md:gap-5">
+          {/* Left: Play/Pause, Next Episode, Volume, Time */}
+          <div className="flex items-center gap-2 md:gap-4">
             <button onClick={(e) => { e.stopPropagation(); togglePlay(); }} className="hover:text-primary-500 transition-colors active:scale-90 text-white">
-              {isPlaying ? <Pause size={24} /> : <Play size={24} />}
+              {isPlaying ? <Pause size={22} /> : <Play size={22} />}
             </button>
             {episodes && currentEpId && episodes.findIndex(e => e.id === currentEpId) < episodes.length - 1 && (
               <button onClick={(e) => { 
@@ -382,60 +484,80 @@ const DramaPlayer = forwardRef<DramaPlayerRef, DramaPlayerProps>(({
                 const nextEp = episodes[idx + 1];
                 if (nextEp && onEpisodeSelect) onEpisodeSelect(nextEp.id);
               }} className="hover:text-primary-500 transition-colors active:scale-90 text-white">
-                <SkipForward size={20} />
+                <SkipForward size={18} />
               </button>
             )}
+            <div className="flex items-center gap-2 group/vol">
+              <button onClick={(e) => { e.stopPropagation(); toggleMute(); }} className="hover:text-primary-500 transition-colors active:scale-90 text-white">
+                {isMuted || volume === 0 ? <VolumeX size={18} /> : <Volume2 size={18} />}
+              </button>
+              <input
+                type="range"
+                min="0"
+                max="1"
+                step="0.05"
+                value={isMuted ? 0 : volume}
+                onChange={(e) => changeVolume(parseFloat(e.target.value))}
+                className="w-16 h-1 accent-primary-500 cursor-pointer hidden group-hover/vol:block"
+                onClick={(e) => e.stopPropagation()}
+              />
+            </div>
             <div className="text-[11px] font-bold text-zinc-400 font-mono hidden md:block"><span className="text-white">{formatTime(currentTime)}</span> / {formatTime(duration)}</div>
-            
-            {/* Integrated Episodes Menu */}
-            {episodes && episodes.length > 0 && (
-              <div className="relative">
-                <button onClick={(e) => { e.stopPropagation(); setShowEpisodes(!showEpisodes); setShowServers(false); setShowSettings(false); }} className={cn("text-[10px] md:text-xs font-black uppercase tracking-widest px-3 py-1.5 rounded-full border transition-all active:scale-95 text-white", showEpisodes ? "bg-primary-600 border-primary-500" : "frost-glass hover:border-primary-500")}>
-                  Episodes
-                </button>
-                {showEpisodes && (
-                  <div className="absolute bottom-full mb-4 left-0 bg-zinc-950/70 backdrop-blur-3xl border border-white/5 ring-1 ring-white/10 rounded-2xl p-2 w-64 shadow-2xl z-50 flex flex-col gap-1 animate-in slide-in-from-bottom-2 max-h-[220px] sm:max-h-[280px] md:max-h-[350px] overflow-y-auto no-scrollbar" onClick={(e) => e.stopPropagation()}>
-                    <p className="text-[10px] font-black text-zinc-500 uppercase px-3 pb-2 pt-1 sticky top-0 bg-black/90 z-10 border-b border-white/10">Select Episode</p>
-                    {episodes.map(ep => (
-                      <button key={ep.id} onClick={() => { onEpisodeSelect?.(ep.id); setShowEpisodes(false); }} className={cn("text-[11px] px-3 py-2 rounded-xl text-left font-bold transition-all flex items-center justify-between group", currentEpId === ep.id ? "bg-primary-600 text-white" : "text-zinc-400 hover:text-white hover:bg-white/10 hover:shadow-inner")}>
-                        <span className="truncate">EP {ep.number}: {ep.title}</span>
-                        {currentEpId === ep.id && <Play size={10} className="shrink-0" />}
-                      </button>
-                    ))}
-                  </div>
-                )}
-              </div>
-            )}
-
-            {/* Integrated Servers Menu */}
-            {servers && servers.length > 0 && (
-              <div className="relative">
-                <button onClick={(e) => { e.stopPropagation(); setShowServers(!showServers); setShowEpisodes(false); setShowSettings(false); }} className={cn("text-[10px] md:text-xs font-black uppercase tracking-widest px-3 py-1.5 rounded-full border transition-all active:scale-95 text-white flex items-center gap-2", showServers ? "bg-primary-600 border-primary-500" : "frost-glass hover:border-primary-500")}>
-                  <ServerIcon size={12} className="hidden md:block" /> {servers[activeServerIdx]?.name || 'Server'}
-                </button>
-                {showServers && (
-                  <div className="absolute bottom-full mb-4 left-0 bg-zinc-950/70 backdrop-blur-3xl border border-white/5 ring-1 ring-white/10 rounded-2xl p-2 w-56 shadow-2xl z-50 flex flex-col gap-1 animate-in slide-in-from-bottom-2 max-h-[220px] sm:max-h-[280px] md:max-h-[350px] overflow-y-auto no-scrollbar" onClick={(e) => e.stopPropagation()}>
-                    <p className="text-[10px] font-black text-zinc-500 uppercase px-3 pb-2 pt-1 border-b border-white/10">Audio / Server</p>
-                    {servers.map((srv, idx) => (
-                      <button key={idx} onClick={() => { onServerSelect?.(idx); setShowServers(false); }} className={cn("text-[11px] px-3 py-2 rounded-xl text-left font-bold transition-all flex items-center justify-between", activeServerIdx === idx ? "bg-primary-600 text-white" : "text-zinc-400 hover:text-white hover:bg-white/10 hover:shadow-inner")}>
-                        <span>{srv.name}</span>
-                        <span className={cn("text-[8px] px-2 py-0.5 rounded-full", srv.type === 'hls' ? "bg-green-900/50 text-green-400" : "bg-zinc-800 text-zinc-400")}>{srv.type === 'hls' ? 'HLS' : 'Embed'}</span>
-                      </button>
-                    ))}
-                  </div>
-                )}
-              </div>
-            )}
           </div>
 
+          {/* Right: Subtitles (CC), Settings (Rotates Only on Open/Close), Fullscreen */}
           <div className="flex items-center gap-2 md:gap-4 relative">
-            <button onClick={(e) => { e.stopPropagation(); setIsAutoNext?.(!isAutoNext); }} className="hover:text-primary-500 transition-colors active:scale-90 text-white flex items-center gap-1">
-              <span className="text-[10px] font-black uppercase hidden md:inline">Auto Next</span>
-              {isAutoNext ? <ToggleRight size={22} className="text-primary-500" /> : <ToggleLeft size={22} className="text-zinc-500" />}
-            </button>
+            {/* Subtitles (CC) Menu */}
+            <div className="relative">
+              <button 
+                onClick={(e) => { 
+                  e.stopPropagation(); 
+                  setShowSubtitles(!showSubtitles); 
+                  setShowSettings(false); 
+                }} 
+                className={cn("hover:text-primary-500 transition-colors active:scale-90 p-2 md:p-0", (showSubtitles || currentSubtitle !== -1) ? "text-primary-500" : "text-white")}
+                title="Subtitles / Captions (CC)"
+              >
+                <Subtitles size={20} />
+              </button>
+              {showSubtitles && (
+                <div className="absolute bottom-12 right-0 bg-zinc-950/90 backdrop-blur-3xl border border-white/10 ring-1 ring-white/10 rounded-2xl shadow-[0_8px_40px_rgba(0,0,0,0.8)] p-2 w-44 sm:w-52 max-h-[280px] overflow-hidden z-[70] flex flex-col animate-in slide-in-from-bottom-2" onClick={(e) => e.stopPropagation()}>
+                  <p className="text-[10px] font-black text-zinc-400 uppercase px-2.5 py-1 border-b border-white/10 shrink-0">Subtitles (CC)</p>
+                  <div className="overflow-y-auto flex-1 flex flex-col gap-1 scrollbar-hide pt-1">
+                    <button 
+                      onClick={(e) => { e.stopPropagation(); changeSubtitle(-1); }} 
+                      className={cn("text-[10px] px-2.5 py-1.5 rounded-xl text-left font-bold transition-all active:scale-95 shrink-0", currentSubtitle === -1 ? "bg-gradient-to-r from-primary-600 to-primary-500 text-white shadow-md shadow-primary-500/25 border border-primary-500/50" : "hover:bg-white/10 hover:shadow-inner text-zinc-400")}
+                    >
+                      Off
+                    </button>
+                    {availableSubtitles.map((t, i) => (
+                      <button 
+                        key={i} 
+                        onClick={(e) => { e.stopPropagation(); changeSubtitle(i); }} 
+                        className={cn("text-[10px] px-2.5 py-1.5 rounded-xl text-left font-bold transition-all truncate active:scale-95 shrink-0", currentSubtitle === i ? "bg-gradient-to-r from-primary-600 to-primary-500 text-white shadow-md shadow-primary-500/25 border border-primary-500/50" : "hover:bg-white/10 hover:shadow-inner text-zinc-400")}
+                      >
+                        {t.label || t.lang || `Track ${i + 1}`}
+                      </button>
+                    ))}
+                    {availableSubtitles.length === 0 && (
+                      <p className="text-[10px] text-zinc-500 px-2.5 py-2 italic text-center">No CC tracks detected</p>
+                    )}
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Settings Menu with Non-Hover Smooth 90° Rotation on Open/Close */}
             <div className="relative z-50">
-              <button onClick={(e) => { e.stopPropagation(); setShowSettings(!showSettings); setShowEpisodes(false); setShowServers(false); }} className={cn("hover:text-primary-500 transition-colors active:scale-90 p-2 md:p-0 text-white", showSettings && "text-primary-500")}>
-                <Settings size={22} />
+              <button 
+                onClick={(e) => { 
+                  e.stopPropagation(); 
+                  setShowSettings(!showSettings); 
+                  setShowSubtitles(false); 
+                }} 
+                className={cn("hover:text-primary-500 transition-colors active:scale-90 p-2 md:p-0 text-white", showSettings && "text-primary-500")}
+              >
+                <Settings size={21} className={cn("transition-transform duration-300", showSettings ? "rotate-90 text-primary-500" : "rotate-0")} />
               </button>
               {showSettings && (
                 <div className="absolute bottom-12 right-0 bg-zinc-950/70 backdrop-blur-3xl border border-white/5 ring-1 ring-white/10 rounded-2xl p-2 w-48 max-h-[280px] sm:max-h-[340px] overflow-y-auto scrollbar-hide shadow-2xl z-50 flex flex-col gap-1 animate-in slide-in-from-bottom-2" onClick={(e) => e.stopPropagation()}>
@@ -447,7 +569,7 @@ const DramaPlayer = forwardRef<DramaPlayerRef, DramaPlayerProps>(({
                 </div>
               )}
             </div>
-            <button onClick={(e) => { e.stopPropagation(); toggleFullscreen(); }} className="hover:text-primary-500 transition-colors active:scale-90 p-2 md:p-0 text-white"><Maximize size={22} /></button>
+            <button onClick={(e) => { e.stopPropagation(); toggleFullscreen(); }} className="hover:text-primary-500 transition-colors active:scale-90 p-2 md:p-0 text-white"><Maximize size={21} /></button>
           </div>
         </div>
       </div>

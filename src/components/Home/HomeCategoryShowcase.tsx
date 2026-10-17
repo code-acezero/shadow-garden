@@ -50,11 +50,11 @@ export default function HomeCategoryShowcase({ topAiring, upcoming }: HomeCatego
 
         {/* Tab Switcher & View All */}
         <div className="flex items-center gap-3 self-start sm:self-auto">
-          <div className="flex items-center bg-white/5 border border-white/10 rounded-full p-1">
+          <div className="flex items-center bg-[#0c1322] border border-white/[0.12] rounded-full p-1 shadow-sm">
             <button
               onClick={() => setActiveTab('airing')}
               className={cn(
-                "px-3.5 py-1.5 rounded-full text-[10px] font-black uppercase tracking-wider transition-all flex items-center gap-1.5",
+                "px-3.5 py-1.5 rounded-full text-[10px] font-black uppercase tracking-wider transition-all flex items-center gap-1.5 atrax-bubbly-btn atrax-squish-tap",
                 activeTab === 'airing'
                   ? "bg-primary-600 text-white shadow-md shadow-primary-900/40"
                   : "text-zinc-400 hover:text-white"
@@ -66,7 +66,7 @@ export default function HomeCategoryShowcase({ topAiring, upcoming }: HomeCatego
             <button
               onClick={() => setActiveTab('upcoming')}
               className={cn(
-                "px-3.5 py-1.5 rounded-full text-[10px] font-black uppercase tracking-wider transition-all flex items-center gap-1.5",
+                "px-3.5 py-1.5 rounded-full text-[10px] font-black uppercase tracking-wider transition-all flex items-center gap-1.5 atrax-bubbly-btn atrax-squish-tap",
                 activeTab === 'upcoming'
                   ? "bg-purple-600 text-white shadow-md shadow-purple-900/40"
                   : "text-zinc-400 hover:text-white"
@@ -79,7 +79,7 @@ export default function HomeCategoryShowcase({ topAiring, upcoming }: HomeCatego
 
           <Link
             href={viewAllRoute}
-            className="text-[11px] font-black uppercase tracking-wider text-zinc-400 hover:text-white px-3 py-1.5 rounded-full bg-white/5 border border-white/5 hover:border-white/10 transition-colors hidden md:inline-flex items-center gap-1.5"
+            className="text-[11px] font-black uppercase tracking-wider text-zinc-400 hover:text-white px-3.5 py-1.5 rounded-full bg-[#0c1322] border border-white/[0.12] hover:border-white/20 transition-all atrax-bubbly-btn atrax-squish-tap hidden md:inline-flex items-center gap-1.5 shadow-sm"
           >
             <span>View All</span>
             <ChevronRight size={12} />

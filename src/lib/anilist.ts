@@ -104,8 +104,13 @@ function mapMediaToCard(media: any, overrideEp?: number): UniversalAnimeBase {
   // Calculate current released episodes
   let currentEp = overrideEp || 0;
   if (!currentEp) {
+    const nowSec = Math.floor(Date.now() / 1000);
     if (media.nextAiringEpisode?.episode) {
-      currentEp = Math.max(1, media.nextAiringEpisode.episode - 1);
+      if (media.nextAiringEpisode.airingAt && media.nextAiringEpisode.airingAt <= nowSec) {
+        currentEp = media.nextAiringEpisode.episode;
+      } else {
+        currentEp = Math.max(1, media.nextAiringEpisode.episode - 1);
+      }
     } else if (media.status === 'FINISHED') {
       currentEp = media.episodes || 1;
     } else {
@@ -128,13 +133,14 @@ function mapMediaToCard(media: any, overrideEp?: number): UniversalAnimeBase {
     episodes: {
       sub: currentEp,
       dub: currentEp,
-      eps: media.episodes || currentEp
+      eps: media.status === 'FINISHED' ? (media.episodes || currentEp) : currentEp
     },
     rank: media.averageScore,
     isAdult: isAdult,
     rating: ageRating,
     ageRating: ageRating,
-    score: score
+    score: score,
+    malId: media.idMal || undefined
   };
 }
 
@@ -897,8 +903,13 @@ export class AniListService {
 
     // Calculate released episode count
     let releasedCount = media.episodes || 0;
+    const nowSec = Math.floor(Date.now() / 1000);
     if (media.nextAiringEpisode?.episode) {
-      releasedCount = Math.max(1, media.nextAiringEpisode.episode - 1);
+      if (media.nextAiringEpisode.airingAt && media.nextAiringEpisode.airingAt <= nowSec) {
+        releasedCount = media.nextAiringEpisode.episode;
+      } else {
+        releasedCount = Math.max(1, media.nextAiringEpisode.episode - 1);
+      }
     } else if (media.streamingEpisodes && media.streamingEpisodes.length > 0) {
       releasedCount = Math.max(releasedCount, media.streamingEpisodes.length);
     }
@@ -919,7 +930,13 @@ export class AniListService {
       });
     }
 
-    const totalToGenerate = Math.max(releasedCount, media.episodes || 0);
+    // For finished anime, generate all episodes.
+    // For ongoing/releasing anime, only generate episodes that have actually been released!
+    const isFinished = media.status === 'FINISHED';
+    const totalToGenerate = isFinished 
+      ? Math.max(releasedCount, media.episodes || 0)
+      : (releasedCount > 0 ? releasedCount : (media.episodes || 1));
+
     for (let i = 1; i <= totalToGenerate; i++) {
       const streamEp = streamEpMap.get(i);
       episodeList.push({

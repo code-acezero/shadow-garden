@@ -1856,7 +1856,8 @@ function WatchContent() {
             </div>
 
             <motion.div initial={{ y: -20, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ duration: 0.5, delay: 0.2 }} className="w-full transition-all duration-500 will-change-transform">
-                <div className={cn("hidden lg:flex w-full bg-white/5 backdrop-blur-md border border-white/10 rounded-[30px] shadow-[0_8px_32px_0_rgba(0,0,0,0.2)] px-5 py-3.5 flex-col gap-3 overflow-visible mt-3 transition-all duration-500", settings.dimMode ? "z-[96] relative" : "relative z-10")}>
+                {/* ATRAX-UI DESKTOP CONTROL COCKPIT */}
+                <div className={cn("hidden lg:flex w-full bg-[#0c1322] border border-white/[0.12] rounded-[32px] shadow-[0_16px_45px_rgba(0,0,0,0.7),inset_0_1px_1px_rgba(255,255,255,0.12)] px-5 py-3.5 flex-col gap-3 overflow-visible mt-3 transition-all duration-500", settings.dimMode ? "z-[96] relative" : "relative z-10")}>
                     {/* ROW 1: Playback Navigation, Automations & Stream Config */}
                     <div className="flex w-full justify-between items-center gap-3">
                         {/* Left: Playback & Automation Buttons */}
@@ -1865,9 +1866,9 @@ function WatchContent() {
                                 disabled={!prevEpisode}
                                 onClick={() => prevEpisode && handleEpisodeClick(prevEpisode.id)}
                                 className={cn(
-                                    "flex items-center justify-center gap-1.5 px-3.5 h-8 rounded-full border text-[10px] font-black uppercase tracking-tighter transition-all duration-300 shadow-md shadow-black/40 whitespace-nowrap",
+                                    "flex items-center justify-center gap-1.5 px-3.5 h-8 rounded-full border text-[10px] font-black uppercase tracking-tighter transition-all duration-300 shadow-md whitespace-nowrap atrax-bubbly-btn atrax-squish-tap",
                                     prevEpisode
-                                        ? "bg-white/5 border-white/10 text-zinc-300 hover:bg-orange-600 hover:border-orange-500 hover:text-white"
+                                        ? "bg-[#141d30] border-white/10 text-zinc-300 hover:bg-orange-600 hover:border-orange-500 hover:text-white"
                                         : "opacity-20 border-white/5 text-zinc-600 cursor-not-allowed"
                                 )}
                             >
@@ -1875,7 +1876,7 @@ function WatchContent() {
                             </button>
                             <button
                                 onClick={() => updateSetting('autoSkip', !settings.autoSkip)}
-                                className="flex items-center justify-center gap-1.5 px-3 h-8 rounded-full border border-white/5 bg-white/5 text-[10px] font-black uppercase tracking-tighter transition-all hover:bg-white/10 whitespace-nowrap"
+                                className="flex items-center justify-center gap-1.5 px-3 h-8 rounded-full border border-white/10 bg-[#141d30] text-[10px] font-black uppercase tracking-tighter transition-all hover:bg-white/10 whitespace-nowrap atrax-bubbly-btn atrax-squish-tap"
                                 title="Auto Skip Intro"
                             >
                                 <FastForward size={12} className={cn("transition-colors", settings.autoSkip ? "text-amber-400 drop-shadow-[0_0_8px_rgba(251,191,36,0.8)]" : "text-zinc-500")}/>
@@ -1883,7 +1884,7 @@ function WatchContent() {
                             </button>
                             <button
                                 onClick={() => updateSetting('autoSkipOutro', !(settings.autoSkipOutro ?? settings.autoSkip))}
-                                className="flex items-center justify-center gap-1.5 px-3 h-8 rounded-full border border-white/5 bg-white/5 text-[10px] font-black uppercase tracking-tighter transition-all hover:bg-white/10 whitespace-nowrap"
+                                className="flex items-center justify-center gap-1.5 px-3 h-8 rounded-full border border-white/10 bg-[#141d30] text-[10px] font-black uppercase tracking-tighter transition-all hover:bg-white/10 whitespace-nowrap atrax-bubbly-btn atrax-squish-tap"
                                 title="Auto Skip Outro"
                             >
                                 <SkipForward size={12} className={cn("transition-colors", (settings.autoSkipOutro ?? settings.autoSkip) ? "text-indigo-400 drop-shadow-[0_0_8px_rgba(129,140,248,0.8)]" : "text-zinc-500")}/>
@@ -1891,7 +1892,7 @@ function WatchContent() {
                             </button>
                             <button
                                 onClick={() => updateSetting('autoPlay', !settings.autoPlay)}
-                                className="flex items-center justify-center gap-1.5 px-3 h-8 rounded-full border border-white/5 bg-white/5 text-[10px] font-black uppercase tracking-tighter transition-all hover:bg-white/10 whitespace-nowrap"
+                                className="flex items-center justify-center gap-1.5 px-3 h-8 rounded-full border border-white/10 bg-[#141d30] text-[10px] font-black uppercase tracking-tighter transition-all hover:bg-white/10 whitespace-nowrap atrax-bubbly-btn atrax-squish-tap"
                                 title="Auto Play"
                             >
                                 <Play size={12} className={cn("transition-colors", settings.autoPlay ? "text-orange-500 shadow-[0_0_10px_orange]" : "text-zinc-500")}/>
@@ -1899,7 +1900,7 @@ function WatchContent() {
                             </button>
                             <button
                                 onClick={() => updateSetting('autoNext', !settings.autoNext)}
-                                className="flex items-center justify-center gap-1.5 px-3 h-8 rounded-full border border-white/5 bg-white/5 text-[10px] font-black uppercase tracking-tighter transition-all hover:bg-white/10 whitespace-nowrap"
+                                className="flex items-center justify-center gap-1.5 px-3 h-8 rounded-full border border-white/10 bg-[#141d30] text-[10px] font-black uppercase tracking-tighter transition-all hover:bg-white/10 whitespace-nowrap atrax-bubbly-btn atrax-squish-tap"
                                 title="Auto Next"
                             >
                                 <SkipForward size={12} className={cn("transition-colors", settings.autoNext ? "text-orange-500 shadow-[0_0_10px_orange]" : "text-zinc-500")}/>
@@ -1908,7 +1909,7 @@ function WatchContent() {
                             {nextEpisode ? (
                                 <button
                                     onClick={() => handleEpisodeClick(nextEpisode.id)}
-                                    className="flex items-center justify-center gap-1.5 px-3.5 h-8 rounded-full border border-white/10 bg-white/5 text-zinc-300 text-[10px] font-black uppercase tracking-widest transition-all hover:bg-orange-600 whitespace-nowrap group"
+                                    className="flex items-center justify-center gap-1.5 px-3.5 h-8 rounded-full border border-orange-500/30 bg-orange-600/20 text-orange-300 hover:bg-orange-600 hover:text-white text-[10px] font-black uppercase tracking-widest transition-all whitespace-nowrap group atrax-bubbly-btn atrax-squish-tap"
                                 >
                                     NEXT EP <SkipForward size={12} className="group-hover:translate-x-1 transition-transform" />
                                 </button>
@@ -2084,41 +2085,41 @@ function WatchContent() {
                     </div>
                 </div>
 
-                {/* MOBILE CONTROLS */}
-                <div className={cn("flex lg:hidden w-full bg-white/5 backdrop-blur-md border border-white/10 rounded-[24px] shadow-[0_8px_32px_0_rgba(0,0,0,0.2)] px-3 py-3 flex-col gap-2.5 overflow-hidden mt-3 transition-all duration-500", settings.dimMode ? "z-[96] relative" : "relative z-10")}>
+                {/* ATRAX-UI MOBILE CONTROLS */}
+                <div className={cn("flex lg:hidden w-full bg-[#0c1322] border border-white/[0.12] rounded-[28px] shadow-[0_16px_40px_rgba(0,0,0,0.7),inset_0_1px_1px_rgba(255,255,255,0.12)] px-3 py-3 flex-col gap-2.5 overflow-hidden mt-3 transition-all duration-500", settings.dimMode ? "z-[96] relative" : "relative z-10")}>
                     {/* Row 1: Playback Navigation & Automation Toggles */}
                     <div className="flex w-full justify-between items-center gap-1.5">
-                        <button disabled={!prevEpisode} onClick={() => prevEpisode && handleEpisodeClick(prevEpisode.id)} className="flex-1 bg-white/5 h-8 sm:h-9 rounded-full border border-white/5 flex items-center justify-center text-zinc-400 hover:text-white active:scale-95 disabled:opacity-30 disabled:pointer-events-none transition-all" title="Previous Episode"><SkipBack size={13}/></button>
-                        <button onClick={() => updateSetting('autoSkip', !settings.autoSkip)} className={cn("flex-1 h-8 sm:h-9 rounded-full border flex items-center justify-center transition-all relative active:scale-95", settings.autoSkip ? "bg-amber-500/20 border-amber-500/60 text-amber-400 shadow-[0_0_12px_rgba(251,191,36,0.25)]" : "bg-white/5 border-white/5 text-zinc-400 hover:text-zinc-200")} title={`Auto Skip Intro: ${settings.autoSkip ? 'ON' : 'OFF'}`}>
+                        <button disabled={!prevEpisode} onClick={() => prevEpisode && handleEpisodeClick(prevEpisode.id)} className="flex-1 bg-[#141d30] h-8 sm:h-9 rounded-full border border-white/10 flex items-center justify-center text-zinc-300 hover:text-white active:scale-95 disabled:opacity-30 disabled:pointer-events-none transition-all atrax-bubbly-btn atrax-squish-tap" title="Previous Episode"><SkipBack size={13}/></button>
+                        <button onClick={() => updateSetting('autoSkip', !settings.autoSkip)} className={cn("flex-1 h-8 sm:h-9 rounded-full border flex items-center justify-center transition-all relative active:scale-95 atrax-bubbly-btn atrax-squish-tap", settings.autoSkip ? "bg-amber-500/20 border-amber-500/60 text-amber-400 shadow-[0_0_12px_rgba(251,191,36,0.25)]" : "bg-[#141d30] border-white/10 text-zinc-400 hover:text-zinc-200")} title={`Auto Skip Intro: ${settings.autoSkip ? 'ON' : 'OFF'}`}>
                             <div className="relative flex items-center justify-center">
                                 <FastForward size={13} className={cn("transition-transform", settings.autoSkip && "scale-110")} />
                                 <span className={cn("absolute -top-1 -right-1.5 w-1.5 h-1.5 rounded-full transition-all", settings.autoSkip ? "bg-amber-400 shadow-[0_0_6px_rgba(251,191,36,1)] animate-pulse" : "bg-zinc-600/40")} />
                             </div>
                         </button>
-                        <button onClick={() => updateSetting('autoSkipOutro', !(settings.autoSkipOutro ?? settings.autoSkip))} className={cn("flex-1 h-8 sm:h-9 rounded-full border flex items-center justify-center transition-all relative active:scale-95", (settings.autoSkipOutro ?? settings.autoSkip) ? "bg-indigo-500/20 border-indigo-500/60 text-indigo-400 shadow-[0_0_12px_rgba(129,140,248,0.25)]" : "bg-white/5 border-white/5 text-zinc-400 hover:text-zinc-200")} title={`Auto Skip Outro: ${(settings.autoSkipOutro ?? settings.autoSkip) ? 'ON' : 'OFF'}`}>
+                        <button onClick={() => updateSetting('autoSkipOutro', !(settings.autoSkipOutro ?? settings.autoSkip))} className={cn("flex-1 h-8 sm:h-9 rounded-full border flex items-center justify-center transition-all relative active:scale-95 atrax-bubbly-btn atrax-squish-tap", (settings.autoSkipOutro ?? settings.autoSkip) ? "bg-indigo-500/20 border-indigo-500/60 text-indigo-400 shadow-[0_0_12px_rgba(129,140,248,0.25)]" : "bg-[#141d30] border-white/10 text-zinc-400 hover:text-zinc-200")} title={`Auto Skip Outro: ${(settings.autoSkipOutro ?? settings.autoSkip) ? 'ON' : 'OFF'}`}>
                             <div className="relative flex items-center justify-center">
                                 <SkipForward size={13} className={cn("transition-transform", (settings.autoSkipOutro ?? settings.autoSkip) && "scale-110")} />
                                 <span className={cn("absolute -top-1 -right-1.5 w-1.5 h-1.5 rounded-full transition-all", (settings.autoSkipOutro ?? settings.autoSkip) ? "bg-indigo-400 shadow-[0_0_6px_rgba(129,140,248,1)] animate-pulse" : "bg-zinc-600/40")} />
                             </div>
                         </button>
-                        <button onClick={() => updateSetting('autoPlay', !settings.autoPlay)} className={cn("flex-1 h-8 sm:h-9 rounded-full border flex items-center justify-center transition-all relative active:scale-95", settings.autoPlay ? "bg-orange-600/20 border-orange-500/60 text-orange-400 shadow-[0_0_12px_rgba(234,88,12,0.25)]" : "bg-white/5 border-white/5 text-zinc-400 hover:text-zinc-200")} title={`Auto Play: ${settings.autoPlay ? 'ON' : 'OFF'}`}>
+                        <button onClick={() => updateSetting('autoPlay', !settings.autoPlay)} className={cn("flex-1 h-8 sm:h-9 rounded-full border flex items-center justify-center transition-all relative active:scale-95 atrax-bubbly-btn atrax-squish-tap", settings.autoPlay ? "bg-orange-600/20 border-orange-500/60 text-orange-400 shadow-[0_0_12px_rgba(234,88,12,0.25)]" : "bg-[#141d30] border-white/10 text-zinc-400 hover:text-zinc-200")} title={`Auto Play: ${settings.autoPlay ? 'ON' : 'OFF'}`}>
                             <div className="relative flex items-center justify-center">
                                 <PlayCircle size={13} className={cn("transition-transform", settings.autoPlay && "scale-110")} />
                                 <span className={cn("absolute -top-1 -right-1.5 w-1.5 h-1.5 rounded-full transition-all", settings.autoPlay ? "bg-orange-500 shadow-[0_0_6px_rgba(234,88,12,1)] animate-pulse" : "bg-zinc-600/40")} />
                             </div>
                         </button>
-                        <button onClick={() => updateSetting('autoNext', !settings.autoNext)} className={cn("flex-1 h-8 sm:h-9 rounded-full border flex items-center justify-center transition-all relative active:scale-95", settings.autoNext ? "bg-orange-600/20 border-orange-500/60 text-orange-400 shadow-[0_0_12px_rgba(234,88,12,0.25)]" : "bg-white/5 border-white/5 text-zinc-400 hover:text-zinc-200")} title={`Auto Next Episode: ${settings.autoNext ? 'ON' : 'OFF'}`}>
+                        <button onClick={() => updateSetting('autoNext', !settings.autoNext)} className={cn("flex-1 h-8 sm:h-9 rounded-full border flex items-center justify-center transition-all relative active:scale-95 atrax-bubbly-btn atrax-squish-tap", settings.autoNext ? "bg-orange-600/20 border-orange-500/60 text-orange-400 shadow-[0_0_12px_rgba(234,88,12,0.25)]" : "bg-[#141d30] border-white/10 text-zinc-400 hover:text-zinc-200")} title={`Auto Next Episode: ${settings.autoNext ? 'ON' : 'OFF'}`}>
                             <div className="relative flex items-center justify-center">
                                 <StepForward size={13} className={cn("transition-transform", settings.autoNext && "scale-110")} />
                                 <span className={cn("absolute -top-1 -right-1.5 w-1.5 h-1.5 rounded-full transition-all", settings.autoNext ? "bg-orange-500 shadow-[0_0_6px_rgba(234,88,12,1)] animate-pulse" : "bg-zinc-600/40")} />
                             </div>
                         </button>
-                        <button disabled={!nextEpisode} onClick={() => nextEpisode && handleEpisodeClick(nextEpisode.id)} className="flex-1 bg-white/5 h-8 sm:h-9 rounded-full border border-white/5 flex items-center justify-center text-zinc-400 hover:text-white active:scale-95 disabled:opacity-30 disabled:pointer-events-none transition-all" title="Next Episode"><SkipForward size={13}/></button>
+                        <button disabled={!nextEpisode} onClick={() => nextEpisode && handleEpisodeClick(nextEpisode.id)} className="flex-1 bg-[#141d30] h-8 sm:h-9 rounded-full border border-white/10 flex items-center justify-center text-zinc-300 hover:text-white active:scale-95 disabled:opacity-30 disabled:pointer-events-none transition-all atrax-bubbly-btn atrax-squish-tap" title="Next Episode"><SkipForward size={13}/></button>
                     </div>
 
                     {/* Row 2: Category selection & Theater Dim Mode */}
                     <div className="flex w-full items-center gap-2">
-                        <div className="flex bg-black/50 rounded-full p-1 border border-white/10 shadow-inner flex-1 justify-center relative">
+                        <div className="flex bg-[#090e18] rounded-full p-1 border border-white/[0.08] shadow-inner flex-1 justify-center relative">
                             {(['sub', 'dub', 'raw'] as const).map((cat) => {
                                 const isAvailable = (servers?.[cat]?.length || 0) > 0;
                                 const isCurrent = settings.category === cat;
@@ -2128,7 +2129,7 @@ function WatchContent() {
                                         disabled={!isAvailable}
                                         onClick={() => updateSetting('category', cat)}
                                         className={cn(
-                                            "px-2.5 py-1 rounded-full text-[9px] font-black uppercase tracking-wider transition-all relative active:scale-95 shadow-sm flex-1 text-center flex items-center justify-center gap-1 overflow-hidden",
+                                            "px-2.5 py-1 rounded-full text-[9px] font-black uppercase tracking-wider transition-all relative active:scale-95 shadow-sm flex-1 text-center flex items-center justify-center gap-1 overflow-hidden atrax-squish-tap",
                                             isCurrent
                                                 ? "text-white shadow-lg z-10"
                                                 : isAvailable
@@ -2166,7 +2167,7 @@ function WatchContent() {
                                 );
                             })}
                         </div>
-                        <Button onClick={() => updateSetting('dimMode', !settings.dimMode)} variant="ghost" size="icon" className={cn("rounded-full w-8 h-8 shrink-0 border", settings.dimMode ? "text-yellow-400 bg-yellow-500/15 border-yellow-500/40" : "text-zinc-400 bg-white/5 border-white/5")} title="Theater Dim Mode">
+                        <Button onClick={() => updateSetting('dimMode', !settings.dimMode)} variant="ghost" size="icon" className={cn("rounded-full w-8 h-8 shrink-0 border atrax-bubbly-btn atrax-squish-tap", settings.dimMode ? "text-yellow-400 bg-yellow-500/15 border-yellow-500/40" : "text-zinc-400 bg-[#141d30] border-white/10")} title="Theater Dim Mode">
                             <Lightbulb size={14} />
                         </Button>
                     </div>
@@ -2178,11 +2179,11 @@ function WatchContent() {
                     </div>
 
                     {/* Row 4: Server Selector & Actions */}
-                    <div className="flex w-full items-center justify-between gap-2 pt-1 border-t border-white/5">
+                    <div className="flex w-full items-center justify-between gap-2 pt-1 border-t border-white/[0.08]">
                         {mounted ? (
                             <DropdownMenu modal={false}>
                                 <DropdownMenuTrigger asChild>
-                                    <Button variant="ghost" className="h-8 gap-1.5 text-[9px] font-black text-zinc-300 bg-white/5 rounded-full border border-white/10 px-3 flex-1 justify-between max-w-[170px]">
+                                    <Button variant="ghost" className="h-8 gap-1.5 text-[9px] font-black text-zinc-300 bg-[#141d30] rounded-full border border-white/10 px-3 flex-1 justify-between max-w-[170px] atrax-bubbly-btn atrax-squish-tap">
                                         <span className="flex items-center gap-1.5 truncate">
                                             <ServerIcon size={11} className="text-orange-500 shrink-0"/> 
                                             <span className="truncate">
@@ -2194,7 +2195,7 @@ function WatchContent() {
                                         <ChevronDown size={10} className="text-zinc-500 shrink-0" />
                                     </Button>
                                 </DropdownMenuTrigger>
-                                <DropdownMenuContent align="start" className="bg-[#0a0a0a] border border-white/10 rounded-[20px] p-1.5 shadow-[0_0_25px_-5px_rgba(234,88,12,0.4)] z-[70] min-w-[140px]">
+                                <DropdownMenuContent align="start" className="bg-[#0c1322] border border-white/15 rounded-[24px] p-1.5 shadow-[0_20px_50px_rgba(234,88,12,0.4),inset_0_1px_1px_rgba(255,255,255,0.12)] z-[70] min-w-[140px]">
                                     <ScrollArea className="h-auto max-h-[160px]">
                                         <div className="flex flex-col gap-1">
                                             {servers?.[settings.category]?.map((srv: any, idx: number) => (
@@ -2202,7 +2203,7 @@ function WatchContent() {
                                                     key={srv.serverId || idx}
                                                     onClick={() => handleServerChange(srv.serverName)}
                                                     className={cn(
-                                                        "text-[9px] uppercase font-bold px-2.5 py-1.5 rounded-full cursor-pointer",
+                                                        "text-[9px] uppercase font-bold px-2.5 py-1.5 rounded-full cursor-pointer atrax-squish-tap",
                                                         settings.server.toLowerCase() === srv.serverName.toLowerCase() ? "bg-orange-600 text-white" : "text-zinc-400 hover:bg-white/10"
                                                     )}
                                                 >
@@ -2214,7 +2215,7 @@ function WatchContent() {
                                 </DropdownMenuContent>
                             </DropdownMenu>
                         ) : (
-                            <Button variant="ghost" className="h-8 gap-1.5 text-[9px] font-black text-zinc-400 bg-white/5 rounded-full border border-white/5 px-2.5">
+                            <Button variant="ghost" className="h-8 gap-1.5 text-[9px] font-black text-zinc-400 bg-[#141d30] rounded-full border border-white/10 px-2.5">
                                 <ServerIcon size={11} className="text-orange-500 shrink-0"/> 
                                 <span>Server</span>
                             </Button>
@@ -2225,7 +2226,7 @@ function WatchContent() {
                             {currentEpId && (
                                 <Link
                                     href={`/download/hindi/${anime.id}?ep=${currentEpId}`}
-                                    className="w-8 h-8 rounded-full border border-white/10 bg-white/5 text-zinc-300 flex items-center justify-center transition-all hover:bg-orange-600 hover:border-orange-500 hover:text-white"
+                                    className="w-8 h-8 rounded-full border border-white/10 bg-[#141d30] text-zinc-300 flex items-center justify-center transition-all hover:bg-orange-600 hover:border-orange-500 hover:text-white atrax-bubbly-btn atrax-squish-tap"
                                     title="Download Episode"
                                 >
                                     <Download size={13} />
@@ -2233,14 +2234,14 @@ function WatchContent() {
                             )}
                             <button
                                 onClick={() => setShowShareModal(true)}
-                                className="w-8 h-8 rounded-full border border-white/10 bg-white/5 text-zinc-300 flex items-center justify-center transition-all hover:bg-orange-600 hover:border-orange-500 hover:text-white"
+                                className="w-8 h-8 rounded-full border border-white/10 bg-[#141d30] text-zinc-300 flex items-center justify-center transition-all hover:bg-orange-600 hover:border-orange-500 hover:text-white atrax-bubbly-btn atrax-squish-tap"
                                 title="Share Episode"
                             >
                                 <Share2 size={13} />
                             </button>
                             <button
                                 onClick={handleCreateWatchRoom}
-                                className="w-8 h-8 rounded-full border border-white/10 bg-white/5 text-zinc-300 flex items-center justify-center transition-all hover:bg-orange-600 hover:border-orange-500 hover:text-white"
+                                className="w-8 h-8 rounded-full border border-white/10 bg-[#141d30] text-zinc-300 flex items-center justify-center transition-all hover:bg-orange-600 hover:border-orange-500 hover:text-white atrax-bubbly-btn atrax-squish-tap"
                                 title="Create Watch Room"
                             >
                                 <Users size={13} />
@@ -2251,16 +2252,17 @@ function WatchContent() {
             </motion.div>
             </div>
             
-            <div className="xl:col-span-4 w-full h-full min-h-[420px] max-h-[520px] xl:max-h-none bg-black/40 backdrop-blur-2xl rounded-[30px] border border-white/10 overflow-hidden flex flex-col relative z-20 order-2">
-                <div className="p-6 bg-white/5 border-b border-white/5 flex justify-between items-center shrink-0">
-                    <div className="flex items-center gap-3"><h3 className="font-black text-white flex items-center gap-2 uppercase text-sm font-lemon tracking-widest"><Layers size={18} className="text-orange-600"/> Episodes</h3><Badge className="bg-white/10 backdrop-blur-md border border-white/10 text-white font-black text-[10px] px-3 h-5 rounded-full">{anime.episodes.length}</Badge></div>
-                    <div className="flex items-center gap-1 bg-black/50 p-1 rounded-lg border border-white/5">
-                        <button onClick={() => setEpViewMode('compact')} className={cn("p-1.5 rounded-md transition-all", epViewMode === 'compact' ? "bg-zinc-800 text-white shadow-sm" : "text-zinc-500 hover:text-zinc-300")}><Grid size={14}/></button>
-                        <button onClick={() => setEpViewMode('grid')} className={cn("p-1.5 rounded-md transition-all", epViewMode === 'grid' ? "bg-zinc-800 text-white shadow-sm" : "text-zinc-500 hover:text-zinc-300")}><LayoutGrid size={14}/></button>
-                        <button onClick={() => setEpViewMode('list')} className={cn("p-1.5 rounded-md transition-all", epViewMode === 'list' ? "bg-zinc-800 text-white shadow-sm" : "text-zinc-500 hover:text-zinc-300")}><List size={14}/></button>
+            {/* ATRAX-UI EPISODES SIDEBAR */}
+            <div className="xl:col-span-4 w-full h-full min-h-[420px] max-h-[520px] xl:max-h-none bg-[#0c1322] rounded-[32px] border border-white/[0.12] shadow-[0_16px_45px_rgba(0,0,0,0.7),inset_0_1px_1px_rgba(255,255,255,0.12)] overflow-hidden flex flex-col relative z-20 order-2">
+                <div className="p-5 bg-[#0e1628] border-b border-white/[0.08] flex justify-between items-center shrink-0">
+                    <div className="flex items-center gap-3"><h3 className="font-black text-white flex items-center gap-2 uppercase text-sm font-lemon tracking-widest"><Layers size={18} className="text-orange-500"/> Episodes</h3><Badge className="bg-[#162138] border border-white/15 text-white font-black text-[10px] px-3 h-5 rounded-full shadow-sm">{anime.episodes.length}</Badge></div>
+                    <div className="flex items-center gap-1 bg-[#090e18] p-1 rounded-full border border-white/[0.08]">
+                        <button onClick={() => setEpViewMode('compact')} className={cn("p-1.5 rounded-full transition-all atrax-squish-tap", epViewMode === 'compact' ? "bg-orange-600 text-white shadow-sm" : "text-zinc-500 hover:text-zinc-300")}><Grid size={14}/></button>
+                        <button onClick={() => setEpViewMode('grid')} className={cn("p-1.5 rounded-full transition-all atrax-squish-tap", epViewMode === 'grid' ? "bg-orange-600 text-white shadow-sm" : "text-zinc-500 hover:text-zinc-300")}><LayoutGrid size={14}/></button>
+                        <button onClick={() => setEpViewMode('list')} className={cn("p-1.5 rounded-full transition-all atrax-squish-tap", epViewMode === 'list' ? "bg-orange-600 text-white shadow-sm" : "text-zinc-500 hover:text-zinc-300")}><List size={14}/></button>
                     </div>
                 </div>
-                <div className="w-full border-b border-white/10 bg-white/5 backdrop-blur-md flex-shrink-0 py-3 relative group/chunks">
+                <div className="w-full border-b border-white/[0.08] bg-[#0e1628] flex-shrink-0 py-3 relative group/chunks">
                     <div ref={chunksRef} className="flex items-center gap-2 w-full overflow-x-auto no-scrollbar cursor-grab active:cursor-grabbing px-4">
                         {episodeChunks.map((chunk, idx) => (
                             <button key={idx} onClick={() => setEpChunkIndex(idx)} className={cn("flex-shrink-0 px-4 py-1.5 text-[10px] font-black rounded-full transition-all border shadow-sm uppercase tracking-wider backdrop-blur-md", epChunkIndex === idx ? "bg-orange-600 text-white border-orange-500 shadow-orange-900/20" : "bg-white/5 border-white/10 text-zinc-400 hover:text-white hover:bg-white/10")}>{getChunkLabel(chunk, (idx * chunkSize) + 1, Math.min((idx + 1) * chunkSize, anime.episodes.length))}</button>

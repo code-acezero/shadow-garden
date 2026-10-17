@@ -43,12 +43,22 @@ export const RunHappyPlayerLoader = ({ text = "LOADING REALITY...", className, t
 );
 
 export const LiquidPlayerSkeleton = ({ text = "INITIALIZING STREAM...", className }: { text?: string; className?: string }) => (
-  <div className={cn("w-full aspect-video bg-white/[0.04] backdrop-blur-3xl rounded-[30px] border border-white/20 overflow-hidden relative shadow-[0_12px_40px_0_rgba(0,0,0,0.5),inset_0_1px_1px_0_rgba(255,255,255,0.2)] flex flex-col items-center justify-center", className)}>
+  <div className={cn("w-full h-full absolute inset-0 bg-[#030712] overflow-hidden flex flex-col items-center justify-center", className)}>
+    <PulseLayer />
     <MagicalWaveParticlesPlayerLoader text={text} />
   </div>
 );
 
-export const PlayerSkeleton = RunHappyPlayerLoader;
+export const CinemaPlayerStageSkeleton = ({ text = "LOADING CINEMA PLAYER..." }: { text?: string }) => (
+  <div className="w-full aspect-video rounded-2xl md:rounded-3xl border border-white/[0.08] bg-[#030712] relative overflow-hidden shadow-[0_8px_32px_rgba(0,0,0,0.7)] flex flex-col items-center justify-center">
+    <PulseLayer />
+    {/* Subtle radial cinema spotlight */}
+    <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(6,182,212,0.12)_0%,transparent_70%)] pointer-events-none" />
+    <MagicalWaveParticlesPlayerLoader text={text} />
+  </div>
+);
+
+export const PlayerSkeleton = CinemaPlayerStageSkeleton;
 
 export const TextSkeleton = ({ className, lines = 3 }: { className?: string; lines?: number }) => (
   <div className={cn("flex flex-col gap-2", className)}>
@@ -61,14 +71,75 @@ export const TextSkeleton = ({ className, lines = 3 }: { className?: string; lin
 );
 
 export const WatchPageSkeleton = () => (
-  <div className="min-h-screen bg-[#020617] text-white flex flex-col overflow-x-hidden relative p-4 mt-20">
-    <div className="w-full flex flex-col xl:grid xl:grid-cols-12 gap-6 items-stretch">
-      <div className="xl:col-span-8 w-full flex flex-col gap-4">
-        <PlayerSkeleton />
-        <div className="h-16 w-full bg-white/5 rounded-[30px] relative overflow-hidden"><PulseLayer /></div>
+  <div className="min-h-screen bg-[#020617] text-white flex flex-col overflow-x-hidden relative selection:bg-cyan-500/30">
+    <div className="w-full max-w-[1520px] mx-auto px-3 sm:px-4 md:px-8 pt-2 pb-16 flex flex-col items-center">
+      <div className="w-full flex flex-col xl:grid xl:grid-cols-12 gap-6 items-stretch">
+        
+        {/* Left 8-Column: Player + Controls Skeleton */}
+        <div className="xl:col-span-8 w-full flex flex-col gap-3">
+          <CinemaPlayerStageSkeleton text="INITIALIZING CINEMA PLAYER..." />
+          {/* Controls Bar Skeleton */}
+          <div className="w-full bg-[#0a0f1d]/85 backdrop-blur-md border border-white/[0.08] rounded-2xl md:rounded-3xl p-5 flex flex-col gap-3 shadow-xl relative overflow-hidden">
+            <PulseLayer />
+            <div className="flex items-center justify-between gap-3">
+              <div className="flex items-center gap-2">
+                <div className="w-24 h-6 bg-white/10 rounded-full" />
+                <div className="w-16 h-6 bg-white/5 rounded-full" />
+                <div className="w-12 h-6 bg-white/5 rounded-full" />
+              </div>
+              <div className="flex items-center gap-2">
+                <div className="w-8 h-8 bg-white/5 rounded-xl" />
+                <div className="w-8 h-8 bg-white/5 rounded-xl" />
+                <div className="w-32 h-8 bg-white/10 rounded-full" />
+              </div>
+            </div>
+            <div className="flex items-center justify-between gap-3 border-t border-white/[0.06] pt-3">
+              <div className="w-48 h-6 bg-white/10 rounded-xl" />
+              <div className="flex items-center gap-2">
+                <div className="w-20 h-8 bg-white/5 rounded-full" />
+                <div className="w-20 h-8 bg-white/5 rounded-full" />
+                <div className="w-28 h-8 bg-white/10 rounded-full" />
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Right 4-Column: Sidebar Skeleton */}
+        <div className="xl:col-span-4 w-full h-[520px] bg-[#0a0f1d]/85 backdrop-blur-md rounded-2xl md:rounded-3xl border border-white/[0.08] p-5 shadow-xl relative overflow-hidden flex flex-col gap-3">
+          <PulseLayer />
+          <div className="flex items-center justify-between pb-3 border-b border-white/[0.06]">
+            <div className="w-28 h-6 bg-white/10 rounded-xl" />
+            <div className="w-16 h-5 bg-white/5 rounded-full" />
+          </div>
+          <div className="flex flex-col gap-2.5 mt-2">
+            {Array.from({ length: 6 }).map((_, i) => (
+              <div key={i} className="w-full h-16 bg-white/[0.03] rounded-2xl flex items-center gap-3 p-2 border border-white/5">
+                <div className="w-12 h-full bg-white/10 rounded-xl shrink-0" />
+                <div className="flex-1 flex flex-col gap-1.5">
+                  <div className="w-3/4 h-3.5 bg-white/10 rounded" />
+                  <div className="w-1/2 h-2.5 bg-white/5 rounded" />
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Bottom 12-Column: Details Card Skeleton */}
+        <div className="xl:col-span-12 w-full h-[220px] bg-[#0a0f1d]/85 backdrop-blur-md rounded-2xl md:rounded-3xl border border-white/[0.08] p-6 shadow-xl relative overflow-hidden flex gap-6">
+          <PulseLayer />
+          <div className="w-36 h-full bg-white/10 rounded-2xl shrink-0" />
+          <div className="flex-1 flex flex-col gap-3">
+            <div className="w-1/3 h-7 bg-white/10 rounded-xl" />
+            <div className="flex gap-2">
+              <div className="w-16 h-5 bg-white/5 rounded-full" />
+              <div className="w-16 h-5 bg-white/5 rounded-full" />
+              <div className="w-20 h-5 bg-white/5 rounded-full" />
+            </div>
+            <div className="w-full h-12 bg-white/5 rounded-xl mt-2" />
+          </div>
+        </div>
+
       </div>
-      <div className="xl:col-span-4 w-full h-[300px] xl:h-full bg-white/5 rounded-[40px] relative overflow-hidden"><PulseLayer /></div>
-      <div className="xl:col-span-12 w-full h-[300px] bg-white/5 rounded-[40px] relative overflow-hidden mt-6"><PulseLayer /></div>
     </div>
   </div>
 );

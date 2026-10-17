@@ -728,3 +728,187 @@ export async function getBlakiteStreamUrl(slug: string) {
     return null;
   }
 }
+
+export interface HindiScheduleItem {
+  id: string;
+  name: string;
+  jname?: string;
+  title: string;
+  poster: string;
+  backdrop?: string;
+  score: number;
+  time: string;
+  date: string;
+  timestamp: number;
+  episode: number;
+  seasonNumber: number;
+  totalEpisodes: number;
+  dubType: 'ORG' | 'FanDub' | 'Hindi Dub';
+  status: string;
+  type: string;
+  watchUrl: string;
+}
+
+export interface HindiScheduleResponse {
+  scheduledAnimes: HindiScheduleItem[];
+  allRecent: HindiScheduleItem[];
+  ongoing: HindiScheduleItem[];
+  targetDate: string;
+}
+
+export function cleanHindiTitle(rawTitle: string): string {
+  return (rawTitle || '')
+    .replace(/\(Hindi Dubbed\)/gi, '')
+    .replace(/\(Hindi Dub\)/gi, '')
+    .replace(/\[Hindi Dub\]/gi, '')
+    .replace(/\(ORG\)/gi, '')
+    .replace(/\(FanDub\)/gi, '')
+    .trim();
+}
+
+export async function getHindiDubSchedule(targetDate?: string): Promise<HindiScheduleResponse> {
+  const db = await fetchBlakiteDatabase();
+  const todayStr = targetDate || new Date().toISOString().slice(0, 10);
+  if (!db) {
+    return { scheduledAnimes: [], allRecent: [], ongoing: [], targetDate: todayStr };
+  }
+
+  const allEntries: [string, BlakiteRawItem][] = [
+    ...Object.entries(db.series || {}),
+    ...Object.entries(db.movies || {}),
+    ...Object.entries(db.dramas || {})
+  ];
+
+  const hindiEntries = allEntries.filter(([, item]) => {
+    const lang = (item.language || '').toLowerCase();
+    const title = (item.title || '').toLowerCase();
+    return item.language === 'ORG' || item.language === 'FanDub' || lang.includes('dub') || lang.includes('hindi') || title.includes('hindi');
+  });
+
+  const parsedItems: HindiScheduleItem[] = [];
+  const ongoingMap = new Map<string, HindiScheduleItem>();
+
+  for (const [id, item] of hindiEntries) {
+    const cleanTitle = cleanHindiTitle(item.title);
+    const poster = item.IMAGES?.poster || item.IMAGES?.backdrop || '';
+    const score = Number(item.TMDB_DATA?.rating) || 0;
+    const dubType: 'ORG' | 'FanDub' | 'Hindi Dub' = 
+      item.language === 'ORG' ? 'ORG' : 
+      (item.language === 'FanDub' ? 'FanDub' : 'Hindi Dub');
+
+    if (item.seasons && Object.keys(item.seasons).length > 0) {
+      for (const s of Object.values(item.seasons)) {
+        const rawDate = s.updatedAt || s.createdAt || (item as any).updatedAt || item.TMDB_DATA?.releaseDate;
+        if (!rawDate) continue;
+
+        const parts = String(rawDate).trim().split(' ');
+        const datePart = parts[0] || todayStr;
+        const timePart = parts[1] ? parts[1].slice(0, 5) : '00:00';
+        const parsedTs = Math.floor(new Date(rawDate.replace(' ', 'T')).getTime() / 1000) || Math.floor(Date.now() / 1000);
+
+        const scheduleItem: HindiScheduleItem = {
+          id,
+          name: cleanTitle,
+          jname: item.title,
+          title: `${cleanTitle} (S${s.seasonNumber || 1})`,
+          poster,
+          backdrop: item.IMAGES?.backdrop || '',
+          score,
+          time: timePart,
+          date: datePart,
+          timestamp: parsedTs,
+          episode: s.totalEpisodes || 1,
+          seasonNumber: s.seasonNumber || 1,
+          totalEpisodes: s.totalEpisodes || 1,
+          dubType,
+          status: s.status || item.status || 'Ongoing',
+          type: item.type || 'TV',
+          watchUrl: `/watch/${id}?ep=${s.totalEpisodes || 1}&audio=hi&type=dub`
+        };
+
+        parsedItems.push(scheduleItem);
+
+        if (scheduleItem.status === 'Ongoing' || item.status === 'Ongoing') {
+          const prev = ongoingMap.get(id);
+          if (!prev || scheduleItem.timestamp > prev.timestamp) {
+            ongoingMap.set(id, scheduleItem);
+          }
+        }
+      }
+    } else {
+      // Movie / single item
+      const rawDate = (item as any).updatedAt || (item as any).createdAt || item.TMDB_DATA?.releaseDate;
+      const parts = String(rawDate || '').trim().split(' ');
+      const datePart = parts[0] || todayStr;
+      const timePart = parts[1] ? parts[1].slice(0, 5) : '00:00';
+      const parsedTs = rawDate ? Math.floor(new Date(rawDate.replace(' ', 'T')).getTime() / 1000) : Math.floor(Date.now() / 1000);
+
+      parsedItems.push({
+        id,
+        name: cleanTitle,
+        jname: item.title,
+        title: cleanTitle,
+        poster,
+        backdrop: item.IMAGES?.backdrop || '',
+        score,
+        time: timePart,
+        date: datePart,
+        timestamp: parsedTs,
+        episode: 1,
+        seasonNumber: 1,
+        totalEpisodes: 1,
+        dubType,
+        status: item.status || 'Completed',
+        type: item.type || 'Movie',
+        watchUrl: `/watch/${id}?ep=1&audio=hi&type=dub`
+      });
+    }
+  }
+
+  // Sort descending by timestamp
+  parsedItems.sort((a, b) => b.timestamp - a.timestamp);
+
+  // Exact target date matches
+  const targetDayMatches = parsedItems.filter(item => item.date === todayStr);
+
+  return {
+    scheduledAnimes: targetDayMatches,
+    allRecent: parsedItems.slice(0, 50),
+    ongoing: Array.from(ongoingMap.values()).slice(0, 20),
+    targetDate: todayStr
+  };
+}
+
+export async function getHindiReleasingToday(limit = 24) {
+  const schedule = await getHindiDubSchedule();
+  let list = [...schedule.scheduledAnimes];
+  
+  // If fewer than limit releases today, top up with recent updates from this week
+  if (list.length < limit) {
+    const seenIds = new Set(list.map(x => `${x.id}-${x.seasonNumber}`));
+    for (const item of schedule.allRecent) {
+      const key = `${item.id}-${item.seasonNumber}`;
+      if (!seenIds.has(key)) {
+        seenIds.add(key);
+        list.push(item);
+      }
+      if (list.length >= limit) break;
+    }
+  }
+
+  return list.slice(0, limit).map(item => ({
+    id: item.id,
+    title: item.title,
+    name: item.name,
+    poster: item.poster,
+    image: item.poster,
+    episode: item.episode,
+    score: item.score,
+    type: item.type || 'TV',
+    airingAt: item.timestamp,
+    isHindi: true,
+    dubType: item.dubType,
+    watchUrl: item.watchUrl
+  }));
+}
+

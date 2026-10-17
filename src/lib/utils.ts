@@ -161,12 +161,29 @@ export function getWatchRoute(animeId: string, episodeId?: string, type?: string
         return `/donghua-watch/${animeId}${epQuery}`;
     }
     if (t === 'drama' || t === 'cdrama' || t === 'kdrama') {
-        return `/drama-watch/${animeId}${epQuery}`;
+        return `/stream/${routeId}${epQuery}`;
     }
     if (t === 'movie' || t === 'movies') {
-        return `/movies-watch/${animeId}`;
+        return `/stream/${routeId}?type=movie`;
     }
     return `/watch/${routeId}${epQuery}`;
+}
+
+export function getStreamUrl(
+    id: string | number, 
+    title?: string | null, 
+    type?: string, 
+    ep?: string | number | null
+): string {
+    const rawId = String(id || '').trim();
+    const slug = slugifyTitle(title);
+    const routeId = (!rawId.includes('-') && slug) ? `${rawId}-${slug}` : rawId;
+    const isMovie = (type || '').toLowerCase() === 'movie';
+    const params = new URLSearchParams();
+    if (isMovie) params.set('type', 'movie');
+    if (ep !== undefined && ep !== null && ep !== '') params.set('ep', String(ep));
+    const qs = params.toString();
+    return `/stream/${routeId}${qs ? `?${qs}` : ''}`;
 }
 
 export function formatAnimeTitle(rawTitle?: string | null | any, animeId?: string | null): string {

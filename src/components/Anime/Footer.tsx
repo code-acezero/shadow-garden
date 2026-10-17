@@ -37,8 +37,7 @@ export default function Footer() {
           <Link href="/" className="hover:text-white transition-colors">Home</Link>
           <Link href="/hindi" className="hover:text-white transition-colors">Hindi Dub</Link>
           <Link href="/donghua" className="hover:text-white transition-colors">Donghua</Link>
-          <Link href="/drama" className="hover:text-white transition-colors">Drama</Link>
-          <Link href="/movies" className="hover:text-white transition-colors">Movies &amp; Series</Link>
+          <Link href="/cinema" className="hover:text-white transition-colors">Cinema &amp; Dramas</Link>
         </div>
 
         {/* Right: Copyright & Creator */}

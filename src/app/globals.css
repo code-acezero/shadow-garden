@@ -266,66 +266,135 @@ img {
 }
 .no-scrollbar::-webkit-scrollbar { display: none; }
 @layer utilities {
-  /* Desktop: Full premium liquid-glass with heavy blur (≥1024px) */
-  .liquid-glass {
-    @apply relative overflow-hidden bg-gradient-to-br from-white/20 to-white/5 backdrop-blur-xl border border-white/20 shadow-[inset_0_1px_1px_rgba(255,255,255,0.4)];
+  /* ==========================================================================
+     ✨ ATRAX-UI SYSTEM: SAMSUNG ONE UI 8 MONET & RUBBERY/BUBBLY DESIGN ENGINE
+     ========================================================================== */
+
+  /* One UI 8 Squircles */
+  .atrax-squircle-xl { border-radius: 34px; }
+  .atrax-squircle-lg { border-radius: 28px; }
+  .atrax-squircle-md { border-radius: 22px; }
+  .atrax-squircle-sm { border-radius: 16px; }
+
+  /* Monet Solid Tonal Surfaces (Zero GPU live-blur penalty) */
+  .atrax-surface-card {
+    background-color: #111728;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    box-shadow: 0 12px 32px -8px rgba(0, 0, 0, 0.65), inset 0 1px 1px rgba(255, 255, 255, 0.12);
   }
+
+  .atrax-surface-high {
+    background-color: #162035;
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    box-shadow: 0 18px 45px -10px rgba(0, 0, 0, 0.8), inset 0 1px 1px rgba(255, 255, 255, 0.15);
+  }
+
+  .atrax-pill-chip {
+    border-radius: 9999px;
+    background-color: #18233a;
+    border: 1px solid rgba(255, 255, 255, 0.09);
+    box-shadow: inset 0 1px 1px rgba(255, 255, 255, 0.1);
+    transition: transform 0.18s cubic-bezier(0.34, 1.56, 0.64, 1), background-color 0.15s ease, border-color 0.15s ease;
+  }
+  .atrax-pill-chip:active {
+    transform: scale3d(1.06, 0.90, 1);
+  }
+
+  /* Atrax Rubbery/Bubbly Button with Squash & Stretch */
+  .atrax-bubbly-btn {
+    transition: transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.2s ease, background-color 0.15s ease;
+    will-change: transform;
+  }
+  .atrax-bubbly-btn:hover {
+    transform: translateY(-2px) scale(1.03);
+  }
+  .atrax-bubbly-btn:active {
+    transform: translateY(1px) scale3d(1.07, 0.89, 1);
+  }
+
+  /* Upgraded .liquid-glass: Drops GPU blur and adopts Atrax One UI 8 solid Monet tonal elevation */
+  .liquid-glass,
+  .frost-glass {
+    position: relative;
+    overflow: hidden;
+    background-color: #121a2c;
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    box-shadow: 0 14px 40px -10px rgba(0, 0, 0, 0.8), inset 0 1px 1px rgba(255, 255, 255, 0.14);
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+  }
+
   .liquid-glass::after {
     content: '';
-    @apply absolute inset-0 rounded-[inherit] bg-gradient-to-b from-white/60 to-transparent opacity-0 transition-opacity duration-300 pointer-events-none;
-    -webkit-mask-image: linear-gradient(to bottom, black 0%, transparent 50%);
-  }
-  button.liquid-glass:hover::after, 
-  a.liquid-glass:hover::after, 
-  .liquid-glass-btn:hover::after,
-  [role="button"].liquid-glass:hover::after {
-    @apply opacity-100;
-  }
-  
-  .frost-glass {
-    @apply bg-white/10 backdrop-blur-md border border-white/10 shadow-[0_4px_30px_rgba(0,0,0,0.1)];
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    background: linear-gradient(180deg, rgba(255, 255, 255, 0.08) 0%, transparent 60%);
+    pointer-events: none;
   }
 
   /* GPU compositing hint for animated/hover elements */
   .will-change-transform {
     will-change: transform;
   }
-  .perf-contain {
-    contain: layout style;
+  /* Atrax-UI Cockpit & Control Surface Tokens */
+  .atrax-cockpit-panel {
+    background-color: #0c1322;
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    box-shadow: 0 16px 45px -10px rgba(0, 0, 0, 0.8), inset 0 1px 1px rgba(255, 255, 255, 0.14);
+  }
+
+  .atrax-chip-pill {
+    background-color: #131c30;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    box-shadow: inset 0 1px 1px rgba(255, 255, 255, 0.08);
+    transition: transform 0.18s cubic-bezier(0.34, 1.56, 0.64, 1), background-color 0.15s ease, border-color 0.15s ease;
+  }
+  .atrax-chip-pill:active {
+    transform: scale3d(1.08, 0.88, 1);
   }
 }
 
-/* ─── MOBILE & TABLET PERFORMANCE OVERRIDES (< 1024px) ─── */
-/* Keep liquid-glass aesthetic but reduce blur cost from 20px → 8px */
+/* ─── ATRAX RUBBER & JELLY KEYFRAMES ─── */
+@keyframes atrax-rubber-squish {
+  0% { transform: scale(1, 1); }
+  35% { transform: scale3d(1.08, 0.88, 1); }
+  65% { transform: scale3d(0.96, 1.05, 1); }
+  85% { transform: scale3d(1.02, 0.98, 1); }
+  100% { transform: scale(1, 1); }
+}
+
+@keyframes atrax-bubble-bounce {
+  0%, 100% { transform: translateY(0) scale(1); }
+  50% { transform: translateY(-4px) scale(1.04); }
+}
+
+@keyframes atrax-jelly-wiggle {
+  0%, 100% { transform: scale(1, 1) rotate(0deg); }
+  25% { transform: scale(1.08, 0.92) rotate(-3deg); }
+  50% { transform: scale(0.94, 1.06) rotate(3deg); }
+  75% { transform: scale(1.03, 0.97) rotate(-1deg); }
+}
+
+.atrax-squish-tap:active {
+  transform: scale3d(1.07, 0.89, 1) translateY(1px);
+}
+
+/* Global Zero-GPU Live Blur Performance Optimization
+   Eliminates all live GPU convolution blurs while preserving Monet solid chromatic depth */
+.backdrop-blur-sm,
+.backdrop-blur-md,
+.backdrop-blur-lg,
+.backdrop-blur-xl,
+.backdrop-blur-2xl,
+.backdrop-blur-3xl {
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+}
+
 @media (max-width: 1023px) {
-  .liquid-glass {
-    /* Reduce backdrop-blur from xl (20px) to sm equivalent (8px) — same look, ~60% less GPU cost */
-    backdrop-filter: blur(8px) !important;
-    -webkit-backdrop-filter: blur(8px) !important;
-  }
   .liquid-glass::after {
-    /* Disable the expensive mask-based shine overlay on mobile/tablet */
     display: none;
-  }
-  .backdrop-blur-xl {
-    --tw-backdrop-blur: blur(8px);
-    backdrop-filter: var(--tw-backdrop-blur);
-    -webkit-backdrop-filter: var(--tw-backdrop-blur);
-  }
-  .backdrop-blur-2xl {
-    --tw-backdrop-blur: blur(8px);
-    backdrop-filter: var(--tw-backdrop-blur);
-    -webkit-backdrop-filter: var(--tw-backdrop-blur);
-  }
-  .backdrop-blur-md {
-    --tw-backdrop-blur: blur(6px);
-    backdrop-filter: var(--tw-backdrop-blur);
-    -webkit-backdrop-filter: var(--tw-backdrop-blur);
-  }
-  /* Disable drop-shadow CSS filters on mobile (triggers paint layer) */
-  .drop-shadow-\[0_0_8px_rgba\(220\,38\,38\,0\.8\)\],
-  .drop-shadow-\[0_0_8px_rgba\(220\,38\,38\,0\.5\)\] {
-    filter: none !important;
   }
 }
 

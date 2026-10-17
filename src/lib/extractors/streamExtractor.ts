@@ -346,216 +346,73 @@ export async function resolveMalIdByTitleOrSlug(titleOrSlug: string): Promise<nu
   if (!key) return null;
   if (malIdCache.has(key)) return malIdCache.get(key)!;
 
-  const mirrors = [
-    'https://omni-api-v1.vercel.app/api',
-    'https://omni-api-v2.vercel.app/api'
-  ];
-
+  // 1. Direct AniList fast resolution (highest accuracy and reliability)
   try {
-    let slug = titleOrSlug;
-    if (!/-[a-z0-9]{5}$/.test(slug)) {
-      const clean = titleOrSlug
-        .replace(/::\d+$/, '')
-        .replace(/\(TV\)|\(Movie\)|\(Dub\)|\(Sub\)|Season\s*\d+|Part\s*\d+/gi, '')
-        .replace(/-/g, ' ')
-        .trim();
+    const raw = titleOrSlug.trim();
+    const cleanId = raw.match(/^(\d+)/)?.[1];
+    const cleanTitle = raw
+      .replace(/^\d+[-:]*/, '')
+      .replace(/::\d+$/, '')
+      .replace(/\(TV\)|\(Movie\)|\(Dub\)|\(Sub\)|Season\s*\d+|Part\s*\d+/gi, '')
+      .replace(/-/g, ' ')
+      .trim();
 
-      for (const mirror of mirrors) {
-        try {
-          const sRes = await fetch(`${mirror}/search?keyword=${encodeURIComponent(clean)}`, {
-            signal: AbortSignal.timeout(3500)
-          });
-          if (sRes.ok) {
-            const sJson = await sRes.json();
-            const top = sJson.data?.results?.[0];
-            if (top?.slug) {
-              slug = top.slug;
-              break;
-            }
-          }
-        } catch {}
+    const query = cleanId 
+      ? `query ($id: Int) { Media(id: $id, type: ANIME) { idMal } }`
+      : `query ($search: String) { Media(search: $search, type: ANIME) { idMal } }`;
+    const variables = cleanId ? { id: parseInt(cleanId, 10) } : { search: cleanTitle || raw };
+
+    const alRes = await fetch('https://graphql.anilist.co', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ query, variables }),
+      signal: AbortSignal.timeout(3500)
+    });
+    if (alRes.ok) {
+      const alJson = await alRes.json();
+      const idMal = alJson.data?.Media?.idMal;
+      if (idMal && !isNaN(Number(idMal)) && Number(idMal) > 0) {
+        const parsedMal = Number(idMal);
+        malIdCache.set(key, parsedMal);
+        return parsedMal;
       }
     }
+  } catch {}
 
-    for (const mirror of mirrors) {
-      try {
-        const epRes = await fetch(`${mirror}/anime/${encodeURIComponent(slug)}/episodes`, {
-          signal: AbortSignal.timeout(3500)
-        });
-        if (epRes.ok) {
-          const epJson = await epRes.json();
-          const firstEp = epJson.data?.episodes?.[0];
-          if (firstEp?.dataMal) {
-            const parsed = parseInt(firstEp.dataMal, 10);
-            if (!isNaN(parsed) && parsed > 0) {
-              malIdCache.set(key, parsed);
-              return parsed;
-            }
-          }
+  try {
+    const clean = titleOrSlug
+      .replace(/::\d+$/, '')
+      .replace(/\(TV\)|\(Movie\)|\(Dub\)|\(Sub\)|Season\s*\d+|Part\s*\d+/gi, '')
+      .replace(/-/g, ' ')
+      .trim();
+
+    if (clean) {
+      const jRes = await fetch(`https://api.jikan.moe/v4/anime?q=${encodeURIComponent(clean)}&limit=1`, {
+        signal: AbortSignal.timeout(3500)
+      }).catch(() => null);
+
+      if (jRes?.ok) {
+        const jJson = await jRes.json();
+        const malId = jJson.data?.[0]?.mal_id;
+        if (malId && !isNaN(Number(malId)) && Number(malId) > 0) {
+          const parsed = Number(malId);
+          malIdCache.set(key, parsed);
+          return parsed;
         }
-      } catch {}
+      }
     }
   } catch {}
   return null;
 }
 
 /**
- * 3. ANIKOTO GENUINE ENGLISH DUB EXTRACTOR (MegaPlay / Vidstream)
+ * 3. ENGLISH DUB EXTRACTOR (Self-Hosted / Direct)
  */
 export async function fetchAnikotoWatchDubStream(
-  titleOrSlug: string,
-  episode: number | string
+  _titleOrSlug: string,
+  _episode: number | string
 ): Promise<StreamServer[] | null> {
-  const mirrors = [
-    'https://omni-api-v1.vercel.app/api',
-    'https://omni-api-v2.vercel.app/api',
-    'https://omni-api-v3.vercel.app/api'
-  ];
-
-  try {
-    let slug = titleOrSlug;
-    const isExactHashedSlug = /-[a-z0-9]{5}$/.test(slug);
-
-    if (!isExactHashedSlug) {
-      const searchKeyword = titleOrSlug
-        .replace(/::\d+$/, '')
-        .replace(/\(TV\)|\(Movie\)|\(Dub\)|\(Sub\)|Season\s*\d+|Part\s*\d+/gi, '')
-        .replace(/-/g, ' ')
-        .trim();
-
-      for (const mirror of mirrors) {
-        try {
-          const searchRes = await fetch(`${mirror}/search?keyword=${encodeURIComponent(searchKeyword)}`, {
-            signal: AbortSignal.timeout(4000)
-          });
-          if (searchRes.ok) {
-            const json = await searchRes.json();
-            const results = json.data?.results || [];
-            if (results.length > 0) {
-              slug = results[0].slug;
-              break;
-            }
-          }
-        } catch {}
-      }
-    }
-
-    let watchJson: any = null;
-    for (const mirror of mirrors) {
-      try {
-        const watchRes = await fetch(`${mirror}/watch/${encodeURIComponent(slug)}?ep=${episode}`, {
-          signal: AbortSignal.timeout(5000)
-        });
-        if (watchRes.ok) {
-          const text = await watchRes.text();
-          const parsed = parseWatchResponse(text);
-          if (parsed?.data?.sources?.length || parsed?.sources?.length) {
-            watchJson = parsed.data ? parsed : { data: parsed };
-            break;
-          }
-        }
-      } catch {}
-    }
-
-    // Fallback: If slug didn't produce watch sources, search by clean title and retry watch
-    if (!watchJson?.data?.sources?.length && isExactHashedSlug) {
-      const fallbackTitle = titleOrSlug
-        .replace(/-[a-z0-9]{5}$/, '')
-        .replace(/\(TV\)|\(Movie\)|\(Dub\)|\(Sub\)|Season\s*\d+|Part\s*\d+/gi, '')
-        .replace(/-/g, ' ')
-        .trim();
-
-      for (const mirror of mirrors) {
-        try {
-          const searchRes = await fetch(`${mirror}/search?keyword=${encodeURIComponent(fallbackTitle)}`, {
-            signal: AbortSignal.timeout(4000)
-          });
-          if (searchRes.ok) {
-            const sJson = await searchRes.json();
-            const results = sJson.data?.results || [];
-            if (results.length > 0) {
-              const newSlug = results[0].slug;
-              const wRes = await fetch(`${mirror}/watch/${encodeURIComponent(newSlug)}?ep=${episode}`, {
-                signal: AbortSignal.timeout(5000)
-              });
-              if (wRes.ok) {
-                const text = await wRes.text();
-                const parsed = parseWatchResponse(text);
-                if (parsed?.data?.sources?.length || parsed?.sources?.length) {
-                  watchJson = parsed.data ? parsed : { data: parsed };
-                  break;
-                }
-              }
-            }
-          }
-        } catch {}
-      }
-    }
-
-    const sources = watchJson?.data?.sources || [];
-    const dubSources = sources.filter((s: any) => s && s.type === 'dub' && s.url);
-    if (!dubSources.length) {
-      return null;
-    }
-
-    // Process all sources in parallel: extract direct .m3u8 if available, fallback to embed
-    const serverPromises = dubSources.map(async (src: any, index: number) => {
-      const rawName = String(src.server || '').toLowerCase();
-      let serverName = 'Vidstream';
-      let serverId = `vidstream-dub-${index + 1}`;
-      if (rawName.includes('vidstream-1')) {
-        serverName = 'Vidstream';
-        serverId = 'vidstream-dub';
-      } else if (rawName.includes('vidstream') || rawName.includes('2')) {
-        serverName = 'Vidstreaming';
-        serverId = 'vidstreaming-dub';
-      } else if (rawName.includes('hd')) {
-        serverName = 'MegaCloud Mirror';
-        serverId = 'megacloud-mirror-dub';
-      }
-
-      // Extract direct .m3u8 stream from MegaPlay
-      const direct = await extractMegaPlayStream(src.url).catch(() => null);
-      if (direct?.m3u8) {
-        return {
-          serverId,
-          serverName,
-          url: direct.m3u8,
-          type: 'm3u8' as const,
-          referer: 'https://megaplay.buzz/',
-          tracks: direct.tracks,
-          intro: direct.intro,
-          outro: direct.outro
-        };
-      }
-
-      // If direct extraction fails, provide playable embed URL as resilient backup
-      return {
-        serverId: `${serverId}-embed`,
-        serverName: `${serverName} (Embed)`,
-        url: src.url,
-        type: (src.url.includes('.m3u8') ? 'm3u8' : 'embed') as 'm3u8' | 'embed',
-        referer: 'https://megaplay.buzz/'
-      };
-    });
-
-    const resolved = await Promise.all(serverPromises);
-
-    // Prioritize direct .m3u8 streams first, then rank Vidstream > Vidstreaming > MegaCloud Mirror > Embed
-    const rank = (s: StreamServer) => {
-      const typeRank = s.type === 'm3u8' ? 0 : 10;
-      if (s.serverName.startsWith('Vidstream')) return typeRank + 1;
-      if (s.serverName.startsWith('Vidstreaming')) return typeRank + 2;
-      if (s.serverName.startsWith('MegaCloud')) return typeRank + 3;
-      return typeRank + 4;
-    };
-    resolved.sort((a, b) => rank(a) - rank(b));
-
-    return resolved.length > 0 ? resolved : null;
-  } catch (err) {
-    console.error('[fetchAnikotoWatchDubStream] Exception:', err);
-    return null;
-  }
+  return null;
 }
 
 /**

@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState, useCallback, ReactNode } from 'react';
 import { ShieldCheck } from 'lucide-react';
+import { cn } from '@/lib/utils';
 
 // ── Trusted domains: popups to these are allowed through ───────────────────
 const TRUSTED_DOMAINS = [
@@ -155,9 +156,29 @@ export default function IframeAdShield({
     return () => window.removeEventListener('beforeunload', handleBeforeUnload);
   }, [enabled]);
 
-  // ── Mouse tracking ────────────────────────────────────────────────────────
-  const onMouseEnter = useCallback(() => { isOverRef.current = true;  }, []);
-  const onMouseLeave = useCallback(() => { isOverRef.current = false; }, []);
+  // ── Mouse tracking & Seamless Page Scroll Bridge ─────────────────────────
+  const [isInteracting, setIsInteracting] = useState(false);
+  const interactTimerRef = useRef<NodeJS.Timeout | null>(null);
+
+  const onMouseEnter = useCallback(() => { 
+    isOverRef.current = true;  
+  }, []);
+
+  const onMouseLeave = useCallback(() => { 
+    isOverRef.current = false; 
+    setIsInteracting(false);
+    if (interactTimerRef.current) clearTimeout(interactTimerRef.current);
+  }, []);
+
+  const handlePointerDown = useCallback(() => {
+    // User intends to click the video area (play/pause or dismiss embed overlay)
+    setIsInteracting(true);
+    if (interactTimerRef.current) clearTimeout(interactTimerRef.current);
+    // Yield pointer events to iframe briefly, then instantly restore smooth page scrolling
+    interactTimerRef.current = setTimeout(() => {
+      setIsInteracting(false);
+    }, 1200);
+  }, []);
 
   if (!enabled) return <>{children}</>;
 
@@ -167,8 +188,23 @@ export default function IframeAdShield({
       className={className}
       onMouseEnter={onMouseEnter}
       onMouseLeave={onMouseLeave}
+      onWheel={(e) => {
+        window.scrollBy({ top: e.deltaY, behavior: 'instant' as any });
+      }}
     >
       {children}
+
+      {/* Seamless Page Scroll Bridge over iframe (covers upper 85% of player, bottom 60px kept free for controls) */}
+      <div
+        className={cn(
+          "absolute top-0 inset-x-0 bottom-16 z-20 cursor-pointer bg-transparent transition-opacity",
+          isInteracting ? "pointer-events-none opacity-0" : "pointer-events-auto opacity-100"
+        )}
+        onWheel={(e) => {
+          window.scrollBy({ top: e.deltaY, behavior: 'instant' as any });
+        }}
+        onPointerDown={handlePointerDown}
+      />
 
       {/* ── Blocked-count badge ── */}
       {blockedCount > 0 && (
