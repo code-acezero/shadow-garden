@@ -79,7 +79,7 @@ export default function Navigation() {
       </Suspense>
 
       <nav className="hidden md:block fixed bottom-4 left-1/2 transform -translate-x-1/2 z-[90] w-auto">
-        <div className="relative bg-[#0c1322]/95 border border-white/[0.12] rounded-full shadow-[0_18px_50px_rgba(0,0,0,0.85),inset_0_1px_1px_rgba(255,255,255,0.15)] px-4 py-2">
+        <div className="relative bg-[#0c1322]/95 border border-white/[0.12] rounded-full shadow-[0_18px_50px_rgba(0,0,0,0.85),inset_0_1px_1px_rgba(255,255,255,0.15)] px-3 py-2">
           <div className="flex items-center gap-1.5">
             {navItems.map((item) => {
               const Icon = item.icon;
@@ -91,17 +91,19 @@ export default function Navigation() {
                   href={item.path} 
                   prefetch={true} 
                   onClick={() => setActiveTab(item.path)} 
-                  className={`relative group flex items-center justify-center h-10 px-3.5 rounded-full select-none transition-all duration-200 active:scale-95 ${isActive ? 'text-white font-bold' : 'text-zinc-400 hover:text-white'}`}
+                  className={`relative group flex items-center justify-center h-10 rounded-full select-none transition-all duration-300 active:scale-95 ${isActive ? 'text-white font-bold px-4' : 'text-zinc-400 hover:text-white px-3'}`}
                   aria-label={item.label}
                 >
                   {isActive && (
-                    <span className="absolute inset-0 bg-primary-600 rounded-full shadow-[0_4px_16px_rgba(220,38,38,0.45)] -z-10" />
+                    <span className="absolute inset-0 bg-primary-600 rounded-full shadow-[0_4px_16px_rgba(220,38,38,0.45)] -z-10 animate-in fade-in duration-200" />
                   )}
                   <div className="flex items-center gap-2">
-                    <Icon size={18} strokeWidth={isActive ? 2.5 : 2} className={`transition-transform duration-200 ${isActive ? 'scale-105' : 'group-hover:scale-105'}`} />
-                    <span className="text-xs font-black uppercase tracking-wider whitespace-nowrap">
-                      {item.label}
-                    </span>
+                    <Icon size={18} strokeWidth={isActive ? 2.5 : 2} className={`transition-transform duration-200 ${isActive ? 'scale-105' : 'group-hover:scale-110'}`} />
+                    {isActive && (
+                      <span className="text-xs font-black uppercase tracking-wider whitespace-nowrap animate-in fade-in zoom-in-95 duration-200">
+                        {item.label}
+                      </span>
+                    )}
                   </div>
                 </Link>
               );

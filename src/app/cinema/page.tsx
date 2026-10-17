@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
-  Search, Play, ChevronRight, ChevronLeft, Info,
+  Search, Play, ChevronRight, ChevronLeft, Info, Loader2, Plus,
   Star, Film, Clapperboard, Tv, Sparkles, Flame, Radio, Heart,
   Zap, Globe
 } from 'lucide-react';

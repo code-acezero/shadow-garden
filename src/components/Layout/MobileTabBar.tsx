@@ -54,14 +54,17 @@ export default function MobileTabBar() {
               key={tab.id} 
               href={tab.path}
               aria-label={tab.label}
-              className="relative flex-1 flex flex-col items-center justify-center h-11 select-none group"
+              className={cn(
+                "relative flex items-center justify-center h-11 select-none group transition-all duration-300",
+                isActive ? "flex-[1.5] px-2" : "flex-1 px-1"
+              )}
             >
               <motion.div 
-                whileTap={{ scaleX: 1.15, scaleY: 0.85, y: 1 }}
-                whileHover={{ scale: 1.08 }}
+                whileTap={{ scaleX: 1.12, scaleY: 0.88, y: 1 }}
+                whileHover={{ scale: 1.05 }}
                 transition={ATRAX_BUBBLY_SPRING}
                 className={cn(
-                  "relative z-10 flex items-center justify-center w-full h-full rounded-2xl transition-colors duration-200",
+                  "relative z-10 flex items-center justify-center gap-1.5 w-full h-full rounded-2xl transition-colors duration-200",
                   isActive ? "text-white" : "text-zinc-400 group-hover:text-zinc-200"
                 )}
               >
@@ -75,13 +78,19 @@ export default function MobileTabBar() {
                 )}
 
                 <Icon 
-                  size={20} 
+                  size={19} 
                   strokeWidth={isActive ? 2.6 : 2} 
                   className={cn(
-                    "transition-transform duration-200",
-                    isActive ? "scale-110 drop-shadow-[0_2px_8px_rgba(255,255,255,0.35)]" : "scale-100"
+                    "transition-transform duration-200 shrink-0",
+                    isActive ? "scale-105 drop-shadow-[0_2px_8px_rgba(255,255,255,0.35)]" : "scale-100"
                   )} 
                 />
+
+                {isActive && (
+                  <span className="text-[11px] font-black uppercase tracking-wider whitespace-nowrap animate-in fade-in zoom-in-95 duration-200">
+                    {tab.label}
+                  </span>
+                )}
               </motion.div>
             </Link>
           );
