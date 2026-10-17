@@ -61,7 +61,7 @@ export default function Navigation() {
     };
   }, []);
 
-  if (pathname === '/' || pathname?.startsWith('/master') || pathname?.startsWith('/shorts/watch')) return null;
+  if (pathname === '/' || pathname?.startsWith('/master')) return null;
 
   const navItems = [
     { id: 'home', icon: Home, label: 'Home', path: '/home' },

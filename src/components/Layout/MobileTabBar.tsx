@@ -36,7 +36,7 @@ export default function MobileTabBar() {
     { id: 'cinema', icon: Clapperboard, label: 'Flix', path: '/cinema' },
   ];
 
-  if (pathname === '/' || isFullscreen || pathname?.startsWith('/shorts/watch')) return null;
+  if (pathname === '/' || isFullscreen) return null;
 
   return (
     <div className="md:hidden fixed bottom-3 left-3 right-3 z-[100] max-w-md mx-auto pointer-events-none">
