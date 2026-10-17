@@ -4,7 +4,7 @@ import React, { useState, useEffect, memo, Suspense } from 'react';
 import { usePathname } from 'next/navigation';
 import Link from 'next/link';
 
-import { Home, User, Heart, MessageCircle, Search, Settings, Bell, Clapperboard, Flame, Film, Calendar } from 'lucide-react';
+import { Home, User, Heart, MessageCircle, Search, Settings, Bell, Clapperboard, Flame, Film, Calendar, Sparkles } from 'lucide-react';
 import WhisperIsland from '@/components/UIx/WhisperIsland';
 import AuthModal from '@/components/Auth/AuthModal';
 import MobileTabBar from './MobileTabBar';
@@ -61,11 +61,12 @@ export default function Navigation() {
     };
   }, []);
 
-  if (pathname === '/' || pathname?.startsWith('/master')) return null;
+  if (pathname === '/' || pathname?.startsWith('/master') || pathname?.startsWith('/shorts/watch')) return null;
 
   const navItems = [
     { id: 'home', icon: Home, label: 'Home', path: '/home' },
     { id: 'donghua', icon: Flame, label: 'Donghua', path: '/donghua' },
+    { id: 'shorts', icon: Sparkles, label: 'Shorts', path: '/shorts' },
     { id: 'search', icon: Search, label: 'Search', path: '/search' },
     { id: 'social', icon: MessageCircle, label: 'Otakuverse', path: '/social' },
     { id: 'schedule', icon: Calendar, label: 'Schedule', path: '/schedule' },
@@ -84,7 +85,12 @@ export default function Navigation() {
             {navItems.map((item) => {
               const Icon = item.icon;
               const isCinemaActive = pathname.startsWith('/cinema') || pathname.startsWith('/drama') || pathname.startsWith('/movies') || pathname.startsWith('/stream');
-              const isActive = item.id === 'cinema' ? isCinemaActive : (activeTab === item.path); 
+              const isShortsActive = pathname.startsWith('/shorts');
+              const isActive = item.id === 'cinema' 
+                ? isCinemaActive 
+                : item.id === 'shorts' 
+                ? isShortsActive 
+                : (activeTab === item.path); 
               return (
                 <Link 
                   key={item.id} 

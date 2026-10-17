@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Home, MessageCircle, Search, Flame, Clapperboard, Calendar } from 'lucide-react';
+import { Home, MessageCircle, Search, Flame, Clapperboard, Calendar, Sparkles } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { cn } from '@/lib/utils';
 import { ATRAX_BUBBLY_SPRING } from '@/lib/atraxMotion';
@@ -29,13 +29,14 @@ export default function MobileTabBar() {
   const tabs = [
     { id: 'home', icon: Home, label: 'Home', path: '/home' },
     { id: 'donghua', icon: Flame, label: 'Donghua', path: '/donghua' },
+    { id: 'shorts', icon: Sparkles, label: 'Shorts', path: '/shorts' },
     { id: 'search', icon: Search, label: 'Search', path: '/search' },
     { id: 'social', icon: MessageCircle, label: 'Social', path: '/social' },
     { id: 'schedule', icon: Calendar, label: 'Schedule', path: '/schedule' },
     { id: 'cinema', icon: Clapperboard, label: 'Flix', path: '/cinema' },
   ];
 
-  if (pathname === '/' || isFullscreen) return null;
+  if (pathname === '/' || isFullscreen || pathname?.startsWith('/shorts/watch')) return null;
 
   return (
     <div className="md:hidden fixed bottom-3 left-3 right-3 z-[100] max-w-md mx-auto pointer-events-none">
