@@ -91,7 +91,7 @@ export default function ShortsDiscoveryPage() {
   const heroDrama = dramas[0];
 
   return (
-    <div className="min-h-screen bg-slate-950 text-white pb-28 pt-20 px-4 md:px-8 max-w-7xl mx-auto">
+    <div className="min-h-screen bg-slate-950 text-white pb-28 pt-28 md:pt-32 px-4 md:px-8 max-w-7xl mx-auto">
       
       {/* Page Header */}
       <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 mb-6">
