@@ -1,17 +1,17 @@
 "use client";
 
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import Link from 'next/link';
 import { 
-  Film, Compass, MessageSquare, ChevronRight, ChevronLeft,
+  Clapperboard, Compass, MessageSquare, ChevronRight, ChevronLeft,
   Tv, Star, Clock, SlidersHorizontal, ChevronDown, Check,
-  Heart, MessageCircle, Sparkles
+  Heart, MessageCircle, Swords
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { AnimeService } from '@/lib/api';
 import AnimeCard from '@/components/Anime/AnimeCard';
-import { hpi } from '@/lib/hpi';
-import { cn } from '@/lib/utils';
+import { omni, DramaCard } from '@/lib/omni';
+import { cn, getStreamUrl } from '@/lib/utils';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -43,6 +43,65 @@ export default function MultiverseShowcase() {
   const [loading, setLoading] = useState(true);
   const [page, setPage] = useState(1);
   const [isPaginating, setIsPaginating] = useState(false);
+  const [isRealmMenuOpen, setIsRealmMenuOpen] = useState(false);
+
+  // Fetch dramas from dedicated drama source (/api/drama/dramas & /api/drama/home)
+  const fetchDramas = useCallback(async (targetPage: number) => {
+    try {
+      const res = await omni.drama.getDramas('all', targetPage).catch(() => ({ items: [] }));
+      let items = res.items || [];
+      if (items.length === 0 && targetPage === 1) {
+        const homeRes = await omni.drama.getHome().catch(() => ({ sections: [] }));
+        const allItems = homeRes.sections?.flatMap(s => s.items) || [];
+        items = allItems;
+      }
+      return items.map((item: DramaCard) => ({
+        ...item,
+        targetRoute: getStreamUrl(item.id, item.title, item.isMovie ? 'movie' : 'drama', item.episode),
+        type: item.type || (item.isMovie ? 'Movie' : 'Drama'),
+        rating: item.score || '8.2',
+        score: item.score || '8.2',
+        source: 'universal'
+      }));
+    } catch (err) {
+      console.error('Failed to fetch dramas:', err);
+      return [];
+    }
+  }, []);
+
+  // Fetch movies from dedicated movie source (/api/drama/movies) & anime feature films
+  const fetchMovies = useCallback(async (targetPage: number) => {
+    try {
+      const [movieSourceRes, animeMovieList] = await Promise.all([
+        omni.drama.getMovies('all', targetPage).catch(() => ({ items: [] })),
+        AnimeService.getMovies(targetPage).catch(() => [])
+      ]);
+
+      const mappedDramaMovies = (movieSourceRes.items || []).map((item: DramaCard) => ({
+        ...item,
+        targetRoute: getStreamUrl(item.id, item.title, 'movie', item.episode),
+        type: 'Movie',
+        rating: item.score || '8.2',
+        score: item.score || '8.2',
+        source: 'universal'
+      }));
+
+      const safeAnimeMovies = Array.isArray(animeMovieList) ? animeMovieList : [];
+
+      // Interleave cinema movie source with anime feature films for a comprehensive universe
+      const combined: any[] = [];
+      const maxLen = Math.max(mappedDramaMovies.length, safeAnimeMovies.length);
+      for (let i = 0; i < maxLen; i++) {
+        if (mappedDramaMovies[i]) combined.push(mappedDramaMovies[i]);
+        if (safeAnimeMovies[i]) combined.push(safeAnimeMovies[i]);
+      }
+
+      return combined.length > 0 ? combined.slice(0, 18) : (mappedDramaMovies.length > 0 ? mappedDramaMovies : safeAnimeMovies);
+    } catch (err) {
+      console.error('Failed to fetch movies:', err);
+      return [];
+    }
+  }, []);
 
   // Community discussions/whispers
   const communityPosts: CommunityPost[] = [
@@ -104,25 +163,14 @@ export default function MultiverseShowcase() {
         }
 
         if (activeTab === 'movies') {
-          const movieList = await AnimeService.getMovies(page).catch(() => []);
-          if (isMounted) setMovies(Array.isArray(movieList) ? movieList.slice(0, 12) : []);
+          const movieList = await fetchMovies(page);
+          if (isMounted) setMovies(movieList);
         } else if (activeTab === 'donghua') {
           const donghuaList = await AnimeService.getDonghua(page).catch(() => []);
-          if (isMounted) setDonghua(Array.isArray(donghuaList) ? donghuaList.slice(0, 12) : []);
+          if (isMounted) setDonghua(Array.isArray(donghuaList) ? donghuaList.slice(0, 18) : []);
         } else if (activeTab === 'drama') {
-          if (page === 1) {
-            const blakiteHome = await hpi.hindi.getHome().catch(() => ({ sections: [] }));
-            const dramaSection = blakiteHome?.sections?.find((s: any) => 
-              s.title.includes('Drama') || s.title.includes('Live Action')
-            );
-            const dramaItems = dramaSection?.items || [];
-            if (isMounted) setDramas(dramaItems.slice(0, 12));
-          } else {
-            const searchResults = await AnimeService.filter({ genre_in: ['Drama'], page, perPage: 12 }).catch(() => null);
-            if (isMounted && searchResults && Array.isArray((searchResults as any).results)) {
-              setDramas((searchResults as any).results);
-            }
-          }
+          const dramaList = await fetchDramas(page);
+          if (isMounted) setDramas(dramaList.slice(0, 18));
         }
       } catch (err) {
         console.error('Failed to load multiverse showcase:', err);
@@ -136,51 +184,49 @@ export default function MultiverseShowcase() {
 
     loadMultiverseData();
     return () => { isMounted = false; };
-  }, [activeTab, page]);
+  }, [activeTab, page, fetchDramas, fetchMovies]);
 
   // Initial load for all tabs so counts are readily available
   useEffect(() => {
     let isMounted = true;
     async function preloadInitial() {
       try {
-        const [movieList, donghuaList, blakiteHome] = await Promise.all([
-          AnimeService.getMovies(1).catch(() => []),
+        const [movieList, donghuaList, dramaList] = await Promise.all([
+          fetchMovies(1),
           AnimeService.getDonghua(1).catch(() => []),
-          hpi.hindi.getHome().catch(() => ({ sections: [] }))
+          fetchDramas(1)
         ]);
         if (!isMounted) return;
-        setMovies(Array.isArray(movieList) ? movieList.slice(0, 12) : []);
-        setDonghua(Array.isArray(donghuaList) ? donghuaList.slice(0, 12) : []);
-        const dramaSection = blakiteHome?.sections?.find((s: any) => 
-          s.title.includes('Drama') || s.title.includes('Live Action')
-        );
-        setDramas((dramaSection?.items || []).slice(0, 12));
+        setMovies(movieList);
+        setDonghua(Array.isArray(donghuaList) ? donghuaList.slice(0, 18) : []);
+        setDramas(dramaList.slice(0, 18));
       } catch (e) {
         // quiet fallback
       }
     }
     preloadInitial();
     return () => { isMounted = false; };
-  }, []);
+  }, [fetchDramas, fetchMovies]);
 
   const handleTabChange = (tabId: MultiverseTab) => {
     setActiveTab(tabId);
     setSubFilter('all');
     setPage(1);
+    setIsRealmMenuOpen(false);
   };
 
   const tabs = [
     {
       id: 'movies' as const,
       label: 'Feature Films',
-      icon: Film,
+      icon: Clapperboard,
       description: 'Theatrical anime films & cinematic specials',
       count: movies.length,
     },
     {
       id: 'donghua' as const,
       label: 'Chinese Donghua',
-      icon: Sparkles,
+      icon: Swords,
       description: '3D Cultivation, martial arts & fantasy epics',
       count: donghua.length,
     },
@@ -211,9 +257,9 @@ export default function MultiverseShowcase() {
 
   const getViewAllLink = () => {
     switch (activeTab) {
-      case 'movies': return '/search?type=Movie';
+      case 'movies': return '/cinema#section-movies';
       case 'donghua': return '/search/donghua';
-      case 'drama': return '/search?type=Drama';
+      case 'drama': return '/cinema';
       case 'community': return '/social';
       default: return '/search';
     }
@@ -287,9 +333,10 @@ export default function MultiverseShowcase() {
           {/* Left: Clean Realm Filter Dropdown + Quick Sub-Tabs */}
           <div className="flex items-center gap-2 flex-wrap">
             {/* Primary Realm Filter Dropdown */}
-            <DropdownMenu>
+            <DropdownMenu open={isRealmMenuOpen} onOpenChange={setIsRealmMenuOpen}>
               <DropdownMenuTrigger asChild>
                 <button
+                  onClick={() => setIsRealmMenuOpen(prev => !prev)}
                   className="flex items-center gap-2 px-3.5 py-1.5 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 hover:border-red-500/40 text-white transition-all text-xs font-bold active:scale-95 group shadow-sm select-none"
                   aria-label="Filter Realm"
                 >
@@ -304,11 +351,17 @@ export default function MultiverseShowcase() {
               </DropdownMenuTrigger>
               <DropdownMenuContent
                 align="start"
-                className="w-72 bg-[#0c0c0e]/95 backdrop-blur-xl border border-white/10 text-white p-2 rounded-2xl shadow-2xl z-[90] space-y-1"
+                sideOffset={8}
+                className="w-[330px] sm:w-[380px] bg-[#0c0d14] !bg-opacity-100 border border-zinc-800 text-white p-2.5 rounded-2xl shadow-[0_25px_60px_rgba(0,0,0,0.98),0_0_30px_rgba(239,68,68,0.12)] z-[100] space-y-1.5 focus:outline-none"
               >
-                <div className="px-3 py-1.5 text-[10px] font-black tracking-wider uppercase text-zinc-500 flex items-center justify-between border-b border-white/5 mb-1">
-                  <span>Select Realm</span>
-                  <span className="text-red-500 font-bold">4 Universes</span>
+                <div className="px-3 py-2 flex items-center justify-between border-b border-white/[0.08] mb-1">
+                  <div className="flex items-center gap-1.5">
+                    <span className="w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse" />
+                    <span className="text-[10px] font-black tracking-widest uppercase text-zinc-400">SELECT REALM</span>
+                  </div>
+                  <span className="text-[9px] font-black uppercase tracking-wider px-2 py-0.5 rounded-full bg-red-500/15 text-red-400 border border-red-500/30">
+                    4 Universes
+                  </span>
                 </div>
                 {tabs.map((tab) => {
                   const Icon = tab.icon;
@@ -318,25 +371,38 @@ export default function MultiverseShowcase() {
                       key={tab.id}
                       onClick={() => handleTabChange(tab.id)}
                       className={cn(
-                        "flex items-center justify-between gap-3 px-3 py-2 rounded-xl cursor-pointer transition-all",
+                        "flex items-center justify-between gap-3 px-3 py-2.5 rounded-xl cursor-pointer transition-all outline-none select-none group",
                         isActive
-                          ? "bg-red-600/20 text-white border border-red-500/40"
-                          : "text-zinc-400 hover:text-white hover:bg-white/5 border border-transparent"
+                          ? "bg-red-500/15 text-white border border-red-500/40 shadow-[0_0_15px_rgba(239,68,68,0.15)]"
+                          : "text-zinc-400 hover:text-white hover:bg-white/[0.06] border border-transparent"
                       )}
                     >
-                      <div className="flex items-center gap-2.5">
+                      <div className="flex items-center gap-3 min-w-0">
                         <div className={cn(
-                          "w-7 h-7 rounded-lg flex items-center justify-center shrink-0",
-                          isActive ? "bg-red-500/25 text-red-400" : "bg-white/5 text-zinc-400"
+                          "w-9 h-9 rounded-xl flex items-center justify-center shrink-0 transition-transform group-hover:scale-105",
+                          isActive 
+                            ? "bg-red-500/25 text-red-400 border border-red-500/40 shadow-sm shadow-red-500/20" 
+                            : "bg-white/[0.04] text-zinc-400 border border-white/[0.08] group-hover:bg-white/[0.08] group-hover:text-zinc-200"
                         )}>
-                          <Icon size={14} />
+                          <Icon size={16} />
                         </div>
-                        <div className="flex flex-col text-left">
-                          <span className="text-xs font-black tracking-tight text-white">{tab.label}</span>
-                          <span className="text-[10px] text-zinc-500 leading-tight">{tab.description}</span>
+                        <div className="flex flex-col text-left min-w-0">
+                          <span className={cn(
+                            "text-xs font-black tracking-tight truncate",
+                            isActive ? "text-white" : "text-zinc-200 group-hover:text-white"
+                          )}>
+                            {tab.label}
+                          </span>
+                          <span className="text-[10.5px] text-zinc-400 leading-snug line-clamp-1">
+                            {tab.description}
+                          </span>
                         </div>
                       </div>
-                      {isActive && <Check size={14} className="text-red-400 shrink-0" />}
+                      {isActive && (
+                        <div className="w-5 h-5 rounded-full bg-red-500/25 border border-red-500/40 flex items-center justify-center shrink-0 text-red-400">
+                          <Check size={12} strokeWidth={3} />
+                        </div>
+                      )}
                     </DropdownMenuItem>
                   );
                 })}

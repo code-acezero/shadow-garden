@@ -47,11 +47,11 @@
     ]
   },
   "app\\home\\page.tsx -> @/components/Home/MultiverseShowcase": {
-    "id": 43578,
+    "id": 11348,
     "files": [
       "static/chunks/6984-3f1c130247e31536.js",
-      "static/chunks/1435-63ac6d13e5edb480.js",
-      "static/chunks/7427.19e0e2d25352fecf.js"
+      "static/chunks/2881-ef0667c9d2695193.js",
+      "static/chunks/6159.c23491b68352bc9b.js"
     ]
   },
   "app\\home\\page.tsx -> @/components/Home/RecentUpdatesSection": {

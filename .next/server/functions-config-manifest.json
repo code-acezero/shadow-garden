@@ -1,15 +1,18 @@
 {
   "version": 1,
   "functions": {
-    "/api/alpha": {},
     "/api/anilist/sync": {},
     "/api/anime/airing-today": {},
+    "/api/alpha": {},
     "/api/anime/character-details": {},
     "/api/anime/anilist": {},
-    "/api/anime/favorite": {},
     "/api/anime/stream": {},
+    "/api/anime/favorite": {},
     "/api/blakite/check": {},
     "/api/blakite/popular": {},
+    "/api/download/hls": {
+      "maxDuration": 300
+    },
     "/api/download/file": {
       "maxDuration": 300
     },
@@ -17,13 +20,10 @@
       "maxDuration": 30
     },
     "/api/download/resolve": {},
-    "/api/download/hls": {
-      "maxDuration": 300
-    },
-    "/api/drama/[...endpoint]": {
+    "/api/hdmovies/[...endpoint]": {
       "maxDuration": 30
     },
-    "/api/hdmovies/[...endpoint]": {
+    "/api/drama/[...endpoint]": {
       "maxDuration": 30
     },
     "/api/proxy": {
