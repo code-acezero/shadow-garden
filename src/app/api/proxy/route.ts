@@ -75,8 +75,8 @@ export async function GET(request: NextRequest) {
     const decodedUrl = decodeURIComponent(url);
     const isM3U8 = decodedUrl.includes('.m3u8');
     // Disguised video segments (.jpg/.html on streaming CDNs) must NOT be treated as images
-    const isVideoSegment = /(?:seg-|\.ts$|\.ts\?|\.m4s|\.mp4|\/anime\/.*(?:seg-|\.jpg|\.html|\.png|\.webp))/i.test(decodedUrl);
-    const isImage = !isVideoSegment && (/\.(jpg|jpeg|png|webp|gif|svg)$/i.test(decodedUrl) || decodedUrl.includes('/images/') || decodedUrl.includes('image.tmdb'));
+    const isVideoSegment = /(?:seg-|\.ts$|\.ts\?|\.m4s|\/anime\/.*(?:seg-|\.jpg|\.html|\.png|\.webp))/i.test(decodedUrl);
+    const isImage = !isVideoSegment && !decodedUrl.includes('.mp4') && !decodedUrl.includes('.webm') && (/\.(jpg|jpeg|png|webp|gif|svg)$/i.test(decodedUrl) || decodedUrl.includes('/images/') || decodedUrl.includes('image.tmdb'));
 
     // Check if the URL belongs to a known strict CDN (e.g. dramahot / drama1 / zokoanime)
     const mappedReferer = determineReferer(decodedUrl);
@@ -104,6 +104,13 @@ export async function GET(request: NextRequest) {
                         break;
                     }
                 }
+            }
+        }
+        // If upstream still returns 403 or 401, retry with standard clean fetch (no spoofed referer/origin)
+        if ((response.status === 403 || response.status === 401)) {
+            const directRes = await fetchWithCustomReferer(decodedUrl, undefined, rangeHeader);
+            if (directRes.ok || directRes.status === 206) {
+                response = directRes;
             }
         }
 
@@ -161,7 +168,11 @@ export async function GET(request: NextRequest) {
 
         // --- PHASE D: VIDEO SEGMENTS / OTHERS ---
         let segContentType = contentType;
-        if (isVideoSegment || decodedUrl.includes('seg-') || decodedUrl.includes('.ts')) {
+        if (decodedUrl.includes('.mp4') || contentType.includes('video/mp4') || contentType.includes('mp4')) {
+            segContentType = "video/mp4";
+        } else if (decodedUrl.includes('.webm') || contentType.includes('video/webm')) {
+            segContentType = "video/webm";
+        } else if (isVideoSegment || decodedUrl.includes('seg-') || decodedUrl.includes('.ts')) {
             segContentType = "video/mp2t";
         } else if (decodedUrl.includes('.m4s')) {
             segContentType = "video/iso.segment";

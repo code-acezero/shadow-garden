@@ -6,8 +6,8 @@ const PulseLayer = () => (
 );
 
 export const PageSkeleton = () => (
-  <div className="min-h-screen bg-[#020617] text-white flex flex-col p-4 sm:p-8 overflow-hidden relative">
-    <div className="w-full max-w-7xl mx-auto flex flex-col gap-8 mt-16">
+  <div className="min-h-screen bg-[#020617] text-white flex flex-col px-2 sm:px-4 py-4 overflow-hidden relative">
+    <div className="w-full flex flex-col gap-8 mt-2">
       <div className="w-1/3 h-10 bg-white/5 rounded-2xl relative overflow-hidden"><PulseLayer /></div>
       <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4 md:gap-6">
         {Array.from({ length: 12 }).map((_, i) => <CardSkeleton key={i} />)}
@@ -174,7 +174,7 @@ export const HeroSliderSkeleton = () => (
 export const MoviePageSkeleton = () => (
   <div className="min-h-screen bg-[#020617] text-white flex flex-col overflow-x-hidden relative">
     <HeroSliderSkeleton />
-    <div className="w-full max-w-7xl mx-auto px-4 py-8 flex flex-col gap-8">
+    <div className="w-full px-2 sm:px-4 py-8 flex flex-col gap-8">
       <div className="flex flex-col gap-4">
         <div className="w-48 h-8 bg-white/5 rounded-xl relative overflow-hidden"><PulseLayer /></div>
         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4 md:gap-6">

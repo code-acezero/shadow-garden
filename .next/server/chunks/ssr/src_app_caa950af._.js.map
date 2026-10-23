@@ -1,6 +1,0 @@
-{
-  "version": 3,
-  "sources": [],
-  "sections": [
-    {"offset": {"line": 7, "column": 0}, "map": {"version":3,"sources":["file:///D:/ACE%20ZERO/My%20web%20Project%20Data/Ace%20Web%20Project/shadow-garden-v2/src/app/icon.svg.mjs%20%28structured%20image%20object%29"],"sourcesContent":["import src from \"IMAGE\";\nexport default { src, width: 24, height: 24 }\n"],"names":[],"mappings":";;;;AAAA;;uCACe;IAAE,KAAA,sHAAG;IAAE,OAAO;IAAI,QAAQ;AAAG","debugId":null}}]
-}

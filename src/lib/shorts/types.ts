@@ -6,6 +6,7 @@
 export type ShortDramaLanguage = 
   | 'Hindi Dub' 
   | 'English Dub' 
+  | 'English Sub'
   | 'Chinese' 
   | 'Korean' 
   | 'Japanese' 
@@ -14,9 +15,12 @@ export type ShortDramaLanguage =
 export type ShortDramaSource = 
   | 'maccms_ikun' 
   | 'maccms_ffzy' 
-  | 'maccms_lzi' 
+  | 'maccms_bfzy'
+  | 'maccms_wujin'
+  | 'vertical_drama'
   | 'dramabox' 
   | 'shortmax'
+  | 'curated'
   | 'curated_hindi';
 
 export interface ShortDramaItem {
@@ -25,6 +29,7 @@ export interface ShortDramaItem {
   title: string;
   originalTitle?: string;
   cover: string;
+  poster?: string;
   banner?: string;
   description: string;
   totalEpisodes: number;

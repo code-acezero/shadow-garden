@@ -26,6 +26,8 @@ export interface AppSettings {
   defaultVolume: number;
   haptics: boolean;
   pipMode: boolean;
+  clearMode: boolean;
+  tapPlayPauseWithControls: boolean;
 
   // Appearance
   accentColor: 'red' | 'orange' | 'gold' | 'green' | 'lime' | 'teal' | 'cyan' | 'blue' | 'indigo' | 'violet' | 'purple' | 'pink' | 'rose' | 'mono';
@@ -74,7 +76,7 @@ export interface AppSettings {
 export const DEFAULT_SETTINGS: AppSettings = {
   twoFactor: false, loginAlerts: true, incognito: false, publicActivity: true, allowRequests: true,
   autoPlay: true, autoSkipOpEd: true, resumePlayback: true, volumeBoost: false, 
-  defaultServer: 'hd-1', defaultQuality: '1080p', defaultAudio: 'jp', subLanguage: 'en', defaultVolume: 100, haptics: true, pipMode: true,
+  defaultServer: 'hd-1', defaultQuality: '1080p', defaultAudio: 'jp', subLanguage: 'en', defaultVolume: 100, haptics: true, pipMode: true, clearMode: true, tapPlayPauseWithControls: true,
   accentColor: 'red', glassEffect: true, particles: true, reducedMotion: false, roundedUI: true, uiGlow: true, uiBorders: 'normal', cardVariant: 'default', fontFamily: 'inter',
   
   // ✅ ENABLED BY DEFAULT + SET TO HANA

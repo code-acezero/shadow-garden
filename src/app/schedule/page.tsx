@@ -525,7 +525,7 @@ export default function SchedulePage() {
       
       <div className="relative z-10 flex flex-col items-center w-full">
           
-          <div className="w-full px-4 pt-16 md:pt-20 pb-4 mb-4 flex flex-col md:flex-row justify-between items-start md:items-end gap-6">
+          <div className="w-full px-2 sm:px-4 pt-2 sm:pt-4 pb-4 mb-4 flex flex-col md:flex-row justify-between items-start md:items-end gap-6">
               <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}>
                   <div className="flex items-center gap-3 mb-3">
                       <div className="h-px w-8 bg-primary-600" />
@@ -546,7 +546,7 @@ export default function SchedulePage() {
 
           <DaySelector selectedDate={selectedDate} onSelect={setSelectedDate} />
 
-          <div className="w-full px-4 mt-12 space-y-20">
+          <div className="w-full px-2 sm:px-4 mt-8 space-y-16">
 
               {/* SECTION 1: SCHEDULE GRID */}
               <section>

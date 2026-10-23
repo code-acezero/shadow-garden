@@ -851,8 +851,8 @@ const AnimeCharactersBlock = ({ characters }: { characters?: any[] }) => {
                 <div className="flex items-center gap-3">
                     <Users size={18} className="text-primary-600" />
                     <div>
-                        <h3 className="font-black text-white text-sm font-lemon tracking-widest uppercase">Cast & Characters</h3>
-                        <p className="text-[10px] text-zinc-400 mt-0.5">Anime characters and voice cast</p>
+                        <h3 className="font-black text-white text-sm font-lemon tracking-widest uppercase">Character & Voice Artists</h3>
+                        <p className="text-[10px] text-zinc-400 mt-0.5">Anime characters and voice artists</p>
                     </div>
                 </div>
 
@@ -899,6 +899,7 @@ const AnimeCharactersBlock = ({ characters }: { characters?: any[] }) => {
                         <div 
                             key={char.id || `${charName}-${idx}`} 
                             onClick={() => setSelectedCharacter({
+                                id: char.id,
                                 name: charName,
                                 role: charRole,
                                 image: charPoster,
@@ -906,6 +907,7 @@ const AnimeCharactersBlock = ({ characters }: { characters?: any[] }) => {
                                 department: 'Character',
                                 popularity: char.favorites,
                                 voiceActor: va ? {
+                                    id: va.id,
                                     name: va.name,
                                     poster: getSafeImageUrl(va.poster),
                                     language: va.language || 'Japanese'
@@ -3084,7 +3086,11 @@ function WatchContent({ initialAnime }: { initialAnime?: UniversalAnime | null }
 
                     {/* COMMENTS SECTION */}
                     <div className="xl:col-span-12 w-full mt-2 order-6">
-                        <ShadowComments key={user?.id || 'guest'} episodeId={currentEpId || "general"} />
+                        <ShadowComments 
+                            key={user?.id || 'guest'} 
+                            episodeId={currentEpId || "general"} 
+                            themeColor={urlAudio === 'hi' || currentAudio === 'hi' ? 'hindi' : undefined}
+                        />
                     </div>
 
                     {/* BOTTOM ADS BANNER */}

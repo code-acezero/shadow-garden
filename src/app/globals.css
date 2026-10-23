@@ -435,3 +435,23 @@ iframe[class*="container-c39b"],
   }
 }
 
+/* Shorts & Video Fullscreen Native Aspect Ratio Auto-Fit Rules (9:16 stays 9:16, 16:9 stays 16:9) */
+:fullscreen,
+:-webkit-full-screen {
+  aspect-ratio: auto !important;
+  width: 100vw !important;
+  height: 100vh !important;
+  max-width: 100vw !important;
+  max-height: 100vh !important;
+  background-color: #000000 !important;
+}
+
+:fullscreen video,
+:-webkit-full-screen video {
+  object-fit: contain !important;
+  width: 100% !important;
+  height: 100% !important;
+  max-width: 100% !important;
+  max-height: 100% !important;
+}
+

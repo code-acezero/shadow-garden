@@ -2,7 +2,7 @@
 
 import React, { useState, useMemo, useEffect } from 'react';
 import { createPortal } from 'react-dom';
-import { X, Search, Check, UserCircle, Sparkles, ArrowLeft } from 'lucide-react';
+import { X, Search, Check, UserCircle, ArrowLeft } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
 export interface AvatarItem {
@@ -817,7 +817,7 @@ export default function AvatarSelectorModal({
               </span>
               {isGuest && (
                 <span className="flex items-center gap-1 text-[9px] bg-primary/10 text-primary border border-primary/20 px-2 py-0.5 rounded-full font-bold">
-                  <Sparkles size={8} /> TRAVELLER
+                  TRAVELLER
                 </span>
               )}
               {!isGuest && (

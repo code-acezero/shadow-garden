@@ -8,7 +8,7 @@ import {
   SkipForward, SkipBack, Server as ServerIcon, Layers, Clock, Play, 
   Grid, List, LayoutGrid, ChevronDown, Flame, Info, Loader2, Check, X, 
   Download, AlertTriangle, Lightbulb, StepForward, Share2, Users, Star,
-  FastForward, Film, Sparkles, CheckCircle2, ChevronRight, ChevronLeft, MessageSquare,
+  FastForward, Film, Zap, CheckCircle2, ChevronRight, ChevronLeft, MessageSquare,
   RefreshCw, Subtitles, Globe, Volume2, ShieldCheck
 } from 'lucide-react';
 import { WatchPageSkeleton, LiquidPlayerSkeleton } from '@/components/UIx/SkeletonLoaders';
@@ -158,7 +158,7 @@ const CastCharactersBlock = ({ characters, cast }: { characters?: any[]; cast?: 
           </div>
           <div>
             <h3 className="text-base sm:text-lg font-black text-white uppercase tracking-wider font-lemon">
-              Cast & Characters
+              Character & Voice Artists
             </h3>
             <p className="text-[10px] text-zinc-400">Starring actors, character roles & profile details</p>
           </div>
@@ -435,7 +435,7 @@ const CinemaIntelPanel = ({ drama, isMovie = false }: CinemaIntelPanelProps) => 
 
         <div className="p-2 rounded-xl bg-white/[0.02] border border-white/[0.04] flex flex-col gap-0.5">
           <span className="text-[8px] font-black uppercase text-zinc-500 tracking-wider flex items-center gap-1">
-            <Sparkles size={10} className="text-yellow-400" /> CDN Network
+            <Zap size={10} className="text-yellow-400" /> CDN Network
           </span>
           <span className="font-bold text-zinc-200 truncate">
             Ultra-Low Ping
@@ -1311,6 +1311,7 @@ export function DramaWatchContent() {
               <ShadowComments 
                 key={user?.id || 'guest'}
                 episodeId={`drama-movie-${drama.id}`} 
+                themeColor="stream"
               />
             </div>
 
@@ -1945,7 +1946,7 @@ export function DramaWatchContent() {
               <div className="xl:col-span-12 w-full flex flex-col gap-3 pt-4 order-5">
                 <div className="flex items-center gap-2.5">
                   <div className="p-2 rounded-2xl bg-[#0e1629]/90 border border-white/[0.08] text-cyan-400">
-                    <Sparkles size={18} />
+                    <Flame size={18} />
                   </div>
                   <h3 className="text-base sm:text-lg font-black text-white uppercase tracking-wider font-lemon">
                     More Like This
@@ -1967,6 +1968,7 @@ export function DramaWatchContent() {
               <ShadowComments 
                 key={user?.id || 'guest'}
                 episodeId={currentEpId || `drama-${drama.id}-ep-${currentEp?.number || 1}`} 
+                themeColor="stream"
               />
             </div>
 

@@ -11,6 +11,8 @@ import SpotlightSlider from "@/components/Anime/SpotlightSlider";
 import Footer from "@/components/Anime/Footer";
 import { AnimeService } from "@/lib/api";
 import { sfx } from "@/lib/audioManager";
+import { useAuth } from "@/context/AuthContext";
+import { supabase } from "@/lib/supabase";
 
 import CuteShareBar from "@/components/Home/CuteShareBar";
 
@@ -112,27 +114,50 @@ function HomeContent() {
     }
   }, []);
 
+  const { user } = useAuth();
+
   useEffect(() => {
     const code = searchParams.get('code');
     if (code) {
-      // Exchange code for token
+      // Exchange code for token & handle direct AniList sign in
       const exchangeToken = async () => {
         try {
           const res = await fetch('/api/auth/anilist', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ code })
+            body: JSON.stringify({ code, currentUserId: user?.id })
           });
           const data = await res.json();
           if (data.access_token) {
             localStorage.setItem('anilist_token', data.access_token);
-            // Optionally dispatch event for user feedback
-            if (typeof window !== 'undefined') {
-                window.dispatchEvent(new CustomEvent('shadow-whisper', { 
-                    detail: { id: Date.now(), type: 'success', title: "Integration", message: "AniList connected successfully!" } 
-                }));
+            if (data.viewer?.name) {
+              localStorage.setItem('anilist_username', data.viewer.name);
             }
-            router.replace('/home'); // Remove code from URL
+            // If user wasn't signed in, log in with generated magic link token
+            if (data.magic_token && !user) {
+              try {
+                await supabase.auth.verifyOtp({ token_hash: data.magic_token, type: 'magiclink' });
+              } catch (otpErr) {
+                console.warn('AniList auto-login OTP error:', otpErr);
+              }
+            }
+            if (typeof window !== 'undefined') {
+              window.dispatchEvent(new CustomEvent('shadow-whisper', { 
+                detail: { 
+                  id: Date.now(), 
+                  type: 'success', 
+                  title: "AniList Connected", 
+                  message: `Welcome, ${data.viewer?.name || 'Operative'}! AniList sync online.` 
+                } 
+              }));
+            }
+            const returnUrl = localStorage.getItem('anilist_auth_redirect') || '/home';
+            localStorage.removeItem('anilist_auth_redirect');
+            if (returnUrl !== '/home') {
+              router.replace(returnUrl);
+            } else {
+              router.replace('/home');
+            }
           }
         } catch (e) {
           console.error("AniList exchange failed", e);
@@ -140,7 +165,7 @@ function HomeContent() {
       };
       exchangeToken();
     }
-  }, [searchParams, router]);
+  }, [searchParams, router, user]);
 
   const spotlightData = data?.spotlight ?? [];
   const recentData = data?.recent ?? [];
@@ -175,7 +200,7 @@ function HomeContent() {
         <div className="min-h-full flex flex-col relative z-10">
           
           {/* Spotlight Slider */}
-          <div className="w-full mb-2 md:mb-6 px-0 sm:px-6 lg:px-8 max-w-[1440px] mx-auto">
+          <div className="w-full mb-2 md:mb-6 px-2 sm:px-4">
             {!isLoading && spotlightData.length > 0 ? (
               <SpotlightSlider animes={spotlightData} />
             ) : (
@@ -184,7 +209,7 @@ function HomeContent() {
           </div>
 
           {/* Main Content Area with Rich Staggered Sections */}
-          <div className="flex-1 flex flex-col gap-6 md:gap-14 px-4 sm:px-6 lg:px-8 max-w-[1440px] w-full mx-auto">
+          <div className="flex-1 flex flex-col gap-6 md:gap-14 px-2 sm:px-4 w-full">
             <ContinueWatching />
 
             {/* All Time Favorite Hall */}

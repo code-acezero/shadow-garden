@@ -1,3 +1,0 @@
-{
-  "/api/hdmovies/[...endpoint]/route": "app/api/hdmovies/[...endpoint]/route.js"
-}

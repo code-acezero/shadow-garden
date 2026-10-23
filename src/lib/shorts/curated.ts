@@ -27,70 +27,70 @@ export const CURATED_HINDI_DRAMAS: ShortDramaDetail[] = [
       {
         episodeNumber: 1,
         title: 'Episode 1 - The Shadow Protector',
-        streamUrl: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerBlazes.mp4',
+        streamUrl: 'https://raw.githubusercontent.com/bower-media-samples/big-buck-bunny-1080p-30s/master/video.mp4',
         type: 'mp4',
         duration: '1:45'
       },
       {
         episodeNumber: 2,
         title: 'Episode 2 - The Heiress in Danger',
-        streamUrl: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerEscapes.mp4',
+        streamUrl: 'https://media.w3.org/2010/05/sintel/trailer.mp4',
         type: 'mp4',
         duration: '1:50'
       },
       {
         episodeNumber: 3,
         title: 'Episode 3 - Unmasked Identity',
-        streamUrl: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerFun.mp4',
+        streamUrl: 'https://vjs.zencdn.net/v/oceans.mp4',
         type: 'mp4',
         duration: '2:05'
       },
       {
         episodeNumber: 4,
         title: 'Episode 4 - A Dangerous Trap',
-        streamUrl: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerJoyBlazes.mp4',
+        streamUrl: 'https://www.w3schools.com/html/mov_bbb.mp4',
         type: 'mp4',
         duration: '1:40'
       },
       {
         episodeNumber: 5,
         title: 'Episode 5 - True Feelings Awaken',
-        streamUrl: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerMeltdowns.mp4',
+        streamUrl: 'https://media.w3.org/2010/05/bunny/trailer.mp4',
         type: 'mp4',
         duration: '1:55'
       },
       {
         episodeNumber: 6,
         title: 'Episode 6 - Betrayal at Midnight',
-        streamUrl: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/Sintel.mp4',
+        streamUrl: 'https://media.w3.org/2010/05/bunny/movie.mp4',
         type: 'mp4',
         duration: '2:10'
       },
       {
         episodeNumber: 7,
         title: 'Episode 7 - The Syndicate Attack',
-        streamUrl: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/SubaruOutbackSeeTheWorld.mp4',
+        streamUrl: 'https://media.w3.org/2010/05/video/movie_300.mp4',
         type: 'mp4',
         duration: '1:35'
       },
       {
         episodeNumber: 8,
         title: 'Episode 8 - Sacrifice for Love',
-        streamUrl: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/TearsOfSteel.mp4',
+        streamUrl: 'https://raw.githubusercontent.com/bower-media-samples/big-buck-bunny-480p-30s/master/video.mp4',
         type: 'mp4',
         duration: '2:15'
       },
       {
         episodeNumber: 9,
         title: 'Episode 9 - The Secret Revealed',
-        streamUrl: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/WeAreGoingOnBullrun.mp4',
+        streamUrl: 'https://raw.githubusercontent.com/bower-media-samples/big-buck-bunny-1080p-30s/master/video.mp4',
         type: 'mp4',
         duration: '1:50'
       },
       {
         episodeNumber: 10,
         title: 'Episode 10 - Forever by Your Side',
-        streamUrl: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/WhatCarCanYouGetForAGrand.mp4',
+        streamUrl: 'https://vjs.zencdn.net/v/oceans.mp4',
         type: 'mp4',
         duration: '2:30'
       }
@@ -117,56 +117,56 @@ export const CURATED_HINDI_DRAMAS: ShortDramaDetail[] = [
       {
         episodeNumber: 1,
         title: 'Episode 1 - The Grand Illusion',
-        streamUrl: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerBlazes.mp4',
+        streamUrl: 'https://raw.githubusercontent.com/bower-media-samples/big-buck-bunny-1080p-30s/master/video.mp4',
         type: 'mp4',
         duration: '1:45'
       },
       {
         episodeNumber: 2,
         title: 'Episode 2 - Cards of Vengeance',
-        streamUrl: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerEscapes.mp4',
+        streamUrl: 'https://media.w3.org/2010/05/sintel/trailer.mp4',
         type: 'mp4',
         duration: '1:50'
       },
       {
         episodeNumber: 3,
         title: 'Episode 3 - Sleight of Hand',
-        streamUrl: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerFun.mp4',
+        streamUrl: 'https://vjs.zencdn.net/v/oceans.mp4',
         type: 'mp4',
         duration: '2:05'
       },
       {
         episodeNumber: 4,
         title: 'Episode 4 - The Vanishing Heiress',
-        streamUrl: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerJoyBlazes.mp4',
+        streamUrl: 'https://www.w3schools.com/html/mov_bbb.mp4',
         type: 'mp4',
         duration: '1:40'
       },
       {
         episodeNumber: 5,
         title: 'Episode 5 - Mind Games',
-        streamUrl: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerMeltdowns.mp4',
+        streamUrl: 'https://media.w3.org/2010/05/bunny/trailer.mp4',
         type: 'mp4',
         duration: '1:55'
       },
       {
         episodeNumber: 6,
         title: 'Episode 6 - Smoke & Mirrors',
-        streamUrl: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/Sintel.mp4',
+        streamUrl: 'https://media.w3.org/2010/05/bunny/movie.mp4',
         type: 'mp4',
         duration: '2:10'
       },
       {
         episodeNumber: 7,
         title: 'Episode 7 - The Final Trick',
-        streamUrl: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/SubaruOutbackSeeTheWorld.mp4',
+        streamUrl: 'https://media.w3.org/2010/05/video/movie_300.mp4',
         type: 'mp4',
         duration: '1:35'
       },
       {
         episodeNumber: 8,
         title: 'Episode 8 - Justice Served',
-        streamUrl: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/TearsOfSteel.mp4',
+        streamUrl: 'https://raw.githubusercontent.com/bower-media-samples/big-buck-bunny-480p-30s/master/video.mp4',
         type: 'mp4',
         duration: '2:15'
       }
@@ -193,56 +193,56 @@ export const CURATED_HINDI_DRAMAS: ShortDramaDetail[] = [
       {
         episodeNumber: 1,
         title: 'Episode 1 - The Substitute Bride',
-        streamUrl: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerBlazes.mp4',
+        streamUrl: 'https://raw.githubusercontent.com/bower-media-samples/big-buck-bunny-1080p-30s/master/video.mp4',
         type: 'mp4',
         duration: '1:45'
       },
       {
         episodeNumber: 2,
         title: 'Episode 2 - The Cold Groom',
-        streamUrl: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerEscapes.mp4',
+        streamUrl: 'https://media.w3.org/2010/05/sintel/trailer.mp4',
         type: 'mp4',
         duration: '1:50'
       },
       {
         episodeNumber: 3,
         title: 'Episode 3 - He Can Walk?!',
-        streamUrl: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerFun.mp4',
+        streamUrl: 'https://vjs.zencdn.net/v/oceans.mp4',
         type: 'mp4',
         duration: '2:05'
       },
       {
         episodeNumber: 4,
         title: 'Episode 4 - Slapping the In-Laws',
-        streamUrl: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerJoyBlazes.mp4',
+        streamUrl: 'https://www.w3schools.com/html/mov_bbb.mp4',
         type: 'mp4',
         duration: '1:40'
       },
       {
         episodeNumber: 5,
         title: 'Episode 5 - Tender Nights',
-        streamUrl: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerMeltdowns.mp4',
+        streamUrl: 'https://media.w3.org/2010/05/bunny/trailer.mp4',
         type: 'mp4',
         duration: '1:55'
       },
       {
         episodeNumber: 6,
         title: 'Episode 6 - The Real Heiress Returns',
-        streamUrl: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/Sintel.mp4',
+        streamUrl: 'https://media.w3.org/2010/05/bunny/movie.mp4',
         type: 'mp4',
         duration: '2:10'
       },
       {
         episodeNumber: 7,
         title: 'Episode 7 - He Chooses Me',
-        streamUrl: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/SubaruOutbackSeeTheWorld.mp4',
+        streamUrl: 'https://media.w3.org/2010/05/video/movie_300.mp4',
         type: 'mp4',
         duration: '1:35'
       },
       {
         episodeNumber: 8,
         title: 'Episode 8 - Empire of Two',
-        streamUrl: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/TearsOfSteel.mp4',
+        streamUrl: 'https://raw.githubusercontent.com/bower-media-samples/big-buck-bunny-480p-30s/master/video.mp4',
         type: 'mp4',
         duration: '2:15'
       }
@@ -272,56 +272,56 @@ export const CURATED_ENGLISH_DRAMAS: ShortDramaDetail[] = [
       {
         episodeNumber: 1,
         title: 'Episode 1 - The Sham Marriage',
-        streamUrl: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerBlazes.mp4',
+        streamUrl: 'https://raw.githubusercontent.com/bower-media-samples/big-buck-bunny-1080p-30s/master/video.mp4',
         type: 'mp4',
         duration: '1:30'
       },
       {
         episodeNumber: 2,
         title: 'Episode 2 - The Luxury Boutique Humiliation',
-        streamUrl: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerEscapes.mp4',
+        streamUrl: 'https://media.w3.org/2010/05/sintel/trailer.mp4',
         type: 'mp4',
         duration: '1:45'
       },
       {
         episodeNumber: 3,
         title: 'Episode 3 - Black Amex Revealed',
-        streamUrl: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerFun.mp4',
+        streamUrl: 'https://vjs.zencdn.net/v/oceans.mp4',
         type: 'mp4',
         duration: '1:50'
       },
       {
         episodeNumber: 4,
         title: 'Episode 4 - Dinner with the Tycoons',
-        streamUrl: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerJoyBlazes.mp4',
+        streamUrl: 'https://www.w3schools.com/html/mov_bbb.mp4',
         type: 'mp4',
         duration: '1:40'
       },
       {
         episodeNumber: 5,
         title: 'Episode 5 - Protecting His Wife',
-        streamUrl: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerMeltdowns.mp4',
+        streamUrl: 'https://media.w3.org/2010/05/bunny/trailer.mp4',
         type: 'mp4',
         duration: '2:00'
       },
       {
         episodeNumber: 6,
         title: 'Episode 6 - The Family Banquet',
-        streamUrl: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/Sintel.mp4',
+        streamUrl: 'https://media.w3.org/2010/05/bunny/movie.mp4',
         type: 'mp4',
         duration: '2:10'
       },
       {
         episodeNumber: 7,
         title: 'Episode 7 - Kneel Before the CEO',
-        streamUrl: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/SubaruOutbackSeeTheWorld.mp4',
+        streamUrl: 'https://media.w3.org/2010/05/video/movie_300.mp4',
         type: 'mp4',
         duration: '1:45'
       },
       {
         episodeNumber: 8,
         title: 'Episode 8 - Queen of Klein Empire',
-        streamUrl: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/TearsOfSteel.mp4',
+        streamUrl: 'https://raw.githubusercontent.com/bower-media-samples/big-buck-bunny-480p-30s/master/video.mp4',
         type: 'mp4',
         duration: '2:20'
       }
@@ -348,56 +348,56 @@ export const CURATED_ENGLISH_DRAMAS: ShortDramaDetail[] = [
       {
         episodeNumber: 1,
         title: 'Episode 1 - Sign the Divorce Papers',
-        streamUrl: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerBlazes.mp4',
+        streamUrl: 'https://raw.githubusercontent.com/bower-media-samples/big-buck-bunny-1080p-30s/master/video.mp4',
         type: 'mp4',
         duration: '1:35'
       },
       {
         episodeNumber: 2,
         title: 'Episode 2 - The Gold Card Returns',
-        streamUrl: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerEscapes.mp4',
+        streamUrl: 'https://media.w3.org/2010/05/sintel/trailer.mp4',
         type: 'mp4',
         duration: '1:50'
       },
       {
         episodeNumber: 3,
         title: 'Episode 3 - Meeting the Chairman',
-        streamUrl: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerFun.mp4',
+        streamUrl: 'https://vjs.zencdn.net/v/oceans.mp4',
         type: 'mp4',
         duration: '1:40'
       },
       {
         episodeNumber: 4,
         title: 'Episode 4 - Regret Is Bitter',
-        streamUrl: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerJoyBlazes.mp4',
+        streamUrl: 'https://www.w3schools.com/html/mov_bbb.mp4',
         type: 'mp4',
         duration: '2:00'
       },
       {
         episodeNumber: 5,
         title: 'Episode 5 - The Gala Confrontation',
-        streamUrl: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerMeltdowns.mp4',
+        streamUrl: 'https://media.w3.org/2010/05/bunny/trailer.mp4',
         type: 'mp4',
         duration: '2:05'
       },
       {
         episodeNumber: 6,
         title: 'Episode 6 - Bankruptcy for the Ex',
-        streamUrl: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/Sintel.mp4',
+        streamUrl: 'https://media.w3.org/2010/05/bunny/movie.mp4',
         type: 'mp4',
         duration: '2:15'
       },
       {
         episodeNumber: 7,
         title: 'Episode 7 - The New Suitor Arrives',
-        streamUrl: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/SubaruOutbackSeeTheWorld.mp4',
+        streamUrl: 'https://media.w3.org/2010/05/video/movie_300.mp4',
         type: 'mp4',
         duration: '1:50'
       },
       {
         episodeNumber: 8,
         title: 'Episode 8 - Standing on Top of the World',
-        streamUrl: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/TearsOfSteel.mp4',
+        streamUrl: 'https://raw.githubusercontent.com/bower-media-samples/big-buck-bunny-480p-30s/master/video.mp4',
         type: 'mp4',
         duration: '2:25'
       }
@@ -424,56 +424,56 @@ export const CURATED_ENGLISH_DRAMAS: ShortDramaDetail[] = [
       {
         episodeNumber: 1,
         title: 'Episode 1 - The Rejection Ceremony',
-        streamUrl: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerBlazes.mp4',
+        streamUrl: 'https://raw.githubusercontent.com/bower-media-samples/big-buck-bunny-1080p-30s/master/video.mp4',
         type: 'mp4',
         duration: '1:45'
       },
       {
         episodeNumber: 2,
         title: 'Episode 2 - Fleeing the Packlands',
-        streamUrl: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerEscapes.mp4',
+        streamUrl: 'https://media.w3.org/2010/05/sintel/trailer.mp4',
         type: 'mp4',
         duration: '1:55'
       },
       {
         episodeNumber: 3,
         title: 'Episode 3 - The Silver Moon Howl',
-        streamUrl: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerFun.mp4',
+        streamUrl: 'https://vjs.zencdn.net/v/oceans.mp4',
         type: 'mp4',
         duration: '2:10'
       },
       {
         episodeNumber: 4,
         title: 'Episode 4 - The Royal Bloodline',
-        streamUrl: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerJoyBlazes.mp4',
+        streamUrl: 'https://www.w3schools.com/html/mov_bbb.mp4',
         type: 'mp4',
         duration: '1:40'
       },
       {
         episodeNumber: 5,
         title: 'Episode 5 - Alpha on His Knees',
-        streamUrl: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerMeltdowns.mp4',
+        streamUrl: 'https://media.w3.org/2010/05/bunny/trailer.mp4',
         type: 'mp4',
         duration: '2:05'
       },
       {
         episodeNumber: 6,
         title: 'Episode 6 - Rogue Pack Invasion',
-        streamUrl: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/Sintel.mp4',
+        streamUrl: 'https://media.w3.org/2010/05/bunny/movie.mp4',
         type: 'mp4',
         duration: '2:20'
       },
       {
         episodeNumber: 7,
         title: 'Episode 7 - The True Luna Reborn',
-        streamUrl: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/SubaruOutbackSeeTheWorld.mp4',
+        streamUrl: 'https://media.w3.org/2010/05/video/movie_300.mp4',
         type: 'mp4',
         duration: '1:50'
       },
       {
         episodeNumber: 8,
         title: 'Episode 8 - Pack of Eternity',
-        streamUrl: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/TearsOfSteel.mp4',
+        streamUrl: 'https://raw.githubusercontent.com/bower-media-samples/big-buck-bunny-480p-30s/master/video.mp4',
         type: 'mp4',
         duration: '2:30'
       }

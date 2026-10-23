@@ -2127,7 +2127,7 @@ function WatchContent() {
 
             {/* COMMENTS SECTION */}
             <div className="xl:col-span-12 w-full mt-4 order-6">
-                <ShadowComments key={user?.id || 'guest'} episodeId={currentEpId || "general"} />
+                <ShadowComments key={user?.id || 'guest'} episodeId={currentEpId || "general"} themeColor="donghua" />
             </div>
         </div>
       </motion.div>

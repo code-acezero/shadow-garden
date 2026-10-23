@@ -839,6 +839,20 @@ export default function Settings() {
                         <ToggleRow title="Auto-Skip Intro" desc="Skip OP sequences automatically" checked={settings.autoSkipOpEd} onChange={(v: boolean) => updateSetting('autoSkipOpEd', v)} />
                         <ToggleRow title="Resume Playback" desc="Continue from last known position" checked={settings.resumePlayback} onChange={(v: boolean) => updateSetting('resumePlayback', v)} />
                         <ToggleRow title="Volume Boost" desc="Amplify audio output (Experimental)" checked={settings.volumeBoost || false} onChange={(v: boolean) => updateSetting('volumeBoost', v)} />
+                        <ToggleRow title="Clear Mode (Mobile UI)" desc="Auto-hide controls during playback on mobile. Tap screen to reveal." checked={settings.clearMode ?? true} onChange={(v: boolean) => {
+                            updateSetting('clearMode', v);
+                            if (typeof window !== 'undefined') {
+                                localStorage.setItem('shadow_clear_mode', String(v));
+                                window.dispatchEvent(new CustomEvent('shadow-clear-mode-changed', { detail: { clearMode: v } }));
+                            }
+                        }} />
+                        <ToggleRow title="Tap to Play/Pause & Toggle UI" desc="Single tap toggles video playback and shows/hides mobile controls simultaneously." checked={settings.tapPlayPauseWithControls ?? true} onChange={(v: boolean) => {
+                            updateSetting('tapPlayPauseWithControls', v);
+                            if (typeof window !== 'undefined') {
+                                localStorage.setItem('shadow_tap_play_pause', String(v));
+                                window.dispatchEvent(new CustomEvent('shadow-tap-play-pause-changed', { detail: { tapPlayPauseWithControls: v } }));
+                            }
+                        }} />
                     </div>
                 </div>
                 <div className="bg-black/40 backdrop-blur-xl rounded-[32px] p-8 border border-white/5 space-y-6 shadow-2xl hover:border-white/10 transition-colors">

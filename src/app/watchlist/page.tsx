@@ -39,6 +39,8 @@ import AnimeCard from '@/components/Anime/AnimeCard';
 import ContinueAnimeCard from '@/components/Anime/ContinueAnimeCard';
 import Footer from '@/components/Anime/Footer';
 import AuthModal from '@/components/Auth/AuthModal';
+import WatchlistCard from '@/components/Watchlist/WatchlistCard';
+import WatchlistSyncCockpit from '@/components/Watchlist/WatchlistSyncCockpit';
 
 
 // --- TYPES ---
@@ -111,7 +113,7 @@ function WatchlistContent() {
     const router = useRouter();
     const searchParams = useSearchParams();
     
-    const { library, continueData, loadingData, updateLibraryStatus, removeFromLibrary, removeFromContinue, clearContinueData } = useUserData();
+    const { library, continueData, loadingData, refreshData, updateLibraryStatus, removeFromLibrary, removeFromContinue, clearContinueData } = useUserData();
     
     const [activeTab, setActiveTab] = useState<string>('all'); 
     const [searchQuery, setSearchQuery] = useState('');
@@ -245,7 +247,7 @@ function WatchlistContent() {
             <div className="w-full">
                 
                 {/* --- HEADER --- */}
-                <div className="flex flex-col gap-6 mb-10 px-4 w-full">
+                <div className="flex flex-col gap-6 mb-8 px-2 sm:px-4 w-full">
                     <div className="flex flex-col md:flex-row justify-between items-center gap-6">
                         <div className="w-full md:w-auto flex justify-between items-center">
                             <div>
@@ -271,7 +273,7 @@ function WatchlistContent() {
                             )}
                         </div>
 
-                        <div className="flex flex-1 items-center justify-center gap-4 w-full md:max-w-4xl">
+                        <div className="flex flex-1 items-center justify-end gap-3 sm:gap-4 w-full">
                             {user && (
                                 <div className="hidden md:flex gap-3 shrink-0">
                                     <div className="bg-white/5 border border-white/5 px-4 py-2 rounded-xl text-center min-w-[90px]">
@@ -312,8 +314,15 @@ function WatchlistContent() {
                     </div>
                 </div>
 
+                {/* --- ANILIST SYNC COCKPIT --- */}
+                {user && (
+                    <div className="px-2 sm:px-4 w-full">
+                        <WatchlistSyncCockpit onSyncComplete={() => refreshData()} />
+                    </div>
+                )}
+
                 {/* --- TABS --- */}
-                <div className="sticky top-16 md:top-20 z-40 bg-[#050505]/95 backdrop-blur-xl border-y border-white/5 py-3 mb-10 w-full flex items-center justify-between px-4">
+                <div className="sticky top-[52px] sm:top-[56px] z-40 bg-[#050505]/95 backdrop-blur-xl border-y border-white/5 py-3 mb-8 w-full flex items-center justify-between px-2 sm:px-4">
                     <div className="flex overflow-x-auto no-scrollbar gap-2 items-center w-full">
                         {tabs.map((tab) => (
                             <button
@@ -356,7 +365,7 @@ function WatchlistContent() {
                 </div>
 
                 {/* --- CONTENT --- */}
-                <div className="min-h-[500px] px-4 w-full">
+                <div className="min-h-[500px] px-2 sm:px-4 w-full">
                     {loadingData ? (
                         <WatchlistSkeleton />
                     ) : filteredData.length > 0 ? (
@@ -374,56 +383,37 @@ function WatchlistContent() {
                                         >
                                             <div className="w-full">
                                                 {isContinueItem(item) ? (
-                                                    <ContinueAnimeCard 
-                                                        anime={item}
-                                                        className="w-full h-full"
-                                                        onClick={(id, episodeId, type) => router.push(getWatchRoute(id, episodeId, type))}
-                                                    />
+                                                    <>
+                                                        <ContinueAnimeCard 
+                                                            anime={item}
+                                                            className="w-full h-full"
+                                                            onClick={(id, episodeId, type) => router.push(getWatchRoute(id, episodeId, type))}
+                                                        />
+                                                        {/* QUICK ACTIONS OVERLAY */}
+                                                        <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col gap-1 z-[60]">
+                                                            <button 
+                                                                onClick={(e) => {
+                                                                    e.stopPropagation();
+                                                                    handleOpenIntel(item.anime_id, item.title, item.poster);
+                                                                }} 
+                                                                title="Intel & Characters"
+                                                                className="w-8 h-8 rounded-full bg-white/10 hover:bg-primary-600 border border-white/20 text-white flex items-center justify-center shadow-xl backdrop-blur-md hover:scale-110 transition-all"
+                                                            >
+                                                                <Info size={14} />
+                                                            </button>
+                                                            <button onClick={() => handleRemove(item.anime_id, true)} className="w-8 h-8 rounded-full bg-white/10 hover:bg-red-500 hover:text-white border border-white/20 text-red-400 flex items-center justify-center shadow-xl backdrop-blur-md hover:scale-110 transition-all"><Trash2 size={14}/></button>
+                                                        </div>
+                                                    </>
                                                 ) : (
-                                                     <AnimeCard anime={{ 
-                                                         id: item.anime_id, 
-                                                         title: item.anime_title, 
-                                                         poster: item.anime_image, 
-                                                         type: (item as any).type || (item as any).media_type || "TV", 
-                                                         media_type: (item as any).media_type || (item as any).type || "anime",
-                                                         totalEpisodes: item.total_episodes || (item as any).totalEpisodes || "?",
-                                                         total_episodes: item.total_episodes || (item as any).totalEpisodes,
-                                                         sub: (item as any).sub || (item as any).subCount,
-                                                         dub: (item as any).dub || (item as any).dubCount,
-                                                     }} />
+                                                    <WatchlistCard
+                                                        item={item as any}
+                                                        viewMode="grid"
+                                                        onStatusChange={handleStatusChange}
+                                                        onRemove={(id) => handleRemove(id, false)}
+                                                        onOpenIntel={handleOpenIntel}
+                                                        onProgressUpdate={() => refreshData()}
+                                                    />
                                                 )}
-                                                {/* QUICK ACTIONS OVERLAY */}
-                                                <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col gap-1 z-[60]">
-                                                    <button 
-                                                        onClick={(e) => {
-                                                            e.stopPropagation();
-                                                            handleOpenIntel(
-                                                                isContinueItem(item) ? item.anime_id : item.anime_id,
-                                                                isContinueItem(item) ? item.title : item.anime_title,
-                                                                isContinueItem(item) ? item.poster : item.anime_image
-                                                            );
-                                                        }} 
-                                                        title="Intel & Characters"
-                                                        className="w-8 h-8 rounded-full bg-white/10 hover:bg-primary-600 border border-white/20 text-white flex items-center justify-center shadow-xl backdrop-blur-md hover:scale-110 transition-all"
-                                                    >
-                                                        <Info size={14} />
-                                                    </button>
-                                                    {!isContinueItem(item) && (
-                                                        <Select value={item.status} onValueChange={(v) => handleStatusChange(item.anime_id, v)}>
-                                                            <SelectTrigger className="w-8 h-8 rounded-full bg-white/10 hover:bg-primary-600 border border-white/20 text-white p-0 flex items-center justify-center [&>svg]:hidden focus:ring-0 shadow-xl backdrop-blur-md hover:scale-110 transition-all">
-                                                                <div className="flex items-center justify-center w-full h-full"><Clock size={14} className="text-white"/></div>
-                                                            </SelectTrigger>
-                                                            <SelectContent className="bg-[#0a0a0a] border-white/10 text-white z-[70]">
-                                                                <SelectItem value="watching">Watching</SelectItem>
-                                                                <SelectItem value="completed">Completed</SelectItem>
-                                                                <SelectItem value="plan_to_watch">Plan to Watch</SelectItem>
-                                                                <SelectItem value="on_hold">On Hold</SelectItem>
-                                                                <SelectItem value="dropped">Dropped</SelectItem>
-                                                            </SelectContent>
-                                                        </Select>
-                                                    )}
-                                                    <button onClick={() => handleRemove(isContinueItem(item) ? item.anime_id : item.anime_id, isContinueItem(item))} className="w-8 h-8 rounded-full bg-white/10 hover:bg-red-500 hover:text-white border border-white/20 text-red-400 flex items-center justify-center shadow-xl backdrop-blur-md hover:scale-110 transition-all"><Trash2 size={14}/></button>
-                                                </div>
                                             </div>
                                         </motion.div>
                                     ))}
@@ -439,67 +429,47 @@ function WatchlistContent() {
                                             initial={{ opacity: 0, y: 10 }} 
                                             animate={{ opacity: 1, y: 0 }} 
                                             exit={{ opacity: 0, y: -10 }} 
-                                            className="w-full flex items-center gap-4 bg-white/5 border border-white/10 rounded-2xl p-3 hover:bg-white/10 transition-colors"
+                                            className="w-full"
                                         >
-                                            <div 
-                                                className="w-16 h-20 md:w-20 md:h-28 shrink-0 rounded-xl overflow-hidden bg-zinc-900 relative cursor-pointer"
-                                                onClick={() => {
-                                                    if (isContinueItem(item)) router.push(getWatchRoute(item.anime_id, item.episodeId, item.type));
-                                                    else router.push(getWatchRoute(item.anime_id, undefined, (item as any).type));
-                                                }}
-                                            >
-                                                <img src={isContinueItem(item) ? item.poster : item.anime_image} alt="poster" className="w-full h-full object-cover" />
-                                                {isContinueItem(item) && (
-                                                    <div className="absolute inset-x-0 bottom-0 h-1 bg-white/20">
-                                                        <div className="h-full bg-primary-600" style={{ width: `${item.progress}%` }} />
+                                            {isContinueItem(item) ? (
+                                                <div className="w-full flex items-center gap-4 bg-white/5 border border-white/10 rounded-2xl p-3 hover:bg-white/10 transition-colors">
+                                                    <div 
+                                                        className="w-16 h-20 md:w-20 md:h-28 shrink-0 rounded-xl overflow-hidden bg-zinc-900 relative cursor-pointer"
+                                                        onClick={() => router.push(getWatchRoute(item.anime_id, item.episodeId, item.type))}
+                                                    >
+                                                        <img src={item.poster} alt="poster" className="w-full h-full object-cover" />
+                                                        <div className="absolute inset-x-0 bottom-0 h-1 bg-white/20">
+                                                            <div className="h-full bg-primary-600" style={{ width: `${item.progress}%` }} />
+                                                        </div>
                                                     </div>
-                                                )}
-                                            </div>
-                                            <div className="flex-1 min-w-0 flex flex-col justify-center cursor-pointer" onClick={() => {
-                                                    if (isContinueItem(item)) router.push(getWatchRoute(item.anime_id, item.episodeId, item.type));
-                                                    else router.push(getWatchRoute(item.anime_id, undefined, (item as any).type));
-                                             }}>
-                                                <h3 className="font-bold text-white text-sm md:text-lg truncate">{isContinueItem(item) ? item.title : item.anime_title}</h3>
-                                                {isContinueItem(item) ? (
-                                                    <p className="text-xs text-primary-500 font-bold uppercase mt-1 tracking-widest">Episode {item.episode}</p>
-                                                ) : (
-                                                    <p className="text-[10px] text-zinc-500 font-bold uppercase mt-1 tracking-widest flex items-center gap-2">
-                                                        <span className="w-2 h-2 rounded-full bg-primary-600" />
-                                                        {item.status.replace(/_/g, ' ')}
-                                                    </p>
-                                                )}
-                                            </div>
-                                            <div className="flex items-center gap-2 shrink-0">
-                                                <button 
-                                                    onClick={(e) => {
-                                                        e.stopPropagation();
-                                                        handleOpenIntel(
-                                                            isContinueItem(item) ? item.anime_id : item.anime_id,
-                                                            isContinueItem(item) ? item.title : item.anime_title,
-                                                            isContinueItem(item) ? item.poster : item.anime_image
-                                                        );
-                                                    }} 
-                                                    title="Intel & Characters"
-                                                    className="w-9 h-9 rounded-lg bg-white/10 border border-white/20 text-white flex items-center justify-center hover:bg-primary-600 transition-colors"
-                                                >
-                                                    <Info size={14} />
-                                                </button>
-                                                {!isContinueItem(item) && (
-                                                    <Select value={item.status} onValueChange={(v) => handleStatusChange(item.anime_id, v)}>
-                                                        <SelectTrigger className="w-[110px] h-9 bg-black/40 border-white/10 text-[10px] uppercase font-bold text-white rounded-lg">
-                                                            <SelectValue placeholder="Status" />
-                                                        </SelectTrigger>
-                                                        <SelectContent className="bg-[#0a0a0a] border-white/10 text-white">
-                                                            <SelectItem value="watching">Watching</SelectItem>
-                                                            <SelectItem value="completed">Completed</SelectItem>
-                                                            <SelectItem value="plan_to_watch">Plan to Watch</SelectItem>
-                                                            <SelectItem value="on_hold">On Hold</SelectItem>
-                                                            <SelectItem value="dropped">Dropped</SelectItem>
-                                                        </SelectContent>
-                                                    </Select>
-                                                )}
-                                                <button onClick={() => handleRemove(isContinueItem(item) ? item.anime_id : item.anime_id, isContinueItem(item))} className="w-9 h-9 rounded-lg bg-red-500/10 border border-red-500/20 text-red-400 flex items-center justify-center hover:bg-red-500 hover:text-white transition-colors"><Trash2 size={14}/></button>
-                                            </div>
+                                                    <div className="flex-1 min-w-0 flex flex-col justify-center cursor-pointer" onClick={() => router.push(getWatchRoute(item.anime_id, item.episodeId, item.type))}>
+                                                        <h3 className="font-bold text-white text-sm md:text-lg truncate">{item.title}</h3>
+                                                        <p className="text-xs text-primary-500 font-bold uppercase mt-1 tracking-widest">Episode {item.episode}</p>
+                                                    </div>
+                                                    <div className="flex items-center gap-2 shrink-0">
+                                                        <button 
+                                                            onClick={(e) => {
+                                                                e.stopPropagation();
+                                                                handleOpenIntel(item.anime_id, item.title, item.poster);
+                                                            }} 
+                                                            title="Intel & Characters"
+                                                            className="w-9 h-9 rounded-lg bg-white/10 border border-white/20 text-white flex items-center justify-center hover:bg-primary-600 transition-colors"
+                                                        >
+                                                            <Info size={14} />
+                                                        </button>
+                                                        <button onClick={() => handleRemove(item.anime_id, true)} className="w-9 h-9 rounded-lg bg-red-500/10 border border-red-500/20 text-red-400 flex items-center justify-center hover:bg-red-500 hover:text-white transition-colors"><Trash2 size={14}/></button>
+                                                    </div>
+                                                </div>
+                                            ) : (
+                                                <WatchlistCard
+                                                    item={item as any}
+                                                    viewMode="list"
+                                                    onStatusChange={handleStatusChange}
+                                                    onRemove={(id) => handleRemove(id, false)}
+                                                    onOpenIntel={handleOpenIntel}
+                                                    onProgressUpdate={() => refreshData()}
+                                                />
+                                            )}
                                         </motion.div>
                                     ))}
                                 </AnimatePresence>
@@ -637,7 +607,7 @@ function WatchlistContent() {
                                 <div>
                                     <div className="flex items-center justify-between mb-3">
                                         <h3 className="text-xs font-black uppercase tracking-widest text-zinc-400 flex items-center gap-2">
-                                            <Users size={14} className="text-primary-500" /> Cast & Characters
+                                            <Users size={14} className="text-primary-500" /> Character & Voice Artists
                                         </h3>
                                         {intelData?.characters && (
                                             <span className="text-[9px] font-bold text-zinc-500 uppercase">

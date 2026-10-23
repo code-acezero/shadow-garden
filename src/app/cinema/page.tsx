@@ -6,7 +6,7 @@ import { useSearchParams, useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
   Search, Play, ChevronRight, ChevronLeft, Info, Loader2, Plus,
-  Star, Film, Clapperboard, Tv, Sparkles, Flame, Radio, Heart,
+  Star, Film, Clapperboard, Tv, Crown, Flame, Radio, Heart,
   Zap, Globe
 } from 'lucide-react';
 import { omni, DramaSection, DramaCard } from '@/lib/omni';
@@ -152,7 +152,7 @@ const HeroSlider = ({ items }: { items: DramaCard[] }) => {
       </AnimatePresence>
 
       {/* Top Floating Glass Header Bar with Search & Brand */}
-      <div className="absolute top-4 sm:top-5 left-0 right-0 z-40 px-4 md:px-8 max-w-[1440px] mx-auto flex items-center justify-between pointer-events-auto">
+      <div className="absolute top-3 sm:top-4 left-0 right-0 z-40 px-2 sm:px-4 w-full flex items-center justify-between pointer-events-auto">
         <div className="flex items-center gap-2.5">
           <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-2xl bg-cyan-500/20 border border-cyan-400/40 backdrop-blur-xl flex items-center justify-center text-cyan-400 shadow-[0_0_20px_rgba(34,211,238,0.3)]">
             <Film size={18} className="animate-pulse" />
@@ -302,7 +302,7 @@ const ContentRow = ({
   return (
     <section 
       id={id} 
-      className="w-full relative z-30 px-4 md:px-8 max-w-[1440px] mx-auto group/row scroll-mt-24"
+      className="w-full relative z-30 px-2 sm:px-4 group/row scroll-mt-24"
       style={{ contentVisibility: 'auto', containIntrinsicSize: '1px 360px' }}
     >
       <div className="flex items-center justify-between mb-3.5">
@@ -369,7 +369,7 @@ function getSectionMeta(title: string) {
   if (t.includes('trending')) return { icon: Flame, accentColor: 'text-orange-400 border-orange-500/30', id: 'section-trending' };
   if (t.includes('turkish') || t.includes('dizi')) return { icon: Globe, accentColor: 'text-rose-400 border-rose-500/30', id: 'section-turkish' };
   if (t.includes('movie') || t.includes('cinema')) return { icon: Film, accentColor: 'text-cyan-400 border-cyan-500/30', id: 'section-movies' };
-  if (t.includes('korean') || t.includes('k-drama')) return { icon: Sparkles, accentColor: 'text-pink-400 border-pink-500/30', id: 'section-kdrama' };
+  if (t.includes('korean') || t.includes('k-drama')) return { icon: Crown, accentColor: 'text-pink-400 border-pink-500/30', id: 'section-kdrama' };
   if (t.includes('chinese') || t.includes('c-drama')) return { icon: Heart, accentColor: 'text-red-400 border-red-500/30', id: 'section-cdrama' };
   if (t.includes('japanese') || t.includes('j-drama')) return { icon: Clapperboard, accentColor: 'text-emerald-400 border-emerald-500/30', id: 'section-jdrama' };
   if (t.includes('series')) return { icon: Tv, accentColor: 'text-purple-400 border-purple-500/30', id: 'section-series' };

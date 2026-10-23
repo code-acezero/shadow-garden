@@ -25,9 +25,11 @@ type AuthView = 'ENTER' | 'REGISTER' | 'OTP' | 'FORGOT';
 
 const GoogleIcon = () => <svg viewBox="0 0 24 24" className="w-4 h-4"><path fill="currentColor" d="M12.48 10.92v3.28h7.84c-.24 1.84-.853 3.187-1.787 4.133-1.147 1.147-2.933 2.4-6.053 2.4-4.827 0-8.6-3.893-8.6-8.72s3.773-8.72 8.6-8.72c2.6 0 4.507 1.027 5.907 2.347l2.307-2.307C18.747 1.44 16.133 0 12.48 0 5.867 0 .307 5.387.307 12s5.56 12 12.173 12c3.573 0 6.267-1.173 8.373-3.36 2.16-2.16 2.84-5.213 2.84-7.667 0-.76-.053-1.467-.173-2.053H12.48z"/></svg>;
 const DiscordIcon = () => <svg viewBox="0 0 24 24" className="w-4 h-4"><path fill="currentColor" d="M20.317 4.37a19.791 19.791 0 0 0-4.885-1.515.074.074 0 0 0-.079.037 3.42 3.42 0 0 0-.68 1.405 18.355 18.355 0 0 0-5.344 0 3.42 3.42 0 0 0-.678-1.405.077.077 0 0 0-.08-.037 19.736 19.736 0 0 0-4.885 1.515.07.07 0 0 0-.032.027C.533 9.046-.32 13.58.099 18.057a.082.082 0 0 0 .031.057 19.9 19.9 0 0 0 5.993 3.03.078.078 0 0 0 .084-.028 14.09 14.09 0 0 0 1.226-1.994.076.076 0 0 0-.041-.106 13.107 13.107 0 0 1-1.872-.892.077.077 0 0 1-.008-.128 10.2 10.2 0 0 0 .372-.292.074.074 0 0 1 .077-.01c3.928 1.793 8.18 1.793 12.062 0a.074.074 0 0 1 .078.01c.12.098.246.198.373.292a.077.077 0 0 1-.006.127 12.299 12.299 0 0 1-1.873.892.077.077 0 0 0-.041.107c.36.698.772 1.362 1.225 1.993a.076.076 0 0 0 .084.028 19.839 19.839 0 0 0 6.002-3.03.077.077 0 0 0 .032-.054c.5-5.177-.838-9.674-3.549-13.66a.061.061 0 0 0-.031-.03zM8.02 15.33c-1.183 0-2.157-1.085-2.157-2.419 0-1.333.956-2.419 2.157-2.419 1.21 0 2.176 1.086 2.157 2.419 0 1.334-.956 2.419-2.157 2.419zm7.975 0c-1.183 0-2.157-1.085-2.157-2.419 0-1.333.955-2.419 2.157-2.419 1.21 0 2.176 1.086 2.157 2.419 0 1.334-.946 2.419-2.157 2.419z"/></svg>;
-const FacebookIcon = () => <svg viewBox="0 0 24 24" className="w-4 h-4"><path fill="currentColor" d="M9.101 23.691v-7.98H6.627v-3.667h2.474v-1.58c0-4.085 1.848-5.978 5.858-5.978.401 0 .955.042 1.468.103a8.68 8.68 0 0 1 1.141.195v3.325a8.623 8.623 0 0 0-.653-.036c-2.148 0-2.971 1.022-2.971 2.22v1.752h3.446l-.471 3.667h-2.975v7.98H9.101z"/></svg>;
-const GithubIcon = () => <svg viewBox="0 0 24 24" className="w-4 h-4"><path fill="currentColor" d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z"/></svg>;
-const AppleIcon = () => <svg viewBox="0 0 384 512" className="w-4 h-4"><path fill="currentColor" d="M318.7 268.7c-.2-36.7 16.4-64.4 50-84.8-18.8-26.9-47.2-41.7-84.7-44.6-35.5-2.8-74.3 20.7-88.5 20.7-15 0-49.4-19.7-76.4-19.7C63.3 141.2 4 184.8 4 273.5q0 39.3 14.4 81.2c12.8 36.7 59 126.7 107.2 125.2 25.2-.6 43-17.9 75.8-17.9 31.8 0 48.3 17.9 76.4 17.9 48.6-.7 90.4-82.5 102.6-119.3-65.2-30.7-61.7-90-61.7-91.9zm-56.6-164.2c27.3-32.4 24.8-61.9 24-72.5-24.1 1.4-52 16.4-67.9 34.9-17.5 19.8-27.8 44.3-25.6 71.9 26.1 2 52.3-11.4 69.5-34.3z"/></svg>;
+const AnilistIcon = () => (
+  <svg viewBox="0 0 24 24" className="w-4 h-4 fill-current">
+    <path d="M6.361 2.841 0 18.26h4.03l1.197-2.973h5.589l1.198 2.973H16.05L9.689 2.841H6.361zm.39 9.176 1.272-3.158 1.271 3.158H6.751zM13.92 5.093h4.031v10.198h5.969V18.26H13.92V5.093z" />
+  </svg>
+);
 
 const YinYangIcon = () => (
     <div className="relative flex items-center justify-center w-12 h-12 shrink-0 bg-transparent">
@@ -196,6 +198,13 @@ export default function AuthModal({ isOpen, onClose, onAuthSuccess, initialView 
   const handleResendToken = async () => { if(!formData.email) return; setIsLoading(true); try { await supabase.auth.resend({ type: 'signup', email: formData.email }); notifyIsland('Guild Manager Alpha', 'Token resent. Check spam.', 'system'); } catch(e:any) { notifyIsland('Error', e.message, 'error'); } finally { setIsLoading(false); } };
   const handleForgotPass = async (e: React.FormEvent) => { e.preventDefault(); setIsLoading(true); try { await supabase.auth.resetPasswordForEmail(formData.email); notifyIsland('Guild Manager Alpha', "Recovery scroll sent.", 'system'); setView('OTP'); } catch (err: any) { notifyIsland('Error', err.message, 'error'); } finally { setIsLoading(false); } };
   const handleSocial = async (provider: any) => { try { await supabase.auth.signInWithOAuth({ provider, options: { redirectTo: `${window.location.origin}/auth/callback` } }); } catch (e: any) { notifyIsland('Guild Manager Alpha', "Link Failed: " + e.message, 'error'); } };
+  const handleAnilistSignIn = () => {
+    const clientId = '46235';
+    try {
+      localStorage.setItem('anilist_auth_redirect', window.location.pathname);
+    } catch {}
+    window.location.href = `https://anilist.co/api/v2/oauth/authorize?client_id=${clientId}&response_type=code`;
+  };
 
   const inputClass = "h-11 pl-10 bg-zinc-800/50 border-white/5 rounded-full text-xs placeholder:text-zinc-600 focus:bg-zinc-800/80 focus:border-white/10 outline-none focus:outline-none focus-visible:ring-0 focus-visible:ring-offset-0 focus-visible:border-white/20 transition-all";
   const tabClass = "rounded-full data-[state=active]:bg-zinc-700/80 data-[state=active]:text-white font-bold text-[10px] uppercase tracking-widest text-zinc-400 outline-none focus:outline-none focus:ring-0 focus-visible:ring-0";
@@ -262,12 +271,17 @@ export default function AuthModal({ isOpen, onClose, onAuthSuccess, initialView 
                             </TabsContent>
                         </Tabs>
                         <div className="pt-1"><div className="relative mb-4"><Separator className="bg-white/5" /><span className="absolute left-1/2 -translate-x-1/2 -translate-y-1/2 bg-[#0a0a0a] px-2 text-[9px] uppercase font-bold text-zinc-700 tracking-widest">Link Soul</span></div>
-                            <div className="flex gap-3 justify-center">
+                            <div className="flex gap-4 justify-center items-center">
                                 <SocialBtn icon={GoogleIcon} onClick={() => handleSocial('google')} />
-                                <SocialBtn icon={FacebookIcon} onClick={() => handleSocial('facebook')} />
                                 <SocialBtn icon={DiscordIcon} onClick={() => handleSocial('discord')} />
-                                <SocialBtn icon={GithubIcon} onClick={() => handleSocial('github')} />
-                                <SocialBtn icon={AppleIcon} onClick={() => handleSocial('apple')} />
+                                <button
+                                    type="button"
+                                    onClick={handleAnilistSignIn}
+                                    title="Direct AniList Sign In"
+                                    className="w-10 h-10 flex items-center justify-center rounded-full bg-[#02a9ff]/10 hover:bg-[#02a9ff]/25 border border-[#02a9ff]/30 hover:border-[#02a9ff]/60 transition-all text-[#02a9ff] hover:text-white hover:scale-110 shadow-lg outline-none focus:outline-none focus:ring-0 active:scale-95"
+                                >
+                                    <AnilistIcon />
+                                </button>
                             </div>
                         </div>
                     </motion.div>

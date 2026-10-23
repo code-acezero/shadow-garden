@@ -670,24 +670,29 @@ export class AniListService {
             timeUntilAiring
             episode
           }
-          characters(sort: ROLE, perPage: 12) {
+          characters(sort: ROLE, perPage: 24) {
             edges {
               role
               node {
                 id
                 name {
                   full
+                  native
                 }
                 image {
+                  large
                   medium
                 }
+                favourites
               }
               voiceActors(language: JAPANESE) {
                 id
                 name {
                   full
+                  native
                 }
                 image {
+                  large
                   medium
                 }
                 language
@@ -809,24 +814,29 @@ export class AniListService {
                 timeUntilAiring
                 episode
               }
-              characters(sort: ROLE, perPage: 12) {
+              characters(sort: ROLE, perPage: 24) {
                 edges {
                   role
                   node {
                     id
                     name {
                       full
+                      native
                     }
                     image {
+                      large
                       medium
                     }
+                    favourites
                   }
                   voiceActors(language: JAPANESE) {
                     id
                     name {
                       full
+                      native
                     }
                     image {
+                      large
                       medium
                     }
                     language
@@ -962,12 +972,13 @@ export class AniListService {
           characters.push({
             id: String(charNode.id),
             name: charNode.name?.full || 'Unknown',
-            poster: charNode.image?.medium || '',
+            poster: charNode.image?.large || charNode.image?.medium || '',
             role: edge.role || 'MAIN',
+            favorites: charNode.favourites || undefined,
             voiceActor: va ? {
               id: String(va.id),
               name: va.name?.full || '',
-              poster: va.image?.medium || '',
+              poster: va.image?.large || va.image?.medium || '',
               language: va.language || 'Japanese'
             } : undefined
           });

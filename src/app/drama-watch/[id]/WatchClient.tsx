@@ -8,7 +8,7 @@ import {
   SkipForward, SkipBack, Server as ServerIcon, Layers, Clock, Play, 
   Grid, List, LayoutGrid, ChevronDown, Flame, Info, Loader2, Check, X, 
   Download, AlertTriangle, Lightbulb, StepForward, Share2, Users, Star,
-  FastForward, Film, Sparkles, CheckCircle2, ChevronRight, MessageSquare,
+  FastForward, Film, CheckCircle2, ChevronRight, MessageSquare,
   RefreshCw, Subtitles, Globe
 } from 'lucide-react';
 import { WatchPageSkeleton, LiquidPlayerSkeleton } from '@/components/UIx/SkeletonLoaders';
@@ -1062,6 +1062,7 @@ export function DramaWatchContent() {
               <ShadowComments 
                 key={user?.id || 'guest'}
                 episodeId={`drama-movie-${drama.id}`} 
+                themeColor="drama"
               />
             </div>
 
@@ -1642,7 +1643,7 @@ export function DramaWatchContent() {
               <div className="xl:col-span-12 w-full flex flex-col gap-3 pt-4 order-5">
                 <div className="flex items-center gap-2.5">
                   <div className="p-2 rounded-2xl bg-[#0e1629]/90 border border-white/[0.08] text-cyan-400">
-                    <Sparkles size={18} />
+                    <Flame size={18} />
                   </div>
                   <h3 className="text-base sm:text-lg font-black text-white uppercase tracking-wider font-lemon">
                     More Like This
@@ -1664,6 +1665,7 @@ export function DramaWatchContent() {
               <ShadowComments 
                 key={user?.id || 'guest'}
                 episodeId={currentEpId || `drama-${drama.id}-ep-${currentEp?.number || 1}`} 
+                themeColor="drama"
               />
             </div>
 

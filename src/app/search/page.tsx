@@ -422,7 +422,7 @@ function SearchContent() {
             className={`absolute top-[-20%] left-1/2 -translate-x-1/2 w-[600px] md:w-[1000px] h-[400px] ${themeStyles.bgActive} rounded-[100%] blur-[120px] pointer-events-none`} 
         />
         
-        <div className="relative z-10 flex flex-col items-center text-center w-full">
+        <div className="relative z-10 flex flex-col items-center text-center w-full px-2 sm:px-4 pt-3 sm:pt-4">
           <motion.div initial={{ y: -20, opacity: 0 }} animate={{ y: 0, opacity: 1 }} className="flex items-center gap-3 mb-6">
             <div className={`h-px w-12 bg-gradient-to-r from-transparent ${themeStyles.bgActive} to-transparent`} />
             <span className={`${themeStyles.textMain} text-xs tracking-[0.4em] font-black uppercase font-lemon`}>
@@ -542,7 +542,7 @@ function SearchContent() {
             transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
             className="overflow-hidden border-b border-white/5 bg-white/[0.02]"
           >
-            <div className="px-4 py-8 space-y-8 w-full">
+            <div className="px-2 sm:px-4 py-8 space-y-8 w-full">
               {/* Genres Container */}
               <div>
                 <div className="flex items-center gap-3 mb-4">
@@ -629,7 +629,7 @@ function SearchContent() {
       </AnimatePresence>
 
       {/* Results Section */}
-      <div className="py-12 relative z-10 w-full">
+      <div className="py-10 relative z-10 w-full px-2 sm:px-4">
         
         {/* Sort & Stats Bar */}
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-8 bg-[#0a0a0a] p-4 rounded-3xl border border-white/5 shadow-2xl">

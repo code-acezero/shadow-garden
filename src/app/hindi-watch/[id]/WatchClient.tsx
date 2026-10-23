@@ -2505,7 +2505,7 @@ function WatchContent() {
 
             {/* COMMENTS SECTION */}
             <div className="xl:col-span-12 w-full mt-4 order-7">
-                <ShadowComments key={user?.id || 'guest'} episodeId={currentEpId || "general"} />
+                <ShadowComments key={user?.id || 'guest'} episodeId={currentEpId || "general"} themeColor="hindi" />
             </div>
 
             {/* BOTTOM ADS BANNER */}

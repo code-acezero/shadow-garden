@@ -33,10 +33,7 @@ const nextConfig: NextConfig = {
   // Add this to fix the @consumet/extensions issue
   transpilePackages: ['@consumet/extensions'],
 
-  webpack: (config, { isServer, dev }) => {
-    if (dev) {
-      config.cache = false;
-    }
+  webpack: (config, { isServer }) => {
     if (!isServer) {
       config.resolve.fallback = {
         ...config.resolve.fallback,

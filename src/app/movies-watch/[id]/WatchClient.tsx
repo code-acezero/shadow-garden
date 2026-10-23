@@ -951,10 +951,10 @@ export default function WatchClient() {
         {/* ── ROW 3: Comments (full width) ── */}
         <div className="w-full">
           <div className="flex items-center gap-2 mb-3">
-            <div className="w-1 h-5 bg-emerald-500 rounded-full shadow-[0_0_8px_rgba(16,185,129,0.6)]" />
+            <div className="w-1 h-5 bg-indigo-500 rounded-full shadow-[0_0_8px_rgba(99,102,241,0.6)]" />
             <h3 className="text-base font-black text-white flex items-center gap-2">Comments</h3>
           </div>
-          <ShadowComments episodeId={`movie-${movie.id}`} />
+          <ShadowComments episodeId={`movie-${movie.id}`} themeColor="movies" />
         </div>
 
       </div>

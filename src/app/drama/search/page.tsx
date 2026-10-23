@@ -88,8 +88,8 @@ function DramaSearchContent() {
   };
 
   return (
-    <div className="min-h-screen bg-[#020617] text-white pt-24 pb-16 px-4 md:px-8 selection:bg-cyan-500/30">
-      <div className="max-w-7xl mx-auto">
+    <div className="min-h-screen bg-[#020617] text-white pt-2 sm:pt-4 pb-16 px-2 sm:px-4 w-full selection:bg-cyan-500/30">
+      <div className="w-full">
         {/* Header Navigation */}
         <div className="flex items-center gap-4 mb-8">
           <Link href="/drama" className="w-10 h-10 rounded-full bg-white/5 hover:bg-white/10 border border-white/10 flex items-center justify-center text-cyan-400 transition-all active:scale-95">

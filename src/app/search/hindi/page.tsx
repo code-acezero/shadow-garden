@@ -101,7 +101,7 @@ function HindiSearchContent() {
         <div className="absolute inset-0 bg-gradient-to-b from-orange-950/20 via-transparent to-transparent" />
         <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[800px] h-[400px] bg-orange-600/5 rounded-full blur-[120px]" />
         
-        <div className="relative z-10 w-full px-4 pt-14 sm:pt-16 pb-8 max-w-7xl mx-auto">
+        <div className="relative z-10 w-full px-2 sm:px-4 pt-2 sm:pt-4 pb-6">
           <div className="flex items-center gap-3 mb-2">
             <div className="h-px w-8 bg-orange-500" />
             <span className={`text-orange-400 text-[10px] tracking-[0.3em] font-bold uppercase font-lemon`}>
@@ -180,7 +180,7 @@ function HindiSearchContent() {
             exit={{ height: 0, opacity: 0 }}
             className="overflow-hidden border-y border-white/5"
           >
-            <div className="px-4 py-6 space-y-6 w-full">
+            <div className="px-2 sm:px-4 py-6 space-y-6 w-full">
               <div>
                 <span className="text-[10px] font-bold text-zinc-500 uppercase tracking-[0.2em] mb-3 block flex items-center gap-2">
                   <Hash size={12} /> Genres
@@ -232,7 +232,7 @@ function HindiSearchContent() {
         )}
       </AnimatePresence>
       {/* Results */}
-      <div className="px-4 py-8 w-full">
+      <div className="px-2 sm:px-4 py-8 w-full">
         {loading ? (
           <SimpleGridSkeleton />
         ) : results.length === 0 ? (

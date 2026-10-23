@@ -230,7 +230,6 @@ export default function RootLayout({
             <SettingsProvider>
               <AnalyticsTracker />
               <AdScriptInjector />
-              <Navigation />
 
               <main className="min-h-screen relative overflow-clip w-full">
                 <PageTransition>
@@ -238,6 +237,7 @@ export default function RootLayout({
                 </PageTransition>
               </main>
 
+              <Navigation />
               <AlphaWidget />
               <GuildBoardPopupRenderer />
             </SettingsProvider>

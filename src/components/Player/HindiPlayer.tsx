@@ -14,6 +14,7 @@ import { cn } from '@/lib/utils';
 import { RunHappyPlayerLoader } from '@/components/UIx/SkeletonLoaders';
 import { adManager } from '@/lib/adManager';
 import IframeAdShield from './IframeAdShield';
+import PlayerAdBreakOverlay from './PlayerAdBreakOverlay';
 
 // --- 1. CONFIGURATION CONSTANTS ---
 const SUB_COLORS = {
@@ -1685,35 +1686,15 @@ const HindiPlayer = forwardRef<HindiPlayerRef, HindiPlayerProps>(({
             )}
 
             {/* Mid-Roll Sponsored Intermission Prompt */}
-            {showMidRollPrompt && (
-                <div className="absolute inset-0 z-50 flex items-center justify-center bg-black/85 backdrop-blur-md p-4 animate-in fade-in zoom-in-95 duration-200">
-                    <div className="bg-zinc-950/95 border border-primary-500/40 rounded-3xl p-6 sm:p-8 max-w-sm sm:max-w-md w-full text-center shadow-[0_0_60px_rgba(220,38,38,0.4)] flex flex-col items-center gap-4 pointer-events-auto">
-                        <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-2xl bg-primary-600/20 border border-primary-500/30 flex items-center justify-center text-primary-400">
-                            <Radio size={26} className="animate-pulse" />
-                        </div>
-                        <div>
-                            <span className="text-[10px] font-black uppercase tracking-[0.25em] text-primary-400">Sponsored Break</span>
-                            <h3 className="text-xl sm:text-2xl font-black text-white font-lemon tracking-tight mt-1">Mid-Episode Break</h3>
-                            <p className="text-xs text-zinc-400 mt-1.5 leading-relaxed font-sans">
-                                Supporting Shadow Garden keeps all anime free in 1080p Ultra HD. Click below to continue your episode.
-                            </p>
-                        </div>
-                        <button
-                            type="button"
-                            onClick={(e) => {
-                                e.stopPropagation();
-                                adManager.triggerMidRoll(episodeId || title || 'hindi_episode');
-                                setShowMidRollPrompt(false);
-                                videoRef.current?.play().then(() => setIsPlaying(true)).catch(() => {});
-                            }}
-                            className="w-full py-3.5 px-6 rounded-2xl bg-gradient-to-r from-primary-600 to-rose-600 hover:from-primary-500 hover:to-rose-500 text-white font-black text-xs sm:text-sm uppercase tracking-wider shadow-[0_0_25px_rgba(220,38,38,0.5)] active:scale-95 transition-all flex items-center justify-center gap-2 cursor-pointer"
-                        >
-                            <Play size={18} fill="currentColor" /> Resume Episode
-                        </button>
-                        <span className="text-[10px] text-zinc-500 font-mono">Ad opens in a new background tab</span>
-                    </div>
-                </div>
-            )}
+            <PlayerAdBreakOverlay
+                isOpen={showMidRollPrompt}
+                title={title}
+                onResume={() => {
+                    adManager.triggerMidRoll(episodeId || title || 'hindi_episode');
+                    setShowMidRollPrompt(false);
+                    videoRef.current?.play().then(() => setIsPlaying(true)).catch(() => {});
+                }}
+            />
 
             {/* Title Island with Cast */}
             <div className={cn("absolute top-2 md:top-4 left-1/2 -translate-x-1/2 z-40 transition-all duration-500 max-w-[90%] w-auto", showControls ? "opacity-100 translate-y-0" : "opacity-0 -translate-y-10")}>
@@ -1990,57 +1971,6 @@ const HindiPlayer = forwardRef<HindiPlayerRef, HindiPlayerProps>(({
                                     <button onClick={(e) => { e.stopPropagation(); setActiveMenu('quality') }} className="flex items-center justify-between w-full px-2.5 py-1.5 rounded-xl hover:bg-white/10 hover:shadow-inner text-left text-[10px] sm:text-xs font-bold transition-all"><div className="flex items-center gap-1.5"><Settings size={13} /> Quality</div><span className="text-zinc-400 text-[9px] sm:text-[10px] truncate ml-2">{currentQuality === -1 ? autoResolutionText : `${qualities.find(q => q.index === currentQuality)?.height}p`}</span></button>
                                     <button onClick={(e) => { e.stopPropagation(); setActiveMenu('speed') }} className="flex items-center justify-between w-full px-2.5 py-1.5 rounded-xl hover:bg-white/10 hover:shadow-inner text-left text-[10px] sm:text-xs font-bold transition-all"><div className="flex items-center gap-1.5"><Gauge size={13} /> Speed</div><span className="text-zinc-400 text-[9px] sm:text-[10px]">{speed}x</span></button>
                                     <button onClick={(e) => { e.stopPropagation(); setActiveMenu('gestures') }} className="flex items-center justify-between w-full px-2.5 py-1.5 rounded-xl hover:bg-white/10 hover:shadow-inner text-left text-[10px] sm:text-xs font-bold transition-all"><div className="flex items-center gap-1.5"><MousePointerClick size={13} /> Gestures</div><span className="text-zinc-400 uppercase text-[9px] sm:text-[10px]">{doubleTapMode}</span></button>
-
-                                    {/* Synchronized Player Controls (Auto Skip & Auto Play) */}
-                                    <div className="border-t border-white/10 my-1 pt-1 flex flex-col gap-0.5">
-                                        <button 
-                                            onClick={(e) => {
-                                                e.stopPropagation(); 
-                                                const next = !localAutoSkip;
-                                                updateLocalPrefs({ autoSkip: next });
-                                                onSettingsChange?.('autoSkip', next);
-                                                notifyWhisper(next ? "Auto Skip Intro: ON" : "Auto Skip Intro: OFF", "info");
-                                            }} 
-                                            className="flex items-center justify-between w-full px-2.5 py-1.5 rounded-xl hover:bg-white/10 hover:shadow-inner text-left text-[10px] sm:text-xs font-bold transition-all"
-                                        >
-                                            <div className="flex items-center gap-1.5"><FastForward size={13} className="text-amber-400" /> Auto Skip Intro</div>
-                                            <span className={cn("text-[9px] font-black px-1.5 py-0.5 rounded uppercase", localAutoSkip ? "text-emerald-400 bg-emerald-500/10" : "text-zinc-500 bg-white/5")}>
-                                                {localAutoSkip ? "ON" : "OFF"}
-                                            </span>
-                                        </button>
-
-                                        <button 
-                                            onClick={(e) => {
-                                                e.stopPropagation(); 
-                                                const next = !localAutoSkipOutro;
-                                                updateLocalPrefs({ autoSkipOutro: next });
-                                                onSettingsChange?.('autoSkipOutro', next);
-                                                notifyWhisper(next ? "Auto Skip Outro: ON" : "Auto Skip Outro: OFF", "info");
-                                            }} 
-                                            className="flex items-center justify-between w-full px-2.5 py-1.5 rounded-xl hover:bg-white/10 hover:shadow-inner text-left text-[10px] sm:text-xs font-bold transition-all"
-                                        >
-                                            <div className="flex items-center gap-1.5"><SkipForward size={13} className="text-indigo-400" /> Auto Skip Outro</div>
-                                            <span className={cn("text-[9px] font-black px-1.5 py-0.5 rounded uppercase", localAutoSkipOutro ? "text-emerald-400 bg-emerald-500/10" : "text-zinc-500 bg-white/5")}>
-                                                {localAutoSkipOutro ? "ON" : "OFF"}
-                                            </span>
-                                        </button>
-
-                                        <button 
-                                            onClick={(e) => {
-                                                e.stopPropagation(); 
-                                                const next = !localAutoPlay;
-                                                updateLocalPrefs({ autoPlay: next });
-                                                onSettingsChange?.('autoPlay', next);
-                                                notifyWhisper(next ? "Auto Play: ON" : "Auto Play: OFF", "info");
-                                            }} 
-                                            className="flex items-center justify-between w-full px-2.5 py-1.5 rounded-xl hover:bg-white/10 hover:shadow-inner text-left text-[10px] sm:text-xs font-bold transition-all"
-                                        >
-                                            <div className="flex items-center gap-1.5"><Play size={13} className="text-primary-400" /> Auto Play</div>
-                                            <span className={cn("text-[9px] font-black px-1.5 py-0.5 rounded uppercase", localAutoPlay ? "text-emerald-400 bg-emerald-500/10" : "text-zinc-500 bg-white/5")}>
-                                                {localAutoPlay ? "ON" : "OFF"}
-                                            </span>
-                                        </button>
-                                    </div>
 
                                     {castAvailable && (
                                         <button onClick={(e) => { e.stopPropagation(); handleCast(); setActiveMenu('none') }} className="lg:hidden flex items-center justify-between w-full px-2.5 py-1.5 rounded-xl hover:bg-white/10 hover:shadow-inner text-left text-[10px] sm:text-xs font-bold transition-all"><div className="flex items-center gap-1.5"><Cast size={13} /> Cast</div></button>

@@ -29,18 +29,24 @@ function cleanCache() {
   }
 }
 
-async function executeAniListFetch(bodyString: string, attempt = 1): Promise<{ status: number; json: any }> {
+async function executeAniListFetch(bodyString: string, authHeader?: string | null, attempt = 1): Promise<{ status: number; json: any }> {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), 12000);
+
+  const headers: Record<string, string> = {
+    'Content-Type': 'application/json',
+    'Accept': 'application/json',
+    'User-Agent': 'ShadowGarden/2.0 (Anime Streamer)',
+  };
+
+  if (authHeader) {
+    headers['Authorization'] = authHeader;
+  }
 
   try {
     const res = await fetch(ANILIST_GRAPHQL_ENDPOINT, {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Accept': 'application/json',
-        'User-Agent': 'ShadowGarden/2.0 (Anime Streamer)',
-      },
+      headers,
       body: bodyString,
       signal: controller.signal,
     });
@@ -52,7 +58,7 @@ async function executeAniListFetch(bodyString: string, attempt = 1): Promise<{ s
       const retryAfter = parseInt(res.headers.get('retry-after') || '2', 10);
       const waitMs = Math.min(Math.max(retryAfter * 1000, 1500), 4000);
       await new Promise(r => setTimeout(r, waitMs));
-      return executeAniListFetch(bodyString, attempt + 1);
+      return executeAniListFetch(bodyString, authHeader, attempt + 1);
     }
 
     return { status: res.status, json };
@@ -60,7 +66,7 @@ async function executeAniListFetch(bodyString: string, attempt = 1): Promise<{ s
     clearTimeout(timer);
     if (attempt <= 2) {
       await new Promise(r => setTimeout(r, 1000));
-      return executeAniListFetch(bodyString, attempt + 1);
+      return executeAniListFetch(bodyString, authHeader, attempt + 1);
     }
     throw err;
   }
@@ -68,11 +74,19 @@ async function executeAniListFetch(bodyString: string, attempt = 1): Promise<{ s
 
 export async function POST(req: NextRequest) {
   try {
+    const authHeader = req.headers.get('Authorization') || req.headers.get('authorization');
     const body = await req.json();
     const { query, variables } = body;
+    const isMutation = typeof query === 'string' && query.trim().startsWith('mutation');
     const bodyString = JSON.stringify({ query, variables });
-    const cacheKey = bodyString;
 
+    // Authenticated calls and mutations must NEVER use or pollute server cache
+    if (authHeader || isMutation) {
+      const { status, json } = await executeAniListFetch(bodyString, authHeader);
+      return NextResponse.json(json || { errors: [{ message: `AniList error status ${status}` }] }, { status });
+    }
+
+    const cacheKey = bodyString;
     const cached = serverCache.get(cacheKey);
     const now = Date.now();
 
@@ -85,7 +99,7 @@ export async function POST(req: NextRequest) {
     }
 
     try {
-      const { status, json } = await executeAniListFetch(bodyString);
+      const { status, json } = await executeAniListFetch(bodyString, null);
 
       if (status === 200 && json && !json.errors) {
         cleanCache();

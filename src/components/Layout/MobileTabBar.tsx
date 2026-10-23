@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Home, MessageCircle, Search, Flame, Clapperboard, Calendar, Sparkles } from 'lucide-react';
+import { Home, MessageCircle, Search, Flame, Clapperboard, Calendar, Scroll } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { cn } from '@/lib/utils';
 import { ATRAX_BUBBLY_SPRING } from '@/lib/atraxMotion';
@@ -28,18 +28,18 @@ export default function MobileTabBar() {
 
   const tabs = [
     { id: 'home', icon: Home, label: 'Home', path: '/home' },
-    { id: 'donghua', icon: Flame, label: 'Donghua', path: '/donghua' },
-    { id: 'shorts', icon: Sparkles, label: 'Shorts', path: '/shorts' },
+    { id: 'donghua', icon: Scroll, label: 'Donghua', path: '/donghua' },
     { id: 'search', icon: Search, label: 'Search', path: '/search' },
     { id: 'social', icon: MessageCircle, label: 'Social', path: '/social' },
     { id: 'schedule', icon: Calendar, label: 'Schedule', path: '/schedule' },
+    { id: 'shorts', icon: Flame, label: 'Shorts', path: '/shorts' },
     { id: 'cinema', icon: Clapperboard, label: 'Flix', path: '/cinema' },
   ];
 
-  if (pathname === '/' || isFullscreen) return null;
+  if (pathname === '/' || isFullscreen || pathname?.startsWith('/shorts/watch')) return null;
 
   return (
-    <div className="md:hidden fixed bottom-3 left-3 right-3 z-[100] max-w-md mx-auto pointer-events-none">
+    <div className="md:hidden fixed bottom-3 left-3 right-3 z-[99999] max-w-md mx-auto pointer-events-none">
       <nav 
         aria-label="Mobile Navigation"
         className="pointer-events-auto bg-[#0d1424]/95 border border-white/[0.12] shadow-[0_16px_40px_rgba(0,0,0,0.8),inset_0_1px_1px_rgba(255,255,255,0.15)] rounded-[32px] px-2 py-1.5 flex items-center justify-between"

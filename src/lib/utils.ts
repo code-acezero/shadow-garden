@@ -154,6 +154,10 @@ export function getWatchRoute(animeId: string, episodeId?: string, type?: string
     const slug = slugifyTitle(title);
     const routeId = (!animeId.includes('-') && slug) ? `${animeId}-${slug}` : animeId;
 
+    if (t === 'shorts' || t === 'short-drama') {
+        const epNum = episodeId || '1';
+        return `/shorts/watch?id=${encodeURIComponent(animeId)}&ep=${encodeURIComponent(epNum)}`;
+    }
     if (t === 'hindi' || t === 'hindi-anime') {
         return `/watch/${routeId}${episodeId ? `?ep=${encodeURIComponent(episodeId)}&audio=hi` : '?audio=hi'}`;
     }

@@ -54,7 +54,7 @@ export default async function ShortsWatchPage({ searchParams }: WatchPageProps) 
   }
 
   return (
-    <main className="w-full h-full min-h-screen bg-black">
+    <main className="w-full h-screen max-h-screen bg-black text-white relative overflow-hidden">
       <WatchClientLoader drama={drama} initialEpisode={initialEp} />
     </main>
   );

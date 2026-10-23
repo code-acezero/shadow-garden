@@ -20,6 +20,7 @@ export default function PageTransition({
 
   const isMaster = pathname?.startsWith('/master');
   const isLanding = pathname === '/';
+  const isShortsWatch = pathname?.startsWith('/shorts/watch');
 
   // Mobile/Tablet: opacity only (no y-offset = no layout reflow)
   // Desktop: subtle y-offset for premium feel
@@ -46,7 +47,7 @@ export default function PageTransition({
         ease: "easeOut",
       }}
       style={{ willChange: 'opacity, transform' }}
-      className={`page-transition-wrapper min-h-screen w-full ${(isMaster || isLanding) ? '!p-0 !pt-0 !pb-0' : 'page-safe-area'}`}
+      className={`page-transition-wrapper min-h-screen w-full ${(isMaster || isLanding || isShortsWatch) ? '!p-0 !pt-0 !pb-0' : 'page-safe-area'}`}
     >
       {children}
     </motion.div>
