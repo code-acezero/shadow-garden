@@ -49,6 +49,10 @@ export interface BlakiteAnimeCard {
   title: string;
   titleJp: string;
   image: string;
+  poster?: string;
+  backdrop?: string;
+  cover?: string;
+  description?: string;
   href: string;
   type: string;
   date: string;
@@ -123,12 +127,19 @@ export function normalizeBlakiteCard(item: BlakiteRawItem, id: string): BlakiteA
   const isSub = (item.language || '').toLowerCase().includes('sub');
   const isDub = (item.language || '').toLowerCase().includes('dub') || item.language === 'ORG' || item.language === 'FanDub';
 
+  const posterUrl = item.IMAGES?.poster || item.IMAGES?.backdrop || '';
+  const backdropUrl = item.IMAGES?.backdrop || item.IMAGES?.poster || '';
+
   return {
     id: id,
     slug: id,
     title: item.title,
     titleJp: item.title,
-    image: item.IMAGES?.poster || item.IMAGES?.backdrop || '',
+    image: posterUrl,
+    poster: posterUrl,
+    backdrop: backdropUrl,
+    cover: backdropUrl,
+    description: item.TMDB_DATA?.synopsis || '',
     href: `/api/blakite/anime/${id}`,
     type: item.type || 'TV',
     date: item.TMDB_DATA?.releaseDate?.split('-')[0] || '?',

@@ -73,6 +73,15 @@ export interface AnimeCard {
   // `id` — required for the qtip endpoint. Kept optional so nothing that
   // doesn't set it breaks.
   dataId?: string;
+
+  // Media & summary metadata
+  backdrop?: string;
+  banner?: string;
+  cover?: string;
+  poster?: string;
+  description?: string;
+  synopsis?: string;
+  score?: number | string;
 }
 
 /**
@@ -259,11 +268,16 @@ function normalizeHindiCard(item: any): AnimeCard {
   const epObj = item?.episodes;
   const epCount = epObj?.total ?? epObj?.dub ?? epObj?.sub ?? undefined;
   const imgUrl = item?.image || item?.poster || '';
+  const backdropUrl = item?.backdrop || item?.cover || imgUrl;
   return {
     id: item?.id || item?.slug || '',
     title: item?.title || item?.name || item?.titleJp || 'Unknown Title',
     image: imgUrl,
     poster: imgUrl,
+    backdrop: backdropUrl,
+    banner: backdropUrl,
+    cover: backdropUrl,
+    description: item?.description || item?.synopsis || item?.TMDB_DATA?.synopsis || '',
     type: item?.type || 'TV',
     episode: epCount !== undefined ? String(epCount) : undefined,
     episodeCount: epCount !== undefined ? String(epCount) : undefined,

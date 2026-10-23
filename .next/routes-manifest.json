@@ -211,6 +211,12 @@
       "namedRegex": "^/drama/search(?:/)?$"
     },
     {
+      "page": "/hindi",
+      "regex": "^/hindi(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/hindi(?:/)?$"
+    },
+    {
       "page": "/home",
       "regex": "^/home(?:/)?$",
       "routeKeys": {},

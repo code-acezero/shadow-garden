@@ -74,10 +74,10 @@ export default function HindiHomeSection() {
           </div>
 
           <Link
-            href="/search/hindi"
+            href="/hindi"
             className="text-[11px] font-black uppercase tracking-wider text-zinc-400 hover:text-white px-3.5 py-1.5 rounded-full bg-white/5 border border-white/5 hover:border-orange-500/30 transition-colors inline-flex items-center gap-1.5 whitespace-nowrap"
           >
-            <span>Explore Hindi Hub</span>
+            <span>Explore More</span>
             <ChevronRight size={12} className="text-orange-400" />
           </Link>
         </div>

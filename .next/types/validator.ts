@@ -137,6 +137,15 @@ type RouteHandlerConfig<Route extends AppRouteHandlerRoutes = AppRouteHandlerRou
   type __Unused = __Check
 }
 
+// Validate ../../src/app/hindi/page.tsx
+{
+  type __IsExpected<Specific extends AppPageConfig<"/hindi">> = Specific
+  const handler = {} as typeof import("../../src/app/hindi/page.js")
+  type __Check = __IsExpected<typeof handler>
+  // @ts-ignore
+  type __Unused = __Check
+}
+
 // Validate ../../src/app/home/page.tsx
 {
   type __IsExpected<Specific extends AppPageConfig<"/home">> = Specific
@@ -667,6 +676,15 @@ type RouteHandlerConfig<Route extends AppRouteHandlerRoutes = AppRouteHandlerRou
 {
   type __IsExpected<Specific extends LayoutConfig<"/drama">> = Specific
   const handler = {} as typeof import("../../src/app/drama/layout.js")
+  type __Check = __IsExpected<typeof handler>
+  // @ts-ignore
+  type __Unused = __Check
+}
+
+// Validate ../../src/app/hindi/layout.tsx
+{
+  type __IsExpected<Specific extends LayoutConfig<"/hindi">> = Specific
+  const handler = {} as typeof import("../../src/app/hindi/layout.js")
   type __Check = __IsExpected<typeof handler>
   // @ts-ignore
   type __Unused = __Check

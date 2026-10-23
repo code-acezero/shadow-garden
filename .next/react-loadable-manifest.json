@@ -41,16 +41,16 @@
   "app\\home\\page.tsx -> @/components/Home/HindiHomeSection": {
     "id": 46945,
     "files": [
-      "static/chunks/1435-b448e8ba92491bef.js",
-      "static/chunks/1880.7c521cca9c4a7a21.js",
-      "static/chunks/6945.db3c85a5805b8e38.js"
+      "static/chunks/1435-63ac6d13e5edb480.js",
+      "static/chunks/1880-7c521cca9c4a7a21.js",
+      "static/chunks/6945.e1386f61926b800f.js"
     ]
   },
   "app\\home\\page.tsx -> @/components/Home/MultiverseShowcase": {
     "id": 43578,
     "files": [
       "static/chunks/6984-3f1c130247e31536.js",
-      "static/chunks/1435-b448e8ba92491bef.js",
+      "static/chunks/1435-63ac6d13e5edb480.js",
       "static/chunks/7427.6d896fd11ec965ee.js"
     ]
   },
@@ -59,8 +59,8 @@
     "files": [
       "static/chunks/511-8a8d90ac8657e57c.js",
       "static/chunks/6984-3f1c130247e31536.js",
-      "static/chunks/1435-b448e8ba92491bef.js",
-      "static/chunks/1880.7c521cca9c4a7a21.js",
+      "static/chunks/1435-63ac6d13e5edb480.js",
+      "static/chunks/1880-7c521cca9c4a7a21.js",
       "static/chunks/833.e0a28fb27362fb66.js"
     ]
   },
@@ -126,7 +126,7 @@
   "lib\\extractors\\streamExtractor.ts -> ../blakite": {
     "id": 87038,
     "files": [
-      "static/chunks/7038.08cc4c0def507dab.js"
+      "static/chunks/7038.d5000c7d476e75b6.js"
     ]
   }
 }
