@@ -52,8 +52,10 @@ async function queryAniList<T = any>(query: string, variables: Record<string, an
     const data = json.data as T;
     cache.set(cacheKey, { data, expires: Date.now() + CACHE_TTL_MS });
     return data;
-  } catch (err) {
-    console.error('[AniList] Fetch error:', err);
+  } catch (err: any) {
+    if (err?.name !== 'AbortError') {
+      console.warn('[AniList] Query notice:', err?.message || err);
+    }
     return null;
   }
 }

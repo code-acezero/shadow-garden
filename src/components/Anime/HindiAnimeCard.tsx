@@ -91,7 +91,8 @@ export default function HindiAnimeCard({ anime }: { anime: any }) {
       }
     }
 
-    return { poster: cleanPoster, title, type, targetRoute, epCount, dataId: anime.dataId };
+    const dataId = anime.dataId || anime.id || anime.slug || '';
+    return { poster: cleanPoster, title, type, targetRoute, epCount, dataId };
   }, [anime]);
 
   // --- 2. FETCH DATA (HPI Version) ---
@@ -113,8 +114,8 @@ export default function HindiAnimeCard({ anime }: { anime: any }) {
         aired: res.aired,
         type: res.type
       });
-    } catch (e) { 
-        console.error("HPI Qtip retrieval failed:", e);
+    } catch (e: any) { 
+        console.warn("HPI Qtip retrieval notice:", e?.message || e);
         setQtip({
             jname: normalized.title,
             description: "Tactical intel unavailable for this sector.",

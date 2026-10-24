@@ -258,7 +258,9 @@ async function fetchHindiApi<T = any>(endpoint: string, params: Record<string, a
     }
     return json as T;
   } catch (innerError: any) {
-    console.error('[HPI fetch error]', innerError);
+    if (innerError?.name !== 'AbortError') {
+      console.warn('[HPI fetch notice]', innerError?.message || innerError);
+    }
     return null;
   }
 }
@@ -368,12 +370,34 @@ class HPIClient {
     },
 
     getDetails: async (id: string): Promise<HindiDetails> => {
-      const [info, recommendationsData, relatedData] = await Promise.all([
-        fetchHindiApi(`/anime/${id}`),
-        fetchHindiApi(`/anime/${id}/recommendations`).catch(() => []),
-        fetchHindiApi(`/anime/${id}/related`).catch(() => [])
-      ]);
-      if (!info) throw new Error('Anime not found');
+      const info: any = await fetchHindiApi(`/anime/${id}`);
+      if (!info) {
+        return {
+          id,
+          title: 'Unknown Title',
+          englishTitle: '',
+          nativeTitle: '',
+          image: '',
+          banner: '',
+          type: 'TV',
+          synopsis: 'Details unavailable for this title.',
+          status: 'Completed',
+          rating: 'PG-13',
+          premiered: '',
+          season: '',
+          aired: '',
+          episodesCount: '0',
+          studios: [],
+          producers: [],
+          genres: ['Hindi'],
+          synonyms: [],
+          episodes: [],
+          recommendations: [],
+          related: [],
+          downloads: [],
+          dataId: id
+        };
+      }
 
       // API returns episodes at info.episodes.episodes[] (nested)
       const rawEpisodes = info.episodes?.episodes || info.episodes || [];
@@ -405,8 +429,8 @@ class HPIClient {
         genres: Array.isArray(info.genres) ? info.genres : [],
         synonyms: Array.isArray(info.alternativeTitles) ? info.alternativeTitles : [],
         episodes: episodeList,
-        recommendations: Array.isArray(recommendationsData) ? recommendationsData.map(normalizeHindiCard) : [],
-        related: Array.isArray(relatedData) ? relatedData.map(normalizeHindiCard) : [],
+        recommendations: Array.isArray(info.recommendations) ? info.recommendations.map(normalizeHindiCard) : [],
+        related: Array.isArray(info.related) ? info.related.map(normalizeHindiCard) : [],
         downloads: [],
         dataId: id
       };
@@ -491,18 +515,45 @@ class HPIClient {
 
 
     getQtip: async (dataId: string): Promise<HindiQtip> => {
-      const details = await this.hindi.getDetails(dataId);
-      return {
-        name: details.title,
-        description: details.synopsis,
-        rating: details.rating,
-        quality: 'HD',
-        type: details.type || 'TV',
-        japaneseTitle: details.nativeTitle,
-        status: details.status,
-        aired: details.aired,
-        genres: details.genres
-      };
+      try {
+        const info: any = await fetchHindiApi(`/anime/${dataId}`);
+        if (!info) {
+          return {
+            name: 'Hindi Dub',
+            description: 'Tactical intel unavailable for this sector.',
+            rating: 'PG-13',
+            quality: 'HD',
+            type: 'TV',
+            japaneseTitle: '',
+            status: 'Completed',
+            aired: '',
+            genres: ['Hindi']
+          };
+        }
+        return {
+          name: info.title || info.name || 'Hindi Dub',
+          description: info.synopsis || info.description || 'Tactical intel unavailable for this sector.',
+          rating: (info.rating && !info.rating.includes('/10') && !/^\d+(\.\d+)?$/.test(String(info.rating).trim())) ? info.rating : (info.isAdult ? '18+' : 'PG-13'),
+          quality: 'HD',
+          type: info.type || 'TV',
+          japaneseTitle: info.titleJp || info.nativeTitle || info.title || '',
+          status: info.status || 'Completed',
+          aired: info.aired || info.premiered || '',
+          genres: Array.isArray(info.genres) && info.genres.length > 0 ? info.genres : ['Hindi']
+        };
+      } catch {
+        return {
+          name: 'Hindi Dub',
+          description: 'Tactical intel unavailable for this sector.',
+          rating: 'PG-13',
+          quality: 'HD',
+          type: 'TV',
+          japaneseTitle: '',
+          status: 'Completed',
+          aired: '',
+          genres: ['Hindi']
+        };
+      }
     }
   };
 

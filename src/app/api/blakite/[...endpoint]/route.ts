@@ -71,9 +71,13 @@ export async function GET(
     }
 
     if (mainEndpoint === 'anime') {
-      const id = subParam || searchParams.get('id') || '';
+      const rawSub = subParam || searchParams.get('id') || '';
+      const [id, subAction] = rawSub.split('/');
       if (!id) {
         return NextResponse.json({ ok: false, error: 'Missing anime id' }, { status: 400 });
+      }
+      if (subAction === 'recommendations' || subAction === 'related') {
+        return NextResponse.json({ ok: true, success: true, results: [], data: [] });
       }
       const data = await getBlakiteDetail(id);
       if (!data) {

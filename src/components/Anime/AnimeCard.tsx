@@ -291,15 +291,6 @@ export default function AnimeCard({ anime, progress = 0, isHindi = false }: Anim
     router.push(normalized.targetRoute);
   };
 
-  // --- AUTOMATIC BACKGROUND PREFETCH IF RATING MISSING ---
-  useEffect(() => {
-    if (normalized.rawRating || isHindi || qtip || loading) return;
-    const timer = setTimeout(() => {
-      fetchDataNow();
-    }, 350);
-    return () => clearTimeout(timer);
-  }, [normalized.rawRating, isHindi, qtip, loading]);
-
   const fetchDataNow = async () => {
     if (qtip || loading || isHindi) return;
     setLoading(true);
@@ -308,9 +299,9 @@ export default function AnimeCard({ anime, progress = 0, isHindi = false }: Anim
       
       let data: any;
       if (isDonghua) {
-          data = await import('@/lib/dpi').then(m => m.dpi.bridge.getSmartDetails(anime.id));
+          data = await import('@/lib/dpi').then(m => m.dpi.bridge.getSmartDetails(anime.id)).catch(() => null);
       } else {
-          data = await AnimeService.getAnimeInfo(anime.id);
+          data = await AnimeService.getAnimeInfo(anime.id).catch(() => null);
       }
       
       if (data) {
@@ -328,32 +319,46 @@ export default function AnimeCard({ anime, progress = 0, isHindi = false }: Anim
                 isAdult: data.isAdult
             });
         } else {
-            const statsRating = data.stats.rating || "";
-            const isAdult = data.info.genres?.includes('Hentai') || ["Rx", "RX", "Hentai"].some((t: string) => statsRating.toUpperCase().includes(t));
+            const statsRating = data.stats?.rating || "";
+            const isAdult = data.info?.genres?.includes('Hentai') || ["Rx", "RX", "Hentai"].some((t: string) => statsRating.toUpperCase().includes(t));
 
             setQtip({
-              jname: data.jname || data.info.japanese || normalized.displayTitle,
-              rating: data.stats.rating,
-              quality: data.stats.quality,
+              jname: data.jname || data.info?.japanese || normalized.displayTitle,
+              rating: data.stats?.rating || normalized.rawRating,
+              quality: data.stats?.quality || "HD",
               description: data.description || "Description unavailable.",
-              genres: data.info.genres || [],
-              studios: data.info.studios?.join(', '),
-              duration: data.stats.duration,
-              synonyms: data.info.synonyms,
-              season: data.info.premiered || "ANIME",
-              isAdult: isAdult
+              genres: data.info?.genres || [],
+              studios: data.info?.studios?.join(', '),
+              duration: data.stats?.duration || "",
+              synonyms: data.info?.synonyms || "",
+              season: data.info?.premiered || "ANIME",
+              isAdult: isAdult || normalized.isAdult
             });
         }
+      } else {
+        // Safe fallback so qtip is populated and no repeated requests occur
+        setQtip({
+            jname: normalized.displayTitle,
+            rating: normalized.rawRating || "?",
+            quality: "HD",
+            description: "Information currently being updated.",
+            genres: [],
+            studios: "Unknown",
+            duration: "",
+            synonyms: "",
+            season: "ANIME",
+            isAdult: normalized.isAdult
+        });
       }
     } catch {
         setQtip({
             jname: normalized.displayTitle,
             rating: normalized.rawRating || "?",
-            quality: "N/A",
+            quality: "HD",
             description: "Details unavailable.",
             genres: [],
             studios: "Unknown",
-            duration: "?m",
+            duration: "",
             synonyms: "",
             season: "UNKNOWN",
             isAdult: normalized.isAdult

@@ -3,6 +3,8 @@
  * Self-hosted locally inside shadow-garden-v2 with in-memory caching.
  */
 
+import { slugifyTitle } from '@/lib/utils';
+
 const BLAKITE_API_URL = 'https://blakiteapi.xyz/api/getAllAnime.php';
 export const BLAKITE_SERVER_URL = 'https://blakiteapi.xyz';
 
@@ -750,15 +752,51 @@ export async function getBlakiteDetail(id: string) {
   const db = await fetchBlakiteDatabase();
   if (!db) return null;
 
+  const rawId = String(id || '').trim();
+  if (!rawId) return null;
+
+  // Extract leading or trailing numeric ID if slugified (e.g., "31910-solo-leveling" -> "31910")
+  const numMatch = rawId.match(/^(\d+)/) || rawId.match(/-(\d+)$/);
+  const cleanId = numMatch ? numMatch[1] : rawId;
+
   let item: BlakiteRawItem | null = null;
-  if (db.movies && db.movies[id]) item = db.movies[id];
-  else if (db.series && db.series[id]) item = db.series[id];
-  else if (db.dramas && db.dramas[id]) item = db.dramas[id];
+  let matchedId = cleanId;
+
+  if (db.movies && db.movies[cleanId]) {
+    item = db.movies[cleanId];
+  } else if (db.series && db.series[cleanId]) {
+    item = db.series[cleanId];
+  } else if (db.dramas && db.dramas[cleanId]) {
+    item = db.dramas[cleanId];
+  }
+
+  // If still not found, search by title or slug across all collections
+  if (!item) {
+    const targetSlug = slugifyTitle(rawId.replace(/^\d+-/, ''));
+    const allCollections = [
+      ...(db.series ? Object.entries(db.series) : []),
+      ...(db.movies ? Object.entries(db.movies) : []),
+      ...(db.dramas ? Object.entries(db.dramas) : [])
+    ];
+    for (const [k, v] of allCollections) {
+      if (k === cleanId) {
+        item = v;
+        matchedId = k;
+        break;
+      }
+      const itemSlug = slugifyTitle(cleanHindiTitle(v.title || ''));
+      if (itemSlug && (itemSlug === targetSlug || itemSlug.includes(targetSlug) || targetSlug.includes(itemSlug))) {
+        item = v;
+        matchedId = k;
+        break;
+      }
+    }
+  }
 
   if (!item) return null;
 
-  const card = normalizeBlakiteCard(item, id);
-  const episodes = generateBlakiteEpisodes(item, id);
+  const card = normalizeBlakiteCard(item, matchedId);
+  const episodes = generateBlakiteEpisodes(item, matchedId);
 
   return {
     ...card,
