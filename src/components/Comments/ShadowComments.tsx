@@ -180,6 +180,8 @@ interface ShadowCommentsProps {
     compact?: boolean;
     onClose?: () => void;
     themeColor?: PageThemeKey | string;
+    onToggleSnap?: () => void;
+    isSnappedFull?: boolean;
 }
 
 export interface AttachedMedia {
@@ -1738,7 +1740,14 @@ const YouTubeCommentItem = ({
 };
 
 // --- MAIN COMPONENT: 100% YouTube Comments with Full Profile Sync & Media ---
-export default function ShadowComments({ episodeId, compact = false, onClose, themeColor }: ShadowCommentsProps) {
+export default function ShadowComments({ 
+    episodeId, 
+    compact = false, 
+    onClose, 
+    themeColor,
+    onToggleSnap,
+    isSnappedFull = false
+}: ShadowCommentsProps) {
     const pathname = usePathname();
     const searchParams = useSearchParams();
     const searchStr = searchParams ? searchParams.toString() : '';
@@ -2151,6 +2160,19 @@ export default function ShadowComments({ episodeId, compact = false, onClose, th
                                 </DropdownMenuItem>
                             </DropdownMenuContent>
                         </DropdownMenu>
+
+                        {/* Expand / Collapse Snap Toggle */}
+                        {onToggleSnap && (
+                            <button
+                                type="button"
+                                onClick={onToggleSnap}
+                                className="p-1.5 rounded-full hover:bg-white/10 text-[#aaaaaa] hover:text-white transition-colors cursor-pointer"
+                                title={isSnappedFull ? "Collapse to bottom" : "Expand to full screen"}
+                                aria-label="Toggle Comments Sheet Height"
+                            >
+                                {isSnappedFull ? <ChevronDown size={19} /> : <ChevronUp size={19} />}
+                            </button>
+                        )}
 
                         {/* Optional Close Button */}
                         {onClose && (

@@ -13,7 +13,7 @@ import {
   Star, LockOpen, Search, PictureInPicture2, Repeat, Repeat1,
   HelpCircle, X, Grid, LayoutGrid, List, MessageSquare,
   Bookmark, BookmarkCheck, Eye, EyeOff, ThumbsUp, ThumbsDown,
-  Sliders, Languages
+  Sliders, Languages, MoreVertical
 } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { supabase } from '@/lib/supabase';
@@ -261,7 +261,12 @@ export default function VerticalWatchFeed({
   const [commentsSnapState, setCommentsSnapState] = useState<'half' | 'full'>('half');
   const commentsTouchStartY = useRef<number>(0);
 
+  // Mobile Three-Dot More Menu Drawer state
+  const [isMoreMenuOpen, setIsMoreMenuOpen] = useState<boolean>(false);
+  const isMobileOverlayDimmed = isCommentsDrawerOpen || isMoreMenuOpen;
+
   const openCommentsDrawer = useCallback(() => {
+    setIsMoreMenuOpen(false);
     setCommentsSnapState('half');
     setIsCommentsDrawerOpen(true);
   }, []);
@@ -1329,8 +1334,8 @@ export default function VerticalWatchFeed({
       {!isDesktop && (
         <div className="lg:hidden fixed inset-0 z-40 bg-black flex flex-col justify-between overflow-hidden select-none">
         
-        {/* Fullscreen Reel Video Viewport (Scales & moves dynamically with YouTube Shorts Comments Drawer) */}
-        <motion.div 
+        {/* Fullscreen Reel Video Viewport (Stays full-bleed in background, like YouTube Shorts) */}
+        <div 
           onTouchStart={handleTouchStart}
           onTouchEnd={handleTouchEnd}
           onClick={(e) => {
@@ -1338,24 +1343,13 @@ export default function VerticalWatchFeed({
               closeCommentsDrawer();
               return;
             }
+            if (isMoreMenuOpen) {
+              setIsMoreMenuOpen(false);
+              return;
+            }
             handleTapOrDoubleTap(e);
           }}
-          animate={{
-            scale: !isCommentsDrawerOpen ? 1 : commentsSnapState === 'full' ? 0.65 : 0.82,
-            y: !isCommentsDrawerOpen ? 0 : commentsSnapState === 'full' ? -38 : -20,
-            borderRadius: !isCommentsDrawerOpen ? 0 : 20,
-            opacity: !isCommentsDrawerOpen ? 1 : commentsSnapState === 'full' ? 0.35 : 1,
-          }}
-          transition={{
-            type: 'spring',
-            damping: 30,
-            stiffness: 300,
-            mass: 0.8
-          }}
-          className={cn(
-            "relative w-full h-full flex items-center justify-center bg-black cursor-pointer overflow-hidden origin-top transition-shadow",
-            isCommentsDrawerOpen && "shadow-[0_12px_40px_rgba(0,0,0,0.9)] ring-1 ring-white/10"
-          )}
+          className="relative w-full h-full flex items-center justify-center bg-black cursor-pointer overflow-hidden origin-top"
         >
           <video
             ref={videoRef}
@@ -1538,7 +1532,7 @@ export default function VerticalWatchFeed({
               </motion.div>
             </div>
           )}
-        </motion.div>
+        </div>
 
         {/* OVERLAY CONTROLS (Fade out in Clear Mode, Tap screen to reveal) */}
         <AnimatePresence>
@@ -1571,19 +1565,42 @@ export default function VerticalWatchFeed({
                   </span>
                 </div>
 
-                {/* Balance spacer so title and episode numbers stay centered */}
-                <div className="w-9 h-9 pointer-events-none" />
+                {/* Quick Sound / Mute Toggle Button in Top Right */}
+                <motion.button 
+                  variants={atraxSquishTapVariants}
+                  initial="initial"
+                  whileTap="tap"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    resetMobileInactivityTimer();
+                    toggleMute();
+                  }}
+                  className={cn(
+                    "w-9 h-9 rounded-full flex items-center justify-center backdrop-blur-md border transition-all active:scale-95",
+                    isMuted 
+                      ? "bg-amber-500/20 border-amber-500/40 text-amber-300" 
+                      : "bg-black/60 border-white/20 text-white hover:bg-black/80"
+                  )}
+                  aria-label={isMuted ? "Unmute audio" : "Mute audio"}
+                  title={isMuted ? "Unmute audio" : "Mute audio"}
+                >
+                  {isMuted ? (
+                    <VolumeX className="w-4 h-4 text-amber-400" />
+                  ) : (
+                    <Volume2 className="w-4 h-4 text-white" />
+                  )}
+                </motion.button>
               </motion.div>
 
               {/* Mobile Right Floating Action Stack (100% YouTube Shorts faithful sizing & typography) */}
               <motion.div 
                 initial={{ opacity: 0, x: 24 }}
-                animate={{ opacity: isCommentsDrawerOpen ? 0 : 1, x: isCommentsDrawerOpen ? 24 : 0 }}
+                animate={{ opacity: isMobileOverlayDimmed ? 0 : 1, x: isMobileOverlayDimmed ? 24 : 0 }}
                 exit={{ opacity: 0, x: 24 }}
                 transition={{ duration: 0.2 }}
                 className={cn(
                   "absolute right-2 sm:right-3.5 bottom-20 z-40 flex flex-col items-center gap-2.5 sm:gap-3 select-none transition-all",
-                  isCommentsDrawerOpen ? "pointer-events-none" : "pointer-events-auto"
+                  isMobileOverlayDimmed ? "pointer-events-none" : "pointer-events-auto"
                 )}
                 onClick={(e) => e.stopPropagation()}
               >
@@ -1686,7 +1703,12 @@ export default function VerticalWatchFeed({
                       resetMobileInactivityTimer();
                       openCommentsDrawer();
                     }}
-                    className="w-11 h-11 sm:w-12 sm:h-12 rounded-full bg-black/40 hover:bg-black/60 active:scale-90 text-white flex items-center justify-center backdrop-blur-md border border-white/10 shadow-lg transition-all"
+                    className={cn(
+                      "w-11 h-11 sm:w-12 sm:h-12 rounded-full flex items-center justify-center backdrop-blur-md border shadow-lg transition-all active:scale-90",
+                      isCommentsDrawerOpen
+                        ? "bg-white/20 border-white/30 text-white"
+                        : "bg-black/40 hover:bg-black/60 border-white/10 text-white"
+                    )}
                     title="Comments"
                     aria-label="Open Comments"
                   >
@@ -1699,35 +1721,7 @@ export default function VerticalWatchFeed({
                   </span>
                 </div>
 
-                {/* 5. Watchlist / Bookmark */}
-                <div className="flex flex-col items-center group">
-                  <motion.button
-                    variants={atraxSquishTapVariants}
-                    initial="initial"
-                    whileTap="tap"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      resetMobileInactivityTimer();
-                      toggleWatchlist();
-                    }}
-                    disabled={isWatchlistLoading}
-                    className={cn(
-                      "w-11 h-11 sm:w-12 sm:h-12 rounded-full flex items-center justify-center backdrop-blur-md shadow-lg transition-all active:scale-90",
-                      watchlistStatus 
-                        ? "bg-white/20 text-white border border-white/30" 
-                        : "bg-black/40 hover:bg-black/60 text-white border border-white/10"
-                    )}
-                    title={watchlistStatus ? "In Watchlist" : "Add to Watchlist"}
-                    aria-label="Toggle Watchlist"
-                  >
-                    <Bookmark className={cn("w-5 h-5 sm:w-6 sm:h-6 drop-shadow-[0_1px_2px_rgba(0,0,0,0.8)]", watchlistStatus && "fill-white text-white")} strokeWidth={2} />
-                  </motion.button>
-                  <span className="text-[11px] font-medium text-white drop-shadow-[0_1px_3px_rgba(0,0,0,0.9)] text-center mt-1 select-none tracking-tight">
-                    {watchlistStatus ? "Saved" : "Save"}
-                  </span>
-                </div>
-
-                {/* 6. YouTube Shorts Curved Share Arrow */}
+                {/* 5. YouTube Shorts Curved Share Arrow */}
                 <div className="flex flex-col items-center group">
                   <motion.button
                     variants={atraxSquishTapVariants}
@@ -1751,7 +1745,7 @@ export default function VerticalWatchFeed({
                   </span>
                 </div>
 
-                {/* 7. CC Subtitles Toggle */}
+                {/* 6. YouTube Shorts Style More Menu (...) Trigger */}
                 <div className="flex flex-col items-center group">
                   <motion.button
                     variants={atraxSquishTapVariants}
@@ -1760,87 +1754,34 @@ export default function VerticalWatchFeed({
                     onClick={(e) => {
                       e.stopPropagation();
                       resetMobileInactivityTimer();
-                      setShowCcModal(prev => !prev);
+                      setIsMoreMenuOpen(true);
                     }}
                     className={cn(
                       "w-11 h-11 sm:w-12 sm:h-12 rounded-full flex items-center justify-center backdrop-blur-md shadow-lg transition-all active:scale-90",
-                      isCcActive && ccLanguage !== 'off'
-                        ? "bg-white/20 text-white border border-white/30"
+                      isMoreMenuOpen 
+                        ? "bg-white/20 text-white border border-white/30" 
                         : "bg-black/40 hover:bg-black/60 text-white border border-white/10"
                     )}
-                    title="Subtitles"
-                    aria-label="Toggle Subtitles"
+                    title="More Options"
+                    aria-label="Open More Options Menu"
                   >
-                    <svg viewBox="0 0 24 24" className="w-5 h-5 sm:w-6 sm:h-6 drop-shadow-[0_1px_2px_rgba(0,0,0,0.8)]" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
-                      <rect x="2" y="4" width="20" height="16" rx="3" />
-                      <path d="M7 15h2a2 2 0 0 0 2-2v-2a2 2 0 0 0-2-2H7v6zm8 0h2a2 2 0 0 0 2-2v-2a2 2 0 0 0-2-2h-2v6z" />
-                    </svg>
+                    <MoreVertical className="w-5 h-5 sm:w-6 sm:h-6 text-white drop-shadow-[0_1px_2px_rgba(0,0,0,0.8)]" />
                   </motion.button>
                   <span className="text-[11px] font-medium text-white drop-shadow-[0_1px_3px_rgba(0,0,0,0.9)] text-center mt-1 select-none tracking-tight">
-                    CC
+                    More
                   </span>
-                </div>
-
-                {/* 8. Sound / Mute Toggle */}
-                <div className="flex flex-col items-center group">
-                  <motion.button
-                    variants={atraxSquishTapVariants}
-                    initial="initial"
-                    whileTap="tap"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      resetMobileInactivityTimer();
-                      toggleMute();
-                    }}
-                    className={cn(
-                      "w-11 h-11 sm:w-12 sm:h-12 rounded-full flex items-center justify-center backdrop-blur-md shadow-lg transition-all active:scale-90",
-                      isMuted 
-                        ? "bg-amber-500/20 text-amber-300 border border-amber-500/40" 
-                        : "bg-black/40 hover:bg-black/60 text-white border border-white/10"
-                    )}
-                    title={isMuted ? "Unmute" : "Mute"}
-                    aria-label="Toggle Audio Mute"
-                  >
-                    {isMuted ? (
-                      <VolumeX className="w-5 h-5 sm:w-6 sm:h-6 text-amber-400 drop-shadow-[0_1px_2px_rgba(0,0,0,0.8)]" strokeWidth={2} />
-                    ) : (
-                      <Volume2 className="w-5 h-5 sm:w-6 sm:h-6 text-white drop-shadow-[0_1px_2px_rgba(0,0,0,0.8)]" strokeWidth={2} />
-                    )}
-                  </motion.button>
-                  <span className="text-[11px] font-medium text-white drop-shadow-[0_1px_3px_rgba(0,0,0,0.9)] text-center mt-1 select-none tracking-tight">
-                    {isMuted ? "Muted" : "Sound"}
-                  </span>
-                </div>
-
-                {/* 9. Aspect Ratio Fit Toggle */}
-                <div className="flex flex-col items-center group">
-                  <motion.button
-                    variants={atraxSquishTapVariants}
-                    initial="initial"
-                    whileTap="tap"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      resetMobileInactivityTimer();
-                      toggleAspectFit();
-                    }}
-                    className="w-11 h-7 sm:w-12 sm:h-8 rounded-full bg-black/40 hover:bg-black/60 active:scale-90 backdrop-blur-md border border-white/10 text-white flex items-center justify-center text-[10px] font-mono font-bold shadow-lg transition-all"
-                    title={aspectFit === 'contain' ? "Aspect Fit: Normal (Fit) - Tap for 9:16 Fill" : "Aspect Fit: Fill (9:16) - Tap for Normal Fit"}
-                    aria-label="Aspect Ratio Fit"
-                  >
-                    {aspectFit === 'contain' ? 'Fit' : '9:16'}
-                  </motion.button>
                 </div>
               </motion.div>
 
               {/* Mobile Bottom Scrubber & Navigation (Positioned flush at bottom, NO overlapping) */}
               <motion.div 
                 initial={{ opacity: 0, y: 24 }}
-                animate={{ opacity: isCommentsDrawerOpen ? 0 : 1, y: isCommentsDrawerOpen ? 24 : 0 }}
+                animate={{ opacity: isMobileOverlayDimmed ? 0 : 1, y: isMobileOverlayDimmed ? 24 : 0 }}
                 exit={{ opacity: 0, y: 24 }}
                 transition={{ duration: 0.2 }}
                 className={cn(
                   "absolute bottom-0 inset-x-0 p-3 pb-3 z-40 bg-gradient-to-t from-black/95 via-black/60 to-transparent flex flex-col gap-2 transition-all",
-                  isCommentsDrawerOpen ? "pointer-events-none" : "pointer-events-auto"
+                  isMobileOverlayDimmed ? "pointer-events-none" : "pointer-events-auto"
                 )}
                 onClick={(e) => e.stopPropagation()}
               >
@@ -3226,7 +3167,7 @@ export default function VerticalWatchFeed({
             >
               {/* Drag Handle & Gesture Header Area (Swipe up for full screen, swipe down to collapse/close) */}
               <div 
-                className="w-full pt-2.5 pb-2 px-4 flex flex-col items-center touch-none cursor-grab active:cursor-grabbing select-none shrink-0 border-b border-zinc-800/80 bg-zinc-950/80"
+                className="w-full pt-2.5 pb-1 px-4 flex flex-col items-center touch-none cursor-grab active:cursor-grabbing select-none shrink-0 bg-zinc-950/90"
                 onTouchStart={(e) => {
                   commentsTouchStartY.current = e.touches[0].clientY;
                 }}
@@ -3247,48 +3188,9 @@ export default function VerticalWatchFeed({
                 {/* Pull Handle Pill */}
                 <div 
                   onClick={() => setCommentsSnapState(prev => prev === 'full' ? 'half' : 'full')}
-                  className="w-12 h-1.5 bg-zinc-700/80 hover:bg-zinc-500 rounded-full mx-auto mb-2 transition-colors cursor-pointer" 
+                  className="w-12 h-1.5 bg-zinc-600/80 hover:bg-zinc-400 rounded-full mx-auto transition-colors cursor-pointer" 
+                  title={commentsSnapState === 'full' ? "Tap to collapse" : "Tap to expand"}
                 />
-
-                {/* Header Controls */}
-                <div className="w-full flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <h3 className="font-bold text-white text-sm tracking-tight">Comments</h3>
-                    {commentsCount > 0 && (
-                      <span className="text-[11px] font-mono text-zinc-400 font-semibold px-2 py-0.5 rounded-full bg-zinc-900 border border-zinc-800">
-                        {commentsCount >= 1000 ? `${(commentsCount / 1000).toFixed(1)}K` : commentsCount}
-                      </span>
-                    )}
-                  </div>
-
-                  <div className="flex items-center gap-1.5">
-                    {/* Expand / Collapse toggle button */}
-                    <button
-                      onClick={() => {
-                        setCommentsSnapState(prev => prev === 'full' ? 'half' : 'full');
-                      }}
-                      className="p-1.5 rounded-full text-zinc-400 hover:text-white hover:bg-zinc-800/80 transition-colors"
-                      title={commentsSnapState === 'full' ? "Collapse to bottom" : "Expand to full screen"}
-                      aria-label="Toggle Comments Sheet Height"
-                    >
-                      {commentsSnapState === 'full' ? (
-                        <ChevronDown className="w-4 h-4" />
-                      ) : (
-                        <ChevronUp className="w-4 h-4" />
-                      )}
-                    </button>
-
-                    {/* Close Button */}
-                    <button
-                      onClick={closeCommentsDrawer}
-                      className="p-1.5 rounded-full text-zinc-400 hover:text-white hover:bg-zinc-800/80 transition-colors"
-                      title="Close Comments"
-                      aria-label="Close Comments"
-                    >
-                      <X className="w-4 h-4" />
-                    </button>
-                  </div>
-                </div>
               </div>
 
               {/* Comments Content Scrollable Area */}
@@ -3297,8 +3199,295 @@ export default function VerticalWatchFeed({
                   episodeId={`shorts-${drama.id}-ep-${currentEpNum}`} 
                   compact={true} 
                   onClose={closeCommentsDrawer}
+                  onToggleSnap={() => setCommentsSnapState(prev => prev === 'full' ? 'half' : 'full')}
+                  isSnappedFull={commentsSnapState === 'full'}
                   themeColor="shorts"
                 />
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* Mobile More Options Drawer Modal (YouTube Shorts style bottom sheet) */}
+      <AnimatePresence>
+        {isMoreMenuOpen && (
+          <div className="fixed inset-0 z-50 flex flex-col justify-end pointer-events-none">
+            {/* Backdrop */}
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.2 }}
+              onClick={() => setIsMoreMenuOpen(false)}
+              className="absolute inset-0 bg-black/60 backdrop-blur-[2px] pointer-events-auto"
+            />
+
+            {/* Slide-up Sheet */}
+            <motion.div
+              initial={{ y: '100%' }}
+              animate={{ y: 0 }}
+              exit={{ y: '100%' }}
+              transition={{ type: 'spring', damping: 30, stiffness: 320, mass: 0.8 }}
+              className="relative w-full max-w-lg mx-auto bg-zinc-950/98 backdrop-blur-2xl border-t border-zinc-800 rounded-t-3xl shadow-[0_-12px_40px_rgba(0,0,0,0.85)] flex flex-col max-h-[85vh] z-10 overflow-hidden pointer-events-auto"
+              onClick={(e) => e.stopPropagation()}
+            >
+              {/* Drag Handle & Header */}
+              <div className="w-full pt-3 pb-2 px-5 flex flex-col items-center shrink-0 border-b border-zinc-800/80 bg-zinc-950/80">
+                <div 
+                  onClick={() => setIsMoreMenuOpen(false)}
+                  className="w-12 h-1.5 bg-zinc-700/80 hover:bg-zinc-500 rounded-full mx-auto mb-3 cursor-pointer transition-colors" 
+                />
+                <div className="w-full flex items-center justify-between">
+                  <div className="flex flex-col min-w-0 pr-3">
+                    <span className="text-sm font-bold text-white tracking-tight flex items-center gap-1.5">
+                      <Sliders className="w-4 h-4 text-primary shrink-0" />
+                      Playback & Controls
+                    </span>
+                    <span className="text-[11px] text-zinc-400 font-medium truncate">
+                      {drama.title} · Ep {currentEpNum}
+                    </span>
+                  </div>
+                  <button
+                    onClick={() => setIsMoreMenuOpen(false)}
+                    className="p-1.5 rounded-full text-zinc-400 hover:text-white hover:bg-zinc-800/80 transition-colors shrink-0"
+                    aria-label="Close Options"
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
+                </div>
+              </div>
+
+              {/* Scrollable Options Body */}
+              <div className="flex-1 overflow-y-auto custom-scrollbar p-4 space-y-4">
+                {/* Quick Action Grid: Watchlist & Aspect Ratio */}
+                <div className="grid grid-cols-2 gap-2.5">
+                  {/* Save to Watchlist */}
+                  <motion.button
+                    variants={atraxSquishTapVariants}
+                    initial="initial"
+                    whileTap="tap"
+                    onClick={() => {
+                      toggleWatchlist();
+                    }}
+                    className={cn(
+                      "flex items-center gap-2.5 p-3 rounded-2xl border transition-all text-left",
+                      watchlistStatus 
+                        ? "bg-primary/15 border-primary/40 text-primary" 
+                        : "bg-zinc-900/80 border-zinc-800/80 hover:bg-zinc-850 text-zinc-200"
+                    )}
+                  >
+                    <Bookmark className={cn("w-5 h-5 shrink-0", watchlistStatus && "fill-current")} />
+                    <div className="flex flex-col min-w-0">
+                      <span className="text-xs font-bold truncate">
+                        {watchlistStatus ? 'In Watchlist' : 'Save to Watchlist'}
+                      </span>
+                      <span className="text-[10px] text-zinc-400">
+                        {watchlistStatus ? 'Saved to library' : 'Watch later'}
+                      </span>
+                    </div>
+                  </motion.button>
+
+                  {/* Display Mode Aspect Ratio */}
+                  <motion.button
+                    variants={atraxSquishTapVariants}
+                    initial="initial"
+                    whileTap="tap"
+                    onClick={() => {
+                      toggleAspectFit();
+                    }}
+                    className="flex items-center gap-2.5 p-3 rounded-2xl bg-zinc-900/80 border border-zinc-800/80 hover:bg-zinc-850 text-zinc-200 transition-all text-left"
+                  >
+                    {aspectFit === 'contain' ? (
+                      <Minimize className="w-5 h-5 text-zinc-400 shrink-0" />
+                    ) : (
+                      <Maximize className="w-5 h-5 text-primary shrink-0" />
+                    )}
+                    <div className="flex flex-col min-w-0">
+                      <span className="text-xs font-bold truncate">
+                        Display: {aspectFit === 'contain' ? 'Fit' : 'Fill (9:16)'}
+                      </span>
+                      <span className="text-[10px] text-zinc-400 truncate">
+                        Tap for {aspectFit === 'contain' ? '9:16 Full' : 'Fit Letterbox'}
+                      </span>
+                    </div>
+                  </motion.button>
+                </div>
+
+                {/* Playback Speed */}
+                <div className="bg-zinc-900/60 rounded-2xl p-3.5 border border-zinc-800/70">
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-xs font-bold text-zinc-300 flex items-center gap-1.5">
+                      <FastForward className="w-3.5 h-3.5 text-primary" />
+                      Playback Speed
+                    </span>
+                    <span className="text-[11px] font-mono font-bold text-primary px-2 py-0.5 rounded bg-primary/10 border border-primary/20">
+                      {playbackSpeed}x
+                    </span>
+                  </div>
+                  <div className="grid grid-cols-6 gap-1.5 font-mono text-center">
+                    {SPEED_OPTIONS.map((spd) => (
+                      <button
+                        key={spd}
+                        onClick={() => setPlaybackSpeed(spd)}
+                        className={cn(
+                          "py-2 rounded-xl text-xs font-bold border transition-all active:scale-95",
+                          playbackSpeed === spd
+                            ? "bg-primary text-white border-primary shadow-[0_0_12px_rgba(220,38,38,0.4)]"
+                            : "bg-zinc-950/80 text-zinc-400 border-zinc-800/80 hover:bg-zinc-800 hover:text-white"
+                        )}
+                      >
+                        {spd}x
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Subtitles & Captions (CC) */}
+                <div className="bg-zinc-900/60 rounded-2xl p-3.5 border border-zinc-800/70">
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-xs font-bold text-zinc-300 flex items-center gap-1.5">
+                      <Subtitles className="w-3.5 h-3.5 text-primary" />
+                      Captions (CC)
+                    </span>
+                    <button
+                      onClick={() => {
+                        setIsMoreMenuOpen(false);
+                        setShowCcModal(true);
+                      }}
+                      className="text-[10px] text-primary hover:underline font-semibold"
+                    >
+                      Style & Position
+                    </button>
+                  </div>
+                  <div className="grid grid-cols-5 gap-1.5 text-center text-xs">
+                    {[
+                      { id: 'off', label: 'Off' },
+                      { id: 'en', label: 'English' },
+                      { id: 'hi', label: 'Hindi' },
+                      { id: 'zh', label: 'Chinese' },
+                      { id: 'es', label: 'Spanish' },
+                    ].map((item) => {
+                      const isActive = (!isCcActive && item.id === 'off') || (isCcActive && ccLanguage === item.id);
+                      return (
+                        <button
+                          key={item.id}
+                          onClick={() => {
+                            if (item.id === 'off') {
+                              setIsCcActive(false);
+                              setCcLanguage('off');
+                            } else {
+                              setIsCcActive(true);
+                              setCcLanguage(item.id as any);
+                            }
+                          }}
+                          className={cn(
+                            "py-2 rounded-xl font-medium border transition-all active:scale-95 truncate px-1",
+                            isActive
+                              ? "bg-primary text-white border-primary font-bold shadow-[0_0_12px_rgba(220,38,38,0.4)]"
+                              : "bg-zinc-950/80 text-zinc-400 border-zinc-800/80 hover:bg-zinc-800 hover:text-white"
+                          )}
+                        >
+                          {item.label}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                {/* Quality */}
+                <div className="bg-zinc-900/60 rounded-2xl p-3.5 border border-zinc-800/70">
+                  <span className="text-xs font-bold text-zinc-300 block mb-2">Stream Quality</span>
+                  <div className="grid grid-cols-2 gap-1.5 text-xs">
+                    {QUALITY_OPTIONS.map((q) => (
+                      <button
+                        key={q}
+                        onClick={() => setSelectedQuality(q)}
+                        className={cn(
+                          "py-2 px-3 rounded-xl font-medium border text-left transition-all active:scale-95 flex items-center justify-between",
+                          selectedQuality === q
+                            ? "bg-primary/20 text-white border-primary/50 font-bold"
+                            : "bg-zinc-950/80 text-zinc-400 border-zinc-800/80 hover:bg-zinc-800 hover:text-white"
+                        )}
+                      >
+                        <span className="truncate">{q}</span>
+                        {selectedQuality === q && <Check className="w-3.5 h-3.5 text-primary shrink-0" />}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Toggles: Loop, Auto-Play, Mute */}
+                <div className="bg-zinc-900/60 rounded-2xl p-2 border border-zinc-800/70 divide-y divide-zinc-800/60">
+                  {/* Loop Episode */}
+                  <div className="flex items-center justify-between p-2">
+                    <div className="flex items-center gap-2">
+                      <Repeat className="w-4 h-4 text-zinc-400" />
+                      <span className="text-xs font-medium text-zinc-200">Loop Current Episode</span>
+                    </div>
+                    <button
+                      onClick={() => setIsLooping(prev => !prev)}
+                      className={cn(
+                        "w-9 h-5 rounded-full p-0.5 transition-colors border flex items-center",
+                        isLooping ? "bg-primary border-primary justify-end" : "bg-zinc-950 border-zinc-800 justify-start"
+                      )}
+                    >
+                      <span className="w-4 h-4 rounded-full bg-white shadow-sm" />
+                    </button>
+                  </div>
+
+                  {/* Auto Advance */}
+                  <div className="flex items-center justify-between p-2">
+                    <div className="flex items-center gap-2">
+                      <Play className="w-4 h-4 text-zinc-400" />
+                      <span className="text-xs font-medium text-zinc-200">Auto-Play Next Episode</span>
+                    </div>
+                    <button
+                      onClick={() => setAutoAdvance(prev => !prev)}
+                      className={cn(
+                        "w-9 h-5 rounded-full p-0.5 transition-colors border flex items-center",
+                        autoAdvance ? "bg-emerald-500 border-emerald-500 justify-end" : "bg-zinc-950 border-zinc-800 justify-start"
+                      )}
+                    >
+                      <span className="w-4 h-4 rounded-full bg-white shadow-sm" />
+                    </button>
+                  </div>
+
+                  {/* Audio Sound */}
+                  <div className="flex items-center justify-between p-2">
+                    <div className="flex items-center gap-2">
+                      {isMuted ? (
+                        <VolumeX className="w-4 h-4 text-amber-400" />
+                      ) : (
+                        <Volume2 className="w-4 h-4 text-zinc-400" />
+                      )}
+                      <span className="text-xs font-medium text-zinc-200">
+                        Audio Sound ({isMuted ? 'Muted' : 'Playing'})
+                      </span>
+                    </div>
+                    <button
+                      onClick={toggleMute}
+                      className={cn(
+                        "px-2.5 py-1 rounded-lg text-[11px] font-bold border transition-colors",
+                        isMuted 
+                          ? "bg-amber-500/20 border-amber-500/40 text-amber-300" 
+                          : "bg-zinc-800 border-zinc-700 text-zinc-300 hover:text-white"
+                      )}
+                    >
+                      {isMuted ? 'Unmute' : 'Mute'}
+                    </button>
+                  </div>
+                </div>
+
+                {/* Drama Synopsis / Details */}
+                {drama.description && (
+                  <div className="bg-zinc-900/40 rounded-2xl p-3.5 border border-zinc-800/60">
+                    <span className="text-xs font-bold text-zinc-300 block mb-1">About This Drama</span>
+                    <p className="text-[11px] text-zinc-400 leading-relaxed line-clamp-3">
+                      {drama.description}
+                    </p>
+                  </div>
+                )}
               </div>
             </motion.div>
           </div>
