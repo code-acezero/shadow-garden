@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Home, MessageCircle, Search, Flame, Clapperboard, Calendar, Scroll } from 'lucide-react';
+import { Home, MessageCircle, Search, Flame, Clapperboard, Calendar, Scroll, BookOpen } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { cn } from '@/lib/utils';
 import { ATRAX_BUBBLY_SPRING } from '@/lib/atraxMotion';
@@ -28,7 +28,7 @@ export default function MobileTabBar() {
 
   const tabs = [
     { id: 'home', icon: Home, label: 'Home', path: '/home' },
-    { id: 'donghua', icon: Scroll, label: 'Donghua', path: '/donghua' },
+    { id: 'manga', icon: BookOpen, label: 'Read', path: '/manga' },
     { id: 'search', icon: Search, label: 'Search', path: '/search' },
     { id: 'social', icon: MessageCircle, label: 'Social', path: '/social' },
     { id: 'schedule', icon: Calendar, label: 'Schedule', path: '/schedule' },

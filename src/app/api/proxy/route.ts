@@ -43,6 +43,10 @@ const REFERER_MAP: Record<string, string> = {
     'image.tmdb': 'https://www.themoviedb.org/',
     'themoviedb': 'https://www.themoviedb.org/',
 
+    // --- Manga & Comic Hubs ---
+    'mangadex': 'https://mangadex.org/',
+    'mangadex.network': 'https://mangadex.org/',
+
     // --- HDMovie2 / Bollywood Hubs ---
     'slast430did': 'https://hdmoviesnow.com/',
     'gemma416okl': 'https://hdmoviesnow.com/',
