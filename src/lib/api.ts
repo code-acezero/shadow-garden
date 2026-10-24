@@ -588,8 +588,8 @@ export class AnimeService {
         return await AniListService.getMovies(page, 24);
     }
 
-    static async getDonghua(page = 1) {
-        return await AniListService.getDonghua(page, 24);
+    static async getDonghua(page = 1, perPage = 24) {
+        return await AniListService.getDonghua(page, perPage);
     }
 
     static async getFilteredAnime(category: string, page = 1) {

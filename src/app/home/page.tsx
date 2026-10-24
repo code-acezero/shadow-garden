@@ -89,6 +89,18 @@ const HindiHomeSection = dynamic(
   }
 );
 
+const DonghuaHomeSection = dynamic(
+  () => import("@/components/Home/DonghuaHomeSection"),
+  { 
+    ssr: false,
+    loading: () => (
+      <div className="w-full px-4 md:px-0">
+        <div className="h-64 bg-white/5 rounded-xl animate-pulse" />
+      </div>
+    )
+  }
+);
+
 const AZNavigationBar = dynamic(
   () => import("@/components/Home/AZNavigationBar"),
   { ssr: false }
@@ -229,6 +241,9 @@ function HomeContent() {
 
             {/* Dedicated Hindi Realm */}
             <HindiHomeSection />
+
+            {/* Dedicated Donghua Realm */}
+            <DonghuaHomeSection />
 
             {/* Beyond Broadcast: Movies, Donghua, Dramas, and Community Whispers */}
             <MultiverseShowcase />
