@@ -61,7 +61,8 @@ export default function Navigation() {
     };
   }, []);
 
-  if (pathname === '/' || pathname?.startsWith('/master')) return null;
+  const isReader = pathname?.startsWith('/manga/read') || pathname?.startsWith('/novel/read');
+  if (pathname === '/' || pathname?.startsWith('/master') || isReader) return null;
 
   const navItems = [
     { id: 'home', icon: Home, label: 'Home', path: '/home' },
