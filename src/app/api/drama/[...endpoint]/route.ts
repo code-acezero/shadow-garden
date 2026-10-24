@@ -1,4 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { 
+  getBlakiteLiveAction, 
+  getBlakiteStreamUrl, 
+  cleanHindiTitle 
+} from '@/lib/blakite';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -182,7 +187,8 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ endp
         hollywood,
         topKdramas,
         airingTodayTv,
-        nowPlayingMovies
+        nowPlayingMovies,
+        blakiteLiveAction
       ] = await Promise.all([
         fetchTmdb('/discover/tv', { with_original_language: 'ko', without_genres: EXCLUDE_NON_SCRIPTED, 'vote_count.gte': 15, sort_by: 'popularity.desc' }).catch(() => ({ results: [] })),
         fetchTmdb('/discover/tv', { with_original_language: 'zh', without_genres: EXCLUDE_NON_SCRIPTED, 'vote_count.gte': 10, sort_by: 'popularity.desc' }).catch(() => ({ results: [] })),
@@ -195,7 +201,8 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ endp
         fetchTmdb('/discover/movie', { with_original_language: 'en', 'vote_count.gte': 100, sort_by: 'popularity.desc' }).catch(() => ({ results: [] })),
         fetchTmdb('/discover/tv', { with_original_language: 'ko', without_genres: EXCLUDE_NON_SCRIPTED, 'vote_count.gte': 80, sort_by: 'vote_average.desc' }).catch(() => ({ results: [] })),
         fetchTmdb('/tv/airing_today', { page: 1 }).catch(() => ({ results: [] })),
-        fetchTmdb('/movie/now_playing', { page: 1 }).catch(() => ({ results: [] }))
+        fetchTmdb('/movie/now_playing', { page: 1 }).catch(() => ({ results: [] })),
+        getBlakiteLiveAction(1, 40).catch(() => ({ results: [] }))
       ]);
 
       // Synchronize Recent Updates (interleave latest TV episodes and latest Movies together)
@@ -215,8 +222,11 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ endp
         if (syncedRecentUpdates.length >= 20) break;
       }
 
-      // Hindi Dubbed / Bollywood Section from TMDB (Blakite is anime only)
-      const hindiItems = (bollywood.results || [])
+      // Live action Hindi Dubbed series and movies from Blakite source (Squid Game, Move to Heaven, Train to Busan, Weak Hero, etc.)
+      const liveActionHindi = blakiteLiveAction?.results || [];
+
+      // Bollywood Hindi movies from TMDB
+      const bollywoodHindi = (bollywood.results || [])
         .map((item: any) => {
           const card = mapTmdbToCard(item, 'Movie');
           if (card) {
@@ -228,6 +238,9 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ endp
         })
         .filter(Boolean)
         .slice(0, 18);
+
+      // Unified Hindi Dubbed Spotlight: Blakite live action series + Bollywood blockbusters
+      const allHindiSpotlight = [...liveActionHindi, ...bollywoodHindi];
 
       const sections = [
         {
@@ -287,10 +300,18 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ endp
         }
       ];
 
-      if (hindiItems.length > 0) {
+      if (allHindiSpotlight.length > 0) {
         sections.splice(1, 0, {
           title: 'Hindi Dubbed Spotlight',
-          items: hindiItems,
+          items: allHindiSpotlight.slice(0, 24),
+          query: 'hindi'
+        });
+      }
+
+      if (liveActionHindi.length > 0) {
+        sections.splice(2, 0, {
+          title: 'Hindi Dubbed K-Dramas & Asian Series',
+          items: liveActionHindi,
           query: 'hindi'
         });
       }
@@ -329,8 +350,25 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ endp
       const data = await fetchTmdb('/discover/tv', params);
       const results = (data.results || []).map((item: any) => mapTmdbToCard(item)).filter(Boolean);
 
+      let combinedDramas = results;
+      if (page === 1 && (country === 'all' || country.includes('korea') || country.includes('hindi'))) {
+        try {
+          const blakiteLive = await getBlakiteLiveAction(1, 20).catch(() => ({ results: [] }));
+          const liveDramas = (blakiteLive?.results || []).filter((item: any) => !item.isMovie);
+          const seen = new Set<string>();
+          const deduped: any[] = [];
+          for (const item of [...liveDramas, ...results]) {
+            if (!seen.has(item.id)) {
+              seen.add(item.id);
+              deduped.push(item);
+            }
+          }
+          combinedDramas = deduped;
+        } catch {}
+      }
+
       const result = {
-        results,
+        results: combinedDramas,
         currentPage: data.page || page,
         hasNextPage: (data.page || page) < (data.total_pages || 1)
       };
@@ -410,8 +448,25 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ endp
       const data = await fetchTmdb('/discover/movie', params);
       const results = (data.results || []).map((item: any) => mapTmdbToCard(item, 'Movie')).filter(Boolean);
 
+      let combinedMovies = results;
+      if (page === 1 && (category === 'all' || category.includes('asian') || category.includes('hindi') || category.includes('bolly'))) {
+        try {
+          const blakiteLive = await getBlakiteLiveAction(1, 20).catch(() => ({ results: [] }));
+          const liveMovies = (blakiteLive?.results || []).filter((item: any) => item.isMovie);
+          const seen = new Set<string>();
+          const deduped: any[] = [];
+          for (const item of [...liveMovies, ...results]) {
+            if (!seen.has(item.id)) {
+              seen.add(item.id);
+              deduped.push(item);
+            }
+          }
+          combinedMovies = deduped;
+        } catch {}
+      }
+
       const result = {
-        results,
+        results: combinedMovies,
         currentPage: data.page || page,
         hasNextPage: (data.page || page) < (data.total_pages || 1)
       };
@@ -427,6 +482,18 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ endp
 
       let allHindi: any[] = [];
 
+      // Include Blakite live action series and movies (e.g. Squid Game, Move to Heaven, Train to Busan, Weak Hero)
+      const blakiteLive = await getBlakiteLiveAction(1, 50).catch(() => ({ results: [] }));
+      const blakiteCards = (blakiteLive?.results || []).filter((c: any) => {
+        if (sub === 'movies' || sub === 'movie') return c.isMovie;
+        if (sub === 'series' || sub === 'dramas' || sub === 'drama') return !c.isMovie;
+        return true;
+      });
+
+      if (page === 1) {
+        allHindi.push(...blakiteCards);
+      }
+
       // Discover TMDB Hindi movies and series
       if (sub === 'all' || sub === 'movies' || sub === 'movie') {
         const tmdbMovies = await fetchTmdb('/discover/movie', { with_original_language: 'hi', page, sort_by: 'popularity.desc' }).catch(() => ({ results: [] }));
@@ -440,9 +507,19 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ endp
         allHindi.push(...mappedTv);
       }
 
-      const total = allHindi.length;
+      // De-duplicate by id
+      const seen = new Set<string>();
+      const deduplicatedHindi: any[] = [];
+      for (const item of allHindi) {
+        if (!seen.has(item.id)) {
+          seen.add(item.id);
+          deduplicatedHindi.push(item);
+        }
+      }
+
+      const total = deduplicatedHindi.length;
       const startIndex = (page - 1) * limit;
-      const paged = allHindi.slice(startIndex, startIndex + limit);
+      const paged = deduplicatedHindi.slice(startIndex, startIndex + limit);
 
       const result = {
         results: paged,
@@ -469,6 +546,23 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ endp
 
       const seen = new Set<string>();
       const combined: any[] = [];
+
+      // Check Blakite live action titles on page 1
+      if (page === 1) {
+        try {
+          const blakiteLive = await getBlakiteLiveAction(1, 100).catch(() => ({ results: [] }));
+          const cleanQ = q.trim().toLowerCase();
+          const matchedBlakite = (blakiteLive?.results || []).filter((item: any) =>
+            item.title.toLowerCase().includes(cleanQ) || cleanQ.includes(item.title.toLowerCase())
+          );
+          for (const item of matchedBlakite) {
+            if (!seen.has(item.id)) {
+              seen.add(item.id);
+              combined.push(item);
+            }
+          }
+        } catch {}
+      }
 
       for (const item of tmdbResults) {
         const key = item.id || item.title;
@@ -1206,6 +1300,25 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ endp
       // Construct Multi-Audio & Hindi Dubbed Server Sources DYNAMICALLY
       // ONLY load servers that genuinely provide Hindi/Multi audio (NO fake dummy fallbacks)
       const multiServers: { name: string; url: string; type: 'hls' | 'iframe' }[] = [];
+
+      // 0. Direct high-speed Hindi HLS stream from Blakite if title or id matches live-action
+      if (reqAudio === 'multi' || isHindiNative) {
+        try {
+          const cleanId = id.split('-')[0].trim();
+          const targetSlug = isMovie ? cleanId : `${cleanId}::${season}-${episode}`;
+          const blakiteStream = await getBlakiteStreamUrl(targetSlug).catch(() => null);
+          if (blakiteStream && blakiteStream.url) {
+            const proxiedUrl = `/api/proxy?url=${encodeURIComponent(blakiteStream.url)}`;
+            multiServers.unshift({
+              name: 'Blakite Hindi HD',
+              url: proxiedUrl,
+              type: 'hls'
+            });
+          }
+        } catch (e) {
+          console.warn('[Drama Stream] Blakite live-action stream lookup failed:', e);
+        }
+      }
 
       // 1. Add scraped genuine Hindi Dubbed servers (Byse, Vidmoly, Streamtape, RPM)
       if (hindiDramaServers.length > 0) {

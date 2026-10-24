@@ -193,7 +193,7 @@ const ScheduleCard = ({ anime }: { anime: any }) => {
                                 <div className="flex items-center gap-2">
                                     {anime.dubType && (
                                         <span className="px-1.5 py-0.5 rounded text-[8px] font-black uppercase tracking-wider bg-gradient-to-r from-orange-500/20 to-amber-500/20 text-orange-400 border border-orange-500/30">
-                                            {anime.dubType}
+                                            {anime.dubType === 'ORG' ? 'HINDI DUB' : anime.dubType === 'FanDub' ? 'HINDI (FAN)' : anime.dubType}
                                         </span>
                                     )}
                                     <span className="px-2 py-0.5 bg-white/5 rounded text-[9px] font-bold text-zinc-400 border border-white/5 group-hover:border-primary-500/20 group-hover:text-primary-400 transition-colors">

@@ -175,6 +175,123 @@ function getBlakiteItemDate(item: BlakiteRawItem): number {
   return dateToUse;
 }
 
+/**
+ * Distinguishes live-action series, Asian dramas, and movies from anime.
+ * Live-action items in Blakite either belong to db.dramas, have type 'Drama',
+ * or have genres without 'Animation' (e.g. Weak Hero, Train to Busan, Thunderbolt).
+ */
+export function isBlakiteLiveAction(item: BlakiteRawItem): boolean {
+  if (!item) return false;
+  if (item.type === 'Drama') return true;
+  const genres = item.TMDB_DATA?.genres || [];
+  if (genres.length > 0 && !genres.some(g => /anim/i.test(g))) {
+    return true;
+  }
+  return false;
+}
+
+/**
+ * Normalizes a Blakite live-action item into universal DramaCard format for Flix (/cinema).
+ */
+export function mapBlakiteToDramaCard(item: BlakiteRawItem, id: string): any {
+  const isMovie = item.type === 'Movie';
+  let totalEps = 0;
+  if (item.seasons) {
+    for (const s of Object.values(item.seasons)) {
+      totalEps += s.totalEpisodes || 0;
+    }
+  } else if (isMovie) {
+    totalEps = 1;
+  }
+
+  const cleanTitle = cleanHindiTitle(item.title);
+  const poster = item.IMAGES?.poster || item.IMAGES?.backdrop || '';
+  const backdrop = item.IMAGES?.backdrop || item.IMAGES?.poster || '';
+  const rating = item.TMDB_DATA?.rating ? Number(item.TMDB_DATA.rating).toFixed(1) : '8.2';
+  const year = item.TMDB_DATA?.releaseDate?.split('-')[0] || '';
+  
+  let type = isMovie ? 'Movie' : 'K-Drama';
+  let category: 'drama' | 'series' | 'movie' = isMovie ? 'movie' : 'drama';
+  let country = isMovie ? 'Asian Cinema' : 'Korea';
+
+  if (item.type === 'Drama') {
+    type = 'K-Drama';
+    country = 'Korea';
+    category = 'drama';
+  } else if (item.type === 'Series') {
+    type = 'Series';
+    country = 'Asian Series';
+    category = 'series';
+  }
+
+  return {
+    id,
+    slug: id,
+    title: cleanTitle,
+    image: poster,
+    poster,
+    backdrop,
+    overview: item.TMDB_DATA?.synopsis || '',
+    synopsis: item.TMDB_DATA?.synopsis || '',
+    type,
+    category,
+    year,
+    country,
+    episode: totalEps > 1 ? `${totalEps} EPS` : (isMovie ? 'Movie' : 'Series'),
+    score: rating,
+    isHindi: true,
+    isMovie,
+    audio: item.language === 'FanDub' ? 'Hindi Fan Dub' : 'Hindi Official Dub',
+    source: 'blakite'
+  };
+}
+
+/**
+ * Retrieves all Blakite live-action series, K-dramas, and movies to be displayed in Flix (/cinema).
+ */
+export async function getBlakiteLiveAction(page: number = 1, perPage: number = 30) {
+  const db = await fetchBlakiteDatabase();
+  if (!db) return { results: [], total: 0 };
+
+  const allItems: { id: string; item: BlakiteRawItem; dateToUse: number; rating: number }[] = [
+    ...Object.entries(db.dramas || {}).map(([id, item]) => ({
+      id,
+      item,
+      dateToUse: getBlakiteItemDate(item),
+      rating: parseFloat(item.TMDB_DATA?.rating || '0')
+    })),
+    ...Object.entries(db.series || {}).map(([id, item]) => ({
+      id,
+      item,
+      dateToUse: getBlakiteItemDate(item),
+      rating: parseFloat(item.TMDB_DATA?.rating || '0')
+    })),
+    ...Object.entries(db.movies || {}).map(([id, item]) => ({
+      id,
+      item,
+      dateToUse: getBlakiteItemDate(item),
+      rating: parseFloat(item.TMDB_DATA?.rating || '0')
+    }))
+  ];
+
+  const liveActionItems = allItems.filter(i => isBlakiteLiveAction(i.item));
+  liveActionItems.sort((a, b) => {
+    if (b.rating !== a.rating) return b.rating - a.rating;
+    return b.dateToUse - a.dateToUse;
+  });
+
+  const cards = liveActionItems.map(x => mapBlakiteToDramaCard(x.item, x.id));
+  const startIndex = (page - 1) * perPage;
+  const paged = cards.slice(startIndex, startIndex + perPage);
+
+  return {
+    results: paged,
+    total: cards.length,
+    currentPage: page,
+    hasNextPage: startIndex + perPage < cards.length
+  };
+}
+
 export async function getBlakiteHome() {
   const db = await fetchBlakiteDatabase();
   if (!db) return null;
@@ -187,16 +304,20 @@ export async function getBlakiteHome() {
 
   allItems.sort((a, b) => b.dateToUse - a.dateToUse);
 
-  const spotlight = allItems.slice(0, 10).map(i => normalizeBlakiteCard(i.item, i.id));
-  const recentlyUpdated = allItems.slice(0, 30).map(i => normalizeBlakiteCard(i.item, i.id));
+  // Filter out live action from anime showcase sections
+  const animeItems = allItems.filter(i => !isBlakiteLiveAction(i.item));
+  const liveActionItems = allItems.filter(i => isBlakiteLiveAction(i.item));
+
+  const spotlight = animeItems.slice(0, 10).map(i => normalizeBlakiteCard(i.item, i.id));
+  const recentlyUpdated = animeItems.slice(0, 30).map(i => normalizeBlakiteCard(i.item, i.id));
   
-  const ongoingAnime = allItems.filter(i => i.item.status === 'Ongoing').slice(0, 20).map(i => normalizeBlakiteCard(i.item, i.id));
-  const moviesCollection = allItems.filter(i => i.item.type === 'Movie').slice(0, 20).map(i => normalizeBlakiteCard(i.item, i.id));
-  const dramaLiveAction = allItems.filter(i => i.item.type === 'Drama').slice(0, 20).map(i => normalizeBlakiteCard(i.item, i.id));
+  const ongoingAnime = animeItems.filter(i => i.item.status === 'Ongoing').slice(0, 20).map(i => normalizeBlakiteCard(i.item, i.id));
+  const moviesCollection = animeItems.filter(i => i.item.type === 'Movie').slice(0, 20).map(i => normalizeBlakiteCard(i.item, i.id));
+  const dramaLiveAction = liveActionItems.slice(0, 20).map(i => normalizeBlakiteCard(i.item, i.id));
   
-  const completedSeries = allItems.filter(i => i.item.status === 'Completed').slice(0, 20).map(i => normalizeBlakiteCard(i.item, i.id));
-  const hindiDubbedOrg = allItems.filter(i => i.item.language === 'ORG').slice(0, 20).map(i => normalizeBlakiteCard(i.item, i.id));
-  const hindiFanDubbed = allItems.filter(i => i.item.language === 'Fandub').slice(0, 20).map(i => normalizeBlakiteCard(i.item, i.id));
+  const completedSeries = animeItems.filter(i => i.item.status === 'Completed').slice(0, 20).map(i => normalizeBlakiteCard(i.item, i.id));
+  const hindiDubbedOrg = animeItems.filter(i => i.item.language === 'ORG').slice(0, 20).map(i => normalizeBlakiteCard(i.item, i.id));
+  const hindiFanDubbed = animeItems.filter(i => i.item.language === 'Fandub').slice(0, 20).map(i => normalizeBlakiteCard(i.item, i.id));
 
   return {
     spotlight,
@@ -222,13 +343,16 @@ export async function getBlakiteLatest(type: string = 'updated-all', page: numbe
 
   allItems.sort((a, b) => b.dateToUse - a.dateToUse);
 
-  let filteredItems = allItems;
+  // Filter strictly to Anime only (exclude live action)
+  const animeItems = allItems.filter(i => !isBlakiteLiveAction(i.item));
+
+  let filteredItems = animeItems;
   if (type === 'updated-sub') {
-    filteredItems = allItems.filter(i => (i.item.language || '').toLowerCase().includes('sub'));
+    filteredItems = animeItems.filter(i => (i.item.language || '').toLowerCase().includes('sub'));
   } else if (type === 'updated-dub') {
-    filteredItems = allItems.filter(i => (i.item.language || '').toLowerCase().includes('dub') || i.item.language === 'ORG' || i.item.language === 'Fandub');
+    filteredItems = animeItems.filter(i => (i.item.language || '').toLowerCase().includes('dub') || i.item.language === 'ORG' || i.item.language === 'Fandub');
   } else if (type === 'trending') {
-    filteredItems = allItems.filter(i => i.item.status === 'Ongoing');
+    filteredItems = animeItems.filter(i => i.item.status === 'Ongoing');
   }
 
   const totalResults = filteredItems.length;
@@ -275,12 +399,13 @@ export async function getBlakitePopular(page: number = 1, perPage: number = 24) 
     }))
   ];
 
-  // Filter strictly for Hindi Dubs (ORG, Fandub, or Hindi in title/language)
+  // Filter strictly for Anime Hindi Dubs (exclude live action!)
   const hindiItems = allItems.filter(i => 
-    i.item.language === 'ORG' || 
-    i.item.language === 'Fandub' || 
-    /hindi/i.test(i.item.language || '') || 
-    /hindi/i.test(i.item.title || '')
+    !isBlakiteLiveAction(i.item) &&
+    (i.item.language === 'ORG' || 
+     i.item.language === 'Fandub' || 
+     /hindi/i.test(i.item.language || '') || 
+     /hindi/i.test(i.item.title || ''))
   );
 
   // Sort by rating descending, with recency as secondary tiebreaker
@@ -422,9 +547,8 @@ export async function checkHindiDub(
 
   const allItems: { id: string; item: BlakiteRawItem }[] = [
     ...Object.entries(db.series || {}).map(([id, item]) => ({ id, item })),
-    ...Object.entries(db.movies || {}).map(([id, item]) => ({ id, item })),
-    ...Object.entries(db.dramas || {}).map(([id, item]) => ({ id, item }))
-  ];
+    ...Object.entries(db.movies || {}).map(([id, item]) => ({ id, item }))
+  ].filter(({ item }) => !isBlakiteLiveAction(item));
 
   const qInfo = extractSeasonInfo(title);
   const qClean = normalizeBlakiteTitle(qInfo.baseTitle);
@@ -498,16 +622,20 @@ export async function checkHindiDub(
   };
 }
 
-export async function searchBlakite(keyword: string, page: number = 1) {
+export async function searchBlakite(keyword: string, page: number = 1, includeLiveAction: boolean = false) {
   const db = await fetchBlakiteDatabase();
   if (!db) return null;
   const lowerKeyword = (keyword || '').toLowerCase().trim();
   
-  const allItems: { id: string; item: BlakiteRawItem }[] = [
+  let allItems: { id: string; item: BlakiteRawItem }[] = [
     ...Object.entries(db.movies || {}).map(([id, item]) => ({ id, item })),
     ...Object.entries(db.series || {}).map(([id, item]) => ({ id, item })),
     ...Object.entries(db.dramas || {}).map(([id, item]) => ({ id, item }))
   ];
+
+  if (!includeLiveAction) {
+    allItems = allItems.filter(({ item }) => !isBlakiteLiveAction(item));
+  }
 
   const matches = allItems
     .filter(({ item }) => (item.title || '').toLowerCase().includes(lowerKeyword))
@@ -529,7 +657,7 @@ export async function searchBlakite(keyword: string, page: number = 1) {
   };
 }
 
-export async function filterBlakite(params: { genre?: string; type?: string; status?: string; sort?: string }, page: number = 1) {
+export async function filterBlakite(params: { genre?: string; type?: string; status?: string; sort?: string; includeLiveAction?: boolean }, page: number = 1) {
   const db = await fetchBlakiteDatabase();
   if (!db) return null;
   
@@ -538,6 +666,10 @@ export async function filterBlakite(params: { genre?: string; type?: string; sta
     ...Object.entries(db.series || {}).map(([id, item]) => ({ id, item })),
     ...Object.entries(db.dramas || {}).map(([id, item]) => ({ id, item }))
   ];
+
+  if (!params.includeLiveAction && params.type !== 'drama' && params.genre !== 'drama') {
+    matches = matches.filter(m => !isBlakiteLiveAction(m.item));
+  }
   
   if (params.genre) {
     const genreLower = params.genre.toLowerCase();
@@ -791,6 +923,7 @@ export async function getHindiDubSchedule(targetDate?: string): Promise<HindiSch
   ];
 
   const hindiEntries = allEntries.filter(([, item]) => {
+    if (isBlakiteLiveAction(item)) return false;
     const lang = (item.language || '').toLowerCase();
     const title = (item.title || '').toLowerCase();
     return item.language === 'ORG' || item.language === 'FanDub' || lang.includes('dub') || lang.includes('hindi') || title.includes('hindi');

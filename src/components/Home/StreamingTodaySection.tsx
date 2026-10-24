@@ -184,7 +184,7 @@ export default function StreamingTodaySection({ initialItems = [] }: StreamingTo
                   <div className="absolute bottom-2 right-2 z-10 flex items-center gap-1">
                     {anime.isHindi && (
                       <span className="px-1.5 py-0.5 rounded-lg bg-gradient-to-r from-orange-500 to-amber-500 text-white font-mono font-black text-[9px] uppercase shadow-sm">
-                        {anime.dubType === 'ORG' ? 'ORG' : 'HINDI'}
+                        {anime.dubType === 'FanDub' || anime.dubType === 'Hindi Fan Dub' ? 'HINDI (FAN)' : 'HINDI'}
                       </span>
                     )}
                     <span className="px-2 py-0.5 rounded-lg bg-black/70 border border-white/10 text-white font-mono font-black text-[10px] uppercase backdrop-blur-md">

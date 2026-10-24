@@ -7,7 +7,8 @@ import {
   getBlakiteDetail, 
   getBlakiteStreamUrl,
   getHindiDubSchedule,
-  getHindiReleasingToday
+  getHindiReleasingToday,
+  getBlakiteLiveAction
 } from '@/lib/blakite';
 
 export const dynamic = 'force-dynamic';
@@ -24,6 +25,12 @@ export async function GET(
 
     const { searchParams } = new URL(req.url);
     const page = parseInt(searchParams.get('page') || '1', 10);
+    const perPage = parseInt(searchParams.get('perPage') || '24', 10);
+
+    if (mainEndpoint === 'live-action' || mainEndpoint === 'dramas') {
+      const data = await getBlakiteLiveAction(page, perPage);
+      return NextResponse.json({ ok: true, success: true, data });
+    }
 
     if (mainEndpoint === 'home') {
       const data = await getBlakiteHome();
