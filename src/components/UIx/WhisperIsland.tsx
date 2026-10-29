@@ -23,6 +23,7 @@ import Link from 'next/link';
 import Notifications from '@/components/Anime/Notifications'; 
 import ShadowAvatar from '@/components/User/ShadowAvatar';
 import ShadowLogo from '@/components/UIx/ShadowLogo';
+import ElectricChargeShoot from '@/components/UIx/ElectricChargeShoot';
 import ProfileAvatar from '@/components/User/ProfileAvatar';
 import UserTitleBadge from '@/components/ui/UserTitleBadge';
 import { useTravellerProfile } from '@/hooks/useTravellerProfile';
@@ -1736,6 +1737,8 @@ function WhisperIslandContent() {
         </svg>
 
         <div className="w-full flex items-center justify-between gap-1 sm:gap-1.5 pointer-events-none relative">
+            {/* Tesla Coil Electric Charge Shoot across Top Nav */}
+            <ElectricChargeShoot pathname={pathname} isMobile={isMobile} />
             
             {/* LOGO & GUILD MASCOT */}
             <div className="pointer-events-auto z-40 shrink-0 flex items-center gap-1.5">
