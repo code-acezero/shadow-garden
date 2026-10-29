@@ -421,7 +421,7 @@ export default function AlphaWidget() {
         "Search by image or upload a screenshot...",
         "Request dark fantasy or trending movies...",
         "Ask to find episodes, seasons, or series...",
-        "Command Shadow Garden AI..."
+        "Command Kagemi AI..."
     ];
 
     const [placeholderIndex, setPlaceholderIndex] = useState(0);
@@ -524,7 +524,7 @@ export default function AlphaWidget() {
         const musicCommands = ['/music', '/song', '/bgm', 'play music', 'play a song', 'play bgm'];
         if (musicCommands.includes(lowerInput)) {
             const userMessage: ChatMessage = { role: 'user', content: input };
-            const newMessages = [...messages, userMessage, { role: 'model', content: '[state: greet] As you wish. Playing some music from the Shadow Garden archives. Enjoy!' }];
+            const newMessages = [...messages, userMessage, { role: 'model', content: '[state: greet] As you wish. Playing some music from the Kagemi archives. Enjoy!' }];
             setMessages(newMessages as any);
             setInput('');
             sfx.playRandomBGM();

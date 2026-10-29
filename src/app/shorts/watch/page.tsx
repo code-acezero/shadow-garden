@@ -10,13 +10,13 @@ interface WatchPageProps {
 
 export async function generateMetadata({ searchParams }: WatchPageProps): Promise<Metadata> {
   const { id } = await searchParams;
-  if (!id) return { title: 'Watch Shorts - Shadow Garden' };
+  if (!id) return { title: 'Watch Shorts - Kagemi' };
 
   const drama = await getShortDramaById(id);
-  if (!drama) return { title: 'Mini-Drama - Shadow Garden' };
+  if (!drama) return { title: 'Mini-Drama - Kagemi' };
 
   return {
-    title: `${drama.title} - Watch Free Vertical Drama | Shadow Garden`,
+    title: `${drama.title} - Watch Free Vertical Drama | Kagemi`,
     description: drama.description || 'Watch full unlocked vertical episodes in HD.',
     openGraph: {
       title: drama.title,

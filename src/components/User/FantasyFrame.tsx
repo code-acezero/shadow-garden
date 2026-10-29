@@ -1,6 +1,6 @@
 "use client";
 
-import React from 'react';
+import React, { useId } from 'react';
 import { motion } from 'framer-motion';
 import { useSettings } from '@/hooks/useSettings';
 
@@ -77,7 +77,8 @@ export function getFrameColors(frameId: string = 'none', lvl: number = 1) {
 export function UserLevelBadge({ level, frameId = 'none', className = 'w-full h-full' }: { level: number | string; frameId?: string; className?: string }) {
   const numLvl   = typeof level === 'string' ? parseInt(level) || 1 : level;
   const colors   = getFrameColors(frameId, numLvl);
-  const gradId   = `ulb_${numLvl}_${frameId}_${Math.random().toString(36).slice(2, 7)}`;
+  const reactId  = useId();
+  const gradId   = `ulb_${numLvl}_${frameId}_${reactId.replace(/:/g, '_')}`;
   const hasGlow  = numLvl >= 10 || frameId !== 'none';
   const hasGem   = numLvl >= 25 || frameId !== 'none';
   const hasWings = numLvl >= 50 || ['shadow', 'celestial', 'divine', 'admin', 'moderator'].includes(frameId);

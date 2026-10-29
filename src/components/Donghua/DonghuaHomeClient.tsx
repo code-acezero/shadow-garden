@@ -6,6 +6,9 @@ import MobileContainer from "@/components/Layout/MobileContainer";
 import SpotlightSlider from "@/components/Anime/SpotlightSlider";
 import AnimeCard from "@/components/Anime/AnimeCard";
 import Footer from "@/components/Anime/Footer";
+import CuteShareBar from "@/components/Home/CuteShareBar";
+import MonetLineIcon from "@/components/UIx/MonetLineIcon";
+import { Scroll } from "lucide-react";
 import { dpi } from "@/lib/dpi";
 
 // Memoized dynamic section component for Donghua categories
@@ -47,17 +50,17 @@ const DonghuaSection = memo(function DonghuaSection({ title, items }: { title: s
     }, [items, title]);
 
     return (
-        <section className="w-full px-4">
-            <div className="flex items-center justify-between mb-2 md:mb-6">
-                <div className="flex items-center gap-3">
-                    <div className="w-1.5 h-6 rounded-full bg-emerald-500 shadow-[0_0_10px_rgba(16,185,129,0.7)]" />
-                    <h2 className="text-xl md:text-2xl font-black text-emerald-50 uppercase tracking-wider font-serif">
+        <section className="w-full px-2 sm:px-4">
+            <div className="flex items-center justify-between mb-3 md:mb-6">
+                <div className="flex items-center gap-2 md:gap-3 min-w-0">
+                    <MonetLineIcon icon={Scroll} variant="emerald" />
+                    <h2 className="text-base sm:text-xl md:text-2xl font-black text-emerald-50 uppercase tracking-wide font-lemon truncate leading-none">
                         {title}
                     </h2>
                 </div>
             </div>
 
-            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4 md:gap-6 relative perf-contain">
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-2.5 sm:gap-3.5 md:gap-5 relative perf-contain">
                 {sanitizedResults.slice(0, 12).map((anime, index) => (
                     <div 
                         key={`${anime.id}-${index}`}
@@ -144,6 +147,14 @@ export default function DonghuaHomeClient() {
               </div>
             )}
           </div>
+
+          {/* CUTE SHARE BAR */}
+          <CuteShareBar 
+            badgeText="Share Donghua"
+            badgeSubtext="Cultivation Sanctuary"
+            title="Invite your Daoists to Kagemi!"
+            description="Share Chinese donghua, 3D cultivation adventures, and supernatural battles in ultra HD with zero ads."
+          />
 
           <Footer />
         </div>

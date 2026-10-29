@@ -9,7 +9,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import ContinueAnimeCard, { ContinueWatchingItem } from "../Anime/ContinueAnimeCard"; 
-
+import MonetLineIcon from "@/components/UIx/MonetLineIcon";
 import { useUserData } from "@/context/UserDataContext";
 
 // ... (Types & Animations remain unchanged) ...
@@ -106,15 +106,15 @@ export default function ContinueWatching() {
         className="flex items-center justify-between flex-nowrap mb-2 md:mb-6 gap-4 w-full"
       >
         <div className="flex items-center gap-2 md:gap-3 min-w-0">
-          <Clock className="w-7 h-7 md:w-9 md:h-9 text-primary-500 shrink-0 drop-shadow-[0_0_12px_rgba(220,38,38,0.5)]" />
-          <h2 className="text-xl md:text-3xl font-black text-white font-lemon uppercase tracking-wide flex items-center gap-2">
-            CONTINUE <span className="text-primary-500">ADVENTURE</span>
+          <MonetLineIcon icon={Clock} variant="primary" />
+          <h2 className="text-base sm:text-xl md:text-3xl font-black text-white font-lemon uppercase tracking-wide leading-none truncate">
+            CONTINUE WATCHING
           </h2>
         </div>
 
         <Link 
-          href="/watchlist?tab=continue" 
-          className="group flex-shrink-0 flex items-center gap-0.5 md:gap-1 text-[9px] md:text-[10px] font-bold text-zinc-400 hover:text-white transition-colors uppercase tracking-widest whitespace-nowrap"
+          href="/library?tab=continue" 
+          className="text-[10px] md:text-[11px] font-black uppercase tracking-wider text-zinc-300 hover:text-white px-3 py-1.5 rounded-full bg-white/5 border border-white/10 hover:border-primary-500/30 transition-all inline-flex items-center gap-1 whitespace-nowrap select-none shrink-0 active:scale-95"
         >
           View All
           <ChevronRight size={12} className="group-hover:translate-x-1 transition-transform" />

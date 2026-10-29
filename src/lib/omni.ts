@@ -178,7 +178,8 @@ export interface MovieDetail {
   contentRating?: string;
   releaseDate?: string;
   runtime?: string;
-  cast?: string[];
+  cast?: any[];
+  characters?: any[];
   type?: string;           // 'Movie' | 'TV Series' etc.
   languages?: string[];
   downloadLinks: { name: string; url: string; quality?: string; size?: string }[];

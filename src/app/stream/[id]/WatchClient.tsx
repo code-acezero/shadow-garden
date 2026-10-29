@@ -206,13 +206,15 @@ const CastCharactersBlock = ({ characters, cast }: { characters?: any[]; cast?: 
             <div 
               key={char.id || `${actorName}-${idx}`} 
               onClick={() => setSelectedCast({
+                id: char.id,
                 name: actorName,
                 character: char.character || null,
                 role: char.role || 'Cast Member',
                 image: avatar,
                 profileLarge: char.profileLarge || avatar,
                 department: char.department || 'Acting',
-                popularity: char.popularity
+                popularity: char.popularity,
+                mediaType: 'movie'
               })}
               className="cursor-pointer flex flex-col gap-2 bg-white/[0.03] hover:bg-cyan-500/10 border border-white/[0.06] hover:border-cyan-400/30 rounded-2xl p-2.5 transition-all group"
             >
@@ -1044,8 +1046,8 @@ export function DramaWatchContent() {
                     {drama.runtime && <span className="bg-white/10 text-zinc-300 text-[9px] font-bold px-2 py-0.5 rounded-full border border-white/10">{drama.runtime}</span>}
                     <span className="border border-white/20 text-zinc-300 text-[9px] font-bold px-2 py-0.5 rounded-full">4K Ultra HD</span>
                     {hasHindiAudio && (
-                      <span className="bg-gradient-to-r from-amber-500 to-orange-500 text-black px-2 py-0.5 rounded-full text-[9px] font-black flex items-center gap-1 shadow-sm">
-                        <span>🇮🇳</span> Hindi Dub
+                      <span className="bg-gradient-to-r from-amber-500 to-orange-500 text-black px-2 py-0.5 rounded-full text-[9px] font-black flex items-center shadow-sm">
+                        Hindi Dub
                       </span>
                     )}
                     {drama.rating && (

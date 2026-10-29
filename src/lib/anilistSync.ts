@@ -32,6 +32,8 @@ export interface AniListMediaDetails {
   format?: string;
   status?: string;
   episodes?: number;
+  chapters?: number;
+  volumes?: number;
   duration?: number;
   averageScore?: number;
   genres?: string[];
@@ -42,7 +44,42 @@ export interface AniListMediaDetails {
   };
 }
 
-const mediaCache = new Map<string, AniListMediaDetails>();
+const mediaCache = new Map<string, AniListMediaDetails | null>();
+const mediaCacheTTL = new Map<string, number>(); // timestamp when cached
+const CACHE_TTL_MS = 30 * 60 * 1000; // 30 minutes
+
+// ─── RATE-LIMITED REQUEST QUEUE ──────────────────────────────────────────────
+// Prevents 429 storms when many cards mount and each call resolveAniListMedia
+const requestQueue: Array<{ resolve: (v: any) => void; reject: (e: any) => void; fn: () => Promise<any> }> = [];
+let isProcessingQueue = false;
+const MIN_REQUEST_GAP_MS = 650; // minimum ms between AniList API calls (safely within 90 req/min)
+
+async function processQueue() {
+  if (isProcessingQueue) return;
+  isProcessingQueue = true;
+  while (requestQueue.length > 0) {
+    const item = requestQueue.shift()!;
+    try {
+      const result = await item.fn();
+      item.resolve(result);
+    } catch (err) {
+      item.reject(err);
+    }
+    // Wait between requests to avoid rate limits
+    await new Promise(r => setTimeout(r, MIN_REQUEST_GAP_MS));
+  }
+  isProcessingQueue = false;
+}
+
+function enqueueRequest<T>(fn: () => Promise<T>): Promise<T> {
+  return new Promise<T>((resolve, reject) => {
+    requestQueue.push({ resolve, reject, fn });
+    processQueue();
+  });
+}
+
+// In-flight dedup: prevents duplicate concurrent requests for the same key
+const inflightRequests = new Map<string, Promise<AniListMediaDetails | null>>();
 
 // Clean title for high-accuracy AniList fuzzy matching
 export function cleanAnimeTitle(title: string): string {
@@ -62,21 +99,55 @@ export function cleanAnimeTitle(title: string): string {
 }
 
 /**
- * Resolves any Shadow Garden anime or donghua title to an AniList Media object
+ * Resolves any Shadow Garden anime or manga title to an AniList Media object with live stats
  */
-export async function resolveAniListMedia(title: string, animeId?: string): Promise<AniListMediaDetails | null> {
-  const cacheKey = `${animeId || ''}_${title || ''}`.toLowerCase();
+export async function resolveAniListMedia(
+  title: string, 
+  mediaId?: string, 
+  mediaType: 'ANIME' | 'MANGA' = 'ANIME'
+): Promise<AniListMediaDetails | null> {
+  const cacheKey = `${mediaType}_${mediaId || ''}_${title || ''}`.toLowerCase();
+  
+  // Check cache with TTL (includes negative/null caching)
   if (mediaCache.has(cacheKey)) {
-    return mediaCache.get(cacheKey)!;
+    const cachedAt = mediaCacheTTL.get(cacheKey) || 0;
+    if (Date.now() - cachedAt < CACHE_TTL_MS) {
+      return mediaCache.get(cacheKey) ?? null;
+    }
+    // Stale cache - remove
+    mediaCache.delete(cacheKey);
+    mediaCacheTTL.delete(cacheKey);
   }
 
-  // 1. If animeId is already a numeric AniList ID
-  const numericId = parseInt(animeId || '', 10);
-  if (!isNaN(numericId) && numericId > 0 && String(numericId) === animeId) {
+  // Dedup: if there's already an in-flight request for this key, wait for it
+  if (inflightRequests.has(cacheKey)) {
+    return inflightRequests.get(cacheKey)!;
+  }
+
+  const promise = _resolveAniListMediaInternal(title, mediaId, mediaType, cacheKey);
+  inflightRequests.set(cacheKey, promise);
+  
+  try {
+    return await promise;
+  } finally {
+    inflightRequests.delete(cacheKey);
+  }
+}
+
+async function _resolveAniListMediaInternal(
+  title: string,
+  mediaId: string | undefined,
+  mediaType: 'ANIME' | 'MANGA',
+  cacheKey: string
+): Promise<AniListMediaDetails | null> {
+
+  // 1. If mediaId is already a numeric AniList ID
+  const numericId = parseInt(mediaId || '', 10);
+  if (!isNaN(numericId) && numericId > 0 && String(numericId) === mediaId) {
     try {
       const byIdQuery = `
-        query ($id: Int) {
-          Media(id: $id, type: ANIME) {
+        query ($id: Int, $type: MediaType) {
+          Media(id: $id, type: $type) {
             id
             idMal
             title { english romaji native userPreferred }
@@ -85,6 +156,8 @@ export async function resolveAniListMedia(title: string, animeId?: string): Prom
             format
             status
             episodes
+            chapters
+            volumes
             duration
             averageScore
             genres
@@ -92,31 +165,36 @@ export async function resolveAniListMedia(title: string, animeId?: string): Prom
           }
         }
       `;
-      const res = await fetch('/api/anime/anilist', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ query: byIdQuery, variables: { id: numericId } }),
+      const data = await enqueueRequest(async () => {
+        const res = await fetch('/api/anime/anilist', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ query: byIdQuery, variables: { id: numericId, type: mediaType } }),
+        });
+        if (res.status === 429) return null; // Rate limited, skip gracefully
+        return res.json();
       });
-      const data = await res.json();
       if (data?.data?.Media) {
         mediaCache.set(cacheKey, data.data.Media);
+        mediaCacheTTL.set(cacheKey, Date.now());
         return data.data.Media;
       }
     } catch {}
   }
 
-  // 2. Query by search title with variations
+  // 2. Query by search title with deduplicated variations
   const cleaned = cleanAnimeTitle(title);
-  const searchCandidates = [cleaned, title];
-
-  // Specific title corrections for known variants
+  const candidatesSet = new Set<string>();
   if (title.toLowerCase().includes('war of the three')) {
-    searchCandidates.unshift('Tokyo Revengers: War of the Three Titans Arc');
+    candidatesSet.add('Tokyo Revengers: War of the Three Titans Arc');
   }
+  if (cleaned && cleaned.length >= 2) candidatesSet.add(cleaned);
+  if (title && title.length >= 2) candidatesSet.add(title);
+  const searchCandidates = Array.from(candidatesSet);
 
   const searchQuery = `
-    query ($search: String) {
-      Media(search: $search, type: ANIME) {
+    query ($search: String, $type: MediaType) {
+      Media(search: $search, type: $type) {
         id
         idMal
         title { english romaji native userPreferred }
@@ -125,6 +203,8 @@ export async function resolveAniListMedia(title: string, animeId?: string): Prom
         format
         status
         episodes
+        chapters
+        volumes
         duration
         averageScore
         genres
@@ -134,21 +214,37 @@ export async function resolveAniListMedia(title: string, animeId?: string): Prom
   `;
 
   for (const candidate of searchCandidates) {
-    if (!candidate || candidate.length < 2) continue;
     try {
-      const res = await fetch('/api/anime/anilist', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ query: searchQuery, variables: { search: candidate } }),
+      let isRateLimited = false;
+      const data = await enqueueRequest(async () => {
+        const res = await fetch('/api/anime/anilist', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ query: searchQuery, variables: { search: candidate, type: mediaType } }),
+        });
+        if (res.status === 429) {
+          isRateLimited = true;
+          return null; // Rate limited, skip gracefully
+        }
+        return res.json();
       });
-      const data = await res.json();
+
       if (data?.data?.Media) {
         mediaCache.set(cacheKey, data.data.Media);
+        mediaCacheTTL.set(cacheKey, Date.now());
         return data.data.Media;
+      }
+
+      // If we got 429, don't keep battering with more candidates
+      if (isRateLimited) {
+        break;
       }
     } catch {}
   }
 
+  // Cache negative result so cards don't repeatedly retry failed queries
+  mediaCache.set(cacheKey, null);
+  mediaCacheTTL.set(cacheKey, Date.now());
   return null;
 }
 
@@ -187,17 +283,47 @@ export function mapToShadowGardenStatus(anilistStatus: string): string {
 }
 
 /**
- * PULL: Import / Sync public AniList watchlist by username into Supabase
- * Safely preserves Donghua, Shorts, Drama, and Movie entries in Supabase
+ * Track deleted items in Shadow Garden to mirror deletions on AniList during 2-way sync
  */
-export async function pullFromAniList(username: string, userId: string) {
-  if (!username?.trim() || !userId) {
-    throw new Error('Valid username and user ID required for pull');
+export function recordDeletedMedia(id: string) {
+  if (typeof window === 'undefined') return;
+  try {
+    const raw = localStorage.getItem('shadow_deleted_items') || '[]';
+    const list: string[] = JSON.parse(raw);
+    if (!list.includes(String(id))) {
+      list.push(String(id));
+      localStorage.setItem('shadow_deleted_items', JSON.stringify(list));
+    }
+  } catch {}
+}
+
+export function getAndClearDeletedMedia(): string[] {
+  if (typeof window === 'undefined') return [];
+  try {
+    const raw = localStorage.getItem('shadow_deleted_items') || '[]';
+    const list: string[] = JSON.parse(raw);
+    localStorage.removeItem('shadow_deleted_items');
+    return list;
+  } catch {
+    return [];
+  }
+}
+
+/**
+ * PULL: Import / Sync public AniList library by username
+ * Supports both ANIME and MANGA
+ * Works without access token for non-signed in travellers and saves to local storage!
+ * If userId is provided, also syncs directly to Supabase.
+ */
+export async function pullFromAniList(username: string, userId?: string) {
+  const cleanUser = username?.trim();
+  if (!cleanUser) {
+    throw new Error('Valid username required for pull');
   }
 
   const query = `
-    query ($userName: String) {
-      MediaListCollection(userName: $userName, type: ANIME) {
+    query ($userName: String, $type: MediaType) {
+      MediaListCollection(userName: $userName, type: $type) {
         lists {
           name
           status
@@ -217,6 +343,8 @@ export async function pullFromAniList(username: string, userId: string) {
               format
               status
               episodes
+              chapters
+              volumes
               duration
               averageScore
               genres
@@ -228,58 +356,148 @@ export async function pullFromAniList(username: string, userId: string) {
     }
   `;
 
-  const res = await fetch('/api/anime/anilist', {
+  // 1. Fetch Anime List
+  const animeRes = await fetch('/api/anime/anilist', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ query, variables: { userName: username.trim() } }),
+    body: JSON.stringify({ query, variables: { userName: cleanUser, type: 'ANIME' } }),
   });
+  const animeJson = await animeRes.json();
+  const animeLists = animeJson?.data?.MediaListCollection?.lists || [];
 
-  const json = await res.json();
-  if (json.errors) {
-    throw new Error(json.errors[0]?.message || 'Failed to fetch AniList watchlist');
-  }
+  // 2. Fetch Manga List
+  let mangaLists: any[] = [];
+  try {
+    const mangaRes = await fetch('/api/anime/anilist', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ query, variables: { userName: cleanUser, type: 'MANGA' } }),
+    });
+    const mangaJson = await mangaRes.json();
+    mangaLists = mangaJson?.data?.MediaListCollection?.lists || [];
+  } catch {}
 
-  const lists = json?.data?.MediaListCollection?.lists || [];
-  let totalEntries = 0;
-  let importedCount = 0;
+  const localWatchlist: any[] = [];
+  const localReadlist: any[] = [];
 
-  for (const list of lists) {
-    for (const entry of list.entries) {
-      totalEntries++;
+  // Process Anime
+  for (const list of animeLists) {
+    for (const entry of list.entries || []) {
       const media = entry.media;
       const animeId = String(media.id);
       const title = media.title?.english || media.title?.romaji || media.title?.userPreferred || 'Unknown Title';
       const poster = media.coverImage?.extraLarge || media.coverImage?.large || media.coverImage?.medium;
       const sgStatus = mapToShadowGardenStatus(entry.status);
 
-      const upsertPayload = {
-        user_id: userId,
+      localWatchlist.push({
+        id: animeId,
         anime_id: animeId,
         anime_title: title,
+        title: title,
         anime_image: poster,
+        poster: poster,
         banner_image: media.bannerImage || null,
         status: sgStatus,
         last_episode_number: entry.progress || 0,
+        progress: entry.progress || 0,
         total_episodes: media.episodes || null,
         score: entry.score || (media.averageScore ? Math.round(media.averageScore / 10) : null),
         media_type: 'anime',
+        type: media.format || 'TV',
         updated_at: new Date(entry.updatedAt ? entry.updatedAt * 1000 : Date.now()).toISOString(),
-      };
-
-      const { error } = await supabase.from('watchlist').upsert(upsertPayload, {
-        onConflict: 'user_id,anime_id'
       });
+    }
+  }
 
-      if (!error) {
-        importedCount++;
+  // Process Manga
+  for (const list of mangaLists) {
+    for (const entry of list.entries || []) {
+      const media = entry.media;
+      const mangaId = String(media.id);
+      const title = media.title?.english || media.title?.romaji || media.title?.userPreferred || 'Unknown Title';
+      const poster = media.coverImage?.extraLarge || media.coverImage?.large || media.coverImage?.medium;
+      const sgStatus = mapToShadowGardenStatus(entry.status) === 'watching' ? 'reading' : mapToShadowGardenStatus(entry.status);
+
+      localReadlist.push({
+        id: mangaId,
+        anime_id: mangaId,
+        manga_id: mangaId,
+        anime_title: title,
+        title: title,
+        anime_image: poster,
+        poster: poster,
+        image: poster,
+        banner_image: media.bannerImage || null,
+        status: sgStatus,
+        last_episode_number: entry.progress || 0,
+        chapters_read: entry.progress || 0,
+        progress: entry.progress || 0,
+        total_chapters: media.chapters || null,
+        total_episodes: media.chapters || null,
+        score: entry.score || (media.averageScore ? Math.round(media.averageScore / 10) : null),
+        media_type: 'manga',
+        type: 'MANGA',
+        updated_at: new Date(entry.updatedAt ? entry.updatedAt * 1000 : Date.now()).toISOString(),
+      });
+    }
+  }
+
+  // Save to localStorage for instant UI responsiveness
+  if (typeof window !== 'undefined') {
+    if (localWatchlist.length > 0) {
+      localStorage.setItem('shadow_watchlist', JSON.stringify(localWatchlist));
+    }
+    if (localReadlist.length > 0) {
+      localStorage.setItem('shadow_readlist', JSON.stringify(localReadlist));
+    }
+    localStorage.setItem('shadow_anilist_username', cleanUser);
+    localStorage.setItem('shadow_anilist_sync_state', JSON.stringify({
+      last_synced: new Date().toISOString(),
+      username: cleanUser,
+      anime_count: localWatchlist.length,
+      manga_count: localReadlist.length,
+    }));
+    window.dispatchEvent(new CustomEvent('shadow-watchlist-updated'));
+    window.dispatchEvent(new CustomEvent('shadow-readlist-updated'));
+  }
+
+  // If user signed in, sync into Supabase
+  let supabaseImported = 0;
+  if (userId) {
+    try {
+      const allToUpsert = [
+        ...localWatchlist.map(i => ({ ...i, user_id: userId })),
+        ...localReadlist.map(i => ({ ...i, user_id: userId })),
+      ];
+
+      for (const item of allToUpsert) {
+        const { error } = await supabase.from('watchlist').upsert({
+          user_id: userId,
+          anime_id: item.anime_id,
+          anime_title: item.anime_title,
+          anime_image: item.anime_image,
+          banner_image: item.banner_image,
+          status: item.status,
+          last_episode_number: item.last_episode_number,
+          total_episodes: item.total_episodes,
+          total_chapters: item.total_chapters,
+          score: item.score,
+          media_type: item.media_type,
+          updated_at: item.updated_at,
+        }, { onConflict: 'user_id,anime_id' });
+
+        if (!error) supabaseImported++;
       }
+    } catch (e) {
+      console.warn('Supabase sync notice:', e);
     }
   }
 
   return {
     success: true,
-    totalEntries,
-    importedCount,
+    totalAnime: localWatchlist.length,
+    totalManga: localReadlist.length,
+    supabaseImported,
   };
 }
 
@@ -488,24 +706,52 @@ export async function pushToAniList(userId: string, anilistToken: string) {
 }
 
 /**
- * TWO-WAY SYNC: Multi-realm sync for TriArchive
- * 1. Pulls updated Anime from AniList into Supabase
- * 2. Pushes user changes to AniList while protecting Donghua and Cinema/Shorts
+ * TWO-WAY SYNC / OVERRIDE:
+ * 1. Checks update timestamps between AniList and Supabase
+ * 2. Mirrors deletions between both platforms
+ * 3. Supports explicit override (override Supabase or override AniList)
  */
-export async function twoWaySync(userId: string, username: string, anilistToken?: string) {
-  // 1. Pull from AniList
-  const pullResult = await pullFromAniList(username, userId);
+export async function twoWaySync(
+  userId: string, 
+  username: string, 
+  anilistToken?: string, 
+  options?: { 
+    override?: 'supabase' | 'anilist';
+    targetMediaType?: 'anime' | 'manga';
+  }
+) {
+  const deletedIds = getAndClearDeletedMedia();
 
-  // 2. If token is available, push using TriArchive realm routing
-  let pushResult = null;
-  if (anilistToken) {
-    pushResult = await pushToAniList(userId, anilistToken);
+  const action = options?.override === 'supabase' 
+    ? 'override_supabase' 
+    : options?.override === 'anilist' 
+      ? 'override_anilist' 
+      : 'two-way';
+
+  const res = await fetch('/api/anilist/sync', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      action,
+      userId,
+      username,
+      token: anilistToken,
+      deletedMediaIds: deletedIds,
+      targetMediaType: options?.targetMediaType,
+    })
+  });
+
+  const data = await res.json();
+  if (!res.ok) {
+    throw new Error(data.error || 'Failed to complete two-way synchronization');
   }
 
-  return {
-    success: true,
-    pulled: pullResult,
-    pushed: pushResult,
-  };
+  // Also refresh local cache
+  if (typeof window !== 'undefined') {
+    await pullFromAniList(username, userId);
+  }
+
+  return data;
 }
+
 

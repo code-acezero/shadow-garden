@@ -1,9 +1,9 @@
 "use client";
 
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { 
   MessageSquare, Send, Users, User, Image as ImageIcon, Search, Shield, 
-  Loader2, MessageSquarePlus, Heart, ArrowLeft, Plus, Check, CheckCheck, X, Circle, MoreVertical, Trash2, Mic, Square, Ban, Smile, Globe, Play, Pause, Volume2, ChevronRight
+  Loader2, MessageSquarePlus, Heart, ArrowLeft, Plus, Check, CheckCheck, X, Circle, MoreVertical, Trash2, Mic, Square, Ban, Smile, Globe, Play, Pause, Volume2, ChevronRight, Info, Edit3
 } from 'lucide-react';
 import ProfileAvatar from '@/components/User/ProfileAvatar';
 import ClanAvatar from '@/components/Social/Clans/ClanAvatar';
@@ -21,6 +21,7 @@ import { getUserTitle } from '@/components/ui/UserTitleBadge';
 import { useMentions } from '@/hooks/useMentions';
 import MentionDropdown from '@/components/ui/MentionDropdown';
 import { cn } from '@/lib/utils';
+import { playGummyPop, playGummyTap } from '@/lib/audioManager';
 
 export interface ChatMessage {
   id: string;
@@ -31,6 +32,9 @@ export interface ChatMessage {
   audio_url?: string;
   gif_url?: string;
   created_at: string;
+  updated_at?: string;
+  reply_to_message?: any;
+  reactions?: Record<string, string[]>;
   sender?: {
     username: string;
     avatar_url: string;
@@ -55,7 +59,6 @@ function VoiceMessagePlayer({ audioUrl, isMe }: { audioUrl: string; isMe: boolea
 
     let isMounted = true;
 
-    // 1. Precise Duration & Real Waveform Extraction via Web Audio API
     const analyzeAudio = async () => {
       try {
         const response = await fetch(audioUrl);
@@ -63,37 +66,38 @@ function VoiceMessagePlayer({ audioUrl, isMe }: { audioUrl: string; isMe: boolea
         const AudioCtx = window.AudioContext || (window as any).webkitAudioContext;
         if (!AudioCtx) return;
         const audioCtx = new AudioCtx();
-        const audioBuffer = await audioCtx.decodeAudioData(arrayBuffer);
+        try {
+          const audioBuffer = await audioCtx.decodeAudioData(arrayBuffer);
 
-        if (isMounted) {
-          const exactDur = audioBuffer.duration;
-          if (exactDur && !isNaN(exactDur) && isFinite(exactDur)) {
-            setDuration(exactDur);
-          }
-
-          // Extract real waveform peak amplitudes for 16 bars
-          const channelData = audioBuffer.getChannelData(0);
-          const samplesPerBar = Math.floor(channelData.length / 16);
-          const peaks: number[] = [];
-
-          for (let i = 0; i < 16; i++) {
-            const start = i * samplesPerBar;
-            let sum = 0;
-            for (let j = start; j < start + samplesPerBar && j < channelData.length; j++) {
-              sum += Math.abs(channelData[j]);
+          if (isMounted) {
+            const exactDur = audioBuffer.duration;
+            if (exactDur && !isNaN(exactDur) && isFinite(exactDur)) {
+              setDuration(exactDur);
             }
-            const avg = sum / (samplesPerBar || 1);
-            // Normalize volume amplitude to percentage (15% to 100%)
-            const heightPct = Math.max(15, Math.min(100, Math.round(avg * 400)));
-            peaks.push(heightPct);
-          }
 
-          if (peaks.length === 16 && peaks.some(p => p > 15)) {
-            setWaveformPeaks(peaks);
+            const channelData = audioBuffer.getChannelData(0);
+            const samplesPerBar = Math.floor(channelData.length / 16);
+            const peaks: number[] = [];
+
+            for (let i = 0; i < 16; i++) {
+              const start = i * samplesPerBar;
+              let sum = 0;
+              for (let j = start; j < start + samplesPerBar && j < channelData.length; j++) {
+                sum += Math.abs(channelData[j]);
+              }
+              const avg = sum / (samplesPerBar || 1);
+              const heightPct = Math.max(15, Math.min(100, Math.round(avg * 400)));
+              peaks.push(heightPct);
+            }
+
+            if (peaks.length === 16 && peaks.some(p => p > 15)) {
+              setWaveformPeaks(peaks);
+            }
           }
+        } finally {
+          audioCtx.close().catch(() => {});
         }
       } catch (err) {
-        // Fallback: Seek trick for WebM blobs in Chrome
         audio.addEventListener('loadedmetadata', () => {
           if (!isMounted) return;
           if (audio.duration === Infinity) {
@@ -114,105 +118,85 @@ function VoiceMessagePlayer({ audioUrl, isMe }: { audioUrl: string; isMe: boolea
 
     analyzeAudio();
 
-    const handleTimeUpdate = () => {
+    audio.ontimeupdate = () => {
       if (isMounted) setCurrentTime(audio.currentTime);
     };
-    const handleEnded = () => {
+
+    audio.onended = () => {
       if (isMounted) {
         setIsPlaying(false);
         setCurrentTime(0);
       }
     };
 
-    audio.addEventListener('timeupdate', handleTimeUpdate);
-    audio.addEventListener('ended', handleEnded);
-
     return () => {
       isMounted = false;
       audio.pause();
-      audio.removeEventListener('timeupdate', handleTimeUpdate);
-      audio.removeEventListener('ended', handleEnded);
+      audio.src = '';
     };
   }, [audioUrl]);
 
-  const togglePlay = () => {
+  const togglePlay = (e: React.MouseEvent) => {
+    e.stopPropagation();
     if (!audioRef.current) return;
     if (isPlaying) {
       audioRef.current.pause();
       setIsPlaying(false);
     } else {
-      audioRef.current.play().then(() => setIsPlaying(true)).catch(console.error);
+      audioRef.current.play().then(() => setIsPlaying(true)).catch(() => {});
     }
   };
 
-  const handleSeek = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const newTime = parseFloat(e.target.value);
-    if (audioRef.current) {
-      audioRef.current.currentTime = newTime;
-      setCurrentTime(newTime);
-    }
-  };
-
-  const formatTime = (secs: number) => {
-    if (!secs || isNaN(secs) || !isFinite(secs) || secs <= 0) return '0:00';
-    const m = Math.floor(secs / 60);
-    const s = Math.floor(secs % 60);
+  const formatSecs = (sec: number) => {
+    if (!sec || isNaN(sec)) return '0:00';
+    const m = Math.floor(sec / 60);
+    const s = Math.floor(sec % 60);
     return `${m}:${s < 10 ? '0' : ''}${s}`;
   };
 
+  const progress = duration > 0 ? (currentTime / duration) : 0;
+
   return (
-    <div className={`flex items-center gap-3 p-3 rounded-2xl border backdrop-blur-xl transition-all shadow-xl min-w-[220px] max-w-[300px] ${
+    <div className={cn(
+      "flex items-center gap-2.5 px-3.5 py-2 rounded-2xl select-none max-w-xs",
       isMe 
-        ? 'bg-gradient-to-r from-primary-950/90 via-primary-900/80 to-primary-950/90 border-primary-500/40 text-white shadow-[0_0_20px_rgba(239,68,68,0.2)]' 
-        : 'bg-zinc-950/90 border-white/15 text-zinc-200'
-    }`}>
+        ? "bg-white/10 text-white" 
+        : "bg-white/[0.08] text-white"
+    )}>
       <button
         type="button"
         onClick={togglePlay}
-        className={`w-9 h-9 rounded-full shrink-0 flex items-center justify-center transition-all cursor-pointer shadow-lg active:scale-95 ${
-          isPlaying
-            ? 'bg-primary-500 text-white animate-pulse shadow-[0_0_15px_rgba(239,68,68,0.7)]'
-            : 'bg-white/10 hover:bg-white/20 text-white border border-white/20'
-        }`}
+        className={cn(
+          "w-8 h-8 rounded-full flex items-center justify-center transition-all shrink-0 active:scale-95",
+          isMe ? "bg-white text-primary-600 hover:bg-white/90" : "bg-primary-500 text-white hover:bg-primary-600"
+        )}
       >
-        {isPlaying ? <Pause size={16} /> : <Play size={16} className="ml-0.5" />}
+        {isPlaying ? <Pause size={14} className="fill-current" /> : <Play size={14} className="fill-current ml-0.5" />}
       </button>
 
-      <div className="flex-1 flex flex-col gap-1.5 min-w-0">
-        <div className="flex items-center gap-1 h-6 px-1 justify-between overflow-hidden">
-          {waveformPeaks.map((height, idx) => {
-            const progress = duration > 0 ? (currentTime / duration) : 0;
-            const barProgress = idx / waveformPeaks.length;
-            const isActive = barProgress <= progress;
-
+      <div className="flex-1 flex flex-col justify-center min-w-[120px] gap-1">
+        <div className="flex items-center gap-0.5 h-6">
+          {waveformPeaks.map((h, i) => {
+            const barProgress = i / waveformPeaks.length;
+            const isPlayed = barProgress <= progress;
             return (
-              <span
-                key={idx}
-                className={`w-1 rounded-full transition-all duration-200 ${
-                  isActive 
-                    ? isMe ? 'bg-white shadow-[0_0_8px_rgba(255,255,255,0.8)]' : 'bg-primary-400 shadow-[0_0_8px_rgba(239,68,68,0.8)]'
-                    : 'bg-white/20'
-                }`}
-                style={{
-                  height: isPlaying ? `${Math.max(25, Math.sin((currentTime * 8) + idx) * 30 + height * 0.7)}%` : `${height}%`
-                }}
+              <div
+                key={i}
+                className={cn(
+                  "flex-1 rounded-full transition-all duration-150",
+                  isPlayed 
+                    ? (isMe ? "bg-white" : "bg-primary-400") 
+                    : (isMe ? "bg-white/30" : "bg-white/20")
+                )}
+                style={{ height: `${h}%` }}
               />
             );
           })}
         </div>
 
-        <div className="flex items-center gap-2">
-          <input
-            type="range"
-            min="0"
-            max={duration || 100}
-            value={currentTime}
-            onChange={handleSeek}
-            className="w-full h-1 bg-white/20 rounded-lg appearance-none cursor-pointer accent-primary-500"
-          />
-          <span className="text-[10px] font-mono font-bold text-zinc-400 shrink-0">
-            {formatTime(currentTime)} / {formatTime(duration)}
-          </span>
+        <div className="flex justify-between items-center text-[10px] opacity-70 font-mono">
+          <span>{formatSecs(currentTime)}</span>
+          <span>{formatSecs(duration)}</span>
         </div>
       </div>
     </div>
@@ -221,108 +205,63 @@ function VoiceMessagePlayer({ audioUrl, isMe }: { audioUrl: string; isMe: boolea
 
 function SharedMediaCard({ data, isMe }: { data: any; isMe: boolean }) {
   const router = useRouter();
-  const isPost = data.type?.toLowerCase() === 'post';
+  if (!data) return null;
+
+  const isPost = data.kind === 'post' || data.type === 'POST';
+
+  const handleClick = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (isPost && data.url) {
+      router.push(data.url);
+    } else if (data.url) {
+      router.push(data.url);
+    } else if (data.animeId) {
+      router.push(`/watch/${data.animeId}`);
+    }
+  };
 
   return (
     <div 
-      onClick={(e) => {
-        e.stopPropagation();
-        if (data.url) router.push(data.url);
-      }}
+      onClick={handleClick}
       className={cn(
-        "p-3 rounded-2xl border transition-all cursor-pointer group shadow-2xl max-w-xs sm:max-w-sm overflow-hidden mb-1",
+        "cursor-pointer my-1 rounded-2xl border p-2.5 transition-all text-left max-w-sm group",
         isMe 
-          ? "bg-black/60 border-primary-500/40 hover:bg-black/80 hover:border-primary-400 text-white" 
-          : "bg-black/80 border-white/15 hover:bg-black/95 hover:border-primary-500/50 text-white"
+          ? "bg-white/10 border-white/20 text-white hover:bg-white/15" 
+          : "bg-white/[0.06] border-white/10 hover:bg-white/[0.09] text-white"
       )}
     >
-      <div className="flex gap-3 items-center">
-        {isPost ? (
-          data.poster ? (
-            <div className="w-14 h-16 shrink-0 rounded-xl overflow-hidden relative border border-white/10 shadow-md bg-zinc-900">
-              <img 
-                src={data.poster} 
-                alt={data.title || ''} 
-                referrerPolicy="no-referrer"
-                className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" 
-              />
-            </div>
-          ) : (
-            <div className="w-12 h-12 shrink-0 rounded-xl bg-purple-950/40 border border-purple-500/30 flex items-center justify-center text-purple-400 shadow-md">
-              <MessageSquare size={18} />
-            </div>
-          )
-        ) : data.poster ? (
-          <div className="w-14 h-20 shrink-0 rounded-xl overflow-hidden relative border border-white/10 shadow-md">
+      <div className="flex gap-2.5 items-center">
+        {data.poster ? (
+          <div className="w-12 h-16 shrink-0 rounded-xl overflow-hidden relative border border-white/10 shadow-sm bg-zinc-900">
             <img 
               src={data.poster} 
               alt={data.title || ''} 
               referrerPolicy="no-referrer"
               className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" 
             />
-            <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-              <Play size={16} className="text-white fill-white" />
-            </div>
           </div>
         ) : (
-          <div className="w-14 h-20 shrink-0 rounded-xl bg-primary-950/40 border border-primary-500/30 flex items-center justify-center text-primary-400">
-            <Play size={18} />
+          <div className="w-12 h-16 shrink-0 rounded-xl bg-primary-950/40 border border-primary-500/30 flex items-center justify-center text-primary-400">
+            <MessageSquare size={18} />
           </div>
         )}
 
-        <div className="flex-1 min-w-0 flex flex-col justify-between py-0.5">
-          <div>
-            <div className="flex items-center gap-1.5 flex-wrap mb-1">
-              {data.type && (
-                <span className={cn(
-                  "px-1.5 py-0.5 rounded text-[8px] font-black uppercase tracking-wider border",
-                  isPost 
-                    ? "bg-purple-600/40 border-purple-500/40 text-purple-200" 
-                    : "bg-primary-600/40 border-primary-500/40 text-primary-200"
-                )}>
-                  {data.type}
-                </span>
-              )}
-              {data.rating && (
-                <span className="px-1.5 py-0.5 rounded text-[8px] font-black uppercase tracking-wider bg-white/10 border border-white/15 text-zinc-300">
-                  {data.rating}
-                </span>
-              )}
-              {data.totalEpisodes ? (
-                <span className="text-[9px] font-bold text-zinc-400">
-                  {data.totalEpisodes} Eps
-                </span>
-              ) : null}
-            </div>
-
-            <h4 className="text-xs font-black text-white line-clamp-1 group-hover:text-primary-400 transition-colors">
-              {data.title || (isPost ? 'Shared Post' : 'Shared Content')}
-            </h4>
-
-            {data.episodeNumber ? (
-              <span className="text-[10px] font-black text-primary-400 uppercase tracking-widest block mt-0.5">
-                Episode {data.episodeNumber}
-              </span>
-            ) : null}
-
-            {data.synopsis && (
-              <p className="text-[10px] text-zinc-400 line-clamp-2 mt-1 leading-snug">
-                {data.synopsis}
-              </p>
-            )}
-          </div>
-
-          <div className={cn(
-            "mt-2 flex items-center gap-1 text-[10px] font-black uppercase tracking-wider group-hover:translate-x-1 transition-transform",
-            isPost ? "text-purple-400" : "text-primary-400"
-          )}>
+        <div className="flex-1 min-w-0">
+          <span className="text-[9px] font-bold uppercase tracking-wider text-primary-400 block mb-0.5">
+            {isPost ? 'Shared Post' : 'Shared Anime'}
+          </span>
+          <h4 className="text-xs font-bold text-white truncate group-hover:text-primary-300 transition-colors">
+            {data.title || 'View Content'}
+          </h4>
+          {data.synopsis && (
+            <p className="text-[10px] text-zinc-400 line-clamp-1 mt-0.5">
+              {data.synopsis}
+            </p>
+          )}
+          <span className="text-[10px] font-semibold text-primary-400 flex items-center gap-1 mt-1">
             <span>{isPost ? 'View Post' : 'Watch Now'}</span>
-            {isPost ? (
-              <ChevronRight size={12} />
-            ) : (
-              <Play size={9} className="fill-primary-400" />
-            )}
-          </div>
+            <ChevronRight size={11} />
+          </span>
         </div>
       </div>
     </div>
@@ -342,16 +281,26 @@ export default function ChatSystem() {
 
   const [conversations, setConversations] = useState<any[]>([]);
   const [activeConv, setActiveConv] = useState<any>(null);
+  const [selectedChatId, setSelectedChatId] = useState<string | null>(chatIdParam || null);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [inputMsg, setInputMsg] = useState('');
   const [imageUrl, setImageUrl] = useState('');
   const [loading, setLoading] = useState(true);
+  const [searchFilter, setSearchFilter] = useState('');
+  const [showAuthModal, setShowAuthModal] = useState(false);
+  const [showNewChatModal, setShowNewChatModal] = useState(false);
   const [searchUserQuery, setSearchUserQuery] = useState('');
   const [searchResults, setSearchResults] = useState<any[]>([]);
-  const [showAuthModal, setShowAuthModal] = useState(false);
   const [isSearching, setIsSearching] = useState(false);
-  const [showNewChatModal, setShowNewChatModal] = useState(false);
-  
+
+  // In-memory Message Cache for 0ms Instant Conversation Switching
+  const messagesCacheRef = useRef<Record<string, ChatMessage[]>>({});
+  const activeConvRef = useRef<any>(activeConv);
+  useEffect(() => { activeConvRef.current = activeConv; }, [activeConv]);
+
+  // Liked Messages Set (Instagram Double-Tap Hearts)
+  const [likedMessageIds, setLikedMessageIds] = useState<Set<string>>(() => new Set());
+
   // Realtime Presence State
   const [activeUsers, setActiveUsers] = useState<Record<string, any>>({});
   const [typingUsers, setTypingUsers] = useState<Record<string, boolean>>({});
@@ -372,9 +321,6 @@ export default function ChatSystem() {
   }, []);
 
   const [uploadingImage, setUploadingImage] = useState(false);
-
-  // New Chat Features State
-
   const scrollRef = useRef<HTMLDivElement>(null);
   const [isRecording, setIsRecording] = useState(false);
   const [recordingSeconds, setRecordingSeconds] = useState(0);
@@ -404,21 +350,12 @@ export default function ChatSystem() {
     };
   }, [openMsgMenuId]);
 
-  const deleteMessage = async (msgId: string) => {
-    if (!supabase || !confirm("Delete this message?")) return;
-    try {
-      await supabase.from('chat_messages').delete().eq('id', msgId);
-      setMessages(prev => prev.filter(m => m.id !== msgId));
-      toast.success('Message deleted');
-    } catch (e: any) {
-      toast.error('Failed to delete message');
-    }
-  };
   const [showGifTray, setShowGifTray] = useState(false);
   const [gifQuery, setGifQuery] = useState('anime');
   const [gifResults, setGifResults] = useState<Array<{id: string; url: string; preview: string}>>([]);
   const [gifLoading, setGifLoading] = useState(false);
   const TENOR_KEY = 'LIVDSRZULELA';
+
   const fetchGifs = useCallback(async (query: string) => {
     setGifLoading(true);
     try {
@@ -441,42 +378,58 @@ export default function ChatSystem() {
 
   const {
     mentionState,
-    handleKeyDown,
+    handleKeyDown: handleMentionKeyDown,
     insertMention,
   } = useMentions(inputMsg, (username) => {
     setInputMsg(insertMention(username));
   });
 
-  useEffect(() => {
-    if (conversations.length > 0) {
-      if (chatIdParam) {
-        const conv = conversations.find((c: any) => c.id === chatIdParam);
-        if (conv && conv.id !== activeConv?.id) {
-          setActiveConv(conv);
-        }
-      } else if (userIdParam) {
-        const conv = conversations.find((c: any) => {
-          if (c.type !== 'direct') return false;
-          const otherUser = c.participants?.find((p: any) => p.user?.id !== user?.id)?.user;
-          return otherUser?.id === userIdParam || otherUser?.username?.toLowerCase() === userIdParam.toLowerCase();
-        });
-        if (conv && conv.id !== activeConv?.id) {
-          setActiveConv(conv);
-        }
-      } else if (!chatIdParam && !userIdParam && activeConv) {
-        if (typeof window !== 'undefined' && window.innerWidth < 768) {
-          setActiveConv(null);
-        }
-      }
-    }
-  }, [chatIdParam, userIdParam, conversations, activeConv?.id, user?.id]);
+  // Mark Conversation As Read
+  const markAsRead = useCallback(async (convId: string) => {
+    if (!user || !supabase || !convId) return;
+    try {
+      const now = new Date().toISOString();
+      await supabase
+        .from('chat_participants')
+        .update({ last_read_at: now })
+        .eq('conversation_id', convId)
+        .eq('user_id', user.id);
 
-  // 1. Fetch User Conversations
+      setConversations(prev => prev.map(c => {
+        if (c.id === convId) {
+          return { ...c, unread_count: 0, participant_last_read: now };
+        }
+        return c;
+      }));
+    } catch (e) {
+      console.error('Error marking conversation as read:', e);
+    }
+  }, [user]);
+
+  // Fast Select Conversation (Instant 0ms Switch)
+  const handleSelectConv = useCallback((conv: any) => {
+    playGummyTap();
+    setActiveConv(conv);
+    const targetId = conv?.id || null;
+    setSelectedChatId(targetId);
+
+    if (conv) {
+      markAsRead(conv.id);
+      // Immediately render cached messages if present!
+      if (messagesCacheRef.current[conv.id]) {
+        setMessages(messagesCacheRef.current[conv.id]);
+      }
+      if (typeof window !== 'undefined') {
+        window.history.replaceState(null, '', `/messages?chatId=${conv.id}`);
+      }
+    } else if (typeof window !== 'undefined') {
+      window.history.replaceState(null, '', '/messages');
+    }
+  }, [markAsRead]);
+
+  // 1. Fetch User Conversations (Single Fast Query - No Promise.all Flooding!)
   const fetchConversations = useCallback(async () => {
     if (!user || !supabase) return;
-    if (conversations.length === 0) {
-      setLoading(true);
-    }
     try {
       const { data, error } = await supabase
         .from('chat_participants')
@@ -502,11 +455,14 @@ export default function ChatSystem() {
 
       const rawConvs = (data || []).map((p: any) => {
         const conv = p.conversation;
-        if (conv) conv.participant_last_read = p.last_read_at;
+        if (conv) {
+          conv.participant_last_read = p.last_read_at;
+          conv.unread_count = 0;
+        }
         return conv;
       }).filter(Boolean).sort((a: any, b: any) => new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime());
 
-      // Deduplicate direct conversations by target user ID (Messenger Style)
+      // Deduplicate direct conversations by other user ID
       const uniqueConvs: any[] = [];
       const seenDirectUserIds = new Set<string>();
 
@@ -515,8 +471,8 @@ export default function ChatSystem() {
           const otherUser = conv.participants?.find((p: any) => p.user?.id !== user.id)?.user;
           const targetId = otherUser?.id || otherUser?.username;
           if (targetId) {
-            if (seenDirectUserIds.has(targetId) && conv.id !== chatIdParam) {
-              continue; // Skip duplicate direct conversation entry unless explicitly requested by chatIdParam!
+            if (seenDirectUserIds.has(targetId) && conv.id !== selectedChatId) {
+              continue;
             }
             seenDirectUserIds.add(targetId);
           }
@@ -527,7 +483,8 @@ export default function ChatSystem() {
       let convs = uniqueConvs;
 
       // If chatIdParam is specified in URL but missing from user's current conv list (e.g. newly created)
-      if (chatIdParam && !convs.some((c: any) => c.id === chatIdParam)) {
+      const targetChatId = selectedChatId || chatIdParam;
+      if (targetChatId && !convs.some((c: any) => c.id === targetChatId)) {
         const { data: targetConv } = await supabase
           .from('chat_conversations')
           .select(`
@@ -542,7 +499,7 @@ export default function ChatSystem() {
               user:profiles(id, username, avatar_url, last_seen_at, frame_id, level, show_level, title, role, admin_title)
             )
           `)
-          .eq('id', chatIdParam)
+          .eq('id', targetChatId)
           .maybeSingle();
 
         if (targetConv) {
@@ -550,247 +507,188 @@ export default function ChatSystem() {
         }
       }
 
-      await Promise.all(convs.map(async (conv: any) => {
-        // Fetch last message for preview if not set
-        if (!conv.last_message_preview) {
-          const { data: lastM } = await supabase
-            .from('chat_messages')
-            .select('content, image_url, audio_url, gif_url, created_at')
-            .eq('conversation_id', conv.id)
-            .order('created_at', { ascending: false })
-            .limit(1)
-            .maybeSingle();
-
-          if (lastM) {
-            if (lastM.content) conv.last_message_preview = lastM.content;
-            else if (lastM.image_url) conv.last_message_preview = 'Sent an image';
-            else if (lastM.audio_url) conv.last_message_preview = 'Sent a voice message';
-            else if (lastM.gif_url) conv.last_message_preview = 'Sent a GIF';
-          }
-        }
-
-        // Fetch unread count (only count messages sent by OTHER users after participant_last_read)
-        const { count } = await supabase
-          .from('chat_messages')
-          .select('*', { count: 'exact', head: true })
-          .eq('conversation_id', conv.id)
-          .neq('sender_id', user.id)
-          .gt('created_at', conv.participant_last_read || '1970-01-01T00:00:00Z');
-        
-        // Force unread_count = 0 if this conversation is currently open
-        if (activeConv?.id === conv.id) {
-          conv.unread_count = 0;
-        } else {
-          conv.unread_count = count || 0;
-        }
-      }));
-
       setConversations(convs);
 
-      // Instantly open the matching conversation requested by URL
-      if (chatIdParam) {
-        const match = convs.find((c: any) => c.id === chatIdParam);
-        if (match) setActiveConv(match);
-      } else if (userIdParam) {
-        const match = convs.find((c: any) => {
-          if (c.type !== 'direct') return false;
-          const otherUser = c.participants?.find((p: any) => p.user?.id !== user.id)?.user;
-          return otherUser?.id === userIdParam || otherUser?.username?.toLowerCase() === userIdParam.toLowerCase();
-        });
-        if (match) setActiveConv(match);
-      } else if (convs.length > 0 && !activeConv && typeof window !== 'undefined' && window.innerWidth >= 768) {
-        setActiveConv(convs[0]);
+      // Auto-select on initial load
+      if (!activeConvRef.current && convs.length > 0) {
+        if (targetChatId) {
+          const match = convs.find((c: any) => c.id === targetChatId);
+          if (match) {
+            setActiveConv(match);
+            setSelectedChatId(match.id);
+          }
+        } else if (userIdParam) {
+          const match = convs.find((c: any) => {
+            if (c.type !== 'direct') return false;
+            const otherUser = c.participants?.find((p: any) => p?.user && p.user.id !== user.id)?.user;
+            return otherUser?.id === userIdParam || otherUser?.username?.toLowerCase() === userIdParam.toLowerCase();
+          });
+          if (match) {
+            setActiveConv(match);
+            setSelectedChatId(match.id);
+          }
+        } else if (typeof window !== 'undefined' && window.innerWidth >= 768) {
+          setActiveConv(convs[0]);
+          setSelectedChatId(convs[0].id);
+        }
       }
     } catch (err: any) {
       console.error('Fetch convs error:', err?.message || err);
     } finally {
       setLoading(false);
     }
-  }, [user, chatIdParam, userIdParam, activeConv, conversations.length]);
+  }, [user?.id, chatIdParam, userIdParam, selectedChatId]);
 
-  const markAsRead = useCallback(async (convId: string) => {
-    if (!user || !supabase || !convId) return;
-    try {
-      const now = new Date().toISOString();
-      await supabase
-        .from('chat_participants')
-        .update({ last_read_at: now })
-        .eq('conversation_id', convId)
-        .eq('user_id', user.id);
+  // 2. Fetch Messages with In-Memory Caching (Zero Stutter!)
+  const fetchMessages = useCallback(async (targetId?: string) => {
+    const convId = targetId || activeConvRef.current?.id;
+    if (!convId || !supabase) return;
 
-      setConversations(prev => prev.map(c => {
-        if (c.id === convId) {
-          return { ...c, unread_count: 0, participant_last_read: now };
-        }
-        return c;
-      }));
-    } catch (e) {
-      console.error('Error marking conversation as read:', e);
+    // Check cache first for 0ms instant display
+    if (messagesCacheRef.current[convId] && messagesCacheRef.current[convId].length > 0) {
+      setMessages(messagesCacheRef.current[convId]);
     }
-  }, [user]);
 
-  const handleSelectConv = useCallback((conv: any) => {
-    setActiveConv(conv);
-    if (conv) {
-      markAsRead(conv.id);
-      if (typeof window !== 'undefined') {
-        window.history.replaceState(null, '', `/messages?chatId=${conv.id}`);
-      }
-    } else if (typeof window !== 'undefined') {
-      window.history.replaceState(null, '', '/messages');
-    }
-  }, [markAsRead]);
-
-  // 2. Fetch Messages for Active Conversation
-  const fetchMessages = useCallback(async () => {
-    if (!activeConv || !supabase) return;
     try {
       let { data, error } = await supabase
         .from('chat_messages')
         .select(`*, sender:profiles(*)`)
-        .eq('conversation_id', activeConv.id)
+        .eq('conversation_id', convId)
         .order('created_at', { ascending: true });
 
       if (error) {
-        console.warn('Fetch messages primary select failed, falling back:', error.message);
+        console.warn('Primary fetch messages error, fallback select:', error.message);
         const fallback = await supabase
           .from('chat_messages')
           .select('*')
-          .eq('conversation_id', activeConv.id)
+          .eq('conversation_id', convId)
           .order('created_at', { ascending: true });
         data = fallback.data;
       }
-      setMessages(data || []);
-      markAsRead(activeConv.id);
+
+      const loaded = data || [];
+      messagesCacheRef.current[convId] = loaded;
+
+      if (activeConvRef.current?.id === convId) {
+        setMessages(loaded);
+      }
+      markAsRead(convId);
     } catch (err) {
       console.error('Fetch messages error:', err);
     }
-  }, [activeConv, markAsRead]);
+  }, [markAsRead]);
 
+  // Initial Load
   useEffect(() => {
     fetchConversations();
-    
-    if (supabase) {
-      const channel = supabase.channel('public:chat_conversations')
-        .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'chat_conversations' }, () => {
-           fetchConversations();
-        })
-        .subscribe();
-      return () => { supabase.removeChannel(channel); };
-    }
-  }, [user, fetchConversations]);
+  }, [fetchConversations]);
 
+  // Active Chat Subscription & Presence
   useEffect(() => {
-    if (activeConv) {
-      // Clear stale messages immediately to prevent flash of previous chat
+    const activeId = activeConv?.id;
+    if (!activeId || !supabase) return;
+
+    // Show cached messages instantly!
+    if (messagesCacheRef.current[activeId]) {
+      setMessages(messagesCacheRef.current[activeId]);
+    } else {
       setMessages([]);
-      fetchMessages();
+    }
 
-      const channel = supabase.channel(`chat-${activeConv.id}`);
-      setChatChannel(channel);
+    fetchMessages(activeId);
 
-      channel
-        .on('presence', { event: 'sync' }, () => {
-          const newState = channel.presenceState();
-          const online: Record<string, any> = {};
-          const typing: Record<string, boolean> = {};
-          
-          for (const id in newState) {
-            // @ts-ignore
-            const presences = newState[id] as any[];
-            if (presences && presences.length > 0) {
-              const p = presences[0];
-              if (p.user_id !== user?.id) {
-                online[p.user_id] = p;
-                if (p.typing) typing[p.user_id] = true;
-              }
+    const channel = supabase.channel(`chat-${activeId}`);
+    setChatChannel(channel);
+
+    channel
+      .on('presence', { event: 'sync' }, () => {
+        const newState = channel.presenceState();
+        const online: Record<string, any> = {};
+        const typing: Record<string, boolean> = {};
+        
+        for (const id in newState) {
+          // @ts-ignore
+          const presences = newState[id] as any[];
+          if (presences && presences.length > 0) {
+            const p = presences[0];
+            if (p?.user_id && p.user_id !== user?.id) {
+              online[p.user_id] = p;
+              if (p.typing) typing[p.user_id] = true;
             }
           }
-          setActiveUsers(online);
-          setTypingUsers(typing);
-        })
-        .on(
-          'broadcast',
-          { event: 'new_message' },
-          ({ payload }: { payload: any }) => {
-            if (payload) {
-              setMessages(prev => {
-                if (prev.some(m => m.id === payload.id)) return prev;
-                return [...prev, payload];
-              });
-              markAsRead(activeConv.id);
-            }
+        }
+        setActiveUsers(online);
+        setTypingUsers(typing);
+      })
+      .on(
+        'broadcast',
+        { event: 'new_message' },
+        ({ payload }: { payload: any }) => {
+          if (payload && payload.conversation_id === activeId) {
+            setMessages(prev => {
+              if (prev.some(m => m.id === payload.id)) return prev;
+              const next = [...prev, payload];
+              messagesCacheRef.current[activeId] = next;
+              return next;
+            });
+            markAsRead(activeId);
           }
-        )
-        .on(
-          'postgres_changes',
-          { event: 'INSERT', schema: 'public', table: 'chat_messages', filter: `conversation_id=eq.${activeConv.id}` },
-          () => fetchMessages()
-        )
-        .subscribe(async (status: any) => {
-          if (status === 'SUBSCRIBED' && user) {
+        }
+      )
+      .on(
+        'broadcast',
+        { event: 'message_reaction' },
+        ({ payload }: { payload: any }) => {
+          if (payload?.messageId) {
+            setLikedMessageIds(prev => {
+              const next = new Set(prev);
+              if (payload.liked) next.add(payload.messageId);
+              else next.delete(payload.messageId);
+              return next;
+            });
+          }
+        }
+      )
+      .on(
+        'postgres_changes',
+        { event: 'INSERT', schema: 'public', table: 'chat_messages', filter: `conversation_id=eq.${activeId}` },
+        (payload: any) => {
+          // Only fetch if incoming message is from another sender to avoid overwriting optimistic updates
+          if (payload.new && payload.new.sender_id !== user?.id) {
+            fetchMessages(activeId);
+          }
+        }
+      )
+      .subscribe(async (status: any) => {
+        if (status === 'SUBSCRIBED' && user) {
+          try {
             await channel.track({
               user_id: user.id,
               username: user.user_metadata?.username,
               typing: false,
               online_at: new Date().toISOString()
             });
-          }
-        });
+          } catch {}
+        }
+      });
 
-      return () => {
-        channel.untrack();
-        supabase.removeChannel(channel);
-        setChatChannel(null);
-      };
-    }
-  }, [activeConv, fetchMessages, user]);
+    return () => {
+      try { channel.untrack(); } catch {}
+      supabase.removeChannel(channel);
+      setChatChannel(null);
+    };
+  }, [activeConv?.id, fetchMessages, markAsRead, user]);
 
-  // Scroll persistence & Read Receipts
-  useEffect(() => {
-    if (activeConv && scrollRef.current) {
-      const savedPosition = sessionStorage.getItem(`chat_scroll_${activeConv.id}`);
-      if (savedPosition) {
-        scrollRef.current.scrollTop = parseInt(savedPosition, 10);
-      } else {
-        scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
-      }
-    }
-  }, [activeConv]);
-
+  // Auto Scroll
   useEffect(() => {
     if (scrollRef.current) {
       scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
     }
   }, [messages]);
 
-  const handleScroll = (e: React.UIEvent<HTMLDivElement>) => {
-    if (activeConv) {
-      sessionStorage.setItem(`chat_scroll_${activeConv.id}`, e.currentTarget.scrollTop.toString());
-    }
-  };
-
-  useEffect(() => {
-    if (activeConv && user && messages.length > 0) {
-      supabase.from('chat_participants')
-        .update({ last_read_at: new Date().toISOString() })
-        .eq('conversation_id', activeConv.id)
-        .eq('user_id', user.id)
-        .then();
-    }
-  }, [activeConv, messages, user]);
-
-  // Update last_seen_at
-  useEffect(() => {
-    if (user && supabase) {
-      supabase.from('profiles').update({ last_seen_at: new Date().toISOString() }).eq('id', user.id).then();
-    }
-  }, [user]);
-
-  // Handle typing indicator
+  // Typing Indicator Tracker
   useEffect(() => {
     if (!chatChannel || !user) return;
-    
     const handleTyping = setTimeout(async () => {
       await chatChannel.track({
         user_id: user.id,
@@ -798,156 +696,242 @@ export default function ChatSystem() {
         typing: inputMsg.trim().length > 0,
         online_at: new Date().toISOString()
       });
-    }, 300);
-
+    }, 250);
     return () => clearTimeout(handleTyping);
   }, [inputMsg, chatChannel, user]);
 
-  // Search user to start DM
-  const handleSearchUsers = async (query: string) => {
-    setSearchUserQuery(query);
-    if (!query.trim() || !supabase) {
-      setSearchResults([]);
-      return;
+  // Audio Upload Helper
+  const uploadAudio = async (blob: Blob): Promise<string> => {
+    if (!supabase || !user) throw new Error('Auth required');
+    const fileExt = blob.type.includes('mp4') ? 'mp4' : 'webm';
+    const fileName = `voice_${user.id}_${Date.now()}.${fileExt}`;
+    const filePath = `voice-messages/${fileName}`;
+
+    const { error: uploadError } = await supabase.storage
+      .from('chat-attachments')
+      .upload(filePath, blob, { contentType: blob.type, upsert: true });
+
+    if (uploadError) {
+      console.warn('Storage upload fallback, attempting direct upload:', uploadError.message);
     }
-    setIsSearching(true);
-    try {
-      const { data } = await supabase
-        .from('profiles')
-        .select('id, username, avatar_url, role, frame_id, level, show_level, title, admin_title')
-        .ilike('username', `%${query}%`)
-        .neq('id', user?.id || '')
-        .limit(5);
-      setSearchResults(data || []);
-    } catch (e) {
-      console.error(e);
-    } finally {
-      setIsSearching(false);
-    }
+
+    const { data: { publicUrl } } = supabase.storage
+      .from('chat-attachments')
+      .getPublicUrl(filePath);
+
+    return publicUrl;
   };
 
-  const startDirectChat = async (targetUser: any) => {
-    if (!user || !supabase) return;
-    try {
-      // 1. Check if a conversation already exists with targetUser
-      const existingConv = conversations.find((c: any) => {
-        if (c.type !== 'direct') return false;
-        return c.participants?.some((p: any) => p.user?.id === targetUser.id || p.user?.username?.toLowerCase() === targetUser.username?.toLowerCase());
-      });
+  // Double-Tap Heart Reaction (Instagram Style)
+  const handleHeartReaction = useCallback((msgId: string) => {
+    playGummyPop(0.3);
+    setLikedMessageIds(prev => {
+      const next = new Set(prev);
+      const isLiked = !next.has(msgId);
+      if (isLiked) next.add(msgId);
+      else next.delete(msgId);
 
-      if (existingConv) {
-        setShowNewChatModal(false);
-        handleSelectConv(existingConv);
-        toast.info(`Opened conversation with @${targetUser.username}`);
-        return;
+      // Broadcast reaction to channel
+      if (chatChannel) {
+        chatChannel.send({
+          type: 'broadcast',
+          event: 'message_reaction',
+          payload: { messageId: msgId, liked: isLiked }
+        });
       }
+      return next;
+    });
+  }, [chatChannel]);
 
-      // 2. Query database for existing direct conversation ID if not in memory
-      const { data: myParts } = await supabase
-        .from('chat_participants')
-        .select('conversation_id, conversation:chat_conversations(id, type)')
-        .eq('user_id', user.id);
+  // Instant Send Heart Message (Instagram Heart Button)
+  const sendHeartMessage = useCallback(() => {
+    handleSendMessage(undefined, undefined, '❤️');
+  }, [activeConv, user]);
 
-      let matchedConvId: string | null = null;
-      if (myParts && myParts.length > 0) {
-        const directConvIds = myParts
-          .filter((p: any) => p.conversation?.type === 'direct')
-          .map((p: any) => p.conversation_id);
+  // Alpha AI Auto Response Trigger
+  const triggerAlphaResponse = useCallback(async (currentConvId: string, lastUserMessage: string) => {
+    setTypingUsers(prev => ({ ...prev, '5d38da6e-b568-4499-ab67-f588354add5d': true }));
 
-        if (directConvIds.length > 0) {
-          const { data: targetParts } = await supabase
-            .from('chat_participants')
-            .select('conversation_id')
-            .in('conversation_id', directConvIds)
-            .eq('user_id', targetUser.id)
-            .limit(1);
+    setTimeout(async () => {
+      try {
+        const { data: recentMsgs } = await supabase
+          .from('chat_messages')
+          .select('*')
+          .eq('conversation_id', currentConvId)
+          .order('created_at', { ascending: true })
+          .limit(20);
 
-          if (targetParts && targetParts.length > 0) {
-            matchedConvId = targetParts[0].conversation_id;
+        const history = (recentMsgs || []).map((m: any) => ({
+          role: m.sender_id === '5d38da6e-b568-4499-ab67-f588354add5d' ? 'model' : 'user',
+          parts: [{ text: m.content || (m.image_url ? '[Sent an image]' : m.audio_url ? '[Sent a voice message]' : '[Sent a media file]') }]
+        }));
+
+        const currentUsername = profile?.username || user?.user_metadata?.username || 'Ace_Zero';
+        const currentTitle = getUserTitle(profile);
+
+        const res = await fetch('/api/alpha', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            messages: history,
+            context: {
+              userId: user?.id,
+              username: currentUsername,
+              userName: currentUsername,
+              role: effectiveRole,
+              userRole: effectiveRole,
+              adminTitle: currentTitle,
+              url: typeof window !== 'undefined' ? window.location.href : '/messages'
+            }
+          })
+        });
+
+        const data = await res.json();
+        if (data.reply) {
+          let cleanContent = (data.reply as string).replace(/\[state:\s*[^\]]+\]/gi, '').trim();
+
+          const alphaMsgPayload: any = {
+            conversation_id: currentConvId,
+            sender_id: '5d38da6e-b568-4499-ab67-f588354add5d',
+            content: cleanContent,
+          };
+
+          const { data: insertedAlphaMsg } = await supabase
+            .from('chat_messages')
+            .insert(alphaMsgPayload)
+            .select(`*, sender:profiles(*)`)
+            .maybeSingle();
+
+          if (insertedAlphaMsg) {
+            setMessages(prev => {
+              if (prev.some(m => m.id === insertedAlphaMsg.id)) return prev;
+              const next = [...prev, insertedAlphaMsg];
+              messagesCacheRef.current[currentConvId] = next;
+              return next;
+            });
+
+            if (chatChannel) {
+              chatChannel.send({
+                type: 'broadcast',
+                event: 'new_message',
+                payload: insertedAlphaMsg
+              });
+            }
+
+            setConversations(prev => prev.map(c => {
+              if (c.id === currentConvId) {
+                return { ...c, last_message_preview: cleanContent, updated_at: new Date().toISOString() };
+              }
+              return c;
+            }));
           }
         }
+      } catch (e) {
+        console.error('Alpha AI trigger error:', e);
+      } finally {
+        setTypingUsers(prev => {
+          const next = { ...prev };
+          delete next['5d38da6e-b568-4499-ab67-f588354add5d'];
+          return next;
+        });
       }
+    }, 700);
+  }, [profile, user, effectiveRole, chatChannel]);
 
-      if (matchedConvId) {
-        setShowNewChatModal(false);
-        await fetchConversations();
-        const found = conversations.find(c => c.id === matchedConvId);
-        if (found) handleSelectConv(found);
-        toast.info(`Opened conversation with @${targetUser.username}`);
-        return;
-      }
-
-      // 3. Otherwise create a brand new conversation
-      const { data: conv, error } = await supabase
-        .from('chat_conversations')
-        .insert({ type: 'direct' })
-        .select()
-        .single();
-
-      if (error) throw error;
-
-      await supabase.from('chat_participants').insert([
-        { conversation_id: conv.id, user_id: user.id },
-        { conversation_id: conv.id, user_id: targetUser.id }
-      ]);
-
-      setShowNewChatModal(false);
-      await fetchConversations();
-      const newConv = {
-        ...conv,
-        participants: [
-          { user: { id: user.id, username: user.user_metadata?.username, avatar_url: user.user_metadata?.avatar_url } },
-          { user: { id: targetUser.id, username: targetUser.username, avatar_url: targetUser.avatar_url, level: targetUser.level, frame_id: targetUser.frame_id } }
-        ]
-      };
-      handleSelectConv(newConv);
-      toast.success(`Chat started with @${targetUser.username}`);
-    } catch (err: any) {
-      toast.error(err.message || 'Failed to start chat');
-    }
-  };
-
-  const handleSendMessage = async (e?: React.FormEvent, gifUrl?: string) => {
+  // Optimistic Instant Message Send (Zero Reloads, Zero Delay!)
+  const handleSendMessage = async (e?: React.FormEvent, gifUrl?: string, overrideTxt?: string) => {
     e?.preventDefault();
-    if (!user || !supabase || !activeConv || (!inputMsg.trim() && !imageUrl && !audioBlob && !gifUrl)) return;
+    if (!user || !supabase || !activeConv) return;
 
-    try {
-      setUploadingImage(true);
-      let uploadedAudioUrl = null;
-      if (audioBlob) {
-         uploadedAudioUrl = await uploadAudio(audioBlob);
-      }
+    const currentConvId = activeConv.id;
+    const txt = (overrideTxt || inputMsg).trim();
+    const img = imageUrl;
+    const targetEditId = editingMessageId;
+    const currentReplyObj = replyingTo ? {
+      id: replyingTo.id,
+      username: replyingTo.sender?.username || 'User',
+      content: replyingTo.content || (replyingTo.image_url ? '[Image]' : replyingTo.audio_url ? '[Voice]' : '[Media]')
+    } : null;
 
-      const txt = inputMsg;
-      const img = imageUrl;
-      const targetEditId = editingMessageId;
-      const currentReplyObj = replyingTo ? {
-        id: replyingTo.id,
-        username: replyingTo.sender?.username || 'User',
-        content: replyingTo.content || (replyingTo.image_url ? '[Image]' : replyingTo.audio_url ? '[Voice]' : '[Media]')
-      } : null;
+    if (!txt && !img && !audioBlob && !gifUrl) return;
 
-      setInputMsg('');
-      setImageUrl('');
-      setAudioBlob(null);
-      setReplyingTo(null);
-      setEditingMessageId(null);
+    playGummyPop(0.2);
 
-      if (targetEditId) {
+    // Reset inputs immediately
+    setInputMsg('');
+    setImageUrl('');
+    setAudioBlob(null);
+    setReplyingTo(null);
+    setEditingMessageId(null);
+
+    // If Editing Existing Message
+    if (targetEditId) {
+      setMessages(prev => prev.map(m => m.id === targetEditId ? { ...m, content: txt, updated_at: new Date().toISOString() } : m));
+      try {
         await supabase.from('chat_messages').update({
           content: txt,
           updated_at: new Date().toISOString()
         }).eq('id', targetEditId);
         toast.success('Message updated');
-        fetchMessages();
-        return;
+      } catch (err) {
+        toast.error('Failed to update message');
+      }
+      return;
+    }
+
+    // 1. Optimistic Message Insertion (Instant 0ms Screen Display)
+    const tempId = `temp-${Date.now()}`;
+    const optimisticMsg: ChatMessage = {
+      id: tempId,
+      conversation_id: currentConvId,
+      sender_id: user.id,
+      content: txt,
+      image_url: img || undefined,
+      gif_url: gifUrl || undefined,
+      created_at: new Date().toISOString(),
+      reply_to_message: currentReplyObj,
+      sender: {
+        username: profile?.username || user.user_metadata?.username || 'You',
+        avatar_url: profile?.avatar_url || user.user_metadata?.avatar_url || 'https://cdn.myanimelist.net/images/characters/9/310307.jpg',
+        role: profile?.role,
+        admin_title: profile?.admin_title,
+        level: profile?.level
+      }
+    };
+
+    setMessages(prev => {
+      const next = [...prev, optimisticMsg];
+      messagesCacheRef.current[currentConvId] = next;
+      return next;
+    });
+
+    // 2. Optimistically update last message in conversation list & move to top
+    const previewText = txt || (img ? 'Sent a photo' : gifUrl ? 'Sent a GIF' : 'Sent a voice message');
+    setConversations(prev => {
+      const match = prev.find(c => c.id === currentConvId);
+      if (!match) return prev;
+      const updated = { ...match, last_message_preview: previewText, updated_at: new Date().toISOString() };
+      return [updated, ...prev.filter(c => c.id !== currentConvId)];
+    });
+
+    // Auto-scroll
+    setTimeout(() => {
+      if (scrollRef.current) {
+        scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
+      }
+    }, 20);
+
+    // 3. Asynchronously upload media and save to database
+    try {
+      setUploadingImage(true);
+      let uploadedAudioUrl: string | null = null;
+      if (audioBlob) {
+        uploadedAudioUrl = await uploadAudio(audioBlob);
+        optimisticMsg.audio_url = uploadedAudioUrl;
       }
 
-      let insertedMsg: any = null;
-      let insertErr: any = null;
-
       const mainInsertPayload: any = {
-        conversation_id: activeConv.id,
+        conversation_id: currentConvId,
         sender_id: user.id,
         content: txt,
         image_url: img || null,
@@ -963,16 +947,14 @@ export default function ChatSystem() {
         .select(`*, sender:profiles(*)`)
         .maybeSingle();
 
-      insertedMsg = res.data;
-      insertErr = res.error;
+      let insertedMsg = res.data;
+      let insertErr = res.error;
 
-      // Fallback insert if optional columns (like reply_to_message, gif_url, audio_url) cause column error
       if (insertErr) {
-        console.warn('Primary message insert failed, attempting fallback insert:', insertErr.message);
         const fallbackRes = await supabase
           .from('chat_messages')
           .insert({
-            conversation_id: activeConv.id,
+            conversation_id: currentConvId,
             sender_id: user.id,
             content: txt,
             image_url: img || null
@@ -984,16 +966,12 @@ export default function ChatSystem() {
         insertErr = fallbackRes.error;
       }
 
-      if (insertErr) {
-        console.error('Failed to send message:', insertErr);
-        toast.error(insertErr.message || 'Failed to send message');
-        return;
-      }
-
       if (insertedMsg) {
+        // Swap temp message with real record
         setMessages(prev => {
-          if (prev.some(m => m.id === insertedMsg.id)) return prev;
-          return [...prev, insertedMsg];
+          const next = prev.map(m => m.id === tempId ? insertedMsg : m);
+          messagesCacheRef.current[currentConvId] = next;
+          return next;
         });
 
         if (chatChannel) {
@@ -1003,173 +981,20 @@ export default function ChatSystem() {
             payload: insertedMsg
           });
         }
-      } else {
-        fetchMessages();
       }
 
-      if (scrollRef.current) {
-        setTimeout(() => {
-          if (scrollRef.current) {
-            scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
-          }
-        }, 50);
-      }
-
-      let preview = txt;
-      if (!preview) {
-        if (img) preview = 'Sent an image';
-        else if (uploadedAudioUrl) preview = 'Sent a voice message';
-        else if (gifUrl) preview = 'Sent a GIF';
-      }
-      if (preview) {
-        await supabase.from('chat_conversations').update({ 
-          last_message_preview: preview,
+      // Update preview in database quietly
+      if (previewText) {
+        supabase.from('chat_conversations').update({ 
+          last_message_preview: previewText,
           updated_at: new Date().toISOString()
-        }).eq('id', activeConv.id);
+        }).eq('id', currentConvId).then();
       }
 
-      // ALPHA AI AUTOMATED RESPONSE TRIGGER (For Admins & Mods / Leader)
+      // Check for Alpha AI response
       const isAlphaChat = activeConv.type === 'direct' && activeConv.participants?.some((p: any) => p.user?.id === '5d38da6e-b568-4499-ab67-f588354add5d' || p.user?.username?.toLowerCase() === 'alpha');
       if (isAlphaChat && isLeaderOrStaff) {
-        const currentConvId = activeConv.id;
-        // 1. Immediately show Alpha's animated typing bubble in the UI
-        setTypingUsers(prev => ({ ...prev, '5d38da6e-b568-4499-ab67-f588354add5d': true }));
-
-        setTimeout(async () => {
-          try {
-            const { data: recentMsgs } = await supabase
-              .from('chat_messages')
-              .select('*')
-              .eq('conversation_id', currentConvId)
-              .order('created_at', { ascending: true })
-              .limit(20);
-
-            const history = (recentMsgs || []).map((m: any) => ({
-              role: m.sender_id === '5d38da6e-b568-4499-ab67-f588354add5d' ? 'model' : 'user',
-              parts: [{ text: m.content || (m.image_url ? '[Sent an image]' : m.audio_url ? '[Sent a voice message]' : '[Sent a media file]') }]
-            }));
-
-            const currentUsername = profile?.username || user.user_metadata?.username || 'Ace_Zero';
-            const currentTitle = getUserTitle(profile);
-
-            const res = await fetch('/api/alpha', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({
-                messages: history,
-                context: {
-                  userId: user.id,
-                  username: currentUsername,
-                  userName: currentUsername,
-                  role: effectiveRole,
-                  userRole: effectiveRole,
-                  adminTitle: currentTitle,
-                  url: typeof window !== 'undefined' ? window.location.href : '/messages'
-                }
-              })
-            });
-
-            const data = await res.json();
-            if (data.reply) {
-              let rawReply = data.reply as string;
-
-              // 1. Strip raw [state: ...] tags completely for clean natural chat
-              let cleanContent = rawReply.replace(/\[state:\s*[^\]]+\]/gi, '').trim();
-
-              let extractedGifUrl: string | null = null;
-              let extractedImageUrl: string | null = null;
-              let extractedAudioUrl: string | null = null;
-
-              // 2. Extract [gif: query] or [sticker: query]
-              const gifMatch = cleanContent.match(/\[(?:gif|sticker):\s*([^\]]+)\]/i);
-              if (gifMatch && gifMatch[1]) {
-                const query = gifMatch[1].trim();
-                cleanContent = cleanContent.replace(gifMatch[0], '').trim();
-                try {
-                  const gifRes = await fetch(`https://g.tenor.com/v1/search?q=${encodeURIComponent(query)}&key=${TENOR_KEY}&limit=1`);
-                  const gifJson = await gifRes.json();
-                  if (gifJson.results && gifJson.results.length > 0) {
-                    extractedGifUrl = gifJson.results[0].media[0].gif.url;
-                  }
-                } catch (e) {}
-              }
-
-              // 3. Extract [image: prompt] or [photo: prompt] or detect image requests in last user prompt
-              const imgMatch = cleanContent.match(/\[(?:image|photo|picture):\s*([^\]]+)\]/i);
-              const lastUserText = history[history.length - 1]?.parts[0]?.text || '';
-              const isUserImageReq = /(image|picture|photo|generate|draw|show me|cat|dog|wallpaper)/i.test(lastUserText);
-
-              if (imgMatch && imgMatch[1]) {
-                const prompt = imgMatch[1].trim();
-                cleanContent = cleanContent.replace(imgMatch[0], '').trim();
-                const seed = Math.floor(Math.random() * 100000);
-                extractedImageUrl = `https://image.pollinations.ai/prompt/${encodeURIComponent(prompt)}?width=1024&height=1024&seed=${seed}&nologo=true`;
-              } else if (isUserImageReq) {
-                const prompt = lastUserText.replace(/(give me|generate|show me|a|an|image of|picture of|photo of|give|me)/gi, '').trim() || 'anime cat artwork';
-                const seed = Math.floor(Math.random() * 100000);
-                extractedImageUrl = `https://image.pollinations.ai/prompt/${encodeURIComponent(prompt)}?width=1024&height=1024&seed=${seed}&nologo=true`;
-              }
-
-              // 4. Extract [voice: text] or [audio: text] or detect voice message requests
-              const voiceMatch = cleanContent.match(/\[(?:voice|audio|speak):\s*([^\]]+)\]/i);
-              const isUserVoiceReq = /(voice|speak|audio|talk|say it|say to me)/i.test(lastUserText);
-
-              if (voiceMatch && voiceMatch[1]) {
-                const speechText = voiceMatch[1].trim();
-                cleanContent = cleanContent.replace(voiceMatch[0], '').trim();
-                try {
-                  const ttsRes = await fetch('/api/alpha/tts', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ text: speechText })
-                  });
-                  if (ttsRes.ok) {
-                    const audioBlob = await ttsRes.blob();
-                    extractedAudioUrl = URL.createObjectURL(audioBlob);
-                  }
-                } catch (e) {}
-              } else if (isUserVoiceReq && cleanContent) {
-                try {
-                  const ttsRes = await fetch('/api/alpha/tts', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ text: cleanContent.slice(0, 300) })
-                  });
-                  if (ttsRes.ok) {
-                    const audioBlob = await ttsRes.blob();
-                    extractedAudioUrl = URL.createObjectURL(audioBlob);
-                  }
-                } catch (e) {}
-              }
-
-              // 5. Insert clean chat message into database with parsed media URLs
-              await supabase.from('chat_messages').insert({
-                conversation_id: currentConvId,
-                sender_id: '5d38da6e-b568-4499-ab67-f588354add5d',
-                content: cleanContent || (extractedImageUrl ? 'Here is the image you requested.' : extractedGifUrl ? 'Sent a GIF' : extractedAudioUrl ? 'Sent a voice message' : '...'),
-                image_url: extractedImageUrl,
-                gif_url: extractedGifUrl,
-                audio_url: extractedAudioUrl
-              });
-
-              await supabase.from('chat_conversations').update({
-                last_message_preview: (cleanContent || 'Sent a media file').substring(0, 100),
-                updated_at: new Date().toISOString()
-              }).eq('id', currentConvId);
-
-              fetchMessages();
-            }
-          } catch (alphaErr) {
-            console.error('Error generating Alpha reply:', alphaErr);
-          } finally {
-            // 2. Remove Alpha's typing bubble once complete
-            setTypingUsers(prev => {
-              const copy = { ...prev };
-              delete copy['5d38da6e-b568-4499-ab67-f588354add5d'];
-              return copy;
-            });
-          }
-        }, 800);
+        triggerAlphaResponse(currentConvId, txt);
       }
     } catch (err) {
       console.error('Send message error:', err);
@@ -1227,26 +1052,8 @@ export default function ChatSystem() {
       return;
     }
 
-    const getAudioStream = async () => {
-      if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
-        return await navigator.mediaDevices.getUserMedia({ audio: true });
-      }
-      const legacyGetUserMedia = (navigator as any).getUserMedia ||
-        (navigator as any).webkitGetUserMedia ||
-        (navigator as any).mozGetUserMedia ||
-        (navigator as any).msGetUserMedia;
-      if (legacyGetUserMedia) {
-        return new Promise<MediaStream>((resolve, reject) => {
-          legacyGetUserMedia.call(navigator, { audio: true }, resolve, reject);
-        });
-      }
-      throw new Error('SECURE_ORIGIN_REQUIRED');
-    };
-
     try {
-      const stream = await getAudioStream();
-
-      // Real-time Soundwave Frequency Detection via Web Audio API
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       const AudioCtx = window.AudioContext || (window as any).webkitAudioContext;
       if (AudioCtx) {
         const audioCtx = new AudioCtx();
@@ -1258,7 +1065,6 @@ export default function ChatSystem() {
         analyserRef.current = analyser;
 
         const dataArray = new Uint8Array(analyser.frequencyBinCount);
-
         const updateWaveform = () => {
           if (!analyserRef.current) return;
           analyserRef.current.getByteFrequencyData(dataArray);
@@ -1276,221 +1082,270 @@ export default function ChatSystem() {
         updateWaveform();
       }
 
-      const mimeType = typeof MediaRecorder !== 'undefined' && MediaRecorder.isTypeSupported('audio/webm')
-        ? 'audio/webm'
-        : typeof MediaRecorder !== 'undefined' && MediaRecorder.isTypeSupported('audio/mp4')
-        ? 'audio/mp4'
-        : '';
-        
-      const options = mimeType ? { mimeType } : undefined;
-      const mediaRecorder = new MediaRecorder(stream, options);
+      const mediaRecorder = new MediaRecorder(stream);
       mediaRecorderRef.current = mediaRecorder;
-      const chunks: Blob[] = [];
+      const chunks: BlobPart[] = [];
 
-      mediaRecorder.ondataavailable = (e) => {
-        if (e.data && e.data.size > 0) chunks.push(e.data);
+      mediaRecorder.ondataavailable = (ev) => {
+        if (ev.data.size > 0) chunks.push(ev.data);
       };
 
       mediaRecorder.onstop = () => {
-        const finalMime = mediaRecorder.mimeType || 'audio/webm';
-        const blob = new Blob(chunks, { type: finalMime });
+        const blob = new Blob(chunks, { type: mediaRecorder.mimeType || 'audio/webm' });
         setAudioBlob(blob);
+        stream.getTracks().forEach(t => t.stop());
       };
 
       mediaRecorder.start(100);
       setIsRecording(true);
       setRecordingSeconds(0);
-      if (timerRef.current) clearInterval(timerRef.current);
-      timerRef.current = setInterval(() => {
-        setRecordingSeconds(prev => prev + 1);
-      }, 1000);
 
-      toast.success('🎙️ Voice recording started');
+      timerRef.current = setInterval(() => {
+        setRecordingSeconds(s => s + 1);
+      }, 1000);
     } catch (err: any) {
-      console.error("Recording error:", err);
-      if (err?.message === 'SECURE_ORIGIN_REQUIRED') {
-        toast.error('Microphone API requires HTTPS or localhost browser origin.');
-      } else if (err?.name === 'NotAllowedError' || err?.name === 'PermissionDeniedError') {
-        toast.error('Microphone permission blocked! Click the lock/mic icon in your address bar to allow mic access.', { duration: 6000 });
-      } else {
-        toast.error(err?.message || 'Could not access microphone');
-      }
+      toast.error('Microphone access denied or unavailable');
     }
   };
 
   const stopRecording = () => {
-    if (timerRef.current) {
-      clearInterval(timerRef.current);
-      timerRef.current = null;
-    }
-    if (animFrameRef.current) {
-      cancelAnimationFrame(animFrameRef.current);
-      animFrameRef.current = null;
-    }
-    if (audioContextRef.current) {
-      audioContextRef.current.close().catch(() => {});
-      audioContextRef.current = null;
-    }
+    if (timerRef.current) clearInterval(timerRef.current);
+    if (animFrameRef.current) cancelAnimationFrame(animFrameRef.current);
+    if (audioContextRef.current) audioContextRef.current.close().catch(() => {});
     if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
       mediaRecorderRef.current.stop();
-      mediaRecorderRef.current.stream?.getTracks().forEach((track: any) => track.stop());
     }
     setIsRecording(false);
   };
 
-  const blobToDataURL = (blob: Blob): Promise<string> => {
-    return new Promise((resolve, reject) => {
-      const reader = new FileReader();
-      reader.onloadend = () => resolve(reader.result as string);
-      reader.onerror = reject;
-      reader.readAsDataURL(blob);
-    });
-  };
-
-  const uploadAudio = async (blob: Blob) => {
-    if (!user) return null;
+  const deleteMessage = async (msgId: string) => {
+    if (!supabase || !confirm("Delete this message?")) return;
     try {
-      const ext = blob.type.includes('mp4') ? 'mp4' : 'webm';
-      const fileName = `voice_${user.id}_${Date.now()}.${ext}`;
-      const { data, error } = await supabase.storage
-        .from('chat_audio')
-        .upload(fileName, blob, { contentType: blob.type || 'audio/webm' });
-        
-      if (!error && data) {
-        const { data: { publicUrl } } = supabase.storage.from('chat_audio').getPublicUrl(fileName);
-        if (publicUrl) return publicUrl;
-      }
-    } catch (err) {
-      console.warn("Storage upload failed, using DataURL fallback:", err);
-    }
-
-    try {
-      const dataUrl = await blobToDataURL(blob);
-      return dataUrl;
-    } catch (e) {
-      console.error("DataURL conversion error:", e);
-      return null;
-    }
-  };
-
-  const handleViewProfile = () => {
-    setShowOptions(false);
-    if (!activeConv) return;
-    if (activeConv.type === 'direct') {
-      const otherUser = activeConv.participants?.find((p: any) => p.user?.id !== user?.id)?.user;
-      if (otherUser) {
-        router.push(`/profile/${otherUser.username || otherUser.id}`);
-      }
+      await supabase.from('chat_messages').delete().eq('id', msgId);
+      setMessages(prev => prev.filter(m => m.id !== msgId));
+      toast.success('Message deleted');
+    } catch (e: any) {
+      toast.error('Failed to delete message');
     }
   };
 
   const handleClearChat = async () => {
-    if (!activeConv || !user || !confirm("Clear chat for you?")) return;
-    await supabase.from('chat_participants').delete().eq('conversation_id', activeConv.id).eq('user_id', user.id);
-    handleSelectConv(null);
-    setShowOptions(false);
-    fetchConversations();
-    toast.success('Chat cleared');
+    if (!activeConv || !supabase || !confirm("Are you sure you want to clear this entire chat?")) return;
+    try {
+      await supabase.from('chat_messages').delete().eq('conversation_id', activeConv.id);
+      setMessages([]);
+      messagesCacheRef.current[activeConv.id] = [];
+      toast.success("Chat cleared");
+      setShowOptions(false);
+    } catch (e) {
+      toast.error("Failed to clear chat");
+    }
   };
+
+  const handleViewProfile = () => {
+    if (!activeConv) return;
+    const otherUser = activeConv.participants?.find((p: any) => p.user?.id !== user?.id)?.user;
+    if (otherUser) {
+      router.push(`/profile/${otherUser.username}`);
+    }
+  };
+
+  // User Search to Start New DM
+  const handleSearchUsers = async (query: string) => {
+    setSearchUserQuery(query);
+    if (!query.trim() || !supabase) {
+      setSearchResults([]);
+      return;
+    }
+    setIsSearching(true);
+    try {
+      const { data } = await supabase
+        .from('profiles')
+        .select('id, username, avatar_url, role, frame_id, level, show_level, title, admin_title')
+        .ilike('username', `%${query}%`)
+        .neq('id', user?.id || '')
+        .limit(6);
+      setSearchResults(data || []);
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setIsSearching(false);
+    }
+  };
+
+  const startDirectChat = async (targetUser: any) => {
+    if (!user || !supabase) return;
+    try {
+      // 1. Check if direct chat already in memory
+      const existingConv = conversations.find((c: any) => {
+        if (c.type !== 'direct') return false;
+        return c.participants?.some((p: any) => p.user?.id === targetUser.id || p.user?.username?.toLowerCase() === targetUser.username?.toLowerCase());
+      });
+
+      if (existingConv) {
+        setShowNewChatModal(false);
+        handleSelectConv(existingConv);
+        return;
+      }
+
+      // 2. Create brand new conversation
+      const { data: conv, error } = await supabase
+        .from('chat_conversations')
+        .insert({ type: 'direct' })
+        .select()
+        .single();
+
+      if (error) throw error;
+
+      await supabase.from('chat_participants').insert([
+        { conversation_id: conv.id, user_id: user.id },
+        { conversation_id: conv.id, user_id: targetUser.id }
+      ]);
+
+      const newConv = {
+        ...conv,
+        participants: [
+          { user: { id: user.id, username: user.user_metadata?.username, avatar_url: user.user_metadata?.avatar_url } },
+          { user: { id: targetUser.id, username: targetUser.username, avatar_url: targetUser.avatar_url, level: targetUser.level, frame_id: targetUser.frame_id } }
+        ]
+      };
+
+      setConversations(prev => [newConv, ...prev]);
+      setShowNewChatModal(false);
+      handleSelectConv(newConv);
+    } catch (err: any) {
+      toast.error(err.message || 'Failed to start chat');
+    }
+  };
+
+  // Filtered Conversations for Instant Search
+  const filteredConversations = useMemo(() => {
+    if (!searchFilter.trim()) return conversations;
+    const q = searchFilter.toLowerCase();
+    return conversations.filter(c => {
+      if (c.type === 'clan') {
+        return c.clan?.name?.toLowerCase().includes(q);
+      }
+      const other = c.participants?.find((p: any) => p.user?.id !== user?.id)?.user;
+      return other?.username?.toLowerCase().includes(q);
+    });
+  }, [conversations, searchFilter, user?.id]);
 
   if (!user) {
     return (
-      <div className="w-full h-full liquid-glass !bg-black/60 !backdrop-blur-3xl border border-white/15 rounded-3xl p-8 sm:p-12 flex flex-col items-center justify-center text-center shadow-[0_25px_60px_-15px_rgba(0,0,0,0.9)]">
-        <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-primary-500/20 to-primary-950/40 border border-primary-500/30 flex items-center justify-center mb-6 shadow-[0_0_30px_rgba(234,88,12,0.25)] backdrop-blur-md">
-          <MessageSquare className="w-8 h-8 text-primary-400 drop-shadow-[0_0_12px_rgba(234,88,12,0.5)]" />
+      <div className="w-full h-full bg-[#050508] flex flex-col items-center justify-center p-6 text-center select-none">
+        <div className="w-16 h-16 rounded-full bg-white/5 border border-white/10 flex items-center justify-center text-primary-400 mb-4 shadow-xl">
+          <MessageSquare size={28} />
         </div>
-        <h3 className="text-xl sm:text-2xl font-bold text-white mb-2 tracking-tight">Access Direct Messages</h3>
-        <p className="text-zinc-400 text-xs sm:text-sm max-w-sm mb-8 leading-relaxed">
-          Sign in to access direct messages, secret intel, and clan chats across the Shadow Garden network.
-        </p>
-        <div className="flex items-center justify-center gap-3 sm:gap-4 w-full max-w-xs">
-          <Link 
-            href="/social" 
-            className="flex-1 px-5 py-3 bg-white/5 hover:bg-white/15 border border-white/15 text-zinc-200 hover:text-white rounded-2xl text-xs font-bold transition-all whitespace-nowrap shadow-lg backdrop-blur-md active:scale-95 text-center"
-          >
-            Back to Social
-          </Link>
-          <button 
-            onClick={() => setShowAuthModal(true)} 
-            className="flex-1 px-5 py-3 bg-gradient-to-r from-primary-600 to-primary-500 hover:from-primary-500 hover:to-primary-400 text-white rounded-2xl text-xs font-bold transition-all whitespace-nowrap shadow-[0_0_20px_rgba(234,88,12,0.4)] hover:shadow-[0_0_30px_rgba(234,88,12,0.6)] backdrop-blur-md active:scale-95 border border-primary-400/40 cursor-pointer"
-          >
-            Sign In
-          </button>
-        </div>
+        <h3 className="text-lg font-bold text-white mb-2">Direct Messages</h3>
+        <p className="text-xs text-zinc-400 max-w-xs mb-6">Sign in to message your friends, send anime reviews, and chat with Clan members.</p>
+        <button
+          onClick={() => setShowAuthModal(true)}
+          className="px-6 py-2.5 rounded-full bg-primary-600 hover:bg-primary-500 text-white text-xs font-bold uppercase tracking-wider transition-all shadow-lg active:scale-95 cursor-pointer"
+        >
+          Sign In
+        </button>
         <AuthModal isOpen={showAuthModal} onClose={() => setShowAuthModal(false)} onAuthSuccess={() => setShowAuthModal(false)} />
       </div>
     );
   }
 
   return (
-    <div className="w-full h-full liquid-glass !bg-black/50 !backdrop-blur-3xl sm:border sm:border-white/20 sm:rounded-[2.5rem] overflow-hidden flex flex-col md:flex-row shadow-[0_25px_60px_-15px_rgba(0,0,0,0.9),inset_0_1px_1px_rgba(255,255,255,0.3)]">
+    <div className="w-full h-full bg-[#000000] sm:border sm:border-white/[0.08] sm:rounded-3xl overflow-hidden flex flex-col md:flex-row shadow-2xl">
       
-      {/* Conversations List Sidebar */}
-      <div className={`w-full md:w-80 border-b md:border-b-0 md:border-r border-white/15 flex flex-col bg-black/40 backdrop-blur-2xl ${activeConv ? 'hidden md:flex' : 'flex'} h-full`}>
-        {/* Glassmorphism Header Bar */}
-        <div className="p-3.5 border-b border-white/10 flex items-center justify-between gap-2 bg-[#0a0a0d]/90 backdrop-blur-md shrink-0">
-          {/* Back Arrow Pill Button */}
-          <Link
-            href="/social"
-            className="w-9 h-9 rounded-full bg-white/10 hover:bg-white/20 text-zinc-300 hover:text-white border border-white/15 backdrop-blur-md transition-all flex items-center justify-center shrink-0 cursor-pointer shadow-sm"
-            title="Back to Social"
-          >
-            <ArrowLeft size={16} />
-          </Link>
+      {/* ===================== LEFT SIDEBAR: INBOX / DIRECT LIST ===================== */}
+      <div className={cn(
+        "w-full md:w-[340px] lg:w-[380px] border-b md:border-b-0 md:border-r border-white/[0.08] flex flex-col bg-[#050508] shrink-0 h-full",
+        activeConv ? "hidden md:flex" : "flex"
+      )}>
+        
+        {/* Instagram Direct Header */}
+        <div className="h-16 px-4 border-b border-white/[0.06] flex items-center justify-between shrink-0 bg-[#050508]">
+          <div className="flex items-center gap-2.5 min-w-0">
+            <Link
+              href="/social"
+              className="w-8 h-8 rounded-full bg-white/5 hover:bg-white/10 text-zinc-300 hover:text-white flex items-center justify-center shrink-0 transition-colors"
+              title="Back to Otakuverse"
+            >
+              <ArrowLeft size={16} />
+            </Link>
+            <span className="text-sm sm:text-base font-bold text-white tracking-tight truncate">
+              {profile?.username || user.user_metadata?.username || 'Messages'}
+            </span>
+          </div>
 
-          {/* Centered Messages Title */}
-          <h3 className="text-xs font-black uppercase tracking-widest text-white flex items-center justify-center gap-1.5 flex-1 text-center truncate">
-            <MessageSquare size={16} className="text-primary-500 shrink-0" />
-            <span>Messages</span>
-          </h3>
-
-          {/* Glassmorphism Plus Pill Button */}
           <button
-            onClick={() => setShowNewChatModal(true)}
-            className="w-9 h-9 rounded-full bg-primary-600/90 hover:bg-primary-500 border border-primary-500/30 text-white transition-all flex items-center justify-center shrink-0 cursor-pointer shadow-[0_4px_15px_rgba(99,102,241,0.35)] backdrop-blur-md active:scale-95"
-            title="New Chat"
+            onClick={() => {
+              playGummyTap();
+              setShowNewChatModal(true);
+            }}
+            className="w-9 h-9 rounded-full bg-white/5 hover:bg-white/10 text-zinc-300 hover:text-white flex items-center justify-center shrink-0 transition-colors cursor-pointer"
+            title="New Message"
           >
-            <Plus size={16} />
+            <Plus size={18} />
           </button>
         </div>
 
-        <div className="flex-1 overflow-y-auto no-scrollbar divide-y divide-white/5">
+        {/* Minimal Instagram Search Bar */}
+        <div className="px-3.5 py-2.5 border-b border-white/[0.04]">
+          <div className="relative flex items-center">
+            <Search size={14} className="absolute left-3 text-zinc-500 pointer-events-none" />
+            <input
+              type="text"
+              value={searchFilter}
+              onChange={(e) => setSearchFilter(e.target.value)}
+              placeholder="Search chats..."
+              className="w-full bg-white/[0.05] hover:bg-white/[0.08] focus:bg-white/[0.09] text-xs text-white placeholder-zinc-500 rounded-xl pl-9 pr-3 py-2 border border-white/5 focus:outline-none transition-colors"
+            />
+            {searchFilter && (
+              <button 
+                onClick={() => setSearchFilter('')}
+                className="absolute right-2.5 text-zinc-400 hover:text-white p-0.5"
+              >
+                <X size={12} />
+              </button>
+            )}
+          </div>
+        </div>
+
+        {/* Conversations List */}
+        <div className="flex-1 overflow-y-auto no-scrollbar py-1">
           {loading ? (
-            <div className="p-6 text-center text-zinc-600 text-xs flex items-center justify-center gap-2">
-              <Loader2 className="w-4 h-4 animate-spin text-primary-500" /> Loading chats...
+            <div className="p-8 text-center text-zinc-500 text-xs flex items-center justify-center gap-2">
+              <Loader2 className="w-4 h-4 animate-spin text-primary-500" />
+              <span>Loading messages...</span>
             </div>
-          ) : conversations.length === 0 ? (
+          ) : filteredConversations.length === 0 ? (
             <div className="p-8 text-center text-zinc-500 text-xs space-y-3">
-              <p>No messages yet.</p>
+              <p>{searchFilter ? 'No conversations found' : 'No messages yet'}</p>
               <button
                 onClick={() => setShowNewChatModal(true)}
-                className="px-5 py-2 bg-primary-600/90 hover:bg-primary-500 text-white rounded-full text-xs font-bold uppercase tracking-wider shadow-md backdrop-blur-md cursor-pointer border border-primary-500/30 active:scale-95"
+                className="px-4 py-2 rounded-full bg-white/10 hover:bg-white/15 text-white font-semibold text-xs transition-colors cursor-pointer"
               >
                 Send Message
               </button>
             </div>
           ) : (
-            conversations.map(c => {
+            filteredConversations.map(c => {
               const isSelected = activeConv?.id === c.id;
               let title = 'Direct Message';
               let avatar = 'https://cdn.myanimelist.net/images/characters/9/310307.jpg';
-              let userTitle: string | undefined = undefined;
               let isUserOnline = false;
               let otherParticipant: any = null;
               let clanLevel: number | undefined = undefined;
-              
+
               if (c.type === 'clan') {
                 title = c.clan?.name || 'Clan Group';
                 avatar = c.clan?.avatar_url || avatar;
                 clanLevel = c.clan?.level || 1;
-                userTitle = `Clan Lv.${clanLevel}`;
               } else if (c.type === 'direct') {
                 otherParticipant = c.participants?.find((p: any) => p.user?.id !== user.id)?.user;
                 if (otherParticipant) {
                   title = otherParticipant.username;
                   avatar = otherParticipant.avatar_url || 'https://cdn.myanimelist.net/images/characters/9/310307.jpg';
-                  isUserOnline = (otherParticipant?.id === '5d38da6e-b568-4499-ab67-f588354add5d' || otherParticipant?.username?.toLowerCase() === 'alpha') ? true : Boolean(activeUsers[otherParticipant.id]);
-                  userTitle = getUserTitle(otherParticipant);
+                  isUserOnline = (otherParticipant?.id === '5d38da6e-b568-4499-ab67-f588354add5d' || otherParticipant?.username?.toLowerCase() === 'alpha') 
+                    ? true 
+                    : Boolean(activeUsers[otherParticipant.id]);
                 }
               }
 
@@ -1518,44 +1373,45 @@ export default function ChatSystem() {
                 <div
                   key={c.id}
                   onClick={() => handleSelectConv(c)}
-                  className={`p-3.5 sm:p-4 flex items-center gap-3.5 cursor-pointer transition-all ${
-                    isSelected ? 'bg-primary-600/15 backdrop-blur-md border-l-4 border-primary-500' : 'hover:bg-white/5'
-                  }`}
+                  className={cn(
+                    "px-3.5 py-2.5 mx-2 my-0.5 rounded-2xl flex items-center gap-3 cursor-pointer transition-all",
+                    isSelected 
+                      ? "bg-white/[0.09]" 
+                      : "hover:bg-white/[0.04]"
+                  )}
                 >
                   <div className="shrink-0 relative">
-                      {c.type === 'direct' ? (
-                        <ProfileAvatar profile={{...otherParticipant, avatar_url: avatar, is_online: isUserOnline}} className="w-11 h-11" />
-                      ) : (
-                        <ClanAvatar clan={{id: c.clan?.id, avatar_url: avatar, level: clanLevel}} className="w-11 h-11" />
-                      )}
+                    {c.type === 'direct' ? (
+                      <ProfileAvatar profile={{...otherParticipant, avatar_url: avatar, is_online: isUserOnline}} className="w-12 h-12 rounded-full" />
+                    ) : (
+                      <ClanAvatar clan={{id: c.clan?.id, avatar_url: avatar, level: clanLevel}} className="w-12 h-12" />
+                    )}
+                    {isUserOnline && (
+                      <div className="absolute bottom-0 right-0 w-3 h-3 rounded-full bg-emerald-500 border-2 border-black" />
+                    )}
                   </div>
 
-                  <div className="min-w-0 flex-1 flex flex-col justify-center">
-                    <div className="flex items-center justify-between gap-1.5 w-full">
-                      <div className="flex items-center gap-1.5 min-w-0 flex-1">
-                        <h4 className="text-sm font-bold text-white truncate">{title}</h4>
-                        {c.type !== 'clan' && userTitle && (
-                          <span className="px-2 py-0.5 text-[9px] font-extrabold uppercase tracking-wider text-primary-300 bg-primary-950/60 border border-primary-500/30 rounded-full shrink-0 truncate backdrop-blur-md">
-                            {userTitle}
-                          </span>
-                        )}
-                      </div>
-                      
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center justify-between gap-1">
+                      <span className="text-xs sm:text-sm font-semibold text-white truncate">
+                        {title}
+                      </span>
                       {timeFormatted && (
-                        <span className="text-[11px] font-medium text-zinc-500 shrink-0">
+                        <span className="text-[10px] text-zinc-500 shrink-0 font-medium">
                           {timeFormatted}
                         </span>
                       )}
                     </div>
 
-                    <div className="mt-1 flex items-center justify-between gap-2">
-                      <p className={`text-xs truncate leading-snug ${c.unread_count > 0 ? 'text-white font-bold' : 'text-zinc-400'}`}>
+                    <div className="flex items-center justify-between gap-2 mt-0.5">
+                      <p className={cn(
+                        "text-xs truncate leading-snug",
+                        c.unread_count > 0 ? "text-white font-bold" : "text-zinc-400"
+                      )}>
                         {subtitle}
                       </p>
                       {c.unread_count > 0 && (
-                        <span className="bg-primary-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-full shrink-0 shadow-md shadow-primary-500/50 backdrop-blur-md border border-primary-400/30">
-                          {c.unread_count > 99 ? '99+' : c.unread_count}
-                        </span>
+                        <span className="w-2 h-2 rounded-full bg-primary-500 shrink-0" />
                       )}
                     </div>
                   </div>
@@ -1566,801 +1422,576 @@ export default function ChatSystem() {
         </div>
       </div>
 
-      {/* Active Conversation Window */}
-      <div className={`flex-1 flex-col min-w-0 bg-[#060608]/90 backdrop-blur-xl h-full ${activeConv ? 'flex' : 'hidden md:flex'}`}>
+      {/* ===================== RIGHT COLUMN: ACTIVE CHAT THREAD ===================== */}
+      <div className={cn(
+        "flex-1 flex-col min-w-0 bg-[#000000] h-full",
+        activeConv ? "flex" : "hidden md:flex"
+      )}>
         {activeConv ? (
           <>
-            {/* Chat Top Bar */}
-              <div className="px-4 sm:px-6 py-3.5 border-b border-white/10 bg-[#0c0c10]/95 backdrop-blur-md flex items-center justify-between shrink-0 z-20">
-                <div className="flex items-center gap-3 min-w-0">
-                  <button
-                    onClick={() => handleSelectConv(null)}
-                    className="md:hidden w-9 h-9 rounded-full bg-white/10 hover:bg-white/20 border border-white/15 text-zinc-300 flex items-center justify-center shrink-0 active:scale-95 transition-all cursor-pointer"
-                    title="Back to Chats"
-                  >
-                    <ArrowLeft size={18} />
-                  </button>
-                  {(() => {
-                    const isClan = activeConv.type === 'clan';
-                    let headerTitle = isClan ? activeConv.clan?.name : 'Direct Message';
-                    let headerAvatar = isClan ? activeConv.clan?.avatar_url : '';
-                    let otherUser: any = null;
-                    
-                    if (!isClan) {
-                      otherUser = activeConv.participants?.find((p: any) => p.user?.id !== user.id)?.user;
-                      if (otherUser) {
-                        headerTitle = otherUser.username;
-                        headerAvatar = otherUser.avatar_url || 'https://cdn.myanimelist.net/images/characters/9/310307.jpg';
-                      }
-                    }
+            {/* Instagram Style Header */}
+            {(() => {
+              const isClan = activeConv.type === 'clan';
+              let headerTitle = isClan ? activeConv.clan?.name : 'Direct Message';
+              let headerAvatar = isClan ? activeConv.clan?.avatar_url : '';
+              let otherUser: any = null;
 
-                    const isUserOnline = (otherUser?.id === '5d38da6e-b568-4499-ab67-f588354add5d' || otherUser?.username?.toLowerCase() === 'alpha') ? true : (otherUser?.id ? Boolean(activeUsers[otherUser.id]) : false);
-                    
-                    return (
-                      <div 
-                        onClick={!isClan ? handleViewProfile : undefined}
-                        className={`flex items-center gap-3 min-w-0 ${!isClan ? 'cursor-pointer hover:opacity-80 transition-opacity' : ''}`}
-                      >
-                        <div className="relative shrink-0">
-                          {isClan ? (
-                            <ClanAvatar clan={{...activeConv.clan, avatar_url: headerAvatar}} className="w-11 h-11" />
-                          ) : (
-                            <ProfileAvatar profile={{...otherUser, avatar_url: headerAvatar, is_online: isUserOnline}} className="w-10 h-10" />
+              if (!isClan) {
+                otherUser = activeConv.participants?.find((p: any) => p.user?.id !== user.id)?.user;
+                if (otherUser) {
+                  headerTitle = otherUser.username;
+                  headerAvatar = otherUser.avatar_url || 'https://cdn.myanimelist.net/images/characters/9/310307.jpg';
+                }
+              }
+
+              const isUserOnline = (otherUser?.id === '5d38da6e-b568-4499-ab67-f588354add5d' || otherUser?.username?.toLowerCase() === 'alpha')
+                ? true
+                : (otherUser?.id ? Boolean(activeUsers[otherUser.id]) : false);
+
+              const otherTitle = !isClan && otherUser ? getUserTitle(otherUser) : undefined;
+
+              return (
+                <div className="h-16 px-4 border-b border-white/[0.08] bg-[#050508] flex items-center justify-between shrink-0 z-20">
+                  <div className="flex items-center gap-3 min-w-0">
+                    <button
+                      onClick={() => handleSelectConv(null)}
+                      className="md:hidden w-8 h-8 rounded-full bg-white/5 hover:bg-white/10 text-zinc-300 flex items-center justify-center shrink-0 transition-colors"
+                      title="Back to inbox"
+                    >
+                      <ArrowLeft size={16} />
+                    </button>
+
+                    <div 
+                      onClick={!isClan ? handleViewProfile : undefined}
+                      className={cn(
+                        "flex items-center gap-2.5 min-w-0",
+                        !isClan && "cursor-pointer hover:opacity-85 transition-opacity"
+                      )}
+                    >
+                      <div className="relative shrink-0">
+                        {isClan ? (
+                          <ClanAvatar clan={{...activeConv.clan, avatar_url: headerAvatar}} className="w-10 h-10" />
+                        ) : (
+                          <ProfileAvatar profile={{...otherUser, avatar_url: headerAvatar, is_online: isUserOnline}} className="w-10 h-10 rounded-full" />
+                        )}
+                        {isUserOnline && (
+                          <div className="absolute bottom-0 right-0 w-2.5 h-2.5 rounded-full bg-emerald-500 border-2 border-black" />
+                        )}
+                      </div>
+
+                      <div className="min-w-0">
+                        <div className="flex items-center gap-1.5">
+                          <h3 className="text-xs sm:text-sm font-bold text-white truncate">{headerTitle}</h3>
+                          {otherTitle && (
+                            <span className="text-[9px] text-zinc-400 font-mono hidden sm:inline">
+                              • {otherTitle}
+                            </span>
                           )}
                         </div>
-                        <div className="min-w-0 flex-1">
-                          <div className="flex items-center gap-2">
-                            <h3 className="text-xs sm:text-sm font-bold text-white leading-tight truncate">{headerTitle}</h3>
-                            {(() => {
-                              const headerDisplayTitle = !isClan && otherUser ? getUserTitle(otherUser) : undefined;
-
-                              return headerDisplayTitle ? (
-                                <span className="px-2 py-0.5 text-[8px] font-extrabold uppercase tracking-wider text-amber-300 bg-amber-950/70 border border-amber-500/40 rounded-full shrink-0 truncate backdrop-blur-md shadow-[0_0_8px_rgba(245,158,11,0.3)]">
-                                  {headerDisplayTitle}
-                                </span>
-                              ) : null;
-                            })()}
-                          </div>
-                          <div className="flex items-center gap-1.5 mt-0.5">
-                            {isClan ? (
-                              <span className="text-[10px] font-bold text-purple-400 uppercase tracking-wider bg-purple-500/10 px-2 py-0.5 rounded-full border border-purple-500/20">Clan Group Chat</span>
-                            ) : (
-                              <>
-                                {isUserOnline ? (
-                                  <span className="text-[10px] text-emerald-400 font-bold bg-emerald-500/10 px-2 py-0.5 rounded-full border border-emerald-500/20">
-                                    Active Now
-                                  </span>
-                                ) : (
-                                  <span className="text-[10px] text-zinc-400 truncate">
-                                    {otherUser?.last_seen_at 
-                                      ? `Active ${formatDistanceToNow(new Date(otherUser.last_seen_at))} ago` 
-                                      : 'Offline'}
-                                  </span>
-                                )}
-                              </>
-                            )}
-                          </div>
-                        </div>
+                        <p className="text-[10px] text-zinc-400 truncate">
+                          {isClan ? 'Clan Group' : isUserOnline ? 'Active now' : otherUser?.last_seen_at ? `Active ${formatDistanceToNow(new Date(otherUser.last_seen_at))} ago` : 'Offline'}
+                        </p>
                       </div>
-                    );
-                  })()}
-                </div>
-                
-                {/* Glassmorphic Options Dropdown Menu Trigger */}
-                <div className="relative shrink-0 ml-2" ref={optionsRef}>
-                  <button
-                    onClick={() => setShowOptions(!showOptions)}
-                    className="w-9 h-9 rounded-full bg-white/10 hover:bg-white/20 border border-white/15 text-zinc-300 flex items-center justify-center active:scale-95 transition-all cursor-pointer backdrop-blur-md"
-                  >
-                    <MoreVertical size={18} />
-                  </button>
-                  {showOptions && (
-                    <div className="absolute right-0 mt-1 w-48 bg-[#14141a]/95 backdrop-blur-2xl border border-white/15 rounded-3xl shadow-2xl py-2 z-50 overflow-hidden">
-                      {activeConv.type === 'clan' && (
-                        <>
-                          <button 
-                            onClick={() => {
-                              router.push(`/social?tab=clans&clanId=${activeConv.clan_id}`);
-                              setShowOptions(false);
-                            }}
-                            className="w-full text-left px-4 py-2 text-xs font-semibold text-white hover:bg-white/10 flex items-center gap-2 transition-colors cursor-pointer"
-                          >
-                            <Globe size={14} className="text-zinc-400" /> Visit Clan
-                          </button>
-                          <div className="h-px bg-white/10 my-1"></div>
-                        </>
-                      )}
-                      
-                      {activeConv.type !== 'clan' && (
-                        <>
-                          <button 
-                            onClick={handleViewProfile}
-                            className="w-full text-left px-4 py-2 text-xs font-semibold text-white hover:bg-white/10 flex items-center gap-2 transition-colors cursor-pointer"
-                          >
-                            <User size={14} className="text-zinc-400" /> View Profile
-                          </button>
-                          <div className="h-px bg-white/10 my-1"></div>
-                          <button onClick={async () => {
-                             toast.success("User blocked");
-                             setShowOptions(false);
-                          }} className="w-full text-left px-4 py-2 text-xs font-semibold text-red-400 hover:bg-red-500/10 flex items-center gap-2 transition-colors cursor-pointer">
-                            <Ban size={14} /> Block User
-                          </button>
-                        </>
-                      )}
-                      <button onClick={handleClearChat} className="w-full text-left px-4 py-2 text-xs font-semibold text-red-400 hover:bg-red-500/10 flex items-center gap-2 transition-colors cursor-pointer">
-                        <Trash2 size={14} /> Clear Chat
-                      </button>
                     </div>
-                  )}
-                </div>
-              </div>
+                  </div>
 
-            {/* Messages Stream */}
-            <div ref={scrollRef} onScroll={handleScroll} className="flex-1 overflow-y-auto no-scrollbar p-3 sm:p-6 flex flex-col">
+                  {/* Header Actions */}
+                  <div className="relative shrink-0" ref={optionsRef}>
+                    <button
+                      onClick={() => setShowOptions(!showOptions)}
+                      className="w-9 h-9 rounded-full bg-white/5 hover:bg-white/10 text-zinc-300 flex items-center justify-center transition-colors cursor-pointer"
+                      title="Details"
+                    >
+                      <Info size={18} />
+                    </button>
+
+                    {showOptions && (
+                      <div className="absolute right-0 mt-2 w-48 bg-[#121218] border border-white/10 rounded-2xl shadow-2xl py-1.5 z-50 text-xs font-medium text-zinc-300">
+                        {!isClan && (
+                          <>
+                            <button
+                              onClick={() => { handleViewProfile(); setShowOptions(false); }}
+                              className="w-full text-left px-4 py-2 hover:bg-white/10 flex items-center gap-2 cursor-pointer text-white"
+                            >
+                              <User size={14} className="text-zinc-400" /> View Profile
+                            </button>
+                            <div className="h-px bg-white/5 my-1" />
+                          </>
+                        )}
+                        <button
+                          onClick={handleClearChat}
+                          className="w-full text-left px-4 py-2 hover:bg-red-500/10 flex items-center gap-2 text-rose-400 cursor-pointer"
+                        >
+                          <Trash2 size={14} /> Clear Messages
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              );
+            })()}
+
+            {/* Chat Stream (Instagram Style Message Thread) */}
+            <div ref={scrollRef} className="flex-1 overflow-y-auto no-scrollbar px-4 py-6 flex flex-col gap-1 select-text">
+              
+              {/* Instagram Top Profile Welcome Card */}
+              {(() => {
+                const isClan = activeConv.type === 'clan';
+                if (isClan) return null;
+                const otherUser = activeConv.participants?.find((p: any) => p.user?.id !== user.id)?.user;
+                if (!otherUser) return null;
+                const otherTitle = getUserTitle(otherUser);
+
+                return (
+                  <div className="flex flex-col items-center justify-center py-8 text-center select-none">
+                    <ProfileAvatar 
+                      profile={otherUser} 
+                      className="w-20 h-20 rounded-full border-2 border-white/10 shadow-2xl mb-3 cursor-pointer" 
+                    />
+                    <h2 className="text-base font-bold text-white tracking-tight">
+                      {otherUser.username}
+                    </h2>
+                    {otherTitle && (
+                      <p className="text-xs text-primary-400 font-medium mt-0.5">
+                        {otherTitle}
+                      </p>
+                    )}
+                    <p className="text-[11px] text-zinc-500 mt-1">
+                      Kagemi Community
+                    </p>
+                    <button
+                      type="button"
+                      onClick={handleViewProfile}
+                      className="mt-3.5 px-4 py-1.5 rounded-full bg-white/10 hover:bg-white/15 text-xs font-semibold text-white transition-all cursor-pointer"
+                    >
+                      View Profile
+                    </button>
+                    <div className="w-16 h-px bg-white/5 my-6" />
+                  </div>
+                );
+              })()}
+
+              {/* Messages Feed */}
               {messages.length === 0 ? (
-                <div className="text-center py-20 text-zinc-500 text-xs mt-auto mb-auto">
-                  Say hello! Send your first message below.
+                <div className="text-center py-10 text-zinc-500 text-xs">
+                  Say hi! Send a message below.
                 </div>
               ) : (
-                (() => {
-                  const myMessages = messages.filter(m => m.sender_id === user.id);
-                  const myLastMessageId = myMessages.length > 0 ? myMessages[myMessages.length - 1].id : null;
+                messages.map((msg, idx) => {
+                  const isMe = msg.sender_id === user.id;
+                  const prevMsg = messages[idx - 1];
+                  const nextMsg = messages[idx + 1];
+                  const isFirstInStack = !prevMsg || prevMsg.sender_id !== msg.sender_id;
+                  const isLastInStack = !nextMsg || nextMsg.sender_id !== msg.sender_id;
+                  const isLiked = likedMessageIds.has(msg.id);
 
-                  return messages.map((msg, idx) => {
-                    const isMe = msg.sender_id === user.id;
-                    const isMyLast = msg.id === myLastMessageId;
-                    const prevMsg = messages[idx - 1];
-                    const nextMsg = messages[idx + 1];
-                    const isFirstInStack = !prevMsg || prevMsg.sender_id !== msg.sender_id;
-                    const isLastInStack = !nextMsg || nextMsg.sender_id !== msg.sender_id;
+                  const replyData = (msg as any).reply_to_message;
 
-                    let bubbleClasses = 'rounded-3xl';
-                    if (isMe) {
-                        if (isFirstInStack && isLastInStack) bubbleClasses = 'rounded-3xl rounded-br-md';
-                        else if (isFirstInStack) bubbleClasses = 'rounded-t-3xl rounded-bl-3xl rounded-br-md';
-                        else if (isLastInStack) bubbleClasses = 'rounded-b-3xl rounded-tl-3xl rounded-tr-md';
-                        else bubbleClasses = 'rounded-l-3xl rounded-r-md';
-                    } else {
-                        if (isFirstInStack && isLastInStack) bubbleClasses = 'rounded-3xl rounded-bl-md';
-                        else if (isFirstInStack) bubbleClasses = 'rounded-t-3xl rounded-br-3xl rounded-bl-md';
-                        else if (isLastInStack) bubbleClasses = 'rounded-b-3xl rounded-tr-3xl rounded-tl-md';
-                        else bubbleClasses = 'rounded-r-3xl rounded-l-md';
-                    }
+                  return (
+                    <div
+                      key={msg.id}
+                      className={cn(
+                        "group relative flex items-end gap-2",
+                        isMe ? "justify-end" : "justify-start",
+                        isLastInStack ? "mb-3" : "mb-0.5"
+                      )}
+                    >
+                      {/* Incoming Avatar (only on last item of stack, Instagram style) */}
+                      {!isMe && (
+                        <div className="w-7 shrink-0 mb-0.5">
+                          {isLastInStack ? (
+                            <ProfileAvatar profile={msg.sender} className="w-7 h-7 rounded-full cursor-pointer" />
+                          ) : <div className="w-7" />}
+                        </div>
+                      )}
 
-                    const replyData = (msg as any).reply_to_message;
-
-                    return (
-                      <motion.div 
-                        key={msg.id} 
-                        drag="x"
-                        dragSnapToOrigin={true}
-                        dragConstraints={{ left: 0, right: 80 }}
-                        dragElastic={0.15}
-                        transition={{ type: "spring", stiffness: 450, damping: 30 }}
-                        onDragEnd={(_, info) => {
-                          if (info.offset.x > 35) {
-                            if (typeof window !== 'undefined' && 'vibrate' in navigator) {
-                              try { navigator.vibrate(25); } catch (e) {}
-                            }
-                            setReplyingTo(msg);
-                            toast.info(`Replying to @${msg.sender?.username || 'User'}`);
-                          }
-                        }}
-                        className={`group relative flex items-end gap-2.5 ${isMe ? 'justify-end' : 'justify-start'} ${isLastInStack ? 'mb-4' : 'mb-1'}`}
-                      >
-                        {!isMe && (
-                          <div className="shrink-0 w-7 mb-0.5">
-                            {isLastInStack && (
-                              <ProfileAvatar profile={msg.sender} className="w-7 h-7 cursor-pointer" />
-                            )}
+                      {/* Bubble Container */}
+                      <div className={cn(
+                        "max-w-[78%] sm:max-w-[65%] flex flex-col relative",
+                        isMe ? "items-end" : "items-start"
+                      )}>
+                        
+                        {/* Nested Quote Reply Box */}
+                        {replyData && (
+                          <div className="mb-1 px-3 py-1 rounded-xl bg-white/10 border-l-2 border-primary-400 text-[10px] text-zinc-300 max-w-full truncate">
+                            <span className="font-semibold text-primary-300">@{replyData.username}: </span>
+                            <span className="italic">{replyData.content}</span>
                           </div>
                         )}
 
-                        {/* 3-Dots Action Mini Menu Trigger (Hover / Click) */}
-                        <div className={`relative opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-1 ${isMe ? 'order-first' : 'order-last'}`}>
+                        {/* Image Message */}
+                        {msg.image_url && (
+                          <div className="rounded-2xl overflow-hidden border border-white/10 my-1 max-w-xs shadow-md">
+                            <img src={msg.image_url} alt="" className="w-full h-auto object-cover" />
+                          </div>
+                        )}
+
+                        {/* GIF Message */}
+                        {msg.gif_url && (
+                          <div className="rounded-2xl overflow-hidden border border-white/10 my-1 max-w-[160px] shadow-md">
+                            <img src={msg.gif_url} alt="GIF" className="w-full h-auto object-cover" />
+                          </div>
+                        )}
+
+                        {/* Voice Message */}
+                        {msg.audio_url && (
+                          <VoiceMessagePlayer audioUrl={msg.audio_url} isMe={isMe} />
+                        )}
+
+                        {/* Shared Post or Anime Card */}
+                        {msg.content && msg.content.includes('[SHADOW_SHARE]') && msg.content.includes('[/SHADOW_SHARE]') && (() => {
+                          try {
+                            const raw = msg.content.split('[SHADOW_SHARE]')[1].split('[/SHADOW_SHARE]')[0];
+                            const parsedData = JSON.parse(raw);
+                            return <SharedMediaCard data={parsedData} isMe={isMe} />;
+                          } catch (e) {
+                            return null;
+                          }
+                        })()}
+
+                        {/* Text Message Bubble (Instagram Direct Styling) */}
+                        {msg.content && (!msg.content.includes('[SHADOW_SHARE]') || !msg.content.includes('[/SHADOW_SHARE]')) && (
+                          <div
+                            onDoubleClick={() => handleHeartReaction(msg.id)}
+                            className={cn(
+                              "text-xs sm:text-sm px-4 py-2.5 leading-relaxed relative select-text transition-transform active:scale-[0.99]",
+                              isMe 
+                                ? "bg-gradient-to-r from-violet-600 to-indigo-600 text-white rounded-[22px] rounded-br-[4px] shadow-sm"
+                                : "bg-[#262626] text-white border border-white/[0.06] rounded-[22px] rounded-bl-[4px] shadow-sm"
+                            )}
+                          >
+                            {msg.content}
+
+                            {/* Floating Heart Reaction Badge */}
+                            {isLiked && (
+                              <div className="absolute -bottom-2 -right-1 bg-[#1a1a24] border border-white/15 rounded-full px-1.5 py-0.5 text-[11px] shadow-lg flex items-center justify-center animate-in zoom-in-75 duration-150">
+                                ❤️
+                              </div>
+                            )}
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Hover Action Menu */}
+                      <div className={cn(
+                        "opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-1",
+                        isMe ? "order-first" : "order-last"
+                      )}>
+                        <button
+                          type="button"
+                          onClick={() => handleHeartReaction(msg.id)}
+                          className="w-6 h-6 rounded-full hover:bg-white/10 text-zinc-400 hover:text-red-400 flex items-center justify-center transition-colors cursor-pointer"
+                          title="Heart"
+                        >
+                          <Heart size={13} className={isLiked ? "fill-red-500 text-red-500" : ""} />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setReplyingTo(msg);
+                            document.getElementById('chat-composer-input')?.focus();
+                          }}
+                          className="w-6 h-6 rounded-full hover:bg-white/10 text-zinc-400 hover:text-white flex items-center justify-center transition-colors cursor-pointer"
+                          title="Reply"
+                        >
+                          ↩️
+                        </button>
+                        {(msg.sender_id === user.id || isLeaderOrStaff) && (
                           <button
                             type="button"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              setOpenMsgMenuId(openMsgMenuId === msg.id ? null : msg.id);
-                            }}
-                            className="w-7 h-7 rounded-full bg-white/10 hover:bg-white/20 border border-white/15 text-zinc-300 flex items-center justify-center backdrop-blur-md cursor-pointer transition-all active:scale-95"
-                            title="Message Options"
+                            onClick={() => deleteMessage(msg.id)}
+                            className="w-6 h-6 rounded-full hover:bg-red-500/10 text-zinc-400 hover:text-red-400 flex items-center justify-center transition-colors cursor-pointer"
+                            title="Delete"
                           >
-                            <MoreVertical size={14} />
+                            <Trash2 size={12} />
                           </button>
-
-                          {openMsgMenuId === msg.id && (
-                            <div 
-                              className={cn(
-                                "absolute z-50 w-32 py-1 bg-[#121218]/95 backdrop-blur-2xl border border-white/15 rounded-2xl shadow-2xl overflow-hidden flex flex-col text-xs font-semibold text-zinc-200 animate-in fade-in zoom-in-95 duration-150",
-                                idx < 3 ? "top-full mt-1.5" : "bottom-full mb-1.5",
-                                isMe ? "right-0" : "left-0"
-                              )}
-                              onClick={(e) => e.stopPropagation()}
-                            >
-                              <button
-                                onClick={() => {
-                                  setReplyingTo(msg);
-                                  setOpenMsgMenuId(null);
-                                  const el = document.getElementById('chat-input-field');
-                                  if (el) el.focus();
-                                }}
-                                className="w-full text-left px-3 py-1.5 hover:bg-white/10 flex items-center gap-2 transition-colors cursor-pointer text-zinc-200"
-                              >
-                                <span className="text-primary-400">↩️</span> Reply
-                              </button>
-
-                              <button
-                                onClick={() => {
-                                  setForwardingMsg(msg);
-                                  setOpenMsgMenuId(null);
-                                }}
-                                className="w-full text-left px-3 py-1.5 hover:bg-white/10 flex items-center gap-2 transition-colors cursor-pointer text-zinc-200"
-                              >
-                                <span className="text-blue-400">⏩</span> Forward
-                              </button>
-
-                              {(() => {
-                                const myMessages = messages.filter(m => m.sender_id === user?.id);
-                                const myLastId = myMessages.length > 0 ? myMessages[myMessages.length - 1].id : null;
-                                if (msg.id === myLastId) {
-                                  return (
-                                    <button
-                                      onClick={() => {
-                                        setInputMsg(msg.content || '');
-                                        setEditingMessageId(msg.id);
-                                        setOpenMsgMenuId(null);
-                                        const el = document.getElementById('chat-input-field');
-                                        if (el) el.focus();
-                                      }}
-                                      className="w-full text-left px-3 py-1.5 hover:bg-amber-500/10 flex items-center gap-2 transition-colors cursor-pointer text-amber-300"
-                                    >
-                                      <span>✏️</span> Edit
-                                    </button>
-                                  );
-                                }
-                                return null;
-                              })()}
-
-                              {(msg.sender_id === user?.id || isLeaderOrStaff) && (
-                                <button
-                                  onClick={() => {
-                                    deleteMessage(msg.id);
-                                    setOpenMsgMenuId(null);
-                                  }}
-                                  className="w-full text-left px-3 py-1.5 hover:bg-red-500/10 flex items-center gap-2 transition-colors cursor-pointer text-red-400"
-                                >
-                                  <Trash2 size={13} /> Delete
-                                </button>
-                              )}
-                            </div>
-                          )}
-                        </div>
-
-                        <div 
-                          className={`max-w-[82%] sm:max-w-[65%] flex flex-col ${isMe ? 'items-end' : 'items-start'}`}
-                        >
-                          {!isMe && isFirstInStack && (
-                            <div className="flex items-center gap-1.5 mb-1 ml-1">
-                              <span className="text-[9px] font-bold text-zinc-400">{msg.sender?.username || 'User'}</span>
-                              <RoleTitleBadge role={msg.sender?.role} adminTitle={msg.sender?.admin_title} />
-                            </div>
-                          )}
-
-                          {/* Nested Quote Reply Box */}
-                          {replyData && (() => {
-                            const rootMsg = messages.find(m => m.id === replyData.id);
-                            const isDeleted = (rootMsg && (rootMsg as any).is_deleted) || (replyData as any).is_deleted || (replyData as any).deleted || (rootMsg && rootMsg.content === 'This message was deleted') || replyData.content === 'This message was deleted';
-                            
-                            return (
-                              <div className="mb-1.5 px-3 py-1.5 rounded-2xl bg-white/10 border-l-2 border-primary-500 text-[10px] text-zinc-300 backdrop-blur-md max-w-full truncate shadow-sm">
-                                <span className="font-bold text-primary-400">Replying to @{replyData.username || 'User'}: </span>
-                                {isDeleted ? (
-                                  <span className="italic text-zinc-400 font-medium">This message has been removed</span>
-                                ) : (
-                                  <span className="italic">{replyData.content}</span>
-                                )}
-                              </div>
-                            );
-                          })()}
-
-                          {msg.image_url && (
-                            <img src={msg.image_url} alt="" className={`max-w-xs mb-0.5 border border-white/10 object-cover shadow-lg ${bubbleClasses}`} />
-                          )}
-                          
-                          {msg.gif_url && (
-                            <img src={msg.gif_url} alt="GIF" className={`max-w-[150px] mb-0.5 border border-white/10 shadow-md ${bubbleClasses}`} />
-                          )}
-
-                          {msg.audio_url && (
-                            <div className="mb-1">
-                              <VoiceMessagePlayer audioUrl={msg.audio_url} isMe={isMe} />
-                            </div>
-                          )}
-
-                          {(() => {
-                            if (msg.content && msg.content.includes('[SHADOW_SHARE]') && msg.content.includes('[/SHADOW_SHARE]')) {
-                              try {
-                                const raw = msg.content.split('[SHADOW_SHARE]')[1].split('[/SHADOW_SHARE]')[0];
-                                const parsedData = JSON.parse(raw);
-                                return <SharedMediaCard data={parsedData} isMe={isMe} />;
-                              } catch (e) {}
-                            }
-                            return msg.content ? (
-                              <p
-                                className={`text-xs sm:text-sm px-4 py-2.5 leading-relaxed shadow-md ${bubbleClasses} ${
-                                  isMe
-                                    ? 'bg-gradient-to-r from-primary-600 to-primary-700 text-white border border-primary-500/30 backdrop-blur-md'
-                                    : 'bg-[#14141a]/90 text-zinc-100 border border-white/10 backdrop-blur-md'
-                                }`}
-                              >
-                                {msg.content}
-                              </p>
-                            ) : null;
-                          })()}
-                        </div>
-                      </motion.div>
-                    );
-                  });
-                })()
+                        )}
+                      </div>
+                    </div>
+                  );
+                })
               )}
-              
-              {/* Typing Indicator */}
+
+              {/* Typing Indicator Bubble */}
               {Object.keys(typingUsers).length > 0 && (
-                <div className="flex items-end gap-2 mb-4">
-                  <div className="bg-[#14141a]/90 text-zinc-400 border border-white/10 rounded-3xl rounded-bl-sm px-4 py-2.5 shadow-md flex items-center gap-1.5 w-fit backdrop-blur-md">
-                    <span className="text-[9px] font-bold uppercase tracking-wider text-zinc-400 mr-1">Typing</span>
-                    <motion.div className="w-1.5 h-1.5 bg-primary-500 rounded-full" animate={{ y: [0, -4, 0] }} transition={{ repeat: Infinity, duration: 0.8, delay: 0 }} />
-                    <motion.div className="w-1.5 h-1.5 bg-primary-500 rounded-full" animate={{ y: [0, -4, 0] }} transition={{ repeat: Infinity, duration: 0.8, delay: 0.15 }} />
-                    <motion.div className="w-1.5 h-1.5 bg-primary-500 rounded-full" animate={{ y: [0, -4, 0] }} transition={{ repeat: Infinity, duration: 0.8, delay: 0.3 }} />
+                <div className="flex items-end gap-2 mb-2">
+                  <div className="bg-[#262626] border border-white/[0.06] rounded-[20px] rounded-bl-[4px] px-3.5 py-2 flex items-center gap-1">
+                    <div className="w-1.5 h-1.5 bg-zinc-400 rounded-full animate-bounce [animation-delay:-0.3s]" />
+                    <div className="w-1.5 h-1.5 bg-zinc-400 rounded-full animate-bounce [animation-delay:-0.15s]" />
+                    <div className="w-1.5 h-1.5 bg-zinc-400 rounded-full animate-bounce" />
                   </div>
                 </div>
               )}
             </div>
 
-            {/* Replying Banner */}
-            {replyingTo && (
-              <div className="mb-2 p-2 rounded-xl bg-white/10 border-l-4 border-primary-500 flex items-center justify-between gap-2 backdrop-blur-md animate-in fade-in slide-in-from-bottom-1">
-                <div className="min-w-0">
-                  <p className="text-[10px] font-bold text-primary-400">Replying to @{replyingTo.sender?.username || 'User'}</p>
-                  <p className="text-xs text-zinc-300 truncate leading-snug">
-                    {replyingTo.is_deleted || replyingTo.content === 'This message was deleted' ? (
-                      <span className="italic text-zinc-400 font-medium">This message has been removed</span>
-                    ) : (
-                      replyingTo.content || (replyingTo.image_url ? '[Image]' : replyingTo.audio_url ? '[Voice]' : '[Media]')
-                    )}
-                  </p>
+            {/* ===================== COMPOSER BAR (Instagram Direct Style) ===================== */}
+            <div className="p-3 sm:p-4 bg-[#050508] border-t border-white/[0.06] shrink-0">
+              
+              {/* Reply Quote Banner */}
+              {replyingTo && (
+                <div className="flex items-center justify-between px-3 py-1.5 bg-white/5 rounded-xl text-xs text-zinc-300 mb-2 border border-white/5">
+                  <span className="truncate">
+                    Replying to <b className="text-white">@{replyingTo.sender?.username || 'User'}</b>
+                  </span>
+                  <button onClick={() => setReplyingTo(null)} className="p-1 hover:text-white">
+                    <X size={13} />
+                  </button>
                 </div>
-                <button type="button" onClick={() => setReplyingTo(null)} className="p-1 hover:bg-white/10 text-zinc-400 hover:text-white rounded-full transition-colors cursor-pointer">
-                  <X size={14} />
-                </button>
-              </div>
-            )}
+              )}
 
-            {/* Editing Banner */}
-            {editingMessageId && (
-              <div className="px-4 py-2 bg-amber-950/80 border-t border-amber-500/40 flex items-center justify-between backdrop-blur-md animate-in slide-in-from-bottom-2 duration-200 shrink-0">
-                <div className="flex items-center gap-2.5 min-w-0 flex-1">
-                  <div className="w-1 h-7 bg-amber-500 rounded-full shrink-0" />
-                  <div className="min-w-0 flex-1">
-                    <p className="text-[10px] font-bold text-amber-400">Editing Message</p>
-                    <p className="text-xs text-zinc-300 truncate leading-snug">Update your message content below</p>
-                  </div>
-                </div>
-                <button type="button" onClick={() => { setEditingMessageId(null); setInputMsg(''); }} className="p-1 hover:bg-white/10 text-zinc-400 hover:text-white rounded-full transition-colors cursor-pointer">
-                  <X size={14} />
-                </button>
-              </div>
-            )}
-
-            {/* Input Bar */}
-            {activeConv?.type === 'direct' && activeConv.participants?.some((p: any) => (p.user?.id === '5d38da6e-b568-4499-ab67-f588354add5d' || p.user?.username?.toLowerCase() === 'alpha') && p.user?.id !== user?.id) && !isLeaderOrStaff ? (
-              <div className="p-4 border-t border-white/10 bg-[#0c0c10]/95 backdrop-blur-xl flex justify-center text-center">
-                 <p className="text-zinc-400 text-xs italic font-medium">Direct transmission to Alpha is locked for regular members. Only Council Members (Admins & Moderators) may converse directly with Alpha.</p>
-              </div>
-            ) : (
-              <div className="relative">
-                <AnimatePresence>
-                  {showGifTray && (
-                    <motion.div
-                      initial={{ opacity: 0, y: 10 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      exit={{ opacity: 0, y: 10 }}
-                      className="absolute bottom-full mb-2 left-3 right-3 bg-[#14141a]/95 border border-white/15 rounded-3xl shadow-2xl z-50 backdrop-blur-2xl overflow-hidden"
-                    >
-                      {/* GIF Search Bar */}
-                      <div className="flex items-center gap-2 p-2.5 border-b border-white/10">
-                        <Search size={13} className="text-zinc-500 shrink-0" />
-                        <input
-                          type="text"
-                          value={gifQuery}
-                          onChange={e => setGifQuery(e.target.value)}
-                          onKeyDown={e => { if (e.key === 'Enter') fetchGifs(gifQuery); }}
-                          placeholder="Search GIFs..."
-                          className="flex-1 bg-transparent text-xs text-white placeholder-zinc-500 focus:outline-none"
-                          autoFocus
-                        />
-                        <button
-                          onClick={() => fetchGifs(gifQuery)}
-                          className="text-[10px] font-bold text-primary-400 px-2 py-0.5 rounded-full border border-primary-500/30 hover:bg-primary-500/10 transition-colors cursor-pointer"
-                        >
-                          Go
-                        </button>
-                      </div>
-                      {/* GIF Results */}
-                      {gifLoading ? (
-                        <div className="flex items-center justify-center h-20">
-                          <Loader2 size={18} className="animate-spin text-primary-400" />
-                        </div>
-                      ) : (
-                        <div className="flex gap-1.5 p-2 overflow-x-auto no-scrollbar">
-                          {gifResults.length === 0 ? (
-                            <p className="text-zinc-500 text-xs p-2">No GIFs found. Try searching!</p>
-                          ) : gifResults.map(gif => (
-                            <img
-                              key={gif.id}
-                              src={gif.preview}
-                              alt="gif"
-                              className="h-16 w-auto rounded-2xl cursor-pointer object-cover hover:ring-2 hover:ring-primary-500 transition-all shrink-0"
-                              onClick={() => handleSendMessage(undefined, gif.url)}
-                            />
-                          ))}
-                        </div>
-                      )}
-                      <p className="text-center text-[9px] text-zinc-600 pb-1.5">Powered by GIPHY</p>
-                    </motion.div>
-                  )}
-                </AnimatePresence>
-                <form onSubmit={handleSendMessage} className="p-3 sm:p-4 border-t border-white/10 bg-[#0c0c10]/95 backdrop-blur-xl flex items-center gap-2.5">
-                  
-                  {/* Upload Image Pill Button */}
+              {/* Media Preview Attachment Banner */}
+              {imageUrl && (
+                <div className="relative w-14 h-14 rounded-xl overflow-hidden border border-white/20 mb-2 group">
+                  <img src={imageUrl} alt="" className="w-full h-full object-cover" />
                   <button
                     type="button"
-                    onClick={() => document.getElementById('chat-image-upload')?.click()}
-                    className="w-10 h-10 rounded-full bg-white/10 hover:bg-white/20 border border-white/15 text-zinc-300 hover:text-white flex items-center justify-center shrink-0 active:scale-95 transition-all cursor-pointer backdrop-blur-md"
-                    title="Upload Image"
+                    onClick={() => setImageUrl('')}
+                    className="absolute inset-0 bg-black/60 flex items-center justify-center text-white opacity-0 group-hover:opacity-100 transition-opacity"
+                  >
+                    <X size={14} />
+                  </button>
+                </div>
+              )}
+
+              {/* Voice Note Pending Banner */}
+              {audioBlob && (
+                <div className="flex items-center gap-2 mb-2">
+                  <VoiceMessagePlayer audioUrl={URL.createObjectURL(audioBlob)} isMe={true} />
+                  <button
+                    type="button"
+                    onClick={() => setAudioBlob(null)}
+                    className="p-1.5 rounded-full bg-white/10 hover:bg-red-500/20 text-zinc-400 hover:text-red-400 transition-colors"
+                  >
+                    <X size={14} />
+                  </button>
+                </div>
+              )}
+
+              {/* GIF Selector Tray */}
+              <AnimatePresence>
+                {showGifTray && (
+                  <motion.div
+                    initial={{ opacity: 0, height: 0 }}
+                    animate={{ opacity: 1, height: 'auto' }}
+                    exit={{ opacity: 0, height: 0 }}
+                    className="bg-[#121218] border border-white/10 rounded-2xl p-3 mb-2 space-y-2 overflow-hidden shadow-2xl"
+                  >
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs font-bold text-white">GIFs & Stickers</span>
+                      <button onClick={() => setShowGifTray(false)} className="text-zinc-400 hover:text-white p-1">
+                        <X size={14} />
+                      </button>
+                    </div>
+                    <input
+                      type="text"
+                      value={gifQuery}
+                      onChange={e => {
+                        setGifQuery(e.target.value);
+                        fetchGifs(e.target.value);
+                      }}
+                      placeholder="Search anime GIFs..."
+                      className="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-1.5 text-xs text-white placeholder-zinc-500 focus:outline-none"
+                    />
+                    <div className="grid grid-cols-4 gap-1.5 max-h-40 overflow-y-auto no-scrollbar">
+                      {gifResults.map(g => (
+                        <img
+                          key={g.id}
+                          src={g.preview}
+                          alt="gif"
+                          onClick={() => handleSendMessage(undefined, g.url)}
+                          className="w-full aspect-square object-cover rounded-lg cursor-pointer hover:opacity-80 transition-opacity"
+                        />
+                      ))}
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+
+              {/* Instagram Direct All-In-One Capsule Input */}
+              {isRecording ? (
+                <div className="flex items-center gap-3 px-4 py-2.5 bg-red-950/40 border border-red-500/30 rounded-full">
+                  <span className="text-xs font-mono font-bold text-red-400">
+                    {String(Math.floor(recordingSeconds / 60)).padStart(2, '0')}:{String(recordingSeconds % 60).padStart(2, '0')}
+                  </span>
+                  <div className="flex-1 flex items-center justify-center gap-1 h-5 overflow-hidden">
+                    {liveWaveform.map((h, i) => (
+                      <div key={i} className="w-1 bg-red-400 rounded-full" style={{ height: `${h}%` }} />
+                    ))}
+                  </div>
+                  <button type="button" onClick={cancelRecording} className="text-zinc-400 hover:text-red-400 p-1">
+                    <Trash2 size={16} />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={stopRecording}
+                    className="px-3 py-1 rounded-full bg-red-500 hover:bg-red-600 text-white text-xs font-bold"
+                  >
+                    Done
+                  </button>
+                </div>
+              ) : (
+                <form 
+                  onSubmit={(e) => handleSendMessage(e)}
+                  className="bg-[#1a1a24] border border-white/10 rounded-full px-3 py-1.5 flex items-center gap-2 focus-within:border-primary-500/50 transition-colors shadow-inner"
+                >
+                  {/* Photo / Image Icon Button */}
+                  <button
+                    type="button"
+                    onClick={() => document.getElementById('chat-image-file-input')?.click()}
+                    className="w-8 h-8 rounded-full hover:bg-white/10 text-zinc-400 hover:text-white flex items-center justify-center shrink-0 transition-colors cursor-pointer"
+                    title="Attach Image"
                   >
                     {uploadingImage ? <Loader2 size={16} className="animate-spin text-primary-400" /> : <ImageIcon size={18} />}
                   </button>
-                  <input id="chat-image-upload" type="file" accept="image/*" className="hidden" onChange={handleImageUpload} />
+                  <input
+                    id="chat-image-file-input"
+                    type="file"
+                    accept="image/*"
+                    className="hidden"
+                    onChange={handleImageUpload}
+                  />
 
-                  {/* GIF Tray Toggle */}
-                  <button
-                    type="button"
-                    onClick={() => {
-                      const next = !showGifTray;
-                      setShowGifTray(next);
-                      if (next && gifResults.length === 0) fetchGifs(gifQuery);
+                  {/* Text Input */}
+                  <input
+                    id="chat-composer-input"
+                    type="text"
+                    value={inputMsg}
+                    onChange={(e) => setInputMsg(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (handleMentionKeyDown(e)) return;
                     }}
-                    className={`w-10 h-10 rounded-full border transition-all shrink-0 flex items-center justify-center active:scale-95 cursor-pointer backdrop-blur-md ${showGifTray ? 'bg-primary-600/90 border-primary-500/30 text-white shadow-[0_4px_15px_rgba(99,102,241,0.35)]' : 'bg-white/10 hover:bg-white/20 border-white/15 text-zinc-300 hover:text-white'}`}
-                    title="GIF / Sticker"
-                  >
-                    <Smile size={18} />
-                  </button>
+                    placeholder="Message..."
+                    className="flex-1 bg-transparent border-0 text-xs sm:text-sm text-white placeholder-zinc-500 focus:outline-none"
+                  />
 
-                  <div className="flex-1 relative">
-                    {imageUrl && (
-                      <div className="absolute -top-14 left-0 w-12 h-12 bg-zinc-800 rounded-2xl border border-white/15 overflow-hidden group z-10 shadow-lg">
-                        <img src={imageUrl} alt="upload" className="w-full h-full object-cover" />
-                        <button type="button" onClick={() => setImageUrl('')} className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 flex items-center justify-center text-white"><X size={14}/></button>
-                      </div>
-                    )}
-                    {audioBlob && (
-                      <div className="absolute -top-16 left-0 z-20 shadow-2xl animate-in fade-in slide-in-from-bottom-2 duration-200">
-                        <div className="relative">
-                          <VoiceMessagePlayer audioUrl={URL.createObjectURL(audioBlob)} isMe={true} />
-                          <button 
-                            type="button" 
-                            onClick={() => setAudioBlob(null)} 
-                            className="absolute -top-2 -right-2 w-6 h-6 rounded-full bg-red-600 border border-black text-white flex items-center justify-center shadow-lg hover:scale-110 transition-transform cursor-pointer"
-                            title="Discard recording"
-                          >
-                            <X size={12} />
-                          </button>
-                        </div>
-                      </div>
-                    )}
-                    
-                    {mentionState.isMentioning && (
-                      <MentionDropdown
-                        suggestions={mentionState.users}
-                        selectedIndex={mentionState.selectedIndex}
-                        onSelect={(username) => {
-                          setInputMsg(insertMention(username));
-                        }}
-                        position="top"
-                      />
-                    )}
-
-                    {isRecording ? (
-                      <div className="flex items-center gap-3 px-4 py-2 bg-gradient-to-r from-red-950/80 via-black/90 to-red-950/80 border border-red-500/50 rounded-full shadow-[0_0_20px_rgba(239,68,68,0.4)] backdrop-blur-xl animate-in fade-in duration-200">
-                        {/* Live Timer & Pulsing Dot */}
-                        <div className="flex items-center gap-2 shrink-0">
-                          <span className="relative flex h-3 w-3">
-                            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
-                            <span className="relative inline-flex rounded-full h-3 w-3 bg-red-500"></span>
-                          </span>
-                          <span className="text-xs font-mono font-extrabold text-red-400 tracking-wider">
-                            {String(Math.floor(recordingSeconds / 60)).padStart(2, '0')}:{String(recordingSeconds % 60).padStart(2, '0')}
-                          </span>
-                        </div>
-
-                        {/* Liquid Glass Soundwave Lines Visualizer (Real-time Audio Input) */}
-                        <div className="flex-1 flex items-center justify-center gap-1 h-5 px-2 overflow-hidden">
-                          {liveWaveform.map((h, idx) => (
-                            <motion.div
-                              key={idx}
-                              className="w-1 rounded-full bg-gradient-to-t from-red-500 via-amber-400 to-primary-400"
-                              animate={{ height: `${h}%` }}
-                              transition={{ duration: 0.08, ease: "easeOut" }}
-                            />
-                          ))}
-                        </div>
-
-                        {/* Cancel Button */}
-                        <button
-                          type="button"
-                          onClick={cancelRecording}
-                          className="p-1.5 rounded-full bg-white/10 hover:bg-red-500/30 text-zinc-300 hover:text-red-400 transition-all cursor-pointer shrink-0"
-                          title="Discard recording"
-                        >
-                          <Trash2 size={15} />
-                        </button>
-
-                        {/* Complete Button */}
-                        <button
-                          type="button"
-                          onClick={stopRecording}
-                          className="px-3 py-1 bg-gradient-to-r from-red-600 to-primary-600 hover:from-red-500 hover:to-primary-500 text-white text-xs font-bold rounded-full transition-all shadow-[0_0_15px_rgba(239,68,68,0.5)] active:scale-95 cursor-pointer shrink-0 flex items-center gap-1 border border-red-400/40"
-                          title="Done recording"
-                        >
-                          <Check size={14} />
-                          <span>Done</span>
-                        </button>
-                      </div>
-                    ) : (
-                      <input
-                        id="chat-input-field"
-                        type="text"
-                        value={inputMsg}
-                        onChange={e => {
-                          setInputMsg(e.target.value);
-                        }}
-                        onKeyDown={e => {
-                          if (handleKeyDown(e)) return;
-                        }}
-                        placeholder="Message..."
-                        className="w-full bg-black/50 border border-white/15 rounded-full px-4 py-2.5 text-xs sm:text-sm text-white placeholder-zinc-500 focus:outline-none focus:border-primary-500 transition-colors"
-                      />
-                    )}
-                  </div>
-                  
-                  {/* Voice Record Pill Button */}
-                  <button
-                    type="button"
-                    onClick={startRecording}
-                    className={`w-10 h-10 rounded-full transition-all shrink-0 flex items-center justify-center active:scale-95 cursor-pointer backdrop-blur-md ${isRecording ? 'bg-red-500 text-white animate-pulse shadow-[0_0_20px_rgba(239,68,68,0.7)]' : 'bg-white/10 hover:bg-white/20 border border-white/15 text-zinc-300 hover:text-white'}`}
-                    title={isRecording ? "Stop Recording" : "Voice Message"}
-                  >
-                    {isRecording ? <Square size={16} /> : <Mic size={18} />}
-                  </button>
-
-                  {/* Mention & Tag Icons */}
-                  {(activeConv?.type === 'clan' || (activeConv?.type === 'direct' && activeConv.participants?.some((p: any) => p.user?.id === '5d38da6e-b568-4499-ab67-f588354add5d'))) && (
-                    <>
+                  {/* Right Action Buttons */}
+                  {inputMsg.trim().length > 0 || imageUrl || audioBlob ? (
+                    <button
+                      type="submit"
+                      disabled={uploadingImage}
+                      className="px-3 py-1 text-sm font-bold text-primary-400 hover:text-primary-300 active:scale-95 transition-all cursor-pointer"
+                    >
+                      Send
+                    </button>
+                  ) : (
+                    <div className="flex items-center gap-1">
+                      {/* Voice Note Button */}
                       <button
                         type="button"
-                        onClick={() => setInputMsg(prev => prev + (prev.endsWith(' ') || prev === '' ? '@' : ' @'))}
-                        className="w-10 h-10 rounded-full bg-white/10 hover:bg-white/20 border border-white/15 text-zinc-300 hover:text-white transition-all shrink-0 flex items-center justify-center cursor-pointer backdrop-blur-md text-xs font-bold"
-                        title="Mention someone"
+                        onClick={startRecording}
+                        className="w-8 h-8 rounded-full hover:bg-white/10 text-zinc-400 hover:text-white flex items-center justify-center transition-colors cursor-pointer"
+                        title="Voice Note"
                       >
-                        @
+                        <Mic size={18} />
                       </button>
+
+                      {/* GIF / Sticker Button */}
                       <button
                         type="button"
-                        onClick={() => setInputMsg(prev => prev + (prev.endsWith(' ') || prev === '' ? '#' : ' #'))}
-                        className="w-10 h-10 rounded-full bg-white/10 hover:bg-white/20 border border-white/15 text-zinc-300 hover:text-white transition-all shrink-0 flex items-center justify-center cursor-pointer backdrop-blur-md text-xs font-bold"
-                        title="Add a hashtag"
+                        onClick={() => {
+                          const next = !showGifTray;
+                          setShowGifTray(next);
+                          if (next && gifResults.length === 0) fetchGifs(gifQuery);
+                        }}
+                        className="w-8 h-8 rounded-full hover:bg-white/10 text-zinc-400 hover:text-white flex items-center justify-center transition-colors cursor-pointer"
+                        title="GIFs"
                       >
-                        #
+                        <Smile size={18} />
                       </button>
-                    </>
+
+                      {/* Instagram Instant Heart Button */}
+                      <button
+                        type="button"
+                        onClick={sendHeartMessage}
+                        className="w-8 h-8 rounded-full hover:bg-white/10 text-red-500 flex items-center justify-center transition-all hover:scale-110 active:scale-90 cursor-pointer"
+                        title="Send Heart"
+                      >
+                        <Heart size={18} className="fill-red-500 text-red-500" />
+                      </button>
+                    </div>
                   )}
-
-                  {/* Send Pill Button */}
-                  <button
-                    type="submit"
-                    disabled={(!inputMsg.trim() && !imageUrl && !audioBlob) || uploadingImage}
-                    className="w-10 h-10 bg-primary-600/90 hover:bg-primary-500 disabled:opacity-30 text-white rounded-full transition-all shrink-0 shadow-[0_4px_15px_rgba(99,102,241,0.35)] backdrop-blur-md border border-primary-500/30 flex items-center justify-center active:scale-95 cursor-pointer"
-                    title="Send"
-                  >
-                    <Send size={17} />
-                  </button>
                 </form>
-              </div>
-            )}
+              )}
+            </div>
           </>
         ) : (
-          <div className="flex-1 flex flex-col items-center justify-center text-zinc-400 text-xs gap-3 p-8 relative overflow-hidden">
-            {/* Ambient Background Glow */}
-            <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-64 h-64 bg-primary-600/10 rounded-full blur-3xl pointer-events-none" />
-            
-            {/* Liquid Glass Icon Capsule */}
-            <div className="p-6 liquid-glass rounded-full border border-white/25 shadow-[0_10px_35px_rgba(239,68,68,0.25),inset_0_1px_1px_rgba(255,255,255,0.4)] backdrop-blur-3xl flex items-center justify-center animate-pulse">
-              <MessageSquare size={44} className="text-primary-400 drop-shadow-[0_0_12px_rgba(239,68,68,0.8)]" />
+          /* Empty Chat Placeholder (Instagram Direct Style) */
+          <div className="flex-1 flex flex-col items-center justify-center text-center p-8 select-none">
+            <div className="w-20 h-20 rounded-full border border-white/15 flex items-center justify-center text-white mb-4 shadow-2xl bg-white/[0.04]">
+              <MessageSquare size={36} className="text-zinc-300" />
             </div>
-
-            <h3 className="text-base font-black text-white uppercase tracking-widest mt-2 drop-shadow-md">Your Messages</h3>
-            <p className="text-zinc-400 text-center max-w-xs leading-relaxed font-medium">
-              Send private 1-on-1 messages or chat with your Clan members in real time.
+            <h3 className="text-lg font-bold text-white mb-1">Your Messages</h3>
+            <p className="text-xs text-zinc-400 max-w-xs mb-5">
+              Send private photos and messages to a friend or clan member.
             </p>
-
-            {/* Liquid Glass Primary Button */}
             <button
-              onClick={() => setShowNewChatModal(true)}
-              className="mt-4 px-8 py-3.5 rounded-full text-xs font-black uppercase tracking-widest text-white transition-all duration-300 shadow-[0_8px_32px_rgba(239,68,68,0.4),inset_0_1px_1px_rgba(255,255,255,0.6)] hover:shadow-[0_12px_45px_rgba(239,68,68,0.65),inset_0_1px_1px_rgba(255,255,255,0.9)] border border-white/40 bg-gradient-to-r from-primary-600/60 via-white/20 to-primary-600/40 backdrop-blur-3xl relative overflow-hidden group hover:scale-[1.05] active:scale-95 cursor-pointer"
+              onClick={() => {
+                playGummyTap();
+                setShowNewChatModal(true);
+              }}
+              className="px-5 py-2.5 rounded-full bg-primary-600 hover:bg-primary-500 text-white text-xs font-bold transition-all shadow-lg active:scale-95 cursor-pointer"
             >
-              <div className="absolute inset-0 bg-gradient-to-b from-white/50 via-transparent to-transparent opacity-60 group-hover:opacity-90 transition-opacity pointer-events-none" />
-              <span className="relative z-10 flex items-center gap-2 drop-shadow-[0_2px_4px_rgba(0,0,0,0.9)]">
-                <MessageSquarePlus size={18} className="text-primary-300 animate-bounce" />
-                Start New Chat
-              </span>
+              Send Message
             </button>
           </div>
         )}
       </div>
 
-      {/* New Chat User Search Modal */}
+      {/* ===================== NEW CHAT MODAL ===================== */}
       <AnimatePresence>
         {showNewChatModal && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/85 backdrop-blur-xl">
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md">
             <motion.div
-              initial={{ scale: 0.95, opacity: 0 }}
+              initial={{ scale: 0.96, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
-              exit={{ scale: 0.95, opacity: 0 }}
-              className="w-full max-w-md bg-[#0d0d10]/95 border border-white/15 rounded-3xl p-6 shadow-2xl space-y-4"
+              exit={{ scale: 0.96, opacity: 0 }}
+              className="w-full max-w-sm bg-[#121218] border border-white/10 rounded-3xl p-5 shadow-2xl space-y-4"
             >
-              <div className="flex items-center justify-between pb-3 border-b border-white/10">
-                <h3 className="text-xs font-black uppercase tracking-widest text-white flex items-center gap-2">
-                  <MessageSquarePlus size={16} className="text-primary-500" /> New Message
-                </h3>
-                <button onClick={() => setShowNewChatModal(false)} className="p-1.5 rounded-full bg-white/5 hover:bg-white/10 text-zinc-400 hover:text-white border border-white/10 cursor-pointer">
-                  <X size={16} />
+              <div className="flex items-center justify-between pb-2 border-b border-white/5">
+                <span className="text-sm font-bold text-white">New Message</span>
+                <button
+                  onClick={() => setShowNewChatModal(false)}
+                  className="w-7 h-7 rounded-full bg-white/5 hover:bg-white/10 text-zinc-400 hover:text-white flex items-center justify-center"
+                >
+                  <X size={14} />
                 </button>
               </div>
 
               <div className="relative">
-                <Search size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-zinc-500" />
+                <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-500" />
                 <input
                   type="text"
                   value={searchUserQuery}
                   onChange={e => handleSearchUsers(e.target.value)}
-                  placeholder="Search user by name..."
-                  className="w-full bg-black/50 border border-white/15 rounded-full pl-10 pr-4 py-2.5 text-xs text-white placeholder-zinc-500 focus:outline-none focus:border-primary-500 transition-colors"
+                  placeholder="Search user by username..."
+                  className="w-full bg-white/5 border border-white/10 rounded-xl pl-9 pr-3 py-2 text-xs text-white placeholder-zinc-500 focus:outline-none"
                 />
               </div>
 
-              <div className="max-h-60 overflow-y-auto no-scrollbar space-y-2">
+              <div className="max-h-56 overflow-y-auto no-scrollbar space-y-1">
                 {isSearching ? (
                   <div className="text-center py-6 text-zinc-500 text-xs">Searching...</div>
                 ) : searchResults.length === 0 ? (
-                  <div className="text-center py-6 text-zinc-600 text-xs">
-                    {searchUserQuery ? 'No users found' : 'Type a username to start a DM'}
+                  <div className="text-center py-6 text-zinc-500 text-xs">
+                    {searchUserQuery ? 'No users found' : 'Search for a username to start chatting'}
                   </div>
                 ) : (
-                  searchResults.map(u => {
-                    const adminTitle = u.admin_title;
-                    const userTitle = (u.title && u.title !== u.username) ? u.title : null;
-                    const displayTitle = adminTitle || userTitle || (
-                      (u.level || 1) >= 100 ? 'Realm Sovereign' :
-                      (u.level || 1) >= 75 ? 'Shadow Monarch' :
-                      (u.level || 1) >= 50 ? 'Grandmaster' :
-                      (u.level || 1) >= 25 ? 'Elite Vanguard' :
-                      (u.level || 1) >= 10 ? 'Rising Champion' : 'Novice Adventurer'
-                    );
-                    return (
-                      <div
-                        key={u.id}
-                        onClick={() => startDirectChat(u)}
-                        className="p-3 bg-white/5 hover:bg-primary-600/20 border border-white/10 hover:border-primary-500/30 rounded-2xl flex items-center justify-between cursor-pointer transition-all backdrop-blur-md"
-                      >
-                        <div className="flex items-center gap-3">
-                          <div className="w-10 h-10 shrink-0">
-                            <ProfileAvatar profile={u} className="w-10 h-10" />
-                          </div>
-                          <div className="flex items-center gap-1.5 flex-wrap">
-                            <span className="text-xs font-bold text-white">@{u.username}</span>
-                            {displayTitle && (
-                              <span className="text-[10px] font-extrabold text-amber-400 tracking-wide drop-shadow-[0_0_6px_rgba(251,191,36,0.6)]">
-                                [{displayTitle}]
-                              </span>
-                            )}
-                          </div>
+                  searchResults.map(u => (
+                    <div
+                      key={u.id}
+                      onClick={() => startDirectChat(u)}
+                      className="p-2.5 hover:bg-white/10 rounded-2xl flex items-center justify-between cursor-pointer transition-colors"
+                    >
+                      <div className="flex items-center gap-3">
+                        <ProfileAvatar profile={u} className="w-10 h-10 rounded-full" />
+                        <div>
+                          <p className="text-xs font-semibold text-white">{u.username}</p>
+                          {u.title && <p className="text-[10px] text-zinc-400">{u.title}</p>}
                         </div>
-                        <span className="text-[10px] text-primary-400 font-bold uppercase bg-primary-500/10 px-2.5 py-1 rounded-full border border-primary-500/20">Chat</span>
                       </div>
-                    );
-                  })
-                )}
-              </div>
-            </motion.div>
-          </div>
-        )}
-      </AnimatePresence>
-
-
-
-      {/* Forward Message Picker Modal */}
-      <AnimatePresence>
-        {forwardingMsg && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/85 backdrop-blur-xl">
-            <motion.div
-              initial={{ scale: 0.95, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              exit={{ scale: 0.95, opacity: 0 }}
-              className="w-full max-w-md bg-[#0d0d10]/95 border border-white/15 rounded-3xl p-6 shadow-2xl space-y-4"
-            >
-              <div className="flex items-center justify-between pb-3 border-b border-white/10">
-                <h3 className="text-xs font-black uppercase tracking-widest text-white flex items-center gap-2">
-                  <Send size={16} className="text-blue-400" /> Forward Message
-                </h3>
-                <button onClick={() => setForwardingMsg(null)} className="p-1.5 rounded-full bg-white/5 hover:bg-white/10 text-zinc-400 hover:text-white border border-white/10 cursor-pointer">
-                  <X size={16} />
-                </button>
-              </div>
-
-              <p className="text-xs text-zinc-400 italic">Select a conversation to forward this message to:</p>
-
-              <div className="max-h-60 overflow-y-auto custom-scrollbar space-y-2">
-                {conversations.length === 0 ? (
-                  <div className="text-center py-6 text-zinc-600 text-xs">No active conversations found</div>
-                ) : (
-                  conversations.map(c => {
-                    const otherP = c.participants?.find((p: any) => p.user?.id !== user?.id)?.user;
-                    const name = c.type === 'clan' ? (c.clan?.name || 'Clan Chat') : (otherP?.username || 'Direct Chat');
-
-                    return (
-                      <div
-                        key={c.id}
-                        onClick={async () => {
-                          if (!supabase || !user || !forwardingMsg) return;
-                          try {
-                            const forwardContent = forwardingMsg.content 
-                              ? `[Forwarded]: ${forwardingMsg.content}` 
-                              : '[Forwarded Media]';
-
-                            await supabase.from('chat_messages').insert({
-                              conversation_id: c.id,
-                              sender_id: user.id,
-                              content: forwardContent,
-                              image_url: forwardingMsg.image_url || null,
-                              audio_url: forwardingMsg.audio_url || null,
-                              gif_url: forwardingMsg.gif_url || null
-                            });
-
-                            await supabase.from('chat_conversations').update({
-                              last_message_preview: forwardContent,
-                              updated_at: new Date().toISOString()
-                            }).eq('id', c.id);
-
-                            toast.success(`Message forwarded to ${name}`);
-                            setForwardingMsg(null);
-                          } catch (err: any) {
-                            toast.error('Failed to forward message');
-                          }
-                        }}
-                        className="p-3 bg-white/5 hover:bg-blue-600/20 border border-white/10 hover:border-blue-500/30 rounded-2xl flex items-center justify-between cursor-pointer transition-all"
-                      >
-                        <div className="flex items-center gap-3">
-                          <ProfileAvatar profile={otherP} className="w-8 h-8" />
-                          <span className="text-xs font-bold text-white">{name}</span>
-                        </div>
-                        <span className="text-[10px] text-blue-400 font-bold uppercase bg-blue-500/10 px-2.5 py-1 rounded-full border border-blue-500/20">Send</span>
-                      </div>
-                    );
-                  })
+                      <span className="text-xs font-semibold text-primary-400">Chat</span>
+                    </div>
+                  ))
                 )}
               </div>
             </motion.div>

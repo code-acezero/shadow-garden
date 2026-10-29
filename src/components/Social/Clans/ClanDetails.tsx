@@ -3,7 +3,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { useRouter } from 'next/navigation';
-import { Shield, Users, Lock, Globe, MessageSquare, ChevronLeft, Settings, Image as ImageIcon, Flame, X, ArrowUp, UserCheck, Check, Sparkles, Loader2, Trash2, Camera, Move, Upload, Trophy, ChevronRight } from 'lucide-react';
+import { Shield, Users, Lock, Globe, MessageSquare, ChevronLeft, Settings, Image as ImageIcon, Flame, X, ArrowUp, UserCheck, Check, Bot, Loader2, Trash2, Camera, Move, Upload, Trophy, ChevronRight } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/context/AuthContext';
@@ -16,6 +16,8 @@ import { getLevelColors } from '@/components/User/FantasyFrame';
 import InstagramPostCard from '../InstagramPostCard';
 import InstagramPostComposer from '../InstagramPostComposer';
 import InstagramCommentsModal from '../InstagramCommentsModal';
+import MonetLineIcon from '@/components/UIx/MonetLineIcon';
+import { playGummyPop } from '@/lib/audioManager';
 
 export default function ClanDetails({ clan, onBack, onUpdate }: { clan: Clan, onBack: () => void, onUpdate: () => void }) {
   const router = useRouter();
@@ -1305,7 +1307,7 @@ export default function ClanDetails({ clan, onBack, onUpdate }: { clan: Clan, on
                       <div className="bg-[#0c0c12]/90 border border-primary-500/30 p-4.5 rounded-2xl space-y-4 shadow-xl backdrop-blur-xl relative overflow-hidden">
                         <div className="flex items-center justify-between pb-2 border-b border-white/5">
                           <h4 className="font-bold text-white text-xs uppercase tracking-wider flex items-center gap-2">
-                            <Sparkles size={14} className="text-primary-400" /> Alpha AI Directives & Rules
+                            <Bot size={14} className="text-primary-400" /> Alpha AI Directives & Rules
                           </h4>
                         </div>
 
@@ -1419,14 +1421,28 @@ export default function ClanDetails({ clan, onBack, onUpdate }: { clan: Clan, on
         <AnimatePresence>
           {showScrollTop && (
             <motion.button
-              initial={{ opacity: 0, scale: 0.5, y: 20 }}
+              initial={{ opacity: 0, scale: 0.5, y: 15 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.5, y: 20 }}
-              onClick={() => feedRef.current?.scrollTo({ top: 0, behavior: 'smooth' })}
-              className="fixed bottom-20 right-6 lg:right-[340px] xl:right-[420px] z-[9999] p-3.5 rounded-full bg-white/25 hover:bg-white/40 text-white shadow-[0_4px_25px_rgba(255,255,255,0.35)] backdrop-blur-xl border border-white/50 active:scale-90 transition-all cursor-pointer flex items-center justify-center shadow-2xl"
+              exit={{ opacity: 0, scale: 0.5, y: 15 }}
+              whileHover={{ 
+                scale: 1.25, 
+                rotate: [-3, 3, 0],
+                transition: { type: "spring", stiffness: 450, damping: 12 } 
+              }}
+              whileTap={{ 
+                scale: 0.78, 
+                scaleX: 1.25, 
+                scaleY: 0.75,
+                transition: { type: "spring", stiffness: 600, damping: 15 } 
+              }}
+              onClick={() => {
+                playGummyPop();
+                feedRef.current?.scrollTo({ top: 0, behavior: 'smooth' });
+              }}
+              className="fixed bottom-20 right-6 lg:right-[340px] xl:right-[420px] z-[9999] cursor-pointer flex items-center justify-center p-1.5 select-none focus:outline-none"
               title="Scroll to top of feed"
             >
-              <ArrowUp size={22} className="text-white" strokeWidth={2.8} />
+              <MonetLineIcon icon={ArrowUp} variant="violet" sizeClassName="w-7 h-7 md:w-8 md:h-8" strokeWidth={2.8} />
             </motion.button>
           )}
         </AnimatePresence>

@@ -4,6 +4,7 @@ import React, { useRef, useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 import { Heart, ChevronLeft, ChevronRight, Loader2 } from 'lucide-react';
 import AnimeCard from '@/components/Anime/AnimeCard';
+import MonetLineIcon from '@/components/UIx/MonetLineIcon';
 
 interface AllTimeFavoriteCarouselProps {
   initialItems?: any[];
@@ -133,21 +134,34 @@ export default function AllTimeFavoriteCarousel({ initialItems = [] }: AllTimeFa
 
   return (
     <section className="w-full">
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4 md:mb-6">
-        <div className="flex items-center gap-3">
-          <Heart className="w-7 h-7 md:w-9 md:h-9 text-red-500 fill-red-500 shrink-0 drop-shadow-[0_0_12px_rgba(239,68,68,0.5)]" />
-          <h2 className="text-xl md:text-3xl font-black text-white font-lemon uppercase tracking-wide flex items-center gap-2">
-            ALL TIME <span className="text-primary-600">FAVORITE</span>
-          </h2>
-        </div>
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 sm:gap-3 mb-4 md:mb-6">
+        <div className="flex items-center justify-between sm:justify-start gap-2.5 sm:gap-3 w-full sm:w-auto min-w-0">
+          <div className="flex items-center gap-2 sm:gap-3 min-w-0">
+            <MonetLineIcon icon={Heart} variant="primary" />
+            <h2 className="text-base sm:text-xl md:text-3xl font-black text-white font-lemon uppercase tracking-wide leading-none truncate whitespace-nowrap">
+              ALL TIME FAVORITES
+            </h2>
+          </div>
 
-        <div className="flex items-center gap-2 self-end sm:self-auto">
+          {/* Mobile View All */}
           <Link
-            href="/search?sort=favorite"
-            className="text-[11px] font-black uppercase tracking-wider text-zinc-400 hover:text-white px-3.5 py-1.5 rounded-full bg-white/5 border border-white/5 hover:border-white/10 transition-colors hidden sm:inline-flex items-center gap-1.5 whitespace-nowrap"
+            href="/explore?category=favorite"
+            onClick={() => playGummyTap()}
+            className="sm:hidden text-[10px] font-black uppercase tracking-wider text-zinc-300 hover:text-white px-3 py-1.5 rounded-full bg-white/5 border border-white/10 hover:border-primary-500/30 transition-all inline-flex items-center gap-1 whitespace-nowrap select-none shrink-0 active:scale-95"
           >
             <span>View All</span>
-            <ChevronRight size={12} />
+            <ChevronRight size={11} className="text-primary-400" />
+          </Link>
+        </div>
+
+        <div className="flex items-center justify-end gap-2 w-full sm:w-auto">
+          <Link
+            href="/explore?category=favorite"
+            onClick={() => playGummyTap()}
+            className="text-[11px] font-black uppercase tracking-wider text-zinc-400 hover:text-white px-3.5 py-1.5 rounded-full bg-white/5 border border-white/5 hover:border-primary-500/30 transition-colors hidden sm:inline-flex items-center gap-1.5 whitespace-nowrap active:scale-95"
+          >
+            <span>View All</span>
+            <ChevronRight size={12} className="text-primary-400" />
           </Link>
 
           <div className="flex items-center gap-1">
@@ -191,8 +205,8 @@ export default function AllTimeFavoriteCarousel({ initialItems = [] }: AllTimeFa
                 key={uniqueKey}
                 className="w-[140px] sm:w-[170px] md:w-[200px] shrink-0 relative group"
               >
-                {/* Prominent Ranking Number */}
-                <div className="absolute -top-2 -left-2 z-30 pointer-events-none select-none">
+                {/* Prominent Ranking Number - Fades out on card hover */}
+                <div className="absolute -top-2 -left-2 z-30 pointer-events-none select-none transition-opacity duration-300 group-hover:opacity-0">
                   <span
                     className={`text-2xl md:text-4xl font-black font-lemon italic tracking-tighter drop-shadow-[0_2px_10px_rgba(0,0,0,0.9)] ${
                       rank === 1
@@ -208,7 +222,7 @@ export default function AllTimeFavoriteCarousel({ initialItems = [] }: AllTimeFa
                   </span>
                 </div>
 
-                <AnimeCard anime={anime} />
+                <AnimeCard anime={anime} hideType />
               </div>
             );
           })}

@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState } from 'react';
-import { Shield, Settings, Save, Sparkles, Sliders, Lock, Globe, Users, Trash2, Loader2 } from 'lucide-react';
+import { Shield, Settings, Save, Bot, Sliders, Lock, Globe, Users, Trash2, Loader2 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { supabase } from '@/lib/supabase';
 import { toast } from '@/lib/toast';
@@ -86,7 +86,7 @@ export default function ClanSettings({ clan, onUpdate, members }: { clan: Clan, 
           {[
             { id: 'general', icon: <Sliders size={14} />, label: 'General' },
             { id: 'members', icon: <Users size={14} />, label: 'Roster' },
-            { id: 'alpha', icon: <Sparkles size={14} />, label: 'Alpha AI' }
+            { id: 'alpha', icon: <Bot size={14} />, label: 'Alpha AI' }
           ].map(tab => (
             <button 
               key={tab.id}
@@ -246,7 +246,7 @@ export default function ClanSettings({ clan, onUpdate, members }: { clan: Clan, 
                 
                 <div className="flex items-center justify-between pb-4 border-b border-white/5 relative z-10">
                   <h3 className="font-bold text-white flex items-center gap-2 text-xs uppercase tracking-wider">
-                    <Sparkles size={16} className="text-primary-400" /> Alpha Protocol
+                    <Bot size={16} className="text-primary-400" /> Alpha Protocol
                   </h3>
                 </div>
 

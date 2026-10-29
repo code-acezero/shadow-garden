@@ -306,7 +306,28 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ endp
         type: 'Movie',
         country: movie.original_language?.toUpperCase() === 'HI' ? 'Bollywood' : 'Hollywood',
         genres: (movie.genres || []).map((g: any) => g.name),
-        cast: (movie.credits?.cast || []).slice(0, 8).map((c: any) => c.name),
+        cast: (movie.credits?.cast || []).slice(0, 18).map((c: any) => ({
+          id: c.id,
+          name: c.name,
+          character: c.character || 'Cast Member',
+          role: c.character ? 'Actor' : 'Cast Member',
+          image: c.profile_path ? `https://image.tmdb.org/t/p/w185${c.profile_path}` : null,
+          profile: c.profile_path ? `https://image.tmdb.org/t/p/w185${c.profile_path}` : null,
+          profileLarge: c.profile_path ? `https://image.tmdb.org/t/p/w500${c.profile_path}` : null,
+          department: c.known_for_department || 'Acting',
+          popularity: c.popularity
+        })),
+        characters: (movie.credits?.cast || []).slice(0, 18).map((c: any) => ({
+          id: c.id,
+          name: c.name,
+          character: c.character || 'Cast Member',
+          role: c.character ? 'Actor' : 'Cast Member',
+          image: c.profile_path ? `https://image.tmdb.org/t/p/w185${c.profile_path}` : null,
+          profile: c.profile_path ? `https://image.tmdb.org/t/p/w185${c.profile_path}` : null,
+          profileLarge: c.profile_path ? `https://image.tmdb.org/t/p/w500${c.profile_path}` : null,
+          department: c.known_for_department || 'Acting',
+          popularity: c.popularity
+        })),
         streams: streams,
         related: related,
         downloadLinks: []

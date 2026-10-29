@@ -317,7 +317,7 @@ export default function GuildManagerDashboard() {
             <div className="px-4 text-center space-y-2 w-full">
               <div className="flex justify-center items-center gap-3 opacity-80 hover:opacity-100 transition-opacity">
                 <img src="/icon.svg" className="w-6 h-6 drop-shadow-lg" alt="Guild Seal"/>
-                <h4 className="font-minomu font-bold text-base text-white tracking-widest">SHADOW GARDEN</h4>
+                <h4 className="font-minomu font-bold text-base text-white tracking-widest">KAGEMI</h4>
               </div>
               <p className="text-zinc-600 text-[10px] font-mono uppercase tracking-widest">
                 Guild-Manager Console • V2.5 • {user?.email}

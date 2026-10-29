@@ -41,7 +41,7 @@ const SOURCES = ["4-koma Manga", "Book", "Card Game", "Game", "Light Novel", "Ma
 
 const PLACEHOLDERS = [
   "Summon Solo Leveling...", "Find One Piece...", "Search Jujutsu Kaisen...", 
-  "Discover Chainsaw Man...", "Explore Shadow Garden..."
+  "Discover Chainsaw Man...", "Explore Kagemi..."
 ];
 
 export default function SearchBar() {

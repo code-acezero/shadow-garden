@@ -44,7 +44,7 @@ export default function GuildBoardsPanel() {
   const defaultForm: Partial<GuildBoardPopup> = {
     title: 'Shadow Realm Special Notice',
     subtitle: 'Exclusive Announcement from High Command',
-    content: 'Welcome to Shadow Garden! Explore the latest clan tournaments, earn rank badges, and climb the adventurer leaderboards.',
+    content: 'Welcome to Kagemi! Explore the latest clan tournaments, earn rank badges, and climb the adventurer leaderboards.',
     image_url: 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?auto=format&fit=crop&w=800&q=80',
     button_text: 'Explore Now',
     button_url: '/social',

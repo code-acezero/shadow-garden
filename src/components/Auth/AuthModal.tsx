@@ -274,14 +274,7 @@ export default function AuthModal({ isOpen, onClose, onAuthSuccess, initialView 
                             <div className="flex gap-4 justify-center items-center">
                                 <SocialBtn icon={GoogleIcon} onClick={() => handleSocial('google')} />
                                 <SocialBtn icon={DiscordIcon} onClick={() => handleSocial('discord')} />
-                                <button
-                                    type="button"
-                                    onClick={handleAnilistSignIn}
-                                    title="Direct AniList Sign In"
-                                    className="w-10 h-10 flex items-center justify-center rounded-full bg-[#02a9ff]/10 hover:bg-[#02a9ff]/25 border border-[#02a9ff]/30 hover:border-[#02a9ff]/60 transition-all text-[#02a9ff] hover:text-white hover:scale-110 shadow-lg outline-none focus:outline-none focus:ring-0 active:scale-95"
-                                >
-                                    <AnilistIcon />
-                                </button>
+                                <SocialBtn icon={AnilistIcon} onClick={handleAnilistSignIn} />
                             </div>
                         </div>
                     </motion.div>

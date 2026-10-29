@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useCallback, memo } from 'react';
+import React, { useState, useEffect, useCallback, memo, useMemo } from 'react';
 import { useParams } from 'next/navigation';
 import Link from 'next/link';
 import { motion } from 'framer-motion';
@@ -26,6 +26,102 @@ import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import ShadowComments from '@/components/Comments/ShadowComments';
 import { toast } from '@/lib/toast';
+import CastDetailModal, { CastModalData } from '@/components/Watch/CastDetailModal';
+
+// ── Cast & Characters Block (Matches Anime & Drama Watch) ─────────────────────
+
+const CastCharactersBlock = ({ characters, cast }: { characters?: any[]; cast?: any[] }) => {
+  const [selectedCast, setSelectedCast] = useState<CastModalData | null>(null);
+
+  const list = useMemo(() => {
+    if (Array.isArray(characters) && characters.length > 0) return characters;
+    if (Array.isArray(cast) && cast.length > 0) {
+      return cast.map((c, i) => {
+        if (typeof c === 'string') {
+          return { id: String(i), name: c, character: 'Cast Member', role: 'Cast', image: null, profile: null };
+        }
+        return c;
+      });
+    }
+    return [];
+  }, [characters, cast]);
+
+  if (!list || list.length === 0) return null;
+
+  return (
+    <div className="w-full bg-[#0a0f1d]/85 backdrop-blur-md rounded-2xl md:rounded-3xl border border-white/[0.08] p-5 sm:p-6 shadow-xl flex flex-col gap-4">
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-2.5">
+          <div className="p-2 rounded-2xl bg-[#0e1629]/90 border border-white/[0.08] text-emerald-400">
+            <Users size={18} />
+          </div>
+          <div>
+            <h3 className="text-base sm:text-lg font-black text-white uppercase tracking-wider font-lemon">
+              Cast & Characters
+            </h3>
+            <p className="text-[10px] text-zinc-400">Starring actors, leading roles & character profiles</p>
+          </div>
+        </div>
+        <span className="text-[10px] font-black text-emerald-300 px-3 py-1 rounded-full bg-emerald-500/10 border border-emerald-400/20 uppercase tracking-widest">
+          {list.length} Members
+        </span>
+      </div>
+
+      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
+        {list.slice(0, 16).map((char: any, idx: number) => {
+          const actorName = char.name || 'Unknown Actor';
+          const charName = char.character || char.role || 'Cast Member';
+          const avatar = char.profile || char.profileLarge || char.image || char.poster;
+          const role = char.role || 'Cast';
+
+          return (
+            <div 
+              key={char.id || `${actorName}-${idx}`} 
+              onClick={() => setSelectedCast({
+                id: char.id,
+                name: actorName,
+                character: charName,
+                role: role,
+                image: avatar,
+                profileLarge: char.profileLarge || avatar,
+                department: char.department || 'Acting',
+                popularity: char.popularity,
+                mediaType: 'movie'
+              })}
+              className="cursor-pointer flex items-center gap-3 bg-white/[0.03] hover:bg-emerald-500/10 border border-white/[0.06] hover:border-emerald-400/30 rounded-2xl p-2.5 transition-all group active:scale-[0.99]"
+            >
+              <div className="w-12 h-14 rounded-xl overflow-hidden shrink-0 border border-white/10 relative bg-zinc-900 shadow-md">
+                <img
+                  src={avatar || '/images/no-avatar.png'}
+                  alt={actorName}
+                  className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300"
+                  onError={(e) => { e.currentTarget.src = '/images/no-avatar.png'; }}
+                />
+              </div>
+              <div className="min-w-0 flex-1">
+                <h4 className="text-xs font-black text-white truncate group-hover:text-emerald-300 transition-colors">
+                  {actorName}
+                </h4>
+                <p className="text-[10px] text-zinc-400 truncate mt-0.5 font-medium">
+                  {charName}
+                </p>
+                <span className="text-[8px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full inline-block mt-1 bg-emerald-500/15 text-emerald-300 border border-emerald-400/25">
+                  {role}
+                </span>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+
+      <CastDetailModal 
+        isOpen={Boolean(selectedCast)} 
+        onClose={() => setSelectedCast(null)} 
+        data={selectedCast} 
+      />
+    </div>
+  );
+};
 
 // ── Star Rating (same as anime watch page) ───────────────────────────────────
 
@@ -288,6 +384,9 @@ export default function WatchClient() {
     const poster = movie.image || (movie as any).poster || (movie as any).cover || '/images/no-poster.png';
     const epId = `s${activeSeason}_e${activeEpisode}`;
 
+    const totalEps = movie.seasons?.[0]?.episodes?.length || 1;
+    const isMovieCompleted = activeEpisode >= totalEps || (movie as any).isMovie === true;
+
     if (user && supabase) {
       const payload = {
         user_id: user.id,
@@ -300,10 +399,10 @@ export default function WatchClient() {
         last_updated: new Date().toISOString(),
         last_server: activeServerName || 'Standard',
         episode_image: poster,
-        total_episodes: movie.seasons?.[0]?.episodes?.length || 1,
+        total_episodes: totalEps,
         type: 'movie',
         media_type: 'movie',
-        is_completed: false
+        is_completed: isMovieCompleted
       };
       try {
         await (supabase.from('user_continue_watching') as any).upsert(payload, { onConflict: 'user_id,episode_id' });
@@ -323,7 +422,22 @@ export default function WatchClient() {
       lastUpdated: Date.now()
     };
     localStorage.setItem('shadow_continue_watching', JSON.stringify(localData));
-    if (typeof window !== 'undefined') window.dispatchEvent(new CustomEvent('shadow-continue-updated'));
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('shadow-continue-updated'));
+      window.dispatchEvent(new CustomEvent('shadow-sync-watching', {
+        detail: {
+          anime_id: slug,
+          title: title,
+          poster: poster,
+          episode_number: activeEpisode,
+          episode_id: epId,
+          total_episodes: totalEps,
+          is_completed: isMovieCompleted,
+          type: 'movie',
+          media_type: 'movie'
+        }
+      }));
+    }
   }, [movie, activeSeason, activeEpisode, activeServerName, user, slug]);
 
   useEffect(() => {
@@ -947,6 +1061,9 @@ export default function WatchClient() {
           )}
 
         </div>
+
+        {/* ── Cast & Characters Block (Matches Anime & Drama Watch) ── */}
+        <CastCharactersBlock characters={movie.characters} cast={movie.cast} />
 
         {/* ── ROW 3: Comments (full width) ── */}
         <div className="w-full">

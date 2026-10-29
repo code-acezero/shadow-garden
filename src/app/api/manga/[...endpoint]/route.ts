@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { mangaService, novelService, ReadingMediaType, SupportedReadingLanguage } from '@/lib/manga';
+import { mangaService, novelService, ReadingMediaType } from '@/lib/manga';
 
 export const runtime = 'nodejs';
 
@@ -9,18 +9,24 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ endp
     const path = endpoint ? endpoint.join('/') : '';
     const searchParams = req.nextUrl.searchParams;
 
-    // 1. Trending
-    if (path === 'trending') {
-      const type = (searchParams.get('type') || 'all') as ReadingMediaType;
+    // 1. Trending & Recent
+    if (path === 'trending' || path === 'recent' || path === 'updates') {
+      const type = (searchParams.get('type') || (path === 'recent' || path === 'updates' ? 'recent' : 'all')) as ReadingMediaType;
+      const lang = searchParams.get('lang') || undefined;
       const page = parseInt(searchParams.get('page') || '1', 10);
       const limit = parseInt(searchParams.get('limit') || '18', 10);
+
+      if (type === 'recent' || path === 'recent' || path === 'updates') {
+        const res = await mangaService.getRecentUpdates(page, limit, lang);
+        return NextResponse.json({ ok: true, data: res, total: 1000 });
+      }
 
       if (type === 'light_novel' || type === 'web_novel') {
         const novels = await novelService.getTrending(page, limit);
         return NextResponse.json({ ok: true, data: novels, total: 100 });
       }
 
-      const res = await mangaService.getTrending(type, page, limit);
+      const res = await mangaService.getTrending(type, page, limit, lang);
       return NextResponse.json({ ok: true, data: res, total: 1000 });
     }
 
@@ -28,7 +34,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ endp
     if (path === 'search') {
       const q = searchParams.get('q') || '';
       const type = (searchParams.get('type') || 'all') as ReadingMediaType;
-      const lang = searchParams.get('lang') as SupportedReadingLanguage | undefined;
+      const lang = searchParams.get('lang') || undefined;
       const page = parseInt(searchParams.get('page') || '1', 10);
       const limit = parseInt(searchParams.get('limit') || '20', 10);
 
@@ -47,10 +53,10 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ endp
       if (!id) return NextResponse.json({ ok: false, error: 'id parameter is required' }, { status: 400 });
 
       if (id.startsWith('novel-')) {
-        const rawAniId = id.replace('novel-', '');
-        const novels = await novelService.getTrending(1, 50);
-        const match = novels.find(n => n.id === id);
-        if (match) return NextResponse.json({ ok: true, data: match });
+        const novelDetail = await novelService.getDetails(id);
+        if (novelDetail) {
+          return NextResponse.json({ ok: true, data: novelDetail });
+        }
 
         // Fallback detail
         return NextResponse.json({
@@ -59,13 +65,13 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ endp
             id,
             slug: id,
             title: 'Light Novel Archive',
-            description: 'Archived Light Novel from the Shadow Garden Library.',
+            description: 'Archived Light Novel from the Kagemi Library.',
             cover: '/images/placeholder.jpg',
             type: 'light_novel',
             status: 'ongoing',
             score: '8.8',
             genres: ['Fantasy', 'Action'],
-            availableLanguages: ['en', 'hi', 'bn'],
+            availableLanguages: ['en', 'hi', 'bn', 'es', 'fr', 'ja'],
             totalChapters: 'Ongoing',
             isNovel: true
           }
@@ -82,7 +88,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ endp
       const id = searchParams.get('id');
       if (!id) return NextResponse.json({ ok: false, error: 'id parameter is required' }, { status: 400 });
 
-      const lang = searchParams.get('lang') as SupportedReadingLanguage | undefined;
+      const lang = searchParams.get('lang') || undefined;
       const order = (searchParams.get('order') || 'asc') as 'asc' | 'desc';
 
       if (id.startsWith('novel-')) {
@@ -108,7 +114,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ endp
     if (path === 'novel-chapter') {
       const id = searchParams.get('id') || 'novel-1';
       const chapter = searchParams.get('chapter') || '1';
-      const lang = (searchParams.get('lang') || 'en') as SupportedReadingLanguage;
+      const lang = searchParams.get('lang') || 'en';
 
       const contentResult = await novelService.getChapterContent(id, chapter, lang);
       return NextResponse.json({ ok: true, data: contentResult });

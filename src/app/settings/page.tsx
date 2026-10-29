@@ -2,8 +2,8 @@ import React from 'react';
 import Settings from '@/components/Settings/Settings';
 
 export const metadata = {
-  title: 'Settings | Shadow Garden',
-  description: 'Configure your Shadow Garden experience.',
+  title: 'Settings | Kagemi',
+  description: 'Configure your Kagemi experience.',
 };
 
 export default function SettingsPage() {

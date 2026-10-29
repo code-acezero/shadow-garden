@@ -8,12 +8,15 @@ import { motion, AnimatePresence, Variants } from 'framer-motion';
 import { 
   Calendar, ChevronLeft, ChevronRight, 
   PlayCircle, Timer, AlertCircle, Layers, Star, 
-  CheckCircle, PlusCircle, Flame, Clock, Captions, Mic, Info, X 
+  CheckCircle, PlusCircle, Flame, Clock, Captions, Mic, Info, X,
+  Compass, Film
 } from 'lucide-react';
 import { format, subDays, isSameDay } from 'date-fns';
 import { cn, slugifyTitle } from '@/lib/utils';
 import { AnimeService } from '@/lib/api';
 import Footer from '@/components/Anime/Footer';
+import CuteShareBar from '@/components/Home/CuteShareBar';
+import CutePageSwitcher from '@/components/UIx/CutePageSwitcher';
 import { HoverCard, HoverCardContent, HoverCardTrigger } from "@/components/ui/hover-card";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 
@@ -31,17 +34,14 @@ const itemVariants: Variants = {
 
 // --- SUB-COMPONENTS ---
 
-const SectionHeader = ({ title, icon: Icon, subtitle }: { title: string, icon: any, subtitle?: string }) => (
-    <div className="flex flex-col gap-1 mb-6">
-        <div className="flex items-center gap-3">
-            <div className="p-2 bg-primary-600/10 rounded-lg border border-primary-500/20 shadow-[0_0_15px_rgba(220,38,38,0.2)]">
-                <Icon size={18} className="text-primary-500" />
-            </div>
-            <h3 className={`text-xl md:text-2xl text-white tracking-widest font-lemon`}>
-                {title}
-            </h3>
+const SectionHeader = ({ title, icon: Icon }: { title: string, icon: any, subtitle?: string }) => (
+    <div className="flex items-center gap-3">
+        <div className="p-2 bg-primary-600/10 rounded-lg border border-primary-500/20 shadow-[0_0_15px_rgba(220,38,38,0.2)]">
+            <Icon size={18} className="text-primary-500" />
         </div>
-        {subtitle && <p className="text-xs text-zinc-500 font-mono pl-12 uppercase tracking-wider">{subtitle}</p>}
+        <h3 className={`text-xl md:text-2xl text-white tracking-widest font-lemon`}>
+            {title}
+        </h3>
     </div>
 );
 
@@ -73,8 +73,8 @@ const AnimeTooltipContent = ({ displayData, isLoading }: { displayData: any, isL
             <div className="flex items-center justify-between text-xs">
                 <div className="flex items-center gap-3 text-zinc-300">
                     <span className="flex items-center gap-1.5"><Clock size={12} className="text-primary-500" /> {data.stats?.duration || data.duration || '? min'}</span>
-                    <span className="w-1 h-1 rounded-full bg-zinc-700" />
-                    <span className="flex items-center gap-1"><Star size={12} className="text-yellow-500" /> {data.stats?.malScore || data.malScore || 'N/A'}</span>
+                    <span className="w-px h-3 bg-zinc-800" />
+                    <span className="flex items-center gap-1"><Star size={12} className="text-yellow-500" /> {data.score || data.stats?.malScore || data.malScore || 'N/A'}</span>
                 </div>
                 <span className="px-2 py-0.5 bg-white/5 border border-white/10 text-[10px] font-bold text-zinc-300 rounded uppercase">
                     {data.stats?.quality || 'HD'}
@@ -167,6 +167,10 @@ const QTip = ({ trigger, anime, side = "right" }: { trigger: React.ReactNode, an
 }
 
 const ScheduleCard = ({ anime }: { anime: any }) => {
+    const isHindi = anime.isHindi || !!anime.dubType;
+    const isDonghua = anime.category === 'donghua' || anime.countryOfOrigin === 'CN';
+    const isMovie = anime.category === 'movie' || anime.format === 'MOVIE' || anime.type === 'Movie';
+
     return (
         <motion.div variants={itemVariants} className="relative group">
             <MobileInfoBtn anime={anime} />
@@ -176,30 +180,68 @@ const ScheduleCard = ({ anime }: { anime: any }) => {
                     const routeId = (slug && !String(anime.id).includes('-')) ? `${anime.id}-${slug}` : anime.id;
                     const targetHref = anime.watchUrl || `/watch/${routeId}${anime.episode ? `?ep=${anime.episode}` : ''}${anime.dubType ? `&audio=hi&type=dub` : ''}`;
                     return (
-                        <Link href={targetHref} className="flex w-full items-stretch h-20 md:h-24 rounded-2xl bg-[#0f0f0f] border border-white/5 hover:border-primary-500/30 transition-all active:scale-[0.98] overflow-hidden">
-                            <div className="w-16 md:w-20 bg-white/5 flex flex-col items-center justify-center border-r border-white/5 group-hover:bg-primary-600/10 group-hover:border-primary-500/20 transition-colors">
-                                <span className="text-sm md:text-lg font-black text-white">{anime.time || '12:00'}</span>
+                        <Link href={targetHref} className="flex w-full items-stretch h-20 md:h-24 rounded-2xl bg-[#0f0f0f] border border-white/5 hover:border-primary-500/30 transition-all active:scale-[0.98] overflow-hidden group">
+                            {/* Time / Timezone */}
+                            <div className="w-16 md:w-20 bg-white/5 flex flex-col items-center justify-center border-r border-white/5 group-hover:bg-primary-600/10 group-hover:border-primary-500/20 transition-colors shrink-0">
+                                <span className="text-sm md:text-base font-black text-white">{anime.time || '12:00'}</span>
                                 <span className="text-[8px] font-bold text-zinc-500 uppercase tracking-wider group-hover:text-primary-400">
-                                    {anime.dubType ? 'IST' : 'JST'}
+                                    {anime.timezone || (isHindi ? 'IST' : 'JST')}
                                 </span>
                             </div>
-                            <div className="flex-1 flex flex-col justify-center px-4 py-2 min-w-0">
-                                <h3 className="text-xs md:text-sm font-bold text-zinc-200 group-hover:text-white transition-colors line-clamp-1 mb-1 pr-6">
+
+                            {/* Poster thumbnail if available */}
+                            {anime.poster && (
+                                <div className="relative w-12 md:w-16 h-full shrink-0 overflow-hidden bg-zinc-900 border-r border-white/5 hidden sm:block">
+                                    <img 
+                                        src={anime.poster} 
+                                        alt="" 
+                                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300 opacity-80 group-hover:opacity-100" 
+                                        loading="lazy"
+                                    />
+                                    <div className="absolute inset-0 bg-gradient-to-r from-transparent to-[#0f0f0f]/40 pointer-events-none" />
+                                </div>
+                            )}
+
+                            {/* Details */}
+                            <div className="flex-1 flex flex-col justify-center px-3 md:px-4 py-2 min-w-0">
+                                <h3 className="text-xs md:text-sm font-bold text-zinc-200 group-hover:text-white transition-colors truncate mb-1 pr-6">
                                     {anime.name || anime.title}
                                 </h3>
-                                <p className="text-[10px] text-zinc-500 line-clamp-1 italic mb-2">
+                                <p className="text-[10px] text-zinc-500 line-clamp-1 italic mb-1.5">
                                     {anime.jname || anime.status || ''}
                                 </p>
-                                <div className="flex items-center gap-2">
-                                    {anime.dubType && (
+                                <div className="flex items-center gap-1.5 flex-wrap">
+                                    {/* Category pill */}
+                                    {isDonghua ? (
+                                        <span className="px-1.5 py-0.5 rounded text-[8px] font-black uppercase tracking-wider bg-teal-500/15 text-teal-300 border border-teal-500/30">
+                                            DONGHUA
+                                        </span>
+                                    ) : isMovie ? (
+                                        <span className="px-1.5 py-0.5 rounded text-[8px] font-black uppercase tracking-wider bg-purple-500/15 text-purple-300 border border-purple-500/30">
+                                            MOVIE
+                                        </span>
+                                    ) : isHindi ? (
                                         <span className="px-1.5 py-0.5 rounded text-[8px] font-black uppercase tracking-wider bg-gradient-to-r from-orange-500/20 to-amber-500/20 text-orange-400 border border-orange-500/30">
-                                            {anime.dubType === 'ORG' ? 'HINDI DUB' : anime.dubType === 'FanDub' ? 'HINDI (FAN)' : anime.dubType}
+                                            {anime.dubType === 'ORG' ? 'HINDI DUB' : anime.dubType === 'FanDub' ? 'HINDI (FAN)' : 'HINDI DUB'}
+                                        </span>
+                                    ) : (
+                                        <span className="px-1.5 py-0.5 rounded text-[8px] font-black uppercase tracking-wider bg-primary-500/15 text-primary-300 border border-primary-500/30">
+                                            ANIME
                                         </span>
                                     )}
+
                                     <span className="px-2 py-0.5 bg-white/5 rounded text-[9px] font-bold text-zinc-400 border border-white/5 group-hover:border-primary-500/20 group-hover:text-primary-400 transition-colors">
-                                        EP {anime.episode || '?'}
+                                        {isMovie ? 'FILM' : `EP ${anime.episode || '?'}`}
                                     </span>
-                                    <div className="w-4 h-4 rounded-full bg-primary-600 flex items-center justify-center opacity-0 -translate-x-2 group-hover:opacity-100 group-hover:translate-x-0 transition-all duration-300">
+
+                                    {anime.score && (
+                                        <span className="hidden md:flex items-center gap-0.5 px-1.5 py-0.5 bg-white/5 rounded text-[9px] font-bold text-zinc-400 border border-white/5">
+                                            <Star size={9} className="text-yellow-500 fill-yellow-500/30" />
+                                            {anime.score}
+                                        </span>
+                                    )}
+
+                                    <div className="w-4 h-4 rounded-full bg-primary-600 flex items-center justify-center opacity-0 -translate-x-2 group-hover:opacity-100 group-hover:translate-x-0 transition-all duration-300 ml-auto shrink-0">
                                         <PlayCircle size={10} className="text-white fill-white" />
                                     </div>
                                 </div>
@@ -357,7 +399,7 @@ const TopChartCard = ({ anime, rank, index, mobileActiveIndex, onMobileClick }: 
                                     EPS {typeof anime.episodes === 'object' ? (anime.episodes?.sub || anime.episodes?.eps || anime.episodes?.dub || '?') : (anime.episodes || '?')}
                                 </span>
                                 {isMobileActive && (
-                                    <span className="text-[9px] text-primary-400 font-bold uppercase tracking-wider animate-pulse">
+                                    <span className="text-[9px] text-primary-400 font-bold uppercase tracking-wider">
                                         Watch
                                     </span>
                                 )}
@@ -406,7 +448,7 @@ const DaySelector = ({ selectedDate, onSelect }: { selectedDate: Date, onSelect:
                             >
                                 <span className="text-[8px] font-bold uppercase tracking-wider opacity-80">{format(date, 'EEE')}</span>
                                 <span className={cn("text-lg md:text-xl font-black font-lemon leading-none mt-0.5", isSelected ? "text-black" : "text-zinc-400 group-hover:text-white")}>{format(date, 'dd')}</span>
-                                {isToday && !isSelected && <span className="absolute top-1 right-1 w-1.5 h-1.5 bg-primary-500 rounded-full" />}
+                                {isToday && !isSelected && <span className="absolute top-0 inset-x-2 h-0.5 bg-primary-500" />}
                             </button>
                         );
                     })}
@@ -416,9 +458,19 @@ const DaySelector = ({ selectedDate, onSelect }: { selectedDate: Date, onSelect:
     );
 };
 
+type FilterCategory = 'all' | 'anime' | 'donghua' | 'hindi' | 'movie';
+
+const FILTER_TABS: { id: FilterCategory; label: string; icon: any; activeClass: string }[] = [
+  { id: 'all', label: 'All Releases', icon: Layers, activeClass: 'bg-primary-600 text-white shadow-md shadow-primary-900/40' },
+  { id: 'anime', label: 'Anime', icon: Flame, activeClass: 'bg-rose-600 text-white shadow-md shadow-rose-900/40' },
+  { id: 'donghua', label: 'Donghua', icon: Compass, activeClass: 'bg-teal-600 text-white shadow-md shadow-teal-900/40' },
+  { id: 'hindi', label: 'Hindi Dub', icon: Mic, activeClass: 'bg-gradient-to-r from-orange-500 to-amber-500 text-white shadow-md shadow-orange-500/30' },
+  { id: 'movie', label: 'Movies', icon: Film, activeClass: 'bg-purple-600 text-white shadow-md shadow-purple-900/40' },
+];
+
 export default function SchedulePage() {
   const [selectedDate, setSelectedDate] = useState(new Date());
-  const [scheduleType, setScheduleType] = useState<'sub' | 'hindi'>('sub');
+  const [filterCategory, setFilterCategory] = useState<FilterCategory>('all');
   const [upcomingPage, setUpcomingPage] = useState(1);
   const [topTab, setTopTab] = useState<'today'|'week'|'month'>('week');
   const [mobileActiveIndex, setMobileActiveIndex] = useState<number | null>(null);
@@ -435,36 +487,105 @@ export default function SchedulePage() {
   }, []);
 
   const { data: scheduleData, isLoading: loadingSchedule } = useSWR(
-    ['schedule', format(selectedDate, 'yyyy-MM-dd'), scheduleType],
-    async ([_, date, type]) => {
-        try {
-            if (type === 'hindi') {
-                const res = await fetch(`/api/blakite/schedule?date=${date}`);
-                if (res.ok) {
-                    const json = await res.json();
-                    if (json.ok && json.data) {
-                        const items = json.data.scheduledAnimes?.length > 0
-                            ? json.data.scheduledAnimes
-                            : (json.data.allRecent || []);
-                        return {
-                            scheduledAnimes: items,
-                            isFallback: json.data.scheduledAnimes?.length === 0,
-                            ongoing: json.data.ongoing || []
-                        };
-                    }
-                }
-                return { scheduledAnimes: [] };
-            }
-            return await AnimeService.getSchedule(date);
-        } catch (err) {
-            console.error("Failed to load schedule", err);
-            return { scheduledAnimes: [] };
+    ['unified-schedule', format(selectedDate, 'yyyy-MM-dd')],
+    async ([_, date]) => {
+      try {
+        const [aniRes, blakiteRes] = await Promise.all([
+          AnimeService.getSchedule(date).catch(() => ({ scheduledAnimes: [] })),
+          fetch(`/api/blakite/schedule?date=${date}`).then(r => r.ok ? r.json() : null).catch(() => null)
+        ]);
+
+        const anilistItems = (aniRes?.scheduledAnimes || []).map((item: any) => ({
+          ...item,
+          source: 'anilist',
+          timezone: 'JST',
+          category: item.category || (item.countryOfOrigin === 'CN' ? 'donghua' : (item.format === 'MOVIE' ? 'movie' : 'anime'))
+        }));
+
+        let hindiItems: any[] = [];
+        let isHindiFallback = false;
+        if (blakiteRes && blakiteRes.ok && blakiteRes.data) {
+          const hasDirect = Array.isArray(blakiteRes.data.scheduledAnimes) && blakiteRes.data.scheduledAnimes.length > 0;
+          const rawHindi = hasDirect
+            ? blakiteRes.data.scheduledAnimes
+            : (isSameDay(selectedDate, new Date()) ? (blakiteRes.data.allRecent || []).slice(0, 15) : []);
+          
+          isHindiFallback = !hasDirect && isSameDay(selectedDate, new Date()) && rawHindi.length > 0;
+
+          hindiItems = rawHindi.map((h: any) => ({
+            id: h.id,
+            name: h.name || h.title,
+            title: h.title || h.name,
+            jname: h.jname || '',
+            poster: h.poster || h.backdrop || '',
+            image: h.poster || h.backdrop || '',
+            time: h.time || '18:00',
+            timestamp: h.timestamp || Math.floor(new Date(selectedDate).setHours(18, 0, 0, 0) / 1000),
+            episode: h.episode || 1,
+            seasonNumber: h.seasonNumber,
+            dubType: h.dubType || 'ORG',
+            category: (h.type === 'Movie' ? 'movie' : 'hindi') as FilterCategory,
+            isHindi: true,
+            format: h.type || 'TV',
+            type: h.type || 'TV',
+            score: h.score,
+            description: h.description || '',
+            status: h.status || 'Ongoing',
+            timezone: 'IST',
+            source: 'blakite',
+            watchUrl: h.watchUrl || `/watch/${h.id}?ep=${h.episode || 1}&audio=hi&type=dub`
+          }));
         }
+
+        const combined = [...anilistItems, ...hindiItems].sort((a, b) => (a.timestamp || 0) - (b.timestamp || 0));
+
+        return {
+          items: combined,
+          isHindiFallback,
+          hasHindiToday: hindiItems.length > 0
+        };
+      } catch (err) {
+        console.error("Failed to load unified schedule", err);
+        return { items: [], isHindiFallback: false, hasHindiToday: false };
+      }
     },
     { keepPreviousData: true, shouldRetryOnError: false }
   );
-  
-  const schedule = scheduleData?.scheduledAnimes || [];
+
+  const scheduleItems = scheduleData?.items || [];
+
+  const counts = useMemo(() => {
+    return {
+      all: scheduleItems.length,
+      anime: scheduleItems.filter((x: any) => (x.category === 'anime' || !x.category) && !x.isHindi && x.countryOfOrigin !== 'CN' && x.format !== 'MOVIE' && x.type !== 'Movie').length,
+      donghua: scheduleItems.filter((x: any) => x.category === 'donghua' || x.countryOfOrigin === 'CN').length,
+      hindi: scheduleItems.filter((x: any) => x.category === 'hindi' || x.isHindi || x.dubType).length,
+      movie: scheduleItems.filter((x: any) => x.category === 'movie' || x.format === 'MOVIE' || x.type === 'Movie').length,
+    };
+  }, [scheduleItems]);
+
+  const filteredSchedule = useMemo(() => {
+    if (filterCategory === 'all') return scheduleItems;
+    if (filterCategory === 'donghua') {
+      return scheduleItems.filter((x: any) => x.category === 'donghua' || x.countryOfOrigin === 'CN');
+    }
+    if (filterCategory === 'movie') {
+      return scheduleItems.filter((x: any) => x.category === 'movie' || x.format === 'MOVIE' || x.type === 'Movie');
+    }
+    if (filterCategory === 'hindi') {
+      return scheduleItems.filter((x: any) => x.category === 'hindi' || x.isHindi || x.dubType);
+    }
+    if (filterCategory === 'anime') {
+      return scheduleItems.filter((x: any) => 
+        (x.category === 'anime' || !x.category) && 
+        !x.isHindi && 
+        x.countryOfOrigin !== 'CN' && 
+        x.format !== 'MOVIE' && 
+        x.type !== 'Movie'
+      );
+    }
+    return scheduleItems;
+  }, [scheduleItems, filterCategory]);
 
   interface UpcomingResponse { response: any[]; pageInfo?: { totalPages?: number; }; }
   const { data: upcomingData } = useSWR<UpcomingResponse>(
@@ -513,7 +634,7 @@ export default function SchedulePage() {
   const handleUpcomingPage = (dir: number) => setUpcomingPage(p => Math.max(1, Math.min(p + dir, upcomingTotalPages)));
 
   return (
-    <div className="min-h-screen w-full bg-[#050505] font-sans text-zinc-100 overflow-x-hidden selection:bg-primary-500/30">
+    <div className="min-h-screen w-full pb-[68px] md:pb-0 bg-[#050505] font-sans text-zinc-100 overflow-x-hidden selection:bg-primary-500/30">
       <style jsx global>{`
         html, body { overflow-x: hidden; scrollbar-width: none; -ms-overflow-style: none; }
         body::-webkit-scrollbar { display: none; }
@@ -548,50 +669,57 @@ export default function SchedulePage() {
 
           <div className="w-full px-2 sm:px-4 mt-8 space-y-16">
 
-              {/* SECTION 1: SCHEDULE GRID */}
+              {/* SECTION 1: UNIFIED SCHEDULE GRID */}
               <section>
-                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
+                  <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 mb-6">
                       <SectionHeader 
-                          title={scheduleType === 'hindi' ? "Hindi Dub Schedule" : "Broadcast Schedule"} 
+                          title="Unified Schedule" 
                           icon={Calendar} 
-                          subtitle={scheduleType === 'hindi' 
-                              ? ((scheduleData as any)?.isFallback 
-                                  ? `Active ongoing & recent Hindi dub updates` 
-                                  : `Hindi Dub releases for ${format(selectedDate, 'EEEE, MMMM do')}`)
-                              : `Operations for ${format(selectedDate, 'EEEE, MMMM do')}`
-                          } 
+                          subtitle={`Broadcasting lineup for ${format(selectedDate, 'EEEE, MMMM do, yyyy')}`}
                       />
 
-                      <div className="flex items-center p-1 bg-white/5 rounded-xl border border-white/5 self-start sm:self-auto">
-                          <button
-                              onClick={() => setScheduleType('sub')}
-                              className={cn(
-                                  "px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all",
-                                  scheduleType === 'sub' 
-                                      ? "bg-primary-600 text-white shadow-md shadow-primary-900/30" 
-                                      : "text-zinc-400 hover:text-white"
-                              )}
-                          >
-                              Japanese Airing
-                          </button>
-                          <button
-                              onClick={() => setScheduleType('hindi')}
-                              className={cn(
-                                  "px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all",
-                                  scheduleType === 'hindi' 
-                                      ? "bg-gradient-to-r from-orange-500 to-amber-500 text-white shadow-md shadow-orange-500/20" 
-                                      : "text-zinc-400 hover:text-white"
-                              )}
-                          >
-                              Hindi Dub Track
-                          </button>
+                      {/* CATEGORY FILTER BUTTONS */}
+                      <div className="flex items-center gap-1.5 p-1 bg-white/5 rounded-2xl border border-white/5 overflow-x-auto no-scrollbar self-start lg:self-auto max-w-full">
+                          {FILTER_TABS.map((tab) => {
+                              const Icon = tab.icon;
+                              const count = counts[tab.id];
+                              const isActive = filterCategory === tab.id;
+                              return (
+                                  <button
+                                      key={tab.id}
+                                      onClick={() => setFilterCategory(tab.id)}
+                                      className={cn(
+                                          "flex items-center gap-2 px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all shrink-0 active:scale-95",
+                                          isActive 
+                                              ? tab.activeClass 
+                                              : "text-zinc-400 hover:text-white hover:bg-white/5"
+                                      )}
+                                  >
+                                      <Icon size={13} className={isActive ? "text-white" : "text-zinc-500"} />
+                                      <span>{tab.label}</span>
+                                      <span className={cn(
+                                          "px-1.5 py-0.2 rounded-md text-[10px] font-mono",
+                                          isActive ? "bg-black/30 text-white font-black" : "bg-white/5 text-zinc-500"
+                                      )}>
+                                          {count}
+                                      </span>
+                                  </button>
+                              );
+                          })}
                       </div>
                   </div>
 
-                  {scheduleType === 'hindi' && (scheduleData as any)?.isFallback && (
+                  {filterCategory === 'hindi' && scheduleData?.isHindiFallback && (
                       <div className="mb-4 px-4 py-2.5 rounded-xl bg-orange-500/10 border border-orange-500/20 text-orange-300 text-xs flex items-center gap-2">
                           <Info size={14} className="shrink-0 text-orange-400" />
-                          <span>No Hindi dub release logged for this exact calendar date. Showing active ongoing and recent Hindi dub updates:</span>
+                          <span>No exact Hindi dub broadcast logged for this date. Showing active ongoing and recent Hindi dub updates:</span>
+                      </div>
+                  )}
+
+                  {filterCategory === 'hindi' && counts.hindi === 0 && !scheduleData?.isHindiFallback && (
+                      <div className="mb-4 px-4 py-2.5 rounded-xl bg-orange-500/10 border border-orange-500/20 text-orange-300 text-xs flex items-center gap-2">
+                          <Info size={14} className="shrink-0 text-orange-400" />
+                          <span>No Hindi dub releases found for this calendar date. Select &quot;All Releases&quot; or choose another day.</span>
                       </div>
                   )}
 
@@ -601,14 +729,14 @@ export default function SchedulePage() {
                               <motion.div key="skeleton" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
                                   {[...Array(8)].map((_, i) => <div key={i} className="h-24 bg-white/5 rounded-2xl animate-pulse border border-white/5" />)}
                               </motion.div>
-                          ) : schedule.length > 0 ? (
-                              <motion.div key={`${scheduleType}-${format(selectedDate, 'yyyy-MM-dd')}`} variants={containerVariants} initial="hidden" animate="show" className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-                                  {schedule.map((anime: any, idx: number) => <ScheduleCard key={`${anime.id || 'sched'}-${idx}`} anime={anime} />)}
+                          ) : filteredSchedule.length > 0 ? (
+                              <motion.div key={`${filterCategory}-${format(selectedDate, 'yyyy-MM-dd')}`} variants={containerVariants} initial="hidden" animate="show" className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+                                  {filteredSchedule.map((anime: any, idx: number) => <ScheduleCard key={`${anime.id || 'sched'}-${anime.category}-${idx}`} anime={anime} />)}
                               </motion.div>
                           ) : (
                               <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} className="flex flex-col items-center justify-center py-24 border border-dashed border-white/10 rounded-3xl bg-white/[0.02]">
                                   <AlertCircle size={48} className="text-zinc-700 mb-4" />
-                                  <p className="text-zinc-500 font-bold uppercase tracking-widest text-sm">No Intel Available</p>
+                                  <p className="text-zinc-500 font-bold uppercase tracking-widest text-sm">No scheduled releases found for this filter</p>
                               </motion.div>
                           )}
                       </AnimatePresence>
@@ -679,15 +807,27 @@ export default function SchedulePage() {
 
               {/* SECTION 4: UPCOMING (5 Columns Grid) */}
               <section>
-                  <div className="flex justify-between items-center mb-6">
-                      <SectionHeader title="Incoming Recruits" icon={Timer} subtitle="Next generation operations" />
-                      <div className="flex gap-2">
-                          <button onClick={() => handleUpcomingPage(-1)} disabled={upcomingPage<=1} className="p-2.5 rounded-xl bg-white/5 hover:bg-white/10 disabled:opacity-30 border border-white/5 transition-colors"><ChevronLeft size={16}/></button>
-                          <button onClick={() => handleUpcomingPage(1)} disabled={upcomingPage>=upcomingTotalPages} className="p-2.5 rounded-xl bg-white/5 hover:bg-white/10 border border-white/5 transition-colors"><ChevronRight size={16}/></button>
+                  <div className="flex flex-col md:flex-row md:items-center justify-between gap-2.5 md:gap-3 mb-4 md:mb-6">
+                      {/* Row 1: Title (left) */}
+                      <div className="flex items-center justify-between md:justify-start gap-2.5 md:gap-3 w-full md:w-auto min-w-0">
+                          <SectionHeader title="Incoming Recruits" icon={Timer} />
+                      </div>
+
+                      {/* Row 2 on Mobile (Full Width Page Switcher) / Right Controls on Desktop */}
+                      <div className="flex items-center justify-between md:justify-end gap-2 sm:gap-3 w-full md:w-auto">
+                          <CutePageSwitcher
+                              page={upcomingPage}
+                              maxPage={upcomingTotalPages > 1 ? upcomingTotalPages : undefined}
+                              canPrev={upcomingPage > 1}
+                              canNext={upcomingPage < upcomingTotalPages}
+                              onPageChange={(p) => setUpcomingPage(p)}
+                              variant="primary"
+                              className="w-full md:w-auto justify-between md:justify-start"
+                          />
                       </div>
                   </div>
                   {/* Updated to 5 Columns on LG */}
-                  <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-4 md:gap-6">
+                  <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-2.5 sm:gap-3.5 md:gap-6">
                       {upcoming.length > 0 ? upcoming.map((anime: any, idx: number) => (
                           <div key={`${anime.id}-${idx}`} className="relative group">
                               <MobileInfoBtn anime={anime} />
@@ -710,11 +850,33 @@ export default function SchedulePage() {
                           </div>
                       )) : [...Array(5)].map((_, i) => <div key={i} className="aspect-[2/3] rounded-xl bg-white/5 animate-pulse border border-white/5"/>)}
                   </div>
+
+                  {/* --- BOTTOM CENTERED PAGE SWITCHER --- */}
+                  {upcomingTotalPages > 1 && (
+                      <div className="w-full flex items-center justify-center mt-6 md:mt-8 px-2 sm:px-0">
+                          <CutePageSwitcher
+                              page={upcomingPage}
+                              maxPage={upcomingTotalPages}
+                              canPrev={upcomingPage > 1}
+                              canNext={upcomingPage < upcomingTotalPages}
+                              onPageChange={(p) => setUpcomingPage(p)}
+                              variant="primary"
+                          />
+                      </div>
+                  )}
               </section>
 
           </div>
 
-          <div className="w-full mt-24">
+          {/* CUTE SHARE BAR */}
+          <CuteShareBar 
+            badgeText="Share Timetable"
+            badgeSubtext="Broadcast Schedule"
+            title="Invite your Friends to Track Releases on Kagemi!"
+            description="Share real-time airing schedules across anime, donghua, Hindi dubs, and cinema movies with localized countdowns."
+          />
+
+          <div className="w-full mt-12 md:mt-16">
               <Footer />
           </div>
 

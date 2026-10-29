@@ -23,8 +23,8 @@ export async function generateMetadata(
 
   if (!data) {
     return {
-      title: 'Watch Anime Online Free in HD | Shadow Garden',
-      description: 'Stream popular anime online for free with English Subbed and Dubbed episodes in 1080p HD on Shadow Garden.',
+      title: 'Watch Anime Online Free in HD | Kagemi',
+      description: 'Stream popular anime online for free with English Subbed and Dubbed episodes in 1080p HD on Kagemi.',
     };
   }
 
@@ -40,8 +40,8 @@ export async function generateMetadata(
 
   const slug = slugifyTitle(cleanTitle);
   const canonicalId = slug ? `${data.id}-${slug}` : String(data.id);
-  const canonicalUrl = `https://shadow-garden.site/watch/${encodeURIComponent(canonicalId)}${ep ? `?ep=${ep}` : ''}`;
-  const posterUrl = data.poster || 'https://shadow-garden.site/og-image.png';
+  const canonicalUrl = `https://kagemi.site/watch/${encodeURIComponent(canonicalId)}${ep ? `?ep=${ep}` : ''}`;
+  const posterUrl = data.poster || 'https://kagemi.site/og-image.png';
 
   const keywords = [
     `watch ${cleanTitle} online`,
@@ -55,7 +55,7 @@ export async function generateMetadata(
     'watch anime online free',
     'free anime streaming',
     'english sub anime',
-    'shadow garden anime'
+    'kagemi anime'
   ];
 
   return {
@@ -77,10 +77,10 @@ export async function generateMetadata(
       },
     },
     openGraph: {
-      title: `Watch ${cleanTitle}${epTitle} (English Sub & Dub) - Shadow Garden`,
+      title: `Watch ${cleanTitle}${epTitle} (English Sub & Dub) - Kagemi`,
       description: seoDesc,
       url: canonicalUrl,
-      siteName: 'Shadow Garden',
+      siteName: 'Kagemi',
       images: [
         {
           url: posterUrl,
@@ -93,10 +93,10 @@ export async function generateMetadata(
     },
     twitter: {
       card: 'summary_large_image',
-      title: `Watch ${cleanTitle}${epTitle} Online Free HD | Shadow Garden`,
+      title: `Watch ${cleanTitle}${epTitle} Online Free HD | Kagemi`,
       description: seoDesc,
       images: [posterUrl],
-      creator: '@ShadowGarden',
+      creator: '@KagemiAnime',
     },
   };
 }
@@ -111,13 +111,13 @@ export default async function Page(props: Props) {
   const data = await AnimeService.getAnimeInfo(cleanId || rawId).catch(() => null);
 
   const cleanTitle = data?.title || 'Anime';
-  const cleanDesc = (data?.description || `Watch ${cleanTitle} online in HD on Shadow Garden.`)
+  const cleanDesc = (data?.description || `Watch ${cleanTitle} online in HD on Kagemi.`)
     .replace(/<[^>]*>?/gm, '')
     .slice(0, 250);
-  const posterUrl = data?.poster || 'https://shadow-garden.site/og-image.png';
+  const posterUrl = data?.poster || 'https://kagemi.site/og-image.png';
   const slug = slugifyTitle(cleanTitle);
   const canonicalId = slug ? `${data?.id || cleanId}-${slug}` : String(data?.id || cleanId);
-  const pageUrl = `https://shadow-garden.site/watch/${encodeURIComponent(canonicalId)}`;
+  const pageUrl = `https://kagemi.site/watch/${encodeURIComponent(canonicalId)}`;
 
   const jsonLd = {
     "@context": "https://schema.org",
@@ -145,7 +145,7 @@ export default async function Page(props: Props) {
       {
         "@type": "VideoObject",
         "name": `Watch ${cleanTitle}${ep ? ` Episode ${ep}` : ''} Online Free HD`,
-        "description": `Stream ${cleanTitle} in HD with English subtitles and dubbing on Shadow Garden.`,
+        "description": `Stream ${cleanTitle} in HD with English subtitles and dubbing on Kagemi.`,
         "thumbnailUrl": [posterUrl],
         "uploadDate": new Date().toISOString(),
         "contentUrl": pageUrl,

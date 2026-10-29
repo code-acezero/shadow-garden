@@ -1,7 +1,8 @@
 "use client";
 
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import React, { useState, useEffect, useCallback, useMemo, Suspense } from 'react';
 import Link from 'next/link';
+import { useSearchParams } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
   Play, Flame, Search, Film, 
@@ -37,18 +38,25 @@ const toItem = (d: any): ShortDramaItem => ({
   firstEpisodeStream: d.episodes?.[0]?.streamUrl
 });
 
-const QUICK_SUGGESTIONS = ['Hindi Dub', 'CEO', 'Billionaire', 'Werewolf', 'Revenge', 'Secret Heiress'];
-
-export default function ShortsDiscoveryPage() {
+function ShortsDiscoveryContent() {
+  const searchParams = useSearchParams();
+  const urlQuery = searchParams ? (searchParams.get('search') || searchParams.get('q') || '') : '';
   const [activeTab, setActiveTab] = useState<ShortsNavTab>('trending');
   const [dramas, setDramas] = useState<ShortDramaItem[]>([]);
   const [page, setPage] = useState<number>(1);
   const [hasMore, setHasMore] = useState<boolean>(true);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [isLoadingMore, setIsLoadingMore] = useState<boolean>(false);
-  const [searchQuery, setSearchQuery] = useState<string>('');
+  const [searchQuery, setSearchQuery] = useState<string>(urlQuery);
   const [isSearching, setIsSearching] = useState<boolean>(false);
   const [sortBy, setSortBy] = useState<'popular' | 'rating' | 'episodes'>('popular');
+
+  // Sync URL search query if provided from top nav
+  useEffect(() => {
+    if (urlQuery && urlQuery !== searchQuery) {
+      setSearchQuery(urlQuery);
+    }
+  }, [urlQuery]);
 
   // Watchlist state (saved in localStorage)
   const [savedIds, setSavedIds] = useState<Set<string>>(new Set());
@@ -282,57 +290,27 @@ export default function ShortsDiscoveryPage() {
         }}
         isLoading={isLoading}
         savedCount={savedIds.size}
-        rightAction={
-          <div className="flex items-center gap-2">
-            {/* Minimal In-Page Search Toggle */}
-            {isSearching ? (
-              <div className="relative flex items-center">
-                <Search className="w-3.5 h-3.5 text-zinc-500 absolute left-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
-                <input
-                  type="text"
-                  autoFocus
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  placeholder="Filter shorts..."
-                  className="w-36 sm:w-48 bg-white/5 border border-white/10 rounded-full py-1 pl-7 pr-7 text-xs text-white placeholder-zinc-500 focus:outline-none focus:border-white/20 transition-colors"
-                />
-                <button
-                  onClick={() => {
-                    setSearchQuery('');
-                    setIsSearching(false);
-                    if (activeTab !== 'saved') fetchFeed(activeTab as ShortsCategoryTab, 1, false);
-                  }}
-                  className="absolute right-2 top-1/2 -translate-y-1/2 text-zinc-400 hover:text-white text-xs"
-                >
-                  <X className="w-3 h-3" />
-                </button>
-              </div>
-            ) : (
-              <button
-                onClick={() => setIsSearching(true)}
-                title="Search within Shorts"
-                className="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-white/5 hover:bg-white/10 text-zinc-400 hover:text-white flex items-center justify-center transition-colors"
-              >
-                <Search className="w-3.5 h-3.5" />
-              </button>
-            )}
-          </div>
-        }
       />
 
-      {/* Quick Search Suggestions when searching */}
+      {/* Active Search Banner when navigated from Top Nav Search */}
       {searchQuery && (
-        <div className="flex items-center gap-2 mb-4 px-0.5 flex-wrap">
-          <span className="text-xs text-[#aaaaaa]">Suggestions:</span>
-          {QUICK_SUGGESTIONS.map(term => (
-            <button
-              key={term}
-              onClick={() => setSearchQuery(term)}
-              className="text-xs px-2.5 py-1 rounded-full bg-[#272727] hover:bg-[#3f3f3f] text-[#f1f1f1] transition-colors"
-            >
-              #{term}
-            </button>
-          ))}
+        <div className="flex items-center justify-between bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 mb-4 backdrop-blur-md">
+          <div className="flex items-center gap-2 text-xs sm:text-sm">
+            <span className="text-zinc-400">Search results for:</span>
+            <span className="font-semibold text-white">"{searchQuery}"</span>
+            <span className="text-xs text-zinc-500">({displayedGridDramas.length} results)</span>
+          </div>
+          <button
+            onClick={() => {
+              setSearchQuery('');
+              setIsSearching(false);
+              if (activeTab !== 'saved') fetchFeed(activeTab as ShortsCategoryTab, 1, false);
+            }}
+            className="flex items-center gap-1.5 text-xs text-zinc-400 hover:text-white px-2.5 py-1 rounded-lg bg-white/5 hover:bg-white/10 transition-colors"
+          >
+            <X className="w-3.5 h-3.5" />
+            <span>Clear</span>
+          </button>
         </div>
       )}
 
@@ -622,5 +600,13 @@ export default function ShortsDiscoveryPage() {
         )}
       </AnimatePresence>
     </div>
+  );
+}
+
+export default function ShortsDiscoveryPage() {
+  return (
+    <Suspense fallback={<div className="min-h-screen bg-[#0f0f0f]" />}>
+      <ShortsDiscoveryContent />
+    </Suspense>
   );
 }

@@ -2,7 +2,7 @@ import { Metadata } from 'next';
 
 export const metadata: Metadata = {
   title: 'Search Anime Online | Find Episodes, Movies & Series in HD',
-  description: 'Search over 15,000 anime series and movies on Shadow Garden. Filter by genre, year, status, and audio type (Subbed or Dubbed). Instant search with 1080p HD streaming.',
+  description: 'Search over 15,000 anime series and movies on Kagemi. Filter by genre, year, status, and audio type (Subbed or Dubbed). Instant search with 1080p HD streaming.',
   keywords: [
     'search anime',
     'find anime episodes',
@@ -12,13 +12,13 @@ export const metadata: Metadata = {
     'search dubbed anime'
   ],
   alternates: {
-    canonical: 'https://shadow-garden.site/search',
+    canonical: 'https://kagemi.site/search',
   },
   openGraph: {
-    title: 'Search Anime Online | Shadow Garden',
-    description: 'Search over 15,000 anime series and movies on Shadow Garden with Sub and Dub options.',
-    url: 'https://shadow-garden.site/search',
-    siteName: 'Shadow Garden',
+    title: 'Search Anime Online | Kagemi',
+    description: 'Search over 15,000 anime series and movies on Kagemi with Sub and Dub options.',
+    url: 'https://kagemi.site/search',
+    siteName: 'Kagemi',
     type: 'website',
   },
 };

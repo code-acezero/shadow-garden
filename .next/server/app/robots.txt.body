@@ -1,8 +1,0 @@
-User-Agent: *
-Allow: /
-Disallow: /settings
-Disallow: /messages
-Disallow: /manager
-Disallow: /admin
-
-Sitemap: https://shadow-garden.site/sitemap.xml

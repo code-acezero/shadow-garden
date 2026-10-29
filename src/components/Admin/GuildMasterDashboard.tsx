@@ -19,7 +19,7 @@ import {
   Scroll, Sword, BookOpen, Link2, Feather, Play, Pause,
   Bold, Italic, Type, UserCheck, X, LayoutDashboard, Palette,
   Filter, ArrowDownCircle, Menu, Crown, Layers, ArrowLeft,
-  PanelLeftClose, PanelLeftOpen, DollarSign
+  PanelLeftClose, PanelLeftOpen, DollarSign, Sun, Moon, Check
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -286,7 +286,7 @@ export default function GuildMasterDashboard() {
                 <div>
                   <div className="flex items-center gap-2 mb-1">
                     <span className="px-2.5 py-0.5 rounded-full bg-primary-500/20 border border-primary-500/30 text-[9px] font-black uppercase tracking-widest text-primary-400 flex items-center gap-1.5 shadow-sm">
-                      <span className="w-1.5 h-1.5 bg-primary-500 rounded-full animate-pulse"/> SHADOW GARDEN ADMIN CONTROL
+                      KAGEMI ADMIN CONTROL
                     </span>
                   </div>
                   <h1 className="text-3xl md:text-4xl font-minomu tracking-wider text-white leading-none drop-shadow-md">
@@ -333,7 +333,7 @@ export default function GuildMasterDashboard() {
             <div className="px-4 text-center space-y-2 w-full">
               <div className="flex justify-center items-center gap-3 opacity-80 hover:opacity-100 transition-opacity">
                 <img src="/icon.svg" className="w-6 h-6 drop-shadow-lg" alt="Guild Seal"/>
-                <h4 className="font-minomu font-bold text-base text-white tracking-widest">SHADOW GARDEN</h4>
+                <h4 className="font-minomu font-bold text-base text-white tracking-widest">KAGEMI</h4>
               </div>
               <p className="text-zinc-600 text-[10px] font-mono uppercase tracking-widest">
                 Guild-Master Console • V2.5 • {user?.email || 'Admin'}
@@ -958,55 +958,202 @@ const BroadcastTab = memo(() => {
 BroadcastTab.displayName = 'BroadcastTab';
 
 // ==========================================
-//  TAB 7: SOLID 4-SHADE THEME PALETTES
+//  TAB 7: 20+ 5-LAYER THEME ARCHITECTURE
 // ==========================================
 const ThemePaletteTab = memo(() => {
-  const [currentPalette, setCurrentPalette] = useState('void-obsidian');
+  const [currentPalette, setCurrentPalette] = useState('sky-purple-violet');
+  const [themeMode, setThemeMode] = useState<'dark' | 'light'>('dark');
+  const [selectedCategory, setSelectedCategory] = useState<string>('All');
+  const [searchQuery, setSearchQuery] = useState('');
 
   useEffect(() => {
-    const saved = localStorage.getItem('shadow_color_palette');
-    if (saved) setCurrentPalette(saved);
+    const saved = localStorage.getItem('shadow_color_palette') || 'sky-purple-violet';
+    const savedMode = (localStorage.getItem('shadow_theme_mode') || 'dark') as 'dark' | 'light';
+    setCurrentPalette(saved);
+    setThemeMode(savedMode);
   }, []);
 
-  const handleSelectPalette = (id: string) => {
+  const handleSelectPalette = (id: string, mode: 'dark' | 'light' = themeMode) => {
     setCurrentPalette(id);
-    applyColorPalette(id);
-    notify("Palette Updated", `Applied ${id} theme`, 'success');
+    applyColorPalette(id, mode);
+    notify("Theme Palette Applied", `Applied ${id} (${mode} mode) across entire site`, 'success');
   };
+
+  const handleToggleMode = (mode: 'dark' | 'light') => {
+    setThemeMode(mode);
+    applyColorPalette(currentPalette, mode);
+    notify("Mode Switched", `Switched to ${mode.toUpperCase()} mode`, 'system');
+  };
+
+  const categories = ['All', 'Astral & Space', 'Elemental', 'Cyber & Neon', 'Classic & Monochrome', 'Pastel & Anime'];
+
+  const filteredPalettes = useMemo(() => {
+    return COLOR_PALETTES.filter(p => {
+      const matchesCat = selectedCategory === 'All' || p.category === selectedCategory;
+      const matchesSearch = !searchQuery.trim() || 
+        p.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
+        p.description.toLowerCase().includes(searchQuery.toLowerCase());
+      return matchesCat && matchesSearch;
+    });
+  }, [selectedCategory, searchQuery]);
+
+  const activeThemeObj = COLOR_PALETTES.find(p => p.id === currentPalette) || COLOR_PALETTES[0];
+  const activeLayers = themeMode === 'light' ? activeThemeObj.light : activeThemeObj.dark;
 
   return (
     <div className="space-y-6">
-      <div className="bg-zinc-900/30 border border-white/5 p-6 rounded-[2rem]">
-        <h3 className="font-bold text-white text-lg flex items-center gap-2 mb-2">
-          <Palette className="text-primary-500" size={20} /> 10 Solid 4-Shade Color Palettes
-        </h3>
-        <p className="text-zinc-400 text-xs">
-          Select a solid 4-shade color palette for the entire site interface. Replaces old text gradients with clean solid UI layers.
-        </p>
+      {/* Header Banner */}
+      <div className="bg-zinc-900/40 border border-white/10 p-6 rounded-[2rem] flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+        <div>
+          <h3 className="font-bold text-white text-lg flex items-center gap-2 mb-1.5">
+            <Palette className="text-primary-500" size={22} /> Unified Design System: 20+ 5-Layer Themes
+          </h3>
+          <p className="text-zinc-400 text-xs max-w-2xl">
+            Every page across Kagemi is synchronized to the same design tokens. Each theme features 5 distinct architectural layers for both Dark and Light modes. Default: <span className="text-primary-400 font-semibold">Sky Purple Violet</span>.
+          </p>
+        </div>
+
+        {/* Light / Dark Mode Toggle Pill */}
+        <div className="flex items-center gap-2 bg-black/60 p-1.5 rounded-2xl border border-white/10 shrink-0 self-start lg:self-auto">
+          <button
+            type="button"
+            onClick={() => handleToggleMode('dark')}
+            className={`px-4 py-2 rounded-xl text-xs font-bold flex items-center gap-2 transition-all cursor-pointer ${
+              themeMode === 'dark' 
+                ? 'bg-primary-600 text-white shadow-lg' 
+                : 'text-zinc-400 hover:text-white hover:bg-white/5'
+            }`}
+          >
+            <Moon size={14} /> Dark Mode
+          </button>
+          <button
+            type="button"
+            onClick={() => handleToggleMode('light')}
+            className={`px-4 py-2 rounded-xl text-xs font-bold flex items-center gap-2 transition-all cursor-pointer ${
+              themeMode === 'light' 
+                ? 'bg-amber-500 text-black shadow-lg' 
+                : 'text-zinc-400 hover:text-white hover:bg-white/5'
+            }`}
+          >
+            <Sun size={14} /> Light Mode
+          </button>
+        </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {COLOR_PALETTES.map(p => {
+      {/* Live Active Theme Preview Card */}
+      <div className="p-5 rounded-2xl border border-white/10 bg-black/40 flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+        <div className="space-y-1">
+          <div className="flex items-center gap-2">
+            <span className="text-xs uppercase font-bold tracking-wider text-zinc-400">Currently Active:</span>
+            <span className="text-sm font-black text-white">{activeThemeObj.name}</span>
+            <Badge className="bg-primary-500/20 text-primary-300 border border-primary-500/30 text-[10px]">
+              {themeMode.toUpperCase()}
+            </Badge>
+          </div>
+          <p className="text-xs text-zinc-400">{activeThemeObj.description}</p>
+        </div>
+
+        {/* Layer Swatches Preview */}
+        <div className="flex items-center gap-2">
+          <span className="text-[10px] font-bold text-zinc-500 uppercase tracking-wider mr-1">5 Layers:</span>
+          {[
+            { label: 'Layer 0 Canvas', color: activeLayers.layer0_bg },
+            { label: 'Layer 1 Surface', color: activeLayers.layer1_card },
+            { label: 'Layer 2 Elevated', color: activeLayers.layer2_elevated },
+            { label: 'Layer 3 Border', color: activeLayers.layer3_border },
+            { label: 'Layer 4 Accent', color: activeLayers.layer4_accent },
+            { label: 'Layer 5 Sky/Secondary', color: activeLayers.layer5_sky },
+          ].map((l, i) => (
+            <div key={i} className="flex flex-col items-center gap-1 group relative">
+              <div 
+                className="w-7 h-7 rounded-lg border border-white/20 shadow-sm transition-transform group-hover:scale-110" 
+                style={{ backgroundColor: l.color }}
+                title={`${l.label}: ${l.color}`}
+              />
+              <span className="text-[8px] text-zinc-500 font-mono">L{i}</span>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Search & Category Filter Toolbar */}
+      <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
+        {/* Category Pills */}
+        <div className="flex items-center gap-1.5 overflow-x-auto py-1 scrollbar-none">
+          {categories.map(cat => (
+            <button
+              key={cat}
+              type="button"
+              onClick={() => setSelectedCategory(cat)}
+              className={`px-3 py-1.5 rounded-full text-xs font-semibold whitespace-nowrap transition-all cursor-pointer ${
+                selectedCategory === cat
+                  ? 'bg-primary-600 text-white'
+                  : 'bg-white/5 text-zinc-400 hover:text-white hover:bg-white/10'
+              }`}
+            >
+              {cat}
+            </button>
+          ))}
+        </div>
+
+        {/* Search Input */}
+        <div className="relative w-full sm:w-64">
+          <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-400" />
+          <input
+            type="text"
+            value={searchQuery}
+            onChange={e => setSearchQuery(e.target.value)}
+            placeholder="Search themes..."
+            className="w-full bg-white/5 border border-white/10 rounded-xl pl-9 pr-3 py-1.5 text-xs text-white placeholder-zinc-500 outline-none focus:border-primary-500"
+          />
+        </div>
+      </div>
+
+      {/* 20+ Themes Grid */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+        {filteredPalettes.map(p => {
           const isActive = currentPalette === p.id;
+          const currentLayers = themeMode === 'light' ? p.light : p.dark;
+
           return (
             <div
               key={p.id}
               onClick={() => handleSelectPalette(p.id)}
-              className={`p-5 rounded-3xl border cursor-pointer transition-all ${
-                isActive ? 'border-primary-500 ring-2 ring-primary-500/30 scale-105 bg-zinc-900/60' : 'bg-zinc-900/20 border-white/5 hover:border-white/20'
+              className={`p-5 rounded-3xl border cursor-pointer transition-all flex flex-col justify-between ${
+                isActive 
+                  ? 'border-primary-500 ring-2 ring-primary-500/40 scale-[1.02] bg-zinc-900/80 shadow-2xl' 
+                  : 'bg-zinc-900/30 border-white/5 hover:border-white/20 hover:bg-zinc-900/50'
               }`}
             >
-              <div className="flex items-center justify-between mb-4">
-                <h4 className="font-bold text-white text-sm">{p.name}</h4>
-                {isActive && <Badge className="bg-primary-600 text-white text-[9px]">ACTIVE</Badge>}
+              <div>
+                <div className="flex items-center justify-between mb-2">
+                  <div className="flex items-center gap-2">
+                    <h4 className="font-bold text-white text-sm">{p.name}</h4>
+                    {p.id === 'sky-purple-violet' && (
+                      <span className="text-[9px] font-black uppercase tracking-wider px-1.5 py-0.5 rounded bg-primary-500/20 text-primary-300 border border-primary-500/30">
+                        Default
+                      </span>
+                    )}
+                  </div>
+                  {isActive && <Badge className="bg-primary-600 text-white text-[9px] flex items-center gap-1"><Check size={10} /> ACTIVE</Badge>}
+                </div>
+                <p className="text-[11px] text-zinc-400 mb-4 line-clamp-2">{p.description}</p>
               </div>
 
-              {/* 4 Shade Preview Bar */}
-              <div className="grid grid-cols-4 gap-2 h-12 rounded-xl overflow-hidden border border-white/10 p-1 bg-black/40">
-                <div className="rounded-lg h-full" style={{ backgroundColor: p.shades.bg }} title="Layer 0: Background Surface" />
-                <div className="rounded-lg h-full" style={{ backgroundColor: p.shades.card }} title="Layer 1: Card Surface" />
-                <div className="rounded-lg h-full" style={{ backgroundColor: p.shades.border }} title="Layer 2: Border Highlight" />
-                <div className="rounded-lg h-full" style={{ backgroundColor: p.shades.accent }} title="Layer 3: Primary Accent" />
+              {/* 5+ Layers Swatch Preview Bar */}
+              <div>
+                <div className="flex items-center justify-between mb-1.5">
+                  <span className="text-[10px] font-bold text-zinc-500 uppercase tracking-wider">5 Layer Palette:</span>
+                  <span className="text-[10px] text-zinc-500 font-mono">{p.category}</span>
+                </div>
+                <div className="grid grid-cols-6 gap-1.5 h-10 rounded-xl overflow-hidden border border-white/10 p-1 bg-black/60">
+                  <div className="rounded-md h-full transition-all hover:scale-105" style={{ backgroundColor: currentLayers.layer0_bg }} title="Layer 0: Background Canvas" />
+                  <div className="rounded-md h-full transition-all hover:scale-105" style={{ backgroundColor: currentLayers.layer1_card }} title="Layer 1: Surface / Card" />
+                  <div className="rounded-md h-full transition-all hover:scale-105" style={{ backgroundColor: currentLayers.layer2_elevated }} title="Layer 2: Elevated / Hover" />
+                  <div className="rounded-md h-full transition-all hover:scale-105" style={{ backgroundColor: currentLayers.layer3_border }} title="Layer 3: Border Highlight" />
+                  <div className="rounded-md h-full transition-all hover:scale-105" style={{ backgroundColor: currentLayers.layer4_accent }} title="Layer 4: Primary Accent" />
+                  <div className="rounded-md h-full transition-all hover:scale-105" style={{ backgroundColor: currentLayers.layer5_sky }} title="Layer 5: Sky / Secondary Highlight" />
+                </div>
               </div>
             </div>
           );

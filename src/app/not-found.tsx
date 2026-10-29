@@ -60,7 +60,7 @@ export default function NotFound() {
                     </div>
                     
                     <p className="text-zinc-500 text-sm md:text-base leading-relaxed font-medium">
-                        The coordinates you seek do not exist within the Shadow Garden archives. 
+                        The coordinates you seek do not exist within the Kagemi archives. 
                         This sector is void of intelligence.
                     </p>
                 </div>
@@ -85,7 +85,7 @@ export default function NotFound() {
             {/* --- Footer Decoration --- */}
             <div className="absolute bottom-8 left-0 right-0 text-center opacity-20 pointer-events-none">
                 <span className={`font-gradvis text-xl text-zinc-500 tracking-widest`}>
-                    SHADOW GARDEN
+                    KAGEMI
                 </span>
             </div>
         </div>

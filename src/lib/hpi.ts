@@ -170,6 +170,8 @@ export interface HindiQtip {
   status: string;
   aired: string;
   genres: string[];
+  totalEpisodes?: string | number;
+  malScore?: string;
 }
 
 /**
@@ -268,7 +270,8 @@ async function fetchHindiApi<T = any>(endpoint: string, params: Record<string, a
 function normalizeHindiCard(item: any): AnimeCard {
   // The API returns episodes as {sub, dub, total} object, not a number
   const epObj = item?.episodes;
-  const epCount = epObj?.total ?? epObj?.dub ?? epObj?.sub ?? undefined;
+  const releasedCount = epObj?.dub ?? epObj?.sub ?? item?.episode ?? undefined;
+  const totalCount = item?.totalEpisodes || item?.total_episodes || (epObj?.total ?? undefined);
   const imgUrl = item?.image || item?.poster || '';
   const backdropUrl = item?.backdrop || item?.cover || imgUrl;
   return {
@@ -281,11 +284,24 @@ function normalizeHindiCard(item: any): AnimeCard {
     cover: backdropUrl,
     description: item?.description || item?.synopsis || item?.TMDB_DATA?.synopsis || '',
     type: item?.type || 'TV',
-    episode: epCount !== undefined ? String(epCount) : undefined,
-    episodeCount: epCount !== undefined ? String(epCount) : undefined,
+    episode: releasedCount !== undefined ? String(releasedCount) : (totalCount !== undefined ? String(totalCount) : undefined),
+    episodeCount: releasedCount !== undefined ? String(releasedCount) : undefined,
+    totalEpisodes: totalCount !== undefined ? Number(totalCount) : undefined,
+    total_episodes: totalCount !== undefined ? Number(totalCount) : undefined,
+    episodes: {
+      dub: epObj?.dub ?? (releasedCount !== undefined ? Number(releasedCount) : undefined),
+      sub: epObj?.sub ?? (releasedCount !== undefined ? Number(releasedCount) : undefined),
+      total: totalCount !== undefined ? Number(totalCount) : undefined,
+      eps: totalCount !== undefined ? Number(totalCount) : undefined
+    },
+    dub: epObj?.dub ?? releasedCount,
+    sub: epObj?.sub,
     slug: item?.slug || item?.id || '',
     dataId: item?.id || item?.slug || '',
-    score: item?.score || 0
+    score: item?.score || 0,
+    rating: item?.rating,
+    ageRating: item?.ageRating || item?.rating,
+    year: item?.year || (item?.releaseDate ? String(item.releaseDate).split('-')[0] : '')
   } as any;
 }
 
@@ -539,7 +555,9 @@ class HPIClient {
           japaneseTitle: info.titleJp || info.nativeTitle || info.title || '',
           status: info.status || 'Completed',
           aired: info.aired || info.premiered || '',
-          genres: Array.isArray(info.genres) && info.genres.length > 0 ? info.genres : ['Hindi']
+          genres: Array.isArray(info.genres) && info.genres.length > 0 ? info.genres : ['Hindi'],
+          totalEpisodes: info.totalEpisodes || info.total_episodes || info.episodes?.total || (Array.isArray(info.episodes) ? info.episodes.length : undefined),
+          malScore: info.malScore || info.score || undefined
         };
       } catch {
         return {

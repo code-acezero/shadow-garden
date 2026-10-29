@@ -4,6 +4,7 @@ import React, { useRef } from 'react';
 import Link from 'next/link';
 import { Flame, ChevronLeft, ChevronRight, TrendingUp } from 'lucide-react';
 import AnimeCard from '@/components/Anime/AnimeCard';
+import MonetLineIcon from '@/components/UIx/MonetLineIcon';
 
 interface TrendingCarouselProps {
   items: any[];
@@ -24,25 +25,16 @@ export default function TrendingCarousel({ items }: TrendingCarouselProps) {
   return (
     <section className="w-full px-4 md:px-0">
       <div className="flex items-center justify-between mb-4 md:mb-6">
-        <div className="flex items-center gap-3">
-          <div className="w-9 h-9 rounded-2xl bg-gradient-to-br from-amber-500/20 to-red-600/30 border border-amber-500/30 flex items-center justify-center text-amber-400 shadow-lg shadow-amber-950/30">
-            <Flame size={18} className="fill-amber-400 animate-pulse" />
-          </div>
-          <div>
-            <div className="flex items-center gap-2">
-              <span className="text-[10px] font-black uppercase tracking-[0.25em] text-amber-400 font-lemon">
-                Hall of Eminence
-              </span>
-            </div>
-            <h2 className="text-xl md:text-3xl font-black text-white font-gradvis tracking-tight">
-              TRENDING <span className="text-primary-600">APEX</span>
-            </h2>
-          </div>
+        <div className="flex items-center gap-2.5 sm:gap-3">
+          <MonetLineIcon icon={Flame} variant="amber" />
+          <h2 className="text-xl md:text-3xl font-black text-white font-lemon uppercase tracking-wide flex items-center gap-2 leading-none">
+            TRENDING NOW
+          </h2>
         </div>
 
         <div className="flex items-center gap-2">
           <Link
-            href="/view/trending"
+            href="/explore?category=trending"
             className="text-[11px] font-black uppercase tracking-wider text-zinc-400 hover:text-white px-3 py-1.5 rounded-full bg-white/5 border border-white/5 hover:border-white/10 transition-colors hidden sm:inline-flex items-center gap-1.5"
           >
             <span>View All</span>
@@ -95,7 +87,7 @@ export default function TrendingCarousel({ items }: TrendingCarouselProps) {
               </span>
             </div>
 
-            <AnimeCard anime={anime} />
+            <AnimeCard anime={anime} hideType />
           </div>
         ))}
       </div>

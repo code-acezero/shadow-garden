@@ -5,6 +5,9 @@ import { getHindiReleasingToday } from '@/lib/blakite';
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
+let lastMatchRun = 0;
+const FAST_MATCH_THROTTLE = 3 * 60 * 1000; // Run at most once every 3 minutes on feed activity
+
 export async function GET(req: NextRequest) {
   try {
     const { searchParams } = new URL(req.url);
@@ -13,6 +16,13 @@ export async function GET(req: NextRequest) {
     const releasedOnly = searchParams.get('releasedOnly') !== 'false';
     const audio = (searchParams.get('audio') || 'all').toLowerCase(); // 'all' | 'sub' | 'hi'
 
+    // Anikoto Event Trigger: Opportunistically check for new episode alerts on feed load
+    const now = Date.now();
+    if (page === 1 && now - lastMatchRun > FAST_MATCH_THROTTLE) {
+      lastMatchRun = now;
+      import('@/lib/oracle-runner').then(m => m.checkRecentEpisodeAlerts()).catch(() => {});
+    }
+
     if (audio === 'hi') {
       const hindiResults = await getHindiReleasingToday(perPage);
       return NextResponse.json({
@@ -20,6 +30,16 @@ export async function GET(req: NextRequest) {
         page: 1,
         pageInfo: { currentPage: 1, hasNextPage: false, totalPages: 1 },
         results: hindiResults
+      });
+    }
+
+    if (audio === 'dub') {
+      const dubResults = await AniListService.getEnglishDubbed(page, perPage);
+      return NextResponse.json({
+        ok: true,
+        page,
+        pageInfo: { currentPage: page, hasNextPage: dubResults.length === perPage, totalPages: 1 },
+        results: dubResults.map((it: any) => ({ ...it, isDub: true }))
       });
     }
 

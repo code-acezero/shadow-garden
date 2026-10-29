@@ -47,7 +47,7 @@ export default class LandingErrorBoundary extends Component<Props, State> {
             <span className="text-[10px] font-extrabold uppercase tracking-widest text-primary-400 bg-primary-950/50 border border-primary-500/30 px-3 py-1 rounded-full mb-4">
               Sanctuary Gateway
             </span>
-            <h1 className="text-3xl font-extrabold font-lemon mb-2 text-white tracking-widest">SHADOW GARDEN</h1>
+            <h1 className="text-3xl font-extrabold font-lemon mb-2 text-white tracking-widest">KAGEMI</h1>
             <p className="text-zinc-400 text-sm mb-6 max-w-xs leading-relaxed">
               Encountered a gateway transition anomaly. Enter the sanctuary directly or reload.
             </p>

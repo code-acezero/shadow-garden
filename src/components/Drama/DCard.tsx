@@ -56,8 +56,8 @@ const DCard = memo(({ item }: { item: DramaCard }) => {
 
         {/* Top-Right: Unified One UI 8 Pill (No redundant tags) */}
         {isHindi && !isCountryHindi ? (
-          <div className="absolute top-2.5 right-2.5 bg-black/60 backdrop-blur-md text-amber-300 border border-white/10 px-2 py-0.5 rounded-full font-bold text-[9px] z-20 shadow-sm flex items-center gap-1 uppercase tracking-wider">
-            <span>🇮🇳</span> HINDI
+          <div className="absolute top-2.5 right-2.5 bg-black/60 backdrop-blur-md text-amber-300 border border-white/10 px-2 py-0.5 rounded-full font-bold text-[9px] z-20 shadow-sm flex items-center uppercase tracking-wider">
+            HINDI
           </div>
         ) : epTag ? (
           <div className="absolute top-2.5 right-2.5 bg-black/60 backdrop-blur-md text-zinc-200 border border-white/10 px-2 py-0.5 rounded-full font-bold text-[9px] z-20 shadow-sm uppercase tracking-wider">

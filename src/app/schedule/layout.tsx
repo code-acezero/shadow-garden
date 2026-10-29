@@ -2,7 +2,7 @@ import { Metadata } from 'next';
 
 export const metadata: Metadata = {
   title: 'Anime Release Schedule & Broadcast Calendar | Airing Today',
-  description: 'Track weekly anime release schedules, broadcast airtimes, and countdowns for new episodes airing today in Japan and streaming worldwide on Shadow Garden.',
+  description: 'Track weekly anime release schedules, broadcast airtimes, and countdowns for new episodes airing today in Japan and streaming worldwide on Kagemi.',
   keywords: [
     'anime release schedule',
     'anime schedule today',
@@ -12,13 +12,13 @@ export const metadata: Metadata = {
     'weekly anime releases'
   ],
   alternates: {
-    canonical: 'https://shadow-garden.site/schedule',
+    canonical: 'https://kagemi.site/schedule',
   },
   openGraph: {
-    title: 'Anime Release Schedule & Broadcast Calendar | Shadow Garden',
+    title: 'Anime Release Schedule & Broadcast Calendar | Kagemi',
     description: 'Track weekly anime release schedules, broadcast airtimes, and countdowns for new episodes airing today.',
-    url: 'https://shadow-garden.site/schedule',
-    siteName: 'Shadow Garden',
+    url: 'https://kagemi.site/schedule',
+    siteName: 'Kagemi',
     type: 'website',
   },
 };

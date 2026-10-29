@@ -2,7 +2,7 @@ import { Metadata } from 'next';
 
 export const metadata: Metadata = {
   title: 'Watch Donghua Online Free with English Subtitles | Chinese Anime Streaming',
-  description: 'Stream the best Chinese anime (Donghua) online for free in 1080p Full HD with English subtitles. Fast servers, zero lag, updated daily on Shadow Garden.',
+  description: 'Stream the best Chinese anime (Donghua) online for free in 1080p Full HD with English subtitles. Fast servers, zero lag, updated daily on Kagemi.',
   keywords: [
     'watch donghua online',
     'chinese anime streaming',
@@ -13,13 +13,13 @@ export const metadata: Metadata = {
     'donghua streaming site'
   ],
   alternates: {
-    canonical: 'https://shadow-garden.site/donghua',
+    canonical: 'https://kagemi.site/donghua',
   },
   openGraph: {
-    title: 'Watch Donghua Online Free with English Subtitles | Shadow Garden',
+    title: 'Watch Donghua Online Free with English Subtitles | Kagemi',
     description: 'Stream top Chinese anime (Donghua) online for free in 1080p Full HD with English subtitles.',
-    url: 'https://shadow-garden.site/donghua',
-    siteName: 'Shadow Garden',
+    url: 'https://kagemi.site/donghua',
+    siteName: 'Kagemi',
     type: 'website',
   },
 };

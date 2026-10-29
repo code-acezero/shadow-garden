@@ -2,11 +2,11 @@
 
 import React from 'react';
 import Link from 'next/link';
-import { Compass, Flame, Shield, Heart, Zap, Sparkles, Ghost, Skull, Trophy, Smile } from 'lucide-react';
+import { Compass, Flame, Shield, Heart, Zap, Wand2, Ghost, Skull, Trophy, Smile } from 'lucide-react';
 
 const GENRES = [
   { name: 'Action', icon: Flame, color: 'from-red-600/20 to-orange-600/20 text-red-400 border-red-500/30' },
-  { name: 'Fantasy', icon: Sparkles, color: 'from-purple-600/20 to-indigo-600/20 text-purple-400 border-purple-500/30' },
+  { name: 'Fantasy', icon: Wand2, color: 'from-purple-600/20 to-indigo-600/20 text-purple-400 border-purple-500/30' },
   { name: 'Sci-Fi', icon: Zap, color: 'from-cyan-600/20 to-blue-600/20 text-cyan-400 border-cyan-500/30' },
   { name: 'Romance', icon: Heart, color: 'from-pink-600/20 to-rose-600/20 text-pink-400 border-pink-500/30' },
   { name: 'Supernatural', icon: Ghost, color: 'from-violet-600/20 to-fuchsia-600/20 text-violet-400 border-violet-500/30' },
@@ -18,7 +18,7 @@ const GENRES = [
 
 export default function GenrePillsBar() {
   return (
-    <div className="w-full px-4 md:px-0">
+    <div className="w-full px-2 sm:px-4">
       <div className="flex items-center gap-2 overflow-x-auto no-scrollbar py-2">
         <div className="flex items-center gap-1.5 px-3 py-2 rounded-2xl bg-white/5 border border-white/10 text-zinc-400 text-xs font-black uppercase tracking-wider shrink-0">
           <Compass size={13} className="text-primary-500" />
@@ -29,7 +29,7 @@ export default function GenrePillsBar() {
           return (
             <Link
               key={g.name}
-              href={`/search?type=${encodeURIComponent(g.name)}`}
+              href={`/explore?genres=${encodeURIComponent(g.name.toLowerCase())}`}
               className={`flex items-center gap-2 px-4 py-2 rounded-2xl bg-gradient-to-r ${g.color} border backdrop-blur-md text-xs font-bold whitespace-nowrap shrink-0 hover:scale-105 active:scale-95 transition-all shadow-sm`}
             >
               <Icon size={13} />

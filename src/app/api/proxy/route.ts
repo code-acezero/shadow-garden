@@ -46,6 +46,10 @@ const REFERER_MAP: Record<string, string> = {
     // --- Manga & Comic Hubs ---
     'mangadex': 'https://mangadex.org/',
     'mangadex.network': 'https://mangadex.org/',
+    'anilist': 'https://anilist.co/',
+    'alphacoders': 'https://alphacoders.com/',
+    'planeptune': 'https://weebcentral.com/',
+    'weebcentral': 'https://weebcentral.com/',
 
     // --- HDMovie2 / Bollywood Hubs ---
     'slast430did': 'https://hdmoviesnow.com/',

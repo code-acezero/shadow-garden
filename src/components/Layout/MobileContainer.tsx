@@ -22,7 +22,7 @@ export default function MobileContainer({
         className
       )}
     >
-      <div className="flex-1 w-full">
+      <div className={cn("flex-1 w-full", hasBottomNav && "pb-[68px] md:pb-0")}>
         {children}
       </div>
     </div>

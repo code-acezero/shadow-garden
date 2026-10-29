@@ -19,8 +19,7 @@ function SocialContent() {
     <div className="overflow-visible bg-[#050505] text-white flex flex-col w-full h-full">
       {/* Background Ambience */}
       <div className="fixed inset-0 pointer-events-none">
-        <div className="absolute top-0 left-0 w-[500px] h-[500px] bg-primary-900/10 rounded-full blur-[120px] opacity-50" />
-        <div className="absolute bottom-0 right-0 w-[500px] h-[500px] bg-blue-900/10 rounded-full blur-[120px] opacity-50" />
+        <div className="absolute bottom-0 right-0 w-[500px] h-[500px] bg-blue-900/10 rounded-full blur-[120px] opacity-30" />
       </div>
 
       {/* Main Social Interface */}

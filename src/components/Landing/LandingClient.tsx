@@ -189,7 +189,7 @@ const LatestSocialFeedSection = React.memo(() => {
             },
             {
               id: '2',
-              content: 'Shadow Garden node stream servers are running at 0ms latency tonight. Perfect 1080p 60fps streaming.',
+              content: 'Kagemi node stream servers are running at 0ms latency tonight. Perfect 1080p 60fps streaming.',
               created_at: new Date(Date.now() - 7200000).toISOString(),
               likes_count: 98,
               comments_count: 14,
@@ -227,7 +227,7 @@ const LatestSocialFeedSection = React.memo(() => {
             },
             {
               id: '2',
-              content: 'Shadow Garden node stream servers are running at 0ms latency tonight. Perfect 1080p 60fps streaming.',
+              content: 'Kagemi node stream servers are running at 0ms latency tonight. Perfect 1080p 60fps streaming.',
               created_at: new Date(Date.now() - 7200000).toISOString(),
               likes_count: 98,
               comments_count: 14,
@@ -616,7 +616,7 @@ export default function LandingClient() {
                         <span className="w-1.5 h-1.5 rounded-full bg-primary-500 shadow-[0_0_8px_red]" />
                         <span className="text-primary-200 text-[10px] font-bold tracking-widest uppercase font-mono">Guild System Online • v3.0 (beta)</span>
                      </div>
-                     <h1 className="text-5xl md:text-8xl font-normal tracking-wide font-gradvis text-primary-600 drop-shadow-[0_0_30px_rgba(220,38,38,0.6)] relative z-10" style={{ fontFamily: 'var(--font-gradvis), serif' }}>SHADOW GARDEN</h1>
+                     <h1 className="text-5xl md:text-8xl font-normal tracking-wide font-gradvis text-primary-600 drop-shadow-[0_0_30px_rgba(220,38,38,0.6)] relative z-10" style={{ fontFamily: 'var(--font-gradvis), serif' }}>KAGEMI</h1>
                      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[120%] h-[120%] opacity-50 z-0 pointer-events-none mix-blend-screen">
                         <div className="w-full h-full bg-primary-500/20 blur-[60px] rounded-full animate-pulse" />
                      </div>
@@ -707,7 +707,7 @@ export default function LandingClient() {
                      <div className="flex-1 space-y-8">
                         <h3 className="text-4xl font-normal text-primary-600 font-gradvis border-l-4 border-primary-600 pl-6" style={{ fontFamily: 'var(--font-above), serif' }}>THE FORBIDDEN LIBRARY</h3>
                         <p className="text-gray-300 text-lg leading-relaxed font-sans tracking-wide">
-                           Shadow Garden isn't just a website; it's a repository of otaku culture. 
+                           Kagemi isn't just a website; it's a repository of otaku culture. 
                            We index over 15,000 series, automatically sync with MyAnimeList and AniList.
                         </p>
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -838,7 +838,7 @@ export default function LandingClient() {
                {/* FOOTER */}
                <footer className="py-12 border-t border-white/5 text-center relative overflow-hidden bg-black">
                   <div className="relative z-20 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-                      <h4 className="text-2xl font-gradvis text-primary-600 font-normal mb-3" style={{ fontFamily: 'var(--font-gradvis), serif' }}>SHADOW GARDEN</h4>
+                      <h4 className="text-2xl font-gradvis text-primary-600 font-normal mb-3" style={{ fontFamily: 'var(--font-gradvis), serif' }}>KAGEMI</h4>
                       <p className="text-gray-600 text-xs uppercase tracking-widest mb-8">Created by Ace Zero • Est. 2026</p>
                       <div className="flex justify-center gap-8 text-xs text-gray-500 font-medium uppercase tracking-wider">
                          <Link href="#" className="hover:text-primary-500 transition-colors">Terms of Service</Link>

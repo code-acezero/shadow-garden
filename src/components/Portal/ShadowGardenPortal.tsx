@@ -1236,7 +1236,7 @@ const CinematicTitleIntro = React.memo(({ onComplete }: { onComplete: () => void
                         className="text-4xl sm:text-6xl md:text-8xl font-normal font-gradvis text-transparent bg-clip-text bg-gradient-to-r from-white via-red-200 to-zinc-400 tracking-[0.25em] sm:tracking-[0.45em] ml-[0.25em] sm:ml-[0.45em] uppercase drop-shadow-[0_0_35px_rgba(220,38,38,0.5)]" 
                         style={{ fontFamily: 'var(--font-gradvis), serif' }}
                     >
-                        SHADOW GARDEN
+                        KAGEMI
                     </h1>
                     
                     <div className="relative w-full max-w-3xl h-10 mt-3 overflow-visible flex items-center justify-center">
@@ -1334,7 +1334,7 @@ const BracePopup = React.memo(({ onReady, gender }: { onReady: () => void; gende
                 </div>
 
                 <p className="text-gray-300 text-sm mb-5 leading-relaxed font-mono text-left">
-                    We are not going beyond Shadow Garden, we are going beyond our reality and going to a place known as Otakuverse which has the guild Shadow Garden where we will operate everything. Brace yourself and push the door.
+                    We are not going beyond Kagemi, we are going beyond our reality and going to a place known as Otakuverse which has the guild Kagemi where we will operate everything. Brace yourself and push the door.
                 </p>
 
                 <Button 

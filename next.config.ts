@@ -28,6 +28,11 @@ const nextConfig: NextConfig = {
         destination: '/master',
         permanent: true,
       },
+      {
+        source: '/watchlist',
+        destination: '/library',
+        permanent: true,
+      },
     ];
   },
   // Add this to fix the @consumet/extensions issue

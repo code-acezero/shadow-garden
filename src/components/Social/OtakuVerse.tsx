@@ -6,7 +6,7 @@ import {
   Heart, MessageCircle, Share2, MoreHorizontal, Image as ImageIcon, 
   Smile, Send, Bookmark, Flag, Trash2, X, Repeat2, Menu,
   ShieldCheck, Eye, Flame, Link as LinkIcon, Home, Hash, Users, Bell, User as UserIcon, Settings,
-  Facebook, MessageSquare, SendHorizontal, MessageCircleMore, Loader2, ThumbsUp, Newspaper, Shield, ArrowUp
+  Facebook, MessageSquare, SendHorizontal, MessageCircleMore, Loader2, ThumbsUp, Newspaper, Shield, ArrowUp, Tv
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -38,6 +38,8 @@ import InstagramPostCard from './InstagramPostCard';
 import InstagramPostComposer from './InstagramPostComposer';
 import InstagramCommentsModal from './InstagramCommentsModal';
 import { processMentionsAndNotify } from '@/lib/mentions';
+import MonetLineIcon from '@/components/UIx/MonetLineIcon';
+import { playGummyPop } from '@/lib/audioManager';
 
 // --- TYPES ---
 interface Comment {
@@ -117,7 +119,7 @@ export default function OtakuVerse({ user, onAuthRequired, highlightId, initialN
 
   // Issue 1 Fix: Sync activeTab into browser URL query string so refreshing preserves clans list
   useEffect(() => {
-    if (typeof window !== 'undefined') {
+    if (typeof window !== 'undefined' && window.location.pathname.startsWith('/social')) {
       const url = new URL(window.location.href);
       if (url.searchParams.get('tab') !== activeTab) {
         url.searchParams.set('tab', activeTab);
@@ -700,29 +702,41 @@ export default function OtakuVerse({ user, onAuthRequired, highlightId, initialN
                  <span className="hidden lg:block font-black text-xl ml-3 tracking-widest uppercase">OtakuVerse</span>
               </div>
               
-              <NavButton icon={<Home size={24} />} label="Home" active={activeTab === 'feed'} onClick={() => setActiveTab('feed')} />
+              <NavButton icon={<Home size={24} />} label="Feed" active={activeTab === 'feed'} onClick={() => setActiveTab('feed')} />
+              <NavButton icon={<Shield size={24} />} label="Clans" active={activeTab === 'clans'} onClick={() => setActiveTab('clans')} />
               <NavButton icon={<Users size={24} />} label="Following" active={activeTab === 'following'} onClick={() => setActiveTab('following')} />
               <div className="lg:hidden"><NavButton icon={<Newspaper size={24} />} label="News" active={activeTab === 'news'} onClick={() => setActiveTab('news')} /></div>
               <NavButton icon={<MessageSquare size={24} />} label="Messages" onClick={() => window.location.href = '/messages'} badge={hasUnreadMessages} />
-              <NavButton icon={<Users size={24} />} label="Watch Rooms" onClick={() => window.location.href = '/rooms'} />
+              <NavButton icon={<Tv size={24} />} label="Watch Rooms" onClick={() => window.location.href = '/rooms'} />
 
-              <button 
+              <motion.button 
                 type="button"
-                onClick={() => user ? document.getElementById('composer-input')?.focus() : onAuthRequired()} 
-                className="mt-4 w-12 h-12 lg:w-[90%] lg:h-14 rounded-full bg-primary-600 hover:bg-primary-500 text-white font-bold text-[0px] lg:text-base transition-all shadow-lg shadow-primary-900/30 lg:mx-0 flex items-center justify-center cursor-pointer"
+                whileHover={{ scale: 1.02, transition: { type: "spring", stiffness: 450, damping: 15 } }}
+                whileTap={{ scale: 0.95, transition: { type: "spring", stiffness: 600, damping: 15 } }}
+                onClick={() => {
+                  playGummyPop(0.3);
+                  if (user) {
+                    document.getElementById('composer-input')?.focus();
+                  } else {
+                    onAuthRequired();
+                  }
+                }} 
+                className="mt-3 w-9 h-9 lg:w-full lg:h-8.5 rounded-full bg-primary-600 hover:bg-primary-500 text-white font-black text-xs tracking-wider uppercase transition-all shadow-sm shadow-primary-900/25 flex items-center justify-center gap-1.5 cursor-pointer select-none"
+                title="Create a new post"
               >
-                 <span className="hidden lg:inline uppercase tracking-wider">Post</span>
-                 <SendHorizontal size={22} className="lg:hidden" />
-              </button>
+                 <Send size={13} className="hidden lg:inline shrink-0" />
+                 <span className="hidden lg:inline">Post</span>
+                 <Send size={15} className="lg:hidden" />
+              </motion.button>
            </div>
         </header>
 
         {/* MIDDLE COLUMN (Feed & Mobile Header) */}
         <main className="flex-1 w-full min-h-screen border-x border-white/10 pb-4 relative">
            
-           {/* Sticky Top Header */}
-           <div className="sticky top-0 z-40 bg-[#050505]/95 backdrop-blur-xl border-b border-white/10 shadow-lg">
-              <div className="flex items-center justify-between p-3.5 sm:hidden border-b border-white/5">
+           {/* Sticky Top Header (Mobile only) */}
+           <div className="sticky top-0 z-40 bg-[#050505]/95 backdrop-blur-xl border-b border-white/10 sm:hidden">
+              <div className="flex items-center justify-between p-3.5">
                 <button
                   onClick={() => setIsMobileMenuOpen(true)}
                   className="p-2 text-zinc-300 hover:text-white rounded-full bg-white/5 border border-white/10"
@@ -735,59 +749,6 @@ export default function OtakuVerse({ user, onAuthRequired, highlightId, initialN
                 <Link href="/messages" className="p-2 text-primary-400 rounded-full bg-primary-600/10 border border-primary-500/20">
                   <MessageSquare size={18} />
                 </Link>
-              </div>
-
-              {/* iOS Segmented Tab Switcher */}
-              <div className="p-2">
-                <div className="bg-[#121218]/90 border border-white/10 p-1 rounded-2xl flex relative shadow-inner">
-                  <button
-                    onClick={() => setActiveTab('feed')}
-                    className={`flex-1 py-2 text-xs font-black uppercase tracking-wider relative z-10 transition-colors ${
-                      activeTab === 'feed' ? 'text-white' : 'text-zinc-400 hover:text-white'
-                    }`}
-                  >
-                    {activeTab === 'feed' && (
-                      <motion.div
-                        layoutId="ios-active-tab"
-                        className="absolute inset-0 bg-primary-600 rounded-xl shadow-md -z-10"
-                        transition={{ type: "spring", stiffness: 400, damping: 30 }}
-                      />
-                    )}
-                    Feed
-                  </button>
-
-                  <button
-                    onClick={() => setActiveTab('news')}
-                    className={`flex-1 py-2 text-xs font-black uppercase tracking-wider relative z-10 transition-colors lg:hidden ${
-                      activeTab === 'news' ? 'text-white' : 'text-zinc-400 hover:text-white'
-                    }`}
-                  >
-                    {activeTab === 'news' && (
-                      <motion.div
-                        layoutId="ios-active-tab"
-                        className="absolute inset-0 bg-primary-600 rounded-xl shadow-md -z-10"
-                        transition={{ type: "spring", stiffness: 400, damping: 30 }}
-                      />
-                    )}
-                    News
-                  </button>
-
-                  <button
-                    onClick={() => setActiveTab('clans')}
-                    className={`flex-1 py-2 text-xs font-black uppercase tracking-wider relative z-10 transition-colors ${
-                      activeTab === 'clans' ? 'text-white' : 'text-zinc-400 hover:text-white'
-                    }`}
-                  >
-                    {activeTab === 'clans' && (
-                      <motion.div
-                        layoutId="ios-active-tab"
-                        className="absolute inset-0 bg-primary-600 rounded-xl shadow-md -z-10"
-                        transition={{ type: "spring", stiffness: 400, damping: 30 }}
-                      />
-                    )}
-                    Clans
-                  </button>
-                </div>
               </div>
            </div>
 
@@ -866,18 +827,32 @@ export default function OtakuVerse({ user, onAuthRequired, highlightId, initialN
                 </div>
             )}
 
-            {/* Clean White Scroll To Top Arrow Button (Fixed in one place relative to middle posts section) */}
+            {/* Clean Monet Scroll To Top Arrow Button (No background container, sleek vector line art, jelly squish) */}
             <AnimatePresence>
               {showScrollTop && !isAlphaActive && !activeNewsItem && !activePostForComments && !lightbox.isOpen && (
                 <motion.button
-                  initial={{ opacity: 0, scale: 0.5, y: 20 }}
+                  initial={{ opacity: 0, scale: 0.5, y: 15 }}
                   animate={{ opacity: 1, scale: 1, y: 0 }}
-                  exit={{ opacity: 0, scale: 0.5, y: 20 }}
-                  onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
-                  className="fixed bottom-20 right-6 lg:right-[340px] xl:right-[420px] z-[9999] p-3.5 rounded-full bg-white/25 hover:bg-white/40 text-white shadow-[0_4px_25px_rgba(255,255,255,0.35)] backdrop-blur-xl border border-white/50 active:scale-90 transition-all cursor-pointer flex items-center justify-center shadow-2xl"
+                  exit={{ opacity: 0, scale: 0.5, y: 15 }}
+                  whileHover={{ 
+                    scale: 1.25, 
+                    rotate: [-3, 3, 0],
+                    transition: { type: "spring", stiffness: 450, damping: 12 } 
+                  }}
+                  whileTap={{ 
+                    scale: 0.78, 
+                    scaleX: 1.25, 
+                    scaleY: 0.75,
+                    transition: { type: "spring", stiffness: 600, damping: 15 } 
+                  }}
+                  onClick={() => {
+                    playGummyPop();
+                    window.scrollTo({ top: 0, behavior: 'smooth' });
+                  }}
+                  className="fixed bottom-20 right-6 lg:right-[340px] xl:right-[420px] z-[9999] cursor-pointer flex items-center justify-center p-1.5 select-none focus:outline-none"
                   title="Scroll to top of feed"
                 >
-                  <ArrowUp size={22} className="text-white" strokeWidth={2.8} />
+                  <MonetLineIcon icon={ArrowUp} variant="violet" sizeClassName="w-7 h-7 md:w-8 md:h-8" strokeWidth={2.8} />
                 </motion.button>
               )}
             </AnimatePresence>
@@ -1014,7 +989,7 @@ export default function OtakuVerse({ user, onAuthRequired, highlightId, initialN
                       <span>Direct Messages</span>
                     </div>
                     {hasUnreadMessages && (
-                      <span className="w-2.5 h-2.5 bg-primary-500 rounded-full animate-ping" />
+                      <span className="px-1.5 py-0.5 rounded-full text-[10px] font-bold bg-primary-600 text-white">New</span>
                     )}
                   </Link>
 
@@ -1023,7 +998,7 @@ export default function OtakuVerse({ user, onAuthRequired, highlightId, initialN
                     onClick={() => setIsMobileMenuOpen(false)}
                     className="w-full flex items-center gap-3.5 p-3 rounded-2xl text-xs font-bold text-zinc-300 hover:bg-white/5 hover:text-white transition-all"
                   >
-                    <Users size={18} className="text-zinc-400" />
+                    <Tv size={18} className="text-zinc-400" />
                     <span>Watch Rooms</span>
                   </Link>
 
@@ -1186,20 +1161,29 @@ export default function OtakuVerse({ user, onAuthRequired, highlightId, initialN
 
 function NavButton({ icon, label, active, onClick, badge }: { icon: React.ReactNode, label: string, active?: boolean, onClick?: () => void, badge?: number | boolean }) {
    return (
-      <div onClick={onClick} className="flex items-center justify-center lg:justify-start gap-3.5 p-3 rounded-full hover:bg-white/10 cursor-pointer transition-colors w-12 h-12 lg:w-auto lg:h-auto lg:mx-0 group relative">
+      <motion.div 
+         whileHover={{ scale: 1.04, transition: { type: "spring", stiffness: 450, damping: 14 } }}
+         whileTap={{ scale: 0.94, scaleX: 1.05, scaleY: 0.92, transition: { type: "spring", stiffness: 600, damping: 15 } }}
+         onClick={onClick} 
+         className="flex items-center justify-center lg:justify-start gap-3.5 p-3 rounded-full hover:bg-white/10 cursor-pointer transition-colors w-12 h-12 lg:w-auto lg:h-auto lg:mx-0 group relative select-none"
+      >
          <div className={`${active ? 'text-primary-500' : 'text-zinc-400 group-hover:text-white'}`}>
             {icon}
             {!!badge && (
-               <span className="absolute top-2 right-2 lg:top-auto lg:right-auto lg:-mt-2 lg:-mr-2 flex h-3 w-3">
-                 <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
-                 <span className="relative inline-flex rounded-full h-3 w-3 bg-red-500 border-2 border-[#050505]"></span>
+               <span className="absolute top-1 right-1 lg:hidden flex px-1 py-0.2 rounded-full text-[9px] font-bold bg-primary-600 text-white leading-none">
+                 New
                </span>
             )}
          </div>
          <span className={`hidden lg:flex items-center gap-2 text-sm uppercase tracking-wider ${active ? 'font-black text-white' : 'font-bold text-zinc-400 group-hover:text-white'}`}>
             {label}
+            {!!badge && (
+               <span className="px-1.5 py-0.5 rounded-full text-[10px] font-bold bg-primary-600 text-white leading-none">
+                 New
+               </span>
+            )}
          </span>
-      </div>
+      </motion.div>
    );
 }
 

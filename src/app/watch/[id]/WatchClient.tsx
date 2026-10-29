@@ -23,7 +23,7 @@ import { useAuth } from '@/context/AuthContext';
 import { sfx } from '@/lib/audioManager';
 import PostShareModal from '@/components/Social/PostShareModal';
 
-import AnimePlayer, { AnimePlayerRef } from '@/components/Player/AnimePlayer';
+import OmniPlayer, { OmniPlayerRef, OmniPlayer as AnimePlayer, OmniPlayerRef as AnimePlayerRef } from '@/components/Player/OmniPlayer';
 import CastDetailModal, { CastModalData } from '@/components/Watch/CastDetailModal';
 import { adManager } from '@/lib/adManager';
 import WatchListButton from '@/components/Watch/WatchListButton';
@@ -47,12 +47,9 @@ import {
 // --- 1. CUSTOM HOOKS & HELPERS ---
 
 const formatHindiDubType = (type?: string) => {
-    if (!type) return 'Hindi Official Dub';
-    const clean = type.trim();
-    if (/fan/i.test(clean)) return 'Hindi Fan Dub';
-    if (/official/i.test(clean) || /org/i.test(clean)) return 'Hindi Official Dub';
-    if (/hindi/i.test(clean)) return clean;
-    return `Hindi ${clean}`;
+    const clean = (type || '').trim();
+    if (/fan/i.test(clean)) return '(Hindi Fan Dub)';
+    return '(Official Hindi Dubbed)';
 };
 
 const useDraggable = () => {
@@ -906,6 +903,7 @@ const AnimeCharactersBlock = ({ characters }: { characters?: any[] }) => {
                                 profileLarge: charPoster,
                                 department: 'Character',
                                 popularity: char.favorites,
+                                mediaType: 'anime',
                                 voiceActor: va ? {
                                     id: va.id,
                                     name: va.name,
@@ -1182,7 +1180,7 @@ function WatchContent({ initialAnime }: { initialAnime?: UniversalAnime | null }
         const duration = (rawDuration && !isNaN(rawDuration) && rawDuration > 0) ? rawDuration : (progressBuffer.current[targetEpId]?.duration || embedDurationRef.current || 1440);
 
         const percent = Math.min(100, Math.round((progress / duration) * 100));
-        const isCompleted = percent >= 98;
+        const isCompleted = forceFlush || percent >= 90;
 
         setEpProgress((prev: any) => ({
             ...prev,
@@ -1190,11 +1188,12 @@ function WatchContent({ initialAnime }: { initialAnime?: UniversalAnime | null }
             [ep.id]: isCompleted ? 100 : percent
         }));
 
+        const episodeImage = (ep as any).image || (ep as any).poster || anime.poster;
+        const animeTitle = anime.title || (anime as any).name || 'Anime';
+        const animeImage = anime.poster || (anime as any).image || episodeImage;
+        const animeType = (anime as any).type || 'TV';
+
         if (user) {
-            const episodeImage = (ep as any).image || (ep as any).poster || anime.poster;
-            const animeTitle = anime.title || (anime as any).name || 'Anime';
-            const animeImage = anime.poster || (anime as any).image || episodeImage;
-            const animeType = (anime as any).type || 'TV';
             const genresList = Array.isArray((anime as any).genres) ? (anime as any).genres.map((g: any) => String(g).toLowerCase()) : [];
             const hasAdultGenre = genresList.some((g: string) => ['ecchi', 'erotica', 'hentai', 'adult'].includes(g));
             const isAdultVal = (anime as any).isAdult === true || hasAdultGenre || ["RX", "HENTAI", "18"].some((t: string) => ((anime as any).rating || "").toUpperCase().includes(t));
@@ -1231,8 +1230,8 @@ function WatchContent({ initialAnime }: { initialAnime?: UniversalAnime | null }
             const localData = JSON.parse(localStorage.getItem('shadow_continue_watching') || '{}');
             localData[animeId] = {
                 animeId,
-                title: anime.title || (anime as any).name || 'Anime',
-                poster: anime.poster || (anime as any).image,
+                title: animeTitle,
+                poster: animeImage,
                 episodeId: ep.id,
                 episodeNumber: ep.number,
                 progress,
@@ -1258,18 +1257,54 @@ function WatchContent({ initialAnime }: { initialAnime?: UniversalAnime | null }
 
             if (typeof window !== 'undefined') window.dispatchEvent(new CustomEvent('shadow-continue-updated'));
         }
+
+        // Auto sync with watchlist and completed detection
+        if (typeof window !== 'undefined') {
+            window.dispatchEvent(new CustomEvent('shadow-sync-watching', {
+                detail: {
+                    anime_id: animeId,
+                    title: animeTitle,
+                    poster: animeImage,
+                    episode_number: ep.number,
+                    episode_id: ep.id,
+                    total_episodes: anime.episodes?.length || (anime as any).totalEpisodes || 1,
+                    is_completed: isCompleted,
+                    type: animeType,
+                    media_type: 'anime'
+                }
+            }));
+        }
     }, [anime, currentEpId, user, animeId, settings.server, flushSyncBuffer]);
 
     // Instant Registration & Progress Restoration on Episode Visit
     useEffect(() => {
         if (anime && currentEpId) {
+            const ep = anime.episodes?.find((e: any) => e.id === currentEpId || String(e.number) === currentEpId);
+            if (ep && typeof window !== 'undefined') {
+                const animeTitle = anime.title || (anime as any).name || 'Anime';
+                const animeImage = anime.poster || (anime as any).image;
+                window.dispatchEvent(new CustomEvent('shadow-sync-watching', {
+                    detail: {
+                        anime_id: animeId,
+                        title: animeTitle,
+                        poster: animeImage,
+                        episode_number: ep.number,
+                        episode_id: ep.id,
+                        total_episodes: anime.episodes?.length || (anime as any).totalEpisodes || 1,
+                        is_completed: false,
+                        type: (anime as any).type || 'TV',
+                        media_type: 'anime'
+                    }
+                }));
+            }
+
             const record = progressBuffer.current[currentEpId];
             if (record && !record.is_completed && record.progress > 5) {
                 progressRef.current = record.progress;
                 setResumeTime(record.progress);
             }
         }
-    }, [anime, currentEpId]);
+    }, [anime, currentEpId, animeId]);
 
     // Save progress on unmount (when leaving watch page)
     useEffect(() => {
@@ -2813,17 +2848,21 @@ function WatchContent({ initialAnime }: { initialAnime?: UniversalAnime | null }
                                         decoding="async"
                                     />
                                 </div>
-                                <div className="flex lg:hidden flex-col gap-3 w-full items-center text-center">
-                                    <h1 className="text-2xl font-black text-white font-lemon leading-none tracking-tighter drop-shadow-2xl shadow-black scale-[0.85] origin-center flex flex-wrap items-center justify-center gap-2">
+                                <div className="flex lg:hidden flex-col gap-2 w-full items-center text-center">
+                                    <h1 className="text-2xl font-black text-white font-lemon leading-none tracking-tighter drop-shadow-2xl shadow-black scale-[0.85] origin-center">
                                         <span>{anime.title}</span>
-                                        {(anime as any)?.hindiDub?.available && (
-                                            <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-orange-500/20 border border-orange-500/40 text-orange-400 text-[11px] font-black font-lemon uppercase tracking-wider shadow-[0_0_12px_rgba(249,115,22,0.3)] align-middle">
-                                                <Mic size={11} className="text-orange-400" />
-                                                [{formatHindiDubType((anime as any).hindiDub.dubType)}]
-                                            </span>
-                                        )}
                                     </h1>
-                                    <div className="flex flex-wrap gap-3 mt-3 justify-center items-center">
+                                    {(anime as any)?.hindiDub?.available && (
+                                        <span className="text-xs font-semibold tracking-wide text-amber-400/90 font-sans">
+                                            {formatHindiDubType((anime as any).hindiDub.dubType)}
+                                        </span>
+                                    )}
+                                    {anime.jname && (
+                                        <p className="text-[10px] text-zinc-500 font-bold uppercase tracking-[0.3em] opacity-60">
+                                            {anime.jname}
+                                        </p>
+                                    )}
+                                    <div className="flex flex-wrap gap-3 mt-2 justify-center items-center">
                                         <div className="flex items-center flex-wrap justify-center gap-4 text-[11px] text-zinc-400 font-black bg-white/5 border border-white/5 px-5 py-2 rounded-full uppercase tracking-widest shadow-inner shadow-black/20 max-w-full">
                                             {formatRating(anime.stats.rating, anime.info.genres, anime.isAdult) && (
                                                 <>
@@ -2834,16 +2873,13 @@ function WatchContent({ initialAnime }: { initialAnime?: UniversalAnime | null }
                                                 </>
                                             )}
                                             {/airing|releasing|ongoing/i.test(anime.info.status || '') ? (
-                                                <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-emerald-500/15 border border-emerald-500/40 text-emerald-400 font-black tracking-wider text-[10px] shadow-[0_0_12px_rgba(16,185,129,0.35)] animate-pulse">
-                                                    <span className="relative flex h-2 w-2">
-                                                        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-                                                        <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
-                                                    </span>
+                                                <span className="inline-flex items-center gap-1.5 text-emerald-400 font-black tracking-wider text-[11px]">
+                                                    <PlayCircle size={12} className="text-emerald-400" />
                                                     RELEASING
                                                 </span>
                                             ) : /finished|completed|ended/i.test(anime.info.status || '') ? (
-                                                <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-blue-500/10 border border-blue-500/30 text-blue-400 font-black tracking-wider text-[10px]">
-                                                    <CheckCircle size={10} className="text-blue-400" />
+                                                <span className="inline-flex items-center gap-1 text-blue-400 font-black tracking-wider text-[11px]">
+                                                    <CheckCircle size={12} className="text-blue-400" />
                                                     FINISHED
                                                 </span>
                                             ) : (
@@ -2860,17 +2896,25 @@ function WatchContent({ initialAnime }: { initialAnime?: UniversalAnime | null }
                                 <div className="hidden lg:flex justify-center w-full"><TrailerSection videos={anime.trailers} /></div>
                             </div>
                             <div className="hidden lg:flex flex-1 pt-2 text-left z-10 flex-col h-full w-full">
-                                <h1 className="text-3xl md:text-5xl font-black text-white font-lemon leading-none mb-2 tracking-tighter drop-shadow-2xl shadow-black scale-[0.85] origin-left flex flex-wrap items-center gap-3">
+                                <h1 className="text-3xl md:text-5xl font-black text-white font-lemon leading-none tracking-tighter drop-shadow-2xl shadow-black scale-[0.85] origin-left">
                                     <span>{anime.title}</span>
-                                    {(anime as any)?.hindiDub?.available && (
-                                        <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-orange-500/20 border border-orange-500/40 text-orange-400 text-xs md:text-sm font-black font-lemon uppercase tracking-wider shadow-[0_0_15px_rgba(249,115,22,0.3)] align-middle">
-                                            <Mic size={13} className="text-orange-400" />
-                                            [{formatHindiDubType((anime as any).hindiDub.dubType)}]
-                                        </span>
-                                    )}
                                 </h1>
-                                {anime.jname && <p className="text-[10px] text-zinc-600 font-black uppercase tracking-[0.4em] mb-6 opacity-60 drop-shadow-sm">{anime.jname}</p>}
-                                <div className="flex flex-wrap gap-4 mt-3 justify-start items-center">
+                                {(anime as any)?.hindiDub?.available && (
+                                    <div className="mt-1.5 mb-1">
+                                        <span className="text-xs md:text-sm font-semibold tracking-wide text-amber-400/90 font-sans">
+                                            {formatHindiDubType((anime as any).hindiDub.dubType)}
+                                        </span>
+                                    </div>
+                                )}
+                                {anime.jname && (
+                                    <p className={cn("text-[10px] text-zinc-600 font-black uppercase tracking-[0.4em] opacity-60 drop-shadow-sm", (anime as any)?.hindiDub?.available ? "mb-5" : "mt-2 mb-6")}>
+                                        {anime.jname}
+                                    </p>
+                                )}
+                                {!anime.jname && (anime as any)?.hindiDub?.available && (
+                                    <div className="mb-4" />
+                                )}
+                                <div className="flex flex-wrap gap-4 mt-1 justify-start items-center">
                                     <div className="flex items-center gap-4 text-[11px] text-zinc-400 font-black bg-white/5 border border-white/5 px-5 py-2 rounded-full uppercase tracking-widest shadow-inner shadow-black/20">
                                         {formatRating(anime.stats.rating, anime.info.genres, anime.isAdult) && (
                                             <>
@@ -2881,16 +2925,13 @@ function WatchContent({ initialAnime }: { initialAnime?: UniversalAnime | null }
                                             </>
                                         )}
                                         {/airing|releasing|ongoing/i.test(anime.info.status || '') ? (
-                                            <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-emerald-500/15 border border-emerald-500/40 text-emerald-400 font-black tracking-wider text-[10px] shadow-[0_0_12px_rgba(16,185,129,0.35)] animate-pulse">
-                                                <span className="relative flex h-2 w-2">
-                                                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-                                                    <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
-                                                </span>
+                                            <span className="inline-flex items-center gap-1.5 text-emerald-400 font-black tracking-wider text-[11px]">
+                                                <PlayCircle size={12} className="text-emerald-400" />
                                                 RELEASING
                                             </span>
                                         ) : /finished|completed|ended/i.test(anime.info.status || '') ? (
-                                            <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-blue-500/10 border border-blue-500/30 text-blue-400 font-black tracking-wider text-[10px]">
-                                                <CheckCircle size={10} className="text-blue-400" />
+                                            <span className="inline-flex items-center gap-1 text-blue-400 font-black tracking-wider text-[11px]">
+                                                <CheckCircle size={12} className="text-blue-400" />
                                                 FINISHED
                                             </span>
                                         ) : (
@@ -3106,7 +3147,7 @@ function WatchContent({ initialAnime }: { initialAnime?: UniversalAnime | null }
                 onClose={() => setShowShareModal(false)}
                 customUrl={typeof window !== 'undefined' ? window.location.href : ''}
                 customTitle={`${anime?.title || 'Anime'} - Episode ${currentEpisode?.number || '1'}`}
-                customContent={`Watch ${anime?.title || 'Anime'} Episode ${currentEpisode?.number || '1'} on Shadow Garden!`}
+                customContent={`Watch ${anime?.title || 'Anime'} Episode ${currentEpisode?.number || '1'} on Kagemi!`}
             />
         </div>
     );

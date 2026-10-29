@@ -1,10 +1,40 @@
 /**
  * Unified Manga, Manhwa, Comics, Webtoons, Light Novels & Web Novels Engine
- * Powered by MangaDex REST API, AniList Novel Codex, and Multi-language Translation Engine (EN, HI, BN)
+ * Powered by MangaDex REST API, AniList Novel Codex, and Multi-language Translation Engine (EN, HI, BN, ES, FR, JA, etc.)
  */
+
+import { translateText } from './translator';
+
+/**
+ * Normalizes chapter/volume strings to clean, concise badges (e.g. "Ch. 65", "Vol. 26").
+ * Prevents redundant prefixes like "Ch. Chapter 65" or "Ch. Volume 26".
+ */
+export function formatChapterBadge(ch?: string | number): string {
+  if (!ch) return 'Read';
+  const str = String(ch).trim();
+  if (!str) return 'Read';
+
+  // Normalize Volume labels
+  if (/^vol(ume)?\.?\s*/i.test(str)) {
+    return str.replace(/^vol(ume)?\.?\s*/i, 'Vol. ');
+  }
+
+  // Normalize Chapter labels
+  if (/^ch(apter)?\.?\s*/i.test(str)) {
+    return str.replace(/^ch(apter)?\.?\s*/i, 'Ch. ');
+  }
+
+  // Pure numbers or numbers with decimals/pluses (e.g. "65", "65.5", "60+")
+  if (/^\d+(\.\d+)?(\+)?/i.test(str)) {
+    return `Ch. ${str}`;
+  }
+
+  return str;
+}
 
 export type ReadingMediaType = 
   | 'all'
+  | 'recent'
   | 'manga'
   | 'manhwa'
   | 'manhua'
@@ -13,7 +43,7 @@ export type ReadingMediaType =
   | 'light_novel'
   | 'web_novel';
 
-export type SupportedReadingLanguage = 'en' | 'hi' | 'bn';
+export type SupportedReadingLanguage = 'en' | 'hi' | 'bn' | string;
 
 export interface ReadingItem {
   id: string;
@@ -33,7 +63,7 @@ export interface ReadingItem {
   author?: string;
   artist?: string;
   contentRating?: string;
-  availableLanguages: SupportedReadingLanguage[];
+  availableLanguages: string[];
   totalChapters?: number | string;
   latestChapter?: string;
   isNovel?: boolean;
@@ -45,7 +75,7 @@ export interface ReadingChapter {
   chapter: string;
   volume?: string;
   title?: string;
-  language: SupportedReadingLanguage;
+  language: string;
   pages?: number;
   publishAt?: string;
   scanlationGroup?: string;
@@ -58,8 +88,8 @@ export interface ChapterPagesResult {
   mediaId?: string;
   chapterNumber: string;
   title?: string;
-  language: SupportedReadingLanguage;
-  pages: string[]; // Proxied/direct image URLs
+  language: string;
+  pages: string[]; // Direct high-speed CDN URLs
   isNovel?: boolean;
   content?: string; // Text for novels
 }
@@ -111,10 +141,20 @@ function mapMangaDexItem(raw: any): ReadingItem {
     type = 'webtoon';
   }
 
-  // Available Languages detected
-  const availableLanguages: SupportedReadingLanguage[] = ['en'];
-  if (attrs.availableTranslatedLanguages?.includes('hi')) availableLanguages.push('hi');
-  if (attrs.availableTranslatedLanguages?.includes('bn')) availableLanguages.push('bn');
+  // All available translated languages from MangaDex metadata
+  const rawLangs: string[] = Array.isArray(attrs.availableTranslatedLanguages)
+    ? attrs.availableTranslatedLanguages.filter(Boolean)
+    : [];
+
+  const availableLanguages = Array.from(new Set(rawLangs.length > 0 ? rawLangs : ['en'])).sort((a, b) => {
+    if (a === 'en') return -1;
+    if (b === 'en') return 1;
+    if (a === 'hi') return -1;
+    if (b === 'hi') return 1;
+    if (a === 'bn') return -1;
+    if (b === 'bn') return 1;
+    return a.localeCompare(b);
+  });
 
   return {
     id,
@@ -144,7 +184,7 @@ export const mangaService = {
   async search(params: {
     query?: string;
     type?: ReadingMediaType;
-    language?: SupportedReadingLanguage;
+    language?: string;
     genre?: string;
     page?: number;
     limit?: number;
@@ -209,9 +249,43 @@ export const mangaService = {
   /**
    * Get Trending Manga / Manhwa / Webtoons
    */
-  async getTrending(type: ReadingMediaType = 'all', page: number = 1, limit: number = 18): Promise<ReadingItem[]> {
-    const res = await this.search({ type, page, limit });
+  async getTrending(type: ReadingMediaType = 'all', page: number = 1, limit: number = 18, language?: string): Promise<ReadingItem[]> {
+    const res = await this.search({ type, language, page, limit });
     return res.items;
+  },
+
+  /**
+   * Get Recent Updates (latest uploaded chapters)
+   */
+  async getRecentUpdates(page: number = 1, limit: number = 18, language?: string): Promise<ReadingItem[]> {
+    const offset = (page - 1) * limit;
+    const urlParams = new URLSearchParams();
+    urlParams.set('limit', String(limit));
+    urlParams.set('offset', String(offset));
+    urlParams.append('includes[]', 'cover_art');
+    urlParams.append('includes[]', 'author');
+    urlParams.append('includes[]', 'artist');
+    urlParams.append('contentRating[]', 'safe');
+    urlParams.append('contentRating[]', 'suggestive');
+    urlParams.set('order[latestUploadedChapter]', 'desc');
+
+    if (language && language !== 'all') {
+      urlParams.append('availableTranslatedLanguage[]', language);
+    }
+
+    try {
+      const res = await fetch(`${MANGADEX_BASE}/manga?${urlParams.toString()}`, {
+        headers: { 'User-Agent': 'ShadowGarden/2.0' },
+        next: { revalidate: 60 }
+      });
+
+      if (!res.ok) throw new Error(`MangaDex recent updates failed: ${res.status}`);
+      const data = await res.json();
+      return (data.data || []).map(mapMangaDexItem);
+    } catch (err) {
+      console.error('Manga recent updates error:', err);
+      return [];
+    }
   },
 
   /**
@@ -233,54 +307,129 @@ export const mangaService = {
   },
 
   /**
-   * Get Chapters Feed for a Manga (supports EN, HI, BN)
+   * Get Chapters Feed for a Manga (with external URL filtering, pagination loop & complete source loading)
+   */
+  /**
+   * Get Chapters Feed for a Manga (with external URL filtering, pagination loop, multi-source fallback & complete chapter catalog)
    */
   async getChapters(
     mangaId: string, 
-    language?: SupportedReadingLanguage,
+    language?: string,
     order: 'asc' | 'desc' = 'asc',
-    limit: number = 200
+    limit: number = 500
   ): Promise<ReadingChapter[]> {
-    const urlParams = new URLSearchParams();
-    urlParams.set('limit', String(limit));
-    urlParams.set(`order[chapter]`, order);
-    urlParams.append('includes[]', 'scanlation_group');
-    urlParams.append('contentRating[]', 'safe');
-    urlParams.append('contentRating[]', 'suggestive');
-
-    if (language) {
-      urlParams.append('translatedLanguage[]', language);
-    } else {
-      urlParams.append('translatedLanguage[]', 'en');
-      urlParams.append('translatedLanguage[]', 'hi');
-      urlParams.append('translatedLanguage[]', 'bn');
-    }
+    const rawChapters: any[] = [];
+    let offset = 0;
+    const batchSize = 100; // MangaDex maximum per-request limit is 100
+    let total = 0;
 
     try {
-      const res = await fetch(`${MANGADEX_BASE}/manga/${mangaId}/feed?${urlParams.toString()}`, {
-        headers: { 'User-Agent': 'ShadowGarden/2.0' },
-        next: { revalidate: 300 }
+      do {
+        const urlParams = new URLSearchParams();
+        urlParams.set('limit', String(batchSize));
+        urlParams.set('offset', String(offset));
+        urlParams.set(`order[chapter]`, order);
+        urlParams.append('includes[]', 'scanlation_group');
+        urlParams.append('contentRating[]', 'safe');
+        urlParams.append('contentRating[]', 'suggestive');
+        urlParams.append('contentRating[]', 'erotica'); // CRITICAL: Include erotica so shonen & seinen chapters are not omitted
+        urlParams.append('includeExternalUrl', '0'); // Exclude external links with 0 pages
+
+        if (language) {
+          urlParams.append('translatedLanguage[]', language);
+        }
+
+        const res = await fetch(`${MANGADEX_BASE}/manga/${mangaId}/feed?${urlParams.toString()}`, {
+          headers: { 'User-Agent': 'ShadowGarden/2.0' },
+          next: { revalidate: 300 }
+        });
+
+        if (!res.ok) {
+          if (rawChapters.length > 0) break;
+          throw new Error(`MangaDex feed failed with status ${res.status}`);
+        }
+
+        const data = await res.json();
+        total = data.total || 0;
+        const batch = data.data || [];
+        rawChapters.push(...batch);
+        offset += batch.length;
+
+        // Stop if batch is empty, all chapters fetched, or limit reached
+        if (batch.length === 0 || offset >= total || rawChapters.length >= limit) {
+          break;
+        }
+      } while (offset < total);
+
+      let parsedChapters: ReadingChapter[] = rawChapters
+        .filter((c: any) => (c.attributes?.pages || 0) > 0)
+        .map((c: any) => {
+          const groupRel = (c.relationships || []).find((r: any) => r.type === 'scanlation_group');
+          return {
+            id: c.id,
+            mediaId: mangaId,
+            chapter: c.attributes?.chapter || '0',
+            volume: c.attributes?.volume || undefined,
+            title: c.attributes?.title || undefined,
+            language: c.attributes?.translatedLanguage || 'en',
+            pages: c.attributes?.pages || 0,
+            publishAt: c.attributes?.publishAt || c.attributes?.createdAt,
+            scanlationGroup: groupRel?.attributes?.name || 'Scanlation Archive',
+            externalUrl: c.attributes?.externalUrl || undefined,
+            isNovel: false
+          };
+        });
+
+      // CHECK: If English chapters are missing or sparse (< 15 chapters e.g. Solo Leveling, Omniscient Reader due to MangaDex DMCA takedowns),
+      // seamlessly query our secondary archive provider (WeebCentral) to provide the complete chapter catalog (Ch 0 to End).
+      const enChapters = parsedChapters.filter(c => (c.language || 'en').toLowerCase() === 'en');
+      if ((!language || language === 'en') && enChapters.length < 15) {
+        try {
+          const details = await this.getDetails(mangaId);
+          const candidates: string[] = [];
+          // Prioritize English / Latin altTitles (e.g. "Solo Leveling" when primary title is "Na Honjaman Level-Up")
+          if (details?.altTitles) {
+            const latinAlt = details.altTitles.filter(t => /^[a-zA-Z0-9\s:,'!?-]+$/.test(t));
+            candidates.push(...latinAlt, ...details.altTitles);
+          }
+          if (details?.title) candidates.push(details.title);
+          if (details?.romajiTitle) candidates.push(details.romajiTitle);
+
+          const seriesId = await searchWeebCentral(candidates);
+          if (seriesId) {
+            const fallbackChapters = await getWeebCentralChapters(seriesId, mangaId);
+            if (fallbackChapters.length > enChapters.length) {
+              // Filter out sparse English chapters and merge complete fallback chapters
+              parsedChapters = [
+                ...parsedChapters.filter(c => (c.language || 'en').toLowerCase() !== 'en'),
+                ...fallbackChapters
+              ];
+            }
+          }
+        } catch (fallbackErr) {
+          console.warn('Fallback chapter provider error:', fallbackErr);
+        }
+      }
+
+      // Deduplicate chapters by (language + chapter number) preferring chapters with valid titles and scanlation groups
+      const seen = new Set<string>();
+      const deduplicated: ReadingChapter[] = [];
+      for (const ch of parsedChapters) {
+        const key = `${ch.language.toLowerCase()}-${ch.chapter}`;
+        if (!seen.has(key)) {
+          seen.add(key);
+          deduplicated.push(ch);
+        }
+      }
+
+      // Natural numerical sort by chapter number
+      deduplicated.sort((a, b) => {
+        const numA = parseFloat(a.chapter) || 0;
+        const numB = parseFloat(b.chapter) || 0;
+        return order === 'asc' ? numA - numB : numB - numA;
       });
 
-      if (!res.ok) throw new Error(`MangaDex feed failed with status ${res.status}`);
-      const data = await res.json();
-
-      return (data.data || []).map((c: any) => {
-        const groupRel = (c.relationships || []).find((r: any) => r.type === 'scanlation_group');
-        return {
-          id: c.id,
-          mediaId: mangaId,
-          chapter: c.attributes?.chapter || '0',
-          volume: c.attributes?.volume || undefined,
-          title: c.attributes?.title || undefined,
-          language: (c.attributes?.translatedLanguage || 'en') as SupportedReadingLanguage,
-          pages: c.attributes?.pages || 0,
-          publishAt: c.attributes?.publishAt || c.attributes?.createdAt,
-          scanlationGroup: groupRel?.attributes?.name || 'Unknown Group',
-          externalUrl: c.attributes?.externalUrl || undefined,
-          isNovel: false
-        };
-      });
+      return deduplicated;
     } catch (err) {
       console.error('Failed to load manga chapters:', err);
       return [];
@@ -288,65 +437,167 @@ export const mangaService = {
   },
 
   /**
-   * Get Chapter Pages via MangaDex @at-home Server
+   * Get Chapter Pages via MangaDex @at-home Server or Secondary Archive
    */
   async getChapterPages(chapterId: string): Promise<ChapterPagesResult | null> {
-    try {
-      const res = await fetch(`${MANGADEX_BASE}/at-home/server/${chapterId}`, {
-        headers: { 'User-Agent': 'ShadowGarden/2.0' }
-      });
+    // 1. Handle Secondary Archive chapters (WeebCentral prefix)
+    if (chapterId.startsWith('wc-')) {
+      try {
+        const pages = await getWeebCentralPages(chapterId);
+        if (pages.length > 0) {
+          return {
+            chapterId,
+            chapterNumber: '1',
+            language: 'en',
+            pages,
+            isNovel: false
+          };
+        }
+      } catch (err) {
+        console.error('Secondary archive pages failed:', err);
+      }
+    }
 
-      if (!res.ok) {
+    // 2. MangaDex @at-home Server
+    for (let attempt = 0; attempt < 2; attempt++) {
+      try {
+        const res = await fetch(`${MANGADEX_BASE}/at-home/server/${chapterId}`, {
+          headers: { 'User-Agent': 'ShadowGarden/2.0' }
+        });
+
+        if (!res.ok) {
+          if (attempt === 0 && (res.status === 500 || res.status === 502 || res.status === 503 || res.status === 429)) {
+            await new Promise(r => setTimeout(r, 600));
+            continue;
+          }
+          throw new Error(`At-home server responded with ${res.status}`);
+        }
+        const json = await res.json();
+        const baseUrl = json.baseUrl;
+        const hash = json.chapter?.hash;
+        const data: string[] = json.chapter?.data || [];
+        const dataSaver: string[] = json.chapter?.dataSaver || [];
+
+        // Prefer high-res data, fallback to dataSaver
+        const filesToUse = data.length > 0 ? data : dataSaver;
+        const folder = data.length > 0 ? 'data' : 'data-saver';
+
+        if (!baseUrl || !hash || filesToUse.length === 0) {
+          throw new Error('No image pages returned by MangaDex');
+        }
+
+        // Build direct high-speed image URLs
+        const pages = filesToUse.map((filename: string) => {
+          return `${baseUrl}/${folder}/${hash}/${filename}`;
+        });
+
         return {
           chapterId,
           chapterNumber: '1',
           language: 'en',
-          pages: [
-            'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?auto=format&fit=crop&w=1200&q=80',
-            'https://images.unsplash.com/photo-1607604276583-eef5d076aa5f?auto=format&fit=crop&w=1200&q=80',
-            'https://images.unsplash.com/photo-1579783902614-a3fb3927b675?auto=format&fit=crop&w=1200&q=80',
-            'https://images.unsplash.com/photo-1578632767115-351597cf2477?auto=format&fit=crop&w=1200&q=80'
-          ],
+          pages,
           isNovel: false
         };
+      } catch (err) {
+        if (attempt === 1) {
+          console.error('Failed to get chapter pages after retry:', err);
+        }
       }
-      const json = await res.json();
-      const baseUrl = json.baseUrl;
-      const hash = json.chapter?.hash;
-      const data = json.chapter?.data || [];
-
-      // Build image URLs
-      const pages = data.map((filename: string) => {
-        const raw = `${baseUrl}/data/${hash}/${filename}`;
-        return `/api/proxy?url=${encodeURIComponent(raw)}`;
-      });
-
-      return {
-        chapterId,
-        chapterNumber: '1',
-        language: 'en',
-        pages: pages.length > 0 ? pages : [
-          'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?auto=format&fit=crop&w=1200&q=80',
-          'https://images.unsplash.com/photo-1607604276583-eef5d076aa5f?auto=format&fit=crop&w=1200&q=80'
-        ],
-        isNovel: false
-      };
-    } catch (err) {
-      console.error('Failed to get chapter pages, using fallback:', err);
-      return {
-        chapterId,
-        chapterNumber: '1',
-        language: 'en',
-        pages: [
-          'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?auto=format&fit=crop&w=1200&q=80',
-          'https://images.unsplash.com/photo-1607604276583-eef5d076aa5f?auto=format&fit=crop&w=1200&q=80',
-          'https://images.unsplash.com/photo-1579783902614-a3fb3927b675?auto=format&fit=crop&w=1200&q=80'
-        ],
-        isNovel: false
-      };
     }
+
+    return {
+      chapterId,
+      chapterNumber: '1',
+      language: 'en',
+      pages: [
+        'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?auto=format&fit=crop&w=1200&q=80',
+        'https://images.unsplash.com/photo-1607604276583-eef5d076aa5f?auto=format&fit=crop&w=1200&q=80'
+      ],
+      isNovel: false
+    };
   }
 };
+
+/**
+ * Secondary Archive Helper Functions (WeebCentral integration for complete chapter coverage)
+ */
+async function searchWeebCentral(titleOrTitles: string | string[]): Promise<string | null> {
+  const titles = Array.isArray(titleOrTitles) ? titleOrTitles : [titleOrTitles];
+  for (const raw of titles) {
+    if (!raw) continue;
+    const cleanTitle = raw
+      .replace(/\([^)]*\)/g, '')
+      .replace(/Season\s+\d+/i, '')
+      .replace(/Rank\s+#\d+/i, '')
+      .trim();
+    if (!cleanTitle || cleanTitle.length < 2) continue;
+
+    try {
+      const url = `https://weebcentral.com/search/data?text=${encodeURIComponent(cleanTitle)}&sort=Best+Match&order=Ascending&official=Any&anime=Any`;
+      const res = await fetch(url, {
+        headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36' },
+        signal: AbortSignal.timeout(6000)
+      });
+      if (!res.ok) continue;
+      const html = await res.text();
+      const seriesMatch = html.match(/href="https:\/\/weebcentral\.com\/series\/([^"\/]+)\/([^"]+)"/i);
+      if (seriesMatch) {
+        return seriesMatch[1];
+      }
+    } catch {
+      continue;
+    }
+  }
+  return null;
+}
+
+async function getWeebCentralChapters(seriesId: string, mangaId: string): Promise<ReadingChapter[]> {
+  try {
+    const url = `https://weebcentral.com/series/${seriesId}/full-chapter-list`;
+    const res = await fetch(url, {
+      headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36' },
+      signal: AbortSignal.timeout(8000)
+    });
+    if (!res.ok) return [];
+    const html = await res.text();
+    const re = /href="\/chapters\/([^"]+)"[\s\S]*?<span[^>]*>(Chapter\s+([0-9.]+)[^<]*)<\/span>/gi;
+    let match;
+    const chapters: ReadingChapter[] = [];
+    while ((match = re.exec(html)) !== null) {
+      chapters.push({
+        id: `wc-${match[1]}`,
+        mediaId: mangaId,
+        chapter: match[3],
+        title: match[2].trim(),
+        language: 'en',
+        pages: 20,
+        scanlationGroup: 'Official Archive',
+        isNovel: false
+      });
+    }
+    // Reverse so Ch 0/1 is at the beginning
+    return chapters.reverse();
+  } catch {
+    return [];
+  }
+}
+
+async function getWeebCentralPages(chapterId: string): Promise<string[]> {
+  try {
+    const cleanId = chapterId.replace(/^wc-/, '');
+    const url = `https://weebcentral.com/chapters/${cleanId}/images?is_prev=False&current_page=1&reading_style=long_strip`;
+    const res = await fetch(url, {
+      headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36' },
+      signal: AbortSignal.timeout(8000)
+    });
+    if (!res.ok) return [];
+    const html = await res.text();
+    const imgs = [...html.matchAll(/<img[^>]+src="([^"]+)"/gi)].map(m => m[1]);
+    return imgs.filter(u => u.startsWith('http'));
+  } catch {
+    return [];
+  }
+}
 
 /**
  * Curated Light Novel & Web Novel Catalog with Chapter Content & Translation
@@ -409,11 +660,11 @@ export const novelService = {
         type: 'light_novel' as ReadingMediaType,
         status: m.status?.toLowerCase() || 'ongoing',
         year: m.startDate?.year,
-        score: m.averageScore ? (m.averageScore / 10).toFixed(1) : '8.5',
+        score: m.averageScore ? (m.averageScore / 10).toFixed(1) : '8.8',
         genres: m.genres || ['Fantasy', 'Adventure'],
-        availableLanguages: ['en', 'hi', 'bn'] as SupportedReadingLanguage[],
+        availableLanguages: ['en', 'hi', 'bn', 'es', 'fr', 'ja'],
         totalChapters: m.chapters || 'Ongoing',
-        latestChapter: m.chapters ? `Ch. ${m.chapters}` : 'Ch. 120+',
+        latestChapter: m.chapters ? `Ch. ${m.chapters}` : 'Ch. 60+',
         isNovel: true
       }));
     } catch (err) {
@@ -466,9 +717,9 @@ export const novelService = {
         type: 'light_novel' as ReadingMediaType,
         status: m.status?.toLowerCase() || 'ongoing',
         year: m.startDate?.year,
-        score: m.averageScore ? (m.averageScore / 10).toFixed(1) : '8.5',
+        score: m.averageScore ? (m.averageScore / 10).toFixed(1) : '8.8',
         genres: m.genres || [],
-        availableLanguages: ['en', 'hi', 'bn'] as SupportedReadingLanguage[],
+        availableLanguages: ['en', 'hi', 'bn', 'es', 'fr', 'ja'],
         totalChapters: m.chapters || 'Ongoing',
         isNovel: true
       }));
@@ -478,9 +729,72 @@ export const novelService = {
   },
 
   /**
+   * Get Specific Novel Details by ID
+   */
+  async getDetails(id: string): Promise<ReadingItem | null> {
+    const rawId = parseInt(id.replace(/^novel-/, ''), 10);
+    if (isNaN(rawId)) return null;
+
+    const query = `
+      query ($id: Int) {
+        Media(id: $id, type: MANGA, format: NOVEL) {
+          id
+          title { english romaji native }
+          coverImage { extraLarge large }
+          bannerImage
+          description
+          averageScore
+          status
+          genres
+          chapters
+          startDate { year }
+        }
+      }
+    `;
+
+    try {
+      const res = await fetch('https://graphql.anilist.co', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ query, variables: { id: rawId } }),
+        next: { revalidate: 600 }
+      });
+
+      if (!res.ok) return null;
+      const json = await res.json();
+      const m = json.data?.Media;
+      if (!m) return null;
+
+      return {
+        id: `novel-${m.id}`,
+        slug: `novel-${m.id}`,
+        title: m.title.english || m.title.romaji || 'Light Novel',
+        romajiTitle: m.title.romaji,
+        nativeTitle: m.title.native,
+        altTitles: [m.title.romaji, m.title.native].filter(Boolean),
+        description: (m.description || 'No synopsis available.').replace(/<[^>]*>?/gm, ''),
+        cover: m.coverImage?.extraLarge || m.coverImage?.large || '/images/placeholder.jpg',
+        banner: m.bannerImage || m.coverImage?.extraLarge,
+        type: 'light_novel' as ReadingMediaType,
+        status: m.status?.toLowerCase() || 'ongoing',
+        year: m.startDate?.year,
+        score: m.averageScore ? (m.averageScore / 10).toFixed(1) : '8.8',
+        genres: m.genres || ['Fantasy', 'Adventure'],
+        availableLanguages: ['en', 'hi', 'bn', 'es', 'fr', 'ja'],
+        totalChapters: m.chapters || 'Ongoing',
+        latestChapter: m.chapters ? `Ch. ${m.chapters}` : 'Ch. 60+',
+        isNovel: true
+      };
+    } catch (e) {
+      console.error('Failed to get novel details by ID:', e);
+      return null;
+    }
+  },
+
+  /**
    * Generate chapters for a Light Novel
    */
-  getNovelChapters(novelId: string, count: number = 50): ReadingChapter[] {
+  getNovelChapters(novelId: string, count: number = 60): ReadingChapter[] {
     const chapters: ReadingChapter[] = [];
     for (let i = 1; i <= count; i++) {
       chapters.push({
@@ -490,7 +804,7 @@ export const novelService = {
         title: `Chapter ${i}: The Chronicles of Destiny Part ${i}`,
         language: 'en',
         publishAt: new Date(Date.now() - (count - i) * 86400000).toISOString(),
-        scanlationGroup: 'Shadow Garden Translations',
+        scanlationGroup: 'Kagemi Translations',
         isNovel: true
       });
     }
@@ -498,13 +812,13 @@ export const novelService = {
   },
 
   /**
-   * Fetch chapter text content for a Light Novel with translation support
+   * Fetch chapter text content for a Light Novel with direct multi-language translation support
    */
-  async getChapterContent(novelId: string, chapterNumber: string, language: SupportedReadingLanguage = 'en'): Promise<{
+  async getChapterContent(novelId: string, chapterNumber: string, language: string = 'en'): Promise<{
     title: string;
     chapterNumber: string;
     content: string;
-    language: SupportedReadingLanguage;
+    language: string;
   }> {
     const rawEnglishTitle = `Chapter ${chapterNumber}: Awakening of the Arcane Realm`;
     const rawEnglishContent = `
@@ -534,40 +848,32 @@ A sudden surge of energy tore through the atmosphere, illuminating the night sky
       };
     }
 
-    // Translate to Hindi or Bengali
     try {
-      const transRes = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL || ''}/api/translate`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          text: rawEnglishContent,
-          targetLang: language,
-          sourceLang: 'en'
-        })
-      });
+      const translatedContent = await translateText(rawEnglishContent, language, 'en');
 
-      if (transRes.ok) {
-        const transJson = await transRes.json();
-        const translatedTitle = language === 'bn' 
-          ? `অধ্যায় ${chapterNumber}: মহাজাগতিক রাজ্যের জাগরণ`
-          : `अध्याय ${chapterNumber}: रहस्यमयी दायरे का जागरण`;
-
-        return {
-          title: translatedTitle,
-          chapterNumber,
-          content: transJson.translatedText || rawEnglishContent,
-          language
-        };
+      let translatedTitle = rawEnglishTitle;
+      if (language === 'hi') {
+        translatedTitle = `अध्याय ${chapterNumber}: रहस्यमयी दायरे का जागरण`;
+      } else if (language === 'bn') {
+        translatedTitle = `অধ্যায় ${chapterNumber}: মহাজাগতিক রাজ্যের জাগরণ`;
+      } else {
+        translatedTitle = await translateText(rawEnglishTitle, language, 'en');
       }
+
+      return {
+        title: translatedTitle,
+        chapterNumber,
+        content: translatedContent || rawEnglishContent,
+        language
+      };
     } catch (e) {
       console.warn('Novel chapter translation failed, returning English:', e);
+      return {
+        title: rawEnglishTitle,
+        chapterNumber,
+        content: rawEnglishContent,
+        language: 'en'
+      };
     }
-
-    return {
-      title: rawEnglishTitle,
-      chapterNumber,
-      content: rawEnglishContent,
-      language: 'en'
-    };
   }
 };

@@ -2,7 +2,7 @@ import { Metadata } from 'next';
 
 export const metadata: Metadata = {
   title: 'Watch Movies & Asian Dramas in HD | Cinema, Series & Kdrama Streaming',
-  description: 'Stream the latest blockbuster cinema movies, Hollywood, Bollywood, Korean dramas, Chinese dramas, and web series online for free in 1080p Full HD with multi-language and Hindi audio on Shadow Garden.',
+  description: 'Stream the latest blockbuster cinema movies, Hollywood, Bollywood, Korean dramas, Chinese dramas, and web series online for free in 1080p Full HD with multi-language and Hindi audio on Kagemi.',
   keywords: [
     'watch cinema online',
     'stream free movies hd',
@@ -11,16 +11,16 @@ export const metadata: Metadata = {
     'hindi dubbed movies and dramas',
     'hollywood blockbusters free',
     'bollywood movies online',
-    'shadow garden cinema'
+    'kagemi cinema'
   ],
   alternates: {
-    canonical: 'https://shadow-garden.site/cinema',
+    canonical: 'https://kagemi.site/cinema',
   },
   openGraph: {
-    title: 'Watch Movies & Asian Dramas in HD | Shadow Garden Cinema',
+    title: 'Watch Movies & Asian Dramas in HD | Kagemi Cinema',
     description: 'Stream the latest blockbuster movies, Asian dramas, and web series in 1080p Full HD with multi-audio support.',
-    url: 'https://shadow-garden.site/cinema',
-    siteName: 'Shadow Garden',
+    url: 'https://kagemi.site/cinema',
+    siteName: 'Kagemi',
     type: 'website',
   },
 };

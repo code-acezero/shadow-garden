@@ -59,6 +59,8 @@ export interface BlakiteAnimeCard {
   type: string;
   date: string;
   score: number;
+  totalEpisodes?: number | null;
+  total_episodes?: number | null;
   episodes: {
     sub: number;
     dub: number;
@@ -146,6 +148,8 @@ export function normalizeBlakiteCard(item: BlakiteRawItem, id: string): BlakiteA
     type: item.type || 'TV',
     date: item.TMDB_DATA?.releaseDate?.split('-')[0] || '?',
     score: Number(item.TMDB_DATA?.rating) || 0,
+    totalEpisodes: totalEps > 0 ? totalEps : null,
+    total_episodes: totalEps > 0 ? totalEps : null,
     episodes: {
       sub: isSub ? totalEps : 0,
       dub: isDub ? totalEps : 0,

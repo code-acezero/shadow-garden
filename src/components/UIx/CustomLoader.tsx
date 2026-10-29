@@ -179,7 +179,7 @@ export default function CustomLoader() {
                         exit={{ opacity: 0, transition: { duration: 0.3 } }} 
                         transition={{ delay: 1 }}
                     >
-                        Shadow Garden Opening
+                        Kagemi Opening
                     </motion.p>
                 </motion.div>
             )}

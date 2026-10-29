@@ -2,7 +2,7 @@ import { Metadata } from 'next';
 
 export const metadata: Metadata = {
   title: 'Watch Anime Movies Online Free in HD | Sub & Dub Anime Films',
-  description: 'Stream top-rated anime movies online for free in 1080p Full HD with English Subbed and Dubbed audio. Multiple high-speed servers, updated catalog on Shadow Garden.',
+  description: 'Stream top-rated anime movies online for free in 1080p Full HD with English Subbed and Dubbed audio. Multiple high-speed servers, updated catalog on Kagemi.',
   keywords: [
     'watch anime movies online',
     'anime movies free',
@@ -13,13 +13,13 @@ export const metadata: Metadata = {
     'top rated anime movies'
   ],
   alternates: {
-    canonical: 'https://shadow-garden.site/movies',
+    canonical: 'https://kagemi.site/movies',
   },
   openGraph: {
-    title: 'Watch Anime Movies Online Free in HD | Sub & Dub Anime Films | Shadow Garden',
+    title: 'Watch Anime Movies Online Free in HD | Sub & Dub Anime Films | Kagemi',
     description: 'Stream top-rated anime movies online for free in 1080p Full HD with English Subbed and Dubbed audio.',
-    url: 'https://shadow-garden.site/movies',
-    siteName: 'Shadow Garden',
+    url: 'https://kagemi.site/movies',
+    siteName: 'Kagemi',
     type: 'website',
   },
 };

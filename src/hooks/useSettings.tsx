@@ -3,6 +3,7 @@
 import React, { createContext, useContext, useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { supabase } from '@/lib/supabase'; 
 import { useAuth } from '@/context/AuthContext';
+import { applyColorPalette, DEFAULT_THEME_ID } from '@/lib/theme';
 import { toast } from '@/lib/toast';
 
 // --- TYPES & DEFAULTS ---
@@ -28,6 +29,11 @@ export interface AppSettings {
   pipMode: boolean;
   clearMode: boolean;
   tapPlayPauseWithControls: boolean;
+
+  // Sound & Haptics
+  tapSound: boolean;
+  tapSoundEffect: 'jelly' | 'switch' | 'taptic' | 'bubble' | 'pop' | 'wood';
+  tapSoundVolume: number;
 
   // Appearance
   accentColor: 'red' | 'orange' | 'gold' | 'green' | 'lime' | 'teal' | 'cyan' | 'blue' | 'indigo' | 'violet' | 'purple' | 'pink' | 'rose' | 'mono';
@@ -69,6 +75,9 @@ export interface AppSettings {
   hideOnlineStatus: boolean;
   hideLevelBadge: boolean;
 
+  // Integrations
+  autoSyncAnilist: boolean;
+
   // Player Prefs Sync
   playerPrefs?: any;
 }
@@ -77,7 +86,8 @@ export const DEFAULT_SETTINGS: AppSettings = {
   twoFactor: false, loginAlerts: true, incognito: false, publicActivity: true, allowRequests: true,
   autoPlay: true, autoSkipOpEd: true, resumePlayback: true, volumeBoost: false, 
   defaultServer: 'hd-1', defaultQuality: '1080p', defaultAudio: 'jp', subLanguage: 'en', defaultVolume: 100, haptics: true, pipMode: true, clearMode: true, tapPlayPauseWithControls: true,
-  accentColor: 'red', glassEffect: true, particles: true, reducedMotion: false, roundedUI: true, uiGlow: true, uiBorders: 'normal', cardVariant: 'default', fontFamily: 'inter',
+  tapSound: true, tapSoundEffect: 'jelly', tapSoundVolume: 0.35,
+  accentColor: 'violet', glassEffect: true, particles: true, reducedMotion: false, roundedUI: true, uiGlow: true, uiBorders: 'normal', cardVariant: 'default', fontFamily: 'inter',
   
   // ✅ ENABLED BY DEFAULT + SET TO HANA
   whisperEnabled: true, 
@@ -94,6 +104,7 @@ export const DEFAULT_SETTINGS: AppSettings = {
   
   hideOnlineStatus: false,
   hideLevelBadge: false,
+  autoSyncAnilist: true,
 };
 
 interface SettingsContextType {
@@ -125,6 +136,11 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
   const applyThemeRef = useRef((s: AppSettings) => {
     if (typeof window === 'undefined') return;
     const root = document.documentElement;
+
+    // Apply color palette from central theme engine
+    const savedPalette = localStorage.getItem('shadow_color_palette') || DEFAULT_THEME_ID;
+    const savedMode = (localStorage.getItem('shadow_theme_mode') || 'dark') as 'dark' | 'light';
+    applyColorPalette(savedPalette, savedMode);
     const palettes: Record<string, any> = {
       red:    { 50: '#fef2f2', 100: '#fee2e2', 200: '#fecaca', 300: '#fca5a5', 400: '#f87171', 500: '#ef4444', 600: '#dc2626', 700: '#b91c1c', 800: '#991b1b', 900: '#7f1d1d', 950: '#450a0a' },
       orange: { 50: '#fff7ed', 100: '#ffedd5', 200: '#fed7aa', 300: '#fdba74', 400: '#fb923c', 500: '#f97316', 600: '#ea580c', 700: '#c2410c', 800: '#9a3412', 900: '#7c2d12', 950: '#431407' },
@@ -248,6 +264,16 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
             uiBorders: newSettings.uiBorders,
             roundedUI: newSettings.roundedUI
         }));
+      }
+
+      if (key === 'tapSound') {
+        localStorage.setItem('shadow_tap_sound', String(value));
+      }
+      if (key === 'tapSoundEffect') {
+        localStorage.setItem('shadow_tap_effect', String(value));
+      }
+      if (key === 'tapSoundVolume') {
+        localStorage.setItem('shadow_tap_volume', String(value));
       }
 
       if (user && newSettings.autoBackup) {

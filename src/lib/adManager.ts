@@ -193,7 +193,7 @@ export const adManager = {
   },
 
   /**
-   * Helper to open ad URL in a background tab and retain focus on Shadow Garden
+   * Helper to open ad URL in a background tab and retain focus on Kagemi
    */
   openDirectLink(customUrl?: string): boolean {
     if (typeof window === 'undefined') return false;
@@ -214,7 +214,7 @@ export const adManager = {
 
   /**
    * Triggers the Anti-Adblock Smartlink in a background tab if cooldown has passed.
-   * Keeps current tab completely focused on Shadow Garden.
+   * Keeps current tab completely focused on Kagemi.
    */
   triggerSmartlink(source: string = 'general'): boolean {
     if (typeof window === 'undefined') return false;

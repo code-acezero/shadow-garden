@@ -58,19 +58,19 @@ export async function generateMetadata(): Promise<Metadata> {
   }
 
   return {
-    metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL || 'https://shadow-garden.site'),
+    metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL || 'https://kagemi.site'),
     title: {
       default: config.seo_title,
       template: `%s | ${config.site_name}`
     },
     description: config.seo_desc,
     applicationName: config.site_name,
-    authors: [{ name: "Shadow Garden", url: "https://shadow-garden.site" }],
+    authors: [{ name: "Kagemi", url: "https://kagemi.site" }],
     generator: "Next.js",
     keywords: config.seo_keywords.split(',').map(k => k.trim()),
     referrer: "origin-when-cross-origin",
-    creator: "Shadow Garden Team",
-    publisher: "Shadow Garden",
+    creator: "Kagemi Team",
+    publisher: "Kagemi",
     robots: {
       index: true,
       follow: true,
@@ -83,18 +83,18 @@ export async function generateMetadata(): Promise<Metadata> {
       },
     },
     alternates: {
-      canonical: "https://shadow-garden.site",
+      canonical: "https://kagemi.site",
       languages: {
-        'id-ID': 'https://shadow-garden.site/id',
-        'ja-JP': 'https://shadow-garden.site/jp',
-        'hi-IN': 'https://shadow-garden.site/in',
+        'id-ID': 'https://kagemi.site/id',
+        'ja-JP': 'https://kagemi.site/jp',
+        'hi-IN': 'https://kagemi.site/in',
       },
     },
     openGraph: {
       type: "website",
       locale: "en_US",
       alternateLocale: SITE_CONFIG.locales, 
-      url: "https://shadow-garden.site",
+      url: "https://kagemi.site",
       siteName: config.site_name,
       title: config.seo_title,
       description: config.seo_desc,
@@ -105,7 +105,7 @@ export async function generateMetadata(): Promise<Metadata> {
       title: config.seo_title,
       description: config.seo_desc,
       images: [SITE_CONFIG.ogImage],
-      creator: "@ShadowGarden",
+      creator: "@KagemiAnime",
     },
     icons: {
       icon: "/icon.svg",
@@ -142,22 +142,22 @@ export default function RootLayout({
       {
         "@type": "WebSite",
         "name": SITE_CONFIG.name,
-        "url": "https://shadow-garden.site",
+        "url": "https://kagemi.site",
         "potentialAction": {
           "@type": "SearchAction",
-          "target": "https://shadow-garden.site/search?q={search_term_string}",
+          "target": "https://kagemi.site/search?q={search_term_string}",
           "query-input": "required name=search_term_string"
         },
         "description": "The Ultimate Anime Streaming Platform from Another World."
       },
       {
         "@type": "Organization",
-        "name": "Shadow Garden",
-        "url": "https://shadow-garden.site",
-        "logo": "https://shadow-garden.site/icon.svg",
+        "name": "Kagemi",
+        "url": "https://kagemi.site",
+        "logo": "https://kagemi.site/icon.svg",
         "sameAs": [
-          "https://twitter.com/shadowgarden",
-          "https://discord.gg/shadowgarden"
+          "https://twitter.com/kagemianime",
+          "https://discord.gg/kagemi"
         ]
       },
       {
@@ -181,6 +181,7 @@ export default function RootLayout({
             __html: `
               (function() {
                 try {
+                  // 1. Service worker cache cleanup
                   if ('caches' in window) {
                     caches.keys().then(function(keys) {
                       keys.forEach(function(k) {
@@ -189,6 +190,41 @@ export default function RootLayout({
                         }
                       });
                     });
+                  }
+                  // 2. Global Unified Theme Pre-Hydration
+                  var themeId = localStorage.getItem('shadow_color_palette') || 'sky-purple-violet';
+                  var themeMode = localStorage.getItem('shadow_theme_mode') || 'dark';
+                  var root = document.documentElement;
+                  if (themeMode === 'light') {
+                    root.classList.remove('dark');
+                    root.classList.add('light');
+                  } else {
+                    root.classList.remove('light');
+                    root.classList.add('dark');
+                  }
+                  // Apply default Sky Purple Violet tokens immediately
+                  if (themeId === 'sky-purple-violet') {
+                    if (themeMode === 'light') {
+                      root.style.setProperty('--bg-surface', '#f8f7ff');
+                      root.style.setProperty('--card-surface', '#ffffff');
+                      root.style.setProperty('--elevated-surface', '#ede9fe');
+                      root.style.setProperty('--border-highlight', '#ddd6fe');
+                      root.style.setProperty('--primary-accent', '#7c3aed');
+                      root.style.setProperty('--secondary-accent', '#0284c7');
+                      root.style.setProperty('--primary-color', '#7c3aed');
+                      root.style.setProperty('--primary-500', '#7c3aed');
+                      root.style.setProperty('--primary-600', '#6d28d9');
+                    } else {
+                      root.style.setProperty('--bg-surface', '#070512');
+                      root.style.setProperty('--card-surface', '#0f0b24');
+                      root.style.setProperty('--elevated-surface', '#1a133b');
+                      root.style.setProperty('--border-highlight', '#2e2163');
+                      root.style.setProperty('--primary-accent', '#8b5cf6');
+                      root.style.setProperty('--secondary-accent', '#38bdf8');
+                      root.style.setProperty('--primary-color', '#8b5cf6');
+                      root.style.setProperty('--primary-500', '#8b5cf6');
+                      root.style.setProperty('--primary-600', '#7c3aed');
+                    }
                   }
                 } catch(e) {}
               })();

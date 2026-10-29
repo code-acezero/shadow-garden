@@ -100,7 +100,7 @@ function normalizeItem(raw: any, source: MacCMSSource): ShortDramaItem {
   const rawTitle = raw.vod_name || 'Short Drama';
 
   if (!desc) {
-    desc = `Watch ${rawTitle} full episodes in HD vertical streaming with English subtitles on Shadow Garden.`;
+    desc = `Watch ${rawTitle} full episodes in HD vertical streaming with English subtitles on Kagemi.`;
   }
 
   // Tags
@@ -189,7 +189,7 @@ export async function getMacCMSShorts(
       
       // Ensure description is 100% English without Chinese characters
       if (!items[i].description || /[\u4e00-\u9fa5]/.test(items[i].description)) {
-        items[i].description = `Watch ${items[i].title} full unlocked episodes in HD vertical streaming with English subtitles on Shadow Garden.`;
+        items[i].description = `Watch ${items[i].title} full unlocked episodes in HD vertical streaming with English subtitles on Kagemi.`;
       }
     }
 
@@ -310,7 +310,7 @@ export async function searchMacCMS(query: string, page: number = 1): Promise<Sho
       if (translatedTitles[i]) items[i].title = translatedTitles[i];
       items[i].tags = translateTagsToEnglish(items[i].tags);
       if (!items[i].description || /[\u4e00-\u9fa5]/.test(items[i].description)) {
-        items[i].description = `Watch ${items[i].title} full unlocked episodes in HD vertical streaming with English subtitles on Shadow Garden.`;
+        items[i].description = `Watch ${items[i].title} full unlocked episodes in HD vertical streaming with English subtitles on Kagemi.`;
       }
     }
 

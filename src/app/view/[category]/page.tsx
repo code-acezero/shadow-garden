@@ -1,161 +1,60 @@
 "use client";
 
-import React, { useState, useEffect, Suspense } from 'react';
-import { useSearchParams, useParams, useRouter } from 'next/navigation';
-import AnimeCard from '@/components/Anime/AnimeCard'; 
-import { Loader2, ChevronLeft, ChevronRight } from 'lucide-react';
-import { SimpleGridSkeleton } from '@/components/UIx/SkeletonLoaders';
-import Footer from '@/components/Anime/Footer';
-import { AnimeService } from '@/lib/api';
-import { dpi } from '@/lib/dpi';
+import { useEffect, Suspense } from 'react';
+import { useParams, useRouter, useSearchParams } from 'next/navigation';
+import { Loader2 } from 'lucide-react';
 
-function ViewAllContent() {
-  const searchParams = useSearchParams();
+function ViewCategoryRedirectContent() {
   const params = useParams();
+  const searchParams = useSearchParams();
   const router = useRouter();
-  
-  // Extract category from the URL (e.g. /view/trending -> category = "trending")
-  const category = params.category as string;
-  
-  const [data, setData] = useState<any>(null);
-  const [loading, setLoading] = useState(true);
-
-  // Get current page from URL or default to 1
-  const currentPage = parseInt(searchParams.get('page') || '1');
+  const category = (params?.category as string) || '';
+  const page = searchParams.get('page');
 
   useEffect(() => {
-    const fetchData = async () => {
-      if (!category) return;
-      
-      setLoading(true);
-      try {
-        let result: any;
-        if (category === 'donghua') {
-           const donghuaHome = await dpi.getHome(currentPage);
-           
-           // Combine all items from sections
-           const allItems: any[] = [];
-           donghuaHome.sections.forEach(s => allItems.push(...s.items));
-           
-           result = {
-              results: allItems,
-              currentPage: currentPage,
-              hasNextPage: allItems.length === 24, // Assuming 24 is max per page
-              hasPreviousPage: currentPage > 1,
-              maxPage: Math.max(currentPage + 1, 5) 
-           };
-        } else {
-           result = await AnimeService.getFilteredAnime(category, currentPage);
-        }
-        setData(result);
-      } catch (error) {
-        console.error("Failed to fetch page data", error);
-      } finally {
-        setLoading(false);
-        window.scrollTo({ top: 0, behavior: 'smooth' });
-      }
-    };
+    if (!category) {
+      router.replace('/explore');
+      return;
+    }
 
-    fetchData();
-  }, [category, currentPage]);
+    const query = new URLSearchParams();
+    if (page && page !== '1') query.set('page', page);
 
-  const updatePage = (newPage: number) => {
-    router.push(`/view/${category}?page=${newPage}`);
-  };
+    if (category === 'donghua') {
+      query.set('library', 'donghua');
+    } else if (category === 'hindi') {
+      query.set('library', 'hindi');
+    } else if (category === 'drama') {
+      query.set('library', 'drama');
+    } else if (category === 'movies') {
+      query.set('library', 'movies');
+    } else if (category === 'manga') {
+      query.set('library', 'manga');
+    } else if (category === 'ongoing' || category === 'airing') {
+      query.set('category', 'airing');
+    } else {
+      query.set('category', category);
+    }
 
-  const handleNext = () => {
-    if (data?.hasNextPage) updatePage(currentPage + 1);
-  };
-
-  const handlePrev = () => {
-    if (currentPage > 1) updatePage(currentPage - 1);
-  };
-
-  // Format Category Title
-  const pageTitle = category?.replace(/-/g, ' ').toUpperCase() || "ANIME LIST";
+    router.replace(`/explore?${query.toString()}`);
+  }, [category, page, router]);
 
   return (
-    <div className="min-h-screen bg-[#050505] text-white">
-      <div className="px-4 py-24">
-        {/* Header */}
-        <div className="mb-8 flex items-center justify-between w-full">
-          <div>
-            <h1 className="text-3xl font-black tracking-widest text-transparent bg-clip-text bg-gradient-to-r from-primary-500 to-white uppercase drop-shadow-md">
-              {pageTitle}
-            </h1>
-            <p className="text-zinc-400 text-sm mt-1">
-              Page {currentPage} {data?.maxPage ? `of ${data.maxPage}` : ''}
-            </p>
-          </div>
-        </div>
-
-        {/* Grid Content */}
-        {loading ? (
-            <SimpleGridSkeleton />
-        ) : (
-          <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-4 w-full">
-            {data?.results?.map((anime: any) => {
-              const isRecentCategory = ['recently-updated', 'recent', 'latest-updated', 'updated-all', 'latest-episodes'].includes(category);
-              const latestEp = anime.episodes?.sub || anime.episodes?.dub || anime.episodes?.eps || 0;
-              const cardAnime = isRecentCategory && latestEp > 0 
-                ? { ...anime, targetRoute: `/watch/${anime.id}?ep=${latestEp}` }
-                : anime;
-              return (
-                <AnimeCard 
-                  key={anime.id} 
-                  anime={cardAnime} 
-                />
-              );
-            })}
-          </div>
-        )}
-
-        {/* Pagination Controls */}
-        {!loading && data && (
-          <div className="mt-12 flex justify-center items-center gap-4 w-full">
-            
-            <button
-              onClick={handlePrev}
-              disabled={currentPage === 1}
-              className={`flex items-center gap-2 px-6 py-3 rounded-full border transition-all ${
-                currentPage === 1 
-                  ? 'opacity-50 cursor-not-allowed bg-transparent border-white/10' 
-                  : 'bg-white/5 border-white/10 hover:bg-primary-600 hover:border-primary-500 shadow-lg hover:shadow-primary-600/20'
-              }`}
-            >
-              <ChevronLeft size={18} />
-              <span>Previous</span>
-            </button>
-
-            <div className="flex items-center justify-center w-12 h-12 rounded-full bg-primary-500/10 border border-primary-500/20 font-bold text-primary-500 shadow-[0_0_15px_rgba(220,38,38,0.2)]">
-              {currentPage}
-            </div>
-
-            <button
-              onClick={handleNext}
-              disabled={!data.hasNextPage}
-              className={`flex items-center gap-2 px-6 py-3 rounded-full border transition-all ${
-                !data.hasNextPage 
-                  ? 'opacity-50 cursor-not-allowed bg-transparent border-white/10' 
-                  : 'bg-white/5 border-white/10 hover:bg-primary-600 hover:border-primary-500 shadow-lg hover:shadow-primary-600/20'
-              }`}
-            >
-              <span>Next</span>
-              <ChevronRight size={18} />
-            </button>
-          </div>
-        )}
-      </div>
-      <Footer />
+    <div className="w-full min-h-[60vh] flex flex-col items-center justify-center gap-3 bg-[#07090e] text-white">
+      <Loader2 className="animate-spin text-primary-500" size={28} />
+      <span className="text-xs uppercase tracking-widest text-zinc-400 font-bold">Opening in Explore...</span>
     </div>
   );
 }
 
-// We wrap the content in Suspense because useSearchParams causes client-side de-opt
-export default function ViewAllPage() {
+export default function ViewCategoryRedirect() {
   return (
-    <Suspense fallback={<div className="h-screen bg-[#050505]" />}>
-      <ViewAllContent />
+    <Suspense fallback={
+      <div className="w-full min-h-[60vh] flex flex-col items-center justify-center gap-3 bg-[#07090e] text-white">
+        <Loader2 className="animate-spin text-primary-500" size={28} />
+      </div>
+    }>
+      <ViewCategoryRedirectContent />
     </Suspense>
   );
 }

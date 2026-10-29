@@ -1,9 +1,0 @@
-{
-  "status": 307,
-  "headers": {
-    "location": "/cinema?category=movies",
-    "x-nextjs-stale-time": "300",
-    "x-nextjs-prerender": "1",
-    "x-next-cache-tags": "_N_T_/layout,_N_T_/movies/layout,_N_T_/movies/page,_N_T_/movies"
-  }
-}

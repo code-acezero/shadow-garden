@@ -1,4 +1,4 @@
-// Shadow Garden PWA Service Worker (v6 - Clean Slate)
+// Kagemi PWA Service Worker (v6 - Clean Slate)
 const CACHE_NAME = 'shadow-garden-pwa-v6';
 
 self.addEventListener('install', (event) => {

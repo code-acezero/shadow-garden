@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { Bell, X, Check, Trash2, CheckCheck, ExternalLink, Film, Tv, MessageSquare, AlertTriangle } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { supabase } from '@/lib/supabase';
@@ -8,6 +8,7 @@ import { useAuth } from '@/context/AuthContext';
 import { formatDistanceToNow } from 'date-fns';
 import { useRouter } from 'next/navigation';
 import { useSettings } from '@/hooks/useSettings';
+import { cn } from '@/lib/utils';
 
 export interface NotificationItem {
   id: string;
@@ -22,14 +23,42 @@ export interface NotificationItem {
   created_at: string;
 }
 
-export default function Notifications() {
+export interface NotificationsProps {
+  buttonClassName?: string;
+  bellSize?: number;
+  unboxed?: boolean;
+}
+
+export default function Notifications({ buttonClassName, bellSize = 20, unboxed = false }: NotificationsProps = {}) {
   const { user } = useAuth();
   const { settings } = useSettings();
   const router = useRouter();
   const [isOpen, setIsOpen] = useState(false);
+  const panelRef = useRef<HTMLDivElement>(null);
+  const buttonRef = useRef<HTMLButtonElement>(null);
   const [notifications, setNotifications] = useState<NotificationItem[]>([]);
   const [tempNotifications, setTempNotifications] = useState<NotificationItem[]>([]);
   const [loading, setLoading] = useState(false);
+
+  // Dismiss on outside click without blocking user interactions on other options
+  useEffect(() => {
+    if (!isOpen) return;
+    const handleOutsideClick = (e: MouseEvent | TouchEvent) => {
+      const target = e.target as Node;
+      if (panelRef.current?.contains(target) || buttonRef.current?.contains(target)) {
+        return;
+      }
+      setIsOpen(false);
+    };
+
+    const timer = setTimeout(() => {
+      document.addEventListener('pointerdown', handleOutsideClick);
+    }, 10);
+    return () => {
+      clearTimeout(timer);
+      document.removeEventListener('pointerdown', handleOutsideClick);
+    };
+  }, [isOpen]);
 
   // Listen for custom temp notification events
   useEffect(() => {
@@ -89,8 +118,9 @@ export default function Notifications() {
       }
     } catch (e) {}
 
+    const channelName = `realtime-notifications-${user.id}-${Math.random().toString(36).substring(2, 9)}`;
     const channel = supabase
-      .channel(`realtime-notifications-${user.id}`)
+      .channel(channelName)
       .on(
         'postgres_changes',
         {
@@ -102,9 +132,22 @@ export default function Notifications() {
         (payload: any) => {
           fetchNotifications();
           if (payload.eventType === 'INSERT' && payload.new) {
+            // Live broadcast to pet mascot in the top nav island
+            if (typeof window !== 'undefined') {
+              window.dispatchEvent(new CustomEvent('shadow-whisper', {
+                detail: {
+                  id: Date.now(),
+                  type: 'info',
+                  title: 'New Episode Alert!',
+                  message: payload.new.content,
+                  link: payload.new.link
+                }
+              }));
+            }
+
             if (settings?.pushNotifs !== false && typeof window !== 'undefined' && 'Notification' in window && Notification.permission === 'granted') {
               try {
-                const notif = new window.Notification('Shadow Garden Alert', {
+                const notif = new window.Notification('Kagemi Alert', {
                   body: payload.new.content || 'New alert received',
                   icon: '/icon.png'
                 });
@@ -125,6 +168,84 @@ export default function Notifications() {
       supabase.removeChannel(channel);
     };
   }, [user, fetchNotifications, settings?.pushNotifs, router]);
+
+  // Guest Traveller Episode Checker (Anikoto Client Sync)
+  useEffect(() => {
+    if (user || typeof window === 'undefined') return;
+
+    const checkGuestEpisodes = async () => {
+      try {
+        const localWatchlist = JSON.parse(localStorage.getItem('shadow_watchlist') || '[]');
+        const watching = localWatchlist.filter((item: any) => (item.status === 'watching' || !item.status));
+        if (watching.length === 0) return;
+
+        const res = await fetch('/api/anime/airing-today?page=1&perPage=24&releasedOnly=true');
+        if (!res.ok) return;
+        const json = await res.json();
+        const recentEpisodes: any[] = json.data || json.items || [];
+        if (!recentEpisodes || recentEpisodes.length === 0) return;
+
+        const notifiedMap = JSON.parse(localStorage.getItem('shadow_guest_notified') || '{}');
+        const newTempList: NotificationItem[] = [];
+
+        for (const localItem of watching) {
+          const localId = String(localItem.id || localItem.anime_id || '').trim();
+          const matchNum = localId.match(/(\d+)$/);
+          const numId = matchNum ? matchNum[1] : null;
+
+          const matchedAired = recentEpisodes.find((item: any) => {
+            const rawId = String(item.id || '').trim();
+            return rawId === localId || (numId && rawId === numId);
+          });
+
+          if (!matchedAired) continue;
+
+          const latestEp = Number(matchedAired.episode) || 1;
+          const watchedEp = Number(localItem.last_episode_number || localItem.episode || localItem.progress) || 0;
+          if (watchedEp >= latestEp) continue;
+
+          const notifyKey = `${localId}-ep-${latestEp}`;
+          if (notifiedMap[notifyKey]) continue;
+
+          // Mark notified locally
+          notifiedMap[notifyKey] = true;
+
+          newTempList.push({
+            id: `temp-${notifyKey}`,
+            user_id: 'guest',
+            type: 'anime_update',
+            content: `New episode (${latestEp}) of "${matchedAired.title || localItem.title || localItem.anime_title}" is now available!`,
+            image_url: matchedAired.poster || localItem.poster || localItem.anime_image,
+            link: `/watch/${localId}?ep=${latestEp}`,
+            is_read: false,
+            created_at: new Date().toISOString()
+          });
+
+          // Dispatch whisper to mascot!
+          window.dispatchEvent(new CustomEvent('shadow-whisper', {
+            detail: {
+              id: Date.now(),
+              type: 'info',
+              title: 'New Episode Alert!',
+              message: `Episode ${latestEp} of "${matchedAired.title || localItem.title}" is now available!`,
+              link: `/watch/${localId}?ep=${latestEp}`
+            }
+          }));
+        }
+
+        if (newTempList.length > 0) {
+          localStorage.setItem('shadow_guest_notified', JSON.stringify(notifiedMap));
+          setTempNotifications(prev => [...newTempList, ...prev]);
+        }
+      } catch (err) {
+        console.warn('Guest episode check error:', err);
+      }
+    };
+
+    // Run 3 seconds after page load so it doesn't block critical rendering
+    const timer = setTimeout(checkGuestEpisodes, 3000);
+    return () => clearTimeout(timer);
+  }, [user]);
 
   const unreadCount = allNotifications.filter(n => !n.is_read).length;
 
@@ -221,61 +342,78 @@ export default function Notifications() {
   };
 
   return (
-    <div className="relative z-50 w-full h-full">
+    <div className={cn("relative z-50", unboxed ? "flex items-center justify-center" : "w-full h-full")}>
       {/* Bell Button */}
       <button
+        ref={buttonRef}
         onClick={() => setIsOpen(!isOpen)}
-        className="relative w-full h-full rounded-full liquid-glass hover:bg-white/10 flex items-center justify-center group transition-all outline-none"
+        className={cn(
+          "relative flex items-center justify-center group transition-all outline-none",
+          unboxed
+            ? "p-1.5 rounded-full text-zinc-400 hover:text-white hover:bg-white/5 active:scale-90"
+            : buttonClassName || "w-full h-full rounded-full liquid-glass hover:bg-white/10"
+        )}
         title="Notifications"
       >
         <Bell
-          size={20}
+          size={bellSize}
           className={`relative z-10 transition-colors ${
             isOpen ? 'text-white' : 'text-zinc-400 group-hover:text-white'
           }`}
         />
+        {unreadCount > 0 && (
+          <span className={cn(
+            "absolute min-w-[15px] h-[15px] px-1 bg-primary-600 text-[8.5px] font-black text-white rounded-full flex items-center justify-center border border-[#0c1322] shadow-[0_0_8px_rgba(220,38,38,0.8)] z-20 pointer-events-none leading-none",
+            unboxed ? "-top-0.5 -right-0.5" : "-top-1 -right-1"
+          )}>
+            {unreadCount > 9 ? '9+' : unreadCount}
+          </span>
+        )}
       </button>
-
-      {unreadCount > 0 && (
-        <span className="absolute -top-1 -right-1 min-w-[18px] h-[18px] px-1 bg-primary-600 text-[9px] font-black text-white rounded-full flex items-center justify-center border border-[#050505] shadow-[0_0_10px_rgba(220,38,38,0.8)] z-20 pointer-events-none leading-none">
-          {unreadCount > 9 ? '9+' : unreadCount}
-        </span>
-      )}
 
       {/* Notification Dropdown Panel */}
       <AnimatePresence>
         {isOpen && (
           <>
-            <div className="fixed inset-0 z-40" onClick={() => setIsOpen(false)} />
+            {/* Desktop backdrop overlay (dimmed on desktop, hidden on mobile so screen is never darkened) */}
+            <div 
+              className="hidden md:block fixed inset-0 z-40 bg-black/60 backdrop-blur-sm pointer-events-auto cursor-pointer" 
+              onClick={(e) => {
+                e.stopPropagation();
+                setIsOpen(false);
+              }} 
+            />
 
             <motion.div
-              initial={{ opacity: 0, y: 10, scale: 0.95 }}
+              ref={panelRef}
+              initial={{ opacity: 0, y: 6, scale: 0.98 }}
               animate={{ opacity: 1, y: 0, scale: 1 }}
-              exit={{ opacity: 0, y: 10, scale: 0.95 }}
-              transition={{ duration: 0.2 }}
-              className="fixed top-[80px] left-[5vw] right-[5vw] w-[90vw] sm:absolute sm:top-full sm:left-auto sm:right-0 sm:mt-3 sm:w-96 bg-black/95 backdrop-blur-2xl border border-white/10 rounded-2xl shadow-[0_10px_50px_rgba(0,0,0,0.9)] overflow-hidden z-50"
+              exit={{ opacity: 0, y: 6, scale: 0.98 }}
+              transition={{ duration: 0.18 }}
+              className="fixed top-[52px] sm:top-14 left-2 right-2 sm:absolute sm:top-full sm:left-auto sm:right-0 sm:mt-2 sm:w-96 bg-[#0c1322] border border-white/10 rounded-2xl shadow-2xl overflow-hidden z-50 text-left"
+              onClick={(e) => e.stopPropagation()}
             >
               {/* Header */}
-              <div className="p-4 border-b border-white/5 flex justify-between items-center bg-gradient-to-r from-primary-950/20 via-black to-transparent">
+              <div className="p-3.5 border-b border-white/5 flex justify-between items-center bg-white/[0.02]">
                 <div className="flex items-center gap-2">
                   <h3 className="font-black text-white text-xs uppercase tracking-widest flex items-center gap-2">
-                    <Bell size={14} className="text-primary-500" /> Notifications
+                    <Bell size={13} className="text-primary-500" /> Notifications
                   </h3>
                   {unreadCount > 0 && (
-                    <span className="text-[9px] font-bold bg-primary-600/30 text-primary-400 border border-primary-500/30 px-2 py-0.5 rounded-full">
+                    <span className="text-[9px] font-bold bg-primary-600/20 text-primary-400 border border-primary-500/30 px-2 py-0.5 rounded-full">
                       {unreadCount} New
                     </span>
                   )}
                 </div>
 
-                <div className="flex items-center gap-3">
+                <div className="flex items-center gap-2.5">
                   {unreadCount > 0 && (
                     <button
                       onClick={markAllRead}
                       className="text-[10px] text-zinc-400 hover:text-white font-bold uppercase tracking-wider flex items-center gap-1 transition-colors"
                       title="Mark all as read"
                     >
-                      <CheckCheck size={13} /> Mark Read
+                      <CheckCheck size={12} /> Mark Read
                     </button>
                   )}
                   {allNotifications.length > 0 && (
@@ -283,7 +421,7 @@ export default function Notifications() {
                       onClick={clearAll}
                       className="text-[10px] uppercase font-bold tracking-widest text-zinc-500 hover:text-red-400 transition-colors flex items-center gap-1"
                     >
-                      <Trash2 size={12} /> Clear
+                      <Trash2 size={11} /> Clear
                     </button>
                   )}
                 </div>

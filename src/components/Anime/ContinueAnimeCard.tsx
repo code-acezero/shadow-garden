@@ -30,55 +30,73 @@ interface ContinueAnimeCardProps {
 }
 
 export default memo(function ContinueAnimeCard({ anime, onClick, onRemove, variants, className }: ContinueAnimeCardProps) {
-  const [showRemove, setShowRemove] = useState(false);
   const lastTapRef = useRef<number>(0);
   const clickTimeoutRef = useRef<NodeJS.Timeout | null>(null);
-  // One-time touch device detection — avoids hover animation overhead on mobile
   const isTouchRef = useRef<boolean | null>(null);
+
   useEffect(() => {
     isTouchRef.current = window.matchMedia('(hover: none)').matches;
   }, []);
 
   const handleRemove = (e: React.MouseEvent) => {
     e.stopPropagation();
+    e.preventDefault();
     if (onRemove) onRemove(anime.id);
   };
 
-  // Smart Tap Handler: Distinguishes Single vs Double Tap
   const handleSmartClick = () => {
     const now = Date.now();
-    const DOUBLE_TAP_DELAY = 300;
+    const DOUBLE_TAP_DELAY = 280;
 
-    if (now - lastTapRef.current < DOUBLE_TAP_DELAY) {
-      // --- DOUBLE TAP DETECTED ---
-      if (clickTimeoutRef.current) clearTimeout(clickTimeoutRef.current);
-      setShowRemove((prev) => !prev); // Toggle X icon on mobile
-    } else {
-      // --- SINGLE TAP DETECTED ---
-      // Wait briefly to see if a second tap comes
-      clickTimeoutRef.current = setTimeout(() => {
-        onClick(anime.id, anime.episodeId, anime.type);
-      }, DOUBLE_TAP_DELAY);
-    }
+    if (clickTimeoutRef.current) clearTimeout(clickTimeoutRef.current);
+
+    clickTimeoutRef.current = setTimeout(() => {
+      onClick(anime.id, anime.episodeId, anime.type);
+    }, DOUBLE_TAP_DELAY);
+
     lastTapRef.current = now;
   };
+
+  const ageTag = (() => {
+    const raw = anime.ageRating || (anime.isAdult ? "18+" : "");
+    if (!raw && !anime.isAdult) return null;
+    
+    const rUpper = raw.toUpperCase().trim();
+    const isRed = anime.isAdult || rUpper.includes("18") || rUpper.includes("RX") || rUpper.includes("HENTAI") || rUpper.includes("R+") || rUpper === "R" || rUpper.startsWith("R");
+    
+    let label = raw;
+    if (rUpper.includes("RX") || rUpper.includes("HENTAI")) label = "Rx";
+    else if (isRed) label = "18+";
+    else if (rUpper.includes("13") || rUpper.includes("PG-13")) label = "PG-13";
+    else if (rUpper.includes("PG")) label = "PG";
+    else if (rUpper === "G" || rUpper.includes("ALL")) label = "G";
+
+    return (
+      <span className={cn(
+        "h-5 px-1.5 flex items-center justify-center rounded-[6px] text-[8px] sm:text-[8.5px] font-mono font-bold uppercase tracking-wider backdrop-blur-md shadow-sm border",
+        isRed 
+          ? "bg-red-600/90 border-red-500/80 text-white" 
+          : "bg-black/70 border-white/10 text-white"
+      )}>
+        {label}
+      </span>
+    );
+  })();
 
   return (
     <motion.div
       variants={variants}
-      // Skip whileHover on touch devices — touch devices can't hover, this just adds overhead
-      whileHover={isTouchRef.current ? undefined : { scale: 1.05, y: -8 }}
-      whileTap={{ scale: 0.96 }}
+      whileHover={isTouchRef.current ? undefined : { scale: 1.03, y: -4 }}
+      whileTap={{ scale: 0.97 }}
       onClick={handleSmartClick}
       style={{ willChange: 'transform' }}
       className={cn(
-        "group relative aspect-[3/4] rounded-[24px] md:rounded-[32px] overflow-hidden cursor-pointer shadow-2xl shadow-black/50 ring-1 ring-white/10 bg-[#050505] transform-gpu z-0 hover:z-10 select-none touch-manipulation",
+        "group relative aspect-[3/4] rounded-2xl overflow-hidden cursor-pointer shadow-xl shadow-black/60 ring-1 ring-white/10 hover:ring-primary-500/30 bg-[#090d16] transform-gpu z-0 hover:z-10 select-none touch-manipulation transition-all duration-300",
         className || "flex-shrink-0 w-[42%] sm:w-[28%] md:w-[22%] lg:w-[15.5%] xl:w-[15.5%] snap-start"
       )}
     >
-        {/* 1. Background Image */}
-      <div className="absolute inset-0 overflow-hidden rounded-[24px] md:rounded-[32px]">
-        {/* Plain img — no framer-motion overhead needed here, image itself doesn't animate */}
+      {/* 1. Background Poster Image */}
+      <div className="absolute inset-0 overflow-hidden rounded-2xl">
         <img
           src={anime.poster && anime.poster.trim() !== '' ? anime.poster : "/images/no-poster.png"}
           alt={anime.title}
@@ -87,142 +105,78 @@ export default memo(function ContinueAnimeCard({ anime, onClick, onRemove, varia
           onError={(e) => {
             (e.target as HTMLImageElement).src = "/images/no-poster.png";
           }}
-          className="w-full h-full object-cover transform-gpu transition-transform duration-700 ease-out group-hover:scale-110"
+          className="w-full h-full object-cover transform-gpu transition-transform duration-700 ease-out group-hover:scale-105"
         />
-        <div className="absolute inset-0 bg-gradient-to-t from-black via-black/60 to-transparent opacity-95 group-hover:opacity-100 transition-opacity duration-300" />
+        {/* Sleek multi-stop gradient */}
+        <div className="absolute inset-0 bg-gradient-to-t from-black via-black/65 to-transparent opacity-95 group-hover:opacity-100 transition-opacity duration-300" />
+        <div className="absolute inset-0 bg-gradient-to-b from-black/40 via-transparent to-transparent opacity-60" />
       </div>
 
-      {/* 2. Top Labels */}
-      <div className="absolute top-2.5 left-2.5 md:top-3 md:left-3 z-30">
-        <div className="px-1.5 py-0.5 md:px-2 md:py-1 bg-black/60 backdrop-blur-md border border-white/10 rounded-lg text-[7px] md:text-[8px] font-black text-white uppercase tracking-wider shadow-lg">
+      {/* 2. Top-Left Labels: Type Badge & Age Rating */}
+      <div className="absolute top-2.5 left-2.5 md:top-3 md:left-3 z-30 flex items-center gap-1.5 pointer-events-none">
+        <span className="h-5 px-1.5 sm:px-2 flex items-center justify-center rounded-[6px] bg-black/70 border border-white/10 text-white text-[8px] sm:text-[8.5px] font-mono font-bold uppercase tracking-wider backdrop-blur-md shadow-sm">
           {anime.type}
-        </div>
+        </span>
+        {ageTag}
       </div>
 
-      {/* Remove Button (Double Tap on Mobile / Hover on Desktop) */}
+      {/* 3. Top-Right: Sleek Repositioned X (Remove) Button */}
       {onRemove && (
-        <div 
-          className={cn(
-            "absolute top-2.5 right-1/2 translate-x-1/2 z-40 transition-opacity duration-200",
-            showRemove ? "opacity-100" : "opacity-0 group-hover:opacity-100"
-          )}
-        >
+        <div className="absolute top-2.5 right-2.5 md:top-3 md:right-3 z-40">
           <button
             onClick={handleRemove}
-            className="p-1.5 bg-black/60 backdrop-blur-md border border-white/10 rounded-full text-white hover:bg-primary-600 hover:border-primary-500 transition-colors shadow-lg group/btn"
-            title="Remove from Continue Watching"
+            className="w-6 h-6 rounded-full bg-black/75 hover:bg-red-600/90 border border-white/15 text-zinc-300 hover:text-white flex items-center justify-center transition-all duration-200 backdrop-blur-md shadow-md active:scale-90 group/btn"
+            title="Remove from history"
+            aria-label="Remove"
           >
-            <X size={10} className="group-hover/btn:scale-110 transition-transform" />
+            <X size={11} strokeWidth={2.5} className="group-hover/btn:scale-110 transition-transform" />
           </button>
         </div>
       )}
 
-      {/* Age Rating Tag */}
-      {!showRemove && (() => {
-        let raw = anime.ageRating || (anime.isAdult ? "18+" : "");
-        if (!raw && !anime.isAdult) return null;
-        
-        const rUpper = raw.toUpperCase().trim();
-        const isRed = anime.isAdult || rUpper.includes("18") || rUpper.includes("RX") || rUpper.includes("HENTAI") || rUpper.includes("R+") || rUpper === "R" || rUpper.startsWith("R");
-        
-        let label = "";
-        if (rUpper.includes("RX") || rUpper.includes("HENTAI")) {
-          label = "Rx";
-        } else if (isRed) {
-          label = "18+";
-        } else if (rUpper.includes("13") || rUpper.includes("PG-13")) {
-          label = "PG 13";
-        } else if (rUpper.includes("PG")) {
-          label = "PG";
-        } else if (rUpper === "G" || rUpper.includes("ALL")) {
-          label = "G";
-        } else {
-          label = raw;
-        }
-        
-        return (
-          <div className="absolute top-2.5 right-2.5 md:top-3 md:right-3 z-30 transition-opacity duration-200 group-hover:opacity-0">
-            <div
-              className={cn(
-                "h-4 md:h-5 px-1.5 md:px-2 flex items-center justify-center rounded-full border text-[7px] md:text-[8px] font-black shadow-lg backdrop-blur-md transition-colors",
-                isRed 
-                  ? "bg-red-600 border-red-500 text-white shadow-[0_0_10px_rgba(220,38,38,0.6)]" 
-                  : "bg-black/60 border-white/10 text-white"
-              )}
-            >
-              {label}
-            </div>
-          </div>
-        );
-      })()}
-
-      {/* 3. Center Play Button */}
-      <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all duration-300 z-20 scale-50 group-hover:scale-100 -translate-y-4 md:-translate-y-6">
-        <div className="relative">
-          <div className="absolute inset-0 rounded-full bg-primary-600 blur-xl opacity-70 animate-pulse" />
-          <div className="relative w-8 h-8 md:w-10 md:h-10 rounded-full bg-primary-600 border border-white/10 flex items-center justify-center shadow-[0_0_30px_rgba(220,38,38,0.6)]">
-            <Play className="w-3 h-3 md:w-4 md:h-4 text-white fill-white ml-0.5" />
-          </div>
+      {/* 4. Center Play Button (Sleek Glassmorphic Floating Orb) */}
+      <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all duration-300 z-20 scale-75 group-hover:scale-100 hidden md:flex pointer-events-none">
+        <div className="w-10 h-10 md:w-11 md:h-11 rounded-full bg-primary-600/95 border border-white/20 backdrop-blur-md flex items-center justify-center text-white shadow-[0_0_24px_rgba(139,92,246,0.6)] transition-transform duration-200 group-hover:scale-105">
+          <Play className="w-4 h-4 text-white fill-white ml-0.5" />
         </div>
       </div>
 
-      {/* 4. Bottom Metadata */}
-      <div className="absolute bottom-0 left-0 right-0 px-2.5 pb-2.5 md:px-3 md:pb-3 z-20 flex flex-col gap-1 md:gap-1.5">
+      {/* 5. Bottom Metadata (Anti-Container Minimal Layout) */}
+      <div className="absolute bottom-0 left-0 right-0 p-2.5 sm:p-3 z-20 flex flex-col gap-1 sm:gap-1.5 justify-end pointer-events-none">
         {/* Title */}
-        <h3 className="text-xs md:text-sm font-black text-white leading-tight truncate drop-shadow-xl filter group-hover:text-primary-400 transition-colors">
+        <h3 className="text-xs sm:text-sm font-black text-white leading-tight truncate drop-shadow-md group-hover:text-primary-300 transition-colors">
           {formatAnimeTitle(anime.title, anime.id)}
         </h3>
 
-        {/* Adaptive Info Row */}
-        <div className="flex items-center justify-between gap-1 w-full overflow-hidden">
-          {/* Left: Current Episode Only */}
-          <div className="flex-1 min-w-0 bg-white/10 backdrop-blur-md border border-white/10 px-1.5 py-0.5 md:px-2 md:py-1 rounded-md flex items-center justify-center gap-1">
-            <Play size={6} className="fill-white text-white" />
-            <span className="text-[7.5px] md:text-[8.5px] font-bold text-white tracking-tight uppercase whitespace-nowrap">
-              EP {anime.episode}
-            </span>
-          </div>
+        {/* Episode & Audio Meta Row */}
+        <div className="flex items-center justify-between text-[10.5px] sm:text-[11px] font-bold text-zinc-300">
+          <span className="flex items-center gap-1.5 text-zinc-100">
+            <Play size={8} className="fill-primary-400 text-primary-400 shrink-0" />
+            <span>Ep {anime.episode}</span>
+          </span>
 
-          {/* Right: Sub/Dub (Compact) */}
           {(anime.sub || anime.dub) && (
-            <div className="flex-shrink-0 flex items-center gap-1 bg-white/10 backdrop-blur-md border border-white/10 px-1.5 py-0.5 md:px-2 md:py-1 rounded-md min-w-0">
-              {anime.sub && (
-                <div className="flex items-center gap-0.5 text-[7.5px] md:text-[8.5px] font-bold text-white tracking-tight whitespace-nowrap">
-                  <Captions size={8} className="text-zinc-300 flex-shrink-0" />
-                  <span>{anime.sub}</span>
-                </div>
-              )}
-              {anime.sub && anime.dub && (
-                <div className="w-px h-2 bg-white/20 flex-shrink-0" />
-              )}
-              {anime.dub && (
-                <div className="flex items-center gap-0.5 text-[7.5px] md:text-[8.5px] font-bold text-white tracking-tight whitespace-nowrap">
-                  <Mic size={8} className="text-zinc-300 flex-shrink-0" />
-                  <span>{anime.dub}</span>
-                </div>
-              )}
+            <div className="flex items-center gap-1 text-[9.5px] text-zinc-400 font-mono">
+              {anime.sub && <span>SUB {anime.sub}</span>}
+              {anime.sub && anime.dub && <span className="text-zinc-600">•</span>}
+              {anime.dub && <span>DUB {anime.dub}</span>}
             </div>
           )}
         </div>
 
-        {/* Progress Bar */}
-        <div className="flex flex-col gap-0.5 md:gap-1 w-full mt-0.5">
-          <div className="w-full h-0.5 md:h-1 bg-white/20 rounded-full overflow-hidden backdrop-blur-sm shadow-inner">
-            <motion.div
-              initial={{ width: 0 }}
-              animate={{ width: `${anime.progress}%` }}
-              transition={{ duration: 1.2, ease: "circOut", delay: 0.3 }}
-              className="h-full bg-gradient-to-r from-primary-600 to-primary-400 shadow-[0_0_10px_rgba(220,38,38,0.8)]"
+        {/* Progress Bar & Percentage */}
+        <div className="w-full flex items-center gap-2 pt-0.5">
+          <div className="flex-1 h-1 bg-white/15 rounded-full overflow-hidden">
+            <div
+              style={{ width: `${Math.min(100, Math.max(0, anime.progress))}%` }}
+              className="h-full bg-gradient-to-r from-primary-600 to-primary-400 rounded-full"
             />
           </div>
-          <span className="text-[7px] md:text-[8px] font-black text-zinc-300 tracking-widest uppercase opacity-90 text-center drop-shadow-md">
-            {anime.progress}% Complete
+          <span className="text-[9px] font-mono font-bold text-zinc-400 shrink-0">
+            {anime.progress}%
           </span>
         </div>
       </div>
-
-      {/* 5. Glass Border Shine */}
-      <div className="absolute inset-0 rounded-[24px] md:rounded-[32px] ring-1 ring-inset ring-white/10 pointer-events-none z-30 group-hover:ring-red-500/30 transition-all duration-500" />
     </motion.div>
   );
 });

@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useEffect, useRef, useState, useCallback, useMemo, forwardRef, useImperativeHandle } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
 import Hls from 'hls.js';
 import {
     Play, Pause, Volume2, VolumeX,
@@ -239,10 +240,18 @@ const HindiPlayer = forwardRef<HindiPlayerRef, HindiPlayerProps>(({
     const hasSkippedOutroRef = useRef(false);
     const originalSpeedRef = useRef(initialSpeed);
 
-    // Secondary Preview Video Refs for instant thumbnail generation
+    // Secondary Preview Video Refs for instant thumbnail generation & zero-lag frame caching
     const previewVideoRef = useRef<HTMLVideoElement>(null);
     const previewHlsRef = useRef<Hls | null>(null);
-    const lastPreviewSeekRef = useRef(0);
+    const previewCanvasRef = useRef<HTMLCanvasElement>(null);
+    const isPreviewSeekingRef = useRef(false);
+    const pendingSeekTimeRef = useRef<number | null>(null);
+    const previewSeekTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+    const hoverTimeRef = useRef<number | null>(null);
+    const frameCacheRef = useRef<Map<number, ImageData>>(new Map());
+    const [hasEverLoadedFrame, setHasEverLoadedFrame] = useState(false);
+    const [hoverPixelX, setHoverPixelX] = useState<number>(0);
+    const [seekbarWidth, setSeekbarWidth] = useState<number>(0);
 
     // Synchronized Player Controls (Auto Skip, Auto Play)
     const [localAutoSkip, setLocalAutoSkip] = useState(() => {
@@ -319,6 +328,106 @@ const HindiPlayer = forwardRef<HindiPlayerRef, HindiPlayerProps>(({
     const [hoverPos, setHoverPos] = useState<number>(0);
     const [isTitleOverflowing, setIsTitleOverflowing] = useState(false);
 
+    const drawPreviewToCanvas = useCallback(() => {
+        const canvas = previewCanvasRef.current;
+        const video = previewVideoRef.current;
+        if (!canvas || !video || video.readyState < 2) return;
+        const ctx = canvas.getContext('2d', { willReadFrequently: true });
+        if (!ctx) return;
+        try {
+            ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+            setHasEverLoadedFrame(true);
+            const key = Math.round(video.currentTime);
+            if (frameCacheRef.current.size < 60 && !frameCacheRef.current.has(key)) {
+                try {
+                    const imgData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+                    frameCacheRef.current.set(key, imgData);
+                } catch {}
+            }
+        } catch {}
+    }, []);
+
+    const requestPreviewSeek = useCallback((time: number) => {
+        hoverTimeRef.current = time;
+        if (!duration || isNaN(time)) return;
+
+        const targetTime = Math.max(0, Math.min(duration, time));
+        const key = Math.round(targetTime);
+
+        // 1. Instant check: If the main active video is near this playback position, grab its frame directly with 0ms delay
+        if (videoRef.current && videoRef.current.readyState >= 2 && Math.abs(targetTime - videoRef.current.currentTime) <= 2.5) {
+            const canvas = previewCanvasRef.current;
+            if (canvas) {
+                const ctx = canvas.getContext('2d', { willReadFrequently: true });
+                if (ctx) {
+                    try {
+                        ctx.drawImage(videoRef.current, 0, 0, canvas.width, canvas.height);
+                        setHasEverLoadedFrame(true);
+                        return;
+                    } catch {}
+                }
+            }
+        }
+
+        // 2. Instant in-memory cache lookup
+        if (frameCacheRef.current.has(key) && previewCanvasRef.current) {
+            const ctx = previewCanvasRef.current.getContext('2d', { willReadFrequently: true });
+            if (ctx) {
+                try {
+                    ctx.putImageData(frameCacheRef.current.get(key)!, 0, 0);
+                    setHasEverLoadedFrame(true);
+                    return;
+                } catch {}
+            }
+        }
+
+        const video = previewVideoRef.current;
+        if (!video) return;
+
+        // 3. Queue seek if currently decoding to avoid thrashing pipeline
+        if (video.seeking || isPreviewSeekingRef.current) {
+            pendingSeekTimeRef.current = targetTime;
+            return;
+        }
+
+        isPreviewSeekingRef.current = true;
+        if (previewSeekTimeoutRef.current) clearTimeout(previewSeekTimeoutRef.current);
+        previewSeekTimeoutRef.current = setTimeout(() => {
+            // Safety release if seek event hangs
+            isPreviewSeekingRef.current = false;
+            if (pendingSeekTimeRef.current !== null) {
+                const nextTime = pendingSeekTimeRef.current;
+                pendingSeekTimeRef.current = null;
+                requestPreviewSeek(nextTime);
+            }
+        }, 250);
+
+        try {
+            if (typeof (video as any).fastSeek === 'function') {
+                (video as any).fastSeek(targetTime);
+            } else {
+                video.currentTime = targetTime;
+            }
+        } catch {
+            isPreviewSeekingRef.current = false;
+        }
+    }, [duration]);
+
+    const handlePreviewSeeked = useCallback(() => {
+        if (previewSeekTimeoutRef.current) {
+            clearTimeout(previewSeekTimeoutRef.current);
+            previewSeekTimeoutRef.current = null;
+        }
+        isPreviewSeekingRef.current = false;
+        drawPreviewToCanvas();
+
+        if (pendingSeekTimeRef.current !== null) {
+            const nextTime = pendingSeekTimeRef.current;
+            pendingSeekTimeRef.current = null;
+            requestPreviewSeek(nextTime);
+        }
+    }, [drawPreviewToCanvas, requestPreviewSeek]);
+
     const [seekOverlay, setSeekOverlay] = useState<string | null>(null);
     const [gestureOverlay, setGestureOverlay] = useState<{ icon: React.ReactNode, text: string } | null>(null);
 
@@ -333,6 +442,10 @@ const HindiPlayer = forwardRef<HindiPlayerRef, HindiPlayerProps>(({
         setShowSkipOutro(false);
         hasTriggeredMidRollRef.current = false;
         setShowMidRollPrompt(false);
+        frameCacheRef.current.clear();
+        setHasEverLoadedFrame(false);
+        pendingSeekTimeRef.current = null;
+        isPreviewSeekingRef.current = false;
     }, [url, episodeId]);
 
     // Settings State
@@ -694,10 +807,26 @@ const HindiPlayer = forwardRef<HindiPlayerRef, HindiPlayerProps>(({
             // Attach secondary preview video to decode thumbnail frames smoothly
             if (previewVideoRef.current) {
                 if (previewHlsRef.current) previewHlsRef.current.destroy();
-                const prevHls = new Hls({ autoStartLoad: true, startLevel: 0, capLevelToPlayerSize: true });
+                const prevHls = new Hls({ 
+                    autoStartLoad: true, 
+                    startLevel: 0, 
+                    capLevelToPlayerSize: true,
+                    maxBufferLength: 8,
+                    maxMaxBufferLength: 15,
+                    maxBufferSize: 4 * 1000 * 1000,
+                    enableWorker: true
+                });
+                prevHls.on(Hls.Events.ERROR, (_event, data) => {
+                    if (data.fatal) {
+                        if (data.type === Hls.ErrorTypes.NETWORK_ERROR) prevHls.startLoad();
+                        else if (data.type === Hls.ErrorTypes.MEDIA_ERROR) prevHls.recoverMediaError();
+                    }
+                });
                 prevHls.loadSource(finalUrl);
                 prevHls.attachMedia(previewVideoRef.current);
                 previewHlsRef.current = prevHls;
+                frameCacheRef.current.clear();
+                setHasEverLoadedFrame(false);
             }
         } else if (shouldUseNative || video.canPlayType('application/vnd.apple.mpegurl')) {
             video.src = finalUrl;
@@ -705,6 +834,8 @@ const HindiPlayer = forwardRef<HindiPlayerRef, HindiPlayerProps>(({
             if (previewVideoRef.current) {
                 previewVideoRef.current.src = finalUrl;
                 previewVideoRef.current.load();
+                frameCacheRef.current.clear();
+                setHasEverLoadedFrame(false);
             }
 
             nativeLoadedHandler = () => {
@@ -1314,23 +1445,37 @@ const HindiPlayer = forwardRef<HindiPlayerRef, HindiPlayerProps>(({
         }, 250);
     };
 
-    const handleSeekStart = () => { setIsScrubbing(true); updateBuffering(false); };
+    const handleSeekStart = (e: React.MouseEvent<HTMLInputElement> | React.TouchEvent<HTMLInputElement>) => { 
+        setIsScrubbing(true); 
+        updateBuffering(false); 
+        const rect = e.currentTarget.getBoundingClientRect();
+        if (rect.width > 0) {
+            setSeekbarWidth(rect.width);
+            const clientX = 'touches' in e && e.touches.length > 0 ? e.touches[0].clientX : (e as React.MouseEvent).clientX;
+            if (clientX !== undefined) {
+                const clampedX = Math.max(0, Math.min(rect.width, clientX - rect.left));
+                setHoverPixelX(clampedX);
+            }
+        }
+    };
+
     const handleSeekChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const time = parseFloat(e.target.value);
         setCurrentTime(time);
         setHoverTime(time);
         if (duration > 0) {
-            setHoverPos((time / duration) * 100);
-        }
-        syncSubtitlesAtTime(time);
-        if (!thumbnailCuesRef.current.length && previewVideoRef.current) {
-            const now = Date.now();
-            if (now - lastPreviewSeekRef.current > 40) {
-                lastPreviewSeekRef.current = now;
-                try { previewVideoRef.current.currentTime = time; } catch {}
+            const pct = (time / duration) * 100;
+            setHoverPos(pct);
+            if (seekbarWidth > 0) {
+                setHoverPixelX((pct / 100) * seekbarWidth);
             }
         }
+        syncSubtitlesAtTime(time);
+        if (!thumbnailCuesRef.current.length) {
+            requestPreviewSeek(time);
+        }
     };
+
     const handleSeekEnd = (e: React.MouseEvent<HTMLInputElement> | React.TouchEvent<HTMLInputElement>) => {
         const time = parseFloat(e.currentTarget.value);
         if (videoRef.current) {
@@ -1339,41 +1484,42 @@ const HindiPlayer = forwardRef<HindiPlayerRef, HindiPlayerProps>(({
             seekTargetRef.current = null;
         }
         setIsScrubbing(false);
-        setHoverTime(null);
-        setIsHoveringSeek(false);
+        if (!isHoveringSeek) {
+            setHoverTime(null);
+        }
         syncSubtitlesAtTime(time);
         if (onSeek) onSeek(time);
         if (canSaveRef.current) onInteract?.();
     };
+
     const handleSeekHover = (e: React.MouseEvent<HTMLDivElement>) => {
         const rect = e.currentTarget.getBoundingClientRect();
-        const percent = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
-        const time = percent * duration;
+        const clampedX = Math.max(0, Math.min(rect.width, e.clientX - rect.left));
+        const percent = rect.width > 0 ? (clampedX / rect.width) * 100 : 0;
+        const time = (percent / 100) * duration;
         setHoverTime(time);
-        setHoverPos(percent * 100);
-        if (!thumbnailCuesRef.current.length && previewVideoRef.current) {
-            const now = Date.now();
-            if (now - lastPreviewSeekRef.current > 40) {
-                lastPreviewSeekRef.current = now;
-                try { previewVideoRef.current.currentTime = time; } catch {}
-            }
+        setHoverPos(percent);
+        setHoverPixelX(clampedX);
+        setSeekbarWidth(rect.width);
+        if (!thumbnailCuesRef.current.length) {
+            requestPreviewSeek(time);
         }
     };
+
     const handleTouchSeek = (e: React.TouchEvent<HTMLInputElement>) => {
         if (e.touches.length > 0) {
             const touch = e.touches[0];
             const rect = e.currentTarget.getBoundingClientRect();
-            const percent = Math.max(0, Math.min(1, (touch.clientX - rect.left) / rect.width));
-            const time = percent * (duration || 0);
+            const clampedX = Math.max(0, Math.min(rect.width, touch.clientX - rect.left));
+            const percent = rect.width > 0 ? (clampedX / rect.width) * 100 : 0;
+            const time = (percent / 100) * (duration || 0);
             setHoverTime(time);
-            setHoverPos(percent * 100);
+            setHoverPos(percent);
+            setHoverPixelX(clampedX);
+            setSeekbarWidth(rect.width);
             syncSubtitlesAtTime(time);
-            if (!thumbnailCuesRef.current.length && previewVideoRef.current) {
-                const now = Date.now();
-                if (now - lastPreviewSeekRef.current > 40) {
-                    lastPreviewSeekRef.current = now;
-                    try { previewVideoRef.current.currentTime = time; } catch {}
-                }
+            if (!thumbnailCuesRef.current.length) {
+                requestPreviewSeek(time);
             }
         }
     };
@@ -1399,37 +1545,6 @@ const HindiPlayer = forwardRef<HindiPlayerRef, HindiPlayerProps>(({
         }
         showUI();
     };
-
-    // Dedicated Preview Video Pipeline: Attach preview HLS or native video source
-    useEffect(() => {
-        const previewVideo = previewVideoRef.current;
-        if (!previewVideo || !url) return;
-
-        const isAlreadyProxied = url.includes('/api/proxy') || url.includes('anikoto') || url.includes('satoru');
-        const isExplicitMp4 = url.toLowerCase().includes('.mp4');
-        const finalUrl = (url.startsWith('http') && !isAlreadyProxied && !isExplicitMp4)
-            ? `/api/proxy?url=${encodeURIComponent(url)}${referer ? `&referer=${encodeURIComponent(referer)}` : ''}`
-            : url;
-
-        const shouldUseNative = isExplicitMp4 || isM3U8 === false;
-        if (!shouldUseNative && Hls.isSupported()) {
-            if (previewHlsRef.current) previewHlsRef.current.destroy();
-            const prevHls = new Hls({ autoStartLoad: true, startLevel: 0, capLevelToPlayerSize: true });
-            prevHls.loadSource(finalUrl);
-            prevHls.attachMedia(previewVideo);
-            previewHlsRef.current = prevHls;
-        } else {
-            previewVideo.src = finalUrl;
-            previewVideo.load();
-        }
-
-        return () => {
-            if (previewHlsRef.current) {
-                previewHlsRef.current.destroy();
-                previewHlsRef.current = null;
-            }
-        };
-    }, [url, referer, isM3U8]);
 
     // --- ASYNC START TIME RECOVERY ---
     useEffect(() => {
@@ -1618,6 +1733,27 @@ const HindiPlayer = forwardRef<HindiPlayerRef, HindiPlayerProps>(({
                 ))}
             </video>
 
+            {/* Background Decoder Video for instant seek preview thumbnail frames */}
+            <video
+                ref={previewVideoRef}
+                muted
+                playsInline
+                preload="auto"
+                crossOrigin="anonymous"
+                style={{
+                    position: 'fixed',
+                    left: -9999,
+                    top: -9999,
+                    width: 160,
+                    height: 90,
+                    opacity: 0,
+                    pointerEvents: 'none'
+                }}
+                onSeeked={handlePreviewSeeked}
+                onCanPlay={drawPreviewToCanvas}
+                onLoadedData={drawPreviewToCanvas}
+            />
+
             {activeCueText && currentSubtitle !== -1 && (
                 <div
                     className={cn(
@@ -1694,15 +1830,19 @@ const HindiPlayer = forwardRef<HindiPlayerRef, HindiPlayerProps>(({
                     setShowMidRollPrompt(false);
                     videoRef.current?.play().then(() => setIsPlaying(true)).catch(() => {});
                 }}
+                onSkip={() => {
+                    setShowMidRollPrompt(false);
+                    videoRef.current?.play().then(() => setIsPlaying(true)).catch(() => {});
+                }}
             />
 
             {/* Title Island with Cast */}
             <div className={cn("absolute top-2 md:top-4 left-1/2 -translate-x-1/2 z-40 transition-all duration-500 max-w-[90%] w-auto", showControls ? "opacity-100 translate-y-0" : "opacity-0 -translate-y-10")}>
                 <div ref={titleContainerRef} className="bg-black/60 md:bg-black/80 border border-white/10 rounded-full px-4 py-1.5 md:py-2 shadow-2xl backdrop-blur-md flex items-center gap-3 overflow-hidden pointer-events-auto">
-                    <div className="w-1.5 h-1.5 bg-primary-600 rounded-full animate-pulse shadow-[0_0_8px_red] shrink-0" />
+
 
                     <div className="overflow-hidden w-full relative h-4 flex items-center">
-                        <span ref={titleTextRef} className={cn("text-[9px] md:text-[10px] font-black text-gray-200 uppercase tracking-widest whitespace-nowrap", isTitleOverflowing && "animate-marquee-slow")}>{title || "Shadow Garden Player"}</span>
+                        <span ref={titleTextRef} className={cn("text-[9px] md:text-[10px] font-black text-gray-200 uppercase tracking-widest whitespace-nowrap", isTitleOverflowing && "animate-marquee-slow")}>{title || "Kagemi Player"}</span>
                     </div>
 
                     {castAvailable && (
@@ -1742,6 +1882,17 @@ const HindiPlayer = forwardRef<HindiPlayerRef, HindiPlayerProps>(({
 
           const activeThumbnail = thumbnailCuesRef.current.find(c => previewTime >= c.start && previewTime <= c.end);
 
+          // Card centering & Arrow precision calculations
+          const cardHalfWidth = 88; // 176px total card width / 2
+          const hasMeasuredWidth = seekbarWidth > 0;
+          const cardLeftPx = hasMeasuredWidth 
+            ? Math.max(cardHalfWidth, Math.min(seekbarWidth - cardHalfWidth, hoverPixelX)) 
+            : null;
+          
+          // Down Arrow offset from card center to directly pinpoint the cursor
+          const rawArrowDiff = (cardLeftPx !== null) ? hoverPixelX - cardLeftPx : 0;
+          const arrowOffsetPx = Math.max(-cardHalfWidth + 14, Math.min(cardHalfWidth - 14, rawArrowDiff));
+
           const hasIntro = duration > 0 && !!intro && typeof intro.start === 'number' && typeof intro.end === 'number' && intro.end > intro.start && intro.start < duration;
           const introStartPct = hasIntro ? Math.max(0, Math.min(100, (intro.start / duration) * 100)) : 0;
           const introWidthPct = hasIntro ? Math.max(0.6, Math.min(100 - introStartPct, ((intro.end - intro.start) / duration) * 100)) : 0;
@@ -1778,92 +1929,127 @@ const HindiPlayer = forwardRef<HindiPlayerRef, HindiPlayerProps>(({
             <div 
               className="group/seek relative w-full h-5 sm:h-6 flex items-center cursor-pointer mb-2 md:mb-4 pointer-events-auto select-none" 
               onMouseMove={handleSeekHover} 
-              onMouseEnter={() => setIsHoveringSeek(true)}
+              onMouseEnter={(e) => {
+                setIsHoveringSeek(true);
+                const rect = e.currentTarget.getBoundingClientRect();
+                if (rect.width > 0) setSeekbarWidth(rect.width);
+              }}
               onMouseLeave={() => { setHoverTime(null); setIsHoveringSeek(false); }}
             >
-              {/* Seek Preview Tooltip / Card (Permanently mounted so preview video is decoded instantly) */}
+              {/* Seek Preview Tooltip / Card (Strictly centered with cursor, Gummy Jelly Motion Pop) */}
               <div 
-                className={cn(
-                  "absolute bottom-6 md:bottom-8 z-[75] pointer-events-none flex flex-col items-center transition-all duration-150",
-                  (showPreview && duration > 0) ? "opacity-100 visible scale-100" : "opacity-0 invisible scale-95 pointer-events-none"
-                )}
                 style={{ 
-                  left: `${Math.max(8, Math.min(92, previewPos))}%`,
-                  transform: 'translateX(-50%) translate3d(0,0,0)',
-                  willChange: 'left',
+                  left: cardLeftPx !== null ? `${cardLeftPx}px` : `clamp(90px, ${previewPos}%, calc(100% - 90px))`,
                 }}
+                className="absolute bottom-6 md:bottom-8 -translate-x-1/2 z-[75] pointer-events-none select-none flex flex-col items-center"
               >
-                <div className="bg-zinc-950/95 backdrop-blur-2xl border border-white/20 rounded-2xl shadow-[0_12px_40px_rgba(0,0,0,0.9)] p-2 flex flex-col items-center gap-1.5 min-w-[120px]">
-                  {/* Thumbnail Preview Frame */}
-                  {activeThumbnail ? (
-                    <div 
-                      className="w-[140px] h-[79px] sm:w-[160px] sm:h-[90px] rounded-xl overflow-hidden border border-white/10 relative bg-black shrink-0"
-                      style={activeThumbnail.w ? {
-                        backgroundImage: `url(${getProxiedSubUrl(activeThumbnail.url, referer)})`,
-                        backgroundPosition: `-${activeThumbnail.x || 0}px -${activeThumbnail.y || 0}px`,
-                        backgroundRepeat: 'no-repeat',
-                      } : {}}
+                <AnimatePresence>
+                  {showPreview && duration > 0 && (
+                    <motion.div 
+                      key="hindi-seekbar-preview"
+                      initial={{ opacity: 0, scale: 0.7, y: 12 }}
+                      animate={{ 
+                        opacity: 1, 
+                        scale: 1, 
+                        y: 0,
+                        transition: {
+                          type: "spring",
+                          stiffness: 450,
+                          damping: 24,
+                          mass: 0.7
+                        }
+                      }}
+                      exit={{ 
+                        opacity: 0, 
+                        scale: 0.7, 
+                        y: 8,
+                        transition: {
+                          duration: 0.12,
+                          ease: "easeOut"
+                        }
+                      }}
+                      className="flex flex-col items-center select-none pointer-events-none"
                     >
-                      {!activeThumbnail.w && (
-                        <img 
-                          src={getProxiedSubUrl(activeThumbnail.url, referer)} 
-                          alt="preview" 
-                          className="w-full h-full object-cover" 
-                        />
-                      )}
-                    </div>
-                  ) : (
-                    <div className="w-[140px] h-[79px] sm:w-[160px] sm:h-[90px] rounded-xl overflow-hidden border border-white/10 relative bg-black shrink-0 flex items-center justify-center">
-                      <video 
-                        ref={previewVideoRef}
-                        muted
-                        playsInline
-                        preload="auto"
-                        className="w-full h-full object-cover pointer-events-none"
+                      <div className="bg-zinc-950/95 backdrop-blur-2xl border border-white/20 rounded-2xl shadow-[0_12px_40px_rgba(0,0,0,0.9)] p-2 flex flex-col items-center gap-1.5 min-w-[120px]">
+                        {/* Thumbnail Preview Frame */}
+                        {activeThumbnail ? (
+                          <div 
+                            className="w-[140px] h-[79px] sm:w-[160px] sm:h-[90px] rounded-xl overflow-hidden border border-white/10 relative bg-black shrink-0"
+                            style={activeThumbnail.w ? {
+                              backgroundImage: `url(${getProxiedSubUrl(activeThumbnail.url, referer)})`,
+                              backgroundPosition: `-${activeThumbnail.x || 0}px -${activeThumbnail.y || 0}px`,
+                              backgroundRepeat: 'no-repeat',
+                            } : {}}
+                          >
+                            {!activeThumbnail.w && (
+                              <img 
+                                src={getProxiedSubUrl(activeThumbnail.url, referer)} 
+                                alt="preview" 
+                                className="w-full h-full object-cover" 
+                              />
+                            )}
+                          </div>
+                        ) : (
+                          <div className="w-[140px] h-[79px] sm:w-[160px] sm:h-[90px] rounded-xl overflow-hidden border border-white/10 relative bg-zinc-950 shrink-0 flex items-center justify-center">
+                            <canvas 
+                              ref={previewCanvasRef}
+                              width={160}
+                              height={90}
+                              className={cn(
+                                "w-full h-full object-cover pointer-events-none transition-opacity duration-150",
+                                hasEverLoadedFrame ? "opacity-100" : "opacity-0"
+                              )}
+                            />
+                            {!hasEverLoadedFrame && (
+                              <div className="absolute inset-0 bg-zinc-950 flex flex-col items-center justify-center gap-1.5 z-10">
+                                <div className="w-4 h-4 border-2 border-white/20 border-t-white/80 rounded-full animate-spin" />
+                                <span className="text-[8px] font-mono font-bold text-zinc-400 uppercase tracking-widest">Loading Frame...</span>
+                              </div>
+                            )}
+                            <div className="absolute inset-0 bg-gradient-to-t from-black/50 via-transparent to-transparent pointer-events-none" />
+                          </div>
+                        )}
+
+                        {/* Time Display & Seek Delta */}
+                        <div className="flex items-center gap-1.5 px-1">
+                          <span className="text-[11px] sm:text-[12px] font-mono font-black text-white tracking-wider">
+                            {formatTime(previewTime)}
+                          </span>
+                          {seekDelta !== '0s' && (
+                            <span className={cn(
+                              "text-[9px] font-mono font-bold px-1.5 py-0.5 rounded",
+                              seekDelta.startsWith('+') ? "text-emerald-400 bg-emerald-500/10" : "text-rose-400 bg-rose-500/10"
+                            )}>
+                              {seekDelta}
+                            </span>
+                          )}
+                        </div>
+
+                        {/* Skip Range Indicator Badges */}
+                        {hasIntro && previewTime >= intro.start && previewTime <= intro.end && (
+                          <div className="flex items-center gap-1 text-[9px] font-black text-amber-300 bg-amber-500/20 px-2 py-0.5 rounded-full border border-amber-500/40 whitespace-nowrap">
+                            <FastForward size={10} className="text-amber-300" />
+                            <span>Intro ({formatTime(intro.start)} - {formatTime(intro.end)})</span>
+                          </div>
+                        )}
+                        {hasOutro && previewTime >= outro.start && previewTime <= outro.end && (
+                          <div className="flex items-center gap-1 text-[9px] font-black text-indigo-300 bg-indigo-500/20 px-2 py-0.5 rounded-full border border-indigo-500/40 whitespace-nowrap">
+                            <SkipForward size={10} className="text-indigo-300" />
+                            <span>Outro ({formatTime(outro.start)} - {formatTime(outro.end)})</span>
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Tooltip Down Arrow (Accurately points directly to cursor across entire timeline) */}
+                      <div 
+                        style={{
+                          transform: `translateX(${arrowOffsetPx}px) rotate(45deg)`,
+                        }}
+                        className="w-2.5 h-2.5 bg-zinc-950 border-r border-b border-white/20 -mt-1.5 shadow-md transition-transform duration-75"
                       />
-                      {poster && (
-                        <img 
-                          src={poster} 
-                          alt="" 
-                          className="absolute inset-0 w-full h-full object-cover -z-10 opacity-35 pointer-events-none" 
-                        />
-                      )}
-                      <div className="absolute inset-0 bg-gradient-to-t from-black/50 via-transparent to-transparent pointer-events-none" />
-                    </div>
+                    </motion.div>
                   )}
-
-                  {/* Time Display & Seek Delta */}
-                  <div className="flex items-center gap-1.5 px-1">
-                    <span className="text-[11px] sm:text-[12px] font-mono font-black text-white tracking-wider">
-                      {formatTime(previewTime)}
-                    </span>
-                    {seekDelta !== '0s' && (
-                      <span className={cn(
-                        "text-[9px] font-mono font-bold px-1.5 py-0.5 rounded",
-                        seekDelta.startsWith('+') ? "text-emerald-400 bg-emerald-500/10" : "text-rose-400 bg-rose-500/10"
-                      )}>
-                        {seekDelta}
-                      </span>
-                    )}
-                  </div>
-
-                  {/* Skip Range Indicator Badges */}
-                  {hasIntro && previewTime >= intro.start && previewTime <= intro.end && (
-                    <div className="flex items-center gap-1 text-[9px] font-black text-amber-300 bg-amber-500/20 px-2 py-0.5 rounded-full border border-amber-500/40 whitespace-nowrap">
-                      <FastForward size={10} className="text-amber-300" />
-                      <span>Intro ({formatTime(intro.start)} - {formatTime(intro.end)})</span>
-                    </div>
-                  )}
-                  {hasOutro && previewTime >= outro.start && previewTime <= outro.end && (
-                    <div className="flex items-center gap-1 text-[9px] font-black text-indigo-300 bg-indigo-500/20 px-2 py-0.5 rounded-full border border-indigo-500/40 whitespace-nowrap">
-                      <SkipForward size={10} className="text-indigo-300" />
-                      <span>Outro ({formatTime(outro.start)} - {formatTime(outro.end)})</span>
-                    </div>
-                  )}
-                </div>
-
-                {/* Tooltip Down Arrow */}
-                <div className="w-2.5 h-2.5 bg-zinc-950 border-r border-b border-white/20 rotate-45 -mt-1.5 shadow-md" />
+                </AnimatePresence>
               </div>
 
               {/* Track Bar with Buffer, Chapter Segments & Complete 100% Transparent Cuts */}

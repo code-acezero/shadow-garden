@@ -77,8 +77,8 @@ export default function PostShareModal({
       ? (mediaData.url.startsWith('http') ? mediaData.url : (typeof window !== 'undefined' ? `${window.location.origin}${mediaData.url}` : mediaData.url))
       : (typeof window !== 'undefined' && post ? `${window.location.origin}/social?post=${post.id}` : (typeof window !== 'undefined' ? window.location.href : '')));
 
-  const shareTitle = customTitle || mediaData?.title || (post ? `Post by ${post.profiles?.username || 'Shadow Agent'}` : 'Shadow Garden');
-  const shareText = customContent || mediaData?.synopsis || post?.content || 'Check this out on Shadow Garden!';
+  const shareTitle = customTitle || mediaData?.title || (post ? `Post by ${post.profiles?.username || 'Shadow Agent'}` : 'Kagemi');
+  const shareText = customContent || mediaData?.synopsis || post?.content || 'Check this out on Kagemi!';
   const sharePoster = customImage || mediaData?.poster || post?.image_url || post?.profiles?.avatar_url;
 
   // Auto-load recent chat partners when opening, or search username suggestions when typing

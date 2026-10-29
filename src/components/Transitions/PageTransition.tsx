@@ -22,19 +22,12 @@ export default function PageTransition({
   const isLanding = pathname === '/';
   const isShortsWatch = pathname?.startsWith('/shorts/watch');
 
-  // Mobile/Tablet: opacity only (no y-offset = no layout reflow)
-  // Desktop: subtle y-offset for premium feel
-  const variants = isMobile
-    ? {
-        initial: { opacity: 0 },
-        animate: { opacity: 1 },
-        exit: { opacity: 0 },
-      }
-    : {
-        initial: { opacity: 0, y: 10 },
-        animate: { opacity: 1, y: 0 },
-        exit: { opacity: 0, y: -10 },
-      };
+  // Pure opacity transition avoids jarring layout reflows and eliminates page/nav sliding
+  const variants = {
+    initial: { opacity: 0 },
+    animate: { opacity: 1 },
+    exit: { opacity: 0 },
+  };
 
   return (
     <motion.div
@@ -43,10 +36,10 @@ export default function PageTransition({
       animate={variants.animate}
       exit={variants.exit}
       transition={{
-        duration: isMobile ? 0.18 : 0.3,
-        ease: "easeOut",
+        duration: isMobile ? 0.16 : 0.22,
+        ease: "easeInOut",
       }}
-      style={{ willChange: 'opacity, transform' }}
+      style={{ willChange: 'opacity' }}
       className={`page-transition-wrapper min-h-screen w-full ${(isMaster || isLanding || isShortsWatch) ? '!p-0 !pt-0 !pb-0' : 'page-safe-area'}`}
     >
       {children}

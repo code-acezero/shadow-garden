@@ -679,7 +679,7 @@ export default function ProfilePage() {
                                     
                                     {/* 1. Archive (Liquid Glass) */}
                                     <Button 
-                                        onClick={() => router.push('/watchlist')} 
+                                        onClick={() => router.push('/library')} 
                                         variant="secondary" 
                                         className="bg-gradient-to-b from-white/15 via-white/10 to-white/5 hover:from-white/25 hover:to-white/15 text-white h-8.5 px-4 font-extrabold text-xs rounded-xl border border-white/20 hover:border-white/40 backdrop-blur-xl shadow-[0_4px_20px_rgba(0,0,0,0.3)] transition-all duration-300 hover:scale-105 active:scale-95 flex items-center gap-1.5 cursor-pointer"
                                     >

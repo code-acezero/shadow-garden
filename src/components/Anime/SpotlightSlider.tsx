@@ -181,24 +181,24 @@ const SpotlightActions = ({ anime }: { anime: SpotlightAnime }) => {
                 custom={3} 
                 variants={liquidTextVariants}
                 transition={{ delay: 0.15 + (3 * 0.06) }} // ✅ Manual stagger
-                className="flex flex-row items-center gap-2 md:gap-3 w-full sm:w-auto"
+                className="flex flex-row items-center gap-2 sm:gap-2.5 w-auto shrink-0"
             >
                 {/* WATCH BUTTON */}
                 <Button 
                     onClick={() => router.push((anime as any).targetRoute || `/watch/${anime.id}`)} 
-                    className="h-9 md:h-11 px-4 md:px-7 rounded-full bg-primary-600 hover:bg-primary-700 text-white text-[10px] md:text-xs font-black tracking-widest uppercase shadow-[0_0_30px_rgba(220,38,38,0.4)] transition-all transform hover:scale-105 active:scale-95 flex-1 sm:flex-none border border-primary-500/20"
+                    className="h-8 sm:h-9 md:h-10 px-3.5 sm:px-5 md:px-6 rounded-full bg-primary-600 hover:bg-primary-700 text-white text-[10px] sm:text-xs font-black tracking-wider uppercase shadow-[0_0_24px_rgba(220,38,38,0.35)] transition-all transform hover:scale-105 active:scale-95 shrink-0 w-auto border border-primary-500/20"
                 >
-                    <Play className="mr-1.5 h-3 w-3 md:h-4 md:w-4 fill-white" /> Watch Now
+                    <Play className="mr-1.5 h-3 w-3 sm:h-3.5 sm:w-3.5 fill-white" /> Watch Now
                 </Button>
 
                 {/* MY LIST BUTTON - Split functionality */}
-                <div className="flex items-center gap-0 flex-1 sm:flex-none">
+                <div className="flex items-center gap-0 shrink-0 w-auto">
                     {/* Main button - add to watching OR remove if already added */}
                     <Button 
                         onClick={() => status ? handleUpdateStatus(null) : handleUpdateStatus("watching")}
                         disabled={loadingList}
                         className={cn(
-                            "h-9 md:h-11 px-4 md:px-6 rounded-l-full rounded-r-none text-white text-[10px] md:text-xs font-black tracking-widest uppercase backdrop-blur-md border border-r-0 transition-all transform hover:scale-105 active:scale-95",
+                            "h-8 sm:h-9 md:h-10 px-3 sm:px-4 md:px-5 rounded-l-full rounded-r-none text-white text-[10px] sm:text-xs font-black tracking-wider uppercase backdrop-blur-md border border-r-0 transition-all transform hover:scale-105 active:scale-95",
                             status ? statusMap[status]?.color : "bg-black/40 border-white/20 hover:bg-black/60"
                         )}
                     >
@@ -224,11 +224,11 @@ const SpotlightActions = ({ anime }: { anime: SpotlightAnime }) => {
                                 <Button 
                                     variant="outline" 
                                     className={cn(
-                                        "h-9 md:h-11 px-2 md:px-3 rounded-r-full rounded-l-none text-white backdrop-blur-md border border-l-0 transition-all transform hover:scale-105 active:scale-95",
+                                        "h-8 sm:h-9 md:h-10 px-2 sm:px-2.5 rounded-r-full rounded-l-none text-white backdrop-blur-md border border-l-0 transition-all transform hover:scale-105 active:scale-95",
                                         status ? statusMap[status]?.color : "bg-black/40 border-white/20 hover:bg-black/60"
                                     )}
                                 >
-                                    <ChevronDown className="h-3 w-3 md:h-3.5 md:w-3.5" />
+                                    <ChevronDown className="h-3 w-3 sm:h-3.5 sm:w-3.5" />
                                 </Button>
                             </DropdownMenuTrigger>
                             <DropdownMenuContent align="end" className="w-48 bg-black/95 border-white/10 backdrop-blur-xl">

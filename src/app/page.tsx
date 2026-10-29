@@ -10,7 +10,7 @@ export const revalidate = 0;
 // --- HIGH-INTENT ANIME STREAMING METADATA ---
 export const metadata: Metadata = {
   title: 'Watch Anime Online Free in HD | English Sub & Dub Streaming',
-  description: 'Stream over 15,000+ anime series and movies online for free in 1080p Full HD with English Subbed and Dubbed options. Zero lag, multiple high-speed servers, updated daily on Shadow Garden.',
+  description: 'Stream over 15,000+ anime series and movies online for free in 1080p Full HD with English Subbed and Dubbed options. Zero lag, multiple high-speed servers, updated daily on Kagemi.',
   keywords: [
     'watch anime online free',
     'anime streaming site',
@@ -23,28 +23,29 @@ export const metadata: Metadata = {
     'latest anime episodes',
     'english dub anime online',
     'anime subbed free',
-    'shadow garden anime',
+    'kagemi anime',
+    'kagemi',
     'watch anime without ads free'
   ],
   alternates: {
-    canonical: 'https://shadow-garden.site',
+    canonical: 'https://kagemi.site',
   },
   openGraph: {
-    title: 'Watch Anime Online Free in HD | English Sub & Dub Streaming | Shadow Garden',
+    title: 'Watch Anime Online Free in HD | English Sub & Dub Streaming | Kagemi',
     description: 'Stream over 15,000+ anime series and movies online for free in 1080p Full HD. Fast servers, zero lag, updated daily.',
-    url: 'https://shadow-garden.site',
-    siteName: 'Shadow Garden',
+    url: 'https://kagemi.site',
+    siteName: 'Kagemi',
     images: [{
       url: '/images/index/bg-1.jpg',
       width: 1200,
       height: 630,
-      alt: 'Shadow Garden - Watch Anime Online Free in HD'
+      alt: 'Kagemi - Watch Anime Online Free in HD'
     }],
     type: 'website',
   },
   twitter: {
     card: 'summary_large_image',
-    title: 'Watch Anime Online Free in HD | English Sub & Dub Streaming | Shadow Garden',
+    title: 'Watch Anime Online Free in HD | English Sub & Dub Streaming | Kagemi',
     description: 'Stream 15,000+ anime series and movies online for free in 1080p Full HD with English Subbed and Dubbed options.',
     images: ['/images/index/bg-1.jpg'],
   }

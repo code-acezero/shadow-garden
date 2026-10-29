@@ -2,7 +2,7 @@
 
 import React, { useState, useRef } from 'react';
 import { createPortal } from 'react-dom';
-import { X, Search, Check, Shield, ShieldAlert, Sparkles, Folder, Upload, Crop, ZoomIn, RefreshCw, Image as ImageIcon } from 'lucide-react';
+import { X, Search, Check, Shield, ShieldAlert, Crown, Folder, Upload, Crop, ZoomIn, RefreshCw, Image as ImageIcon } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
 export interface ClanEmblem {
@@ -309,7 +309,7 @@ export default function ClanEmblemModal({ isOpen, onClose, onSelectEmblem, curre
                         )}
                         <span className="flex items-center gap-2.5 relative z-10">
                           {cat === 'Shadow Garden' ? (
-                            <Sparkles size={15} className={isSelected ? 'text-primary-400' : 'text-zinc-500 group-hover:text-primary-400'} />
+                            <Crown size={15} className={isSelected ? 'text-primary-400' : 'text-zinc-500 group-hover:text-primary-400'} />
                           ) : (
                             <Folder size={15} className={isSelected ? 'text-primary-400' : 'text-zinc-500 group-hover:text-primary-400'} />
                           )}

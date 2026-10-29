@@ -132,10 +132,13 @@ function mapMediaToCard(media: any, overrideEp?: number): UniversalAnimeBase {
     poster,
     type: media.format || 'TV',
     duration: media.duration ? `${media.duration}m` : undefined,
+    totalEpisodes: media.episodes || null,
+    total_episodes: media.episodes || null,
     episodes: {
       sub: currentEp,
       dub: currentEp,
-      eps: media.status === 'FINISHED' ? (media.episodes || currentEp) : currentEp
+      eps: media.episodes || currentEp,
+      total: media.episodes || null
     },
     rank: media.averageScore,
     isAdult: isAdult,
@@ -247,10 +250,16 @@ export class AniListService {
   /**
    * 4. TOP AIRING ANIME
    */
-  static async getTopAiring(page = 1, perPage = 24): Promise<UniversalAnimeBase[]> {
+  static async getTopAiring(page = 1, perPage = 28): Promise<UniversalAnimeBase[]> {
     const query = `
       query ($page: Int, $perPage: Int) {
         Page(page: $page, perPage: $perPage) {
+          pageInfo {
+            currentPage
+            hasNextPage
+            lastPage
+            total
+          }
           media(
             type: ANIME, 
             status: RELEASING, 
@@ -263,16 +272,28 @@ export class AniListService {
       }
     `;
     const data = await queryAniList<any>(query, { page, perPage });
-    return (data?.Page?.media || []).map((m: any) => mapMediaToCard(m));
+    const pInfo = data?.Page?.pageInfo;
+    const cards = (data?.Page?.media || []).map((m: any) => mapMediaToCard(m));
+    (cards as any).pageInfo = pInfo;
+    (cards as any).hasNextPage = Boolean(pInfo?.hasNextPage);
+    (cards as any).maxPage = pInfo?.lastPage;
+    (cards as any).total = pInfo?.total;
+    return cards;
   }
 
   /**
    * 5. MOST POPULAR ANIME
    */
-  static async getMostPopular(page = 1, perPage = 24): Promise<UniversalAnimeBase[]> {
+  static async getMostPopular(page = 1, perPage = 28): Promise<UniversalAnimeBase[]> {
     const query = `
       query ($page: Int, $perPage: Int) {
         Page(page: $page, perPage: $perPage) {
+          pageInfo {
+            currentPage
+            hasNextPage
+            lastPage
+            total
+          }
           media(
             type: ANIME, 
             sort: POPULARITY_DESC, 
@@ -284,16 +305,28 @@ export class AniListService {
       }
     `;
     const data = await queryAniList<any>(query, { page, perPage });
-    return (data?.Page?.media || []).map((m: any) => mapMediaToCard(m));
+    const pInfo = data?.Page?.pageInfo;
+    const cards = (data?.Page?.media || []).map((m: any) => mapMediaToCard(m));
+    (cards as any).pageInfo = pInfo;
+    (cards as any).hasNextPage = Boolean(pInfo?.hasNextPage);
+    (cards as any).maxPage = pInfo?.lastPage;
+    (cards as any).total = pInfo?.total;
+    return cards;
   }
 
   /**
    * 6. TOP UPCOMING
    */
-  static async getTopUpcoming(page = 1, perPage = 24): Promise<UniversalAnimeBase[]> {
+  static async getTopUpcoming(page = 1, perPage = 28): Promise<UniversalAnimeBase[]> {
     const query = `
       query ($page: Int, $perPage: Int) {
         Page(page: $page, perPage: $perPage) {
+          pageInfo {
+            currentPage
+            hasNextPage
+            lastPage
+            total
+          }
           media(
             type: ANIME, 
             status: NOT_YET_RELEASED, 
@@ -306,16 +339,28 @@ export class AniListService {
       }
     `;
     const data = await queryAniList<any>(query, { page, perPage });
-    return (data?.Page?.media || []).map((m: any) => mapMediaToCard(m));
+    const pInfo = data?.Page?.pageInfo;
+    const cards = (data?.Page?.media || []).map((m: any) => mapMediaToCard(m));
+    (cards as any).pageInfo = pInfo;
+    (cards as any).hasNextPage = Boolean(pInfo?.hasNextPage);
+    (cards as any).maxPage = pInfo?.lastPage;
+    (cards as any).total = pInfo?.total;
+    return cards;
   }
 
   /**
    * 7. COMPLETED ANIME
    */
-  static async getCompleted(page = 1, perPage = 24): Promise<UniversalAnimeBase[]> {
+  static async getCompleted(page = 1, perPage = 28): Promise<UniversalAnimeBase[]> {
     const query = `
       query ($page: Int, $perPage: Int) {
         Page(page: $page, perPage: $perPage) {
+          pageInfo {
+            currentPage
+            hasNextPage
+            lastPage
+            total
+          }
           media(
             type: ANIME, 
             status: FINISHED, 
@@ -328,7 +373,13 @@ export class AniListService {
       }
     `;
     const data = await queryAniList<any>(query, { page, perPage });
-    return (data?.Page?.media || []).map((m: any) => mapMediaToCard(m));
+    const pInfo = data?.Page?.pageInfo;
+    const cards = (data?.Page?.media || []).map((m: any) => mapMediaToCard(m));
+    (cards as any).pageInfo = pInfo;
+    (cards as any).hasNextPage = Boolean(pInfo?.hasNextPage);
+    (cards as any).maxPage = pInfo?.lastPage;
+    (cards as any).total = pInfo?.total;
+    return cards;
   }
 
   /**
@@ -503,7 +554,7 @@ export class AniListService {
   /**
    * 11. FILTER BY GENRE
    */
-  static async getByGenre(genre: string, page = 1, perPage = 24) {
+  static async getByGenre(genre: string, page = 1, perPage = 28) {
     const query = `
       query ($genre: String, $page: Int, $perPage: Int) {
         Page(page: $page, perPage: $perPage) {
@@ -527,7 +578,7 @@ export class AniListService {
    */
   static async filter(params: Record<string, any>): Promise<UniversalAnimeBase[]> {
     const page = Number(params.page) || 1;
-    const perPage = Number(params.perPage) || 24;
+    const perPage = Number(params.perPage) || 28;
     const variables: Record<string, any> = { page, perPage };
 
     if (params.keyword?.trim()) {
@@ -593,6 +644,12 @@ export class AniListService {
     const query = `
       query ($page: Int, $perPage: Int, $search: String, $genre_in: [String], $genre_not_in: [String], $format: MediaFormat, $status: MediaStatus, $season: MediaSeason, $seasonYear: Int, $sort: [MediaSort]) {
         Page(page: $page, perPage: $perPage) {
+          pageInfo {
+            currentPage
+            hasNextPage
+            lastPage
+            total
+          }
           media(
             search: $search,
             genre_in: $genre_in,
@@ -612,7 +669,14 @@ export class AniListService {
     `;
 
     const data = await queryAniList<any>(query, variables);
-    return (data?.Page?.media || []).map((m: any) => mapMediaToCard(m));
+    const pageInfo = data?.Page?.pageInfo;
+    const cards = (data?.Page?.media || []).map((m: any) => mapMediaToCard(m));
+    (cards as any).pageInfo = pageInfo;
+    (cards as any).currentPage = pageInfo?.currentPage ?? page;
+    (cards as any).hasNextPage = Boolean(pageInfo?.hasNextPage);
+    (cards as any).maxPage = pageInfo?.lastPage || (pageInfo?.hasNextPage ? page + 1 : page);
+    (cards as any).total = pageInfo?.total || cards.length;
+    return cards;
   }
 
   /**
@@ -1110,7 +1174,7 @@ export class AniListService {
 
       const query = `
         query ($airingAt_greater: Int, $airingAt_lesser: Int) {
-          Page(page: 1, perPage: 50) {
+          Page(page: 1, perPage: 100) {
             airingSchedules(
               airingAt_greater: $airingAt_greater,
               airingAt_lesser: $airingAt_lesser,
@@ -1126,8 +1190,21 @@ export class AniListService {
                   english
                   romaji
                   native
+                  userPreferred
                 }
                 countryOfOrigin
+                format
+                bannerImage
+                coverImage {
+                  large
+                  medium
+                }
+                genres
+                averageScore
+                duration
+                episodes
+                status
+                description
               }
             }
           }
@@ -1139,21 +1216,39 @@ export class AniListService {
         airingAt_lesser: endOfDay
       });
 
-      const schedules = (data?.Page?.airingSchedules || [])
-        .filter((item: any) => item.media && (!item.media.countryOfOrigin || item.media.countryOfOrigin === 'JP'));
+      const schedules = (data?.Page?.airingSchedules || []).filter((item: any) => item.media);
 
       return {
         scheduledAnimes: schedules.map((item: any) => {
           const airDate = new Date(item.airingAt * 1000);
           const timeStr = airDate.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true });
+          
+          const isDonghua = item.media.countryOfOrigin === 'CN';
+          const isMovie = item.media.format === 'MOVIE';
+          const category = isDonghua ? 'donghua' : (isMovie ? 'movie' : 'anime');
+          const cleanDesc = (item.media.description || '').replace(/<[^>]*>/g, '').trim();
+
           return {
             id: String(item.media.id),
             time: timeStr,
-            name: item.media.title?.english || item.media.title?.romaji || 'Unknown Title',
+            name: item.media.title?.english || item.media.title?.romaji || item.media.title?.userPreferred || 'Unknown Title',
+            title: item.media.title?.english || item.media.title?.romaji || item.media.title?.userPreferred || 'Unknown Title',
             jname: item.media.title?.romaji || item.media.title?.native || '',
+            poster: item.media.coverImage?.large || item.media.coverImage?.medium || '',
+            image: item.media.coverImage?.large || item.media.coverImage?.medium || '',
+            bannerImage: item.media.bannerImage || '',
             timestamp: item.airingAt,
             secondsUntilAiring: item.timeUntilAiring,
-            episode: item.episode
+            episode: item.episode,
+            format: item.media.format || 'TV',
+            type: item.media.format || 'TV',
+            countryOfOrigin: item.media.countryOfOrigin || 'JP',
+            category,
+            score: item.media.averageScore ? (item.media.averageScore / 10).toFixed(1) : undefined,
+            description: cleanDesc,
+            genres: item.media.genres || [],
+            duration: item.media.duration ? `${item.media.duration}m` : undefined,
+            status: item.media.status || 'RELEASING'
           };
         })
       };

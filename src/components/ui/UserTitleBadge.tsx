@@ -88,26 +88,8 @@ export function isUserOnline(user?: UserTitleProfile | null): boolean {
 import { useAuth } from '@/context/AuthContext';
 
 export function UserOnlinePulse({ user, className = '' }: { user?: UserTitleProfile | null; className?: string }) {
-  const { profile: currentUser } = useAuth();
-  const online = isUserOnline(user);
-  
-  if (!online) return null;
-
-  // Check privacy settings
-  const hideOnlineStatus = user?.settings?.hideOnlineStatus === true;
-  const isViewerAdminOrMod = currentUser?.role === 'admin' || currentUser?.role === 'moderator' || currentUser?.role === 'leader';
-  const isSelf = currentUser?.id === user?.id;
-
-  // If user hides status, only show it to admins/mods or themselves
-  if (hideOnlineStatus && !isViewerAdminOrMod && !isSelf) {
-    return null;
-  }
-
-  return (
-    <span className={`inline-flex items-center shrink-0 ml-1 mr-0.5 ${className}`} title="Active">
-      <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 shadow-[0_0_6px_rgba(16,185,129,0.9)] inline-block shrink-0 align-middle" />
-    </span>
-  );
+  // Rule 4: No random green dots or status indicator dots anywhere
+  return null;
 }
 
 export function UserTitleBadge({

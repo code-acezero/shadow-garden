@@ -3,11 +3,13 @@
 import React, { useMemo, memo } from "react";
 import useSWR from "swr";
 import Link from "next/link";
-import { ChevronRight, Mic, Sparkles, Flame } from "lucide-react";
+import { ChevronRight, Mic, Flame } from "lucide-react";
 import MobileContainer from "@/components/Layout/MobileContainer";
 import SpotlightSlider from "@/components/Anime/SpotlightSlider";
 import HindiAnimeCard from "@/components/Anime/HindiAnimeCard";
 import Footer from "@/components/Anime/Footer";
+import CuteShareBar from "@/components/Home/CuteShareBar";
+import MonetLineIcon from "@/components/UIx/MonetLineIcon";
 import { hpi } from "@/lib/hpi";
 import { slugifyTitle } from "@/lib/utils";
 
@@ -16,24 +18,25 @@ const HindiSection = memo(function HindiSection({ title, items }: { title: strin
   if (!items || items.length === 0) return null;
 
   return (
-    <section className="w-full px-3 sm:px-4 md:px-6">
+    <section className="w-full px-2 sm:px-4">
       <div className="flex items-center justify-between mb-3 md:mb-6">
-        <div className="flex items-center gap-2.5 md:gap-3">
-          <div className="w-1.5 h-6 rounded-full bg-orange-500 shadow-[0_0_12px_rgba(249,115,22,0.8)]" />
-          <h2 className="text-xl md:text-2xl font-black text-orange-50 uppercase tracking-wide font-lemon flex items-center gap-2">
+        <div className="flex items-center gap-2 md:gap-3 min-w-0">
+          <MonetLineIcon icon={Mic} variant="orange" />
+          <h2 className="text-base sm:text-xl md:text-2xl font-black text-orange-50 uppercase tracking-wide font-lemon flex items-center gap-2 truncate leading-none">
             {title}
           </h2>
         </div>
         <Link
           href="/search/hindi"
-          className="text-[11px] font-black uppercase tracking-wider text-zinc-400 hover:text-white px-3 py-1.5 rounded-full bg-white/5 border border-white/5 hover:border-orange-500/30 transition-colors inline-flex items-center gap-1 group whitespace-nowrap"
+          className="text-[10px] md:text-[11px] font-black uppercase tracking-wider text-zinc-300 md:text-zinc-400 hover:text-white px-3 py-1.5 rounded-full bg-white/5 border border-white/10 md:border-white/5 hover:border-orange-500/30 transition-all inline-flex items-center gap-1 whitespace-nowrap active:scale-95 shrink-0"
         >
-          <span>Explore All</span>
-          <ChevronRight size={12} className="text-orange-400 group-hover:translate-x-0.5 transition-transform" />
+          <span className="md:hidden">Explore</span>
+          <span className="hidden md:inline">Explore All</span>
+          <ChevronRight size={11} className="text-orange-400" />
         </Link>
       </div>
 
-      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3 md:gap-6 relative perf-contain">
+      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-2.5 sm:gap-3.5 md:gap-5 relative perf-contain">
         {items.slice(0, 18).map((anime, index) => (
           <div
             key={`${anime.id || anime.slug || index}-${index}`}
@@ -128,9 +131,9 @@ export default function HindiHomeClient() {
           </div>
 
           {/* Quick Header Badge */}
-          <div className="px-3 sm:px-4 md:px-6 mb-4 flex items-center justify-between">
+          <div className="px-2 sm:px-4 mb-4 flex items-center justify-between">
             <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-orange-500/10 border border-orange-500/20 backdrop-blur-md">
-              <Mic className="w-3.5 h-3.5 text-orange-400 animate-pulse" />
+              <Mic className="w-3.5 h-3.5 text-orange-400" />
               <span className="text-[11px] font-black uppercase tracking-wider text-orange-200">
                 Hindi Dubbed Anime Sanctuary
               </span>
@@ -157,6 +160,14 @@ export default function HindiHomeClient() {
               </div>
             )}
           </div>
+
+          {/* CUTE SHARE BAR */}
+          <CuteShareBar 
+            badgeText="Share Hindi Dub"
+            badgeSubtext="Desi Anime Fans"
+            title="Invite your Otaku Friends to Kagemi!"
+            description="Share 1,000+ Hindi dubbed anime series & movies in 1080p Full HD with zero ads and high speed servers."
+          />
 
           <Footer />
         </div>

@@ -2,8 +2,9 @@
 
 import React, { useState } from 'react';
 import Link from 'next/link';
-import { Tv, Sparkles, ChevronRight, Radio } from 'lucide-react';
+import { Tv, Flame, ChevronRight, Radio } from 'lucide-react';
 import AnimeCard from '@/components/Anime/AnimeCard';
+import MonetLineIcon from '@/components/UIx/MonetLineIcon';
 import { cn } from '@/lib/utils';
 
 interface HomeCategoryShowcaseProps {
@@ -15,7 +16,7 @@ export default function HomeCategoryShowcase({ topAiring, upcoming }: HomeCatego
   const [activeTab, setActiveTab] = useState<'airing' | 'upcoming'>('airing');
 
   const currentItems = activeTab === 'airing' ? (topAiring || []) : (upcoming || []);
-  const viewAllRoute = activeTab === 'airing' ? '/view/ongoing' : '/view/upcoming';
+  const viewAllRoute = activeTab === 'airing' ? '/explore?category=airing' : '/explore?category=upcoming';
 
   if ((!topAiring || topAiring.length === 0) && (!upcoming || upcoming.length === 0)) {
     return null;
@@ -24,28 +25,14 @@ export default function HomeCategoryShowcase({ topAiring, upcoming }: HomeCatego
   return (
     <section className="w-full px-4 md:px-0">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-4 md:mb-6">
-        <div className="flex items-center gap-3">
-          <div className="w-9 h-9 rounded-2xl bg-gradient-to-br from-primary-600/30 to-purple-600/20 border border-primary-500/30 flex items-center justify-center text-primary-400 shadow-lg shadow-primary-950/30">
-            {activeTab === 'airing' ? (
-              <Radio size={18} className="text-primary-400 animate-pulse" />
-            ) : (
-              <Sparkles size={18} className="text-purple-400" />
-            )}
-          </div>
-          <div>
-            <div className="flex items-center gap-2">
-              <span className="text-[10px] font-black uppercase tracking-[0.25em] text-primary-500 font-lemon">
-                Seasonal Directives
-              </span>
-            </div>
-            <h2 className="text-xl md:text-3xl font-black text-white font-gradvis tracking-tight">
-              {activeTab === 'airing' ? (
-                <>TOP AIRING <span className="text-primary-600">TRANSMISSIONS</span></>
-              ) : (
-                <>ANTICIPATED <span className="text-purple-400">RADAR</span></>
-              )}
-            </h2>
-          </div>
+        <div className="flex items-center gap-2.5 sm:gap-3">
+          <MonetLineIcon 
+            icon={activeTab === 'airing' ? Radio : Flame} 
+            variant={activeTab === 'airing' ? 'rose' : 'purple'} 
+          />
+          <h2 className="text-xl md:text-3xl font-black text-white font-lemon uppercase tracking-wide flex items-center gap-2 leading-none">
+            {activeTab === 'airing' ? 'TOP AIRING' : 'MOST ANTICIPATED'}
+          </h2>
         </div>
 
         {/* Tab Switcher & View All */}
@@ -60,7 +47,7 @@ export default function HomeCategoryShowcase({ topAiring, upcoming }: HomeCatego
                   : "text-zinc-400 hover:text-white"
               )}
             >
-              <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-ping" />
+              <Radio size={11} className="text-white" />
               <span>Airing Now</span>
             </button>
             <button
@@ -72,7 +59,7 @@ export default function HomeCategoryShowcase({ topAiring, upcoming }: HomeCatego
                   : "text-zinc-400 hover:text-white"
               )}
             >
-              <Sparkles size={11} />
+              <Flame size={11} />
               <span>Upcoming Hype</span>
             </button>
           </div>

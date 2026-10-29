@@ -243,31 +243,31 @@ export default function ClanSystem({ onClanOpen }: { onClanOpen?: (isOpen: boole
   };
 
   return (
-    <div className="space-y-6">
-      {/* Glassmorphism Header bar with Rounded-Full Pills */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between p-4 bg-[#0a0a0d]/90 backdrop-blur-xl border border-white/10 sm:rounded-3xl gap-3.5 shadow-2xl">
+    <div className="space-y-4">
+      {/* Monet Header bar */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between p-3.5 bg-[#0e0e13] border border-white/[0.08] sm:rounded-2xl gap-3">
         {/* Title & Subtitle */}
         <div className="flex items-center gap-3 shrink-0">
-          <div className="w-10 h-10 rounded-full bg-primary-500/10 backdrop-blur-md border border-primary-500/20 flex items-center justify-center shrink-0 shadow-md">
-            <Shield size={18} className="text-primary-400" />
+          <div className="w-9 h-9 rounded-xl bg-primary-500/10 border border-primary-500/20 flex items-center justify-center shrink-0">
+            <Shield size={17} className="text-primary-400" />
           </div>
           <div>
-            <h2 className="text-xs sm:text-sm font-black uppercase tracking-wider text-white flex items-center gap-2 leading-none">
+            <h2 className="text-xs sm:text-sm font-bold uppercase tracking-wider text-white flex items-center gap-2 leading-none">
               Guild Clans
             </h2>
             <p className="text-[10px] text-zinc-400 mt-1 hidden sm:block leading-none">Form alliances, post clan feeds, and chat.</p>
           </div>
         </div>
 
-        {/* Action Controls: Glassmorphism Rounded-Full Segmented Tab Switcher + Create Clan Pill Button */}
-        <div className="flex items-center justify-between sm:justify-end gap-3 w-full sm:w-auto">
-          {/* Glassmorphism Segmented Tab Control */}
-          <div className="bg-black/50 backdrop-blur-md p-1 rounded-full border border-white/10 flex items-center gap-1 shrink-0 shadow-inner">
+        {/* Action Controls */}
+        <div className="flex items-center justify-between sm:justify-end gap-2.5 w-full sm:w-auto">
+          {/* Segmented Tab Control */}
+          <div className="bg-black/30 p-1 rounded-xl border border-white/[0.08] flex items-center gap-1 shrink-0">
             <button
               onClick={() => setActiveTab('discover')}
-              className={`px-3.5 sm:px-4 py-1.5 rounded-full text-[10px] sm:text-xs font-extrabold uppercase tracking-wider flex items-center gap-1.5 transition-all cursor-pointer whitespace-nowrap ${
+              className={`px-3 py-1.5 rounded-lg text-[10px] sm:text-xs font-bold uppercase tracking-wider flex items-center gap-1.5 transition-all cursor-pointer whitespace-nowrap active:scale-95 ${
                 activeTab === 'discover'
-                  ? 'bg-white/15 backdrop-blur-md text-white shadow-md border border-white/20'
+                  ? 'bg-white/15 text-white border border-white/15'
                   : 'text-zinc-400 hover:text-white hover:bg-white/5'
               }`}
             >
@@ -276,9 +276,9 @@ export default function ClanSystem({ onClanOpen }: { onClanOpen?: (isOpen: boole
             </button>
             <button
               onClick={() => setActiveTab('myclans')}
-              className={`px-3.5 sm:px-4 py-1.5 rounded-full text-[10px] sm:text-xs font-extrabold uppercase tracking-wider flex items-center gap-1.5 transition-all cursor-pointer whitespace-nowrap ${
+              className={`px-3 py-1.5 rounded-lg text-[10px] sm:text-xs font-bold uppercase tracking-wider flex items-center gap-1.5 transition-all cursor-pointer whitespace-nowrap active:scale-95 ${
                 activeTab === 'myclans'
-                  ? 'bg-white/15 backdrop-blur-md text-white shadow-md border border-white/20'
+                  ? 'bg-white/15 text-white border border-white/15'
                   : 'text-zinc-400 hover:text-white hover:bg-white/5'
               }`}
             >
@@ -287,12 +287,12 @@ export default function ClanSystem({ onClanOpen }: { onClanOpen?: (isOpen: boole
             </button>
           </div>
 
-          {/* Create Clan Glassmorphism Pill Button */}
+          {/* Create Clan Button */}
           <button
             onClick={() => setCreateModalOpen(true)}
-            className="px-4 sm:px-5 py-2 bg-primary-600/90 hover:bg-primary-500 text-white rounded-full text-[10px] sm:text-xs font-extrabold uppercase tracking-wider flex items-center gap-1.5 transition-all shadow-[0_4px_20px_rgba(99,102,241,0.35)] backdrop-blur-md border border-primary-500/30 active:scale-95 shrink-0 whitespace-nowrap cursor-pointer"
+            className="px-3.5 sm:px-4 py-1.5 bg-primary-600 hover:bg-primary-500 text-white rounded-xl text-[10px] sm:text-xs font-bold uppercase tracking-wider flex items-center gap-1.5 transition-all border border-primary-500/30 active:scale-95 shrink-0 whitespace-nowrap cursor-pointer"
           >
-            <Plus size={15} />
+            <Plus size={14} />
             <span>Create Clan</span>
           </button>
         </div>
@@ -300,49 +300,49 @@ export default function ClanSystem({ onClanOpen }: { onClanOpen?: (isOpen: boole
 
       {/* Clan Grid */}
       {loading ? (
-        <div className="flex flex-col gap-3">
+        <div className="flex flex-col gap-2.5">
           {[1, 2].map(i => (
-            <div key={i} className="h-40 bg-white/5 rounded-3xl animate-pulse border border-white/5" />
+            <div key={i} className="h-32 bg-white/5 rounded-2xl animate-pulse border border-white/5" />
           ))}
         </div>
       ) : clans.length === 0 ? (
-        <div className="p-12 text-center bg-[#0a0a0a]/90 backdrop-blur-xl border border-white/10 rounded-3xl text-zinc-500 text-xs font-bold">
+        <div className="p-10 text-center bg-[#0e0e13] border border-white/[0.08] rounded-2xl text-zinc-500 text-xs font-bold">
           No Clans found. Be the first to found a clan!
         </div>
       ) : (
-        <div className="flex flex-col gap-3">
+        <div className="flex flex-col gap-2.5">
           {clans.filter(c => activeTab === 'discover' ? true : userClanIds.includes(c.id)).map(clan => {
             const isMember = userClanIds.includes(clan.id);
             return (
               <div
                 key={clan.id}
                 onClick={() => handleClanSelect(clan)}
-                className="bg-black/40 backdrop-blur-md border border-white/10 rounded-3xl p-4 sm:p-5 hover:bg-white/[0.03] hover:border-white/20 cursor-pointer transition-all flex flex-col sm:flex-row sm:items-center justify-between gap-4 group shadow-xl"
+                className="bg-[#101016] border border-white/[0.08] rounded-2xl p-3.5 sm:p-4 hover:border-white/20 cursor-pointer transition-all flex flex-col sm:flex-row sm:items-center justify-between gap-3 group active:scale-[0.99]"
               >
-                <div className="flex items-center gap-4 min-w-0 flex-1">
+                <div className="flex items-center gap-3.5 min-w-0 flex-1">
                   <div className="relative shrink-0">
-                    <ClanAvatar clan={clan} className="w-14 h-14" />
+                    <ClanAvatar clan={clan} className="w-12 h-12 rounded-xl" />
                   </div>
 
                   <div className="min-w-0 flex-1 flex flex-col justify-center">
                     <div className="flex items-center gap-2 flex-wrap mb-1">
-                      <h3 className="text-sm sm:text-base font-bold text-white group-hover:text-primary-400 transition-colors truncate">
+                      <h3 className="text-xs sm:text-sm font-bold text-white group-hover:text-primary-400 transition-colors truncate">
                         {clan.name}
                       </h3>
                       {clan.privacy === 'private' ? (
-                        <span className="text-[9px] font-extrabold tracking-widest uppercase text-yellow-400 bg-yellow-500/10 px-2 py-0.5 rounded-full border border-yellow-500/20 flex items-center gap-1">
+                        <span className="text-[9px] font-bold tracking-wider uppercase text-yellow-400 bg-yellow-500/10 px-2 py-0.5 rounded-md border border-yellow-500/20 flex items-center gap-1">
                           <Lock size={10} /> Private
                         </span>
                       ) : (
-                        <span className="text-[9px] font-extrabold tracking-widest uppercase text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded-full border border-emerald-500/20 flex items-center gap-1">
+                        <span className="text-[9px] font-bold tracking-wider uppercase text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded-md border border-emerald-500/20 flex items-center gap-1">
                           <Globe size={10} /> Public
                         </span>
                       )}
                     </div>
 
                     {/* Metadata line */}
-                    <div className="flex items-center gap-2.5 mt-1.5 text-[10px] text-zinc-400 font-medium flex-wrap">
-                      <span className="flex items-center gap-1.5">
+                    <div className="flex items-center gap-2 mt-1 text-[10px] text-zinc-400 font-medium flex-wrap">
+                      <span className="flex items-center gap-1">
                         <Users size={12} className="text-primary-400" />
                         <span className="text-white font-bold">{clan.member_count || 1}</span> members
                       </span>
@@ -356,7 +356,7 @@ export default function ClanSystem({ onClanOpen }: { onClanOpen?: (isOpen: boole
                   {isMember ? (
                     <button 
                       onClick={(e) => { e.stopPropagation(); handleClanSelect(clan); }}
-                      className="w-full sm:w-[100px] h-9 bg-white/10 hover:bg-white/20 text-white rounded-full text-[10px] font-extrabold uppercase tracking-wider transition-all flex justify-center items-center gap-1 border border-white/15 backdrop-blur-md shadow-md cursor-pointer active:scale-95"
+                      className="w-full sm:w-[90px] h-8 bg-white/10 hover:bg-white/20 text-white rounded-xl text-[10px] font-bold uppercase tracking-wider transition-all flex justify-center items-center gap-1 border border-white/15 cursor-pointer active:scale-95"
                     >
                       Enter <ChevronRight size={14} className="opacity-80 group-hover:opacity-100 transition-opacity" />
                     </button>

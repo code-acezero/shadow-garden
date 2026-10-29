@@ -101,10 +101,42 @@ const DonghuaHomeSection = dynamic(
   }
 );
 
-const AZNavigationBar = dynamic(
-  () => import("@/components/Home/AZNavigationBar"),
-  { ssr: false }
+const CommunityHomeSection = dynamic(
+  () => import("@/components/Home/CommunityHomeSection"),
+  { 
+    ssr: false,
+    loading: () => (
+      <div className="w-full px-4 md:px-0">
+        <div className="h-64 bg-white/5 rounded-xl animate-pulse" />
+      </div>
+    )
+  }
 );
+
+const ShortsHomeSection = dynamic(
+  () => import("@/components/Home/ShortsHomeSection"),
+  { 
+    ssr: false,
+    loading: () => (
+      <div className="w-full px-4 md:px-0">
+        <div className="h-64 bg-white/5 rounded-xl animate-pulse" />
+      </div>
+    )
+  }
+);
+
+const MangvelsHomeSection = dynamic(
+  () => import("@/components/Home/MangvelsHomeSection"),
+  { 
+    ssr: false,
+    loading: () => (
+      <div className="w-full px-4 md:px-0">
+        <div className="h-64 bg-white/5 rounded-xl animate-pulse" />
+      </div>
+    )
+  }
+);
+
 
 function HomeContent() {
   const searchParams = useSearchParams();
@@ -202,7 +234,7 @@ function HomeContent() {
 
       <MobileContainer
         hasBottomNav
-        className="bg-[#050505] relative w-full"
+        className="relative w-full"
       >
         {/* Background effects */}
         <div className="shadow-light-top" />
@@ -245,11 +277,17 @@ function HomeContent() {
             {/* Dedicated Donghua Realm */}
             <DonghuaHomeSection />
 
-            {/* Beyond Broadcast: Movies, Donghua, Dramas, and Community Whispers */}
+            {/* Community Global Discussions */}
+            <CommunityHomeSection />
+
+            {/* Mangvels Reading Hub (On Top of Flixverse) */}
+            <MangvelsHomeSection />
+
+            {/* Flixverse Showcase (Cinema, Asian Dramas, Feature Films) */}
             <MultiverseShowcase />
 
-            {/* Alphabetical Archive Codex (A-Z Directory) */}
-            <AZNavigationBar />
+            {/* Shadow Shorts Section (Under Flixverse) */}
+            <ShortsHomeSection />
 
             <div className="mt-2 md:mt-4">
               <CuteShareBar />

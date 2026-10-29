@@ -259,7 +259,9 @@ export interface UniversalAnimeBase {
     seasonYear?: number;
     episodesCount?: number;
     duration?: string;
-    episodes?: { sub: number; dub: number; eps?: number };
+    totalEpisodes?: number | null;
+    total_episodes?: number | null;
+    episodes?: { sub: number; dub: number; eps?: number | null; total?: number | null };
     rank?: number;
     isAdult?: boolean;
     rating?: string;
@@ -390,10 +392,13 @@ function normalizeCard(item: any): UniversalAnimeBase {
         poster: item?.image || '',
         type: item?.type || 'TV',
         duration: item?.date,
+        totalEpisodes: item?.totalEpisodes ?? item?.total_episodes ?? item?.episodes?.total ?? null,
+        total_episodes: item?.totalEpisodes ?? item?.total_episodes ?? item?.episodes?.total ?? null,
         episodes: {
             sub: item?.episodes?.sub ?? item?.sub ?? 0,
             dub: item?.episodes?.dub ?? item?.dub ?? 0,
-            eps: item?.episodes?.total ?? item?.episodes?.eps
+            eps: item?.totalEpisodes ?? item?.total_episodes ?? item?.episodes?.total ?? item?.episodes?.eps ?? null,
+            total: item?.totalEpisodes ?? item?.total_episodes ?? item?.episodes?.total ?? null
         },
         rank: item?.rank,
         isAdult,
@@ -601,57 +606,59 @@ export class AnimeService {
             case 'recent':
             case 'updated-all':
             case 'all':
-                results = await AniListService.getRecentEpisodes(page, 24);
+                results = await AniListService.getRecentEpisodes(page, 28);
                 break;
             case 'new-release':
             case 'added':
-                results = await AniListService.getRecentEpisodes(page, 24);
+                results = await AniListService.getRecentEpisodes(page, 28);
                 break;
             case 'most-viewed':
             case 'popular':
             case 'trending':
-                results = await AniListService.getMostPopular(page, 24);
+                results = await AniListService.getMostPopular(page, 28);
                 break;
             case 'upcoming':
             case 'not-yet-aired':
-                results = await AniListService.getTopUpcoming(page, 24);
+                results = await AniListService.getTopUpcoming(page, 28);
                 break;
             case 'ongoing':
             case 'currently-airing':
-                results = await AniListService.getTopAiring(page, 24);
+                results = await AniListService.getTopAiring(page, 28);
                 break;
             case 'completed':
             case 'finished-airing':
-                results = await AniListService.getCompleted(page, 24);
+                results = await AniListService.getCompleted(page, 28);
                 break;
             case 'az-list':
-                results = await AniListService.getMostPopular(page, 24);
+                results = await AniListService.getMostPopular(page, 28);
                 break;
             default:
-                results = await AniListService.getMostPopular(page, 24);
+                results = await AniListService.getMostPopular(page, 28);
                 break;
         }
 
+        const hasNext = (results as any)?.hasNextPage ?? (results.length >= 28);
+        const calcMax = (results as any)?.maxPage || (results as any)?.pageInfo?.lastPage || (hasNext ? page + 1 : page);
         return {
             results,
             currentPage: page,
-            hasNextPage: results.length >= 24,
+            hasNextPage: hasNext,
             hasPreviousPage: page > 1,
-            maxPage: results.length >= 24 ? page + 1 : page,
+            maxPage: calcMax,
             minPage: 1
         };
     }
 
     static async getByGenre(genre: string, page = 1) {
-        return await AniListService.getByGenre(genre, page, 24);
+        return await AniListService.getByGenre(genre, page, 28);
     }
 
     static async getByType(_type: string, page = 1) {
-        return await AniListService.getMostPopular(page, 24);
+        return await AniListService.getMostPopular(page, 28);
     }
 
     static async search(query: string, page = 1) {
-        return await AniListService.search(query, page, 24);
+        return await AniListService.search(query, page, 28);
     }
 
     static async getSearchSuggestions(query: string) {

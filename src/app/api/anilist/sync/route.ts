@@ -12,20 +12,28 @@ const supabaseAdmin = createClient(
 
 function mapToAniListStatus(sgStatus: string): string {
   switch (sgStatus) {
-    case 'watching': return 'CURRENT';
-    case 'completed': return 'COMPLETED';
-    case 'plan_to_watch': return 'PLANNING';
-    case 'on_hold': return 'PAUSED';
-    case 'dropped': return 'DROPPED';
-    default: return 'CURRENT';
+    case 'watching':
+    case 'reading':
+      return 'CURRENT';
+    case 'completed':
+      return 'COMPLETED';
+    case 'plan_to_watch':
+    case 'plan_to_read':
+      return 'PLANNING';
+    case 'on_hold':
+      return 'PAUSED';
+    case 'dropped':
+      return 'DROPPED';
+    default:
+      return 'CURRENT';
   }
 }
 
-function mapToShadowGardenStatus(anilistStatus: string): string {
+function mapToShadowGardenStatus(anilistStatus: string, mediaType: 'anime' | 'manga'): string {
   switch (anilistStatus) {
     case 'CURRENT':
     case 'REPEATING':
-      return 'watching';
+      return mediaType === 'manga' ? 'reading' : 'watching';
     case 'COMPLETED':
       return 'completed';
     case 'PAUSED':
@@ -34,7 +42,7 @@ function mapToShadowGardenStatus(anilistStatus: string): string {
       return 'dropped';
     case 'PLANNING':
     default:
-      return 'plan_to_watch';
+      return mediaType === 'manga' ? 'plan_to_read' : 'plan_to_watch';
   }
 }
 
@@ -52,12 +60,12 @@ function cleanAnimeTitle(title: string): string {
     .trim();
 }
 
-async function resolveAniListMedia(title: string, animeId?: string) {
+async function resolveAniListMedia(title: string, animeId?: string, type: 'ANIME' | 'MANGA' = 'ANIME') {
   const numericId = parseInt(animeId || '', 10);
   if (!isNaN(numericId) && numericId > 0 && String(numericId) === animeId) {
     const byIdQuery = `
-      query ($id: Int) {
-        Media(id: $id, type: ANIME) {
+      query ($id: Int, $type: MediaType) {
+        Media(id: $id, type: $type) {
           id
           title { english romaji native userPreferred }
           coverImage { extraLarge large medium }
@@ -65,6 +73,7 @@ async function resolveAniListMedia(title: string, animeId?: string) {
           format
           status
           episodes
+          chapters
           averageScore
         }
       }
@@ -72,7 +81,7 @@ async function resolveAniListMedia(title: string, animeId?: string) {
     const res = await fetch('https://graphql.anilist.co', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ query: byIdQuery, variables: { id: numericId } }),
+      body: JSON.stringify({ query: byIdQuery, variables: { id: numericId, type } }),
     });
     const data = await res.json();
     if (data?.data?.Media) return data.data.Media;
@@ -85,8 +94,8 @@ async function resolveAniListMedia(title: string, animeId?: string) {
   }
 
   const searchQuery = `
-    query ($search: String) {
-      Media(search: $search, type: ANIME) {
+    query ($search: String, $type: MediaType) {
+      Media(search: $search, type: $type) {
         id
         title { english romaji native userPreferred }
         coverImage { extraLarge large medium }
@@ -94,6 +103,7 @@ async function resolveAniListMedia(title: string, animeId?: string) {
         format
         status
         episodes
+        chapters
         averageScore
       }
     }
@@ -105,7 +115,7 @@ async function resolveAniListMedia(title: string, animeId?: string) {
       const res = await fetch('https://graphql.anilist.co', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ query: searchQuery, variables: { search: candidate } }),
+        body: JSON.stringify({ query: searchQuery, variables: { search: candidate, type } }),
       });
       const data = await res.json();
       if (data?.data?.Media) return data.data.Media;
@@ -114,32 +124,76 @@ async function resolveAniListMedia(title: string, animeId?: string) {
   return null;
 }
 
+async function fetchAniListLists(username: string, type: 'ANIME' | 'MANGA') {
+  const query = `
+    query ($userName: String, $type: MediaType) {
+      MediaListCollection(userName: $userName, type: $type) {
+        lists {
+          name
+          status
+          entries {
+            id
+            mediaId
+            status
+            progress
+            score(format: POINT_10)
+            updatedAt
+            media {
+              id
+              idMal
+              title { english romaji userPreferred }
+              coverImage { extraLarge large medium }
+              bannerImage
+              format
+              status
+              episodes
+              chapters
+              averageScore
+            }
+          }
+        }
+      }
+    }
+  `;
+
+  const res = await fetch('https://graphql.anilist.co', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ query, variables: { userName: username, type } }),
+  });
+
+  const json = await res.json();
+  if (json.errors) {
+    console.warn(`AniList ${type} query notice:`, json.errors[0]?.message);
+    return [];
+  }
+  return json?.data?.MediaListCollection?.lists || [];
+}
+
 export async function POST(req: Request) {
   try {
-    const { action, userId, username, token } = await req.json();
+    const { action, userId, username, token, deletedMediaIds = [], targetMediaType } = await req.json();
 
     if (!userId) {
       return NextResponse.json({ error: 'User ID is required' }, { status: 400 });
     }
 
-    // Try resolving token from profile settings if not provided in payload
+    // Resolve credentials from profile settings if not in payload
     let anilistToken = token;
     let anilistUsername = username;
 
-    if (!anilistToken || !anilistUsername) {
-      const { data: profile } = await supabaseAdmin
-        .from('profiles')
-        .select('settings')
-        .eq('id', userId)
-        .single();
+    const { data: profile } = await supabaseAdmin
+      .from('profiles')
+      .select('settings')
+      .eq('id', userId)
+      .single();
 
-      if (profile?.settings) {
-        if (!anilistToken && profile.settings.anilist_token) {
-          anilistToken = profile.settings.anilist_token;
-        }
-        if (!anilistUsername && profile.settings.anilist_username) {
-          anilistUsername = profile.settings.anilist_username;
-        }
+    if (profile?.settings) {
+      if (!anilistToken && profile.settings.anilist_token) {
+        anilistToken = profile.settings.anilist_token;
+      }
+      if (!anilistUsername && profile.settings.anilist_username) {
+        anilistUsername = profile.settings.anilist_username;
       }
     }
 
@@ -147,75 +201,56 @@ export async function POST(req: Request) {
       anilistUsername = 'codeacezero';
     }
 
-    // --- ACTION: PULL ---
+    const typesToSync: ('ANIME' | 'MANGA')[] = targetMediaType === 'manga' 
+      ? ['MANGA'] 
+      : targetMediaType === 'anime' 
+        ? ['ANIME'] 
+        : ['ANIME', 'MANGA'];
+
+    // ─── ACTION: PULL ───────────────────────────────────────────────────────────
     if (action === 'pull') {
-      const query = `
-        query ($userName: String) {
-          MediaListCollection(userName: $userName, type: ANIME) {
-            lists {
-              name
-              status
-              entries {
-                id
-                mediaId
-                status
-                progress
-                score(format: POINT_10)
-                updatedAt
-                media {
-                  id
-                  title { english romaji userPreferred }
-                  coverImage { extraLarge large medium }
-                  bannerImage
-                  status
-                  episodes
-                  averageScore
-                }
-              }
-            }
-          }
-        }
-      `;
-
-      const res = await fetch('https://graphql.anilist.co', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ query, variables: { userName: anilistUsername } }),
-      });
-
-      const json = await res.json();
-      if (json.errors) {
-        return NextResponse.json({ error: json.errors[0]?.message || 'Failed to fetch AniList data' }, { status: 400 });
-      }
-
-      const lists = json?.data?.MediaListCollection?.lists || [];
       let importedCount = 0;
       let totalFound = 0;
 
-      for (const list of lists) {
-        for (const entry of list.entries) {
-          totalFound++;
-          const media = entry.media;
-          const animeId = String(media.id);
-          const title = media.title?.english || media.title?.romaji || media.title?.userPreferred || 'Unknown Title';
-          const poster = media.coverImage?.extraLarge || media.coverImage?.large || media.coverImage?.medium;
-          const sgStatus = mapToShadowGardenStatus(entry.status);
+      for (const mType of typesToSync) {
+        const lists = await fetchAniListLists(anilistUsername, mType);
+        const sgMediaType = mType === 'MANGA' ? 'manga' : 'anime';
 
-          const { error } = await supabaseAdmin.from('watchlist').upsert({
-            user_id: userId,
-            anime_id: animeId,
-            anime_title: title,
-            anime_image: poster,
-            banner_image: media.bannerImage || null,
-            status: sgStatus,
-            last_episode_number: entry.progress || 0,
-            total_episodes: media.episodes || null,
-            score: entry.score || (media.averageScore ? Math.round(media.averageScore / 10) : null),
-            media_type: 'anime',
-            updated_at: new Date(entry.updatedAt ? entry.updatedAt * 1000 : Date.now()).toISOString(),
-          }, { onConflict: 'user_id,anime_id' });
+        for (const list of lists) {
+          for (const entry of list.entries || []) {
+            totalFound++;
+            const media = entry.media;
+            const animeId = String(media.id);
+            const title = media.title?.english || media.title?.romaji || media.title?.userPreferred || 'Unknown Title';
+            const poster = media.coverImage?.extraLarge || media.coverImage?.large || media.coverImage?.medium;
+            const sgStatus = mapToShadowGardenStatus(entry.status, sgMediaType);
 
-          if (!error) importedCount++;
+            const payload: any = {
+              user_id: userId,
+              anime_id: animeId,
+              anime_title: title,
+              anime_image: poster,
+              banner_image: media.bannerImage || null,
+              status: sgStatus,
+              last_episode_number: entry.progress || 0,
+              score: entry.score || (media.averageScore ? Math.round(media.averageScore / 10) : null),
+              media_type: sgMediaType,
+              updated_at: new Date(entry.updatedAt ? entry.updatedAt * 1000 : Date.now()).toISOString(),
+            };
+
+            if (sgMediaType === 'manga') {
+              payload.total_chapters = media.chapters || null;
+              payload.chapters_read = entry.progress || 0;
+            } else {
+              payload.total_episodes = media.episodes || null;
+            }
+
+            const { error } = await supabaseAdmin.from('watchlist').upsert(payload, {
+              onConflict: 'user_id,anime_id',
+            });
+
+            if (!error) importedCount++;
+          }
         }
       }
 
@@ -227,11 +262,72 @@ export async function POST(req: Request) {
       });
     }
 
-    // --- ACTION: PUSH ---
-    if (action === 'push') {
+    // ─── ACTION: OVERRIDE SUPABASE (Wipe and Pull Fresh) ──────────────────────
+    if (action === 'override_supabase') {
+      for (const mType of typesToSync) {
+        const sgMediaType = mType === 'MANGA' ? 'manga' : 'anime';
+        // Remove existing items of this media type
+        await supabaseAdmin
+          .from('watchlist')
+          .delete()
+          .eq('user_id', userId)
+          .eq('media_type', sgMediaType);
+      }
+
+      // Re-populate from AniList
+      let importedCount = 0;
+      for (const mType of typesToSync) {
+        const lists = await fetchAniListLists(anilistUsername, mType);
+        const sgMediaType = mType === 'MANGA' ? 'manga' : 'anime';
+
+        for (const list of lists) {
+          for (const entry of list.entries || []) {
+            const media = entry.media;
+            const animeId = String(media.id);
+            const title = media.title?.english || media.title?.romaji || media.title?.userPreferred || 'Unknown Title';
+            const poster = media.coverImage?.extraLarge || media.coverImage?.large || media.coverImage?.medium;
+            const sgStatus = mapToShadowGardenStatus(entry.status, sgMediaType);
+
+            const payload: any = {
+              user_id: userId,
+              anime_id: animeId,
+              anime_title: title,
+              anime_image: poster,
+              banner_image: media.bannerImage || null,
+              status: sgStatus,
+              last_episode_number: entry.progress || 0,
+              score: entry.score || (media.averageScore ? Math.round(media.averageScore / 10) : null),
+              media_type: sgMediaType,
+              updated_at: new Date(entry.updatedAt ? entry.updatedAt * 1000 : Date.now()).toISOString(),
+            };
+
+            if (sgMediaType === 'manga') {
+              payload.total_chapters = media.chapters || null;
+              payload.chapters_read = entry.progress || 0;
+            } else {
+              payload.total_episodes = media.episodes || null;
+            }
+
+            const { error } = await supabaseAdmin.from('watchlist').upsert(payload, {
+              onConflict: 'user_id,anime_id',
+            });
+            if (!error) importedCount++;
+          }
+        }
+      }
+
+      return NextResponse.json({
+        success: true,
+        action: 'override_supabase',
+        importedCount,
+      });
+    }
+
+    // ─── ACTION: PUSH / OVERRIDE ANILIST ─────────────────────────────────────
+    if (action === 'push' || action === 'override_anilist') {
       if (!anilistToken) {
         return NextResponse.json({
-          error: 'AniList OAuth token is required to push changes. Connect your AniList account first.',
+          error: 'AniList OAuth authorization is required to push changes. Bind your AniList account first.',
           requiresAuth: true
         }, { status: 401 });
       }
@@ -242,9 +338,37 @@ export async function POST(req: Request) {
         .eq('user_id', userId);
 
       if (fetchErr || !items) {
-        return NextResponse.json({ error: fetchErr?.message || 'Failed to fetch watchlist' }, { status: 500 });
+        return NextResponse.json({ error: fetchErr?.message || 'Failed to fetch library' }, { status: 500 });
       }
 
+      // If override_anilist, delete entries on AniList that are not in Supabase
+      if (action === 'override_anilist') {
+        const supabaseIds = new Set(items.map(i => String(i.anime_id)));
+        for (const mType of typesToSync) {
+          const lists = await fetchAniListLists(anilistUsername, mType);
+          for (const list of lists) {
+            for (const entry of list.entries || []) {
+              if (!supabaseIds.has(String(entry.mediaId))) {
+                try {
+                  await fetch('https://graphql.anilist.co', {
+                    method: 'POST',
+                    headers: {
+                      'Content-Type': 'application/json',
+                      'Authorization': `Bearer ${anilistToken}`,
+                    },
+                    body: JSON.stringify({
+                      query: `mutation ($id: Int) { DeleteMediaListEntry (id: $id) { deleted } }`,
+                      variables: { id: entry.id }
+                    })
+                  });
+                } catch {}
+              }
+            }
+          }
+        }
+      }
+
+      // Push all local items to AniList
       const mutation = `
         mutation ($mediaId: Int, $status: MediaListStatus, $progress: Int, $score: Float) {
           SaveMediaListEntry (mediaId: $mediaId, status: $status, progress: $progress, score: $score) {
@@ -257,174 +381,227 @@ export async function POST(req: Request) {
       `;
 
       let pushedCount = 0;
-      let failedCount = 0;
-      const details: any[] = [];
-
       for (const item of items) {
-        try {
-          const media = await resolveAniListMedia(item.anime_title, item.anime_id);
-          if (!media || !media.id) {
-            failedCount++;
-            details.push({ title: item.anime_title, status: 'unresolved' });
-            continue;
-          }
+        const isManga = item.media_type === 'manga' || item.media_type === 'manhwa' || item.media_type === 'manhua';
+        const targetType = isManga ? 'MANGA' : 'ANIME';
 
-          const anilistStatus = mapToAniListStatus(item.status);
-          const progress = item.last_episode_number || 0;
-          const score = item.score ? Number(item.score) : undefined;
-
-          const res = await fetch('https://graphql.anilist.co', {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              'Authorization': `Bearer ${anilistToken}`,
-            },
-            body: JSON.stringify({
-              query: mutation,
-              variables: {
-                mediaId: media.id,
-                status: anilistStatus,
-                progress,
-                score,
-              }
-            })
-          });
-
-          const resData = await res.json();
-          if (resData?.data?.SaveMediaListEntry) {
-            pushedCount++;
-            details.push({ title: item.anime_title, mediaId: media.id, status: 'pushed', progress });
-          } else {
-            failedCount++;
-            details.push({ title: item.anime_title, status: 'error', reason: resData.errors?.[0]?.message });
-          }
-
-          // Delay slightly between requests
-          await new Promise(r => setTimeout(r, 200));
-        } catch (e: any) {
-          failedCount++;
-          details.push({ title: item.anime_title, status: 'exception', reason: e.message });
+        if (targetMediaType && targetMediaType !== (isManga ? 'manga' : 'anime')) {
+          continue;
         }
+
+        try {
+          const media = await resolveAniListMedia(item.anime_title, item.anime_id, targetType);
+          if (media?.id) {
+            await fetch('https://graphql.anilist.co', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${anilistToken}`,
+              },
+              body: JSON.stringify({
+                query: mutation,
+                variables: {
+                  mediaId: media.id,
+                  status: mapToAniListStatus(item.status),
+                  progress: item.last_episode_number || item.chapters_read || 0,
+                  score: item.score ? Number(item.score) : undefined,
+                }
+              })
+            });
+            pushedCount++;
+            await new Promise(r => setTimeout(r, 200));
+          }
+        } catch {}
       }
 
       return NextResponse.json({
         success: true,
-        action: 'push',
-        totalItems: items.length,
+        action,
         pushedCount,
-        failedCount,
-        details,
       });
     }
 
-    // --- ACTION: TWO-WAY ---
+    // ─── ACTION: TWO-WAY (Smart Merge + Deletions Sync) ────────────────────────
     if (action === 'two-way') {
-      // 1. Pull first
+      const { data: supabaseItems } = await supabaseAdmin
+        .from('watchlist')
+        .select('*')
+        .eq('user_id', userId);
+
+      const supabaseMap = new Map<string, any>();
+      (supabaseItems || []).forEach(item => {
+        supabaseMap.set(String(item.anime_id), item);
+      });
+
       let pulledCount = 0;
-      const query = `
-        query ($userName: String) {
-          MediaListCollection(userName: $userName, type: ANIME) {
-            lists {
-              name
-              status
-              entries {
-                id
-                mediaId
-                status
-                progress
-                score(format: POINT_10)
-                updatedAt
-                media {
-                  id
-                  title { english romaji userPreferred }
-                  coverImage { extraLarge large medium }
-                  bannerImage
-                  status
-                  episodes
-                  averageScore
+      let pushedCount = 0;
+      let deletedOnAniListCount = 0;
+      let deletedOnSupabaseCount = 0;
+
+      // 1. Process deletions requested from Shadow Garden
+      if (anilistToken && deletedMediaIds.length > 0) {
+        for (const delId of deletedMediaIds) {
+          try {
+            // Find entry ID on AniList to delete
+            for (const mType of typesToSync) {
+              const lists = await fetchAniListLists(anilistUsername, mType);
+              for (const list of lists) {
+                const found = (list.entries || []).find((e: any) => String(e.mediaId) === String(delId) || String(e.id) === String(delId));
+                if (found) {
+                  await fetch('https://graphql.anilist.co', {
+                    method: 'POST',
+                    headers: {
+                      'Content-Type': 'application/json',
+                      'Authorization': `Bearer ${anilistToken}`,
+                    },
+                    body: JSON.stringify({
+                      query: `mutation ($id: Int) { DeleteMediaListEntry (id: $id) { deleted } }`,
+                      variables: { id: found.id }
+                    })
+                  });
+                  deletedOnAniListCount++;
                 }
               }
             }
-          }
-        }
-      `;
-
-      const res = await fetch('https://graphql.anilist.co', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ query, variables: { userName: anilistUsername } }),
-      });
-
-      const json = await res.json();
-      const lists = json?.data?.MediaListCollection?.lists || [];
-
-      for (const list of lists) {
-        for (const entry of list.entries) {
-          const media = entry.media;
-          const animeId = String(media.id);
-          const title = media.title?.english || media.title?.romaji || media.title?.userPreferred || 'Unknown Title';
-          const poster = media.coverImage?.extraLarge || media.coverImage?.large || media.coverImage?.medium;
-          const sgStatus = mapToShadowGardenStatus(entry.status);
-
-          const { error } = await supabaseAdmin.from('watchlist').upsert({
-            user_id: userId,
-            anime_id: animeId,
-            anime_title: title,
-            anime_image: poster,
-            banner_image: media.bannerImage || null,
-            status: sgStatus,
-            last_episode_number: entry.progress || 0,
-            total_episodes: media.episodes || null,
-            score: entry.score || (media.averageScore ? Math.round(media.averageScore / 10) : null),
-            media_type: 'anime',
-            updated_at: new Date(entry.updatedAt ? entry.updatedAt * 1000 : Date.now()).toISOString(),
-          }, { onConflict: 'user_id,anime_id' });
-
-          if (!error) pulledCount++;
+          } catch {}
         }
       }
 
-      // 2. If token present, push as well
-      let pushedCount = 0;
-      if (anilistToken) {
-        const { data: items } = await supabaseAdmin.from('watchlist').select('*').eq('user_id', userId);
-        if (items) {
-          const mutation = `
-            mutation ($mediaId: Int, $status: MediaListStatus, $progress: Int, $score: Float) {
-              SaveMediaListEntry (mediaId: $mediaId, status: $status, progress: $progress, score: $score) {
-                id
-                mediaId
-                status
-                progress
+      // 2. Fetch both Anime and Manga from AniList
+      const anilistEntriesMap = new Map<string, any>();
+
+      for (const mType of typesToSync) {
+        const lists = await fetchAniListLists(anilistUsername, mType);
+        const sgMediaType = mType === 'MANGA' ? 'manga' : 'anime';
+
+        for (const list of lists) {
+          for (const entry of list.entries || []) {
+            const media = entry.media;
+            const animeId = String(media.id);
+            anilistEntriesMap.set(animeId, { entry, media, sgMediaType });
+
+            const existingSupabase = supabaseMap.get(animeId);
+
+            if (!existingSupabase) {
+              // Item exists on AniList but not in Supabase -> Pull
+              const title = media.title?.english || media.title?.romaji || media.title?.userPreferred || 'Unknown Title';
+              const poster = media.coverImage?.extraLarge || media.coverImage?.large || media.coverImage?.medium;
+              const sgStatus = mapToShadowGardenStatus(entry.status, sgMediaType);
+
+              const payload: any = {
+                user_id: userId,
+                anime_id: animeId,
+                anime_title: title,
+                anime_image: poster,
+                banner_image: media.bannerImage || null,
+                status: sgStatus,
+                last_episode_number: entry.progress || 0,
+                score: entry.score || (media.averageScore ? Math.round(media.averageScore / 10) : null),
+                media_type: sgMediaType,
+                updated_at: new Date(entry.updatedAt ? entry.updatedAt * 1000 : Date.now()).toISOString(),
+              };
+
+              if (sgMediaType === 'manga') {
+                payload.total_chapters = media.chapters || null;
+                payload.chapters_read = entry.progress || 0;
+              } else {
+                payload.total_episodes = media.episodes || null;
+              }
+
+              await supabaseAdmin.from('watchlist').upsert(payload, { onConflict: 'user_id,anime_id' });
+              pulledCount++;
+            } else {
+              // Both have the item -> compare updatedAt timestamps
+              const anilistTime = (entry.updatedAt || 0) * 1000;
+              const supabaseTime = new Date(existingSupabase.updated_at || 0).getTime();
+
+              if (anilistTime > supabaseTime) {
+                // AniList is newer -> Pull to Supabase
+                const sgStatus = mapToShadowGardenStatus(entry.status, sgMediaType);
+                await supabaseAdmin.from('watchlist').update({
+                  status: sgStatus,
+                  last_episode_number: entry.progress || 0,
+                  score: entry.score || existingSupabase.score,
+                  updated_at: new Date(anilistTime).toISOString(),
+                }).eq('user_id', userId).eq('anime_id', animeId);
+                pulledCount++;
+              } else if (supabaseTime > anilistTime && anilistToken) {
+                // Supabase is newer -> Push to AniList
+                try {
+                  const mutation = `
+                    mutation ($mediaId: Int, $status: MediaListStatus, $progress: Int, $score: Float) {
+                      SaveMediaListEntry (mediaId: $mediaId, status: $status, progress: $progress, score: $score) {
+                        id
+                      }
+                    }
+                  `;
+                  await fetch('https://graphql.anilist.co', {
+                    method: 'POST',
+                    headers: {
+                      'Content-Type': 'application/json',
+                      'Authorization': `Bearer ${anilistToken}`,
+                    },
+                    body: JSON.stringify({
+                      query: mutation,
+                      variables: {
+                        mediaId: media.id,
+                        status: mapToAniListStatus(existingSupabase.status),
+                        progress: existingSupabase.last_episode_number || existingSupabase.chapters_read || 0,
+                        score: existingSupabase.score ? Number(existingSupabase.score) : undefined,
+                      }
+                    })
+                  });
+                  pushedCount++;
+                } catch {}
               }
             }
-          `;
-
-          for (const item of items) {
-            try {
-              const media = await resolveAniListMedia(item.anime_title, item.anime_id);
-              if (media?.id) {
-                await fetch('https://graphql.anilist.co', {
-                  method: 'POST',
-                  headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${anilistToken}`,
-                  },
-                  body: JSON.stringify({
-                    query: mutation,
-                    variables: {
-                      mediaId: media.id,
-                      status: mapToAniListStatus(item.status),
-                      progress: item.last_episode_number || 0,
-                      score: item.score ? Number(item.score) : undefined,
-                    }
-                  })
-                });
-                pushedCount++;
-                await new Promise(r => setTimeout(r, 200));
-              }
-            } catch {}
           }
+        }
+      }
+
+      // 3. Check for items that exist in Supabase with numeric AniList IDs but are MISSING on AniList (removed on AniList)
+      for (const [animeId, supItem] of supabaseMap.entries()) {
+        const isNumeric = /^\d+$/.test(animeId);
+        if (isNumeric && !anilistEntriesMap.has(animeId)) {
+          // Deleted on AniList -> remove from Supabase
+          await supabaseAdmin
+            .from('watchlist')
+            .delete()
+            .eq('user_id', userId)
+            .eq('anime_id', animeId);
+          deletedOnSupabaseCount++;
+        } else if (!isNumeric && anilistToken) {
+          // Local title not yet on AniList -> Push to AniList
+          try {
+            const isManga = supItem.media_type === 'manga' || supItem.media_type === 'manhwa';
+            const media = await resolveAniListMedia(supItem.anime_title, supItem.anime_id, isManga ? 'MANGA' : 'ANIME');
+            if (media?.id && !anilistEntriesMap.has(String(media.id))) {
+              const mutation = `
+                mutation ($mediaId: Int, $status: MediaListStatus, $progress: Int, $score: Float) {
+                  SaveMediaListEntry (mediaId: $mediaId, status: $status, progress: $progress, score: $score) {
+                    id
+                  }
+                }
+              `;
+              await fetch('https://graphql.anilist.co', {
+                method: 'POST',
+                headers: {
+                  'Content-Type': 'application/json',
+                  'Authorization': `Bearer ${anilistToken}`,
+                },
+                body: JSON.stringify({
+                  query: mutation,
+                  variables: {
+                    mediaId: media.id,
+                    status: mapToAniListStatus(supItem.status),
+                    progress: supItem.last_episode_number || supItem.chapters_read || 0,
+                    score: supItem.score ? Number(supItem.score) : undefined,
+                  }
+                })
+              });
+              pushedCount++;
+            }
+          } catch {}
         }
       }
 
@@ -433,6 +610,8 @@ export async function POST(req: Request) {
         action: 'two-way',
         pulledCount,
         pushedCount,
+        deletedOnAniListCount,
+        deletedOnSupabaseCount,
         hasPushToken: !!anilistToken,
       });
     }

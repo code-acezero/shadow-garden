@@ -20,8 +20,8 @@ export async function generateMetadata(
 
   if (!data) {
     return {
-      title: 'Watch Chinese Donghua Online Free HD | Shadow Garden',
-      description: 'Stream popular Chinese anime (Donghua) with English subtitles in 1080p HD on Shadow Garden.',
+      title: 'Watch Chinese Donghua Online Free HD | Kagemi',
+      description: 'Stream popular Chinese anime (Donghua) with English subtitles in 1080p HD on Kagemi.',
     };
   }
 
@@ -33,9 +33,9 @@ export async function generateMetadata(
     .trim();
 
   const seoTitle = `Watch ${cleanTitle}${epText} (Chinese Donghua) English Sub Online Free HD`;
-  const seoDesc = `Watch ${cleanTitle}${epText} Chinese Donghua online for free with English Subtitles in 1080p HD on Shadow Garden. Stream all episodes with multiple fast servers. ${cleanDesc}...`;
-  const canonicalUrl = `https://shadow-garden.site/donghua-watch/${encodeURIComponent(id)}${ep ? `?ep=${ep}` : ''}`;
-  const posterUrl = data.detail.image || 'https://shadow-garden.site/og-image.png';
+  const seoDesc = `Watch ${cleanTitle}${epText} Chinese Donghua online for free with English Subtitles in 1080p HD on Kagemi. Stream all episodes with multiple fast servers. ${cleanDesc}...`;
+  const canonicalUrl = `https://kagemi.site/donghua-watch/${encodeURIComponent(id)}${ep ? `?ep=${ep}` : ''}`;
+  const posterUrl = data.detail.image || 'https://kagemi.site/og-image.png';
 
   const keywords = [
     `watch ${cleanTitle} online`,
@@ -46,7 +46,7 @@ export async function generateMetadata(
     `stream ${cleanTitle} hd`,
     'watch donghua free online',
     'chinese anime with english sub',
-    'shadow garden donghua'
+    'kagemi donghua'
   ];
 
   return {
@@ -68,10 +68,10 @@ export async function generateMetadata(
       },
     },
     openGraph: {
-      title: `Watch ${cleanTitle}${epText} English Sub (Donghua) - Shadow Garden`,
+      title: `Watch ${cleanTitle}${epText} English Sub (Donghua) - Kagemi`,
       description: seoDesc,
       url: canonicalUrl,
-      siteName: 'Shadow Garden',
+      siteName: 'Kagemi',
       images: [{ url: posterUrl, width: 1200, height: 630, alt: `Watch ${cleanTitle} Donghua` }],
       type: 'video.other',
     },
@@ -80,7 +80,7 @@ export async function generateMetadata(
       title: seoTitle,
       description: seoDesc,
       images: [posterUrl],
-      creator: '@ShadowGarden',
+      creator: '@KagemiAnime',
     },
   };
 }
@@ -93,11 +93,11 @@ export default async function Page(props: Props) {
 
   const data = await dpi.getInfo(id).catch(() => null);
   const cleanTitle = data?.detail?.title || 'Donghua';
-  const cleanDesc = (data?.detail?.synopsis || `Watch ${cleanTitle} on Shadow Garden.`)
+  const cleanDesc = (data?.detail?.synopsis || `Watch ${cleanTitle} on Kagemi.`)
     .replace(/<[^>]*>?/gm, '')
     .slice(0, 250);
-  const posterUrl = data?.detail?.image || 'https://shadow-garden.site/og-image.png';
-  const pageUrl = `https://shadow-garden.site/donghua-watch/${encodeURIComponent(id)}`;
+  const posterUrl = data?.detail?.image || 'https://kagemi.site/og-image.png';
+  const pageUrl = `https://kagemi.site/donghua-watch/${encodeURIComponent(id)}`;
 
   const jsonLd = {
     "@context": "https://schema.org",
@@ -121,7 +121,7 @@ export default async function Page(props: Props) {
       {
         "@type": "VideoObject",
         "name": `Watch ${cleanTitle}${ep ? ` Episode ${ep}` : ''} English Sub`,
-        "description": `Stream ${cleanTitle} Chinese Donghua online free with English subtitles on Shadow Garden.`,
+        "description": `Stream ${cleanTitle} Chinese Donghua online free with English subtitles on Kagemi.`,
         "thumbnailUrl": [posterUrl],
         "uploadDate": new Date().toISOString(),
         "contentUrl": pageUrl,

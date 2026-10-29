@@ -149,7 +149,7 @@ export default function AdsterraNativeBanner({
                 Ultra HD Anime Stream Network &amp; Partner Releases
               </p>
               <p className="text-[10px] text-zinc-400 truncate">
-                Support Shadow Garden free servers &amp; explore sponsored anime content
+                Support Kagemi free servers &amp; explore sponsored anime content
               </p>
             </div>
           </div>

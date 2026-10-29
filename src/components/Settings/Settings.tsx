@@ -9,9 +9,10 @@ import {
   HardDrive, Mail, Key, Crown, RefreshCw,
   SkipForward, FastForward, ChevronDown, Check, X,
   Volume2, Settings as SettingsIcon,
-  LayoutTemplate, Brush, Sun, Moon, Sparkles, Sidebar,
+  LayoutTemplate, Brush, Sun, Moon, Sidebar,
   Mic2, Radio, Menu, ArrowLeft, ChevronRight, Zap,
-  Globe, Pause, PanelLeftClose, PanelLeftOpen, AudioWaveform, Upload, CheckCircle, ShieldCheck
+  Globe, Pause, PanelLeftClose, PanelLeftOpen, AudioWaveform, Upload, CheckCircle, ShieldCheck,
+  PawPrint, SlidersHorizontal
 } from 'lucide-react';
 import Link from 'next/link';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -23,11 +24,16 @@ import { toast } from 'sonner';
 import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
 import { cn } from '@/lib/utils';
-import AnimePlayer from '@/components/Player/AnimePlayer';
+import { MASCOT_ROSTER, STYLE_OPTIONS, DEFAULT_CONFIG, MascotConfig } from '@/components/Mascot/MascotPerch';
+import PageMascot from '@/components/Mascot/PageMascot';
+import OmniPlayer, { OmniPlayer as AnimePlayer } from '@/components/Player/OmniPlayer';
 import Footer from '@/components/Anime/Footer';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { refreshVoiceCache, getVoiceSettings } from '@/lib/voice';
 import AvatarSelectorModal, { getRandomAvatar } from '@/components/User/AvatarSelectorModal';
+import { playTapSound } from '@/lib/audioManager';
+import { pullFromAniList, twoWaySync } from '@/lib/anilistSync';
+import { PuffedAnilist, PuffedRefresh, PuffedBookmark, PuffedPlay, PuffedCheck } from '@/components/Watchlist/PuffedIcons';
 
 // --- CONSTANTS ---
 const THEME_COLORS = [
@@ -53,6 +59,8 @@ const APP_FONTS: Record<string, string> = {
 
 const MENU_ITEMS = [
   { id: 'general', label: 'Adventurer Card', icon: Fingerprint },
+  { id: 'mascot', label: 'Pet Companion', icon: PawPrint },
+  { id: 'sound', label: 'Sound & Haptics', icon: Volume2 },
   { id: 'player', label: 'Crystal Ball', icon: Play },
   { id: 'whisper', label: 'Telepathy', icon: Mic2 },
   { id: 'notifications', label: 'Missives', icon: Bell },
@@ -96,16 +104,49 @@ export default function Settings() {
   const [playingVoice, setPlayingVoice] = useState<string | null>(null);
   const [subStyle, setSubStyle] = useState({ color: 'White', size: 'Normal', bg: 'Outline', font: 'Sans', lift: 'Middle' });
   const [dummySubUrl, setDummySubUrl] = useState('');
+
+  // Pet Mascot Configuration State
+  const [mascotConfig, setMascotConfig] = useState<MascotConfig>(DEFAULT_CONFIG);
+
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem('shadow_mascot_config');
+      if (saved) {
+        setMascotConfig(prev => ({ ...prev, ...JSON.parse(saved) }));
+      }
+    } catch {}
+  }, []);
+
+  const updateMascotConfig = (patch: Partial<MascotConfig>) => {
+    setMascotConfig(prev => {
+      const next = { ...prev, ...patch };
+      try {
+        localStorage.setItem('shadow_mascot_config', JSON.stringify(next));
+        window.dispatchEvent(new CustomEvent('shadow_mascot_config_changed', { detail: next }));
+      } catch {}
+      return next;
+    });
+    notifyWhisper("Pet Companion Updated!", "success");
+  };
   
+  const isAuthenticated = !!(profile && profile.id && !profile.is_guest);
+
   const [anilistUsername, setAnilistUsername] = useState('');
-  const [isSyncing, setIsSyncing] = useState(false);
+  const [hasAnilistToken, setHasAnilistToken] = useState(false);
+  const [syncActionType, setSyncActionType] = useState<'two-way' | 'pull-override' | 'push-override' | 'pull-guest' | null>(null);
+  const [syncStatusMsg, setSyncStatusMsg] = useState<string | null>(null);
+
+  useEffect(() => {
+    const savedUser = profile?.settings?.anilist_username || localStorage.getItem('shadow_anilist_username') || localStorage.getItem('anilist_username') || '';
+    const savedToken = profile?.settings?.anilist_token || localStorage.getItem('shadow_anilist_token') || localStorage.getItem('anilist_token') || '';
+    if (savedUser) setAnilistUsername(savedUser);
+    setHasAnilistToken(!!savedToken && isAuthenticated);
+  }, [profile, isAuthenticated]);
   
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const audioContextRef = useRef<AudioContext | null>(null);
   const contentRef = useRef<HTMLDivElement>(null);
   const router = useRouter();
-
-  const isAuthenticated = !!(profile && profile.id && !profile.is_guest);
 
   // Traveller profile state (localStorage-backed for unauthenticated users)
   const [travellerName, setTravellerName] = useState('');
@@ -355,80 +396,128 @@ export default function Settings() {
     }
   };
 
-  const handleAniListSync = async () => {
-    if (!anilistUsername.trim()) {
-      notifyWhisper('Enter a valid AniList username', 'error');
+  const handleDirectBind = () => {
+    if (!isAuthenticated) {
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent('shadow-open-auth', { detail: { view: 'ENTER' } }));
+      }
       return;
     }
-    setIsSyncing(true);
+    const clientId = '46235';
     try {
-      const query = `
-        query ($username: String) {
-          MediaListCollection(userName: $username, type: ANIME) {
-            lists {
-              entries {
-                status
-                progress
-                score
-                media {
-                  id
-                  title { romaji english }
-                  coverImage { large }
-                }
-              }
-            }
-          }
-        }
-      `;
-
-      const res = await fetch('https://graphql.anilist.co', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ query, variables: { username: anilistUsername } }),
-      });
-
-      const json = await res.json();
-      const lists = json?.data?.MediaListCollection?.lists || [];
-      let importedCount = 0;
-
-      for (const list of lists) {
-        for (const entry of list.entries) {
-          const animeId = `anilist-${entry.media.id}`;
-          const title = entry.media.title.english || entry.media.title.romaji;
-          const image = entry.media.coverImage.large;
-          const statusMap: Record<string, string> = {
-            CURRENT: 'watching',
-            COMPLETED: 'completed',
-            PAUSED: 'on_hold',
-            DROPPED: 'dropped',
-            PLANNING: 'plan_to_watch',
-          };
-
-          if (profile && supabase) {
-            await supabase.from('watchlist').upsert(
-              {
-                user_id: profile.id,
-                anime_id: animeId,
-                anime_title: title,
-                anime_image: image,
-                status: statusMap[entry.status] || 'watching',
-                last_episode_number: entry.progress || 1,
-                media_type: 'anime',
-                updated_at: new Date().toISOString(),
-              },
-              { onConflict: 'user_id, anime_id' }
-            );
-            importedCount++;
-          }
-        }
+      localStorage.setItem('anilist_auth_redirect', '/settings');
+      if (anilistUsername.trim()) {
+        localStorage.setItem('shadow_anilist_username', anilistUsername.trim());
       }
+    } catch {}
+    window.location.href = `https://anilist.co/api/v2/oauth/authorize?client_id=${clientId}&response_type=code`;
+  };
 
-      notifyWhisper(`Successfully imported ${importedCount} items from AniList!`, 'success');
+  const handleUnbind = async () => {
+    if (profile?.id && supabase) {
+      try {
+        const { data: curr } = await supabase.from('profiles').select('settings').eq('id', profile.id).single();
+        const updated = { ...(curr?.settings || {}) };
+        delete updated.anilist_token;
+        delete updated.anilist_username;
+        delete updated.anilist_connected_at;
+        await supabase.from('profiles').update({ settings: updated }).eq('id', profile.id);
+      } catch {}
+    }
+    try {
+      localStorage.removeItem('anilist_token');
+      localStorage.removeItem('shadow_anilist_token');
+      localStorage.removeItem('anilist_username');
+      localStorage.removeItem('shadow_anilist_username');
+    } catch {}
+    setHasAnilistToken(false);
+    setAnilistUsername('');
+    notifyWhisper('AniList Account Disconnected', 'success');
+  };
+
+  const handleSaveAnilistUsername = () => {
+    const clean = anilistUsername.trim();
+    if (!clean) return notifyWhisper('Please enter a username', 'error');
+    try {
+      localStorage.setItem('shadow_anilist_username', clean);
+      localStorage.setItem('anilist_username', clean);
+      if (profile?.id && supabase) {
+        supabase.from('profiles').select('settings').eq('id', profile.id).single().then((res: any) => {
+          const updated = { ...(res?.data?.settings || {}), anilist_username: clean };
+          supabase.from('profiles').update({ settings: updated }).eq('id', profile.id);
+        });
+      }
+      notifyWhisper('AniList Username Saved', 'success');
+    } catch (e: any) {
+      notifyWhisper(e.message || 'Failed to save', 'error');
+    }
+  };
+
+  const handleTwoWaySync = async () => {
+    if (!isAuthenticated) {
+      return notifyWhisper('Sign in to Kagemi to use 2-way cloud synchronization.', 'error');
+    }
+    const targetUser = anilistUsername.trim();
+    if (!targetUser) {
+      return notifyWhisper('Enter or bind your AniList username first', 'error');
+    }
+    setSyncActionType('two-way');
+    setSyncStatusMsg('Running 2-way synchronization (timestamp merge & deletion mirroring)...');
+    try {
+      const token = profile?.settings?.anilist_token || localStorage.getItem('shadow_anilist_token') || localStorage.getItem('anilist_token') || undefined;
+      const res = await twoWaySync(profile.id, targetUser, token, { override: undefined });
+      notifyWhisper(`2-Way Sync Complete: ${res.pulledCount || 0} pulled · ${res.pushedCount || 0} pushed`, 'success');
     } catch (err: any) {
-      console.error('AniList Sync Error:', err);
-      notifyWhisper('Could not sync AniList profile. Verify username.', 'error');
+      notifyWhisper(err.message || '2-Way Sync failed', 'error');
     } finally {
-      setIsSyncing(false);
+      setSyncActionType(null);
+      setSyncStatusMsg(null);
+    }
+  };
+
+  const handlePullOverride = async () => {
+    const targetUser = anilistUsername.trim();
+    if (!targetUser) {
+      return notifyWhisper('Enter your AniList username first', 'error');
+    }
+    setSyncActionType('pull-override');
+    setSyncStatusMsg(`Pulling & overriding vault with @${targetUser}'s AniList library...`);
+    try {
+      const token = profile?.settings?.anilist_token || localStorage.getItem('shadow_anilist_token') || localStorage.getItem('anilist_token') || undefined;
+      if (isAuthenticated && profile?.id) {
+        const res = await twoWaySync(profile.id, targetUser, token, { override: 'supabase' });
+        notifyWhisper(`Vault Overridden from AniList: ${res.pulledCount || 0} entries updated`, 'success');
+      } else {
+        const res = await pullFromAniList(targetUser);
+        notifyWhisper(`Imported ${res.totalAnime} anime and ${res.totalManga} manga into local vault`, 'success');
+      }
+    } catch (err: any) {
+      notifyWhisper(err.message || 'Pull Override failed', 'error');
+    } finally {
+      setSyncActionType(null);
+      setSyncStatusMsg(null);
+    }
+  };
+
+  const handlePushOverride = async () => {
+    if (!isAuthenticated) {
+      return notifyWhisper('Sign in and bind AniList to push and override AniList.', 'error');
+    }
+    const targetUser = anilistUsername.trim();
+    if (!targetUser) {
+      return notifyWhisper('Enter or bind your AniList username first', 'error');
+    }
+    setSyncActionType('push-override');
+    setSyncStatusMsg('Pushing local vault to overwrite AniList...');
+    try {
+      const token = profile?.settings?.anilist_token || localStorage.getItem('shadow_anilist_token') || localStorage.getItem('anilist_token') || undefined;
+      const res = await twoWaySync(profile.id, targetUser, token, { override: 'anilist' });
+      notifyWhisper(`AniList Overridden: ${res.pushedCount || 0} items pushed`, 'success');
+    } catch (err: any) {
+      notifyWhisper(err.message || 'Push Override failed', 'error');
+    } finally {
+      setSyncActionType(null);
+      setSyncStatusMsg(null);
     }
   };
 
@@ -731,6 +820,330 @@ export default function Settings() {
           </div>
       );
 
+      case 'mascot': {
+        const char = MASCOT_ROSTER.find(c => c.id === mascotConfig.characterId) || MASCOT_ROSTER[0];
+        let filePrefix = char.id;
+        if (char.supportedStyles && char.supportedStyles.includes(mascotConfig.styleId)) {
+          const styleMeta = STYLE_OPTIONS.find(s => s.id === mascotConfig.styleId);
+          if (styleMeta && styleMeta.suffix) {
+            filePrefix = `${char.id}${styleMeta.suffix}`;
+          }
+        }
+        const directionsPath = `/mascots/${filePrefix}-directions.webp`;
+        const reactionsPath = `/mascots/${filePrefix}-reactions.webp`;
+
+        return (
+          <div className="space-y-8 animate-in fade-in slide-in-from-right-4 duration-500 w-full">
+            <SectionHeader 
+              title="Pet Companion" 
+              desc="Customize your interactive pet mascot that perches and tracks your cursor across Kagemi" 
+              font={currentFont} 
+            />
+
+            {/* LIVE INTERACTIVE PREVIEW CARD */}
+            <div className="relative overflow-hidden rounded-[32px] border border-white/10 bg-[#0f0f0f] shadow-2xl p-6 sm:p-8">
+              <div className="absolute inset-0 bg-gradient-to-r from-primary/10 via-transparent to-transparent opacity-40 pointer-events-none" />
+              <div className="relative z-10 flex flex-col sm:flex-row items-center gap-6 sm:gap-8">
+                {/* Live Pet Animation */}
+                <div className="relative w-28 h-28 rounded-3xl bg-black/60 border-2 border-white/10 flex items-center justify-center p-3 shadow-[0_0_30px_rgba(0,0,0,0.8)] group shrink-0">
+                  <PageMascot
+                    directions={directionsPath}
+                    reactions={reactionsPath}
+                    size={72}
+                    label={char.name}
+                    enableSound={mascotConfig.soundEnabled}
+                    className="cursor-pointer transition-transform hover:scale-105 active:scale-95"
+                  />
+                  <span className="absolute -bottom-2 px-2 py-0.5 rounded-full bg-white/10 backdrop-blur-md border border-white/15 text-[9px] font-mono text-zinc-300">
+                    Tap to Boop
+                  </span>
+                </div>
+
+                {/* Identity & Status */}
+                <div className="flex-1 text-center sm:text-left space-y-2">
+                  <div className="flex items-center justify-center sm:justify-start gap-2">
+                    <span className="text-2xl leading-none">{char.icon}</span>
+                    <h3 className="text-2xl font-black text-white tracking-tight">{char.name}</h3>
+                    <span className="px-2.5 py-0.5 rounded-full bg-primary/20 border border-primary/40 text-primary text-[10px] font-black uppercase tracking-wider">
+                      {char.title}
+                    </span>
+                  </div>
+                  <p className="text-xs text-zinc-400 italic max-w-md">
+                    &ldquo;{char.quotes[0]}&rdquo;
+                  </p>
+                  <div className="flex items-center justify-center sm:justify-start gap-3 pt-1">
+                    <span className={`px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider border ${
+                      !mascotConfig.hidden 
+                        ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-400' 
+                        : 'bg-zinc-800 border-zinc-700 text-zinc-500'
+                    }`}>
+                      {!mascotConfig.hidden ? 'Visible on Search Bar' : 'Mascot Hidden'}
+                    </span>
+                    <span className="text-[11px] text-zinc-500">
+                      {mascotConfig.soundEnabled ? '🔊 Sound Enabled' : '🔇 Muted'}
+                    </span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* CHARACTER SELECTION GRID */}
+            <div className="bg-[#0f0f0f] rounded-[32px] p-6 sm:p-8 border border-white/5 space-y-6 shadow-lg">
+              <h3 className="text-xs font-black text-zinc-400 uppercase tracking-widest flex items-center gap-2">
+                <PawPrint size={14} className="text-primary" /> Choose Companion Character
+              </h3>
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                {MASCOT_ROSTER.map((c) => {
+                  const isSelected = c.id === mascotConfig.characterId;
+                  return (
+                    <button
+                      key={c.id}
+                      onClick={() => updateMascotConfig({ characterId: c.id })}
+                      className={`p-4 rounded-2xl border text-left transition-all flex flex-col justify-between gap-3 group cursor-pointer ${
+                        isSelected 
+                          ? 'bg-primary/15 border-primary shadow-[0_0_20px_rgba(var(--primary-color),0.2)]' 
+                          : 'bg-black/40 border-white/5 hover:border-white/15 hover:bg-white/[0.03]'
+                      }`}
+                    >
+                      <div className="flex items-center justify-between">
+                        <span className="text-3xl group-hover:scale-110 transition-transform">{c.icon}</span>
+                        {isSelected && (
+                          <span className="w-5 h-5 rounded-full bg-primary text-black flex items-center justify-center text-xs font-bold">
+                            ✓
+                          </span>
+                        )}
+                      </div>
+                      <div>
+                        <h4 className="text-sm font-bold text-white">{c.name}</h4>
+                        <p className="text-[11px] text-zinc-400">{c.title}</p>
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* ART STYLE CHOOSER */}
+            {char.supportedStyles && char.supportedStyles.length > 0 && (
+              <div className="bg-[#0f0f0f] rounded-[32px] p-6 sm:p-8 border border-white/5 space-y-6 shadow-lg">
+                <h3 className="text-xs font-black text-zinc-400 uppercase tracking-widest flex items-center gap-2">
+                  <Palette size={14} className="text-primary" /> Character Art Style
+                </h3>
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                  {STYLE_OPTIONS.filter(s => char.supportedStyles?.includes(s.id)).map(st => {
+                    const isSelected = mascotConfig.styleId === st.id;
+                    return (
+                      <button
+                        key={st.id}
+                        onClick={() => updateMascotConfig({ styleId: st.id })}
+                        className={`p-3.5 rounded-2xl border text-left transition-all cursor-pointer ${
+                          isSelected
+                            ? 'bg-primary/15 border-primary text-white font-bold'
+                            : 'bg-black/40 border-white/5 text-zinc-400 hover:text-white hover:border-white/15'
+                        }`}
+                      >
+                        <p className="text-xs font-bold">{st.label}</p>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
+            {/* TOGGLES & BEHAVIOR */}
+            <div className="bg-[#0f0f0f] rounded-[32px] p-6 sm:p-8 border border-white/5 space-y-4 shadow-lg">
+              <h3 className="text-xs font-black text-zinc-400 uppercase tracking-widest flex items-center gap-2">
+                <SlidersHorizontal size={14} className="text-primary" /> Companion Preferences
+              </h3>
+              
+              <ToggleRow 
+                title="Display Pet Companion" 
+                desc="Show your pet companion perched inside the top search bar across all pages" 
+                checked={!mascotConfig.hidden} 
+                onChange={(visible: boolean) => updateMascotConfig({ hidden: !visible })} 
+              />
+
+              <ToggleRow 
+                title="Boop Sound Effects" 
+                desc="Play cute chimes and audio reactions when clicking and interacting with your pet" 
+                checked={mascotConfig.soundEnabled} 
+                onChange={(sound: boolean) => updateMascotConfig({ soundEnabled: sound })} 
+              />
+            </div>
+          </div>
+        );
+      }
+
+      case 'sound': return (
+          <div className="space-y-8 animate-in fade-in slide-in-from-right-4 duration-500 w-full">
+            <SectionHeader title="Tactile Acoustics" desc="Configure UI tap sounds, volume, and haptic feedback" font={currentFont} />
+
+            {/* MASTER TOGGLE CARD */}
+            <div className="bg-[#0f0f0f] rounded-[32px] p-8 border border-white/5 space-y-6 shadow-lg">
+                <div className="flex items-center justify-between">
+                    <h3 className="text-xs font-black text-zinc-500 uppercase tracking-widest flex items-center gap-2">
+                        <Volume2 size={14} className="text-primary"/> Tap Audio Feedback
+                    </h3>
+                    <div className={`px-4 py-1.5 rounded-full text-[10px] font-black border uppercase tracking-widest ${settings.tapSound !== false ? 'bg-primary/20 border-primary text-primary shadow-[0_0_15px_var(--primary-color)]' : 'bg-zinc-900 border-zinc-800 text-zinc-600'}`}>
+                        {settings.tapSound !== false ? 'Active' : 'Muted'}
+                    </div>
+                </div>
+
+                <ToggleRow 
+                    title="Enable UI Tap Sounds" 
+                    desc="Play tactile, satisfying acoustic clicks when tapping buttons, cards, tabs, and heroes across the platform" 
+                    checked={settings.tapSound !== false} 
+                    onChange={(v: boolean) => {
+                        updateSetting('tapSound', v);
+                        if (v) playTapSound(settings.tapSoundEffect || 'jelly', 0.4);
+                    }} 
+                />
+
+                {settings.tapSound !== false && (
+                    <div className="space-y-4 pt-4 border-t border-white/5">
+                        <div className="flex justify-between text-[10px] font-bold text-zinc-500 uppercase ml-1">
+                            <span>Tap Sound Volume</span>
+                            <span>{Math.round((settings.tapSoundVolume ?? 0.35) * 100)}%</span>
+                        </div>
+                        <input 
+                            type="range" 
+                            min="0.05" 
+                            max="1" 
+                            step="0.05" 
+                            value={settings.tapSoundVolume ?? 0.35} 
+                            onChange={(e) => {
+                                const val = parseFloat(e.target.value);
+                                updateSetting('tapSoundVolume', val);
+                                playTapSound(settings.tapSoundEffect || 'jelly', val);
+                            }} 
+                            className="w-full accent-primary h-2 bg-zinc-800 rounded-lg appearance-none cursor-pointer hover:bg-zinc-700 transition-colors" 
+                        />
+                    </div>
+                )}
+            </div>
+
+            {/* SOUND PRESET CHOOSER */}
+            {settings.tapSound !== false && (
+                <div className="space-y-6">
+                    <h3 className="text-xs font-black text-zinc-500 uppercase tracking-widest px-2 flex items-center gap-2">
+                        <AudioWaveform size={14} className="text-primary"/> Popular Tap Sound Effects
+                    </h3>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                        {[
+                            {
+                                id: 'jelly',
+                                name: 'Squishy Jelly',
+                                desc: 'Viscous, bubbly gummy tap that feels like poking a soft jiggly jelly water balloon',
+                                tag: 'Default • Squishy & Cute',
+                            },
+                            {
+                                id: 'switch',
+                                name: 'Nintendo Switch Snap',
+                                desc: 'Iconic crisp, snappy console click with clean rounded body',
+                                tag: 'Snappy Click',
+                            },
+                            {
+                                id: 'taptic',
+                                name: 'Apple Taptic Pulse',
+                                desc: 'Subtle, ultra-clean mechanical haptic pulse with low resonance',
+                                tag: 'Subtle & Sleek',
+                            },
+                            {
+                                id: 'bubble',
+                                name: 'Marshmallow Bubble',
+                                desc: 'Soft, pillowy squishy bubble pop with lowpass air cushion',
+                                tag: 'Soft & Cute',
+                            },
+                            {
+                                id: 'pop',
+                                name: 'Playful Pop',
+                                desc: 'Bouncy, cheerful upward sweep used in modern chat apps',
+                                tag: 'Lively',
+                            },
+                            {
+                                id: 'wood',
+                                name: 'Gentle Wood Tap',
+                                desc: 'Organic acoustic marimba block click with warm wooden decay',
+                                tag: 'Natural',
+                            },
+                        ].map((effect) => {
+                            const isSelected = (settings.tapSoundEffect || 'jelly') === effect.id;
+                            return (
+                                <div
+                                    key={effect.id}
+                                    onClick={() => {
+                                        updateSetting('tapSoundEffect', effect.id);
+                                        playTapSound(effect.id, settings.tapSoundVolume ?? 0.35);
+                                    }}
+                                    className={cn(
+                                        "relative p-5 rounded-[24px] border-[2px] transition-all cursor-pointer overflow-hidden group hover:scale-[1.02] active:scale-95 flex flex-col justify-between gap-4",
+                                        isSelected 
+                                            ? 'bg-primary/10 border-primary shadow-[0_0_20px_rgba(220,38,38,0.15)]' 
+                                            : 'bg-[#0f0f0f] border-white/5 hover:border-white/20'
+                                    )}
+                                >
+                                    <div className="flex justify-between items-start">
+                                        <div className="flex items-center gap-3">
+                                            <div className={cn(
+                                                "w-10 h-10 rounded-full flex items-center justify-center transition-colors border",
+                                                isSelected ? 'bg-primary text-white border-primary shadow-lg' : 'bg-zinc-900 text-zinc-500 border-white/5 group-hover:border-white/10'
+                                            )}>
+                                                <Speaker size={18} />
+                                            </div>
+                                            <div>
+                                                <h4 className={cn("text-sm font-bold", isSelected ? 'text-white' : 'text-zinc-300')}>{effect.name}</h4>
+                                                <span className="text-[9px] uppercase tracking-wider font-semibold text-primary">{effect.tag}</span>
+                                            </div>
+                                        </div>
+                                        {isSelected && (
+                                            <div className="bg-primary text-white rounded-full p-1 shadow-lg">
+                                                <Check size={12} strokeWidth={4} />
+                                            </div>
+                                        )}
+                                    </div>
+
+                                    <p className="text-xs text-zinc-400 line-clamp-2 leading-relaxed">
+                                        {effect.desc}
+                                    </p>
+
+                                    <div className="flex gap-2 mt-1">
+                                        <Button
+                                            size="sm"
+                                            variant="outline"
+                                            onClick={(e) => {
+                                                e.stopPropagation();
+                                                playTapSound(effect.id, settings.tapSoundVolume ?? 0.4);
+                                            }}
+                                            className="h-8 flex-1 rounded-full text-[10px] font-bold uppercase tracking-widest border-white/10 hover:bg-white/10 hover:text-white transition-all flex items-center justify-center gap-2"
+                                        >
+                                            <Play size={10} /> Preview
+                                        </Button>
+                                    </div>
+                                </div>
+                            );
+                        })}
+                    </div>
+
+                    {/* LIVE INTERACTIVE TEST PAD */}
+                    <div className="bg-[#0f0f0f] rounded-[32px] p-8 border border-white/5 shadow-lg flex flex-col items-center justify-center text-center gap-4 mt-6">
+                        <div className="space-y-1">
+                            <h4 className="text-sm font-bold text-white uppercase tracking-wider">Tactile Test Pad</h4>
+                            <p className="text-xs text-zinc-500">Tap below rapidly to feel how your selected tap sound interacts in real time</p>
+                        </div>
+                        <button
+                            onClick={() => playTapSound(settings.tapSoundEffect || 'jelly', settings.tapSoundVolume ?? 0.35)}
+                            className="px-8 py-5 rounded-2xl bg-gradient-to-r from-primary-600/30 via-primary-500/20 to-primary-600/30 border border-primary-500/40 text-white font-bold text-sm tracking-widest uppercase hover:bg-primary-600 hover:scale-105 active:scale-90 transition-all duration-150 shadow-[0_0_25px_var(--primary-color)] flex items-center gap-3 select-none"
+                        >
+                            <Volume2 size={16} className="text-primary-300" />
+                            Tap Me to Test!
+                        </button>
+                    </div>
+                </div>
+            )}
+          </div>
+      );
+
       case 'whisper': return (
           <div className="space-y-8 animate-in fade-in slide-in-from-right-4 duration-500 w-full">
             <SectionHeader title="Telepathy" desc="Configure your AI system voices" font={currentFont} />
@@ -1023,7 +1436,7 @@ export default function Settings() {
       );
 
       case 'notifications': return (
-            <div className="space-y-8 animate-in fade-in slide-in-from-right-4 duration-500 w-full"><SectionHeader title="Missives" desc="Control incoming signals" font={currentFont} /><div className="bg-[#0f0f0f] rounded-[32px] p-8 border border-white/5 space-y-6 shadow-lg"><h3 className="text-xs font-black text-zinc-500 uppercase tracking-widest flex items-center gap-2"><Bell size={14} className="text-primary"/> Alert Channels</h3><div className="space-y-3"><ToggleRow title="Push Notifications" desc="Browser alerts for new content" checked={settings.pushNotifs} onChange={(v: boolean) => { updateSetting('pushNotifs', v); if (v && typeof window !== 'undefined' && 'Notification' in window) { Notification.requestPermission().then(permission => { if (permission === 'granted') { new Notification('Shadow Garden', { body: 'Push notifications are now active!', icon: '/icon.png' }); } }); } }} /><ToggleRow title="Email Digests" desc="Weekly summary of activity" checked={settings.emailNotifs} onChange={(v: boolean) => updateSetting('emailNotifs', v)} /><ToggleRow title="Episode Alerts" desc="Notify when watchlist items update" checked={settings.newEpAlerts} onChange={(v: boolean) => updateSetting('newEpAlerts', v)} /><ToggleRow title="Guild Activity" desc="Replies and friend requests" checked={settings.communityAlerts} onChange={(v: boolean) => updateSetting('communityAlerts', v)} /><ToggleRow title="System Broadcasts" desc="Important updates from the Guild" checked={settings.systemAlerts} onChange={(v: boolean) => updateSetting('systemAlerts', v)} /></div></div></div>
+            <div className="space-y-8 animate-in fade-in slide-in-from-right-4 duration-500 w-full"><SectionHeader title="Missives" desc="Control incoming signals" font={currentFont} /><div className="bg-[#0f0f0f] rounded-[32px] p-8 border border-white/5 space-y-6 shadow-lg"><h3 className="text-xs font-black text-zinc-500 uppercase tracking-widest flex items-center gap-2"><Bell size={14} className="text-primary"/> Alert Channels</h3><div className="space-y-3"><ToggleRow title="Push Notifications" desc="Browser alerts for new content" checked={settings.pushNotifs} onChange={(v: boolean) => { updateSetting('pushNotifs', v); if (v && typeof window !== 'undefined' && 'Notification' in window) { Notification.requestPermission().then(permission => { if (permission === 'granted') { new Notification('Kagemi', { body: 'Push notifications are now active!', icon: '/icon.png' }); } }); } }} /><ToggleRow title="Email Digests" desc="Weekly summary of activity" checked={settings.emailNotifs} onChange={(v: boolean) => updateSetting('emailNotifs', v)} /><ToggleRow title="Episode Alerts" desc="Notify when watchlist items update" checked={settings.newEpAlerts} onChange={(v: boolean) => updateSetting('newEpAlerts', v)} /><ToggleRow title="Guild Activity" desc="Replies and friend requests" checked={settings.communityAlerts} onChange={(v: boolean) => updateSetting('communityAlerts', v)} /><ToggleRow title="System Broadcasts" desc="Important updates from the Guild" checked={settings.systemAlerts} onChange={(v: boolean) => updateSetting('systemAlerts', v)} /></div></div></div>
       );
       case 'data': return (
           <div className="space-y-8 animate-in fade-in slide-in-from-right-4 duration-500 w-full">
@@ -1043,35 +1456,170 @@ export default function Settings() {
 
       case 'integrations': return (
           <div className="space-y-8 animate-in fade-in slide-in-from-right-4 duration-500 w-full">
-            <SectionHeader title="Integrations" desc="Sync your progress with external services" font={currentFont} />
+            <SectionHeader title="Integrations & Sync" desc="AniList cloud synchronization, account binding, and library override protocols" font={currentFont} />
+
+            {/* STATUS BANNER */}
+            {syncStatusMsg && (
+              <div className="p-4 rounded-2xl bg-white/5 border border-white/10 flex items-center gap-3 text-xs text-zinc-300 animate-pulse">
+                <PuffedRefresh size={16} className="animate-spin text-white" />
+                <span>{syncStatusMsg}</span>
+              </div>
+            )}
+
+            {/* 1. ANILIST BINDING CARD */}
             <div className="bg-[#0f0f0f] rounded-[32px] p-8 border border-white/5 space-y-6 shadow-lg">
-                <h3 className="text-xs font-black text-zinc-500 uppercase tracking-widest flex items-center gap-2"><Globe size={14} className="text-primary"/> AniList</h3>
-                <div className="flex flex-col md:flex-row items-center justify-between gap-6 p-4 bg-black/40 border border-white/5 rounded-[24px]">
-                    <div className="flex items-center gap-4">
-                        <div className="w-12 h-12 bg-[#02A9FF] rounded-2xl flex items-center justify-center shadow-lg">
-                            <span className="font-black text-white text-xl">AL</span>
-                        </div>
-                        <div>
-                            <h4 className="text-sm font-bold text-white">AniList Sync</h4>
-                            <p className="text-xs text-zinc-500">Import your AniList watch history into your vault.</p>
-                        </div>
+                <div className="flex items-center justify-between flex-wrap gap-4">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-2xl bg-white/5 border border-white/10 flex items-center justify-center text-white">
+                      <PuffedAnilist size={22} />
                     </div>
-                    <div className="flex items-center gap-2 flex-1 md:max-w-[300px]">
-                        <input
-                            type="text"
-                            placeholder="AniList Username"
-                            value={anilistUsername}
-                            onChange={(e) => setAnilistUsername(e.target.value)}
-                            className="w-full bg-black/50 border border-white/10 rounded-xl px-4 py-2 text-xs text-white placeholder-zinc-600 focus:outline-none focus:border-primary-500"
-                        />
-                        <Button 
-                            onClick={handleAniListSync}
-                            disabled={isSyncing || !anilistUsername.trim()}
-                            className="bg-[#02A9FF] hover:bg-[#02A9FF]/80 text-white rounded-xl shadow-[0_0_15px_rgba(2,169,255,0.4)]"
-                        >
-                            {isSyncing ? 'Syncing...' : 'Sync'}
-                        </Button>
+                    <div>
+                      <h3 className="text-sm font-bold text-white tracking-wide">AniList Account Binding</h3>
+                      <p className="text-[11px] text-zinc-500 font-mono">Connect your profile for 2-way live synchronization</p>
                     </div>
+                  </div>
+
+                  {hasAnilistToken ? (
+                    <div className="flex items-center gap-2">
+                      <span className="flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-bold text-zinc-300 bg-white/5 border border-white/10">
+                        <PuffedCheck size={12} /> Bound {anilistUsername ? `@${anilistUsername}` : ''}
+                      </span>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={handleUnbind}
+                        className="h-8 rounded-full border-white/10 bg-white/[0.02] hover:bg-white/10 text-zinc-400 hover:text-white text-[10px] font-bold tracking-wider"
+                      >
+                        Disconnect
+                      </Button>
+                    </div>
+                  ) : (
+                    <span className="px-3 py-1 rounded-full text-[10px] font-bold text-zinc-500 bg-white/[0.02] border border-white/5">
+                      {isAuthenticated ? 'Not Bound' : 'Traveller Mode'}
+                    </span>
+                  )}
+                </div>
+
+                {/* USERNAME & BIND BUTTON */}
+                <div className="flex flex-col sm:flex-row items-center gap-3 pt-2">
+                  <div className="relative flex-1 w-full">
+                    <input
+                      type="text"
+                      placeholder="AniList Username (e.g. codeacezero)"
+                      value={anilistUsername}
+                      onChange={(e) => setAnilistUsername(e.target.value)}
+                      className="w-full bg-black/40 border border-white/5 rounded-2xl px-4 py-3 text-xs text-white placeholder:text-zinc-600 focus:border-white/20 outline-none font-mono"
+                    />
+                  </div>
+
+                  <div className="flex items-center gap-2 w-full sm:w-auto">
+                    <Button
+                      variant="outline"
+                      onClick={handleSaveAnilistUsername}
+                      className="flex-1 sm:flex-none h-11 px-5 rounded-2xl border-white/10 bg-white/5 hover:bg-white/10 text-white text-xs font-bold"
+                    >
+                      Save Username
+                    </Button>
+
+                    {isAuthenticated && !hasAnilistToken && (
+                      <Button
+                        onClick={handleDirectBind}
+                        className="flex-1 sm:flex-none h-11 px-6 rounded-2xl bg-white text-black hover:bg-zinc-200 text-xs font-bold shadow-lg"
+                      >
+                        Direct Bind
+                      </Button>
+                    )}
+                  </div>
+                </div>
+
+                {!isAuthenticated && (
+                  <p className="text-[11px] text-zinc-500 italic">
+                    Traveller Mode: You can pull public libraries with any AniList username. To enable two-way cloud sync and account binding, sign in to Kagemi.
+                  </p>
+                )}
+            </div>
+
+            {/* 2. AUTO-SYNC CONFIGURATION */}
+            <div className="bg-[#0f0f0f] rounded-[32px] p-8 border border-white/5 space-y-6 shadow-lg">
+                <h3 className="text-xs font-black text-zinc-500 uppercase tracking-widest flex items-center gap-2">
+                  <PuffedRefresh size={14} className="text-zinc-400" /> Automatic Background Synchronization
+                </h3>
+                <ToggleRow
+                  title="Auto-Sync Library"
+                  desc="Automatically synchronize watch and read progress between Kagemi Vault and AniList in both directions when browsing or updating progress."
+                  checked={settings.autoSyncAnilist ?? true}
+                  onChange={(v: boolean) => updateSetting('autoSyncAnilist', v)}
+                />
+            </div>
+
+            {/* 3. VAULT SYNCHRONIZATION PROTOCOLS */}
+            <div className="bg-[#0f0f0f] rounded-[32px] p-8 border border-white/5 space-y-6 shadow-lg">
+                <h3 className="text-xs font-black text-zinc-500 uppercase tracking-widest flex items-center gap-2">
+                  <PuffedBookmark size={14} className="text-zinc-400" /> Synchronization & Override Protocols
+                </h3>
+
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  {/* TWO WAY SMART SYNC */}
+                  <div className="p-5 rounded-2xl bg-black/40 border border-white/5 flex flex-col justify-between gap-4">
+                    <div>
+                      <div className="w-8 h-8 rounded-xl bg-white/5 flex items-center justify-center text-white mb-3">
+                        <PuffedRefresh size={16} />
+                      </div>
+                      <h4 className="text-xs font-bold text-white mb-1">Two-Way Smart Sync</h4>
+                      <p className="text-[11px] text-zinc-500 leading-relaxed">
+                        Compares latest timestamps between AniList & Supabase. Syncs recent episode/chapter progress and mirrors deleted items both ways.
+                      </p>
+                    </div>
+                    <Button
+                      disabled={!!syncActionType}
+                      onClick={handleTwoWaySync}
+                      className="w-full h-10 rounded-xl bg-white text-black hover:bg-zinc-200 text-xs font-bold shadow-md"
+                    >
+                      {syncActionType === 'two-way' ? 'Syncing...' : 'Run 2-Way Sync'}
+                    </Button>
+                  </div>
+
+                  {/* PULL OVERRIDE */}
+                  <div className="p-5 rounded-2xl bg-black/40 border border-white/5 flex flex-col justify-between gap-4">
+                    <div>
+                      <div className="w-8 h-8 rounded-xl bg-white/5 flex items-center justify-center text-white mb-3">
+                        <PuffedPlay size={16} />
+                      </div>
+                      <h4 className="text-xs font-bold text-white mb-1">Pull & Override Vault</h4>
+                      <p className="text-[11px] text-zinc-500 leading-relaxed">
+                        Pulls your complete AniList watch and read library, overwriting your Kagemi Vault with AniList data.
+                      </p>
+                    </div>
+                    <Button
+                      variant="outline"
+                      disabled={!!syncActionType}
+                      onClick={handlePullOverride}
+                      className="w-full h-10 rounded-xl border-white/10 bg-white/5 hover:bg-white/10 text-white text-xs font-bold"
+                    >
+                      {syncActionType === 'pull-override' ? 'Pulling...' : 'Override Vault'}
+                    </Button>
+                  </div>
+
+                  {/* PUSH OVERRIDE */}
+                  <div className="p-5 rounded-2xl bg-black/40 border border-white/5 flex flex-col justify-between gap-4">
+                    <div>
+                      <div className="w-8 h-8 rounded-xl bg-white/5 flex items-center justify-center text-white mb-3">
+                        <PuffedBookmark size={16} />
+                      </div>
+                      <h4 className="text-xs font-bold text-white mb-1">Push & Override AniList</h4>
+                      <p className="text-[11px] text-zinc-500 leading-relaxed">
+                        Pushes your complete Kagemi Vault up to AniList, updating and aligning your AniList lists with your vault.
+                      </p>
+                    </div>
+                    <Button
+                      variant="outline"
+                      disabled={!!syncActionType || !isAuthenticated}
+                      onClick={handlePushOverride}
+                      className="w-full h-10 rounded-xl border-white/10 bg-white/5 hover:bg-white/10 text-white text-xs font-bold"
+                    >
+                      {syncActionType === 'push-override' ? 'Pushing...' : 'Override AniList'}
+                    </Button>
+                  </div>
                 </div>
             </div>
           </div>
@@ -1128,7 +1676,7 @@ export default function Settings() {
                             })}
                         </div>
                     </div>
-                    <AnimatePresence>{isSidebarExpanded && (<motion.div initial={{opacity:0}} animate={{opacity:1}} exit={{opacity:0}} className="px-4 py-4 border-t border-white/5 text-center whitespace-nowrap overflow-hidden"><p className="text-[10px] text-zinc-600 font-mono">Shadow Garden v0.1.2 (Beta)</p></motion.div>)}</AnimatePresence>
+                    <AnimatePresence>{isSidebarExpanded && (<motion.div initial={{opacity:0}} animate={{opacity:1}} exit={{opacity:0}} className="px-4 py-4 border-t border-white/5 text-center whitespace-nowrap overflow-hidden"><p className="text-[10px] text-zinc-600 font-mono">Kagemi v0.1.2 (Beta)</p></motion.div>)}</AnimatePresence>
                 </div>
             </motion.div>
 
@@ -1146,7 +1694,7 @@ export default function Settings() {
             <div className="w-full flex flex-col items-center justify-center space-y-4 opacity-70">
                 <div className="flex items-center justify-center gap-3">
                     <img src="/icon.svg" alt="Seal" className="w-8 h-8 opacity-50 filter grayscale" />
-                    <span className="font-minomu tracking-[0.3em] uppercase text-sm">Shadow Garden</span>
+                    <span className="font-minomu tracking-[0.3em] uppercase text-sm">Kagemi</span>
                 </div>
                 <p className="text-[10px] font-mono tracking-widest text-zinc-600 uppercase">System Configured • Secure Connection</p>
             </div>

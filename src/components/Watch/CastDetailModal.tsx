@@ -2,7 +2,11 @@
 
 import React, { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { X, User, Mic, Star, Calendar, MapPin, Heart, Film, ArrowRight, ArrowLeft, Loader2 } from 'lucide-react';
+import { useRouter } from 'next/navigation';
+import { 
+  X, User, Mic, Star, Calendar, MapPin, Heart, Film, 
+  ArrowRight, ArrowLeft, Loader2, Play, Clapperboard, Tv
+} from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 export interface CastModalData {
@@ -14,6 +18,7 @@ export interface CastModalData {
   profileLarge?: string | null;
   department?: string | null;
   popularity?: number | string | null;
+  mediaType?: 'anime' | 'movie' | 'drama' | 'tv';
   // For Anime Character + Voice Actor support
   voiceActor?: {
     id?: string | number;
@@ -29,8 +34,26 @@ interface CastDetailModalProps {
   data: CastModalData | null;
 }
 
+interface MediaNode {
+  id: number | string;
+  title?: {
+    english?: string | null;
+    romaji?: string | null;
+    native?: string | null;
+  } | null;
+  coverImage?: {
+    large?: string | null;
+    medium?: string | null;
+  } | null;
+  format?: string | null;
+  mediaType?: 'movie' | 'tv' | 'drama' | 'anime' | null;
+  startDate?: {
+    year?: number | null;
+  } | null;
+}
+
 interface FullCharacterData {
-  id: number;
+  id: number | string;
   name: {
     full: string;
     native?: string | null;
@@ -53,27 +76,13 @@ interface FullCharacterData {
   media?: {
     edges?: Array<{
       characterRole?: string | null;
-      node: {
-        id: number;
-        title?: {
-          english?: string | null;
-          romaji?: string | null;
-        } | null;
-        coverImage?: {
-          large?: string | null;
-          medium?: string | null;
-        } | null;
-        format?: string | null;
-        startDate?: {
-          year?: number | null;
-        } | null;
-      };
+      node: MediaNode;
     }>;
   };
 }
 
 interface FullVoiceArtistData {
-  id: number;
+  id: number | string;
   name: {
     full: string;
     native?: string | null;
@@ -97,19 +106,30 @@ interface FullVoiceArtistData {
   bloodType?: string | null;
   favourites?: number | null;
   primaryOccupations?: string[] | null;
+  isLiveAction?: boolean;
   characters?: {
     edges?: Array<{
       role?: string | null;
+      mediaType?: 'movie' | 'tv' | 'drama' | 'anime';
       node: {
-        id: number;
+        id: number | string;
         name: {
           full: string;
+          native?: string | null;
+          alternative?: string[] | null;
         };
         image?: {
           large?: string | null;
           medium?: string | null;
         } | null;
+        description?: string | null;
+        gender?: string | null;
+        age?: string | null;
+        bloodType?: string | null;
+        favourites?: number | null;
+        dateOfBirth?: { year?: number | null; month?: number | null; day?: number | null } | null;
       };
+      media?: MediaNode[];
     }>;
   };
 }
@@ -152,6 +172,7 @@ function formatBirthday(dob?: { year?: number | null; month?: number | null; day
 }
 
 export default function CastDetailModal({ isOpen, onClose, data }: CastDetailModalProps) {
+  const router = useRouter();
   const [activeTab, setActiveTab] = useState<'character' | 'voiceArtist'>('character');
   const [loading, setLoading] = useState(false);
   const [fullChar, setFullChar] = useState<FullCharacterData | null>(null);
@@ -172,7 +193,15 @@ export default function CastDetailModal({ isOpen, onClose, data }: CastDetailMod
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [isOpen, onClose]);
 
-  // Fetch complete info when modal opens or character data changes
+  // Determine if this is live-action (movies or drama)
+  const isLiveAction = Boolean(
+    data?.mediaType === 'movie' || 
+    data?.mediaType === 'drama' || 
+    data?.department === 'Acting' ||
+    (!data?.voiceActor && data?.character)
+  );
+
+  // Fetch complete info when modal opens or data changes
   useEffect(() => {
     if (!isOpen || !data) {
       setFullChar(null);
@@ -181,16 +210,21 @@ export default function CastDetailModal({ isOpen, onClose, data }: CastDetailMod
       return;
     }
 
-    setActiveTab('character');
+    // Default tab: if live action actor, default to actor profile; otherwise character
+    const defaultTab = isLiveAction ? 'voiceArtist' : 'character';
+    setActiveTab(defaultTab);
     let isMounted = true;
     setLoading(true);
 
-    const charIdParam = data.id ? `characterId=${encodeURIComponent(data.id)}` : '';
-    const charNameParam = data.name ? `characterName=${encodeURIComponent(data.name)}` : '';
-    const staffIdParam = data.voiceActor?.id ? `staffId=${encodeURIComponent(data.voiceActor.id)}` : '';
-    const staffNameParam = data.voiceActor?.name ? `staffName=${encodeURIComponent(data.voiceActor.name)}` : '';
+    const isMovieOrDramaActor = isLiveAction && !data.voiceActor;
 
-    const params = [charIdParam, charNameParam, staffIdParam, staffNameParam].filter(Boolean).join('&');
+    const charIdParam = data.id && !isMovieOrDramaActor ? `characterId=${encodeURIComponent(data.id)}` : '';
+    const charNameParam = data.character ? `characterName=${encodeURIComponent(data.character)}` : (!isMovieOrDramaActor && data.name ? `characterName=${encodeURIComponent(data.name)}` : '');
+    const staffIdParam = isMovieOrDramaActor && data.id ? `staffId=${encodeURIComponent(data.id)}` : (data.voiceActor?.id ? `staffId=${encodeURIComponent(data.voiceActor.id)}` : '');
+    const staffNameParam = isMovieOrDramaActor && data.name ? `staffName=${encodeURIComponent(data.name)}` : (data.voiceActor?.name ? `staffName=${encodeURIComponent(data.voiceActor.name)}` : '');
+    const mediaTypeParam = data.mediaType ? `mediaType=${encodeURIComponent(data.mediaType)}` : '';
+
+    const params = [charIdParam, charNameParam, staffIdParam, staffNameParam, mediaTypeParam].filter(Boolean).join('&');
 
     fetch(`/api/anime/character-details?${params}`)
       .then(res => res.ok ? res.json() : null)
@@ -202,7 +236,7 @@ export default function CastDetailModal({ isOpen, onClose, data }: CastDetailMod
         }
       })
       .catch(err => {
-        console.warn('[CastDetailModal] Failed to load complete character details:', err);
+        console.warn('[CastDetailModal] Failed to load dossier:', err);
       })
       .finally(() => {
         if (isMounted) setLoading(false);
@@ -211,18 +245,18 @@ export default function CastDetailModal({ isOpen, onClose, data }: CastDetailMod
     return () => {
       isMounted = false;
     };
-  }, [isOpen, data]);
+  }, [isOpen, data, isLiveAction]);
 
   if (!isOpen || !data || !mounted) return null;
 
-  const hasVoiceArtist = Boolean(data.voiceActor?.name || fullStaff?.name?.full);
+  const hasVoiceArtist = Boolean(data.voiceActor?.name || fullStaff?.name?.full || isLiveAction);
   const isCharacterView = activeTab === 'character' || !hasVoiceArtist;
 
   // Character Images & Attributes
   const charImage = fullChar?.image?.large || fullChar?.image?.medium || data.profileLarge || data.image || '/images/placeholder-no-img.jpg';
-  const charName = fullChar?.name?.full || data.name;
+  const charName = fullChar?.name?.full || data.character || data.name;
   const charNativeName = fullChar?.name?.native;
-  const charRole = data.role || 'Main Character';
+  const charRole = data.role || (isLiveAction ? 'Character' : 'Main Character');
   const charFavorites = fullChar?.favourites ?? (typeof data.popularity === 'number' ? data.popularity : null);
   const charBirthday = formatBirthday(fullChar?.dateOfBirth);
   const charAge = fullChar?.age;
@@ -231,17 +265,73 @@ export default function CastDetailModal({ isOpen, onClose, data }: CastDetailMod
   const charParagraphs = cleanAniListDescription(fullChar?.description);
   const charMedia = fullChar?.media?.edges || [];
 
-  // Voice Artist Images & Attributes
-  const vaImage = fullStaff?.image?.large || fullStaff?.image?.medium || data.voiceActor?.poster || '/images/no-avatar.png';
-  const vaName = fullStaff?.name?.full || data.voiceActor?.name || 'Voice Artist';
+  // Voice Artist / Actor Images & Attributes
+  const vaImage = fullStaff?.image?.large || fullStaff?.image?.medium || (isLiveAction ? (data.profileLarge || data.image) : data.voiceActor?.poster) || '/images/no-avatar.png';
+  const vaName = fullStaff?.name?.full || (isLiveAction ? data.name : data.voiceActor?.name) || 'Voice Artist';
   const vaNativeName = fullStaff?.name?.native;
-  const vaLanguage = fullStaff?.languageV2 || data.voiceActor?.language || 'Japanese';
+  const vaLanguage = fullStaff?.languageV2 || (isLiveAction ? (data.department || 'Acting') : (data.voiceActor?.language || 'Japanese'));
   const vaFavorites = fullStaff?.favourites;
   const vaHometown = fullStaff?.homeTown;
   const vaAge = fullStaff?.age;
   const vaBirthday = formatBirthday(fullStaff?.dateOfBirth);
   const vaParagraphs = cleanAniListDescription(fullStaff?.description);
   const vaRoles = fullStaff?.characters?.edges || [];
+
+  // Handler: Click a character role from the voice actor/actor tab
+  const handleSelectRoleCharacter = (edge: any) => {
+    const roleChar = edge.node;
+    const mediaNodes: MediaNode[] = edge.media || [];
+
+    setFullChar({
+      id: roleChar.id,
+      name: roleChar.name || { full: 'Character' },
+      image: roleChar.image || {},
+      description: roleChar.description || null,
+      gender: roleChar.gender,
+      dateOfBirth: roleChar.dateOfBirth,
+      age: roleChar.age,
+      bloodType: roleChar.bloodType,
+      favourites: roleChar.favourites,
+      media: {
+        edges: mediaNodes.map((m: MediaNode) => ({
+          characterRole: edge.role,
+          node: m
+        }))
+      }
+    });
+
+    setActiveTab('character');
+
+    // Fetch complete character bio if available
+    if (roleChar.id && !roleChar.description && !isLiveAction) {
+      fetch(`/api/anime/character-details?characterId=${roleChar.id}`)
+        .then(r => r.ok ? r.json() : null)
+        .then(res => {
+          if (res?.character) {
+            setFullChar(res.character);
+          }
+        })
+        .catch(() => {});
+    }
+  };
+
+  // Handler: Click an anime/media card in character view to play immediately
+  const handlePlayMedia = (mediaNode: MediaNode) => {
+    onClose();
+    const mediaId = mediaNode?.id;
+    if (!mediaId) return;
+
+    if (isLiveAction || mediaNode.mediaType === 'movie' || mediaNode.mediaType === 'drama' || mediaNode.mediaType === 'tv') {
+      const isMovie = mediaNode.mediaType === 'movie' || mediaNode.format === 'MOVIE';
+      if (isMovie) {
+        router.push(`/movies-watch/${mediaId}`);
+      } else {
+        router.push(`/drama-watch/${mediaId}`);
+      }
+    } else {
+      router.push(`/watch/${mediaId}`);
+    }
+  };
 
   return createPortal(
     <div 
@@ -287,8 +377,12 @@ export default function CastDetailModal({ isOpen, onClose, data }: CastDetailMod
                     : "text-zinc-400 hover:text-white"
                 )}
               >
-                <Mic size={13} className={!isCharacterView ? "text-purple-400" : "text-zinc-500"} />
-                <span>Voice Artist</span>
+                {isLiveAction ? (
+                  <Clapperboard size={13} className={!isCharacterView ? "text-cyan-400" : "text-zinc-500"} />
+                ) : (
+                  <Mic size={13} className={!isCharacterView ? "text-purple-400" : "text-zinc-500"} />
+                )}
+                <span>{isLiveAction ? 'Actor' : 'Voice Artist'}</span>
               </button>
             </div>
           ) : (
@@ -320,7 +414,7 @@ export default function CastDetailModal({ isOpen, onClose, data }: CastDetailMod
           {/* ═══════════════════════════════════════════════════ */}
           {isCharacterView && (
             <div className="flex flex-col gap-4 sm:gap-5 animate-in fade-in duration-150">
-              {/* Profile Top Row: Responsive horizontal layout on both mobile & desktop */}
+              {/* Profile Top Row: Responsive horizontal layout */}
               <div className="flex items-start gap-3.5 sm:gap-5">
                 {/* Character Portrait */}
                 <div className="relative shrink-0 w-24 h-32 sm:w-36 sm:h-48 rounded-xl sm:rounded-2xl overflow-hidden border border-white/15 bg-zinc-900 shadow-2xl group">
@@ -381,8 +475,8 @@ export default function CastDetailModal({ isOpen, onClose, data }: CastDetailMod
                     )}
                   </div>
 
-                  {/* Voice Artist Quick Connect Card */}
-                  {data.voiceActor?.name && (
+                  {/* Voice Artist / Actor Quick Connect Card */}
+                  {vaName && (
                     <div 
                       onClick={() => setActiveTab('voiceArtist')}
                       className="cursor-pointer w-full mt-2 p-2 sm:p-2.5 rounded-xl bg-white/[0.03] hover:bg-white/[0.07] border border-white/[0.08] hover:border-purple-500/40 transition-all flex items-center justify-between gap-2.5 group"
@@ -390,24 +484,28 @@ export default function CastDetailModal({ isOpen, onClose, data }: CastDetailMod
                       <div className="flex items-center gap-2 min-w-0">
                         <div className="w-7 h-9 sm:w-8 sm:h-10 rounded-lg overflow-hidden shrink-0 border border-white/10 bg-zinc-900">
                           <img 
-                            src={data.voiceActor.poster || '/images/no-avatar.png'} 
-                            alt={data.voiceActor.name}
+                            src={vaImage} 
+                            alt={vaName}
                             className="w-full h-full object-cover"
                             onError={(e) => { e.currentTarget.src = '/images/no-avatar.png'; }}
                           />
                         </div>
                         <div className="min-w-0 text-left">
                           <span className="text-[8px] sm:text-[9px] uppercase font-bold text-zinc-400 tracking-wider flex items-center gap-1">
-                            <Mic size={9} className="text-purple-400" /> Voiced by ({data.voiceActor.language || 'Japanese'})
+                            {isLiveAction ? (
+                              <><Clapperboard size={9} className="text-cyan-400" /> Portrayed by</>
+                            ) : (
+                              <><Mic size={9} className="text-purple-400" /> Voiced by ({data.voiceActor?.language || 'Japanese'})</>
+                            )}
                           </span>
                           <h4 className="text-[11px] sm:text-xs font-black text-white truncate group-hover:text-purple-300 transition-colors">
-                            {data.voiceActor.name}
+                            {vaName}
                           </h4>
                         </div>
                       </div>
 
                       <div className="flex items-center gap-1 text-[9px] sm:text-[10px] font-bold text-zinc-400 group-hover:text-purple-300 transition-colors pr-1 shrink-0">
-                        <span className="hidden sm:inline">Artist Profile</span>
+                        <span className="hidden sm:inline">{isLiveAction ? 'Actor Profile' : 'Artist Profile'}</span>
                         <ArrowRight size={12} className="group-hover:translate-x-0.5 transition-transform" />
                       </div>
                     </div>
@@ -440,41 +538,61 @@ export default function CastDetailModal({ isOpen, onClose, data }: CastDetailMod
                 )}
               </div>
 
-              {/* Featured Anime / Media Appearances */}
+              {/* Featured Anime / Media Appearances (CLICKABLE TO PLAY) */}
               {charMedia.length > 0 && (
                 <div className="flex flex-col gap-2.5 pt-2 border-t border-white/[0.06]">
-                  <h4 className="text-[11px] font-black text-zinc-400 uppercase tracking-widest font-lemon flex items-center gap-1.5">
-                    <Film size={13} className="text-primary-500" />
-                    <span>Anime Appearances</span>
-                  </h4>
+                  <div className="flex items-center justify-between">
+                    <h4 className="text-[11px] font-black text-zinc-400 uppercase tracking-widest font-lemon flex items-center gap-1.5">
+                      <Film size={13} className="text-primary-500" />
+                      <span>{isLiveAction ? 'Media Appearances (Click to Play)' : 'Anime Appearances (Click to Play)'}</span>
+                    </h4>
+                    <span className="text-[9px] text-zinc-500 font-bold uppercase tracking-wider">
+                      {charMedia.length} Titles
+                    </span>
+                  </div>
 
-                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-                    {charMedia.slice(0, 4).map((item, idx) => {
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                    {charMedia.slice(0, 8).map((item, idx) => {
                       const anime = item.node;
-                      const titleStr = anime?.title?.english || anime?.title?.romaji || 'Anime';
+                      const titleStr = anime?.title?.english || anime?.title?.romaji || 'Watch Title';
                       const coverImg = anime?.coverImage?.large || anime?.coverImage?.medium || '/images/placeholder-no-img.jpg';
                       const year = anime?.startDate?.year;
 
                       return (
                         <div 
                           key={anime?.id || idx}
-                          className="flex items-center gap-2 p-1.5 rounded-xl bg-white/[0.02] border border-white/[0.06] overflow-hidden"
+                          onClick={() => handlePlayMedia(anime)}
+                          className="cursor-pointer flex items-center justify-between gap-2.5 p-2 rounded-xl bg-white/[0.02] hover:bg-primary-500/10 border border-white/[0.06] hover:border-primary-500/30 transition-all duration-200 group active:scale-[0.98]"
+                          title={`Play ${titleStr}`}
                         >
-                          <div className="w-8 h-11 rounded-lg overflow-hidden shrink-0 bg-zinc-900 border border-white/5">
-                            <img 
-                              src={coverImg} 
-                              alt={titleStr}
-                              className="w-full h-full object-cover"
-                              onError={(e) => { e.currentTarget.src = '/images/placeholder-no-img.jpg'; }}
-                            />
+                          <div className="flex items-center gap-2.5 min-w-0">
+                            <div className="w-9 h-12 rounded-lg overflow-hidden shrink-0 bg-zinc-900 border border-white/10 relative shadow-sm">
+                              <img 
+                                src={coverImg} 
+                                alt={titleStr}
+                                className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                                onError={(e) => { e.currentTarget.src = '/images/placeholder-no-img.jpg'; }}
+                              />
+                            </div>
+                            <div className="min-w-0 flex-1">
+                              <h5 className="text-[11px] font-bold text-white group-hover:text-primary-300 transition-colors truncate leading-snug" title={titleStr}>
+                                {titleStr}
+                              </h5>
+                              <div className="flex items-center gap-2 mt-0.5">
+                                <span className="text-[9px] text-zinc-400 font-medium">
+                                  {year || anime?.format || 'Series'}
+                                </span>
+                                {item.characterRole && (
+                                  <span className="text-[8px] font-bold uppercase tracking-wider px-1.5 py-0.2 rounded bg-white/[0.04] text-zinc-400">
+                                    {item.characterRole}
+                                  </span>
+                                )}
+                              </div>
+                            </div>
                           </div>
-                          <div className="min-w-0 flex-1">
-                            <h5 className="text-[10px] sm:text-[11px] font-bold text-white truncate leading-tight" title={titleStr}>
-                              {titleStr}
-                            </h5>
-                            <span className="text-[9px] text-zinc-500">
-                              {year || anime?.format || 'Anime'}
-                            </span>
+
+                          <div className="shrink-0 flex items-center justify-center w-7 h-7 rounded-lg bg-primary-500/20 group-hover:bg-primary-500 text-primary-400 group-hover:text-white border border-primary-500/30 transition-all shadow-sm">
+                            <Play size={12} fill="currentColor" className="ml-0.5" />
                           </div>
                         </div>
                       );
@@ -486,13 +604,13 @@ export default function CastDetailModal({ isOpen, onClose, data }: CastDetailMod
           )}
 
           {/* ═══════════════════════════════════════════════════ */}
-          {/* TAB 2: VOICE ARTIST VIEW                            */}
+          {/* TAB 2: VOICE ARTIST / ACTOR VIEW                    */}
           {/* ═══════════════════════════════════════════════════ */}
           {!isCharacterView && (
             <div className="flex flex-col gap-4 sm:gap-5 animate-in fade-in duration-150">
-              {/* Voice Artist Top Row */}
+              {/* Voice Artist / Actor Top Row */}
               <div className="flex items-start gap-3.5 sm:gap-5">
-                {/* Voice Artist Portrait */}
+                {/* Portrait */}
                 <div className="relative shrink-0 w-24 h-32 sm:w-36 sm:h-48 rounded-xl sm:rounded-2xl overflow-hidden border border-white/15 bg-zinc-900 shadow-2xl group">
                   <img 
                     src={vaImage} 
@@ -506,8 +624,13 @@ export default function CastDetailModal({ isOpen, onClose, data }: CastDetailMod
                 {/* Identity & Metadata */}
                 <div className="flex-1 flex flex-col items-start text-left gap-1 sm:gap-1.5 min-w-0">
                   <div className="flex items-center gap-1.5 sm:gap-2 flex-wrap">
-                    <span className="text-[9px] font-black uppercase tracking-wider px-2 py-0.5 rounded-full bg-purple-500/20 text-purple-300 border border-purple-500/30">
-                      {vaLanguage} Voice Actor
+                    <span className={cn(
+                      "text-[9px] font-black uppercase tracking-wider px-2 py-0.5 rounded-full border",
+                      isLiveAction 
+                        ? "bg-cyan-500/20 text-cyan-300 border-cyan-500/30"
+                        : "bg-purple-500/20 text-purple-300 border-purple-500/30"
+                    )}>
+                      {isLiveAction ? `${vaLanguage}` : `${vaLanguage} Voice Actor`}
                     </span>
                     {vaFavorites !== null && vaFavorites !== undefined && (
                       <span className="text-[9px] font-bold text-purple-300 flex items-center gap-1 bg-purple-500/10 border border-purple-500/20 px-2 py-0.5 rounded-full">
@@ -547,48 +670,54 @@ export default function CastDetailModal({ isOpen, onClose, data }: CastDetailMod
                   </div>
 
                   {/* Character Back-Link Card */}
-                  <div 
-                    onClick={() => setActiveTab('character')}
-                    className="cursor-pointer w-full mt-2 p-2 sm:p-2.5 rounded-xl bg-white/[0.03] hover:bg-white/[0.07] border border-white/[0.08] hover:border-primary-500/40 transition-all flex items-center justify-between gap-2.5 group"
-                  >
-                    <div className="flex items-center gap-2 min-w-0">
-                      <div className="w-7 h-9 sm:w-8 sm:h-10 rounded-lg overflow-hidden shrink-0 border border-white/10 bg-zinc-900">
-                        <img 
-                          src={charImage} 
-                          alt={charName}
-                          className="w-full h-full object-cover"
-                          onError={(e) => { e.currentTarget.src = '/images/placeholder-no-img.jpg'; }}
-                        />
+                  {charName && (
+                    <div 
+                      onClick={() => setActiveTab('character')}
+                      className="cursor-pointer w-full mt-2 p-2 sm:p-2.5 rounded-xl bg-white/[0.03] hover:bg-white/[0.07] border border-white/[0.08] hover:border-primary-500/40 transition-all flex items-center justify-between gap-2.5 group"
+                    >
+                      <div className="flex items-center gap-2 min-w-0">
+                        <div className="w-7 h-9 sm:w-8 sm:h-10 rounded-lg overflow-hidden shrink-0 border border-white/10 bg-zinc-900">
+                          <img 
+                            src={charImage} 
+                            alt={charName}
+                            className="w-full h-full object-cover"
+                            onError={(e) => { e.currentTarget.src = '/images/placeholder-no-img.jpg'; }}
+                          />
+                        </div>
+                        <div className="min-w-0 text-left">
+                          <span className="text-[8px] sm:text-[9px] uppercase font-bold text-zinc-400 tracking-wider flex items-center gap-1">
+                            {isLiveAction ? (
+                              <><Clapperboard size={9} className="text-primary-400" /> Currently Playing</>
+                            ) : (
+                              <><Mic size={9} className="text-primary-400" /> Currently Voicing</>
+                            )}
+                          </span>
+                          <h4 className="text-[11px] sm:text-xs font-black text-white truncate group-hover:text-primary-300 transition-colors">
+                            {charName}
+                          </h4>
+                        </div>
                       </div>
-                      <div className="min-w-0 text-left">
-                        <span className="text-[8px] sm:text-[9px] uppercase font-bold text-zinc-400 tracking-wider flex items-center gap-1">
-                          <Mic size={9} className="text-primary-400" /> Currently Voicing
-                        </span>
-                        <h4 className="text-[11px] sm:text-xs font-black text-white truncate group-hover:text-primary-300 transition-colors">
-                          {charName}
-                        </h4>
-                      </div>
-                    </div>
 
-                    <div className="flex items-center gap-1 text-[9px] sm:text-[10px] font-bold text-zinc-400 group-hover:text-primary-300 transition-colors pr-1 shrink-0">
-                      <ArrowLeft size={12} className="group-hover:-translate-x-0.5 transition-transform" />
-                      <span className="hidden sm:inline">Back to Character</span>
+                      <div className="flex items-center gap-1 text-[9px] sm:text-[10px] font-bold text-zinc-400 group-hover:text-primary-300 transition-colors pr-1 shrink-0">
+                        <ArrowLeft size={12} className="group-hover:-translate-x-0.5 transition-transform" />
+                        <span className="hidden sm:inline">Back to Character</span>
+                      </div>
                     </div>
-                  </div>
+                  )}
                 </div>
               </div>
 
               {/* Biography Section */}
               <div className="flex flex-col gap-2 pt-2 border-t border-white/[0.06]">
                 <h4 className="text-[11px] font-black text-zinc-400 uppercase tracking-widest font-lemon flex items-center gap-1.5">
-                  <Mic size={13} className="text-purple-400" />
+                  {isLiveAction ? <Clapperboard size={13} className="text-cyan-400" /> : <Mic size={13} className="text-purple-400" />}
                   <span>Biography & Background</span>
                 </h4>
 
                 {loading && !fullStaff?.description ? (
                   <div className="flex items-center gap-2 py-3 text-xs text-zinc-500">
-                    <Loader2 size={14} className="animate-spin text-purple-400" />
-                    <span>Loading voice artist archive...</span>
+                    <Loader2 size={14} className={cn("animate-spin", isLiveAction ? "text-cyan-400" : "text-purple-400")} />
+                    <span>Loading profile archive...</span>
                   </div>
                 ) : vaParagraphs.length > 0 ? (
                   <div className="text-xs sm:text-sm text-zinc-300 leading-relaxed font-sans space-y-2">
@@ -598,45 +727,75 @@ export default function CastDetailModal({ isOpen, onClose, data }: CastDetailMod
                   </div>
                 ) : (
                   <p className="text-xs text-zinc-500 italic py-1">
-                    No detailed voice artist background available.
+                    No detailed biographical background available.
                   </p>
                 )}
               </div>
 
-              {/* Notable Roles Section */}
+              {/* Roles Section with ANIME / TITLE NAMES & CLICKABLE DRILL-DOWN */}
               {vaRoles.length > 0 && (
                 <div className="flex flex-col gap-2.5 pt-2 border-t border-white/[0.06]">
-                  <h4 className="text-[11px] font-black text-zinc-400 uppercase tracking-widest font-lemon flex items-center gap-1.5">
-                    <Star size={13} className="text-purple-400" />
-                    <span>Other Legendary Roles</span>
-                  </h4>
+                  <div className="flex items-center justify-between">
+                    <h4 className="text-[11px] font-black text-zinc-400 uppercase tracking-widest font-lemon flex items-center gap-1.5">
+                      <Star size={13} className={isLiveAction ? "text-cyan-400" : "text-purple-400"} />
+                      <span>{isLiveAction ? 'Notable Roles & Filmography' : 'Other Legendary Roles'}</span>
+                    </h4>
+                    <span className="text-[9px] text-zinc-500 font-bold uppercase tracking-wider">
+                      Click to View Character
+                    </span>
+                  </div>
 
-                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-                    {vaRoles.slice(0, 6).map((edge, idx) => {
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                    {vaRoles.slice(0, 10).map((edge, idx) => {
                       const roleChar = edge.node;
                       const roleName = roleChar.name?.full || 'Character';
                       const roleImg = roleChar.image?.medium || roleChar.image?.large || '/images/placeholder-no-img.jpg';
+                      const primaryMedia = edge.media?.[0];
+                      const animeTitle = primaryMedia?.title?.english || primaryMedia?.title?.romaji || null;
 
                       return (
                         <div 
                           key={roleChar.id || idx}
-                          className="flex items-center gap-2 p-1.5 rounded-xl bg-white/[0.02] border border-white/[0.06] overflow-hidden"
+                          onClick={() => handleSelectRoleCharacter(edge)}
+                          className="cursor-pointer flex items-center justify-between gap-2.5 p-2 rounded-xl bg-white/[0.02] hover:bg-white/[0.07] border border-white/[0.06] hover:border-primary-500/30 transition-all duration-200 group active:scale-[0.98]"
+                          title={`View ${roleName} details`}
                         >
-                          <div className="w-8 h-11 rounded-lg overflow-hidden shrink-0 bg-zinc-900 border border-white/5">
-                            <img 
-                              src={roleImg} 
-                              alt={roleName}
-                              className="w-full h-full object-cover"
-                              onError={(e) => { e.currentTarget.src = '/images/placeholder-no-img.jpg'; }}
-                            />
+                          <div className="flex items-center gap-2.5 min-w-0">
+                            <div className="w-10 h-13 rounded-lg overflow-hidden shrink-0 bg-zinc-900 border border-white/5 relative">
+                              <img 
+                                src={roleImg} 
+                                alt={roleName}
+                                className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                                onError={(e) => { e.currentTarget.src = '/images/placeholder-no-img.jpg'; }}
+                              />
+                            </div>
+                            <div className="min-w-0 flex-1">
+                              <div className="flex items-center gap-1.5 flex-wrap">
+                                <h5 className="text-[11px] font-bold text-white group-hover:text-primary-300 transition-colors truncate leading-tight" title={roleName}>
+                                  {roleName}
+                                </h5>
+                                {edge.role && (
+                                  <span className="text-[8px] font-bold text-zinc-400 uppercase tracking-wider px-1.5 py-0.2 rounded bg-white/[0.04]">
+                                    {edge.role}
+                                  </span>
+                                )}
+                              </div>
+
+                              {/* Prominent Anime / Media Title Display */}
+                              {animeTitle && (
+                                <div className="flex items-center gap-1 text-[9px] sm:text-[10px] text-primary-400 font-semibold truncate mt-0.5">
+                                  <Film size={10} className="shrink-0 text-primary-400/80" />
+                                  <span className="truncate" title={animeTitle}>
+                                    {animeTitle}
+                                  </span>
+                                </div>
+                              )}
+                            </div>
                           </div>
-                          <div className="min-w-0 flex-1">
-                            <h5 className="text-[10px] sm:text-[11px] font-bold text-white truncate leading-tight" title={roleName}>
-                              {roleName}
-                            </h5>
-                            <span className="text-[9px] text-zinc-500 uppercase font-semibold">
-                              {edge.role || 'Role'}
-                            </span>
+
+                          <div className="shrink-0 flex items-center gap-1 text-[10px] text-zinc-500 group-hover:text-primary-400 transition-colors pr-1">
+                            <span className="hidden sm:inline text-[9px] font-bold uppercase tracking-wider">Details</span>
+                            <ArrowRight size={12} className="group-hover:translate-x-0.5 transition-transform" />
                           </div>
                         </div>
                       );
@@ -665,3 +824,4 @@ export default function CastDetailModal({ isOpen, onClose, data }: CastDetailMod
     document.body
   );
 }
+

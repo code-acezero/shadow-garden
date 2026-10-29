@@ -159,7 +159,7 @@ export default function LiquidGlassSplashScreen() {
             transition={{ delay: 0.6, duration: 0.6 }}
             className="mt-6 text-[10px] sm:text-xs font-lemon font-bold tracking-[0.5em] text-white/90 uppercase text-center"
           >
-            SHADOW GARDEN
+            KAGEMI
           </motion.p>
         </motion.div>
       )}

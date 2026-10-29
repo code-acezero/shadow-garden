@@ -94,6 +94,10 @@ class AudioMatrix {
         if (typeof window !== 'undefined') {
             (window as any).stopShadowBGM = () => this.stopAll(1500);
             (window as any).sfx = this;
+            (window as any).playGummy = (vol?: number) => this.synthGummyPop(vol);
+            (window as any).playGummyPop = (vol?: number) => this.synthGummyPop(vol);
+            (window as any).playGummyBubble = (vol?: number) => this.synthGummyBubble(vol);
+            (window as any).playGummyTap = (vol?: number) => this.synthGummyTap(vol);
         }
     }
 
@@ -102,6 +106,366 @@ class AudioMatrix {
         const ctx = this.getCtx();
         if (ctx && ctx.state === 'suspended') {
             ctx.resume().catch(() => {});
+        }
+    }
+
+    // ─── TAP SOUND CONFIG & PREFERENCES ───────────────────────────────────────
+    isTapSoundEnabled(): boolean {
+        if (typeof window === 'undefined') return false;
+        try {
+            const direct = localStorage.getItem('shadow_tap_sound');
+            if (direct !== null) return direct === 'true';
+            for (let i = 0; i < localStorage.length; i++) {
+                const k = localStorage.key(i);
+                if (k && k.startsWith('shadow_settings_')) {
+                    const val = localStorage.getItem(k);
+                    if (val) {
+                        const parsed = JSON.parse(val);
+                        if (typeof parsed.tapSound === 'boolean') return parsed.tapSound;
+                    }
+                }
+            }
+        } catch (_) {}
+        return true;
+    }
+
+    getTapSoundEffect(): 'jelly' | 'switch' | 'taptic' | 'bubble' | 'pop' | 'wood' {
+        if (typeof window === 'undefined') return 'jelly';
+        try {
+            const effect = localStorage.getItem('shadow_tap_effect');
+            if (effect && ['jelly', 'switch', 'taptic', 'bubble', 'pop', 'wood'].includes(effect)) {
+                return effect as any;
+            }
+            for (let i = 0; i < localStorage.length; i++) {
+                const k = localStorage.key(i);
+                if (k && k.startsWith('shadow_settings_')) {
+                    const val = localStorage.getItem(k);
+                    if (val) {
+                        const parsed = JSON.parse(val);
+                        if (parsed.tapSoundEffect) return parsed.tapSoundEffect;
+                    }
+                }
+            }
+        } catch (_) {}
+        return 'jelly';
+    }
+
+    getTapVolume(): number {
+        if (typeof window === 'undefined') return 1.0;
+        try {
+            const vol = localStorage.getItem('shadow_tap_volume');
+            if (vol !== null) return Math.max(0.1, Math.min(1.0, parseFloat(vol)));
+        } catch (_) {}
+        return 1.0;
+    }
+
+    // ─── 0. POPULAR: SQUISHY GUMMY JELLY (KAWAII VISCOUS JELLY WATER DROPLET + ELASTIC WOBBLE) ──
+    synthSquishyJelly(vol = 0.35) {
+        try {
+            const ctx = this.getCtx(); if (!ctx) return;
+            const now = ctx.currentTime;
+
+            // 1. Dual detuned sine oscillators produce authentic gelatinous physical wobble & elasticity
+            const osc1 = ctx.createOscillator();
+            const osc2 = ctx.createOscillator();
+            const mainGain = ctx.createGain();
+
+            osc1.type = 'sine';
+            osc2.type = 'sine';
+
+            // Upward buoyant bloop envelope (340Hz -> 620Hz -> 460Hz) - NO downward drop, zero wood knock
+            osc1.frequency.setValueAtTime(340, now);
+            osc1.frequency.exponentialRampToValueAtTime(620, now + 0.032);
+            osc1.frequency.exponentialRampToValueAtTime(460, now + 0.095);
+
+            // Subtle 4Hz detuning creates the physical "jiggle" beating modulation
+            osc2.frequency.setValueAtTime(344, now);
+            osc2.frequency.exponentialRampToValueAtTime(628, now + 0.032);
+            osc2.frequency.exponentialRampToValueAtTime(464, now + 0.095);
+
+            // Gentle 12ms attack completely eliminates sharp clicks/knocks; smooth 110ms decay
+            mainGain.gain.setValueAtTime(0, now);
+            mainGain.gain.linearRampToValueAtTime(vol * 0.72, now + 0.012);
+            mainGain.gain.exponentialRampToValueAtTime(0.0001, now + 0.115);
+
+            osc1.connect(mainGain);
+            osc2.connect(mainGain);
+            mainGain.connect(ctx.destination);
+
+            osc1.start(now);
+            osc2.start(now);
+            osc1.stop(now + 0.125);
+            osc2.stop(now + 0.125);
+
+            // 2. Wet droplet liquid sheen (sparkling pure water surface reflection)
+            const dripOsc = ctx.createOscillator();
+            const dripGain = ctx.createGain();
+            dripOsc.type = 'sine';
+            dripOsc.frequency.setValueAtTime(960, now);
+            dripOsc.frequency.exponentialRampToValueAtTime(1480, now + 0.026);
+            dripOsc.frequency.exponentialRampToValueAtTime(1200, now + 0.065);
+
+            dripGain.gain.setValueAtTime(0, now);
+            dripGain.gain.linearRampToValueAtTime(vol * 0.20, now + 0.008);
+            dripGain.gain.exponentialRampToValueAtTime(0.0001, now + 0.075);
+
+            dripOsc.connect(dripGain);
+            dripGain.connect(ctx.destination);
+
+            dripOsc.start(now);
+            dripOsc.stop(now + 0.08);
+
+            // 3. Pillowy Gummy Dampening (soft velvety suction cushion)
+            const puffDur = 0.055;
+            const bSize = Math.floor(ctx.sampleRate * puffDur);
+            const b = ctx.createBuffer(1, bSize, ctx.sampleRate);
+            const d = b.getChannelData(0);
+            for (let i = 0; i < bSize; i++) d[i] = (Math.random() * 2 - 1) * 0.45;
+
+            const pSource = ctx.createBufferSource();
+            pSource.buffer = b;
+            const pFilter = ctx.createBiquadFilter();
+            pFilter.type = 'lowpass';
+            pFilter.frequency.setValueAtTime(320, now);
+            pFilter.frequency.exponentialRampToValueAtTime(520, now + 0.016);
+            pFilter.frequency.exponentialRampToValueAtTime(180, now + puffDur);
+
+            const pGain = ctx.createGain();
+            pGain.gain.setValueAtTime(0, now);
+            pGain.gain.linearRampToValueAtTime(vol * 0.14, now + 0.008);
+            pGain.gain.exponentialRampToValueAtTime(0.0001, now + puffDur);
+
+            pSource.connect(pFilter);
+            pFilter.connect(pGain);
+            pGain.connect(ctx.destination);
+
+            pSource.start(now);
+            pSource.stop(now + puffDur + 0.01);
+        } catch (_) {}
+    }
+
+    // ─── 1. POPULAR: NINTENDO SWITCH CLICK (CRISP SNAPPY WOOD/SWITCH SNAP) ────────
+    synthSwitchClick(vol = 0.35) {
+        try {
+            const ctx = this.getCtx(); if (!ctx) return;
+            const now = ctx.currentTime;
+
+            // Transient Click (high snappy click 1900Hz -> 850Hz)
+            const osc = ctx.createOscillator();
+            const gain = ctx.createGain();
+            osc.type = 'sine';
+            osc.frequency.setValueAtTime(1900, now);
+            osc.frequency.exponentialRampToValueAtTime(850, now + 0.012);
+
+            gain.gain.setValueAtTime(vol * 0.85, now);
+            gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.015);
+
+            osc.connect(gain);
+            gain.connect(ctx.destination);
+            osc.start(now);
+            osc.stop(now + 0.018);
+
+            // Subtle warm 220Hz wood body resonance
+            const bodyOsc = ctx.createOscillator();
+            const bodyGain = ctx.createGain();
+            bodyOsc.type = 'sine';
+            bodyOsc.frequency.setValueAtTime(280, now);
+            bodyOsc.frequency.exponentialRampToValueAtTime(140, now + 0.024);
+
+            bodyGain.gain.setValueAtTime(vol * 0.45, now);
+            bodyGain.gain.exponentialRampToValueAtTime(0.0001, now + 0.026);
+
+            bodyOsc.connect(bodyGain);
+            bodyGain.connect(ctx.destination);
+            bodyOsc.start(now);
+            bodyOsc.stop(now + 0.03);
+        } catch (_) {}
+    }
+
+    // ─── 2. POPULAR: APPLE TAPTIC PULSE (SUBTLE DEEP HAPTIC IMPULSE) ─────────────
+    synthTapticPulse(vol = 0.4) {
+        try {
+            const ctx = this.getCtx(); if (!ctx) return;
+            const now = ctx.currentTime;
+
+            const osc = ctx.createOscillator();
+            const gain = ctx.createGain();
+            osc.type = 'sine';
+
+            // 125Hz clean haptic resonant thud
+            osc.frequency.setValueAtTime(125, now);
+            osc.frequency.exponentialRampToValueAtTime(70, now + 0.028);
+
+            gain.gain.setValueAtTime(0, now);
+            gain.gain.linearRampToValueAtTime(vol * 0.9, now + 0.004);
+            gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.032);
+
+            osc.connect(gain);
+            gain.connect(ctx.destination);
+            osc.start(now);
+            osc.stop(now + 0.035);
+        } catch (_) {}
+    }
+
+    // ─── 3. POPULAR: MARSHMALLOW BUBBLE (SOFT SQUISHY AIR PUFF) ─────────────────
+    synthGummyPop(vol = 0.3) {
+        try {
+            const ctx = this.getCtx(); if (!ctx) return;
+            const now = ctx.currentTime;
+            
+            // Warm Pillowy Sine Wave
+            const osc = ctx.createOscillator();
+            const gain = ctx.createGain();
+            osc.type = 'sine';
+            osc.frequency.setValueAtTime(340, now);
+            osc.frequency.exponentialRampToValueAtTime(480, now + 0.018);
+            osc.frequency.exponentialRampToValueAtTime(160, now + 0.095);
+
+            gain.gain.setValueAtTime(0, now);
+            gain.gain.linearRampToValueAtTime(vol * 0.75, now + 0.014);
+            gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.11);
+
+            osc.connect(gain);
+            gain.connect(ctx.destination);
+            osc.start(now);
+            osc.stop(now + 0.12);
+
+            // Soft Lowpass Air Puff
+            const puffDuration = 0.085;
+            const bufSize = Math.floor(ctx.sampleRate * puffDuration);
+            const buf = ctx.createBuffer(1, bufSize, ctx.sampleRate);
+            const data = buf.getChannelData(0);
+            for (let i = 0; i < bufSize; i++) data[i] = Math.random() * 2 - 1;
+
+            const puffSource = ctx.createBufferSource();
+            puffSource.buffer = buf;
+
+            const puffFilter = ctx.createBiquadFilter();
+            puffFilter.type = 'lowpass';
+            puffFilter.frequency.setValueAtTime(320, now);
+            puffFilter.frequency.exponentialRampToValueAtTime(540, now + 0.02);
+            puffFilter.frequency.exponentialRampToValueAtTime(180, now + puffDuration);
+            puffFilter.Q.value = 1.5;
+
+            const puffGain = ctx.createGain();
+            puffGain.gain.setValueAtTime(0, now);
+            puffGain.gain.linearRampToValueAtTime(vol * 0.22, now + 0.012);
+            puffGain.gain.exponentialRampToValueAtTime(0.0001, now + puffDuration);
+
+            puffSource.connect(puffFilter);
+            puffFilter.connect(puffGain);
+            puffGain.connect(ctx.destination);
+
+            puffSource.start(now);
+            puffSource.stop(now + puffDuration + 0.01);
+        } catch (_) {}
+    }
+
+    // ─── 4. POPULAR: PLAYFUL POP (TELEGRAM / DISCORD BUBBLY POP) ──────────────────
+    synthPlayfulPop(vol = 0.32) {
+        try {
+            const ctx = this.getCtx(); if (!ctx) return;
+            const now = ctx.currentTime;
+
+            const osc = ctx.createOscillator();
+            const gain = ctx.createGain();
+            osc.type = 'sine';
+
+            // Rapid, bouncy upward sweep: 260Hz -> 820Hz
+            osc.frequency.setValueAtTime(260, now);
+            osc.frequency.exponentialRampToValueAtTime(820, now + 0.038);
+
+            gain.gain.setValueAtTime(0, now);
+            gain.gain.linearRampToValueAtTime(vol * 0.8, now + 0.006);
+            gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.08);
+
+            osc.connect(gain);
+            gain.connect(ctx.destination);
+            osc.start(now);
+            osc.stop(now + 0.09);
+        } catch (_) {}
+    }
+
+    // ─── 5. POPULAR: GENTLE WOOD TAP (ORGANIC ACOUSTIC MARIMBA / KALIMBA) ────────
+    synthWoodTap(vol = 0.32) {
+        try {
+            const ctx = this.getCtx(); if (!ctx) return;
+            const now = ctx.currentTime;
+
+            // Fundamental Tone (660Hz)
+            const osc = ctx.createOscillator();
+            const gain = ctx.createGain();
+            osc.type = 'triangle';
+            osc.frequency.setValueAtTime(660, now);
+            osc.frequency.exponentialRampToValueAtTime(420, now + 0.03);
+
+            gain.gain.setValueAtTime(vol * 0.7, now);
+            gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.035);
+
+            osc.connect(gain);
+            gain.connect(ctx.destination);
+            osc.start(now);
+            osc.stop(now + 0.04);
+
+            // Harmonic click
+            const hOsc = ctx.createOscillator();
+            const hGain = ctx.createGain();
+            hOsc.type = 'sine';
+            hOsc.frequency.setValueAtTime(1320, now);
+            hGain.gain.setValueAtTime(vol * 0.3, now);
+            hGain.gain.exponentialRampToValueAtTime(0.0001, now + 0.015);
+
+            hOsc.connect(hGain);
+            hGain.connect(ctx.destination);
+            hOsc.start(now);
+            hOsc.stop(now + 0.02);
+        } catch (_) {}
+    }
+
+    // ─── SYNTH: GUMMY BUBBLE (FALLBACK ALIAS) ──────────────────────────────────
+    synthGummyBubble(vol = 0.28) {
+        this.synthPlayfulPop(vol);
+    }
+
+    // ─── SYNTH: GUMMY TAP (FALLBACK ALIAS) ────────────────────────────────────
+    synthGummyTap(vol = 0.22) {
+        this.playTap(vol);
+    }
+
+    // ─── MASTER TAP SOUND DISPATCHER ──────────────────────────────────────────
+    playTap(vol = 0.3, effectOverride?: string) {
+        this.unlock();
+        // If not explicit preview, check if tap sound is enabled by user
+        if (!effectOverride && !this.isTapSoundEnabled()) {
+            return;
+        }
+
+        const effect = (effectOverride || this.getTapSoundEffect()) as string;
+        const volumeScale = this.getTapVolume();
+        const effectiveVol = vol * volumeScale;
+
+        switch (effect) {
+            case 'jelly':
+                this.synthSquishyJelly(effectiveVol);
+                break;
+            case 'switch':
+                this.synthSwitchClick(effectiveVol);
+                break;
+            case 'taptic':
+                this.synthTapticPulse(effectiveVol);
+                break;
+            case 'bubble':
+                this.synthGummyPop(effectiveVol);
+                break;
+            case 'pop':
+                this.synthPlayfulPop(effectiveVol);
+                break;
+            case 'wood':
+                this.synthWoodTap(effectiveVol);
+                break;
+            default:
+                this.synthSquishyJelly(effectiveVol);
+                break;
         }
     }
 
@@ -544,6 +908,9 @@ class AudioMatrix {
         }
 
         // Synthesized sounds
+        if (key === 'gummy' || key === 'pop' || key === 'rubber') { this.synthGummyPop(vol); return; }
+        if (key === 'bubble' || key === 'gummy_bubble') { this.synthGummyBubble(vol); return; }
+        if (key === 'tap' || key === 'gummy_tap' || key === 'chip') { this.synthGummyTap(vol); return; }
         if (key === 'glass') { this.synthGlass(vol); return; }
         if (key === 'metal' || key === 'click' || key === 'drop' || key === 'grind' || key === 'boom') { this.synthMetal(vol); return; }
         if (key === 'crystal' || key === 'hover') { this.synthCrystal(vol); return; }
@@ -706,3 +1073,28 @@ class AudioMatrix {
 }
 
 export const sfx = new AudioMatrix();
+export const playTapSound = (effect?: string, vol = 0.35) => sfx.playTap(vol, effect);
+export const playSquishyJelly = (vol = 0.35) => sfx.synthSquishyJelly(vol);
+export const playGummyPop = (vol = 0.35) => sfx.playTap(vol, 'jelly');
+export const playGummyBubble = (vol = 0.3) => sfx.playTap(vol, 'pop');
+export const playGummyTap = (vol = 0.25) => sfx.playTap(vol, 'jelly');
+
+if (typeof window !== 'undefined') {
+    (window as any).sfx = sfx;
+    (window as any).playTapSound = playTapSound;
+    (window as any).playSquishyJelly = playSquishyJelly;
+    (window as any).playGummy = playGummyPop;
+    (window as any).playGummyPop = playGummyPop;
+    (window as any).playGummyBubble = playGummyBubble;
+    (window as any).playGummyTap = playGummyTap;
+
+    const autoUnlock = () => {
+        sfx.unlock();
+        window.removeEventListener('pointerdown', autoUnlock);
+        window.removeEventListener('touchstart', autoUnlock);
+        window.removeEventListener('click', autoUnlock);
+    };
+    window.addEventListener('pointerdown', autoUnlock, { passive: true });
+    window.addEventListener('touchstart', autoUnlock, { passive: true });
+    window.addEventListener('click', autoUnlock, { passive: true });
+}

@@ -12,95 +12,12 @@ import {
 import { omni, DramaSection, DramaCard } from '@/lib/omni';
 import { cn } from '@/lib/utils';
 import Footer from '@/components/Anime/Footer';
+import CuteShareBar from '@/components/Home/CuteShareBar';
 import DCard from '@/components/Drama/DCard';
-import CountryBadge from '@/components/Drama/CountryBadge';
+import CountryBadge, { getCountryInfo } from '@/components/Drama/CountryBadge';
 import { MoviePageSkeleton } from '@/components/UIx/SkeletonLoaders';
+import { playGummyTap } from '@/lib/audioManager';
 
-// ── Search Bar ────────────────────────────────────────────────────────────────
-
-const UnifiedSearch = () => {
-  const [query, setQuery] = useState('');
-  const [results, setResults] = useState<DramaCard[]>([]);
-  const [loading, setLoading] = useState(false);
-  const [isFocused, setIsFocused] = useState(false);
-
-  useEffect(() => {
-    if (!query.trim()) { setResults([]); return; }
-    const t = setTimeout(async () => {
-      setLoading(true);
-      const r = await omni.drama.search(query.trim());
-      setResults(r.items.slice(0, 8));
-      setLoading(false);
-    }, 350);
-    return () => clearTimeout(t);
-  }, [query]);
-
-  const expanded = isFocused || query.length > 0;
-
-  return (
-    <div className={cn("relative transition-all duration-300 z-50", expanded ? "w-[calc(100vw-2.5rem)] max-w-sm sm:w-64 md:w-80" : "w-32 sm:w-44 md:w-64")}>
-      <form 
-        onSubmit={(e) => { 
-          e.preventDefault(); 
-          if (query.trim()) window.location.href = `/search?library=drama&keyword=${encodeURIComponent(query.trim())}`; 
-        }} 
-        className="flex items-center h-8 sm:h-9 gap-1.5 sm:gap-2 bg-[#0b101e]/90 backdrop-blur-md border border-cyan-500/30 hover:border-cyan-400/60 rounded-full px-3 py-1.5 sm:py-2 focus-within:bg-[#0b101e] focus-within:border-cyan-400 focus-within:shadow-[0_0_15px_rgba(34,211,238,0.25)] transition-all group"
-      >
-        <button 
-          type="button" 
-          onClick={() => {
-            if (!isFocused && !query) {
-              document.getElementById('cinema-search-input')?.focus();
-            } else if (query.trim()) {
-              window.location.href = `/search?library=drama&keyword=${encodeURIComponent(query.trim())}`;
-            }
-          }} 
-          disabled={loading} 
-          className="shrink-0 outline-none hover:scale-110 transition-transform p-0.5"
-        >
-          {loading ? <Loader2 size={15} className="text-cyan-400 animate-spin" /> : <Search size={15} className="text-cyan-400 group-focus-within:text-cyan-300 transition-colors" />}
-        </button>
-        <input
-          id="cinema-search-input"
-          type="text"
-          value={query}
-          onFocus={() => setIsFocused(true)}
-          onBlur={() => setTimeout(() => setIsFocused(false), 200)}
-          onChange={e => setQuery(e.target.value)}
-          placeholder="Search cinema, movies, dramas..."
-          className="bg-transparent text-white text-[11px] sm:text-xs font-bold w-full outline-none placeholder:text-cyan-200/50 transition-all truncate"
-        />
-        {query && (
-          <div className="flex items-center shrink-0">
-            <button type="button" onClick={() => setQuery('')} className="p-1 text-cyan-400 hover:text-cyan-300 transition-colors outline-none">
-              <Plus size={15} className="rotate-45" />
-            </button>
-            <button type="button" onClick={() => window.location.href = `/search?library=drama&keyword=${encodeURIComponent(query.trim())}`} className="p-1 text-cyan-400 hover:text-cyan-300 transition-colors outline-none border-l border-cyan-500/30 ml-1 pl-2">
-              <ChevronRight size={15} />
-            </button>
-          </div>
-        )}
-      </form>
-      {results.length > 0 && (
-        <div className="absolute top-full mt-2 right-0 w-[calc(100vw-2.5rem)] max-w-sm md:w-full md:left-0 bg-[#0b101e]/95 backdrop-blur-md border border-cyan-500/30 rounded-2xl shadow-[0_10px_40px_rgba(0,0,0,0.8)] z-50 p-2 flex flex-col gap-1 max-h-80 overflow-y-auto [&::-webkit-scrollbar]:hidden">
-          {results.map(r => (
-            <Link key={r.id} href={`/stream/${r.id}${r.isMovie ? '?type=movie' : ''}`} onClick={() => setQuery('')} className="flex items-center gap-3 px-3 py-2 rounded-xl hover:bg-cyan-500/10 border border-transparent hover:border-cyan-500/20 transition-all group">
-              {r.image && <img src={r.image} alt={r.title} className="w-9 h-12 object-cover rounded-md shadow-md shrink-0" />}
-              <div className="flex-1 min-w-0">
-                <p className="text-xs font-bold text-cyan-50 group-hover:text-cyan-300 truncate transition-colors">{r.title}</p>
-                <div className="flex items-center gap-2 mt-0.5">
-                  <span className="text-[9px] text-cyan-400 font-bold uppercase tracking-widest">{r.type || r.country}</span>
-                  {r.year && <span className="text-[9px] text-zinc-500">· {r.year}</span>}
-                  {r.isHindi && <span className="text-[8px] bg-amber-500/20 text-amber-300 px-1.5 py-0.2 rounded font-black">🇮🇳 HINDI</span>}
-                </div>
-              </div>
-            </Link>
-          ))}
-        </div>
-      )}
-    </div>
-  );
-};
 
 // ── Hero Slider (Center Aligned, Android Monet Glass Style) ───────────────────
 
@@ -151,28 +68,8 @@ const HeroSlider = ({ items }: { items: DramaCard[] }) => {
         </motion.div>
       </AnimatePresence>
 
-      {/* Top Floating Glass Header Bar with Search & Brand */}
-      <div className="absolute top-3 sm:top-4 left-0 right-0 z-40 px-2 sm:px-4 w-full flex items-center justify-between pointer-events-auto">
-        <div className="flex items-center gap-2.5">
-          <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-2xl bg-cyan-500/20 border border-cyan-400/40 backdrop-blur-xl flex items-center justify-center text-cyan-400 shadow-[0_0_20px_rgba(34,211,238,0.3)]">
-            <Film size={18} className="animate-pulse" />
-          </div>
-          <div>
-            <h1 className="text-sm sm:text-base md:text-lg font-black text-white tracking-wider font-lemon flex items-center gap-1.5 drop-shadow-md">
-              <span>SHADOW</span>
-              <span className="text-cyan-400 drop-shadow-[0_0_12px_rgba(34,211,238,0.8)]">CINEMA</span>
-            </h1>
-            <p className="text-[8.5px] sm:text-[9.5px] text-cyan-300/80 font-bold tracking-widest uppercase">
-              Movies · Dramas · Series
-            </p>
-          </div>
-        </div>
-
-        <UnifiedSearch />
-      </div>
-
-      {/* Centered Content Hero Body (Moved up & Vertically Center Aligned) */}
-      <div className="absolute inset-0 z-30 flex flex-col items-center justify-center px-4 pt-10 sm:pt-12 pb-4 text-center max-w-4xl mx-auto pointer-events-none">
+      {/* Centered Content Hero Body */}
+      <div className="absolute inset-0 z-30 flex flex-col items-center justify-center px-4 pb-8 sm:pb-6 text-center max-w-4xl mx-auto pointer-events-none">
         <AnimatePresence mode="wait">
           <motion.div
             key={current.id}
@@ -182,44 +79,43 @@ const HeroSlider = ({ items }: { items: DramaCard[] }) => {
             transition={{ duration: 0.35 }}
             className="flex flex-col items-center gap-2 sm:gap-2.5 pointer-events-auto"
           >
-            {/* One UI 8 Badges / Pill Tags */}
-            <div className="flex flex-wrap items-center justify-center gap-1.5 sm:gap-2">
-              {current.isMovie ? (
-                <span className="px-2.5 py-0.5 rounded-full text-[9px] sm:text-[11px] font-bold uppercase tracking-wider bg-black/50 text-zinc-200 border border-white/10 backdrop-blur-md shadow-sm">
-                  🎬 Cinema Movie
-                </span>
-              ) : (
-                <span className="px-2.5 py-0.5 rounded-full text-[9px] sm:text-[11px] font-bold uppercase tracking-wider bg-black/50 text-zinc-200 border border-white/10 backdrop-blur-md shadow-sm">
-                  🎭 {current.type || current.country || 'Series'}
-                </span>
-              )}
+            {/* Title */}
+            <h2 className="text-xl sm:text-3xl md:text-4xl lg:text-5xl font-black text-white uppercase tracking-wider font-lemon drop-shadow-[0_4px_16px_rgba(0,0,0,0.95)] max-w-3xl line-clamp-2">
+              {current.title}
+            </h2>
 
-              {current.country && <CountryBadge country={current.country} />}
-              
-              {current.isHindi && (
-                <span className="px-2.5 py-0.5 rounded-full text-[9px] sm:text-[11px] font-bold uppercase tracking-wider bg-black/50 text-amber-300 border border-white/10 backdrop-blur-md flex items-center gap-1 shadow-sm">
-                  <span>🇮🇳</span> HINDI DUB
-                </span>
+            {/* Clean Typographic Metadata Row (Containerless - Anti-Container Rule #6) */}
+            <div className="flex flex-wrap items-center justify-center gap-x-2.5 gap-y-1 text-xs sm:text-[13px] font-medium text-zinc-300 drop-shadow-md">
+              <span className="font-semibold text-cyan-400 tracking-wide">
+                {current.isMovie 
+                  ? 'Cinema Movie' 
+                  : (getCountryInfo(current.country, current.type).shortName || current.type || 'Series')}
+              </span>
+
+              {current.year && (
+                <>
+                  <span className="text-zinc-600 select-none">•</span>
+                  <span className="text-zinc-300 font-medium">{current.year}</span>
+                </>
               )}
 
               {current.score && current.score !== 'N/A' && (
-                <span className="px-2.5 py-0.5 rounded-full text-[9px] sm:text-[11px] font-bold bg-black/50 text-amber-300 border border-white/10 backdrop-blur-md flex items-center gap-1 shadow-sm">
-                  <Star size={11} className="fill-amber-400 text-amber-400" />
-                  {current.score}
-                </span>
+                <>
+                  <span className="text-zinc-600 select-none">•</span>
+                  <span className="inline-flex items-center gap-1 text-amber-400 font-semibold">
+                    <Star size={12} className="fill-amber-400 text-amber-400" />
+                    {current.score}
+                  </span>
+                </>
               )}
 
-              {current.year && (
-                <span className="text-[10px] sm:text-[11px] font-bold text-zinc-300 px-2 py-0.5 bg-black/50 backdrop-blur-md rounded-full border border-white/10">
-                  {current.year}
-                </span>
+              {current.isHindi && (
+                <>
+                  <span className="text-zinc-600 select-none">•</span>
+                  <span className="text-amber-300 font-semibold tracking-wide">Hindi Dub</span>
+                </>
               )}
             </div>
-
-            {/* Title */}
-            <h2 className="text-lg sm:text-2xl md:text-3xl lg:text-4xl font-black text-white uppercase tracking-wider font-lemon drop-shadow-[0_4px_12px_rgba(0,0,0,0.9)] max-w-3xl line-clamp-2">
-              {current.title}
-            </h2>
 
             {/* Synopsis Overview */}
             <p className="text-[11px] sm:text-xs text-zinc-300 max-w-2xl line-clamp-2 font-medium drop-shadow-md px-2">
@@ -227,9 +123,10 @@ const HeroSlider = ({ items }: { items: DramaCard[] }) => {
             </p>
 
             {/* Action Buttons (One UI 8 Pill Style) */}
-            <div className="flex items-center gap-3 pt-0.5">
+            <div className="flex items-center gap-3 pt-1">
               <Link
                 href={`/stream/${current.id}${current.isMovie ? '?type=movie' : ''}`}
+                onClick={() => playGummyTap()}
                 className="flex items-center justify-center gap-2 bg-gradient-to-r from-cyan-400 to-blue-500 hover:from-cyan-300 hover:to-blue-400 text-black font-black text-xs sm:text-sm px-5 py-2 rounded-full shadow-[0_0_20px_rgba(34,211,238,0.45)] transition-all transform hover:scale-105 active:scale-95"
               >
                 <Play size={15} className="fill-current" /> Watch Now
@@ -237,6 +134,7 @@ const HeroSlider = ({ items }: { items: DramaCard[] }) => {
 
               <Link
                 href={`/stream/${current.id}${current.isMovie ? '?type=movie' : ''}`}
+                onClick={() => playGummyTap()}
                 className="flex items-center justify-center gap-2 bg-[#0d1527]/80 hover:bg-[#131f38] text-white font-bold text-xs sm:text-sm px-4.5 py-2 rounded-full transition-all backdrop-blur-sm border border-white/15 active:scale-95 shadow-md"
               >
                 <Info size={15} /> Details
@@ -246,17 +144,57 @@ const HeroSlider = ({ items }: { items: DramaCard[] }) => {
         </AnimatePresence>
       </div>
       
-      {/* Centered Carousel Indicators */}
-      <div className="absolute bottom-3 left-1/2 -translate-x-1/2 z-30 flex items-center justify-center gap-1.5 pointer-events-auto bg-[#0a0f1d]/85 backdrop-blur-sm px-3.5 py-1.5 rounded-full border border-white/[0.08]">
-        {items.map((_, i) => (
-          <div 
-            key={i} 
-            role="button"
-            tabIndex={0}
-            onClick={() => setCurrentIndex(i)} 
-            className={cn("h-1.5 shrink-0 rounded-full transition-all duration-200 border-0 outline-none p-0 min-h-[6px] max-h-[6px] cursor-pointer block appearance-none", currentIndex === i ? "w-6 bg-cyan-400" : "w-1.5 bg-white/30 hover:bg-white/60")}
-          />
-        ))}
+      {/* Centered Carousel Controls (Left Arrow + Indicator Dots + Right Arrow) */}
+      <div className="absolute bottom-3 left-1/2 -translate-x-1/2 z-30 flex items-center justify-center gap-1.5 sm:gap-2 pointer-events-auto bg-[#0a0f1d]/85 backdrop-blur-md px-2 py-1 sm:px-2.5 sm:py-1 rounded-full border border-white/[0.08] shadow-[0_4px_20px_rgba(0,0,0,0.5)]">
+        {/* Left Arrow Button */}
+        <button
+          type="button"
+          onClick={(e) => {
+            e.stopPropagation();
+            playGummyTap();
+            setCurrentIndex(prev => (prev - 1 + items.length) % items.length);
+          }}
+          aria-label="Previous slide"
+          className="w-6 h-6 rounded-full flex items-center justify-center text-zinc-400 hover:text-white hover:bg-white/10 active:scale-85 transition-all outline-none"
+        >
+          <ChevronLeft size={14} className="stroke-[2.5]" />
+        </button>
+
+        {/* Indicator Dots */}
+        <div className="flex items-center gap-1.5 px-0.5">
+          {items.map((_, i) => (
+            <button 
+              key={i} 
+              type="button"
+              aria-label={`Go to slide ${i + 1}`}
+              onClick={(e) => {
+                e.stopPropagation();
+                playGummyTap();
+                setCurrentIndex(i);
+              }} 
+              className={cn(
+                "h-1.5 shrink-0 rounded-full transition-all duration-300 border-0 outline-none p-0 cursor-pointer block", 
+                currentIndex === i 
+                  ? "w-6 bg-cyan-400 shadow-[0_0_10px_rgba(34,211,238,0.7)]" 
+                  : "w-1.5 bg-white/30 hover:bg-white/60"
+              )}
+            />
+          ))}
+        </div>
+
+        {/* Right Arrow Button */}
+        <button
+          type="button"
+          onClick={(e) => {
+            e.stopPropagation();
+            playGummyTap();
+            setCurrentIndex(prev => (prev + 1) % items.length);
+          }}
+          aria-label="Next slide"
+          className="w-6 h-6 rounded-full flex items-center justify-center text-zinc-400 hover:text-white hover:bg-white/10 active:scale-85 transition-all outline-none"
+        >
+          <ChevronRight size={14} className="stroke-[2.5]" />
+        </button>
       </div>
     </div>
   );
@@ -316,13 +254,27 @@ const ContentRow = ({
         </div>
 
         <div className="flex items-center gap-2">
-          <Link 
-            href={section.query ? `/search?library=drama&keyword=${section.query}` : `/search?library=drama`} 
-            className="text-[11px] font-black uppercase tracking-wider text-zinc-400 hover:text-white px-3.5 py-1.5 rounded-xl bg-[#0e1629]/80 border border-white/[0.08] hover:border-cyan-500/40 transition-all inline-flex items-center gap-1.5 whitespace-nowrap active:scale-95"
-          >
-            <span>Explore More</span>
-            <ChevronRight size={13} className="text-cyan-400" />
-          </Link>
+          {(() => {
+            const isMovieSection = section.title.toLowerCase().includes('movie') || 
+                                   section.title.toLowerCase().includes('cinema') || 
+                                   section.title.toLowerCase().includes('hollywood') || 
+                                   section.title.toLowerCase().includes('bollywood');
+            const targetLib = isMovieSection ? 'movies' : 'drama';
+            const exploreHref = section.query 
+              ? `/explore?library=${targetLib}&keyword=${encodeURIComponent(section.query)}` 
+              : `/explore?library=${targetLib}`;
+
+            return (
+              <Link 
+                href={exploreHref} 
+                className="text-[10px] md:text-[11px] font-black uppercase tracking-wider text-zinc-300 md:text-zinc-400 hover:text-white px-3 py-1.5 rounded-full bg-white/5 border border-white/10 md:border-white/5 hover:border-cyan-500/40 transition-all inline-flex items-center gap-1 whitespace-nowrap active:scale-95"
+              >
+                <span className="md:hidden">Explore</span>
+                <span className="hidden md:inline">Explore More</span>
+                <ChevronRight size={12} className="text-cyan-400" />
+              </Link>
+            );
+          })()}
 
           <div className="flex items-center gap-1.5">
             <button
@@ -508,6 +460,14 @@ function CinemaContent() {
               </div>
             )}
           </div>
+
+          {/* CUTE SHARE BAR */}
+          <CuteShareBar 
+            badgeText="Share Cinema"
+            badgeSubtext="Movies & Dramas"
+            title="Invite your Friends to Shadow Cinema!"
+            description="Share Hollywood blockbusters, Asian dramas, Korean/Chinese/Turkish series & Bollywood hits in crystal clear HD."
+          />
 
           <Footer />
         </>

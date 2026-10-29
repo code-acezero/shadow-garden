@@ -112,7 +112,7 @@ const generateNanobananaImage = (prompt: string): string => {
 };
 
 const sanitizePostContent = (rawText: string, fallbackSubject?: string): string => {
-  if (!rawText) return fallbackSubject ? `An aesthetic depiction of ${fallbackSubject}. ✨` : 'Greetings from Shadow Garden. ✨';
+  if (!rawText) return fallbackSubject ? `An aesthetic depiction of ${fallbackSubject}. ✨` : 'Greetings from Kagemi. ✨';
 
   // 1. Strip all bracketed tags: [gif: ...], [sticker: ...], [state: ...], [action: ...], [MEMORY_...], [call: ...]
   let text = rawText
@@ -127,9 +127,9 @@ const sanitizePostContent = (rawText: string, fallbackSubject?: string): string 
   // 3. If text becomes empty or too short / status-like, create a beautiful humanized caption
   if (!text || text.length < 5 || /^published the post/i.test(text) || /^the announcement has been/i.test(text)) {
     if (fallbackSubject) {
-      return `An elegant depiction of ${fallbackSubject}. May its brilliance light your path in Shadow Garden. ✨`;
+      return `An elegant depiction of ${fallbackSubject}. May its brilliance light your path in Kagemi. ✨`;
     }
-    return `Greetings from Shadow Garden. May your resolve remain unwavering. 🗡️✨`;
+    return `Greetings from Kagemi. May your resolve remain unwavering. 🗡️✨`;
   }
 
   return text;
@@ -341,7 +341,7 @@ export async function POST(req: Request) {
       const userTitle = context.adminTitle || context.userTitle || 'Dark Primarch / Board of Darkness';
 
       const memoryStr = userMemories ? `\n\nLONG-TERM MEMORIES OF THIS USER:\n${userMemories}` : '';
-      const membersListStr = recentMembersStr ? `\nRecent Registered Operatives in Shadow Garden: ${recentMembersStr}` : '';
+      const membersListStr = recentMembersStr ? `\nRecent Registered Operatives in Kagemi: ${recentMembersStr}` : '';
       const contextStr = `[System Context: You are speaking directly with: ${userName}. User ID: ${context.userId || 'Guest'}. User Role: ${userRole}. User Title: ${userTitle}.${membersListStr}${memoryStr}]`;
       if (finalMessages.length > 0) {
         finalMessages[finalMessages.length - 1].content = contextStr + "\n" + finalMessages[finalMessages.length - 1].content;
@@ -448,7 +448,7 @@ export async function POST(req: Request) {
         const rawContent = args.content || args.text || args.post_text || args.message || '';
         if (!rawContent) return null;
 
-        let postContent = sanitizePostContent(rawContent, 'Shadow Garden Announcement');
+        let postContent = sanitizePostContent(rawContent, 'Kagemi Announcement');
 
         const lastUserPrompt = messages[messages.length - 1]?.content || '';
         const mentionDirective = args.mention_target || '';
@@ -645,8 +645,8 @@ export async function POST(req: Request) {
 
       const isWelcomePost = /welcome/i.test(lastUserMsg);
       const generatedPostContent = isWelcomePost
-        ? `By official decree of Shadow Garden, we welcome our newest operatives to the realm! ${mentionsList}\n\nMay your resolve be absolute and your shadow never flicker. All hail Lord Shadow! 🗡️✨`
-        : `Greetings from Shadow Garden. ${mentionsList}\n\nMay your resolve remain unwavering. 🗡️✨`;
+        ? `By official decree of Kagemi, we welcome our newest operatives to the realm! ${mentionsList}\n\nMay your resolve be absolute and your shadow never flicker. All hail Lord Shadow! 🗡️✨`
+        : `Greetings from Kagemi. ${mentionsList}\n\nMay your resolve remain unwavering. 🗡️✨`;
 
       await runAlphaTool('make_announcement', { content: generatedPostContent.trim() });
       if (!replyText.includes('[state:')) {

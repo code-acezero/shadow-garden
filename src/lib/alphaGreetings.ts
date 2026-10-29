@@ -11,17 +11,17 @@ export interface TitleGreetings {
 // ----------------------------------------------------
 export const TRAVELLER_GREETINGS: TitleGreetings = {
   initial: [
-    `[state: greet] Greetings, traveller. I am Alpha, First Shadow of Shadow Garden. You have stumbled into our domain—step carefully.`,
+    `[state: greet] Greetings, traveller. I am Alpha, First Shadow of Kagemi. You have stumbled into our domain—step carefully.`,
     `[state: greet] Welcome, wandering soul. The shadows whisper of your arrival. Seek out an official identity to join our garden.`,
-    `[state: think] A traveller approaches... I am Alpha. What brings an unsworn wanderer to Shadow Garden?`,
-    `[state: greet] [sticker: salute] Welcome to the threshold of Shadow Garden, traveller. Honor our code, and you may find wisdom here.`,
+    `[state: think] A traveller approaches... I am Alpha. What brings an unsworn wanderer to Kagemi?`,
+    `[state: greet] [sticker: salute] Welcome to the threshold of Kagemi, traveller. Honor our code, and you may find wisdom here.`,
     `[state: greet] Greetings. You enter as a traveller, but destiny may make you an operative. Speak your query.`
   ],
   revisit: [
     `[state: greet] Back so soon, traveller? The shadows seem to draw you in. Have you decided to join our ranks?`,
     `[state: think] Ah, the wandering traveller returns today. What further intel do you seek from Alpha?`,
     `[state: greet] Welcome back, traveller. The garden gates remain open to you for now.`,
-    `[state: greet] [sticker: smile] Returning twice in a day? You are becoming quite attached to Shadow Garden, wanderer.`,
+    `[state: greet] [sticker: smile] Returning twice in a day? You are becoming quite attached to Kagemi, wanderer.`,
     `[state: greet] Greetings once more, traveller. I am listening if you have questions about our realm.`
   ]
 };
@@ -32,10 +32,10 @@ export const TRAVELLER_GREETINGS: TitleGreetings = {
 export const ADVENTURER_GREETINGS: TitleGreetings = {
   initial: [
     `[state: greet] Greetings, Adventurer. I am Alpha. Your progress through our ranks has been noted. How may I assist your mission?`,
-    `[state: bow] Welcome back to Shadow Garden, Adventurer. Every quest you complete brings us closer to total mastery.`,
+    `[state: bow] Welcome back to Kagemi, Adventurer. Every quest you complete brings us closer to total mastery.`,
     `[state: greet] [sticker: salute] Salutations, Adventurer! First Shadow Alpha stands ready to guide your journey. Speak your command.`,
     `[state: inspect] An active Adventurer enters the sanctum. Keep sharpening your abilities—Lord Shadow expects excellence.`,
-    `[state: greet] Welcome, brave Adventurer. Shadow Garden honors your dedication. What directive shall we undertake?`
+    `[state: greet] Welcome, brave Adventurer. Kagemi honors your dedication. What directive shall we undertake?`
   ],
   revisit: [
     `[state: greet] Revisit noted, Adventurer. Returning so swiftly to the sanctum today demonstrates true commitment.`,
@@ -51,11 +51,11 @@ export const ADVENTURER_GREETINGS: TitleGreetings = {
 // ----------------------------------------------------
 export const SHADOW_LEADER_GREETINGS: TitleGreetings = {
   initial: [
-    `[state: bow] [sticker: salute] Welcome back, Lord Shadow. I have been overseeing Shadow Garden's operations in your absence. What is your command?`,
+    `[state: bow] [sticker: salute] Welcome back, Lord Shadow. I have been overseeing Kagemi's operations in your absence. What is your command?`,
     `[state: bow] Greetings, Lord Shadow. Every operative stands ready to execute your master plan. How may I serve you today?`,
     `[state: greet] Lord Shadow... your presence elevates the realm. All intelligence feeds are synced and awaiting your direction.`,
     `[state: bow] [sticker: smile] Lord Shadow! I have prepared full status reports on the Cult's movements. Order me as you see fit.`,
-    `[state: greet] Welcome, Lord Shadow. Shadow Garden moves according to your unspoken wisdom. What shall be our next directive?`
+    `[state: greet] Welcome, Lord Shadow. Kagemi moves according to your unspoken wisdom. What shall be our next directive?`
   ],
   revisit: [
     `[state: bow] Returning so soon, Lord Shadow? Your constant vigilance inspires us all. I am listening.`,
@@ -72,7 +72,7 @@ export const SHADOW_LEADER_GREETINGS: TitleGreetings = {
 export const BOARD_OF_DARKNESS_GREETINGS: Record<string, TitleGreetings> = {
   'Abyss Archon': {
     initial: [
-      `[state: bow] Greetings, Abyss Archon. The deep currents of Shadow Garden obey your authority. What is your command?`,
+      `[state: bow] Greetings, Abyss Archon. The deep currents of Kagemi obey your authority. What is your command?`,
       `[state: greet] [sticker: salute] Welcome, Abyss Archon. First Shadow Alpha reports all abyssal sectors secure under your domain.`,
       `[state: inspect] Salutations, Abyss Archon. Your command over the deep void strengthens our garden. How may I assist?`,
       `[state: greet] Abyss Archon, your presence commands respect across the Board of Darkness. State your directive.`,
@@ -105,7 +105,7 @@ export const BOARD_OF_DARKNESS_GREETINGS: Record<string, TitleGreetings> = {
   'Eclipse Blade': {
     initial: [
       `[state: greet] [sticker: salute] Greetings, Eclipse Blade. Your edge remains the sharpest weapon on the Board of Darkness.`,
-      `[state: bow] Welcome, Eclipse Blade. The strike forces of Shadow Garden await your tactical signal.`,
+      `[state: bow] Welcome, Eclipse Blade. The strike forces of Kagemi await your tactical signal.`,
       `[state: inspect] Eclipse Blade! Your combat readiness is legendary. What target shall we execute today?`,
       `[state: greet] Salutations, Eclipse Blade. Let the shadows eclipse all who oppose Lord Shadow.`,
       `[state: bow] Welcome back, Eclipse Blade. Alpha has prepared all tactical field updates for you.`
@@ -120,7 +120,7 @@ export const BOARD_OF_DARKNESS_GREETINGS: Record<string, TitleGreetings> = {
   },
   'Umbral Lord': {
     initial: [
-      `[state: bow] Greetings, Umbral Lord. The dark sanctuaries of Shadow Garden thrive under your guidance.`,
+      `[state: bow] Greetings, Umbral Lord. The dark sanctuaries of Kagemi thrive under your guidance.`,
       `[state: greet] [sticker: salute] Welcome, Umbral Lord. The Board of Darkness relies on your diplomatic & strategic brilliance.`,
       `[state: inspect] Umbral Lord! All umbral feeds are clear. How may First Shadow serve your station today?`,
       `[state: greet] Salutations, Umbral Lord. May the dark mantle protect your every endeavor.`,
@@ -162,7 +162,7 @@ export const COUNCIL_OF_SHADOWS_GREETINGS: Record<string, TitleGreetings> = {
       `[state: bow] First Shadow present. Standing by to manage all Garden protocols.`,
       `[state: inspect] Primary console active. First Shadow Alpha ready for input.`,
       `[state: greet] [sticker: salute] Systems online. First Shadow Alpha reporting for duty.`,
-      `[state: greet] Alpha self-diagnostic complete. All Shadow Garden subroutines nominal.`
+      `[state: greet] Alpha self-diagnostic complete. All Kagemi subroutines nominal.`
     ],
     revisit: [
       `[state: greet] First Shadow console refreshed today. Ready for further commands.`,
@@ -192,7 +192,7 @@ export const COUNCIL_OF_SHADOWS_GREETINGS: Record<string, TitleGreetings> = {
     initial: [
       `[state: greet] Welcome, Third Shadow Gamma. Mitsugoshi Corporation's profits and inventory reports are ready.`,
       `[state: bow] Greetings, Gamma. Please be careful around the stairs... How are operations today?`,
-      `[state: inspect] Third Shadow Gamma! Your business genius continues to fund Shadow Garden's ascension.`,
+      `[state: inspect] Third Shadow Gamma! Your business genius continues to fund Kagemi's ascension.`,
       `[state: greet] [sticker: smile] Salutations, Gamma. All financial ledgers are prepared for your review.`,
       `[state: bow] Welcome back, Gamma. Mitsugoshi branches across the continent report smooth growth.`
     ],
@@ -270,7 +270,7 @@ export const COUNCIL_OF_SHADOWS_GREETINGS: Record<string, TitleGreetings> = {
   },
   'Eighth Shadow': { // Omega
     initial: [
-      `[state: greet] Greetings, Eighth Shadow. Your strategic council position strengthens Shadow Garden's resolve.`,
+      `[state: greet] Greetings, Eighth Shadow. Your strategic council position strengthens Kagemi's resolve.`,
       `[state: bow] Welcome, Eighth Shadow. All division directives are ready for your review.`,
       `[state: inspect] Eighth Shadow! Your tactical foresight is essential to our council. Speak your command.`,
       `[state: greet] Salutations, Eighth Shadow. May your wisdom guide our frontline operatives.`,
@@ -287,7 +287,7 @@ export const COUNCIL_OF_SHADOWS_GREETINGS: Record<string, TitleGreetings> = {
   'Ninth Shadow': { // Phantom
     initial: [
       `[state: greet] Greetings, Ninth Shadow. Your stealth and phantom division operate flawlessly in the dark.`,
-      `[state: bow] Welcome, Ninth Shadow. The unseen forces of Shadow Garden await your signal.`,
+      `[state: bow] Welcome, Ninth Shadow. The unseen forces of Kagemi await your signal.`,
       `[state: inspect] Ninth Shadow! No enemy detects your movement. What target shall we shadow today?`,
       `[state: greet] Salutations, Ninth Shadow. Let the phantom strike before they even sense us.`,
       `[state: bow] Welcome back, Ninth Shadow. All infiltration routes are clear.`
@@ -304,7 +304,7 @@ export const COUNCIL_OF_SHADOWS_GREETINGS: Record<string, TitleGreetings> = {
     initial: [
       `[state: greet] Greetings, Tenth Shadow. Your illusions and decoy networks mislead all Cult spies.`,
       `[state: bow] Welcome, Tenth Shadow. The mirage division stands at full readiness.`,
-      `[state: inspect] Tenth Shadow! Your deceptive arts keep Shadow Garden invisible to the world.`,
+      `[state: inspect] Tenth Shadow! Your deceptive arts keep Kagemi invisible to the world.`,
       `[state: greet] Salutations, Tenth Shadow. Let our enemies chase shadows and mirages.`,
       `[state: bow] Welcome back, Tenth Shadow. All decoy nodes are active.`
     ],
@@ -324,10 +324,10 @@ export const COUNCIL_OF_SHADOWS_GREETINGS: Record<string, TitleGreetings> = {
 export const generateGreetingsForCustomTitle = (titleName: string): TitleGreetings => {
   return {
     initial: [
-      `[state: bow] Greetings, [${titleName}]. The official seal of Shadow Garden acknowledges your high station. What is your command?`,
+      `[state: bow] Greetings, [${titleName}]. The official seal of Kagemi acknowledges your high station. What is your command?`,
       `[state: greet] [sticker: salute] Welcome, [${titleName}]. First Shadow Alpha reports all division operations aligned under your title.`,
       `[state: inspect] Salutations, [${titleName}]. Your newly assigned title brings great prestige to our council. How may I assist?`,
-      `[state: greet] [${titleName}], your leadership in Shadow Garden is recognized by Lord Shadow. State your directive.`,
+      `[state: greet] [${titleName}], your leadership in Kagemi is recognized by Lord Shadow. State your directive.`,
       `[state: bow] Welcome back to the sanctum, [${titleName}]. All intelligence feeds are open for your inspection.`
     ],
     revisit: [

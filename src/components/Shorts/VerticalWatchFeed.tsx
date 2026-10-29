@@ -1241,7 +1241,7 @@ export default function VerticalWatchFeed({
       try {
         await navigator.share({
           title: `${drama.title} - Ep ${currentEpNum}`,
-          text: `Watch ${drama.title} Episode ${currentEpNum} in HD vertical format on Shadow Garden!`,
+          text: `Watch ${drama.title} Episode ${currentEpNum} in HD vertical format on Kagemi!`,
           url: window.location.href
         });
       } catch {}

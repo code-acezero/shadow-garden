@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import Link from 'next/link';
 import { Play, Star, Bookmark, MoreVertical, Share2, Check, Eye } from 'lucide-react';
 import { ShortDramaItem } from '@/lib/shorts/types';
@@ -30,6 +30,32 @@ export default function ShortDramaCard({
   const [imgError, setImgError] = useState(false);
   const [showMenu, setShowMenu] = useState(false);
   const [copied, setCopied] = useState(false);
+
+  // Deduplicate and filter out language-like tags that already appear in the card
+  const cleanTag = useMemo(() => {
+    if (!drama.tags || !Array.isArray(drama.tags)) return null;
+    const langLower = (drama.language || '').toLowerCase().trim();
+
+    const seen = new Set<string>();
+    const uniqueTags: string[] = [];
+
+    for (const rawTag of drama.tags) {
+      const tag = String(rawTag).trim();
+      const lower = tag.toLowerCase();
+      if (!lower || seen.has(lower)) continue;
+      seen.add(lower);
+
+      // Skip redundant tags that duplicate language, dub, or sub
+      if (lower === langLower) continue;
+      if (lower.includes('hindi') && langLower.includes('hindi')) continue;
+      if (lower.includes('english') && langLower.includes('english')) continue;
+      if (['dub', 'sub', 'hindi dub', 'english dub', 'raw'].includes(lower)) continue;
+
+      uniqueTags.push(tag);
+    }
+
+    return uniqueTags[0] || null;
+  }, [drama.tags, drama.language]);
 
   // Fallback cover if image fails
   const coverUrl = imgError || !drama.cover
@@ -177,11 +203,11 @@ export default function ShortDramaCard({
               ) : (
                 <span>8.8</span>
               )}
-              {drama.tags && drama.tags[0] && (
+              {cleanTag && (
                 <>
                   <span>•</span>
-                  <span className="truncate max-w-[80px] text-zinc-500">
-                    #{drama.tags[0]}
+                  <span className="truncate max-w-[85px] text-zinc-500 font-medium">
+                    #{cleanTag}
                   </span>
                 </>
               )}

@@ -434,8 +434,8 @@ const DramaPlayer = forwardRef<DramaPlayerRef, DramaPlayerProps>(({
       {/* Title */}
       <div className={cn("absolute top-2 md:top-4 left-1/2 -translate-x-1/2 z-40 transition-all duration-500 max-w-[85%]", showControls ? "opacity-100 translate-y-0" : "opacity-0 -translate-y-8")}>
         <div className="bg-black/70 border border-white/10 rounded-full px-4 py-1.5 backdrop-blur-md flex items-center gap-2">
-          <div className="w-1.5 h-1.5 bg-primary-600 rounded-full animate-pulse shrink-0" />
-          <span className="text-[9px] font-black text-gray-200 uppercase tracking-widest truncate">{title || "Shadow Garden"}</span>
+
+          <span className="text-[9px] font-black text-gray-200 uppercase tracking-widest truncate">{title || "Kagemi"}</span>
         </div>
       </div>
 

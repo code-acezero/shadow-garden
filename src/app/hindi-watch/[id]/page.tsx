@@ -20,8 +20,8 @@ export async function generateMetadata(
 
   if (!data) {
     return {
-      title: 'Watch Hindi Dubbed Anime Online Free HD | Shadow Garden',
-      description: 'Stream top anime dubbed in Hindi online for free in HD on Shadow Garden. Enjoy high quality Hindi audio with zero buffering.',
+      title: 'Watch Hindi Dubbed Anime Online Free HD | Kagemi',
+      description: 'Stream top anime dubbed in Hindi online for free in HD on Kagemi. Enjoy high quality Hindi audio with zero buffering.',
     };
   }
 
@@ -33,9 +33,9 @@ export async function generateMetadata(
     .trim();
 
   const seoTitle = `Watch ${cleanTitle}${epText} Hindi Dubbed Online Free HD`;
-  const seoDesc = `Watch ${cleanTitle}${epText} in Hindi Audio online for free in 1080p Full HD on Shadow Garden. Stream all Hindi dubbed anime episodes with high speed servers. ${cleanDesc}...`;
-  const canonicalUrl = `https://shadow-garden.site/hindi-watch/${encodeURIComponent(id)}${ep ? `?ep=${ep}` : ''}`;
-  const posterUrl = data.image || 'https://shadow-garden.site/og-image.png';
+  const seoDesc = `Watch ${cleanTitle}${epText} in Hindi Audio online for free in 1080p Full HD on Kagemi. Stream all Hindi dubbed anime episodes with high speed servers. ${cleanDesc}...`;
+  const canonicalUrl = `https://kagemi.site/hindi-watch/${encodeURIComponent(id)}${ep ? `?ep=${ep}` : ''}`;
+  const posterUrl = data.image || 'https://kagemi.site/og-image.png';
 
   const keywords = [
     `watch ${cleanTitle} in hindi`,
@@ -46,7 +46,7 @@ export async function generateMetadata(
     'watch hindi dubbed anime free',
     'hindi anime online',
     'hindi anime download',
-    'shadow garden hindi'
+    'kagemi hindi'
   ];
 
   return {
@@ -68,10 +68,10 @@ export async function generateMetadata(
       },
     },
     openGraph: {
-      title: `Watch ${cleanTitle}${epText} Hindi Dubbed - Shadow Garden`,
+      title: `Watch ${cleanTitle}${epText} Hindi Dubbed - Kagemi`,
       description: seoDesc,
       url: canonicalUrl,
-      siteName: 'Shadow Garden',
+      siteName: 'Kagemi',
       images: [{ url: posterUrl, width: 1200, height: 630, alt: `Watch ${cleanTitle} in Hindi` }],
       type: 'video.other',
     },
@@ -80,7 +80,7 @@ export async function generateMetadata(
       title: seoTitle,
       description: seoDesc,
       images: [posterUrl],
-      creator: '@ShadowGarden',
+      creator: '@KagemiAnime',
     },
   };
 }

@@ -24,7 +24,7 @@ import { useAuth } from '@/context/AuthContext';
 import { sfx } from '@/lib/audioManager';
 import PostShareModal from '@/components/Social/PostShareModal';
 
-import AnimePlayer, { AnimePlayerRef } from '@/components/Player/AnimePlayer';
+import OmniPlayer, { OmniPlayerRef, OmniPlayer as AnimePlayer, OmniPlayerRef as AnimePlayerRef } from '@/components/Player/OmniPlayer';
 import { adManager } from '@/lib/adManager';
 import WatchListButton from '@/components/Watch/WatchListButton';
 import ShadowComments from '@/components/Comments/ShadowComments';
@@ -826,22 +826,23 @@ function WatchContent() {
       if (!ep) return;
       const duration = playerRef.current?.getDuration() || 1350;
       const percent = Math.min(100, Math.round((progress / duration) * 100));
-      const isCompleted = percent >= 80;
+      const isCompleted = forceFlush || percent >= 80;
 
       setEpProgress(prev => {
           if (prev[ep.number] === (isCompleted ? 100 : percent)) return prev;
           return { ...prev, [ep.number]: isCompleted ? 100 : percent };
       });
 
+      const episodeImage = (ep as any).image || (ep as any).poster || anime.poster;
+      const rawTitle = anime.title || (anime as any).name || (anime as any).jname;
+      const animeTitle = formatAnimeTitle(rawTitle, animeId);
+      if (typeof window !== 'undefined' && animeTitle && !animeTitle.toLowerCase().includes('unknown')) {
+          localStorage.setItem(`shadow_anime_title_${animeId}`, animeTitle);
+      }
+      const animeImage = anime.poster || (anime as any).image || episodeImage;
+      const animeType = 'donghua';
+
       if (user) {
-          const episodeImage = (ep as any).image || (ep as any).poster || anime.poster;
-          const rawTitle = anime.title || (anime as any).name || (anime as any).jname;
-          const animeTitle = formatAnimeTitle(rawTitle, animeId);
-          if (typeof window !== 'undefined' && animeTitle && !animeTitle.toLowerCase().includes('unknown')) {
-              localStorage.setItem(`shadow_anime_title_${animeId}`, animeTitle);
-          }
-          const animeImage = anime.poster || (anime as any).image || episodeImage;
-          const animeType = 'donghua';
           const entry = {
               user_id: user.id,
               anime_id: animeId,
@@ -863,16 +864,11 @@ function WatchContent() {
           localStorage.setItem(`shadow_sync_buffer_${animeId}`, JSON.stringify(progressBuffer.current));
           if (forceFlush || isCompleted) flushSyncBuffer();
       } else {
-          const rawTitle = anime.title || (anime as any).name || (anime as any).jname;
-          const animeTitle = formatAnimeTitle(rawTitle, animeId);
-          if (typeof window !== 'undefined' && animeTitle && !animeTitle.toLowerCase().includes('unknown')) {
-              localStorage.setItem(`shadow_anime_title_${animeId}`, animeTitle);
-          }
           const localData = JSON.parse(localStorage.getItem('shadow_continue_watching') || '{}');
           localData[animeId] = { 
             animeId, 
             title: animeTitle,
-            poster: anime.poster || (anime as any).image,
+            poster: animeImage,
             episodeId: currentEpId, 
             episodeNumber: ep.number, 
             progress: progress || 50, 
@@ -894,6 +890,23 @@ function WatchContent() {
           progressBuffer.current[currentEpId] = epData[currentEpId];
 
           if (typeof window !== 'undefined') window.dispatchEvent(new CustomEvent('shadow-continue-updated'));
+      }
+
+      // Auto sync with watchlist and completed detection
+      if (typeof window !== 'undefined') {
+          window.dispatchEvent(new CustomEvent('shadow-sync-watching', {
+              detail: {
+                  anime_id: animeId,
+                  title: animeTitle,
+                  poster: animeImage,
+                  episode_number: ep.number,
+                  episode_id: currentEpId,
+                  total_episodes: anime.episodes?.length || 1,
+                  is_completed: isCompleted,
+                  type: animeType,
+                  media_type: 'donghua'
+              }
+          }));
       }
   }, [anime, currentEpId, user, animeId, settings.server, flushSyncBuffer]);
 
@@ -1605,7 +1618,7 @@ function WatchContent() {
   useEffect(() => {
       if (anime) {
           const epPrefix = currentEpisode ? `Ep ${currentEpisode.number} - ` : '';
-          document.title = `${epPrefix}${anime.title} | Shadow Garden`;
+          document.title = `${epPrefix}${anime.title} | Kagemi`;
       }
   }, [anime, currentEpisode]);
 
@@ -1976,16 +1989,13 @@ function WatchContent() {
                                             </>
                                         )}
                                         {/airing|releasing|ongoing/i.test(anime.info.status || '') ? (
-                                            <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-emerald-500/15 border border-emerald-500/40 text-emerald-400 font-black tracking-wider text-[10px] shadow-[0_0_12px_rgba(16,185,129,0.35)] animate-pulse">
-                                                <span className="relative flex h-2 w-2">
-                                                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-                                                    <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
-                                                </span>
+                                            <span className="inline-flex items-center gap-1.5 text-emerald-400 font-black tracking-wider text-[11px]">
+                                                <PlayCircle size={12} className="text-emerald-400" />
                                                 RELEASING
                                             </span>
                                         ) : /finished|completed|ended/i.test(anime.info.status || '') ? (
-                                            <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-blue-500/10 border border-blue-500/30 text-blue-400 font-black tracking-wider text-[10px]">
-                                                <CheckCircle size={10} className="text-blue-400" />
+                                            <span className="inline-flex items-center gap-1 text-blue-400 font-black tracking-wider text-[11px]">
+                                                <CheckCircle size={12} className="text-blue-400" />
                                                 FINISHED
                                             </span>
                                         ) : (
@@ -2015,16 +2025,13 @@ function WatchContent() {
                                         </>
                                     )}
                                     {/airing|releasing|ongoing/i.test(anime.info.status || '') ? (
-                                        <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-emerald-500/15 border border-emerald-500/40 text-emerald-400 font-black tracking-wider text-[10px] shadow-[0_0_12px_rgba(16,185,129,0.35)] animate-pulse">
-                                            <span className="relative flex h-2 w-2">
-                                                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-                                                <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
-                                            </span>
+                                        <span className="inline-flex items-center gap-1.5 text-emerald-400 font-black tracking-wider text-[11px]">
+                                            <PlayCircle size={12} className="text-emerald-400" />
                                             RELEASING
                                         </span>
                                     ) : /finished|completed|ended/i.test(anime.info.status || '') ? (
-                                        <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-blue-500/10 border border-blue-500/30 text-blue-400 font-black tracking-wider text-[10px]">
-                                            <CheckCircle size={10} className="text-blue-400" />
+                                        <span className="inline-flex items-center gap-1 text-blue-400 font-black tracking-wider text-[11px]">
+                                            <CheckCircle size={12} className="text-blue-400" />
                                             FINISHED
                                         </span>
                                     ) : (
@@ -2138,7 +2145,7 @@ function WatchContent() {
         onClose={() => setShowShareModal(false)}
         customUrl={typeof window !== 'undefined' ? window.location.href : ''}
         customTitle={`${anime?.title || 'Donghua'} - Episode ${currentEpisode?.number || '1'}`}
-        customContent={`Watch ${anime?.title || 'Donghua'} Episode ${currentEpisode?.number || '1'} on Shadow Garden!`}
+        customContent={`Watch ${anime?.title || 'Donghua'} Episode ${currentEpisode?.number || '1'} on Kagemi!`}
       />
     </div>
   );

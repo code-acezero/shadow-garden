@@ -1,7 +1,7 @@
 {
-  "name": "Shadow Garden",
-  "short_name": "ShadowGarden",
-  "description": "The Ultimate Anime Streaming Platform from Another World.",
+  "name": "Kagemi",
+  "short_name": "Kagemi",
+  "description": "Watch anime online free in HD with English subbed and dubbed streaming. Fast, zero ads, high quality anime on Kagemi.",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#000000",

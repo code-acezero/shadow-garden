@@ -20,7 +20,7 @@ export default function AZNavigationBar() {
         {/* Header */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-5 md:mb-6">
           <div className="flex items-center gap-2.5 md:gap-3">
-            <BookOpen className="w-7 h-7 md:w-9 md:h-9 text-red-500 shrink-0 drop-shadow-[0_0_12px_rgba(239,68,68,0.5)]" />
+            <BookOpen className="w-7 h-7 md:w-9 md:h-9 text-red-500 shrink-0" />
             <h2 className="text-xl md:text-3xl font-black text-white font-lemon uppercase tracking-wide flex items-center gap-2">
               ALPHABETICAL <span className="text-red-500">ARCHIVE</span>
             </h2>
@@ -36,8 +36,8 @@ export default function AZNavigationBar() {
           {LETTERS.map((char) => {
             const isAll = char === 'All';
             const targetUrl = isAll 
-              ? '/search?mode=az' 
-              : `/search?mode=az&letter=${encodeURIComponent(char === '#' ? '0-9' : char)}`;
+              ? '/explore?mode=az' 
+              : `/explore?mode=az&letter=${encodeURIComponent(char === '#' ? '0-9' : char)}`;
 
             return (
               <Link

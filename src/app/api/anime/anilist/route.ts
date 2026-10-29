@@ -54,9 +54,9 @@ async function executeAniListFetch(bodyString: string, authHeader?: string | nul
 
     const json = await res.json().catch(() => null);
 
-    if (res.status === 429 && attempt <= 2) {
-      const retryAfter = parseInt(res.headers.get('retry-after') || '2', 10);
-      const waitMs = Math.min(Math.max(retryAfter * 1000, 1500), 4000);
+    if (res.status === 429 && attempt < 2) {
+      const retryAfter = parseInt(res.headers.get('retry-after') || '1', 10);
+      const waitMs = Math.min(Math.max(retryAfter * 1000, 1000), 1500);
       await new Promise(r => setTimeout(r, waitMs));
       return executeAniListFetch(bodyString, authHeader, attempt + 1);
     }

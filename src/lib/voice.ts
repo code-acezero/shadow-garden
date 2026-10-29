@@ -18,8 +18,8 @@ const VOICE_SCRIPTS = {
     GREET_MASTER: "Welcome back, Master. The shadows await your command.",
     GREET_ADVENTURER: "Welcome back, Adventurer. It is good to see you again.",
     GREET_TRAVELER: "Greetings, Traveler. Do you wish to join our ranks today?",
-    WELCOME: "Welcome to Shadow Garden. This is a sanctuary for those who seek the wisdom of anime. What brings you here today, traveler?",
-    REGISTER: "Thanks for registering at shadow garden. Good luck with your adventurer journey.",
+    WELCOME: "Welcome to Kagemi. This is a sanctuary for those who seek the wisdom of anime. What brings you here today, traveler?",
+    REGISTER: "Thanks for registering at Kagemi. Good luck with your adventurer journey.",
     BYE_MASTER: "See you again master, have a nice day.",
     BYE_ADVENTURER: "See you again adventurer, have a nice day."
 };
