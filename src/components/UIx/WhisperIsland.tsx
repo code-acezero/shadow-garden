@@ -61,9 +61,23 @@ const JELLY_SPRING: Transition = {
 };
 
 const glitchVariants: Variants = {
-    initial: { opacity: 0, filter: "blur(4px)" },
-    animate: { opacity: 1, filter: "blur(0px)", transition: { duration: 0.25, ease: "easeOut" } },
-    exit: { opacity: 0, filter: "blur(6px)", transition: { duration: 0.15, ease: "easeIn" } }
+    initial: { 
+        opacity: 0, 
+        filter: "blur(4px) drop-shadow(0 0 16px #a855f7)",
+        scale: 0.94
+    },
+    animate: { 
+        opacity: 1, 
+        filter: "blur(0px) drop-shadow(0 0 6px rgba(168, 85, 247, 0.5))", 
+        scale: 1,
+        transition: { duration: 0.28, ease: "easeOut" } 
+    },
+    exit: { 
+        opacity: 0, 
+        filter: "blur(6px) drop-shadow(0 0 18px #7c3aed)",
+        scale: 1.05,
+        transition: { duration: 0.18, ease: "easeIn" } 
+    }
 };
 
 const LightWave = ({ delay = 0, trigger }: { delay?: number, trigger: any }) => (
@@ -1514,6 +1528,54 @@ function WhisperIslandContent() {
 
   return (
     <div ref={wrapperRef} className="fixed top-0 left-0 right-0 z-[9999] pt-[0.08rem] px-2 sm:px-4 pointer-events-none font-sans h-auto min-h-[64px]">
+        <style>{`
+            @keyframes title-electric-pulse {
+                0%, 78%, 100% {
+                    text-shadow: 0 0 6px rgba(192, 132, 252, 0.45), 0 0 14px rgba(147, 51, 234, 0.28);
+                }
+                80% {
+                    text-shadow: 0 0 12px #d8b4fe, 0 0 24px #a855f7, 0 0 3px #ffffff, 0 0 36px #7c3aed;
+                    filter: drop-shadow(0 0 6px #c084fc);
+                }
+                83% {
+                    text-shadow: 0 0 4px rgba(168, 85, 247, 0.3);
+                    filter: none;
+                }
+                87% {
+                    text-shadow: 0 0 16px #f3e8ff, 0 0 28px #9333ea, 0 0 4px #ffffff, 0 0 42px #6b21a8;
+                    filter: drop-shadow(0 0 8px #a855f7);
+                }
+                91% {
+                    text-shadow: 0 0 8px rgba(192, 132, 252, 0.45);
+                    filter: none;
+                }
+            }
+            @keyframes title-lightning-arc-1 {
+                0%, 78%, 100% { opacity: 0; }
+                80% { opacity: 0.95; transform: scaleY(1.08) skewX(-2deg); }
+                83% { opacity: 0.15; }
+                86% { opacity: 0.9; transform: scaleY(0.94) skewX(2deg); }
+                90% { opacity: 0; }
+            }
+            @keyframes title-lightning-arc-2 {
+                0%, 72%, 100% { opacity: 0; }
+                74% { opacity: 0.9; transform: scaleY(1.06) skewX(3deg); }
+                77% { opacity: 0.15; }
+                81% { opacity: 0.85; transform: scaleY(0.92) skewX(-2deg); }
+                85% { opacity: 0; }
+            }
+        `}</style>
+
+        {/* SVG Tesla Filter for Title Electric Spark Arcs */}
+        <svg className="absolute w-0 h-0 pointer-events-none" aria-hidden="true">
+            <defs>
+                <filter id="tesla_lightning_title" x="-20%" y="-20%" width="140%" height="140%">
+                    <feTurbulence type="fractalNoise" baseFrequency="0.08" numOctaves="3" result="noise" />
+                    <feDisplacementMap in="SourceGraphic" in2="noise" scale="14" xChannelSelector="R" yChannelSelector="G" />
+                </filter>
+            </defs>
+        </svg>
+
         <div className="w-full flex items-center justify-between gap-1 sm:gap-1.5 pointer-events-none relative">
             
             {/* LOGO & GUILD MASCOT */}
@@ -1521,11 +1583,11 @@ function WhisperIslandContent() {
                <motion.div 
                     initial={false} 
                     animate={{ 
-                        width: shouldHideExtras ? (isMobile ? 40 : 44) : (isMobile ? 118 : 184)
+                        width: shouldHideExtras ? (isMobile ? 40 : 44) : (isMobile ? 132 : 212)
                     }} 
                     transition={JELLY_SPRING} 
                     className={cn(
-                        "bg-[#0c1322]/95 border border-white/[0.12] rounded-full flex items-center shadow-[0_12px_32px_rgba(0,0,0,0.65),inset_0_1px_1px_rgba(255,255,255,0.12)] cursor-pointer hover:bg-[#121c32] active:scale-95 relative shrink-0 overflow-hidden",
+                        "liquid-glass rounded-full flex items-center cursor-pointer hover:bg-[#162035] active:scale-95 relative shrink-0 overflow-hidden",
                         shouldHideExtras ? "aspect-square justify-center p-0" : `${ISLAND_HEIGHT}`
                     )} 
                     onClick={() => { playGummyTap(); router.push('/home'); }}
@@ -1543,33 +1605,73 @@ function WhisperIslandContent() {
                     </div>
 
                     <div className={cn("w-full h-full flex items-center justify-center pl-[38px] md:pl-[44px] pr-1.5 md:pr-2 relative z-10 overflow-hidden", shouldHideExtras && "hidden")}>
+                        {/* Purple Electric Sparks across Title Box */}
+                        <div className="absolute inset-0 pointer-events-none z-20 overflow-visible flex items-center justify-center">
+                            <svg viewBox="0 0 150 40" className="w-full h-full pointer-events-none overflow-visible">
+                                <path 
+                                    d="M6,18 L32,27 L60,11 L92,25 L120,13 L144,21" 
+                                    fill="none" 
+                                    stroke="#c084fc" 
+                                    strokeWidth="1.6" 
+                                    filter="url(#tesla_lightning_title)" 
+                                    style={{ 
+                                        animation: 'title-lightning-arc-1 2.2s infinite',
+                                        filter: 'drop-shadow(0 0 4px #a855f7) drop-shadow(0 0 2px #ffffff)' 
+                                    }} 
+                                />
+                                <path 
+                                    d="M12,24 L44,13 L76,28 L110,14 L138,23" 
+                                    fill="none" 
+                                    stroke="#e9d5ff" 
+                                    strokeWidth="1.3" 
+                                    filter="url(#tesla_lightning_title)" 
+                                    style={{ 
+                                        animation: 'title-lightning-arc-2 2.9s infinite 0.6s',
+                                        filter: 'drop-shadow(0 0 5px #7c3aed)' 
+                                    }} 
+                                />
+                            </svg>
+                        </div>
+
                         <AnimatePresence mode="popLayout">
                             <motion.div key={logoState} variants={glitchVariants} initial="initial" animate="animate" exit="exit" className="flex items-center gap-1.5 whitespace-nowrap justify-center">
                                 {shouldHideExtras ? null : ( 
                                     <>
                                         {/* Desktop Logo Text */}
-                                        <div className="hidden md:flex items-center gap-1 font-lemon font-black uppercase w-[130px] justify-center">
+                                        <div className="hidden md:flex items-center gap-1 font-lemon font-black uppercase w-[155px] justify-center">
                                             {logoState === 0 && (
-                                                <span className="text-white text-[16.5px] md:text-[17.5px] tracking-[0.20em] font-lemon font-black uppercase text-center leading-none">
+                                                <span 
+                                                    className="text-white text-[23px] md:text-[25px] tracking-[0.16em] md:tracking-[0.18em] font-lemon font-black uppercase text-center leading-none"
+                                                    style={{ animation: 'title-electric-pulse 3s infinite' }}
+                                                >
                                                     KAGEMI
                                                 </span>
                                             )}
                                             {logoState === 1 && (
-                                                <span className={cn("text-[15px] md:text-[16px] tracking-[0.16em] font-lemon font-black uppercase text-center truncate leading-none", currentPageInfo.color)}>
+                                                <span 
+                                                    className={cn("text-[19.5px] md:text-[21.5px] tracking-[0.10em] md:tracking-[0.12em] font-lemon font-black uppercase text-center truncate leading-none", currentPageInfo.color)}
+                                                    style={{ animation: 'title-electric-pulse 3s infinite' }}
+                                                >
                                                     {currentPageInfo.name}
                                                 </span>
                                             )}
                                         </div>
 
                                         {/* Mobile Logo Text */}
-                                        <div className="md:hidden flex items-center justify-center font-lemon font-black uppercase w-[76px]">
+                                        <div className="md:hidden flex items-center justify-center font-lemon font-black uppercase w-[90px]">
                                             {logoState === 0 && (
-                                                <span className="text-white text-[13.5px] tracking-[0.14em] leading-none whitespace-nowrap font-lemon font-black uppercase text-center">
+                                                <span 
+                                                    className="text-white text-[17px] sm:text-[18px] tracking-[0.10em] leading-none whitespace-nowrap font-lemon font-black uppercase text-center"
+                                                    style={{ animation: 'title-electric-pulse 3s infinite' }}
+                                                >
                                                     KAGEMI
                                                 </span>
                                             )}
                                             {logoState === 1 && (
-                                                <span className={cn("text-[12.5px] tracking-[0.08em] leading-none font-lemon font-black uppercase text-center truncate", currentPageInfo.color)}>
+                                                <span 
+                                                    className={cn("text-[14.5px] sm:text-[15.5px] tracking-[0.04em] leading-none font-lemon font-black uppercase text-center truncate", currentPageInfo.color)}
+                                                    style={{ animation: 'title-electric-pulse 3s infinite' }}
+                                                >
                                                     {currentPageInfo.name}
                                                 </span>
                                             )}
@@ -1593,7 +1695,7 @@ function WhisperIslandContent() {
                             }
                         }} 
                         className={cn(
-                            `relative bg-[#0c1322]/95 border border-white/[0.12] !overflow-visible shadow-[0_14px_36px_rgba(0,0,0,0.7),inset_0_1px_1px_rgba(255,255,255,0.12)] rounded-[30px] ${ISLAND_HEIGHT} flex items-center flex-1 w-full min-w-0`
+                            `relative liquid-glass !overflow-visible rounded-[30px] ${ISLAND_HEIGHT} flex items-center flex-1 w-full min-w-0`
                         )}
                     >
                         <SearchBarContent 
@@ -1643,12 +1745,12 @@ function WhisperIslandContent() {
             {/* --- RIGHT SECTION: DESKTOP CONTROLS & MOBILE/TABLET MERGED PILL --- */}
             {(() => {
                 const profileDropdownMenuContent = (
-                    <DropdownMenuContent align="end" className="bg-[#0c1322] border border-white/[0.12] text-zinc-300 p-2.5 rounded-[22px] z-[9999] shadow-[0_18px_50px_rgba(0,0,0,0.85),inset_0_1px_1px_rgba(255,255,255,0.12)] w-[164px] sm:w-[176px]">
+                    <DropdownMenuContent align="end" className="liquid-glass text-zinc-300 p-2.5 rounded-[22px] z-[9999] w-[168px] sm:w-[180px]">
                         {isAuthenticated ? (
-                            <div className="space-y-2.5">
-                                <div className="flex flex-col items-center justify-center text-center px-2 pt-1 pb-1">
-                                    <span className="text-sm font-black text-white uppercase tracking-wider truncate w-full text-center">{profile?.username || 'Adventurer'}</span>
-                                    <span className={cn("text-[9px] font-semibold tracking-widest uppercase mt-0.5 opacity-90", badge.textColor)}>{badge.label}</span>
+                            <div className="space-y-2">
+                                <div className="flex flex-col items-center justify-center text-center px-1.5 pt-1 pb-0.5">
+                                    <span className="text-[15px] font-black text-white uppercase tracking-wider truncate w-full text-center leading-tight">{profile?.username || 'Adventurer'}</span>
+                                    <span className={cn("text-[8px] font-bold tracking-[0.2em] uppercase mt-0.5 opacity-80 text-center leading-none", badge.textColor)}>{badge.label}</span>
                                 </div>
                                 <DropdownMenuSeparator className="bg-white/5" />
                                 <div className="space-y-0.5">
@@ -1692,10 +1794,10 @@ function WhisperIslandContent() {
                                 </DropdownMenuItem>
                             </div>
                         ) : (
-                            <div className="space-y-2.5">
-                                <div className="flex flex-col items-center justify-center text-center px-2 pt-1 pb-1">
-                                    <span className="text-sm font-black text-white uppercase tracking-wider truncate w-full text-center">Traveller</span>
-                                    <span className="text-[9px] font-semibold tracking-widest uppercase text-zinc-400 mt-0.5 opacity-90">Guest</span>
+                            <div className="space-y-2">
+                                <div className="flex flex-col items-center justify-center text-center px-1.5 pt-1 pb-0.5">
+                                    <span className="text-[15px] font-black text-white uppercase tracking-wider truncate w-full text-center leading-tight">Traveller</span>
+                                    <span className="text-[8px] font-bold tracking-[0.2em] uppercase text-zinc-400 mt-0.5 opacity-80 text-center leading-none">Guest</span>
                                 </div>
                                 <DropdownMenuSeparator className="bg-white/5" />
                                 <div className="space-y-0.5">
@@ -1733,7 +1835,7 @@ function WhisperIslandContent() {
                                                 window.dispatchEvent(new CustomEvent('shadow-toggle-alpha'));
                                             }} 
                                             className={cn(
-                                                `relative overflow-hidden flex items-center justify-center group bg-[#0c1322]/95 hover:bg-[#131c30] border border-white/[0.12] shadow-[0_8px_24px_rgba(0,0,0,0.6),inset_0_1px_1px_rgba(255,255,255,0.12)] text-white font-bold rounded-full transition-all shrink-0 active:scale-90`,
+                                                `relative overflow-hidden flex items-center justify-center group liquid-glass hover:bg-[#162035] text-white font-bold rounded-full transition-all shrink-0 active:scale-90`,
                                                 `w-11 h-11 md:w-auto md:h-12 aspect-square md:aspect-auto p-0 md:px-3.5 md:py-1.5 md:gap-2`
                                             )}
                                             title="Chat with Alpha AI"
@@ -1778,7 +1880,7 @@ function WhisperIslandContent() {
                             layout
                             transition={JELLY_SPRING}
                             className={cn(
-                                "lg:hidden flex items-center bg-[#0c1322]/95 border border-white/[0.12] rounded-full pl-2.5 pr-1 gap-1 shadow-[0_12px_32px_rgba(0,0,0,0.65),inset_0_1px_1px_rgba(255,255,255,0.12)] shrink-0 z-50 pointer-events-auto overflow-visible",
+                                "lg:hidden flex items-center liquid-glass rounded-full pl-2.5 pr-1 gap-1 shrink-0 z-50 pointer-events-auto !overflow-visible",
                                 ISLAND_HEIGHT
                             )}
                         >

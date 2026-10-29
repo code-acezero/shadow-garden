@@ -45,9 +45,7 @@ export default function ProfileAvatar({ profile, travellerAvatar, className = "w
         <img
           src={avatarUrl}
           alt=""
-          className={`w-full h-full rounded-full object-cover bg-black transition-all ${
-            online ? 'ring-2 ring-emerald-500 shadow-[0_0_10px_rgba(16,185,129,0.9)] animate-pulse' : ''
-          }`}
+          className="w-full h-full rounded-full object-cover bg-black transition-all"
           onError={(e) => { (e.target as HTMLImageElement).src = FALLBACK; }}
         />
       </FantasyFrame>
