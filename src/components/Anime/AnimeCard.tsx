@@ -54,6 +54,8 @@ export interface AnimeCardProps {
   hideType?: boolean;
   hideRating?: boolean;
   className?: string;
+  aspectRatio?: string;
+  rank?: number | string;
 }
 
 interface QTipData {
@@ -82,7 +84,9 @@ function AnimeCardComponent({
   isHindi = false, 
   hideType = false, 
   hideRating = false,
-  className 
+  className,
+  aspectRatio,
+  rank
 }: AnimeCardProps) {
   const router = useRouter(); 
   const cardRef = useRef<HTMLDivElement>(null);
@@ -438,7 +442,11 @@ function AnimeCardComponent({
       <HoverCardTrigger asChild>
         <div 
           ref={cardRef} 
-          className={cn("relative w-full aspect-[2/3] group z-0 hover:z-50 touch-manipulation select-none cursor-pointer", className)}
+          className={cn(
+            "relative w-full group z-0 hover:z-50 touch-manipulation select-none cursor-pointer",
+            aspectRatio || "aspect-[2/3]",
+            className
+          )}
         >
           <div className="w-full h-full relative rounded-2xl overflow-hidden bg-[#070b14] border border-white/[0.08] shadow-[0_10px_28px_rgba(0,0,0,0.65),inset_0_1px_1px_rgba(255,255,255,0.06)] transition-all duration-300 hover:shadow-[0_16px_36px_rgba(0,0,0,0.9)] hover:border-primary-500/40 hover:-translate-y-1 will-change-transform">
             <Link 
@@ -469,14 +477,31 @@ function AnimeCardComponent({
                 <div className="absolute inset-0 bg-gradient-to-b from-black/35 via-transparent to-transparent opacity-40 pointer-events-none" />
               </div>
 
-              {/* Top-Left: Media Format Badge (TV, MOVIE, OVA, etc.) */}
-              {!hideType && (
-                <div className="absolute top-2.5 left-2.5 z-20 pointer-events-none">
-                  <span className="h-5 px-1.5 sm:px-2 flex items-center justify-center rounded-[6px] bg-black/65 border border-white/10 text-white text-[8.5px] sm:text-[9px] font-mono font-bold uppercase tracking-wider backdrop-blur-md shadow-sm">
+              {/* Top-Left: Rank Badge (if provided) + Media Format Badge */}
+              <div className="absolute top-2 left-2 sm:top-2.5 sm:left-2.5 z-20 flex items-center gap-1.5 pointer-events-none">
+                {rank !== undefined && rank !== null && (
+                  <span
+                    className={cn(
+                      "font-lemon font-black italic tracking-tight leading-none drop-shadow-[0_2px_8px_rgba(0,0,0,0.95)] pr-0.5 select-none",
+                      "text-base sm:text-lg md:text-xl",
+                      Number(rank) === 1
+                        ? "text-amber-400 drop-shadow-[0_0_10px_rgba(251,191,36,0.7)]"
+                        : Number(rank) === 2
+                        ? "text-slate-200 drop-shadow-[0_0_8px_rgba(255,255,255,0.6)]"
+                        : Number(rank) === 3
+                        ? "text-amber-500 drop-shadow-[0_0_8px_rgba(245,158,11,0.6)]"
+                        : "text-zinc-400 drop-shadow-[0_2px_6px_rgba(0,0,0,0.8)]"
+                    )}
+                  >
+                    #{rank}
+                  </span>
+                )}
+                {!hideType && normalized.type && (
+                  <span className="h-5 px-1.5 sm:px-2 flex items-center justify-center rounded-[6px] bg-black/65 border border-white/10 text-white text-[8px] sm:text-[8.5px] font-mono font-bold uppercase tracking-wider backdrop-blur-md shadow-sm">
                     {normalized.type}
                   </span>
-                </div>
-              )}
+                )}
+              </div>
 
               {/* Top-Right: Rating Badge & AgeTag (Miruro Minimal Realignment) */}
               <div className="absolute top-2.5 right-2.5 z-20 flex items-center gap-1.5 pointer-events-auto">

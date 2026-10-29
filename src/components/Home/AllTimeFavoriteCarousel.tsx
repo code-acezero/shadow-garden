@@ -185,16 +185,16 @@ export default function AllTimeFavoriteCarousel({ initialItems = [] }: AllTimeFa
 
       {/* Infinite Horizontal Carousel */}
       {loading ? (
-        <div className="flex gap-3 md:gap-5 overflow-hidden animate-pulse pb-3">
+        <div className="w-full overflow-x-auto no-scrollbar py-2 md:py-6 snap-x snap-mandatory flex gap-4 md:gap-5 animate-pulse">
           {[...Array(6)].map((_, i) => (
-            <div key={i} className="w-[140px] sm:w-[170px] md:w-[200px] shrink-0 aspect-[2/3] bg-white/5 rounded-2xl border border-white/5" />
+            <div key={i} className="flex-shrink-0 w-[42%] sm:w-[28%] md:w-[22%] lg:w-[15.5%] xl:w-[15.5%] aspect-[3/4] bg-white/5 rounded-2xl border border-white/5" />
           ))}
         </div>
       ) : (
         <div
           ref={scrollRef}
           onScroll={handleScroll}
-          className="flex gap-3 md:gap-5 overflow-x-auto no-scrollbar scroll-smooth pb-3"
+          className="w-full overflow-x-auto no-scrollbar py-2 md:py-6 snap-x snap-mandatory flex gap-4 md:gap-5 scroll-smooth"
         >
           {safeItems.map((anime, index) => {
             const rank = index + 1;
@@ -203,32 +203,19 @@ export default function AllTimeFavoriteCarousel({ initialItems = [] }: AllTimeFa
             return (
               <div
                 key={uniqueKey}
-                className="w-[140px] sm:w-[170px] md:w-[200px] shrink-0 relative group"
+                className="flex-shrink-0 w-[42%] sm:w-[28%] md:w-[22%] lg:w-[15.5%] xl:w-[15.5%] relative group snap-start"
               >
-                {/* Prominent Ranking Number - Fades out on card hover */}
-                <div className="absolute -top-2 -left-2 z-30 pointer-events-none select-none transition-opacity duration-300 group-hover:opacity-0">
-                  <span
-                    className={`text-2xl md:text-4xl font-black font-lemon italic tracking-tighter drop-shadow-[0_2px_10px_rgba(0,0,0,0.9)] ${
-                      rank === 1
-                        ? 'text-amber-400'
-                        : rank === 2
-                        ? 'text-zinc-200'
-                        : rank === 3
-                        ? 'text-amber-600'
-                        : 'text-zinc-500'
-                    }`}
-                  >
-                    #{rank}
-                  </span>
-                </div>
-
-                <AnimeCard anime={anime} hideType />
+                <AnimeCard 
+                  anime={anime} 
+                  rank={rank} 
+                  aspectRatio="aspect-[3/4]" 
+                />
               </div>
             );
           })}
 
           {loadingMore && (
-            <div className="w-[140px] sm:w-[170px] md:w-[200px] shrink-0 flex items-center justify-center aspect-[2/3] rounded-2xl border border-white/5 bg-white/[0.02]">
+            <div className="flex-shrink-0 w-[42%] sm:w-[28%] md:w-[22%] lg:w-[15.5%] xl:w-[15.5%] aspect-[3/4] flex items-center justify-center rounded-2xl border border-white/5 bg-white/[0.02]">
               <Loader2 size={24} className="animate-spin text-red-500" />
             </div>
           )}

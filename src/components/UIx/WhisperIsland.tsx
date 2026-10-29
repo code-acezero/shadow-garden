@@ -516,6 +516,28 @@ const SearchBarContent: React.FC<SearchBarContentProps> = ({
 };
 
 
+// Dynamically auto-fits the page title font size & tracking to fill the title box edge-to-edge
+const getDynamicPageTitleClasses = (title: string, isMobile: boolean) => {
+    const len = (title || "").length;
+    if (!isMobile) {
+        if (len <= 4) return "text-[26px] md:text-[28px] tracking-[0.24em] md:tracking-[0.28em]";
+        if (len <= 5) return "text-[24px] md:text-[26.5px] tracking-[0.20em] md:tracking-[0.24em]";
+        if (len <= 6) return "text-[23px] md:text-[25px] tracking-[0.14em] md:tracking-[0.16em]";
+        if (len <= 7) return "text-[21px] md:text-[23px] tracking-[0.10em] md:tracking-[0.12em]";
+        if (len <= 8) return "text-[19px] md:text-[21px] tracking-[0.06em] md:tracking-[0.08em]";
+        if (len <= 9) return "text-[17.5px] md:text-[19.5px] tracking-[0.04em] md:tracking-[0.06em]";
+        return "text-[16px] md:text-[18px] tracking-[0.02em] md:tracking-[0.04em]";
+    } else {
+        if (len <= 4) return "text-[18.5px] sm:text-[20px] tracking-[0.16em] sm:tracking-[0.20em]";
+        if (len <= 5) return "text-[17.5px] sm:text-[19px] tracking-[0.12em] sm:tracking-[0.16em]";
+        if (len <= 6) return "text-[16px] sm:text-[17.5px] tracking-[0.08em] sm:tracking-[0.10em]";
+        if (len <= 7) return "text-[14.5px] sm:text-[16px] tracking-[0.05em] sm:tracking-[0.07em]";
+        if (len <= 8) return "text-[13.5px] sm:text-[14.5px] tracking-[0.03em] sm:tracking-[0.04em]";
+        if (len <= 9) return "text-[12.5px] sm:text-[13.5px] tracking-[0.02em]";
+        return "text-[11.5px] sm:text-[12.5px] tracking-[0.01em]";
+    }
+};
+
 // --- WHISPER ISLAND CONTENT (Inner) ---
 function WhisperIslandContent() {
   const router = useRouter();
@@ -1649,7 +1671,11 @@ function WhisperIslandContent() {
                                             )}
                                             {logoState === 1 && (
                                                 <span 
-                                                    className={cn("text-[19.5px] md:text-[21.5px] tracking-[0.10em] md:tracking-[0.12em] font-lemon font-black uppercase text-center truncate leading-none", currentPageInfo.color)}
+                                                    className={cn(
+                                                        "font-lemon font-black uppercase text-center truncate leading-none", 
+                                                        getDynamicPageTitleClasses(currentPageInfo.name, false),
+                                                        currentPageInfo.color
+                                                    )}
                                                     style={{ animation: 'title-electric-pulse 3s infinite' }}
                                                 >
                                                     {currentPageInfo.name}
@@ -1669,7 +1695,11 @@ function WhisperIslandContent() {
                                             )}
                                             {logoState === 1 && (
                                                 <span 
-                                                    className={cn("text-[14.5px] sm:text-[15.5px] tracking-[0.04em] leading-none font-lemon font-black uppercase text-center truncate", currentPageInfo.color)}
+                                                    className={cn(
+                                                        "leading-none font-lemon font-black uppercase text-center truncate", 
+                                                        getDynamicPageTitleClasses(currentPageInfo.name, true),
+                                                        currentPageInfo.color
+                                                    )}
                                                     style={{ animation: 'title-electric-pulse 3s infinite' }}
                                                 >
                                                     {currentPageInfo.name}
