@@ -8,6 +8,7 @@ import MonetLineIcon from '@/components/UIx/MonetLineIcon';
 import CylinderPageSlider from '@/components/UIx/CylinderPageSlider';
 import CutePageSwitcher from '@/components/UIx/CutePageSwitcher';
 import { AnimeService } from '@/lib/api';
+import { playGummyTap } from '@/lib/audioManager';
 
 export default function DonghuaHomeSection() {
   const [items, setItems] = useState<any[]>([]);

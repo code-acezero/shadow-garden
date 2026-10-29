@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { Heart, ChevronLeft, ChevronRight, Loader2 } from 'lucide-react';
 import AnimeCard from '@/components/Anime/AnimeCard';
 import MonetLineIcon from '@/components/UIx/MonetLineIcon';
+import { playGummyTap } from '@/lib/audioManager';
 
 interface AllTimeFavoriteCarouselProps {
   initialItems?: any[];

@@ -63,20 +63,28 @@ const JELLY_SPRING: Transition = {
 const glitchVariants: Variants = {
     initial: { 
         opacity: 0, 
-        filter: "blur(4px) drop-shadow(0 0 16px #a855f7)",
-        scale: 0.94
+        scale: 0.94,
+        x: -4
     },
     animate: { 
-        opacity: 1, 
-        filter: "blur(0px) drop-shadow(0 0 6px rgba(168, 85, 247, 0.5))", 
-        scale: 1,
-        transition: { duration: 0.28, ease: "easeOut" } 
+        opacity: [0, 1, 0.7, 1], 
+        scale: [0.94, 1.03, 0.98, 1],
+        x: [-4, 3, -1, 0],
+        transition: { 
+            duration: 0.36, 
+            times: [0, 0.3, 0.7, 1],
+            ease: "easeOut" 
+        } 
     },
     exit: { 
-        opacity: 0, 
-        filter: "blur(6px) drop-shadow(0 0 18px #7c3aed)",
-        scale: 1.05,
-        transition: { duration: 0.18, ease: "easeIn" } 
+        opacity: [1, 0.6, 0.2, 0], 
+        scale: [1, 1.03, 0.92],
+        x: [0, -3, 5],
+        transition: { 
+            duration: 0.22, 
+            times: [0, 0.35, 0.75, 1],
+            ease: "easeIn" 
+        } 
     }
 };
 
@@ -521,20 +529,26 @@ const getDynamicPageTitleClasses = (title: string, isMobile: boolean) => {
     const len = (title || "").length;
     if (!isMobile) {
         if (len <= 4) return "text-[26px] md:text-[28px] tracking-[0.24em] md:tracking-[0.28em]";
-        if (len <= 5) return "text-[24px] md:text-[26.5px] tracking-[0.20em] md:tracking-[0.24em]";
-        if (len <= 6) return "text-[23px] md:text-[25px] tracking-[0.14em] md:tracking-[0.16em]";
-        if (len <= 7) return "text-[21px] md:text-[23px] tracking-[0.10em] md:tracking-[0.12em]";
-        if (len <= 8) return "text-[19px] md:text-[21px] tracking-[0.06em] md:tracking-[0.08em]";
-        if (len <= 9) return "text-[17.5px] md:text-[19.5px] tracking-[0.04em] md:tracking-[0.06em]";
-        return "text-[16px] md:text-[18px] tracking-[0.02em] md:tracking-[0.04em]";
+        if (len <= 5) return "text-[23px] md:text-[25px] tracking-[0.18em] md:tracking-[0.22em]";
+        if (len <= 6) return "text-[20px] md:text-[22px] tracking-[0.12em] md:tracking-[0.15em]";
+        if (len <= 7) return "text-[18px] md:text-[20px] tracking-[0.08em] md:tracking-[0.10em]";
+        if (len <= 8) return "text-[16px] md:text-[17.5px] tracking-[0.04em] md:tracking-[0.06em]";
+        if (len <= 9) return "text-[14.5px] md:text-[15.5px] tracking-[0.02em] md:tracking-[0.03em]";
+        if (len <= 10) return "text-[13.5px] md:text-[14.5px] tracking-tight";
+        if (len <= 12) return "text-[12px] md:text-[13px] tracking-tight";
+        if (len <= 14) return "text-[10.5px] md:text-[11.5px] tracking-tighter";
+        return "text-[9.5px] md:text-[10.5px] tracking-tighter";
     } else {
-        if (len <= 4) return "text-[18.5px] sm:text-[20px] tracking-[0.16em] sm:tracking-[0.20em]";
-        if (len <= 5) return "text-[17.5px] sm:text-[19px] tracking-[0.12em] sm:tracking-[0.16em]";
-        if (len <= 6) return "text-[16px] sm:text-[17.5px] tracking-[0.08em] sm:tracking-[0.10em]";
-        if (len <= 7) return "text-[14.5px] sm:text-[16px] tracking-[0.05em] sm:tracking-[0.07em]";
-        if (len <= 8) return "text-[13.5px] sm:text-[14.5px] tracking-[0.03em] sm:tracking-[0.04em]";
-        if (len <= 9) return "text-[12.5px] sm:text-[13.5px] tracking-[0.02em]";
-        return "text-[11.5px] sm:text-[12.5px] tracking-[0.01em]";
+        if (len <= 4) return "text-[17px] sm:text-[18px] tracking-[0.12em] sm:tracking-[0.15em]";
+        if (len <= 5) return "text-[15.5px] sm:text-[16.5px] tracking-[0.08em] sm:tracking-[0.11em]";
+        if (len <= 6) return "text-[14px] sm:text-[15px] tracking-[0.04em] sm:tracking-[0.06em]";
+        if (len <= 7) return "text-[12.5px] sm:text-[13.5px] tracking-[0.02em] sm:tracking-[0.03em]";
+        if (len <= 8) return "text-[11.5px] sm:text-[12px] tracking-normal";
+        if (len <= 9) return "text-[10.5px] sm:text-[11px] tracking-tight";
+        if (len <= 10) return "text-[9.5px] sm:text-[10px] tracking-tight";
+        if (len <= 12) return "text-[8.5px] sm:text-[9px] tracking-tighter";
+        if (len <= 14) return "text-[7.5px] sm:text-[8px] tracking-tighter";
+        return "text-[7px] sm:text-[7.5px] tracking-tighter";
     }
 };
 
@@ -587,38 +601,130 @@ function WhisperIslandContent() {
   }, [pathname]);
 
   const currentPageInfo = useMemo(() => {
+    // 1. Library / Watchlist / Readlist
     if (pathname.startsWith('/library') || pathname.startsWith('/watchlist')) {
       const mode = libraryModeOverride || searchParams?.get('mode') || 'watchlist';
       if (mode === 'readlist') {
-        return { name: 'READLIST', color: 'text-purple-400' };
+        return { name: 'READLIST', color: 'text-purple-300' };
       }
-      return { name: 'WATCHLIST', color: 'text-primary-500' };
+      return { name: 'WATCHLIST', color: 'text-purple-300' };
     }
-    if (pathname.startsWith('/manga') || pathname.startsWith('/novel')) {
-      return { name: 'MANGVELS', color: 'text-purple-400' };
+
+    // 2. Manga & Light Novels & Reader
+    if (pathname.startsWith('/manga') || pathname.startsWith('/novel') || pathname.startsWith('/read')) {
+      return { name: 'MANGVELS', color: 'text-purple-300' };
     }
+
+    // 3. Hindi Dubbed / Hindi Majesty
     if (pathname.startsWith('/hindi')) {
-      return { name: 'HINDI', color: 'text-orange-400' };
+      return { name: 'HINDI MAJESTY', color: 'text-purple-300' };
     }
+
+    // 4. Donghua
     if (pathname.startsWith('/donghua')) {
-      return { name: 'DONGHUA', color: 'text-emerald-400' };
+      return { name: 'DONGHUA', color: 'text-purple-300' };
     }
+
+    // 5. Shorts
     if (pathname.startsWith('/shorts')) {
-      return { name: 'SHORTS', color: 'text-rose-400' };
+      return { name: 'SHORTS', color: 'text-purple-300' };
     }
-    if (pathname.startsWith('/cinema') || pathname.startsWith('/drama') || pathname.startsWith('/movies') || pathname.startsWith('/stream')) {
-      return { name: 'FLIX', color: 'text-cyan-400' };
+
+    // 6. Cinema / Movies / Drama / Series / Stream
+    if (
+      pathname.startsWith('/cinema') || 
+      pathname.startsWith('/drama') || 
+      pathname.startsWith('/movies') || 
+      pathname.startsWith('/stream')
+    ) {
+      return { name: 'FLIXVERSE', color: 'text-purple-300' };
     }
-    if (pathname.startsWith('/social')) {
-      return { name: 'OTAKUVERSE', color: 'text-red-500' };
+
+    // 7. Explore
+    if (pathname.startsWith('/explore')) {
+      return { name: 'EXPLORE', color: 'text-purple-300' };
     }
-    if (pathname.startsWith('/schedule')) {
-      return { name: 'SCHEDULE', color: 'text-amber-400' };
-    }
+
+    // 8. Search
     if (pathname.startsWith('/search')) {
-      return { name: 'SEARCH', color: 'text-zinc-300' };
+      return { name: 'SEARCH', color: 'text-purple-300' };
     }
-    return { name: 'ANIME', color: 'text-primary-500' };
+
+    // 9. Social / Otakuverse
+    if (pathname.startsWith('/social') || pathname.startsWith('/otakuverse')) {
+      return { name: 'OTAKUVERSE', color: 'text-purple-300' };
+    }
+
+    // 10. Schedule
+    if (pathname.startsWith('/schedule')) {
+      return { name: 'SCHEDULE', color: 'text-purple-300' };
+    }
+
+    // 11. Profile
+    if (pathname.startsWith('/profile')) {
+      return { name: 'PROFILE', color: 'text-purple-300' };
+    }
+
+    // 12. Avatar
+    if (pathname.startsWith('/avatar')) {
+      return { name: 'AVATAR', color: 'text-purple-300' };
+    }
+
+    // 13. Settings
+    if (pathname.startsWith('/settings')) {
+      return { name: 'SETTINGS', color: 'text-purple-300' };
+    }
+
+    // 14. Admin / Master / Manager / Command
+    if (pathname.startsWith('/master') || pathname.startsWith('/admin') || pathname.startsWith('/manager')) {
+      return { name: 'COMMAND', color: 'text-purple-300' };
+    }
+
+    // 15. Messages
+    if (pathname.startsWith('/messages')) {
+      return { name: 'MESSAGES', color: 'text-purple-300' };
+    }
+
+    // 16. Watch Party / Rooms
+    if (pathname.startsWith('/rooms')) {
+      return { name: 'ROOMS', color: 'text-purple-300' };
+    }
+
+    // 17. Downloads
+    if (pathname.startsWith('/download')) {
+      return { name: 'DOWNLOADS', color: 'text-purple-300' };
+    }
+
+    // 18. Alpha AI
+    if (pathname.startsWith('/ai')) {
+      return { name: 'ALPHA AI', color: 'text-purple-300' };
+    }
+
+    // 19. Watch / View
+    if (pathname.startsWith('/watch')) {
+      return { name: 'WATCH', color: 'text-purple-300' };
+    }
+    if (pathname.startsWith('/view')) {
+      return { name: 'VIEW', color: 'text-purple-300' };
+    }
+
+    // 20. Auth
+    if (pathname.startsWith('/auth')) {
+      return { name: 'AUTHENTICATE', color: 'text-purple-300' };
+    }
+
+    // 21. Home or root
+    if (pathname === '/' || pathname === '/home') {
+      return { name: 'ANIME', color: 'text-purple-300' };
+    }
+
+    // 22. Generic fallback from route segment (e.g. /clans -> CLANS)
+    const segment = pathname.split('/').filter(Boolean)[0];
+    if (segment) {
+      return { name: segment.toUpperCase().replace(/[-_]/g, ' '), color: 'text-purple-300' };
+    }
+
+    return { name: 'ANIME', color: 'text-purple-300' };
   }, [pathname, searchParams, libraryModeOverride]);
 
   useEffect(() => {
@@ -1551,24 +1657,55 @@ function WhisperIslandContent() {
   return (
     <div ref={wrapperRef} className="fixed top-0 left-0 right-0 z-[9999] pt-[0.08rem] px-2 sm:px-4 pointer-events-none font-sans h-auto min-h-[64px]">
         <style>{`
+            @keyframes electric-text-glitch {
+                0% {
+                    text-shadow: -3px 0 0 #c084fc, 3px 0 0 #7c3aed, 0 0 8px rgba(192, 132, 252, 0.8);
+                    transform: translate(-3px, 1px) skewX(-6deg);
+                }
+                18% {
+                    text-shadow: 4px 0 0 #e9d5ff, -4px 0 0 #9333ea, 0 0 10px rgba(147, 51, 234, 0.8);
+                    transform: translate(4px, -1.5px) skewX(5deg);
+                }
+                36% {
+                    text-shadow: -2px 0 0 #a855f7, 2px 0 0 #d8b4fe;
+                    transform: translate(-2px, 0.5px) skewX(-3deg);
+                }
+                54% {
+                    text-shadow: 2px 0 0 #c084fc, -2px 0 0 #7c3aed;
+                    transform: translate(2px, -0.5px) skewX(2deg);
+                }
+                72% {
+                    text-shadow: -1px 0 0 #d8b4fe, 1px 0 0 #9333ea;
+                    transform: translate(-1px, 0);
+                }
+                88% {
+                    text-shadow: 0 0 3px rgba(216, 180, 254, 0.5);
+                    transform: translate(0);
+                }
+                100% {
+                    text-shadow: 0 0 2.5px rgba(216, 180, 254, 0.35);
+                    transform: translate(0);
+                }
+            }
             @keyframes title-electric-pulse {
                 0%, 78%, 100% {
-                    text-shadow: 0 0 6px rgba(192, 132, 252, 0.45), 0 0 14px rgba(147, 51, 234, 0.28);
+                    text-shadow: 0 0 2.5px rgba(216, 180, 254, 0.35);
+                    filter: none;
                 }
                 80% {
-                    text-shadow: 0 0 12px #d8b4fe, 0 0 24px #a855f7, 0 0 3px #ffffff, 0 0 36px #7c3aed;
-                    filter: drop-shadow(0 0 6px #c084fc);
+                    text-shadow: 0 0 4px #e9d5ff, 0 0 8px rgba(168, 85, 247, 0.5);
+                    filter: drop-shadow(0 0 1.5px rgba(192, 132, 252, 0.4));
                 }
                 83% {
-                    text-shadow: 0 0 4px rgba(168, 85, 247, 0.3);
+                    text-shadow: 0 0 1.5px rgba(168, 85, 247, 0.25);
                     filter: none;
                 }
                 87% {
-                    text-shadow: 0 0 16px #f3e8ff, 0 0 28px #9333ea, 0 0 4px #ffffff, 0 0 42px #6b21a8;
-                    filter: drop-shadow(0 0 8px #a855f7);
+                    text-shadow: 0 0 4px #f3e8ff, 0 0 7px rgba(147, 51, 234, 0.5);
+                    filter: drop-shadow(0 0 2px rgba(168, 85, 247, 0.35));
                 }
                 91% {
-                    text-shadow: 0 0 8px rgba(192, 132, 252, 0.45);
+                    text-shadow: 0 0 2px rgba(192, 132, 252, 0.3);
                     filter: none;
                 }
             }
@@ -1634,82 +1771,107 @@ function WhisperIslandContent() {
                                     d="M6,18 L32,27 L60,11 L92,25 L120,13 L144,21" 
                                     fill="none" 
                                     stroke="#c084fc" 
-                                    strokeWidth="1.6" 
+                                    strokeWidth="1.2" 
                                     filter="url(#tesla_lightning_title)" 
                                     style={{ 
                                         animation: 'title-lightning-arc-1 2.2s infinite',
-                                        filter: 'drop-shadow(0 0 4px #a855f7) drop-shadow(0 0 2px #ffffff)' 
+                                        filter: 'drop-shadow(0 0 2.5px #a855f7)' 
                                     }} 
                                 />
                                 <path 
                                     d="M12,24 L44,13 L76,28 L110,14 L138,23" 
                                     fill="none" 
                                     stroke="#e9d5ff" 
-                                    strokeWidth="1.3" 
+                                    strokeWidth="1.1" 
                                     filter="url(#tesla_lightning_title)" 
                                     style={{ 
                                         animation: 'title-lightning-arc-2 2.9s infinite 0.6s',
-                                        filter: 'drop-shadow(0 0 5px #7c3aed)' 
+                                        filter: 'drop-shadow(0 0 2.5px #7c3aed)' 
                                     }} 
                                 />
                             </svg>
                         </div>
 
-                        <AnimatePresence mode="popLayout">
-                            <motion.div key={logoState} variants={glitchVariants} initial="initial" animate="animate" exit="exit" className="flex items-center gap-1.5 whitespace-nowrap justify-center">
-                                {shouldHideExtras ? null : ( 
-                                    <>
-                                        {/* Desktop Logo Text */}
-                                        <div className="hidden md:flex items-center gap-1 font-lemon font-black uppercase w-[155px] justify-center">
-                                            {logoState === 0 && (
-                                                <span 
-                                                    className="text-white text-[23px] md:text-[25px] tracking-[0.16em] md:tracking-[0.18em] font-lemon font-black uppercase text-center leading-none"
-                                                    style={{ animation: 'title-electric-pulse 3s infinite' }}
-                                                >
-                                                    KAGEMI
-                                                </span>
-                                            )}
-                                            {logoState === 1 && (
-                                                <span 
-                                                    className={cn(
-                                                        "font-lemon font-black uppercase text-center truncate leading-none", 
-                                                        getDynamicPageTitleClasses(currentPageInfo.name, false),
-                                                        currentPageInfo.color
-                                                    )}
-                                                    style={{ animation: 'title-electric-pulse 3s infinite' }}
-                                                >
-                                                    {currentPageInfo.name}
-                                                </span>
-                                            )}
-                                        </div>
+                        {(() => {
+                            const activeTitleKey = `${logoState}-${logoState === 0 ? 'KAGEMI' : currentPageInfo.name}`;
+                            return (
+                                <AnimatePresence mode="popLayout">
+                                    <motion.div 
+                                        key={activeTitleKey} 
+                                        variants={glitchVariants} 
+                                        initial="initial" 
+                                        animate="animate" 
+                                        exit="exit" 
+                                        className="relative flex items-center gap-1.5 whitespace-nowrap justify-center"
+                                    >
+                                        {/* Electric Glitch Laser Slice Beam */}
+                                        <motion.div
+                                            key={`beam-${activeTitleKey}`}
+                                            initial={{ opacity: 0, scaleX: 0, x: "-80%" }}
+                                            animate={{ 
+                                                opacity: [0, 1, 0.8, 0], 
+                                                scaleX: [0.3, 1.2, 0.6, 0],
+                                                x: ["-80%", "0%", "60%", "140%"] 
+                                            }}
+                                            transition={{ duration: 0.36, ease: "easeOut" }}
+                                            className="absolute -inset-x-2 top-1/2 -translate-y-1/2 h-[1.5px] bg-gradient-to-r from-transparent via-[#e9d5ff] to-transparent pointer-events-none z-30 filter drop-shadow-[0_0_6px_#c084fc]"
+                                        />
 
-                                        {/* Mobile Logo Text */}
-                                        <div className="md:hidden flex items-center justify-center font-lemon font-black uppercase w-[90px]">
-                                            {logoState === 0 && (
-                                                <span 
-                                                    className="text-white text-[17px] sm:text-[18px] tracking-[0.10em] leading-none whitespace-nowrap font-lemon font-black uppercase text-center"
-                                                    style={{ animation: 'title-electric-pulse 3s infinite' }}
-                                                >
-                                                    KAGEMI
-                                                </span>
-                                            )}
-                                            {logoState === 1 && (
-                                                <span 
-                                                    className={cn(
-                                                        "leading-none font-lemon font-black uppercase text-center truncate", 
-                                                        getDynamicPageTitleClasses(currentPageInfo.name, true),
-                                                        currentPageInfo.color
+                                        {shouldHideExtras ? null : ( 
+                                            <>
+                                                {/* Desktop Logo Text */}
+                                                <div className="hidden md:flex items-center gap-1 font-lemon font-black uppercase w-[155px] justify-center">
+                                                    {logoState === 0 && (
+                                                        <span 
+                                                            className="text-white text-[23px] md:text-[25px] tracking-[0.16em] md:tracking-[0.18em] font-lemon font-black uppercase text-center leading-none whitespace-nowrap"
+                                                            style={{ animation: 'electric-text-glitch 0.45s cubic-bezier(0.25, 0.46, 0.45, 0.94) forwards, title-electric-pulse 3s infinite 0.45s' }}
+                                                        >
+                                                            KAGEMI
+                                                        </span>
                                                     )}
-                                                    style={{ animation: 'title-electric-pulse 3s infinite' }}
-                                                >
-                                                    {currentPageInfo.name}
-                                                </span>
-                                            )}
-                                        </div>
-                                    </>
-                                )}
-                            </motion.div>
-                        </AnimatePresence>
+                                                    {logoState === 1 && (
+                                                        <span 
+                                                            className={cn(
+                                                                "font-lemon font-black uppercase text-center whitespace-nowrap leading-none", 
+                                                                getDynamicPageTitleClasses(currentPageInfo.name, false),
+                                                                currentPageInfo.color
+                                                            )}
+                                                            style={{ animation: 'electric-text-glitch 0.45s cubic-bezier(0.25, 0.46, 0.45, 0.94) forwards, title-electric-pulse 3s infinite 0.45s' }}
+                                                        >
+                                                            {currentPageInfo.name}
+                                                        </span>
+                                                    )}
+                                                </div>
+
+                                                {/* Mobile Logo Text */}
+                                                <div className="md:hidden flex items-center justify-center font-lemon font-black uppercase w-[90px]">
+                                                    {logoState === 0 && (
+                                                        <span 
+                                                            className="text-white text-[17px] sm:text-[18px] tracking-[0.10em] leading-none whitespace-nowrap font-lemon font-black uppercase text-center"
+                                                            style={{ animation: 'electric-text-glitch 0.45s cubic-bezier(0.25, 0.46, 0.45, 0.94) forwards, title-electric-pulse 3s infinite 0.45s' }}
+                                                        >
+                                                            KAGEMI
+                                                        </span>
+                                                    )}
+                                                    {logoState === 1 && (
+                                                        <span 
+                                                            className={cn(
+                                                                "leading-none font-lemon font-black uppercase text-center whitespace-nowrap", 
+                                                                getDynamicPageTitleClasses(currentPageInfo.name, true),
+                                                                currentPageInfo.color
+                                                            )}
+                                                            style={{ animation: 'electric-text-glitch 0.45s cubic-bezier(0.25, 0.46, 0.45, 0.94) forwards, title-electric-pulse 3s infinite 0.45s' }}
+                                                        >
+                                                            {currentPageInfo.name}
+                                                        </span>
+                                                    )}
+                                                </div>
+                                            </>
+                                        )}
+                                    </motion.div>
+                                </AnimatePresence>
+                            );
+                        })()}
                     </div>
                 </motion.div>
             </div>
@@ -1775,25 +1937,25 @@ function WhisperIslandContent() {
             {/* --- RIGHT SECTION: DESKTOP CONTROLS & MOBILE/TABLET MERGED PILL --- */}
             {(() => {
                 const profileDropdownMenuContent = (
-                    <DropdownMenuContent align="end" className="liquid-glass text-zinc-300 p-2.5 rounded-[22px] z-[9999] w-[168px] sm:w-[180px]">
+                    <DropdownMenuContent align="end" className="liquid-glass text-zinc-300 p-2 sm:p-2.5 rounded-[22px] z-[9999] w-[176px] sm:w-[190px] md:w-[220px]">
                         {isAuthenticated ? (
-                            <div className="space-y-2">
-                                <div className="flex flex-col items-center justify-center text-center px-1.5 pt-1 pb-0.5">
-                                    <span className="text-[15px] font-black text-white uppercase tracking-wider truncate w-full text-center leading-tight">{profile?.username || 'Adventurer'}</span>
+                            <div className="space-y-1.5">
+                                <div className="flex flex-col items-center justify-center text-center px-1.5 pt-0.5 pb-0.5">
+                                    <span className="text-[14.5px] font-black text-white uppercase tracking-wider truncate w-full text-center leading-tight">{profile?.username || 'Adventurer'}</span>
                                     <span className={cn("text-[8px] font-bold tracking-[0.2em] uppercase mt-0.5 opacity-80 text-center leading-none", badge.textColor)}>{badge.label}</span>
                                 </div>
-                                <DropdownMenuSeparator className="bg-white/5" />
+                                <DropdownMenuSeparator className="bg-white/5 my-1" />
                                 <div className="space-y-0.5">
-                                    <DropdownMenuItem asChild><Link href="/profile" className="flex items-center w-full text-xs py-2 px-2 cursor-pointer hover:bg-white/10 rounded-lg transition-colors font-bold"><User size={14} className="mr-2.5 text-zinc-400 shrink-0" /> Profile</Link></DropdownMenuItem>
-                                    <DropdownMenuItem asChild><Link href="/library" className="flex items-center w-full text-xs py-2 px-2 cursor-pointer hover:bg-white/10 rounded-lg transition-colors font-bold"><Flag size={14} className="mr-2.5 text-zinc-400 shrink-0" /> Library</Link></DropdownMenuItem>
-                                    <DropdownMenuItem asChild><Link href="/avatar" className="flex items-center w-full text-xs py-2 px-2 cursor-pointer hover:bg-white/10 rounded-lg transition-colors font-bold"><Cat size={14} className="mr-2.5 text-zinc-400 shrink-0" /> Avatar</Link></DropdownMenuItem>
-                                    <DropdownMenuItem asChild><Link href="/settings" className="flex items-center w-full text-xs py-2 px-2 cursor-pointer hover:bg-white/10 rounded-lg transition-colors font-bold"><Settings size={14} className="mr-2.5 text-zinc-400 shrink-0" /> Settings</Link></DropdownMenuItem>
+                                    <DropdownMenuItem asChild><Link href="/profile" className="flex items-center w-full text-xs py-1.5 px-2.5 cursor-pointer hover:bg-white/10 rounded-lg transition-colors font-bold"><User size={14} className="mr-2 text-zinc-400 shrink-0" /> Profile</Link></DropdownMenuItem>
+                                    <DropdownMenuItem asChild><Link href="/library" className="flex items-center w-full text-xs py-1.5 px-2.5 cursor-pointer hover:bg-white/10 rounded-lg transition-colors font-bold"><Flag size={14} className="mr-2 text-zinc-400 shrink-0" /> Library</Link></DropdownMenuItem>
+                                    <DropdownMenuItem asChild><Link href="/avatar" className="flex items-center w-full text-xs py-1.5 px-2.5 cursor-pointer hover:bg-white/10 rounded-lg transition-colors font-bold"><Cat size={14} className="mr-2 text-zinc-400 shrink-0" /> Avatar</Link></DropdownMenuItem>
+                                    <DropdownMenuItem asChild><Link href="/settings" className="flex items-center w-full text-xs py-1.5 px-2.5 cursor-pointer hover:bg-white/10 rounded-lg transition-colors font-bold"><Settings size={14} className="mr-2 text-zinc-400 shrink-0" /> Settings</Link></DropdownMenuItem>
                                     {(profile?.role === 'admin' || profile?.role === 'moderator') && (
-                                        <DropdownMenuItem asChild><Link href="/master" className="flex items-center w-full text-xs py-2 px-2 cursor-pointer hover:bg-white/10 rounded-lg transition-colors font-bold text-red-500"><Shield size={14} className="mr-2.5 shrink-0" /> Admin Panel</Link></DropdownMenuItem>
+                                        <DropdownMenuItem asChild><Link href="/master" className="flex items-center w-full text-xs py-1.5 px-2.5 cursor-pointer hover:bg-white/10 rounded-lg transition-colors font-bold text-red-500"><Shield size={14} className="mr-2 shrink-0" /> Admin Panel</Link></DropdownMenuItem>
                                     )}
                                 </div>
 
-                                <DropdownMenuSeparator className="bg-white/5" />
+                                <DropdownMenuSeparator className="bg-white/5 my-1" />
 
                                 <DropdownMenuItem onClick={(e) => { 
                                     e.preventDefault(); 
@@ -1819,25 +1981,25 @@ function WhisperIslandContent() {
                                             window.location.reload(); 
                                         }
                                     }, 4000);
-                                }} className="text-red-500 cursor-pointer hover:bg-red-500/10 hover:text-red-400 transition-colors text-xs py-2 px-2 rounded-lg font-bold">
-                                    <LogOut size={14} className="mr-2.5 shrink-0" /> Leave
+                                }} className="text-red-500 cursor-pointer hover:bg-red-500/10 hover:text-red-400 transition-colors text-xs py-1.5 px-2.5 rounded-lg font-bold">
+                                    <LogOut size={14} className="mr-2 shrink-0" /> Leave
                                 </DropdownMenuItem>
                             </div>
                         ) : (
-                            <div className="space-y-2">
-                                <div className="flex flex-col items-center justify-center text-center px-1.5 pt-1 pb-0.5">
-                                    <span className="text-[15px] font-black text-white uppercase tracking-wider truncate w-full text-center leading-tight">Traveller</span>
+                            <div className="space-y-1.5">
+                                <div className="flex flex-col items-center justify-center text-center px-1.5 pt-0.5 pb-0.5">
+                                    <span className="text-[14.5px] font-black text-white uppercase tracking-wider truncate w-full text-center leading-tight">Traveller</span>
                                     <span className="text-[8px] font-bold tracking-[0.2em] uppercase text-zinc-400 mt-0.5 opacity-80 text-center leading-none">Guest</span>
                                 </div>
-                                <DropdownMenuSeparator className="bg-white/5" />
+                                <DropdownMenuSeparator className="bg-white/5 my-1" />
                                 <div className="space-y-0.5">
-                                    <DropdownMenuItem asChild><Link href="/profile" className="flex items-center w-full text-xs py-2 px-2 cursor-pointer hover:bg-white/10 rounded-lg transition-colors font-bold"><User size={14} className="mr-2.5 text-zinc-400 shrink-0" /> Traveller Profile</Link></DropdownMenuItem>
-                                    <DropdownMenuItem asChild><Link href="/library" className="flex items-center w-full text-xs py-2 px-2 cursor-pointer hover:bg-white/10 rounded-lg transition-colors font-bold"><Flag size={14} className="mr-2.5 text-zinc-400 shrink-0" /> Library</Link></DropdownMenuItem>
-                                    <DropdownMenuItem asChild><Link href="/settings" className="flex items-center w-full text-xs py-2 px-2 cursor-pointer hover:bg-white/10 rounded-lg transition-colors font-bold"><Settings size={14} className="mr-2.5 text-zinc-400 shrink-0" /> Settings</Link></DropdownMenuItem>
+                                    <DropdownMenuItem asChild><Link href="/profile" className="flex items-center w-full text-xs py-1.5 px-2.5 cursor-pointer hover:bg-white/10 rounded-lg transition-colors font-bold"><User size={14} className="mr-2 text-zinc-400 shrink-0" /> Traveller Profile</Link></DropdownMenuItem>
+                                    <DropdownMenuItem asChild><Link href="/library" className="flex items-center w-full text-xs py-1.5 px-2.5 cursor-pointer hover:bg-white/10 rounded-lg transition-colors font-bold"><Flag size={14} className="mr-2 text-zinc-400 shrink-0" /> Library</Link></DropdownMenuItem>
+                                    <DropdownMenuItem asChild><Link href="/settings" className="flex items-center w-full text-xs py-1.5 px-2.5 cursor-pointer hover:bg-white/10 rounded-lg transition-colors font-bold"><Settings size={14} className="mr-2 text-zinc-400 shrink-0" /> Settings</Link></DropdownMenuItem>
                                 </div>
-                                <DropdownMenuSeparator className="bg-white/5" />
-                                <DropdownMenuItem onClick={(e) => { e.preventDefault(); if (typeof window !== 'undefined') window.dispatchEvent(new CustomEvent('shadow-open-auth', { detail: { view: 'ENTER' } })); }} className="flex items-center w-full text-xs py-2 px-2 cursor-pointer hover:bg-primary/20 text-primary-400 rounded-lg transition-colors font-bold">
-                                    <LogIn size={14} className="mr-2.5 shrink-0" /> Enter
+                                <DropdownMenuSeparator className="bg-white/5 my-1" />
+                                <DropdownMenuItem onClick={(e) => { e.preventDefault(); if (typeof window !== 'undefined') window.dispatchEvent(new CustomEvent('shadow-open-auth', { detail: { view: 'ENTER' } })); }} className="flex items-center w-full text-xs py-1.5 px-2.5 cursor-pointer hover:bg-primary/20 text-primary-400 rounded-lg transition-colors font-bold">
+                                    <LogIn size={14} className="mr-2 shrink-0" /> Enter
                                 </DropdownMenuItem>
                             </div>
                         )}

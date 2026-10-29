@@ -172,7 +172,7 @@ export async function checkAllLibraryUpdates() {
             const cleanId = id.replace(/^novel-/, '');
             const info = await novelService.getDetails(cleanId);
             if (info) {
-              latestEpCount = info.totalChapters || 1;
+              latestEpCount = typeof info.totalChapters === 'number' ? info.totalChapters : (parseFloat(String(info.totalChapters || '1')) || 1);
               title = info.title || title;
               image = info.cover || image;
               targetLink = `/novel/${cleanId}`;

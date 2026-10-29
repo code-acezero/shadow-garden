@@ -11,6 +11,7 @@ import CylinderPageSlider from '@/components/UIx/CylinderPageSlider';
 import CutePageSwitcher from '@/components/UIx/CutePageSwitcher';
 import { omni, DramaCard } from '@/lib/omni';
 import { getStreamUrl } from '@/lib/utils';
+import { playGummyTap } from '@/lib/audioManager';
 
 export default function MultiverseShowcase() {
   const [movies, setMovies] = useState<any[]>([]);
