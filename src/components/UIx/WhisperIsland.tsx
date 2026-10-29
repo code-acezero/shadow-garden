@@ -1521,7 +1521,7 @@ function WhisperIslandContent() {
                <motion.div 
                     initial={false} 
                     animate={{ 
-                        width: shouldHideExtras ? (isMobile ? 40 : 44) : (isMobile ? 112 : 176)
+                        width: shouldHideExtras ? (isMobile ? 40 : 44) : (isMobile ? 118 : 184)
                     }} 
                     transition={JELLY_SPRING} 
                     className={cn(
@@ -1548,28 +1548,28 @@ function WhisperIslandContent() {
                                 {shouldHideExtras ? null : ( 
                                     <>
                                         {/* Desktop Logo Text */}
-                                        <div className="hidden md:flex items-center gap-1 font-lemon font-black text-sm uppercase w-[124px] justify-center">
+                                        <div className="hidden md:flex items-center gap-1 font-lemon font-black uppercase w-[130px] justify-center">
                                             {logoState === 0 && (
-                                                <span className="text-white text-sm tracking-[0.22em] font-lemon font-black uppercase text-center">
+                                                <span className="text-white text-[16.5px] md:text-[17.5px] tracking-[0.20em] font-lemon font-black uppercase text-center leading-none">
                                                     KAGEMI
                                                 </span>
                                             )}
                                             {logoState === 1 && (
-                                                <span className={cn("text-sm tracking-[0.18em] font-lemon font-black uppercase text-center truncate", currentPageInfo.color)}>
+                                                <span className={cn("text-[15px] md:text-[16px] tracking-[0.16em] font-lemon font-black uppercase text-center truncate leading-none", currentPageInfo.color)}>
                                                     {currentPageInfo.name}
                                                 </span>
                                             )}
                                         </div>
 
                                         {/* Mobile Logo Text */}
-                                        <div className="md:hidden flex items-center justify-center font-lemon font-black uppercase w-[72px]">
+                                        <div className="md:hidden flex items-center justify-center font-lemon font-black uppercase w-[76px]">
                                             {logoState === 0 && (
-                                                <span className="text-white text-xs tracking-[0.14em] leading-none whitespace-nowrap font-lemon font-black uppercase text-center">
+                                                <span className="text-white text-[13.5px] tracking-[0.14em] leading-none whitespace-nowrap font-lemon font-black uppercase text-center">
                                                     KAGEMI
                                                 </span>
                                             )}
                                             {logoState === 1 && (
-                                                <span className={cn("text-[11.5px] tracking-[0.08em] leading-none font-lemon font-black uppercase text-center truncate", currentPageInfo.color)}>
+                                                <span className={cn("text-[12.5px] tracking-[0.08em] leading-none font-lemon font-black uppercase text-center truncate", currentPageInfo.color)}>
                                                     {currentPageInfo.name}
                                                 </span>
                                             )}
@@ -1749,13 +1749,22 @@ function WhisperIslandContent() {
                             </AnimatePresence>
                             
                             <div className="relative rounded-full shrink-0">
-                                <div className="absolute inset-0 pointer-events-none overflow-hidden rounded-full"><LightWave trigger={logoState} delay={0.8} /></div>
                                 <DropdownMenu modal={false} onOpenChange={setSettingsOpen}>
                                     <DropdownMenuTrigger asChild>
-                                        <button onClick={() => playGummyTap()} className={cn("relative outline-none aspect-square rounded-full p-[2px] flex items-center justify-center shrink-0 active:scale-90 transition-transform", ISLAND_HEIGHT)}>
-                                            <div className="absolute inset-0 bg-[#0c1322] border border-white/[0.12] rounded-full pointer-events-none shadow-[inset_0_1px_1px_rgba(255,255,255,0.15)]" />
-                                            <div className="relative z-10 w-[32px] h-[32px] md:w-[36px] md:h-[36px] shrink-0 flex items-center justify-center">
-                                                <ProfileAvatar profile={profile} travellerAvatar={!isAuthenticated ? travellerProfile.avatar : undefined} className="w-full h-full" />
+                                        <button 
+                                            onClick={() => playGummyTap()} 
+                                            className={cn(
+                                                "relative outline-none aspect-square rounded-full flex items-center justify-center shrink-0 active:scale-90 transition-transform p-0",
+                                                ISLAND_HEIGHT
+                                            )}
+                                            title="User Profile"
+                                        >
+                                            <div className="relative z-10 w-full h-full shrink-0 flex items-center justify-center">
+                                                <ProfileAvatar 
+                                                    profile={profile} 
+                                                    travellerAvatar={!isAuthenticated ? travellerProfile.avatar : undefined} 
+                                                    className="w-full h-full" 
+                                                />
                                             </div>
                                         </button>
                                     </DropdownMenuTrigger>
