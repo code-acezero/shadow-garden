@@ -1679,7 +1679,7 @@ function WhisperIslandContent() {
     }
     if (k === 'manga' || k === 'manhwa' || k === 'comic' || k === 'webtoon' || k === 'novel') { router.push(`/manga/${id}`); return; }
     if (k === 'donghua') { router.push(`/donghua-watch/${id}`); return; }
-    if (k === 'hindi') { router.push(`/hindi-watch/${id}`); return; }
+    if (k === 'hindi') { router.push(`/watch/${id}?audio=hi`); return; }
     if (k === 'drama' || k === 'movie' || k === 'movies' || k === 'series' || k === 'stream') { 
       router.push(`/stream/${id}${item.isMovie ? '?type=movie' : ''}`); 
       return; 

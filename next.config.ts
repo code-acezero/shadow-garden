@@ -33,6 +33,11 @@ const nextConfig: NextConfig = {
         destination: '/library',
         permanent: true,
       },
+      {
+        source: '/hindi-watch/:id',
+        destination: '/watch/:id?audio=hi',
+        permanent: true,
+      },
     ];
   },
   // Add this to fix the @consumet/extensions issue

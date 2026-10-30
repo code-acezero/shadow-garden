@@ -55,7 +55,7 @@ const FALLBACK_COMMENTS: GlobalComment[] = [
     media_title: 'Mushoku Tensei',
     media_type: 'Hindi Anime',
     episode_number: 12,
-    watch_url: '/hindi-watch/mushoku-tensei-jobless-reincarnation?ep=12',
+    watch_url: '/watch/mushoku-tensei-jobless-reincarnation?ep=12&audio=hi',
     is_spoiler: false,
     user_name: 'CidKagenou',
     user_avatar: 'https://s4.anilist.co/file/anilistcdn/character/large/b185874-9bC623uMhG9n.jpg',
@@ -238,7 +238,7 @@ function parseCommentSource(comment: GlobalComment): {
     Icon = Compass;
   } else if (cleanId.startsWith('hindi-') || cleanId.includes('hindi')) {
     type = 'Hindi Anime';
-    routePrefix = '/hindi-watch/';
+    routePrefix = '/watch/';
     cleanId = cleanId.replace(/^hindi-/, '');
     Icon = Languages;
   }
