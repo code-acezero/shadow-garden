@@ -2374,7 +2374,8 @@ function WatchContent({ initialAnime }: { initialAnime?: UniversalAnime | null }
                                     onProgress={(s: any) => progressRef.current = s.playedSeconds} 
                                     onSeek={(seekTime: number) => { progressRef.current = seekTime; saveProgress(true); }} 
                                     onEnded={() => { saveProgress(true); if (settings.autoNext && nextEpisode) handleEpisodeClick(nextEpisode.id); }} 
-                                    onNext={() => { if (nextEpisode) handleEpisodeClick(nextEpisode.id); }}
+                                    onNext={nextEpisode ? () => handleEpisodeClick(nextEpisode.id) : undefined}
+                                     hasNext={!!nextEpisode}
                                     onInteract={() => { if (!hideInterface) resetInterfaceTimer(); }} 
                                     onPlay={handlePlaybackStart} 
                                     onPause={handlePause} 

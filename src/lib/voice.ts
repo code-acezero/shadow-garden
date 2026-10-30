@@ -54,6 +54,56 @@ export const getVoiceSettings = (): VoicePreference => {
     return { pack: 'Alpha', language: 'en', enabled: true };
 };
 
+// --- GLOBAL AUDIO UNLOCKER & AUTOPLAY HANDLER ---
+let isAudioUnlocked = false;
+let pendingVoiceTrigger: VoiceEvent | null = null;
+let sharedAudioContext: any = null;
+
+export const unlockAudio = () => {
+    if (isAudioUnlocked) return;
+    try {
+        const AudioCtx = (typeof window !== 'undefined') ? (window.AudioContext || (window as any).webkitAudioContext) : null;
+        if (AudioCtx) {
+            if (!sharedAudioContext) sharedAudioContext = new AudioCtx();
+            if (sharedAudioContext.state === 'suspended') {
+                sharedAudioContext.resume().catch(() => {});
+            }
+            // Trigger 0.001s silent buffer to satisfy browser user gesture
+            const buffer = sharedAudioContext.createBuffer(1, 1, 22050);
+            const source = sharedAudioContext.createBufferSource();
+            source.buffer = buffer;
+            source.connect(sharedAudioContext.destination);
+            source.start(0);
+        }
+        isAudioUnlocked = true;
+        console.log("🔊 [ShadowVoice] Global audio permissions unlocked");
+        
+        // If an initial greeting was queued due to browser autoplay restriction, play it now
+        if (pendingVoiceTrigger) {
+            const ev = pendingVoiceTrigger;
+            pendingVoiceTrigger = null;
+            setTimeout(() => playVoice(ev), 120);
+        }
+    } catch (e) {
+        console.warn("Audio unlock failed:", e);
+    }
+};
+
+// Automatically listen for first user interaction anywhere on the window
+if (typeof window !== 'undefined') {
+    const handleFirstGesture = () => {
+        unlockAudio();
+        window.removeEventListener('pointerdown', handleFirstGesture, true);
+        window.removeEventListener('keydown', handleFirstGesture, true);
+        window.removeEventListener('click', handleFirstGesture, true);
+        window.removeEventListener('touchstart', handleFirstGesture, true);
+    };
+    window.addEventListener('pointerdown', handleFirstGesture, { capture: true, passive: true });
+    window.addEventListener('keydown', handleFirstGesture, { capture: true, passive: true });
+    window.addEventListener('click', handleFirstGesture, { capture: true, passive: true });
+    window.addEventListener('touchstart', handleFirstGesture, { capture: true, passive: true });
+}
+
 // --- DYNAMIC CACHE ---
 // Stores voice data fetched from Supabase to avoid repeated calls
 let dynamicVoiceCache: any[] = [];
@@ -121,7 +171,18 @@ export const playVoice = (event: VoiceEvent) => {
         console.log(`🔊 [ShadowVoice] Playing: ${fileUrl}`);
         const audio = new Audio(fileUrl);
         audio.volume = settings.volume !== undefined ? settings.volume : 1.0; 
+        
         audio.play().catch(e => {
+            const isAutoplayBlocked = e?.name === 'NotAllowedError' || 
+                                     e?.message?.toLowerCase().includes('interact') ||
+                                     e?.message?.toLowerCase().includes('user gesture') ||
+                                     e?.message?.toLowerCase().includes('autoplay');
+            if (isAutoplayBlocked) {
+                console.log(`🔊 [ShadowVoice] Autoplay deferred until first user interaction for event: ${event}`);
+                pendingVoiceTrigger = event;
+                return;
+            }
+
             // If primary voices path failed for legacy alpha audio, try /audio/ path
             let packName = (settings.pack || 'alpha').toLowerCase().replace(/^(system-|sys-)/, '');
             let action = event.toLowerCase().replace(/_/g, '-');
@@ -130,7 +191,13 @@ export const playVoice = (event: VoiceEvent) => {
             if (fileUrl !== legacyUrl) {
                 const fallbackAudio = new Audio(legacyUrl);
                 fallbackAudio.volume = audio.volume;
-                fallbackAudio.play().catch(err => console.warn("Autoplay blocked/missing:", err));
+                fallbackAudio.play().catch(err => {
+                    if (err?.name === 'NotAllowedError') {
+                        pendingVoiceTrigger = event;
+                    } else {
+                        console.warn("Autoplay blocked/missing:", err);
+                    }
+                });
             } else {
                 console.warn("Autoplay blocked/missing:", e);
             }

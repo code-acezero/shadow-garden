@@ -188,6 +188,7 @@ export interface OmniPlayerProps {
   startTime?: number; 
   onEnded?: () => void;
   onNext?: () => void;
+  hasNext?: boolean;
   onPlay?: () => void;
   onSkipIntro?: () => void;
   onSkipOutro?: () => void;
@@ -217,12 +218,13 @@ export type AnimePlayerRef = OmniPlayerRef;
 
 const OmniPlayer = forwardRef<OmniPlayerRef, OmniPlayerProps>(({ 
   url, iframeUrl, isEmbed, episodeId, title, poster, intro, outro, referer, isM3U8, autoSkip = false, autoSkipOutro = false, autoPlay = true, startTime = 0, subtitles = [],
-  onEnded, onNext, onPlay, onSkipIntro, onSkipOutro, onProgress, onSeek, onInteract, onPause, onBuffer, 
+  onEnded, onNext, hasNext, onPlay, onSkipIntro, onSkipOutro, onProgress, onSeek, onInteract, onPause, onBuffer, 
   controlsTimeout = 3000, onControlsChange, initialVolume = 1, initialSpeed = 1, onSettingsChange, onError, onAspectRatioChange
 }, ref) => {
   // Refs
   const videoRef = useRef<HTMLVideoElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
+  const canGoNext = hasNext !== undefined ? hasNext : (onNext !== undefined && onNext !== null);
   const hlsRef = useRef<Hls | null>(null);
   const titleContainerRef = useRef<HTMLDivElement>(null);
   const titleTextRef = useRef<HTMLSpanElement>(null);
@@ -1690,10 +1692,10 @@ const OmniPlayer = forwardRef<OmniPlayerRef, OmniPlayerProps>(({
         )}
 
         {/* Next Episode prompt near end over iframe */}
-        {onNext && currentTime >= (duration > 0 ? duration - 25 : 1415) && (
+        {canGoNext && onNext && currentTime >= (duration > 0 ? duration - 25 : 1415) && (
           <button 
             onClick={(e) => { e.stopPropagation(); onNext(); }} 
-            className="absolute bottom-16 sm:bottom-20 right-4 sm:right-6 bg-primary-600 hover:bg-primary-500 text-white px-4 sm:px-5 py-2 rounded-full font-black text-[10px] sm:text-xs uppercase tracking-widest flex items-center gap-2 shadow-[0_0_25px_rgba(220,38,38,0.5)] border border-primary-400/40 transition-all animate-bounce z-50 atrax-bubbly-btn atrax-squish-tap cursor-pointer"
+            className="absolute bottom-16 sm:bottom-20 right-4 sm:right-6 bg-zinc-900/90 hover:bg-zinc-800 text-white px-4 sm:px-5 py-2 rounded-full font-black text-[10px] sm:text-xs uppercase tracking-widest flex items-center gap-2 shadow-[0_8px_30px_rgba(0,0,0,0.6)] border border-white/20 transition-all animate-bounce z-50 atrax-bubbly-btn atrax-squish-tap cursor-pointer"
           >
             Next Episode <ChevronRight size={14}/>
           </button>
@@ -2221,7 +2223,7 @@ const OmniPlayer = forwardRef<OmniPlayerRef, OmniPlayerProps>(({
               </button>
 
               {/* Next Episode Button on Mobile (Only when onNext is available) */}
-              {onNext && (
+              {canGoNext && onNext && (
                 <button
                   type="button"
                   onClick={(e) => { e.stopPropagation(); onNext(); }}
@@ -2445,7 +2447,7 @@ const OmniPlayer = forwardRef<OmniPlayerRef, OmniPlayerProps>(({
           <SkipForward size={14} className="text-indigo-400" /> Skip Outro
         </button>
       )}
-      {!isPlaying && duration > 0 && Math.abs(currentTime - duration) < 1 && onNext && (
+      {!isPlaying && duration > 0 && Math.abs(currentTime - duration) < 1 && canGoNext && onNext && (
         <button 
           type="button"
           onClick={(e) => { e.stopPropagation(); onNext(); }} 
@@ -2456,7 +2458,7 @@ const OmniPlayer = forwardRef<OmniPlayerRef, OmniPlayerProps>(({
             bottom: showControls ? (isMobile ? '80px' : '88px') : (isMobile ? '20px' : '28px'),
             transition: 'bottom 0.3s ease-in-out, transform 0.3s ease-in-out',
           }}
-          className="absolute right-6 bg-primary-600 hover:bg-primary-500 text-white py-3 px-5 rounded-full font-black text-xs uppercase tracking-widest hover:scale-105 flex items-center gap-2 shadow-[0_0_30px_rgba(220,38,38,0.6)] border border-primary-400/40 z-50 animate-bounce atrax-bubbly-btn atrax-squish-tap cursor-pointer pointer-events-auto"
+          className="absolute right-6 bg-zinc-900/90 hover:bg-zinc-800 text-white py-3 px-5 rounded-full font-black text-xs uppercase tracking-widest hover:scale-105 flex items-center gap-2 shadow-[0_8px_30px_rgba(0,0,0,0.6)] border border-white/20 z-50 animate-bounce atrax-bubbly-btn atrax-squish-tap cursor-pointer pointer-events-auto"
         >
           Next Episode <ChevronRight size={14}/>
         </button>
