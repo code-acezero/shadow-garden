@@ -227,15 +227,7 @@ export default function Settings() {
                      is_db: !!v.created_at
                  }));
 
-                 // Deduplicate by name + lang
-                 // We use a Map to ensure unique Name+Lang keys, preferring DB entries if duplicates exist
-                 const uniqueMap = new Map();
-                 allVoices.forEach(item => {
-                    const key = `${item.name}-${item.language}`;
-                    if(!uniqueMap.has(key)) uniqueMap.set(key, item);
-                 });
-                 
-                 setVoices(Array.from(uniqueMap.values()));
+                 setVoices(allVoices);
                  setVoicesLoaded(true);
              } catch (e) {
                  console.error("Voice fetch failed", e);

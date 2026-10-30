@@ -24,12 +24,23 @@ const VOICE_SCRIPTS = {
     BYE_ADVENTURER: "See you again adventurer, have a nice day."
 };
 
+const JP_VOICE_SCRIPTS: Record<string, string> = {
+    GREET_MASTER: "おかえりなさいませ、マスター。影たちはお前の命を待っています。",
+    GREET_ADVENTURER: "おかえりなさい、冒険者。また会えて嬉しいよ。",
+    GREET_TRAVELER: "ようこそ、旅人よ。今日、我らの仲間に入りますか？",
+    WELCOME: "カゲミへようこそ。ここはアニメの英知を求める者たちの聖域。今日はいかなる用件で、旅人よ？",
+    REGISTER: "カゲミへの登録、ありがとうございます。冒険の旅に幸運を。",
+    BYE_MASTER: "またお会いしましょう、マスター。良い一日を。",
+    BYE_ADVENTURER: "またね、冒険者。良い一日を。"
+};
+
 export type VoiceEvent = keyof typeof VOICE_SCRIPTS;
 
 interface VoicePreference {
     pack: string; // Character Name (e.g. 'Alpha')
     language: string;
     enabled: boolean;
+    volume?: number;
 }
 
 export const getVoiceSettings = (): VoicePreference => {
@@ -58,7 +69,9 @@ export const refreshVoiceCache = async () => {
 
 export const playVoice = (event: VoiceEvent) => {
     const settings = getVoiceSettings();
-    const scriptText = VOICE_SCRIPTS[event];
+    const scriptText = settings.language === 'jp' 
+        ? (JP_VOICE_SCRIPTS[event] || VOICE_SCRIPTS[event])
+        : VOICE_SCRIPTS[event];
     
     // 1. Visual Notification
     if (scriptText) {
@@ -73,11 +86,10 @@ export const playVoice = (event: VoiceEvent) => {
     let fileUrl = '';
     
     // Attempt to find in Dynamic Cache (DB)
-    // Assumes DB has columns: character, language, event_trigger, file_url
     const dynamicMatch = dynamicVoiceCache.find(v => 
-        v.character === settings.pack && 
+        (v.character?.toLowerCase() === settings.pack?.toLowerCase() || v.name?.toLowerCase() === settings.pack?.toLowerCase()) && 
         v.language === settings.language &&
-        v.event_trigger === event
+        (v.event_trigger === event || v.event_trigger === event.replace(/_/g, '-'))
     );
 
     if (dynamicMatch) {
@@ -96,28 +108,33 @@ export const playVoice = (event: VoiceEvent) => {
         }
         
         // Normalize for file system
-        let packName = settings.pack.toLowerCase();
+        let packName = (settings.pack || 'alpha').toLowerCase();
         if (packName.startsWith('system-')) packName = packName.replace('system-', '');
+        if (packName.startsWith('sys-')) packName = packName.replace('sys-', '');
         
-        // Construct Path
-        // e.g. /audio/alpha_welcome.mp3 OR /voices/en/hana-welcome.mp3
-        if (['alpha', 'beta', 'shadow', 'delta', 'zeta'].includes(packName)) {
-             // Legacy Static paths
-             const suffix = settings.language === 'jp' ? '_jp' : '';
-             fileUrl = `/audio/${packName}${suffix}_${action}.mp3`;
-        } else {
-             // Standard dynamic structure
-             fileUrl = `/voices/${settings.language}/${packName}-${action}.mp3`;
-        }
+        const lang = settings.language || 'en';
+        fileUrl = `/voices/${lang}/${packName}-${action}.mp3`;
     }
 
     // 3. Play
     if (fileUrl) {
         console.log(`🔊 [ShadowVoice] Playing: ${fileUrl}`);
         const audio = new Audio(fileUrl);
-        // Default to 1.0 if not set, or use settings.volume
-        audio.volume = (settings as any).volume !== undefined ? (settings as any).volume : 1.0; 
-        audio.play().catch(e => console.warn("Autoplay blocked/missing:", e));
+        audio.volume = settings.volume !== undefined ? settings.volume : 1.0; 
+        audio.play().catch(e => {
+            // If primary voices path failed for legacy alpha audio, try /audio/ path
+            let packName = (settings.pack || 'alpha').toLowerCase().replace(/^(system-|sys-)/, '');
+            let action = event.toLowerCase().replace(/_/g, '-');
+            const suffix = settings.language === 'jp' ? '_jp' : '';
+            const legacyUrl = `/audio/${packName}${suffix}_${action}.mp3`;
+            if (fileUrl !== legacyUrl) {
+                const fallbackAudio = new Audio(legacyUrl);
+                fallbackAudio.volume = audio.volume;
+                fallbackAudio.play().catch(err => console.warn("Autoplay blocked/missing:", err));
+            } else {
+                console.warn("Autoplay blocked/missing:", e);
+            }
+        });
     }
 };
 

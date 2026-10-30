@@ -1147,12 +1147,27 @@ function WhisperIslandContent() {
   useEffect(() => {
       if (mounted && settingsOpen && !voicesLoaded) {
           const fetchAsync = async () => {
+             let staticVoices: any[] = [];
+             try {
+                 const res = await fetch('/api/system/voices');
+                 if (res.ok) {
+                     const json = await res.json();
+                     staticVoices = json.staticVoices || [];
+                 }
+             } catch (e) {
+                 console.warn("System voice scanner unreachable:", e);
+             }
+
              const { data } = await supabase.from('voice_packs').select('*');
-             const dbVoices = data || [];
-             const normalizedDB = dbVoices.map((v: any) => ({
-                 id: v.id, name: v.character || v.name, language: v.language || 'en', gender: 'Unknown', preview: v.file_url, is_db: true
+             const dbVoices = (data || []).map((v: any) => ({
+                 id: v.id, name: v.character || v.name, language: v.language || 'en', gender: v.gender || 'Unknown', preview: v.file_url, is_db: true
              }));
-             setVoices([...LOCAL_VOICE_PACKS, ...normalizedDB]);
+
+             const normalizedStatic = staticVoices.map((v: any) => ({
+                 id: v.id, name: v.name || v.character, character: v.character, language: v.language || 'en', gender: v.gender || 'Unknown', preview: v.file_url || v.preview, is_db: false
+             }));
+
+             setVoices([...normalizedStatic, ...dbVoices]);
              setVoicesLoaded(true);
           }
           fetchAsync();
