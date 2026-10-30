@@ -60,8 +60,7 @@ import {
   PuffedGrid,
   PuffedList,
   PuffedCompact,
-  PuffedStar,
-  PuffedInfo
+  PuffedStar
 } from '@/components/Watchlist/PuffedIcons';
 
 interface ContinueItem {
@@ -163,9 +162,6 @@ function WatchlistContent() {
   const [sortOption, setSortOption] = useState('updated_at');
   const [isAuthOpen, setIsAuthOpen] = useState(false);
   const [viewMode, setViewMode] = useState<'grid' | 'list' | 'compact'>('grid');
-  const [selectedAnimeId, setSelectedAnimeId] = useState<string | null>(null);
-  const [intelData, setIntelData] = useState<any | null>(null);
-  const [intelLoading, setIntelLoading] = useState(false);
 
   // Sync mode, tab and format from URL
   useEffect(() => {
@@ -213,33 +209,6 @@ function WatchlistContent() {
     params.set('mode', libraryMode);
     params.set('tab', tabId);
     router.push(`?${params.toString()}`, { scroll: false });
-  };
-
-  const handleOpenIntel = async (animeId: string, fallbackTitle?: string, fallbackImage?: string) => {
-    setSelectedAnimeId(animeId);
-    setIntelLoading(true);
-    setIntelData({
-      id: animeId,
-      title: fallbackTitle || 'Loading...',
-      poster: fallbackImage || '',
-      description: 'Retrieving anime intelligence dossier...',
-      info: { genres: [], status: 'Analyzing...' },
-      stats: { rating: 'PG-13', episodes: { sub: 0, dub: 0 } },
-      characters: []
-    });
-    try {
-      const info = await AnimeService.getAnimeInfo(animeId);
-      if (info) setIntelData(info);
-    } catch (e) {
-      console.error("Failed to load intel", e);
-    } finally {
-      setIntelLoading(false);
-    }
-  };
-
-  const handleCloseIntel = () => {
-    setSelectedAnimeId(null);
-    setIntelData(null);
   };
 
   const handleStatusChange = async (animeId: string, newStatus: string) => {
@@ -1010,7 +979,6 @@ function WatchlistContent() {
                             viewMode="grid"
                             onStatusChange={handleStatusChange}
                             onRemove={(id) => handleRemove(id, false)}
-                            onOpenIntel={handleOpenIntel}
                             onProgressUpdate={(animeId, newEp) => updateLibraryProgress(animeId, newEp, (item as any).total_episodes ? parseInt(String((item as any).total_episodes), 10) : undefined)}
                           />
                         )
@@ -1096,7 +1064,6 @@ function WatchlistContent() {
                             viewMode="list"
                             onStatusChange={handleStatusChange}
                             onRemove={(id) => handleRemove(id, false)}
-                            onOpenIntel={handleOpenIntel}
                             onProgressUpdate={(animeId, newEp) => updateLibraryProgress(animeId, newEp, (item as any).total_episodes ? parseInt(String((item as any).total_episodes), 10) : undefined)}
                           />
                         )
@@ -1158,7 +1125,6 @@ function WatchlistContent() {
                             viewMode="compact"
                             onStatusChange={handleStatusChange}
                             onRemove={(id) => handleRemove(id, false)}
-                            onOpenIntel={handleOpenIntel}
                             onProgressUpdate={(animeId, newEp) => updateLibraryProgress(animeId, newEp, (item as any).total_episodes ? parseInt(String((item as any).total_episodes), 10) : undefined)}
                           />
                         )
@@ -1207,115 +1173,6 @@ function WatchlistContent() {
           )}
         </div>
       </div>
-
-      {/* ─── ANIME INTEL MODAL ─── */}
-      <AnimatePresence>
-        {selectedAnimeId && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 z-[100] bg-black/80 backdrop-blur-xl flex items-center justify-center p-4 sm:p-6"
-            onClick={handleCloseIntel}
-          >
-            <motion.div
-              initial={{ scale: 0.95, y: 15, opacity: 0 }}
-              animate={{ scale: 1, y: 0, opacity: 1 }}
-              exit={{ scale: 0.95, y: 15, opacity: 0 }}
-              transition={{ type: "spring", damping: 25, stiffness: 300 }}
-              className="bg-[#0b0b0e] border border-white/10 rounded-3xl w-full max-w-2xl max-h-[85vh] overflow-hidden flex flex-col shadow-2xl relative"
-              onClick={(e) => e.stopPropagation()}
-            >
-              <div className="flex items-center justify-between p-4 border-b border-white/5">
-                <div className="flex items-center gap-2">
-                  <PuffedInfo size={15} className="text-white" />
-                  <span className="text-[10px] font-mono font-bold uppercase tracking-widest text-zinc-400">
-                    Archive Intelligence
-                  </span>
-                </div>
-                <button
-                  onClick={handleCloseIntel}
-                  className="w-7 h-7 rounded-full bg-white/5 hover:bg-white/10 text-zinc-400 hover:text-white flex items-center justify-center transition-colors"
-                >
-                  <X size={14} />
-                </button>
-              </div>
-
-              <div className="flex-1 overflow-y-auto p-5 space-y-5 no-scrollbar">
-                <div className="flex flex-col sm:flex-row gap-5">
-                  <div className="w-28 h-40 sm:w-32 sm:h-44 rounded-xl overflow-hidden shrink-0 border border-white/10 bg-zinc-900 mx-auto sm:mx-0">
-                    <img
-                      src={getSafeImageUrl(intelData?.poster || intelData?.image || '/images/placeholder-no-img.jpg')}
-                      alt="poster"
-                      className="w-full h-full object-cover"
-                      onError={(e) => { (e.currentTarget as HTMLImageElement).src = '/images/placeholder-no-img.jpg'; }}
-                    />
-                  </div>
-                  <div className="flex-1 min-w-0 flex flex-col justify-between">
-                    <div>
-                      <h2 className="text-lg sm:text-xl font-bold text-white leading-snug">
-                        {typeof intelData?.title === 'object' 
-                          ? (intelData.title.english || intelData.title.userPreferred || intelData.title.romaji) 
-                          : (intelData?.title || 'Unknown Title')}
-                      </h2>
-                      {intelData?.jname && (
-                        <p className="text-[10px] text-zinc-500 font-mono mt-0.5 truncate">
-                          {intelData.jname}
-                        </p>
-                      )}
-
-                      <div className="flex flex-wrap items-center gap-1.5 mt-2.5">
-                        {intelData?.stats?.rating && (
-                          <span className="px-2 py-0.5 rounded-md bg-white/5 border border-white/10 text-[9px] font-bold uppercase text-zinc-300">
-                            {intelData.stats.rating}
-                          </span>
-                        )}
-                        {intelData?.info?.status && (
-                          <span className="px-2 py-0.5 rounded-md bg-white/5 border border-white/10 text-[9px] font-bold uppercase text-zinc-300">
-                            {intelData.info.status}
-                          </span>
-                        )}
-                        {(intelData?.stats?.malScore || intelData?.score) && (
-                          <span className="px-2 py-0.5 rounded-md bg-white/5 border border-white/10 text-[9px] font-mono font-bold text-white flex items-center gap-1">
-                            <PuffedStar size={10} className="text-white" />
-                            {intelData?.stats?.malScore || intelData?.score}
-                          </span>
-                        )}
-                      </div>
-                    </div>
-
-                    <div className="mt-3 pt-3 border-t border-white/5">
-                      <Button
-                        onClick={() => {
-                          handleCloseIntel();
-                          router.push(getWatchRoute(selectedAnimeId!, undefined, intelData?.media_type || intelData?.type));
-                        }}
-                        className="w-full h-9 bg-white text-black hover:bg-zinc-200 rounded-xl font-bold text-xs gap-1.5"
-                      >
-                        <PuffedPlay size={12} />
-                        <span>Watch Now</span>
-                      </Button>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Synopsis */}
-                {intelData?.description && (
-                  <div>
-                    <h4 className="text-[10px] font-mono font-bold uppercase tracking-wider text-zinc-400 mb-1.5">
-                      Synopsis
-                    </h4>
-                    <p 
-                      className="text-xs text-zinc-400 leading-relaxed max-h-28 overflow-y-auto pr-1"
-                      dangerouslySetInnerHTML={{ __html: intelData.description }}
-                    />
-                  </div>
-                )}
-              </div>
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
 
       <AuthModal isOpen={isAuthOpen} onClose={() => setIsAuthOpen(false)} onAuthSuccess={() => window.location.reload()} />
     </div>

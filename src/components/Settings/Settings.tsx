@@ -29,7 +29,7 @@ import PageMascot from '@/components/Mascot/PageMascot';
 import OmniPlayer, { OmniPlayer as AnimePlayer } from '@/components/Player/OmniPlayer';
 import Footer from '@/components/Anime/Footer';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { refreshVoiceCache, getVoiceSettings } from '@/lib/voice';
+import { refreshVoiceCache, getVoiceSettings, dispatchTelepathy, getCharacterLine } from '@/lib/voice';
 import AvatarSelectorModal, { getRandomAvatar } from '@/components/User/AvatarSelectorModal';
 import { playTapSound } from '@/lib/audioManager';
 import { pullFromAniList, twoWaySync } from '@/lib/anilistSync';
@@ -326,6 +326,16 @@ export default function Settings() {
       audio.onended = () => setPlayingVoice(null);
       audio.play().catch(() => notifyWhisper("Audio sample playback deferred.", "info"));
       setPlayingVoice(voiceKey);
+
+      // Trigger companion telepathy line in Whisper Island
+      try {
+          const actionSlug = randomUrl.split('/').pop()?.replace(/\.(mp3|wav)$/i, '').split('-').slice(1).join('-') || 'greet-adventurer';
+          const evKey = actionSlug.toUpperCase().replace(/-/g, '_');
+          const line = getCharacterLine(charName, evKey, lang);
+          if (line) {
+              dispatchTelepathy(charName, line);
+          }
+      } catch (err) {}
   };
 
   const selectVoicePack = (name: string, lang: string) => {

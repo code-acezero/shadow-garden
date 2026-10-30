@@ -22,6 +22,7 @@ import { cn, getSimilarity, isRelatedAnime, getChunkLabel, sanitizeContinueWatch
 import { toast } from '@/lib/toast';
 import { useAuth } from '@/context/AuthContext';
 import { sfx } from '@/lib/audioManager';
+import { triggerTelepathy } from '@/lib/voice';
 import PostShareModal from '@/components/Social/PostShareModal';
 
 import OmniPlayer, { OmniPlayerRef, OmniPlayer as AnimePlayer, OmniPlayerRef as AnimePlayerRef } from '@/components/Player/OmniPlayer';
@@ -208,11 +209,15 @@ const getCleanEpisodeTitle = (num: number | string, rawTitle?: string) => {
     const epNum = num || 1;
     if (!rawTitle) return `EP ${epNum}`;
     let title = rawTitle.trim();
-    while (/^(?:(?:episode|ep\.?)\s*\d+|\b\d+\b)\s*[:\-–—•.]*\s*/i.test(title)) {
-        title = title.replace(/^(?:(?:episode|ep\.?)\s*\d+|\b\d+\b)\s*[:\-–—•.]*\s*/i, '').trim();
+    while (/^(?:(?:episode|ep\.?|e|#)\s*\d+|\b\d+\b)\s*[:\-–—•.]*\s*/i.test(title)) {
+        title = title.replace(/^(?:(?:episode|ep\.?|e|#)\s*\d+|\b\d+\b)\s*[:\-–—•.]*\s*/i, '').trim();
     }
     title = title.replace(/^["'“”‘’]+|["'“”‘’]+$/g, '').trim();
-    if (!title || title.toLowerCase() === `episode ${epNum}` || title.toLowerCase() === `ep ${epNum}` || title === `${epNum}`) {
+    while (/^(?:(?:episode|ep\.?|e|#)\s*\d+|\b\d+\b)\s*[:\-–—•.]*\s*/i.test(title)) {
+        title = title.replace(/^(?:(?:episode|ep\.?|e|#)\s*\d+|\b\d+\b)\s*[:\-–—•.]*\s*/i, '').trim();
+    }
+    const lower = title.toLowerCase();
+    if (!title || lower === `episode ${epNum}` || lower === `ep ${epNum}` || lower === `ep.${epNum}` || lower === `e${epNum}` || lower === 'episode' || lower === 'ep' || title === `${epNum}`) {
         return `EP ${epNum}`;
     }
     return `EP ${epNum}: ${title}`;
@@ -222,11 +227,15 @@ const getEpisodeSubtitleOnly = (num: number | string, rawTitle?: string) => {
     if (!rawTitle) return '';
     const epNum = num || 1;
     let title = rawTitle.trim();
-    while (/^(?:(?:episode|ep\.?)\s*\d+|\b\d+\b)\s*[:\-–—•.]*\s*/i.test(title)) {
-        title = title.replace(/^(?:(?:episode|ep\.?)\s*\d+|\b\d+\b)\s*[:\-–—•.]*\s*/i, '').trim();
+    while (/^(?:(?:episode|ep\.?|e|#)\s*\d+|\b\d+\b)\s*[:\-–—•.]*\s*/i.test(title)) {
+        title = title.replace(/^(?:(?:episode|ep\.?|e|#)\s*\d+|\b\d+\b)\s*[:\-–—•.]*\s*/i, '').trim();
     }
     title = title.replace(/^["'“”‘’]+|["'“”‘’]+$/g, '').trim();
-    if (!title || title.toLowerCase() === `episode ${epNum}` || title.toLowerCase() === `ep ${epNum}` || title === `${epNum}`) {
+    while (/^(?:(?:episode|ep\.?|e|#)\s*\d+|\b\d+\b)\s*[:\-–—•.]*\s*/i.test(title)) {
+        title = title.replace(/^(?:(?:episode|ep\.?|e|#)\s*\d+|\b\d+\b)\s*[:\-–—•.]*\s*/i, '').trim();
+    }
+    const lower = title.toLowerCase();
+    if (!title || lower === `episode ${epNum}` || lower === `ep ${epNum}` || lower === `ep.${epNum}` || lower === `e${epNum}` || lower === 'episode' || lower === 'ep' || title === `${epNum}`) {
         return '';
     }
     return title;
@@ -2381,7 +2390,11 @@ function WatchContent({ initialAnime }: { initialAnime?: UniversalAnime | null }
                                     initialVolume={settings.volume} 
                                     onProgress={(s: any) => progressRef.current = s.playedSeconds} 
                                     onSeek={(seekTime: number) => { progressRef.current = seekTime; saveProgress(true); }} 
-                                    onEnded={() => { saveProgress(true); if (settings.autoNext && nextEpisode) handleEpisodeClick(nextEpisode.id); }} 
+                                    onEnded={() => { 
+                                        saveProgress(true); 
+                                        triggerTelepathy('EPISODE_FINISH');
+                                        if (settings.autoNext && nextEpisode) handleEpisodeClick(nextEpisode.id); 
+                                    }} 
                                     onNext={nextEpisode ? () => handleEpisodeClick(nextEpisode.id) : undefined}
                                      hasNext={!!nextEpisode}
                                     onInteract={() => { if (!hideInterface) resetInterfaceTimer(); }} 

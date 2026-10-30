@@ -175,6 +175,7 @@ interface SearchBarContentProps {
     petIcon: string;
     petColor: string;
     link?: string;
+    isTelepathy?: boolean;
   } | null;
   activePetMeta?: PetVoiceMeta;
   onDismissPetSpeech?: () => void;
@@ -313,6 +314,11 @@ const SearchBarContent: React.FC<SearchBarContentProps> = ({
                 petSpeech.link && "cursor-pointer hover:opacity-85 transition-opacity"
               )}
             >
+              {petSpeech.isTelepathy && (
+                <span className="text-[8px] font-mono font-bold tracking-wider uppercase px-1.5 py-0.5 rounded-full bg-white/10 text-zinc-300 shrink-0 select-none">
+                  Telepathy
+                </span>
+              )}
               <span className={cn("text-[9px] sm:text-[10px] md:text-[11px] font-black uppercase tracking-wider shrink-0", petSpeech.petColor)}>
                 {petSpeech.petName}
               </span>
@@ -822,6 +828,7 @@ function WhisperIslandContent() {
     petIcon: string;
     petColor: string;
     link?: string;
+    isTelepathy?: boolean;
   } | null>(null);
 
   const [centerMode, setCenterMode] = useState<any>('SEARCH_SOLO');
@@ -924,6 +931,28 @@ function WhisperIslandContent() {
         
         if (newNotif.type === 'warning' || newNotif.type === 'GUILD_WARNING') {
             const audio = new Audio('/sfx/warning.mp3'); audio.volume = 0.5; audio.play().catch(() => {});
+        }
+
+        // Telepathy whisper from companion character
+        if (e.detail?.type === 'telepathy' || e.detail?.isTelepathy) {
+            setActiveNotif(newNotif);
+            setPetSpeech({
+                text: newNotif.content,
+                petName: e.detail?.character || newNotif.title,
+                petIcon: e.detail?.icon || '🔮',
+                petColor: e.detail?.color || 'text-purple-400',
+                isTelepathy: true,
+                link: newNotif.link
+            });
+
+            if (petTimerRef.current) clearTimeout(petTimerRef.current);
+            petTimerRef.current = setTimeout(() => { 
+                setPetSpeech(null);
+                setActiveNotif(null); 
+                setIsMobileSearchExpanded(false);
+                setCenterMode('ISLAND_FOCUSED');
+            }, 8000);
+            return;
         }
 
         const currentPet = getActivePetMeta();
@@ -1031,24 +1060,15 @@ function WhisperIslandContent() {
   // ✅ 2. WELCOME / GREETING LOGIC (With Cleanup)
   useEffect(() => {
     if (isLoading || voiceLock.current) return; 
-    
-    let timer: NodeJS.Timeout;
 
     if (typeof window !== 'undefined') {
         const hasVisitedHistory = localStorage.getItem('shadow_visited_history');
         const isJustRegistered = sessionStorage.getItem('shadow_just_registered');
         const welcomeShownSession = sessionStorage.getItem('shadow_welcome_shown');
 
-        const delayedDispatch = (title: string, msg: string) => {
-            timer = setTimeout(() => {
-                dispatchWhisper(title, msg);
-            }, 800); 
-        };
-
         if (isJustRegistered && profile) {
             voiceLock.current = true;
             playVoice('REGISTER');
-            delayedDispatch('Guild Receptionist', 'Thanks for registering at Kagemi. You are now registered as an adventurer. Go to profile for updating your guild card as you wish. And good luck with your adventurer journey.');
             sessionStorage.removeItem('shadow_just_registered');
             sessionStorage.setItem('shadow_welcome_shown', 'true');
             localStorage.setItem('shadow_visited_history', 'true');
@@ -1056,7 +1076,6 @@ function WhisperIslandContent() {
         else if (!profile && !hasVisitedHistory) {
             voiceLock.current = true;
             playVoice('WELCOME');
-            delayedDispatch('Guild Receptionist', 'Welcome to Kagemi. This is a sanctuary for those who seek the wisdom of anime. What brings you here today, traveler? Want to register as an adventurer? Or you may look around for today.');
             localStorage.setItem('shadow_visited_history', 'true');
             sessionStorage.setItem('shadow_welcome_shown', 'true');
         }
@@ -1066,22 +1085,15 @@ function WhisperIslandContent() {
                 const role = profile.role;
                 if (role === 'admin' || role === 'moderator') {
                     playVoice('GREET_MASTER');
-                    delayedDispatch('Guild Receptionist', 'Welcome back, Master. The shadows await your command.');
                 } else {
                     playVoice('GREET_ADVENTURER');
-                    delayedDispatch('Guild Receptionist', 'Welcome back, Adventurer. It is good to see you again.');
                 }
             } else {
                 playVoice('GREET_TRAVELER');
-                delayedDispatch('Guild Receptionist', 'Greetings, Traveler. Do you wish to join our ranks today?');
             }
             sessionStorage.setItem('shadow_welcome_shown', 'true');
         }
     }
-
-    return () => {
-        if (timer) clearTimeout(timer);
-    };
   }, [profile, isLoading]);
 
   // UNREAD MESSAGES NOTIFICATION
@@ -2044,17 +2056,13 @@ function WhisperIslandContent() {
                                 <DropdownMenuItem onClick={(e) => { 
                                     e.preventDefault(); 
                                     const role = profile?.role;
-                                    let goodbyeMessage = '';
                                     let voiceKey: "BYE_MASTER" | "BYE_ADVENTURER" = "BYE_ADVENTURER";
                                     if (role === 'admin' || role === 'moderator') {
-                                        goodbyeMessage = 'See you again, Master. Have a nice day. Goodbye.';
                                         voiceKey = 'BYE_MASTER'; 
                                     } else {
-                                        goodbyeMessage = 'See you again, Adventurer. Have a nice day. Goodbye.';
                                         voiceKey = 'BYE_ADVENTURER'; 
                                     }
                                     playVoice(voiceKey);
-                                    dispatchWhisper('Guild Receptionist', goodbyeMessage);
                                     if (typeof window !== 'undefined') {
                                         sessionStorage.removeItem('shadow_welcome_shown'); 
                                         sessionStorage.removeItem('shadow_suppress_welcome');

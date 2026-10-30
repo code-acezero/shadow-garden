@@ -4,6 +4,7 @@ import React, { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabase'; // ✅ IMPORT SINGLETON
 import { cn } from '@/lib/utils';
 import { toast } from '@/lib/toast';
+import { triggerTelepathy } from '@/lib/voice';
 import { Plus, Eye, CheckCircle, XCircle, Clock, Loader2, Trash2 } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import {
@@ -102,6 +103,7 @@ export default function WatchListButton({ animeId, animeTitle, animeImage, curre
 
             setStatus(newStatus);
             toast.success(`Moved to ${statusMap[newStatus].label}`);
+            triggerTelepathy('BOOKMARK');
         } catch (err: any) {
             console.error("Supabase Update Error:", err); 
             toast.error("Failed to update status");

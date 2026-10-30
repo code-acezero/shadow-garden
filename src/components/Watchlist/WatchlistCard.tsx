@@ -46,7 +46,6 @@ export interface WatchlistCardProps {
   viewMode?: 'grid' | 'list' | 'compact';
   onStatusChange: (animeId: string, newStatus: string) => void;
   onRemove: (animeId: string) => void;
-  onOpenIntel: (animeId: string, fallbackTitle?: string, fallbackImage?: string) => void;
   onProgressUpdate?: (animeId: string, newEp: number) => void;
 }
 
@@ -63,7 +62,6 @@ export default function WatchlistCard({
   viewMode = 'grid',
   onStatusChange,
   onRemove,
-  onOpenIntel,
   onProgressUpdate,
 }: WatchlistCardProps) {
   const router = useRouter();
@@ -419,8 +417,6 @@ export default function WatchlistCard({
               <PuffedExternal size={12} />
             </a>
           )}
-
-
 
           <button
             onClick={(e) => {
