@@ -424,13 +424,15 @@ export async function resolveUnifiedStreams({
   title,
   episode = 1,
   countryOfOrigin = 'JP',
-  knownHasDub = false
+  knownHasDub = false,
+  requestedAudio = ''
 }: {
   malId?: number | string | null;
   title: string;
   episode: number | string;
   countryOfOrigin?: string;
   knownHasDub?: boolean;
+  requestedAudio?: string;
 }): Promise<UnifiedStreamResult> {
   const epNum = Number(episode) || 1;
   let origin = (countryOfOrigin || 'JP').toUpperCase();
@@ -555,33 +557,14 @@ export async function resolveUnifiedStreams({
     })
   );
 
-  // C. Hindi Dub via Blakite (Deferred if requesting Sub or Dub to ensure instant playback start)
-  const isHindiRequested = origin === 'IN';
-  if (isHindiRequested) {
-    fetchPromises.push(
-      fetchBlakiteHindiStream(title, epNum).then(hindiServers => {
-        if (hindiServers?.length) {
-          serversByAudio.hi.push(...hindiServers);
-        }
-      })
-    );
-  } else {
-    // Check if Hindi is available quickly without blocking on full stream extraction
-    fetchPromises.push(
-      import('../blakite').then(m => m.checkHindiDub(title, epNum)).then(check => {
-        if (check?.available && check.episodeAvailable) {
-          // Mark Hindi track as available for the pill selector
-          serversByAudio.hi.push({
-            serverId: 'rumble-cdn',
-            serverName: 'Rumble Cloud',
-            url: '', // populated on-demand when user clicks HI • DUB
-            type: 'm3u8',
-            referer: 'https://blakiteapi.xyz/'
-          });
-        }
-      }).catch(() => {})
-    );
-  }
+  // C. Hindi Dub via Blakite (runs in parallel, fully populating Hindi stream with zero blocking)
+  fetchPromises.push(
+    fetchBlakiteHindiStream(title, epNum).then(hindiServers => {
+      if (hindiServers?.length) {
+        serversByAudio.hi.push(...hindiServers);
+      }
+    }).catch(() => {})
+  );
 
   await Promise.allSettled(fetchPromises);
 

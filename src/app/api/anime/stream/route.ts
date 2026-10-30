@@ -28,7 +28,8 @@ export async function GET(req: NextRequest) {
       title,
       episode: ep,
       countryOfOrigin: country,
-      knownHasDub: hasDub
+      knownHasDub: hasDub,
+      requestedAudio
     });
 
     // Determine active audio track
