@@ -179,8 +179,8 @@ const EpisodeButton = memo(({ ep, isCurrent, isPlayed, isFullyPlayed, percent, v
                 viewMode === 'grid' ? "h-8 sm:h-9 w-full rounded-full flex items-center justify-center text-[10px] sm:text-[11px] font-black" :
                 viewMode === 'compact' ? "h-7 sm:h-8 w-full aspect-square rounded-full flex items-center justify-center text-[9px] font-bold" :
                 "w-full h-8 sm:h-9 rounded-2xl flex items-center px-3 sm:px-4 text-[10px] sm:text-[11px] font-bold text-left",
-                isCurrent ? "bg-green-500/20 backdrop-blur-xl border-green-400/50 text-white shadow-[0_0_20px_rgba(34,197,94,0.4)] z-20" :
-                isPlayed ? "bg-red-500/15 backdrop-blur-xl border-red-400/40 text-red-300 shadow-[0_0_16px_rgba(239,68,68,0.25)]" :
+                isCurrent ? "bg-emerald-950/30 backdrop-blur-md border-transparent text-white z-20" :
+                isPlayed ? "bg-rose-950/20 border-rose-500/30 text-rose-200/90" :
                 isWatched ? "bg-emerald-600/10 backdrop-blur-xl border border-emerald-500/30 text-emerald-500 hover:bg-emerald-600/20" :
                 "bg-white/5 backdrop-blur-xl border-white/10 text-zinc-400 hover:border-white/20 hover:bg-white/10 hover:text-white"
             )}
@@ -188,17 +188,11 @@ const EpisodeButton = memo(({ ep, isCurrent, isPlayed, isFullyPlayed, percent, v
             <div className="absolute inset-x-0 top-0 h-[40%] bg-gradient-to-b from-white/15 to-transparent pointer-events-none rounded-t-2xl" />
             
             {isCurrent && (
-                <>
-                    <div className="absolute inset-0 bg-gradient-to-tr from-green-500/10 via-transparent to-green-400/20 animate-pulse pointer-events-none" />
-                    <div className="absolute inset-0 bg-[linear-gradient(45deg,transparent_25%,rgba(74,222,128,0.2)_50%,transparent_75%)] bg-[length:250%_250%] animate-shimmer pointer-events-none" />
-                </>
+                <div className="absolute inset-0 bg-[linear-gradient(45deg,transparent_25%,rgba(74,222,128,0.2)_50%,transparent_75%)] bg-[length:250%_250%] animate-shimmer pointer-events-none" />
             )}
 
             {isPlayed && !isCurrent && (
-                <>
-                    <div className="absolute inset-0 bg-gradient-to-tr from-red-500/10 via-transparent to-red-400/15 animate-pulse pointer-events-none" />
-                    <div className="absolute inset-0 bg-[linear-gradient(45deg,transparent_25%,rgba(239,68,68,0.18)_50%,transparent_75%)] bg-[length:250%_250%] animate-shimmer pointer-events-none" />
-                </>
+                <div className="absolute inset-0 bg-[linear-gradient(45deg,transparent_25%,rgba(239,68,68,0.18)_50%,transparent_75%)] bg-[length:250%_250%] animate-shimmer pointer-events-none" />
             )}
 
             {isCurrent && (viewMode === 'grid' || viewMode === 'compact') && (
@@ -299,7 +293,7 @@ const NextEpisodeTimer = ({ schedule, status }: { schedule: any, status: string 
     useEffect(() => {
         const isFinished = status?.toLowerCase().includes("finished") || status?.toLowerCase().includes("completed");
         if (isFinished) {
-            setDisplayText(<span className="text-[9px] text-zinc-400 font-black uppercase tracking-wider">COMPLETED</span>);
+            setDisplayText(<span className="text-[9px] text-zinc-400 font-black uppercase tracking-wider">AIRED</span>);
             return;
         }
 
@@ -1809,23 +1803,14 @@ function WatchContent() {
                 <div className={cn("flex lg:hidden w-full bg-white/5 backdrop-blur-md border border-white/10 rounded-[30px] shadow-[0_8px_32px_0_rgba(0,0,0,0.2)] py-4 flex-col gap-3 overflow-hidden mt-3 transition-all duration-500", settings.dimMode ? "z-[60] relative" : "relative z-10")}>
                     <div className="flex w-full justify-between items-center gap-2">
                         <button disabled={!prevEpisode} onClick={() => prevEpisode && handleEpisodeClick(prevEpisode.id)} className="flex-1 bg-white/5 h-9 rounded-full border border-white/5 flex items-center justify-center text-zinc-400 hover:text-white active:scale-95 disabled:opacity-30 disabled:pointer-events-none transition-all" title="Previous Episode"><SkipBack size={14}/></button>
-                        <button onClick={() => updateSetting('autoSkip', !settings.autoSkip)} className={cn("flex-1 h-9 rounded-full border flex items-center justify-center transition-all relative active:scale-95", settings.autoSkip ? "bg-emerald-600/20 border-emerald-500/60 text-emerald-400 shadow-[0_0_12px_rgba(16,185,129,0.25)]" : "bg-white/5 border-white/5 text-zinc-400 hover:text-zinc-200")} title={`Auto Skip Intro: ${settings.autoSkip ? 'ON' : 'OFF'}`}>
-                            <div className="relative flex items-center justify-center">
-                                <FastForward size={14} className={cn("transition-transform", settings.autoSkip && "scale-110")} />
-                                <span className={cn("absolute -top-1 -right-1.5 w-1.5 h-1.5 rounded-full transition-all", settings.autoSkip ? "bg-emerald-500 shadow-[0_0_6px_rgba(16,185,129,1)] animate-pulse" : "bg-zinc-600/40")} />
-                            </div>
+                        <button onClick={() => updateSetting('autoSkip', !settings.autoSkip)} className={cn("flex-1 h-9 rounded-full border-0 flex items-center justify-center transition-all relative active:scale-95", settings.autoSkip ? "bg-emerald-600/20 text-emerald-300 shadow-sm" : "bg-white/5 text-zinc-400 hover:text-zinc-200")} title={`Auto Skip Intro: ${settings.autoSkip ? 'ON' : 'OFF'}`}>
+                            <FastForward size={14} className={cn("transition-transform", settings.autoSkip && "scale-110")} />
                         </button>
-                        <button onClick={() => updateSetting('autoPlay', !settings.autoPlay)} className={cn("flex-1 h-9 rounded-full border flex items-center justify-center transition-all relative active:scale-95", settings.autoPlay ? "bg-emerald-600/20 border-emerald-500/60 text-emerald-400 shadow-[0_0_12px_rgba(16,185,129,0.25)]" : "bg-white/5 border-white/5 text-zinc-400 hover:text-zinc-200")} title={`Auto Play: ${settings.autoPlay ? 'ON' : 'OFF'}`}>
-                            <div className="relative flex items-center justify-center">
-                                <PlayCircle size={14} className={cn("transition-transform", settings.autoPlay && "scale-110")} />
-                                <span className={cn("absolute -top-1 -right-1.5 w-1.5 h-1.5 rounded-full transition-all", settings.autoPlay ? "bg-emerald-500 shadow-[0_0_6px_rgba(16,185,129,1)] animate-pulse" : "bg-zinc-600/40")} />
-                            </div>
+                        <button onClick={() => updateSetting('autoPlay', !settings.autoPlay)} className={cn("flex-1 h-9 rounded-full border-0 flex items-center justify-center transition-all relative active:scale-95", settings.autoPlay ? "bg-emerald-600/20 text-emerald-300 shadow-sm" : "bg-white/5 text-zinc-400 hover:text-zinc-200")} title={`Auto Play: ${settings.autoPlay ? 'ON' : 'OFF'}`}>
+                            <PlayCircle size={14} className={cn("transition-transform", settings.autoPlay && "scale-110")} />
                         </button>
-                        <button onClick={() => updateSetting('autoNext', !settings.autoNext)} className={cn("flex-1 h-9 rounded-full border flex items-center justify-center transition-all relative active:scale-95", settings.autoNext ? "bg-emerald-600/20 border-emerald-500/60 text-emerald-400 shadow-[0_0_12px_rgba(16,185,129,0.25)]" : "bg-white/5 border-white/5 text-zinc-400 hover:text-zinc-200")} title={`Auto Next Episode: ${settings.autoNext ? 'ON' : 'OFF'}`}>
-                            <div className="relative flex items-center justify-center">
-                                <StepForward size={14} className={cn("transition-transform", settings.autoNext && "scale-110")} />
-                                <span className={cn("absolute -top-1 -right-1.5 w-1.5 h-1.5 rounded-full transition-all", settings.autoNext ? "bg-emerald-500 shadow-[0_0_6px_rgba(16,185,129,1)] animate-pulse" : "bg-zinc-600/40")} />
-                            </div>
+                        <button onClick={() => updateSetting('autoNext', !settings.autoNext)} className={cn("flex-1 h-9 rounded-full border-0 flex items-center justify-center transition-all relative active:scale-95", settings.autoNext ? "bg-emerald-600/20 text-emerald-300 shadow-sm" : "bg-white/5 text-zinc-400 hover:text-zinc-200")} title={`Auto Next Episode: ${settings.autoNext ? 'ON' : 'OFF'}`}>
+                            <StepForward size={14} className={cn("transition-transform", settings.autoNext && "scale-110")} />
                         </button>
                         <button disabled={!nextEpisode} onClick={() => nextEpisode && handleEpisodeClick(nextEpisode.id)} className="flex-1 bg-white/5 h-9 rounded-full border border-white/5 flex items-center justify-center text-zinc-400 hover:text-white active:scale-95 disabled:opacity-30 disabled:pointer-events-none transition-all" title="Next Episode"><SkipForward size={14}/></button>
                     </div>

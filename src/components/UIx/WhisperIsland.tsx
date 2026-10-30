@@ -460,7 +460,10 @@ const SearchBarContent: React.FC<SearchBarContentProps> = ({
             </button>
           ) : null}
 
-          <div className="flex items-center gap-0.5 border-l border-white/10 pl-1 ml-0.5">
+          <div className={cn(
+            "flex items-center gap-0.5 border-l border-white/10 pl-1 ml-0.5",
+            compact ? "hidden min-[360px]:flex" : "flex"
+          )}>
             {/* Search Guide Button: ONLY desktop / md+, on mobile it lives inside the Filter Panel */}
             <button 
               type="button" 
@@ -474,12 +477,13 @@ const SearchBarContent: React.FC<SearchBarContentProps> = ({
               <HelpCircle size={14} />
             </button>
 
-            {/* Filter Toggle: Always accessible on both mobile and desktop */}
+            {/* Filter Toggle: Always accessible on desktop, and on mobile when expanded or space permits (>380px) */}
             <button 
               type="button" 
               onClick={(e) => { e.stopPropagation(); playGummyTap(); setShowFilters(!showFilters); }} 
               className={cn(
                 "p-1 sm:p-1.5 rounded-full transition-all relative",
+                compact ? "hidden min-[380px]:flex" : "flex",
                 showFilters || hasActiveFilters 
                   ? "text-primary-400 bg-primary-500/20 ring-1 ring-primary-500/30" 
                   : "text-zinc-400 hover:text-white hover:bg-white/5"
@@ -489,11 +493,14 @@ const SearchBarContent: React.FC<SearchBarContentProps> = ({
               <Filter size={13} />
             </button>
 
-            {/* AI Image Search: Accessible on both mobile and desktop */}
+            {/* AI Image Search: Accessible on desktop, and on mobile when expanded or space permits (>430px) */}
             <button 
               type="button" 
               onClick={(e) => { e.stopPropagation(); playGummyTap(); router.push('/ai/imagesearch'); }} 
-              className="flex p-1 sm:p-1.5 rounded-full text-zinc-400 hover:text-primary-500 hover:bg-white/5 transition-colors"
+              className={cn(
+                "p-1 sm:p-1.5 rounded-full text-zinc-400 hover:text-primary-500 hover:bg-white/5 transition-colors",
+                compact ? "hidden min-[430px]:flex" : "flex"
+              )}
               title="AI Image Search"
             >
               <ScanSearch size={13} className="sm:w-3.5 sm:h-3.5" />
@@ -1817,12 +1824,13 @@ function WhisperIslandContent() {
                <motion.div 
                     initial={false} 
                     animate={{ 
-                        width: shouldHideExtras ? (isMobile ? 40 : 44) : (isMobile ? 132 : 212)
+                        width: shouldHideExtras ? (isMobile ? 44 : 48) : (isMobile ? 132 : 212)
                     }} 
                     transition={JELLY_SPRING} 
                     className={cn(
                         "liquid-glass rounded-full flex items-center cursor-pointer hover:bg-[#162035] active:scale-95 relative shrink-0 overflow-hidden",
-                        shouldHideExtras ? "aspect-square justify-center p-0" : `${ISLAND_HEIGHT}`
+                        ISLAND_HEIGHT,
+                        shouldHideExtras && "justify-center p-0"
                     )} 
                     onClick={() => { playGummyTap(); router.push('/home'); }}
                >
@@ -1838,7 +1846,7 @@ function WhisperIslandContent() {
                         <ShadowLogo size={isMobile ? "w-[34px] h-[34px]" : "w-[38px] h-[38px]"} />
                     </div>
 
-                    <div className={cn("w-full h-full flex items-center justify-center pl-[38px] md:pl-[44px] pr-1.5 md:pr-2 relative z-10 overflow-hidden", shouldHideExtras && "hidden")}>
+                    <div className={cn("w-full h-full flex items-center justify-center pl-[38px] md:pl-[44px] pr-1.5 md:pr-2 relative z-10 overflow-hidden transition-opacity duration-200", shouldHideExtras ? "opacity-0 pointer-events-none" : "opacity-100")}>
                         {/* Purple Electric Sparks across Title Box */}
                         <div className="absolute inset-0 pointer-events-none z-20 overflow-visible flex items-center justify-center">
                             <svg viewBox="0 0 150 40" className="w-full h-full pointer-events-none overflow-visible">
@@ -1962,7 +1970,8 @@ function WhisperIslandContent() {
                             }
                         }} 
                         className={cn(
-                            `relative liquid-glass !overflow-visible rounded-[30px] ${ISLAND_HEIGHT} flex items-center flex-1 w-full min-w-0`
+                            `relative liquid-glass rounded-[30px] ${ISLAND_HEIGHT} flex items-center flex-1 w-full min-w-0`,
+                            (isMobile && !isMobileSearchExpanded) ? "overflow-hidden" : "!overflow-visible"
                         )}
                     >
                         <SearchBarContent 
@@ -2144,11 +2153,9 @@ function WhisperIslandContent() {
                         </div>
 
                         {/* 2. MOBILE & TABLETS UNIFIED SINGLE PILL: BELL + ALPHA + PROFILE */}
-                        <motion.div 
-                            layout
-                            transition={JELLY_SPRING}
+                        <div 
                             className={cn(
-                                "lg:hidden flex items-center liquid-glass rounded-full pl-2.5 pr-1 gap-1 shrink-0 z-50 pointer-events-auto !overflow-visible",
+                                "lg:hidden flex items-center liquid-glass rounded-full pl-2.5 pr-1 gap-1 shrink-0 z-50 pointer-events-auto !overflow-visible transition-all duration-300",
                                 ISLAND_HEIGHT
                             )}
                         >
@@ -2157,21 +2164,15 @@ function WhisperIslandContent() {
                                 <Notifications unboxed bellSize={17} />
                             </div>
 
-                            {/* Alpha AI Button with Divider: Jelly Morph Hide & Show */}
+                            {/* Alpha AI Button with Divider: Morph Hide only when Search is actively expanded */}
                             <AnimatePresence initial={false}>
-                                {!shouldHideExtras && (
+                                {!isMobileSearchExpanded && (
                                     <motion.div
                                         key="mobile-alpha-jelly"
-                                        layout
-                                        initial={{ width: 0, opacity: 0, scale: 0.3 }}
+                                        initial={{ width: 0, opacity: 0, scale: 0.5 }}
                                         animate={{ width: 38, opacity: 1, scale: 1 }}
-                                        exit={{ width: 0, opacity: 0, scale: 0.3 }}
-                                        transition={{
-                                            type: "spring",
-                                            stiffness: 360,
-                                            damping: 25,
-                                            mass: 0.8
-                                        }}
+                                        exit={{ width: 0, opacity: 0, scale: 0.5 }}
+                                        transition={JELLY_SPRING}
                                         className="overflow-hidden flex items-center shrink-0 whitespace-nowrap"
                                     >
                                         <div className="w-[1px] h-3.5 bg-white/10 shrink-0 mr-1.5" />
@@ -2218,7 +2219,7 @@ function WhisperIslandContent() {
                                 </DropdownMenuTrigger>
                                 {profileDropdownMenuContent}
                             </DropdownMenu>
-                        </motion.div>
+                        </div>
                     </div>
                 );
             })()}

@@ -12,7 +12,7 @@ import {
     FastForward, Star, Info, MessageSquare, User, Users,
     Loader2, Globe, Flame, Calendar, Copyright, Check, Mic, X,
     ChevronLeft, ChevronRight, Pause, ArrowLeft, ArrowRight, Download, Wand2,
-    Zap, PlayCircle, RotateCw, StepForward, Share2
+    Zap, PlayCircle, RotateCw, StepForward, Share2, ArrowRightToLine
 } from 'lucide-react';
 
 import { AnimeService, UniversalAnime } from '@/lib/api';
@@ -240,15 +240,15 @@ const EpisodeButton = memo(({ ep, isCurrent, isFullyPlayed, percent, viewMode, o
                 viewMode === 'grid' ? "h-8 sm:h-9 w-full rounded-full flex items-center justify-center text-[10px] sm:text-[11px] font-black" :
                     viewMode === 'compact' ? "h-7 sm:h-8 w-full aspect-square rounded-full flex items-center justify-center text-[9px] font-bold" :
                         "w-full h-8 sm:h-9 rounded-2xl flex items-center px-3 sm:px-4 text-[10px] sm:text-[11px] font-bold text-left",
-                isCurrent ? "bg-green-950/40 backdrop-blur-md border-green-400 text-white ring-1 ring-green-400/50 shadow-[inset_0_0_15px_rgba(74,222,128,0.25),0_0_20px_rgba(34,197,94,0.4)] z-20" :
-                    isFullyPlayed ? "border border-red-500/60 text-white shadow-[inset_0_0_25px_rgba(220,38,38,0.8)] drop-shadow-[0_0_10px_rgba(220,38,38,0.5)] overflow-hidden" :
+                isCurrent ? "bg-emerald-950/30 backdrop-blur-md border-transparent text-white z-20" :
+                    isFullyPlayed ? "bg-rose-950/20 border-rose-500/30 text-rose-200/90 hover:bg-rose-900/30 hover:border-rose-400/40 hover:text-white" :
                         "bg-white/5 backdrop-blur-xl border-white/10 text-zinc-400 hover:border-white/30 hover:bg-white/10 hover:text-white hover:shadow-[0_0_15px_rgba(255,255,255,0.15)]"
             )}
             style={{
                 ...((!isCurrent && !isFullyPlayed && displayPercent > 0) ? { background: `linear-gradient(to right, rgba(220, 38, 38, 0.45) ${displayPercent}%, rgba(255, 255, 255, 0.05) ${displayPercent}%)` } : {}),
                 ...(isFullyPlayed && !isCurrent ? {
-                    background: `linear-gradient(135deg, transparent 48%, rgba(255,255,255,0.4) 50%, transparent 52%), linear-gradient(45deg, transparent 38%, rgba(255,255,255,0.4) 40%, transparent 42%), linear-gradient(75deg, transparent 68%, rgba(255,255,255,0.3) 70%, transparent 72%), rgba(220, 38, 38, 0.8)`,
-                    backdropFilter: 'blur(10px)'
+                    background: 'linear-gradient(135deg, rgba(225, 29, 72, 0.22), rgba(159, 18, 57, 0.12))',
+                    backdropFilter: 'blur(8px)'
                 } : {})
             }}
         >
@@ -259,12 +259,11 @@ const EpisodeButton = memo(({ ep, isCurrent, isFullyPlayed, percent, viewMode, o
             {isCurrent && (
                 category === 'anime' ? (
                     <div
-                        className="absolute bottom-0 left-0 h-full bg-green-500/35 overflow-hidden pointer-events-none rounded-r-2xl border-r border-green-300/50 shadow-[4px_0_15px_rgba(74,222,128,0.5)] backdrop-blur-sm transition-all duration-150"
+                        className="absolute bottom-0 left-0 h-full bg-emerald-500/25 overflow-hidden pointer-events-none rounded-r-2xl backdrop-blur-sm transition-all duration-150"
                         style={{ width: `${Math.max(4, displayPercent)}%` }}
                     >
-                        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-green-300/30 via-transparent to-transparent opacity-80" />
-                        <div className="absolute top-0 right-0 bottom-0 w-8 bg-gradient-to-l from-green-300/40 to-transparent" />
-                        <div className="absolute top-0 left-0 w-full h-[2px] bg-green-300/70 shadow-[0_0_5px_rgba(134,239,172,0.8)]" />
+                        <div className="absolute inset-0 bg-gradient-to-r from-emerald-600/35 via-emerald-400/25 to-teal-400/35 opacity-90" />
+                        <div className="absolute top-0 right-0 bottom-0 w-6 bg-gradient-to-l from-emerald-300/30 to-transparent" />
                     </div>
                 ) : (
                     <>
@@ -397,7 +396,7 @@ const NextEpisodeTimer = ({ schedule, status }: { schedule: any, status: string 
     useEffect(() => {
         const isFinished = status?.toLowerCase().includes("finished") || status?.toLowerCase().includes("completed");
         if (isFinished) {
-            setDisplayText(<span className="text-[9px] text-zinc-400 font-black uppercase tracking-wider">COMPLETED</span>);
+            setDisplayText(<span className="text-[9px] text-zinc-400 font-black uppercase tracking-wider">AIRED</span>);
             return;
         }
 
@@ -2423,7 +2422,7 @@ function WatchContent({ initialAnime }: { initialAnime?: UniversalAnime | null }
                                             className="flex items-center justify-center gap-1.5 px-3 h-8 rounded-full border border-white/10 bg-[#141d30] text-[10px] font-black uppercase tracking-tighter transition-all hover:bg-white/10 whitespace-nowrap atrax-bubbly-btn atrax-squish-tap"
                                             title="Auto Skip Outro"
                                         >
-                                            <SkipForward size={12} className={cn("transition-colors", (settings.autoSkipOutro ?? settings.autoSkip) ? "text-indigo-400 drop-shadow-[0_0_8px_rgba(129,140,248,0.8)]" : "text-zinc-500")} />
+                                            <ArrowRightToLine size={12} className={cn("transition-colors", (settings.autoSkipOutro ?? settings.autoSkip) ? "text-indigo-400 drop-shadow-[0_0_8px_rgba(129,140,248,0.8)]" : "text-zinc-500")} />
                                             <span className={cn((settings.autoSkipOutro ?? settings.autoSkip) ? "text-white" : "text-zinc-500")}>SKIP OUTRO</span>
                                         </button>
                                         <button
@@ -2632,7 +2631,7 @@ function WatchContent({ initialAnime }: { initialAnime?: UniversalAnime | null }
                                         <FastForward size={13} className={cn("transition-transform", settings.autoSkip && "scale-110")} />
                                     </button>
                                     <button onClick={() => updateSetting('autoSkipOutro', !(settings.autoSkipOutro ?? settings.autoSkip))} className={cn("flex-1 h-8 sm:h-9 rounded-full border-0 flex items-center justify-center transition-all active:scale-95 atrax-bubbly-btn atrax-squish-tap", (settings.autoSkipOutro ?? settings.autoSkip) ? "bg-indigo-400/20 text-indigo-300 shadow-sm" : "bg-white/[0.06] hover:bg-white/10 text-zinc-400 hover:text-zinc-200")} title={`Auto Skip Outro: ${(settings.autoSkipOutro ?? settings.autoSkip) ? 'ON' : 'OFF'}`}>
-                                        <SkipForward size={13} className={cn("transition-transform", (settings.autoSkipOutro ?? settings.autoSkip) && "scale-110")} />
+                                        <ArrowRightToLine size={13} className={cn("transition-transform", (settings.autoSkipOutro ?? settings.autoSkip) && "scale-110")} />
                                     </button>
                                     <button onClick={() => updateSetting('autoPlay', !settings.autoPlay)} className={cn("flex-1 h-8 sm:h-9 rounded-full border-0 flex items-center justify-center transition-all active:scale-95 atrax-bubbly-btn atrax-squish-tap", settings.autoPlay ? "bg-primary-500/20 text-primary-300 shadow-sm" : "bg-white/[0.06] hover:bg-white/10 text-zinc-400 hover:text-zinc-200")} title={`Auto Play: ${settings.autoPlay ? 'ON' : 'OFF'}`}>
                                         <PlayCircle size={13} className={cn("transition-transform", settings.autoPlay && "scale-110")} />
@@ -2720,49 +2719,50 @@ function WatchContent({ initialAnime }: { initialAnime?: UniversalAnime | null }
                                     )}
                                 </div>
 
-                                {/* Row 3: Watchlist, Download, Share, Room & Theater Bulb Mode */}
-                                <div className="flex w-full items-center justify-between gap-1.5">
-                                    <div className="flex-1 min-w-0">
+                                {/* Row 3: Watchlist, Download, Share, Room & Theater Bulb Mode (Full width expanded, progressive right-to-left compaction) */}
+                                <div className="flex w-full items-center gap-1.5 sm:gap-2">
+                                    <div className="shrink-0">
                                         <WatchListButton animeId={anime.id} animeTitle={anime.title} animeImage={anime.poster} currentEp={currentEpisode?.number} totalEpisodes={anime.episodes?.length || 1} type={(anime as any).type || (anime.info as any)?.stats?.type || "TV"} />
                                     </div>
 
-                                    <div className="flex items-center gap-1.5 shrink-0">
-                                        {currentEpisode?.id && (
-                                            <Link
-                                                href={`/download/anime/${anime.id}?ep=${currentEpisode.id}`}
-                                                className="w-8 h-8 rounded-full border-0 bg-white/[0.06] hover:bg-white/10 text-zinc-300 hover:text-white flex items-center justify-center shrink-0 transition-all active:scale-95 atrax-bubbly-btn atrax-squish-tap"
-                                                title="Download Episode"
-                                            >
-                                                <Download size={13} />
-                                            </Link>
+                                    {currentEpisode?.id && (
+                                        <Link
+                                            href={`/download/anime/${anime.id}?ep=${currentEpisode.id}`}
+                                            className="flex-1 min-w-0 h-8 rounded-full border-0 bg-white/[0.06] hover:bg-white/10 text-zinc-300 hover:text-white flex items-center justify-center gap-1 text-[9px] font-black uppercase tracking-wider transition-all active:scale-95 px-2 atrax-bubbly-btn atrax-squish-tap"
+                                            title="Download Episode"
+                                        >
+                                            <Download size={12} className="shrink-0" />
+                                            <span className="truncate hidden min-[320px]:inline">Download</span>
+                                        </Link>
+                                    )}
+                                    <button
+                                        onClick={() => setShowShareModal(true)}
+                                        className="flex-1 min-w-0 h-8 rounded-full border-0 bg-white/[0.06] hover:bg-white/10 text-zinc-300 hover:text-white flex items-center justify-center gap-1 text-[9px] font-black uppercase tracking-wider transition-all active:scale-95 px-2 atrax-bubbly-btn atrax-squish-tap"
+                                        title="Share Episode"
+                                    >
+                                        <Share2 size={12} className="shrink-0" />
+                                        <span className="truncate hidden min-[390px]:inline">Share</span>
+                                    </button>
+                                    <button
+                                        onClick={handleCreateWatchRoom}
+                                        className="flex-1 min-w-0 h-8 rounded-full border-0 bg-white/[0.06] hover:bg-white/10 text-zinc-300 hover:text-white flex items-center justify-center gap-1 text-[9px] font-black uppercase tracking-wider transition-all active:scale-95 px-2 atrax-bubbly-btn atrax-squish-tap"
+                                        title="Create Watch Room"
+                                    >
+                                        <Users size={12} className="shrink-0" />
+                                        <span className="truncate hidden min-[450px]:inline">Room</span>
+                                    </button>
+                                    <Button
+                                        onClick={() => updateSetting('dimMode', !settings.dimMode)}
+                                        variant="ghost"
+                                        size="icon"
+                                        className={cn(
+                                            "rounded-full w-8 h-8 shrink-0 border-0 atrax-bubbly-btn atrax-squish-tap",
+                                            settings.dimMode ? "text-yellow-300 bg-yellow-400/20" : "text-zinc-400 bg-white/[0.06] hover:bg-white/10 hover:text-zinc-200"
                                         )}
-                                        <button
-                                            onClick={() => setShowShareModal(true)}
-                                            className="w-8 h-8 rounded-full border-0 bg-white/[0.06] hover:bg-white/10 text-zinc-300 hover:text-white flex items-center justify-center shrink-0 transition-all active:scale-95 atrax-bubbly-btn atrax-squish-tap"
-                                            title="Share Episode"
-                                        >
-                                            <Share2 size={13} />
-                                        </button>
-                                        <button
-                                            onClick={handleCreateWatchRoom}
-                                            className="w-8 h-8 rounded-full border-0 bg-white/[0.06] hover:bg-white/10 text-zinc-300 hover:text-white flex items-center justify-center shrink-0 transition-all active:scale-95 atrax-bubbly-btn atrax-squish-tap"
-                                            title="Create Watch Room"
-                                        >
-                                            <Users size={13} />
-                                        </button>
-                                        <Button
-                                            onClick={() => updateSetting('dimMode', !settings.dimMode)}
-                                            variant="ghost"
-                                            size="icon"
-                                            className={cn(
-                                                "rounded-full w-8 h-8 shrink-0 border-0 atrax-bubbly-btn atrax-squish-tap",
-                                                settings.dimMode ? "text-yellow-300 bg-yellow-400/20" : "text-zinc-400 bg-white/[0.06] hover:bg-white/10 hover:text-zinc-200"
-                                            )}
-                                            title="Theater Dim Mode"
-                                        >
-                                            <Lightbulb size={13} />
-                                        </Button>
-                                    </div>
+                                        title="Theater Dim Mode"
+                                    >
+                                        <Lightbulb size={13} />
+                                    </Button>
                                 </div>
 
                                 {/* Row 4: Now Playing Context & Schedule Timer */}
