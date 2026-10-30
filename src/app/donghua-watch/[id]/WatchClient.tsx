@@ -367,7 +367,7 @@ const MarqueeTitle = ({ text }: { text: string }) => {
 
     return (
         <div className="flex items-center bg-white/5 rounded-full h-7 border border-white/5 w-full flex-1 min-w-0 overflow-hidden relative transition-all hover:border-emerald-500/20 active:scale-95 group shadow-inner shadow-emerald-900/5">
-            <span className="text-[10px] text-emerald-500 font-black uppercase mr-2 flex-shrink-0 group-hover:animate-pulse">NOW:</span>
+            <span className="text-[10px] text-emerald-500 font-black uppercase mr-2 flex-shrink-0">NOW:</span>
             <div ref={containerRef} className="flex-1 overflow-hidden relative h-full flex items-center mask-image-gradient">
                 <div className={cn("whitespace-nowrap inline-block", isOverflowing && "animate-marquee-pingpong")}>
                     <span ref={textRef} className="text-[10px] font-black uppercase tracking-tighter text-zinc-300 block px-2">

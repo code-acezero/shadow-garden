@@ -286,7 +286,7 @@ const SearchBarContent: React.FC<SearchBarContentProps> = ({
         {petSpeech && (
           <motion.div
             key="pet-speech-pill"
-            layout
+            
             initial={{ opacity: 0, scale: 0.92, x: -16, filter: 'blur(4px)' }}
             animate={{ opacity: 1, scale: 1, x: 0, filter: 'blur(0px)' }}
             exit={{ opacity: 0, scale: 0.92, x: -16, filter: 'blur(4px)' }}
@@ -348,7 +348,7 @@ const SearchBarContent: React.FC<SearchBarContentProps> = ({
 
       {/* Searchbar Stage: Pushed to the end on mobile/tablet when pet speaks, side-by-side on desktop */}
       <motion.div
-        layout
+        
         transition={JELLY_SPRING}
         className={cn(
           "h-full flex items-center justify-between gap-1 sm:gap-1.5",
@@ -462,7 +462,7 @@ const SearchBarContent: React.FC<SearchBarContentProps> = ({
 
           <div className={cn(
             "flex items-center gap-0.5 border-l border-white/10 pl-1 ml-0.5",
-            compact ? "hidden min-[360px]:flex" : "flex"
+            compact ? "hidden md:flex" : "flex"
           )}>
             {/* Search Guide Button: ONLY desktop / md+, on mobile it lives inside the Filter Panel */}
             <button 
@@ -1724,7 +1724,7 @@ function WhisperIslandContent() {
     setShowFilters(false);
   };
   const resetFilters = () => setFilters({ target: 'all', genre: [], season: "", year: "", format: "", status: "", sort: "newest", language: "" });
-  const shouldHideExtras = isMobile && (isMobileSearchExpanded || centerMode === 'ISLAND_DETAILS' || activeNotif || Boolean(petSpeech));
+  const shouldHideExtras = isMobile && (isMobileSearchExpanded || centerMode === 'ISLAND_DETAILS');
   const circleDiameter = isMobile ? 44 : 48;
 
   const currentEquippedTitle = getEquippedTitle(activeProfile);
@@ -2165,38 +2165,32 @@ function WhisperIslandContent() {
                             </div>
 
                             {/* Alpha AI Button with Divider: Morph Hide only when Search is actively expanded */}
-                            <AnimatePresence initial={false}>
-                                {!isMobileSearchExpanded && (
-                                    <motion.div
-                                        key="mobile-alpha-jelly"
-                                        initial={{ width: 0, opacity: 0, scale: 0.5 }}
-                                        animate={{ width: 38, opacity: 1, scale: 1 }}
-                                        exit={{ width: 0, opacity: 0, scale: 0.5 }}
-                                        transition={JELLY_SPRING}
-                                        className="overflow-hidden flex items-center shrink-0 whitespace-nowrap"
+                            {!isMobileSearchExpanded && (
+                                <>
+                                    <div className="w-[1px] h-3.5 bg-white/10 shrink-0 mx-0.5" />
+                                    <button 
+                                        type="button"
+                                        onClick={() => {
+                                            playGummyTap();
+                                            window.dispatchEvent(new CustomEvent('shadow-toggle-alpha'));
+                                        }} 
+                                        className="relative p-0 flex items-center justify-center rounded-full hover:opacity-80 active:scale-90 transition-transform outline-none shrink-0"
+                                        title="Chat with Alpha AI"
                                     >
-                                        <div className="w-[1px] h-3.5 bg-white/10 shrink-0 mr-1.5" />
-                                        <button 
-                                            type="button"
-                                            onClick={() => {
-                                                playGummyTap();
-                                                window.dispatchEvent(new CustomEvent('shadow-toggle-alpha'));
-                                            }} 
-                                            className="relative p-0 flex items-center justify-center rounded-full hover:opacity-80 active:scale-90 transition-transform outline-none shrink-0"
-                                            title="Chat with Alpha AI"
-                                        >
+                                        <div className="w-7 h-7 rounded-full bg-gradient-to-tr from-purple-600 to-indigo-600 flex items-center justify-center text-[10px] font-black text-white shrink-0 overflow-hidden shadow-sm relative">
+                                            <span className="select-none text-purple-200">α</span>
                                             <img 
                                                 src="/images/alpha/alpha-av.png" 
                                                 alt="Alpha" 
-                                                className="w-7 h-7 rounded-full object-cover shrink-0" 
+                                                className="w-full h-full rounded-full object-cover shrink-0 absolute inset-0" 
                                                 onError={(e) => { e.currentTarget.style.display = 'none'; }} 
                                             />
-                                        </button>
-                                    </motion.div>
-                                )}
-                            </AnimatePresence>
+                                        </div>
+                                    </button>
+                                </>
+                            )}
 
-                            <div className="w-[1px] h-3.5 bg-white/10 shrink-0" />
+                            <div className="w-[1px] h-3.5 bg-white/10 shrink-0 mx-0.5" />
 
                             {/* Profile Avatar (Edge-to-Edge with Pill Container, uncropped aura) */}
                             <DropdownMenu modal={false} onOpenChange={setSettingsOpen}>

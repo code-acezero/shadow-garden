@@ -1280,7 +1280,14 @@ export function DramaWatchContent() {
                 <div className="flex w-full justify-between items-center gap-3 border-t border-white/[0.06] pt-2.5">
                   <div className="flex-1 min-w-0 flex items-center gap-3 overflow-hidden">
                     <div className="min-w-0 max-w-[280px] xl:max-w-[400px] flex items-center">
-                      <MarqueeTitle text={currentEp ? `S${activeSeason} : EP ${currentEp.number} — ${currentEp.title}` : drama.title} />
+                      <MarqueeTitle text={currentEp ? (() => {
+                        let t = (currentEp.title || '').trim();
+                        while (/^(?:(?:episode|ep\.?)\s*\d+|\b\d+\b)\s*[:\-–—•.]*\s*/i.test(t)) {
+                          t = t.replace(/^(?:(?:episode|ep\.?)\s*\d+|\b\d+\b)\s*[:\-–—•.]*\s*/i, '').trim();
+                        }
+                        t = t.replace(/^["'“”‘’]+|["'“”‘’]+$/g, '').trim();
+                        return `S${activeSeason} : EP ${currentEp.number}${t ? ` — ${t}` : ''}`;
+                      })() : drama.title} />
                     </div>
                     <div className="shrink-0 flex items-center gap-1 text-[10px] text-zinc-400 uppercase font-black bg-white/[0.04] px-2.5 py-1 rounded-full border border-white/[0.06]">
                       <Clock size={11} className="text-cyan-400" />

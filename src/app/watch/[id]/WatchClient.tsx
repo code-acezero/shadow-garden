@@ -12,7 +12,7 @@ import {
     FastForward, Star, Info, MessageSquare, User, Users,
     Loader2, Globe, Flame, Calendar, Copyright, Check, Mic, X,
     ChevronLeft, ChevronRight, Pause, ArrowLeft, ArrowRight, Download, Wand2,
-    Zap, PlayCircle, RotateCw, StepForward, Share2, ArrowRightToLine
+    Zap, PlayCircle, RotateCw, StepForward, Share2, ArrowRightToLine, Forward
 } from 'lucide-react';
 
 import { AnimeService, UniversalAnime } from '@/lib/api';
@@ -204,6 +204,34 @@ const PingPongScroll = memo(({ text, className }: { text: string, className?: st
 });
 PingPongScroll.displayName = "PingPongScroll";
 
+const getCleanEpisodeTitle = (num: number | string, rawTitle?: string) => {
+    const epNum = num || 1;
+    if (!rawTitle) return `EP ${epNum}`;
+    let title = rawTitle.trim();
+    while (/^(?:(?:episode|ep\.?)\s*\d+|\b\d+\b)\s*[:\-–—•.]*\s*/i.test(title)) {
+        title = title.replace(/^(?:(?:episode|ep\.?)\s*\d+|\b\d+\b)\s*[:\-–—•.]*\s*/i, '').trim();
+    }
+    title = title.replace(/^["'“”‘’]+|["'“”‘’]+$/g, '').trim();
+    if (!title || title.toLowerCase() === `episode ${epNum}` || title.toLowerCase() === `ep ${epNum}` || title === `${epNum}`) {
+        return `EP ${epNum}`;
+    }
+    return `EP ${epNum}: ${title}`;
+};
+
+const getEpisodeSubtitleOnly = (num: number | string, rawTitle?: string) => {
+    if (!rawTitle) return '';
+    const epNum = num || 1;
+    let title = rawTitle.trim();
+    while (/^(?:(?:episode|ep\.?)\s*\d+|\b\d+\b)\s*[:\-–—•.]*\s*/i.test(title)) {
+        title = title.replace(/^(?:(?:episode|ep\.?)\s*\d+|\b\d+\b)\s*[:\-–—•.]*\s*/i, '').trim();
+    }
+    title = title.replace(/^["'“”‘’]+|["'“”‘’]+$/g, '').trim();
+    if (!title || title.toLowerCase() === `episode ${epNum}` || title.toLowerCase() === `ep ${epNum}` || title === `${epNum}`) {
+        return '';
+    }
+    return title;
+};
+
 const EpisodeButton = memo(({ ep, isCurrent, isFullyPlayed, percent, viewMode, onClick, category, progressRef, playerRef }: any) => {
     const [realPercent, setRealPercent] = useState(percent);
 
@@ -236,18 +264,18 @@ const EpisodeButton = memo(({ ep, isCurrent, isFullyPlayed, percent, viewMode, o
             data-flip-id={ep.id}
             onClick={() => onClick(ep.id)}
             className={cn(
-                "relative overflow-hidden group border select-none transition-colors duration-200 transform-gpu active:scale-95 hover:scale-[1.03] shadow-[0_4px_16px_rgba(0,0,0,0.2)]",
+                "relative overflow-hidden group select-none transition-colors duration-200 transform-gpu active:scale-95 hover:scale-[1.03] shadow-[0_4px_16px_rgba(0,0,0,0.2)]",
                 viewMode === 'grid' ? "h-8 sm:h-9 w-full rounded-full flex items-center justify-center text-[10px] sm:text-[11px] font-black" :
                     viewMode === 'compact' ? "h-7 sm:h-8 w-full aspect-square rounded-full flex items-center justify-center text-[9px] font-bold" :
                         "w-full h-8 sm:h-9 rounded-2xl flex items-center px-3 sm:px-4 text-[10px] sm:text-[11px] font-bold text-left",
-                isCurrent ? "bg-emerald-950/30 backdrop-blur-md border-transparent text-white z-20" :
-                    isFullyPlayed ? "bg-rose-950/20 border-rose-500/30 text-rose-200/90 hover:bg-rose-900/30 hover:border-rose-400/40 hover:text-white" :
-                        "bg-white/5 backdrop-blur-xl border-white/10 text-zinc-400 hover:border-white/30 hover:bg-white/10 hover:text-white hover:shadow-[0_0_15px_rgba(255,255,255,0.15)]"
+                isCurrent ? "bg-slate-900/60 backdrop-blur-md border-0 text-white z-20 shadow-[0_0_15px_rgba(16,185,129,0.2)]" :
+                    isFullyPlayed ? "bg-[#101726]/80 border border-white/10 text-zinc-400 hover:border-white/25 hover:text-white hover:bg-white/[0.08]" :
+                        "bg-white/5 backdrop-blur-xl border border-white/10 text-zinc-400 hover:border-white/30 hover:bg-white/10 hover:text-white hover:shadow-[0_0_15px_rgba(255,255,255,0.15)]"
             )}
             style={{
-                ...((!isCurrent && !isFullyPlayed && displayPercent > 0) ? { background: `linear-gradient(to right, rgba(220, 38, 38, 0.45) ${displayPercent}%, rgba(255, 255, 255, 0.05) ${displayPercent}%)` } : {}),
+                ...((!isCurrent && !isFullyPlayed && displayPercent > 0) ? { background: `linear-gradient(to right, rgba(16, 185, 129, 0.35) ${displayPercent}%, rgba(255, 255, 255, 0.05) ${displayPercent}%)` } : {}),
                 ...(isFullyPlayed && !isCurrent ? {
-                    background: 'linear-gradient(135deg, rgba(225, 29, 72, 0.22), rgba(159, 18, 57, 0.12))',
+                    background: 'linear-gradient(135deg, rgba(255, 255, 255, 0.05), rgba(255, 255, 255, 0.02))',
                     backdropFilter: 'blur(8px)'
                 } : {})
             }}
@@ -257,29 +285,15 @@ const EpisodeButton = memo(({ ep, isCurrent, isFullyPlayed, percent, viewMode, o
             {!isCurrent && !isFullyPlayed && displayPercent > 0 && <div className="absolute inset-0 bg-primary-600/10 animate-liquid pointer-events-none" />}
 
             {isCurrent && (
-                category === 'anime' ? (
-                    <div
-                        className="absolute bottom-0 left-0 h-full bg-emerald-500/25 overflow-hidden pointer-events-none rounded-r-2xl backdrop-blur-sm transition-all duration-150"
-                        style={{ width: `${Math.max(4, displayPercent)}%` }}
-                    >
-                        <div className="absolute inset-0 bg-gradient-to-r from-emerald-600/35 via-emerald-400/25 to-teal-400/35 opacity-90" />
-                        <div className="absolute top-0 right-0 bottom-0 w-6 bg-gradient-to-l from-emerald-300/30 to-transparent" />
-                    </div>
-                ) : (
-                    <>
-                        <div className="absolute inset-0 bg-gradient-to-tr from-green-500/20 via-transparent to-green-400/30 animate-pulse pointer-events-none" />
-                        <div className="absolute inset-0 bg-[linear-gradient(45deg,transparent_25%,rgba(134,239,172,0.3)_50%,transparent_75%)] bg-[length:250%_250%] animate-shimmer pointer-events-none" />
-                    </>
-                )
-            )}
-
-            {/* Active Micro-Equalizer Indicator for Grid & Compact Modes */}
-            {isCurrent && (viewMode === 'grid' || viewMode === 'compact') && (
-                <span className="absolute top-1 right-1.5 flex items-end gap-[1.5px] h-2 pointer-events-none z-20" aria-label="Now Playing">
-                    <span className="w-[1.5px] bg-green-300 rounded-full animate-[audio-bar-1_0.8s_ease-in-out_infinite]" />
-                    <span className="w-[1.5px] bg-green-300 rounded-full animate-[audio-bar-2_0.8s_ease-in-out_infinite]" />
-                    <span className="w-[1.5px] bg-green-300 rounded-full animate-[audio-bar-3_0.8s_ease-in-out_infinite]" />
-                </span>
+                <div
+                    className="absolute inset-y-0 left-0 overflow-hidden pointer-events-none rounded-r-full backdrop-blur-sm transition-all duration-150"
+                    style={{ width: `${Math.max(6, displayPercent)}%` }}
+                >
+                    {/* Seamless Metallic Liquid Fill: No stroke, pure metallic fluid sheen */}
+                    <div className="absolute inset-0 bg-gradient-to-r from-emerald-600/40 via-teal-500/35 to-emerald-400/35" />
+                    <div className="absolute inset-0 bg-gradient-to-b from-white/20 via-transparent to-black/25" />
+                    <div className="absolute top-0 right-0 bottom-0 w-4 bg-gradient-to-l from-white/20 to-transparent" />
+                </div>
             )}
 
             <div
@@ -294,19 +308,14 @@ const EpisodeButton = memo(({ ep, isCurrent, isFullyPlayed, percent, viewMode, o
                     </span>
                     {viewMode === 'list' && (
                         <span className="truncate text-[11px] font-sans font-medium text-zinc-300 transition-opacity duration-200">
-                            {ep.title && !ep.title.toLowerCase().startsWith(`episode ${ep.number}`) ? `• ${ep.title}` : ''}
+                            {getEpisodeSubtitleOnly(ep.number, ep.title) ? `• ${getEpisodeSubtitleOnly(ep.number, ep.title)}` : ''}
                         </span>
                     )}
                 </div>
 
                 {/* Active Playing Badge for List Mode */}
                 {isCurrent && viewMode === 'list' && (
-                    <span className="ml-2 inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-green-500/20 border border-green-400/50 text-[8px] font-black uppercase text-green-300 shadow-[0_0_10px_rgba(74,222,128,0.3)] shrink-0 transition-transform duration-200">
-                        <span className="inline-flex items-end gap-[1.5px] h-2">
-                            <span className="w-[1.5px] bg-green-300 rounded-full animate-[audio-bar-1_0.8s_ease-in-out_infinite]" />
-                            <span className="w-[1.5px] bg-green-300 rounded-full animate-[audio-bar-2_0.8s_ease-in-out_infinite]" />
-                            <span className="w-[1.5px] bg-green-300 rounded-full animate-[audio-bar-3_0.8s_ease-in-out_infinite]" />
-                        </span>
+                    <span className="ml-2 inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-emerald-500/20 border border-emerald-400/40 text-[8px] font-black uppercase text-emerald-300 shadow-[0_0_10px_rgba(52,211,153,0.3)] shrink-0 transition-transform duration-200">
                         <span>PLAYING</span>
                     </span>
                 )}
@@ -446,7 +455,7 @@ const NextEpisodeTimer = ({ schedule, status }: { schedule: any, status: string 
 
     return (
         <div className="flex items-center gap-2 text-[9px] font-bold bg-white/5 hover:bg-white/10 text-zinc-300 px-3 h-8 rounded-full border border-white/10 transition-colors justify-center min-w-fit shadow-md shadow-black/40">
-            <Timer className="w-3 h-3 text-primary-500 shrink-0 animate-pulse" />
+            <Timer className="w-3 h-3 text-primary-500 shrink-0" />
             <span className="truncate whitespace-nowrap">{displayText}</span>
         </div>
     );
@@ -510,7 +519,7 @@ const MarqueeTitle = ({ text }: { text: string }) => {
 
     return (
         <div className="flex items-center bg-white/5 rounded-full h-8 px-3 border border-white/5 w-full flex-1 min-w-0 overflow-hidden relative transition-all hover:border-primary-500/20 active:scale-95 group shadow-inner shadow-primary-900/5">
-            <span className="text-[10px] text-primary-500 font-black uppercase mr-2 flex-shrink-0 group-hover:animate-pulse">NOW:</span>
+            <span className="text-[10px] text-primary-500 font-black uppercase mr-2 flex-shrink-0">NOW:</span>
             <div ref={containerRef} className="flex-1 overflow-hidden relative h-full flex items-center mask-image-gradient">
                 <div className={cn("whitespace-nowrap inline-block", isOverflowing && "animate-marquee-pingpong")}>
                     <span ref={textRef} className="text-[10px] font-black uppercase tracking-tighter text-zinc-300 block px-2">
@@ -2364,7 +2373,7 @@ function WatchContent({ initialAnime }: { initialAnime?: UniversalAnime | null }
                                     subtitles={subtitles} 
                                     intro={intro} 
                                     outro={outro} 
-                                    title={currentEpisode?.title || anime.title} 
+                                    title={currentEpisode ? getCleanEpisodeTitle(currentEpisode.number, currentEpisode.title) : anime.title} 
                                     startTime={progressRef.current > 0 ? progressRef.current : resumeTime} 
                                     autoPlay={settings.autoPlay} 
                                     autoSkip={settings.autoSkip} 
@@ -2414,7 +2423,7 @@ function WatchContent({ initialAnime }: { initialAnime?: UniversalAnime | null }
                                             className="flex items-center justify-center gap-1.5 px-3 h-8 rounded-full border border-white/10 bg-[#141d30] text-[10px] font-black uppercase tracking-tighter transition-all hover:bg-white/10 whitespace-nowrap atrax-bubbly-btn atrax-squish-tap"
                                             title="Auto Skip Intro"
                                         >
-                                            <FastForward size={12} className={cn("transition-colors", settings.autoSkip ? "text-amber-400 drop-shadow-[0_0_8px_rgba(251,191,36,0.8)]" : "text-zinc-500")} />
+                                            <FastForward size={12} className={cn("transition-colors", settings.autoSkip ? "text-amber-400" : "text-zinc-500")} />
                                             <span className={cn(settings.autoSkip ? "text-white" : "text-zinc-500")}>SKIP INTRO</span>
                                         </button>
                                         <button
@@ -2422,7 +2431,7 @@ function WatchContent({ initialAnime }: { initialAnime?: UniversalAnime | null }
                                             className="flex items-center justify-center gap-1.5 px-3 h-8 rounded-full border border-white/10 bg-[#141d30] text-[10px] font-black uppercase tracking-tighter transition-all hover:bg-white/10 whitespace-nowrap atrax-bubbly-btn atrax-squish-tap"
                                             title="Auto Skip Outro"
                                         >
-                                            <ArrowRightToLine size={12} className={cn("transition-colors", (settings.autoSkipOutro ?? settings.autoSkip) ? "text-indigo-400 drop-shadow-[0_0_8px_rgba(129,140,248,0.8)]" : "text-zinc-500")} />
+                                            <Forward size={12} className={cn("transition-colors", (settings.autoSkipOutro ?? settings.autoSkip) ? "text-indigo-400" : "text-zinc-500")} />
                                             <span className={cn((settings.autoSkipOutro ?? settings.autoSkip) ? "text-white" : "text-zinc-500")}>SKIP OUTRO</span>
                                         </button>
                                         <button
@@ -2430,7 +2439,7 @@ function WatchContent({ initialAnime }: { initialAnime?: UniversalAnime | null }
                                             className="flex items-center justify-center gap-1.5 px-3 h-8 rounded-full border border-white/10 bg-[#141d30] text-[10px] font-black uppercase tracking-tighter transition-all hover:bg-white/10 whitespace-nowrap atrax-bubbly-btn atrax-squish-tap"
                                             title="Auto Play"
                                         >
-                                            <Play size={12} className={cn("transition-colors", settings.autoPlay ? "text-violet-400 drop-shadow-[0_0_8px_rgba(168,85,247,0.8)]" : "text-zinc-500")} />
+                                            <Play size={12} className={cn("transition-colors", settings.autoPlay ? "text-violet-400" : "text-zinc-500")} />
                                             <span className={cn(settings.autoPlay ? "text-white" : "text-zinc-500")}>AUTO</span>
                                         </button>
                                         <button
@@ -2438,7 +2447,7 @@ function WatchContent({ initialAnime }: { initialAnime?: UniversalAnime | null }
                                             className="flex items-center justify-center gap-1.5 px-3 h-8 rounded-full border border-white/10 bg-[#141d30] text-[10px] font-black uppercase tracking-tighter transition-all hover:bg-white/10 whitespace-nowrap atrax-bubbly-btn atrax-squish-tap"
                                             title="Auto Next"
                                         >
-                                            <SkipForward size={12} className={cn("transition-colors", settings.autoNext ? "text-violet-400 drop-shadow-[0_0_8px_rgba(168,85,247,0.8)]" : "text-zinc-500")} />
+                                            <SkipForward size={12} className={cn("transition-colors", settings.autoNext ? "text-violet-400" : "text-zinc-500")} />
                                             <span className={cn(settings.autoNext ? "text-white" : "text-zinc-500")}>NEXT</span>
                                         </button>
                                         {nextEpisode ? (
@@ -2491,7 +2500,7 @@ function WatchContent({ initialAnime }: { initialAnime?: UniversalAnime | null }
                                                         {isCurrent && (
                                                             <motion.div
                                                                 layoutId="activeAudioPillDesktop"
-                                                                className="absolute inset-0 bg-gradient-to-r from-primary-600 to-rose-600 rounded-full -z-10 shadow-[0_0_15px_rgba(220,38,38,0.5)]"
+                                                                className="absolute inset-0 bg-gradient-to-r from-primary-600 to-purple-600 rounded-full -z-10 shadow-[0_0_15px_rgba(124,58,237,0.35)]"
                                                                 transition={{ type: "spring", stiffness: 450, damping: 35 }}
                                                             />
                                                         )}
@@ -2526,7 +2535,7 @@ function WatchContent({ initialAnime }: { initialAnime?: UniversalAnime | null }
                                     {/* Left: Episode info & live countdown timer */}
                                     <div className="flex-1 min-w-0 flex items-center gap-3 overflow-hidden">
                                         <div className="min-w-0 max-w-[280px] xl:max-w-[380px] flex items-center">
-                                            <MarqueeTitle text={currentEpisode?.title ? `EP ${currentEpisode.number}: ${currentEpisode.title}` : `Episode ${currentEpisode?.number || '1'}`} />
+                                            <MarqueeTitle text={getCleanEpisodeTitle(currentEpisode?.number || '1', currentEpisode?.title)} />
                                         </div>
                                         <div className="shrink-0">
                                             <NextEpisodeTimer
@@ -2631,7 +2640,7 @@ function WatchContent({ initialAnime }: { initialAnime?: UniversalAnime | null }
                                         <FastForward size={13} className={cn("transition-transform", settings.autoSkip && "scale-110")} />
                                     </button>
                                     <button onClick={() => updateSetting('autoSkipOutro', !(settings.autoSkipOutro ?? settings.autoSkip))} className={cn("flex-1 h-8 sm:h-9 rounded-full border-0 flex items-center justify-center transition-all active:scale-95 atrax-bubbly-btn atrax-squish-tap", (settings.autoSkipOutro ?? settings.autoSkip) ? "bg-indigo-400/20 text-indigo-300 shadow-sm" : "bg-white/[0.06] hover:bg-white/10 text-zinc-400 hover:text-zinc-200")} title={`Auto Skip Outro: ${(settings.autoSkipOutro ?? settings.autoSkip) ? 'ON' : 'OFF'}`}>
-                                        <ArrowRightToLine size={13} className={cn("transition-transform", (settings.autoSkipOutro ?? settings.autoSkip) && "scale-110")} />
+                                        <Forward size={13} className={cn("transition-transform", (settings.autoSkipOutro ?? settings.autoSkip) && "scale-110")} />
                                     </button>
                                     <button onClick={() => updateSetting('autoPlay', !settings.autoPlay)} className={cn("flex-1 h-8 sm:h-9 rounded-full border-0 flex items-center justify-center transition-all active:scale-95 atrax-bubbly-btn atrax-squish-tap", settings.autoPlay ? "bg-primary-500/20 text-primary-300 shadow-sm" : "bg-white/[0.06] hover:bg-white/10 text-zinc-400 hover:text-zinc-200")} title={`Auto Play: ${settings.autoPlay ? 'ON' : 'OFF'}`}>
                                         <PlayCircle size={13} className={cn("transition-transform", settings.autoPlay && "scale-110")} />
@@ -2664,7 +2673,7 @@ function WatchContent({ initialAnime }: { initialAnime?: UniversalAnime | null }
                                                     {isCurrent && (
                                                         <motion.div
                                                             layoutId="activeAudioPillMobile"
-                                                            className="absolute inset-0 bg-gradient-to-r from-primary-600 to-rose-600 rounded-full -z-10 shadow-[0_0_12px_rgba(220,38,38,0.5)]"
+                                                            className="absolute inset-0 bg-gradient-to-r from-primary-600 to-purple-600 rounded-full -z-10 shadow-[0_0_12px_rgba(124,58,237,0.35)]"
                                                             transition={{ type: "spring", stiffness: 450, damping: 35 }}
                                                         />
                                                     )}
@@ -2767,7 +2776,7 @@ function WatchContent({ initialAnime }: { initialAnime?: UniversalAnime | null }
 
                                 {/* Row 4: Now Playing Context & Schedule Timer */}
                                 <div className="flex w-full items-center justify-between gap-2 pt-1 border-t border-white/[0.06]">
-                                    <div className="min-w-0 flex-1"><MarqueeTitle text={currentEpisode?.title ? `EP ${currentEpisode.number}: ${currentEpisode.title}` : `Episode ${currentEpisode?.number || '1'}`} /></div>
+                                    <div className="min-w-0 flex-1"><MarqueeTitle text={getCleanEpisodeTitle(currentEpisode?.number || '1', currentEpisode?.title)} /></div>
                                     <div className="shrink-0"><NextEpisodeTimer schedule={(anime as any)?.nextAiringEpisode || (anime as any)?.info?.nextAiringEpisode || nextEpSchedule} status={anime.info.status} /></div>
                                 </div>
                             </div>
