@@ -265,13 +265,14 @@ export default function Settings() {
   const lastClipIndexRef = useRef<Record<string, number>>({});
 
   // Preview Logic with Volume Boost & Random clip non-repeating cycle
-  const handleVoicePreview = (charName: string, clips: string[], forcePlayNext: boolean = false) => {
+  const handleVoicePreview = (charName: string, clips: string[], forcePlayNext: boolean = false, lang: string = "en") => {
+      const voiceKey = `${lang}-${charName}`;
       if (!clips || clips.length === 0) {
           notifyWhisper("No audio crystals found.", "error");
           return;
       }
 
-      if (playingVoice === charName && !forcePlayNext) {
+      if (playingVoice === voiceKey && !forcePlayNext) {
           audioRef.current?.pause();
           setPlayingVoice(null);
           return;
@@ -324,7 +325,7 @@ export default function Settings() {
 
       audio.onended = () => setPlayingVoice(null);
       audio.play().catch(() => notifyWhisper("Audio sample playback deferred.", "info"));
-      setPlayingVoice(charName);
+      setPlayingVoice(voiceKey);
   };
 
   const selectVoicePack = (name: string, lang: string) => {
@@ -1295,13 +1296,13 @@ export default function Settings() {
                         <TabsContent key={lang} value={lang} className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 animate-in fade-in slide-in-from-bottom-2">
                             {Object.values(characters).map((pack: any) => {
                                 const currentSettings = getVoiceSettings();
-                                const isActive = currentSettings.pack === pack.name;
-                                const isPlaying = playingVoice === pack.name;
+                                const isActive = currentSettings.pack === pack.name && (currentSettings.language || "en") === lang;
+                                const isPlaying = playingVoice === `${lang}-${pack.name}`;
                                 
                                 return (
                                     <div 
                                         key={pack.name} 
-                                        onClick={() => { selectVoicePack(pack.name, lang); handleVoicePreview(pack.name, pack.clips, true); }}
+                                        onClick={() => { selectVoicePack(pack.name, lang); handleVoicePreview(pack.name, pack.clips, true, lang); }}
                                         className={cn(
                                             "relative p-5 rounded-[24px] border-[2px] transition-all cursor-pointer overflow-hidden group hover:scale-[1.02] active:scale-95 flex flex-col justify-between gap-4",
                                             isActive 
@@ -1333,7 +1334,7 @@ export default function Settings() {
                                                     "h-8 flex-1 rounded-full text-[10px] font-bold uppercase tracking-widest border-white/10 hover:bg-white/10 hover:text-white transition-all",
                                                     isPlaying && "border-primary text-primary"
                                                 )}
-                                                onClick={(e) => { e.stopPropagation(); handleVoicePreview(pack.name, pack.clips); }}
+                                                onClick={(e) => { e.stopPropagation(); handleVoicePreview(pack.name, pack.clips, false, lang); }}
                                             >
                                                 {isPlaying ? <><Pause size={12} className="mr-2"/> Stop</> : <><Play size={12} className="mr-2"/> Preview</>}
                                             </Button>
