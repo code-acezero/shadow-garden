@@ -1,90 +1,126 @@
 "use client";
 
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
-import { ArrowLeft, Ghost, ShieldAlert } from 'lucide-react';
-
+import { ArrowLeft, Home } from 'lucide-react';
+import Link from 'next/link';
+import PageMascot, { MascotReaction } from '@/components/Mascot/PageMascot';
+import { playGummyPop, playGummyTap } from '@/lib/audioManager';
 
 export default function NotFound() {
     const router = useRouter();
+    const [mascotPaths, setMascotPaths] = useState({
+        directions: '/mascots/cat-directions.webp',
+        reactions: '/mascots/cat-reactions.webp',
+    });
+
+    useEffect(() => {
+        const orig = document.body.style.overflow;
+        document.body.style.overflow = 'hidden';
+
+        try {
+            if (typeof window !== 'undefined') {
+                const stored = localStorage.getItem('shadow_mascot_character');
+                if (stored) {
+                    const char = JSON.parse(stored);
+                    if (char?.id) {
+                        setMascotPaths({
+                            directions: `/mascots/${char.id}-directions.webp`,
+                            reactions: `/mascots/${char.id}-reactions.webp`,
+                        });
+                    }
+                }
+            }
+        } catch (_) {}
+
+        return () => {
+            document.body.style.overflow = orig;
+        };
+    }, []);
+
+    const handleBoop = (info: { count: number; reaction: MascotReaction | null; isDizzy: boolean }) => {
+        playGummyPop();
+    };
+
+    const handleBack = () => {
+        playGummyTap();
+        router.back();
+    };
 
     return (
-        <div className="relative min-h-screen w-full bg-[#050505] flex flex-col items-center justify-center overflow-hidden font-sans text-white selection:bg-primary-900/30">
+        <div className="fixed inset-0 z-40 w-full h-[100dvh] max-h-[100dvh] bg-[#050505] flex flex-col items-center justify-center overflow-hidden font-sans text-white selection:bg-red-900/30 select-none px-4 sm:px-6 md:px-8">
             
-            {/* --- Background Ambience --- */}
-            <div className="absolute inset-0 pointer-events-none">
-                {/* Red Glow Center */}
-                <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-primary-900/10 blur-[120px] rounded-full mix-blend-screen animate-pulse [animation-duration:4s]" />
-                {/* Subtle Grid (Optional) */}
-                <div 
-                    className="absolute inset-0 opacity-[0.03]" 
-                    style={{ backgroundImage: 'linear-gradient(rgba(255, 255, 255, 0.1) 1px, transparent 1px), linear-gradient(90deg, rgba(255, 255, 255, 0.1) 1px, transparent 1px)', backgroundSize: '40px 40px' }} 
-                />
+            {/* Soft Ambient Background Glow (Zero Containers) */}
+            <div className="absolute inset-0 pointer-events-none overflow-hidden">
+                <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-red-600/10 blur-[150px] rounded-full pointer-events-none" />
+                <div className="absolute top-1/3 left-1/2 -translate-x-1/2 w-[450px] h-[300px] bg-purple-600/10 blur-[130px] rounded-full pointer-events-none" />
             </div>
 
+            {/* Expansive, Widen Layout Without Box Enclosures */}
             <motion.div
-                initial={{ opacity: 0, scale: 0.9, y: 20 }}
-                animate={{ opacity: 1, scale: 1, y: 0 }}
-                transition={{ duration: 0.6, ease: "circOut" }}
-                className="relative z-10 flex flex-col items-center text-center p-6"
+                initial={{ opacity: 0, y: 12 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.45, ease: [0.16, 1, 0.3, 1] }}
+                className="relative z-10 flex flex-col items-center text-center w-full max-w-3xl mx-auto"
             >
-                {/* --- Animated Icon --- */}
-                <motion.div
-                    animate={{ y: [0, -15, 0] }}
-                    transition={{ duration: 6, repeat: Infinity, ease: "easeInOut" }}
-                    className="relative mb-8"
-                >
-                     <div className="absolute inset-0 bg-primary-600/20 blur-3xl rounded-full" />
-                     
-                     {/* Glitch Effect Ghost */}
-                     <div className="relative">
-                        <Ghost size={100} className="text-zinc-800 absolute top-0 left-0 blur-sm translate-x-1 animate-pulse" />
-                        <Ghost size={100} className="text-primary-600 relative z-10 drop-shadow-[0_0_25px_rgba(220,38,38,0.5)]" />
-                     </div>
-                </motion.div>
+                {/* Kuro Pet (Interactive PageMascot) */}
+                <div className="relative mb-2 sm:mb-3 flex flex-col items-center">
+                    <div 
+                        onClick={() => playGummyPop()}
+                        className="transform-gpu hover:scale-105 active:scale-95 transition-transform duration-300 cursor-pointer"
+                        title="Tap Kuro to boop!"
+                    >
+                        <PageMascot
+                            directions={mascotPaths.directions}
+                            reactions={mascotPaths.reactions}
+                            size={125}
+                            onBoop={handleBoop}
+                            enableSound={true}
+                            className="select-none"
+                        />
+                    </div>
+                </div>
 
-                {/* --- 404 Text --- */}
-                <h1 className={`font-gradvis text-[10rem] md:text-[12rem] leading-[0.8] text-transparent bg-clip-text bg-gradient-to-b from-white via-zinc-200 to-zinc-600 tracking-tighter drop-shadow-2xl select-none`}>
+                {/* Minimalist 404 Headline */}
+                <h1 className="font-gradvis text-7xl sm:text-8xl md:text-9xl leading-[0.85] text-transparent bg-clip-text bg-gradient-to-b from-white via-zinc-200 to-zinc-600 tracking-tighter drop-shadow-2xl select-none">
                     404
                 </h1>
 
-                {/* --- Text Content --- */}
-                <div className="space-y-4 mt-6 w-full">
-                    <div className="flex items-center justify-center gap-3 text-primary-500/80">
-                        <ShieldAlert size={14} />
-                        <h2 className={`font-lemon text-xl md:text-2xl tracking-[0.2em] uppercase text-primary-500`}>
-                            Signal Severed
-                        </h2>
-                        <ShieldAlert size={14} />
-                    </div>
-                    
-                    <p className="text-zinc-500 text-sm md:text-base leading-relaxed font-medium">
-                        The coordinates you seek do not exist within the Kagemi archives. 
-                        This sector is void of intelligence.
-                    </p>
-                </div>
+                {/* Clean, Simple Typography */}
+                <h2 className="text-xl sm:text-2xl font-bold tracking-tight text-white mt-4 mb-2">
+                    Lost in the Shadows
+                </h2>
 
-                {/* --- Action Button --- */}
-                <motion.button
-                    whileHover={{ scale: 1.05 }}
-                    whileTap={{ scale: 0.95 }}
-                    onClick={() => router.back()}
-                    className="mt-12 group relative flex items-center gap-3 px-10 py-4 rounded-full bg-white/5 border border-white/5 hover:border-primary-500/30 hover:bg-primary-900/10 transition-all duration-500 shadow-lg hover:shadow-primary-900/20"
-                >
-                    <ArrowLeft size={16} className="text-zinc-400 group-hover:text-primary-400 transition-colors group-hover:-translate-x-1 duration-300" />
-                    <span className="text-[10px] font-black uppercase tracking-[0.3em] text-zinc-300 group-hover:text-white transition-colors">
-                        Return to Base
-                    </span>
-                    
-                    {/* Button Glow Effect */}
-                    <div className="absolute inset-0 rounded-full opacity-0 group-hover:opacity-100 transition-opacity duration-500 shadow-[inset_0_0_20px_rgba(220,38,38,0.2)] pointer-events-none" />
-                </motion.button>
+                <p className="text-zinc-400 text-xs sm:text-sm md:text-base max-w-lg mx-auto leading-relaxed">
+                    Kuro searched through every corridor of the sanctuary, but couldn't find this page. It may have vanished or moved.
+                </p>
+
+                {/* Clean Action Buttons (No Containers, Sleek Flat Styling) */}
+                <div className="flex items-center gap-3 justify-center mt-6 sm:mt-7">
+                    <button
+                        type="button"
+                        onClick={handleBack}
+                        className="h-10 sm:h-11 px-6 rounded-xl bg-white hover:bg-zinc-200 active:scale-95 text-black font-semibold text-xs sm:text-sm transition-all flex items-center justify-center gap-2 cursor-pointer shadow-sm"
+                    >
+                        <ArrowLeft size={15} />
+                        <span>Go Back</span>
+                    </button>
+
+                    <Link
+                        href="/home"
+                        onClick={() => playGummyTap()}
+                        className="h-10 sm:h-11 px-6 rounded-xl bg-[#1c1c1f] hover:bg-[#28282b] border border-white/10 active:scale-95 text-zinc-300 hover:text-white font-semibold text-xs sm:text-sm transition-all flex items-center justify-center gap-2 cursor-pointer"
+                    >
+                        <Home size={15} />
+                        <span>Sanctuary Home</span>
+                    </Link>
+                </div>
             </motion.div>
 
-            {/* --- Footer Decoration --- */}
-            <div className="absolute bottom-8 left-0 right-0 text-center opacity-20 pointer-events-none">
-                <span className={`font-gradvis text-xl text-zinc-500 tracking-widest`}>
+            {/* Subtle Brand Watermark */}
+            <div className="absolute bottom-4 sm:bottom-6 left-0 right-0 text-center opacity-20 pointer-events-none">
+                <span className="font-gradvis text-xs sm:text-sm text-zinc-500 tracking-[0.3em]">
                     KAGEMI
                 </span>
             </div>

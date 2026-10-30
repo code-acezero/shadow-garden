@@ -8,7 +8,7 @@ import {
   Settings, Maximize, Minimize, Subtitles, 
   Wand2, AudioWaveform, PictureInPicture, Gauge,
   ChevronRight, ChevronLeft, MousePointerClick, 
-  ChevronsLeft, ChevronsRight, Sun, MoveHorizontal, MoveVertical,
+  ChevronsLeft, ChevronsRight, Sun, MoveHorizontal, MoveVertical, RotateCcw, RotateCw,
   Loader2, Cast, Radio, FastForward, SkipForward
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -1858,7 +1858,7 @@ const OmniPlayer = forwardRef<OmniPlayerRef, OmniPlayerProps>(({
 
       {!hasStarted && !seekOverlay && !gestureOverlay && (
           <div className="absolute inset-0 z-50 flex flex-col items-center justify-center bg-black/80 backdrop-blur-md overflow-hidden">
-              <RunHappyPlayerLoader text="LOADING REALITY..." />
+              <RunHappyPlayerLoader text="LOADING STREAM..." />
           </div>
       )}
 
@@ -1886,7 +1886,7 @@ const OmniPlayer = forwardRef<OmniPlayerRef, OmniPlayerProps>(({
       {/* Title Island with Cast */}
       <div className={cn("absolute top-2 md:top-4 left-1/2 -translate-x-1/2 z-40 transition-all duration-500 max-w-[90%] w-auto", showControls ? "opacity-100 translate-y-0" : "opacity-0 -translate-y-10")}>
           <div ref={titleContainerRef} className="bg-black/60 md:bg-black/80 border border-white/10 rounded-full px-4 py-1.5 md:py-2 shadow-2xl backdrop-blur-md flex items-center gap-3 overflow-hidden pointer-events-auto">
-              <div className="w-1.5 h-1.5 bg-primary-600 rounded-full shadow-[0_0_8px_red] shrink-0" />
+              
               
               <div className="overflow-hidden w-full relative h-4 flex items-center">
                   <span ref={titleTextRef} className={cn("text-[9px] md:text-[10px] font-black text-gray-200 uppercase tracking-widest whitespace-nowrap", isTitleOverflowing && "animate-marquee-slow")}>{title || "OmniPlayer"}</span>
@@ -1900,9 +1900,9 @@ const OmniPlayer = forwardRef<OmniPlayerRef, OmniPlayerProps>(({
           </div>
       </div>
       
-      {/* Play Button perfectly center-aligned vertically & auto-adapting to player height and width */}
+      {/* Center Controls Cluster (Play/Pause flanked by Mobile Quick Seek -10s / +10s) */}
       <div 
-        className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 pointer-events-none z-40 flex items-center justify-center"
+        className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 pointer-events-none z-40 flex items-center justify-center gap-6 sm:gap-8 md:gap-0"
         style={{
           top: '50%',
           left: '50%',
@@ -1910,25 +1910,55 @@ const OmniPlayer = forwardRef<OmniPlayerRef, OmniPlayerProps>(({
         }}
       >
           {!isBuffering && !seekOverlay && !gestureOverlay && (
-            <div 
-              onClick={(e) => { e.stopPropagation(); togglePlay(); }} 
-              style={{
-                width: `${playBtnSize}px`,
-                height: `${playBtnSize}px`,
-              }}
-              className={cn("group/playbtn relative aspect-square rounded-full shrink-0 flex items-center justify-center pointer-events-auto cursor-pointer active:scale-95 transition-all duration-300", showControls ? "opacity-100 scale-100 hover:scale-110" : "opacity-0 scale-150 pointer-events-none")}
-            >
-                {/* Glowing Liquid Glass Background */}
-                <div className="absolute inset-0 rounded-full bg-white/25 backdrop-blur-2xl border border-white/40 shadow-[0_0_30px_rgba(255,255,255,0.3),inset_0_2px_4px_rgba(255,255,255,0.6)] group-hover/playbtn:bg-white/40 group-hover/playbtn:border-white/60 group-hover/playbtn:shadow-[0_0_45px_rgba(255,255,255,0.6)] transition-all duration-500 overflow-hidden">
-                    {/* Glass Shine */}
-                    <div className="absolute inset-0 bg-gradient-to-b from-white/70 to-transparent opacity-50 -translate-y-[40%] rounded-[100%] pointer-events-none" />
-                </div>
-                {isPlaying ? (
-                  <Pause fill="white" className="w-[44%] h-[44%] relative z-10 text-white drop-shadow-[0_2px_8px_rgba(0,0,0,0.8)] transition-transform duration-300 group-hover/playbtn:scale-110" />
-                ) : (
-                  <Play fill="white" className="ml-1 w-[44%] h-[44%] relative z-10 text-white drop-shadow-[0_2px_8px_rgba(0,0,0,0.8)] transition-transform duration-300 group-hover/playbtn:scale-110" />
+            <>
+              {/* Mobile Quick Rewind 10s (Hidden on desktop to preserve desktop UI) */}
+              <button
+                type="button"
+                onClick={(e) => { e.stopPropagation(); seek(-10); }}
+                className={cn(
+                  "md:hidden pointer-events-auto flex flex-col items-center justify-center w-11 h-11 sm:w-12 sm:h-12 rounded-full bg-black/45 border border-white/20 backdrop-blur-xl active:scale-90 active:bg-white/20 transition-all duration-200 text-white shadow-[0_4px_16px_rgba(0,0,0,0.5)] select-none",
+                  showControls ? "opacity-100 scale-100" : "opacity-0 scale-75 pointer-events-none"
                 )}
-            </div>
+                title="Rewind 10s"
+              >
+                <RotateCcw size={18} className="text-white drop-shadow" />
+                <span className="text-[9px] font-black tracking-tight leading-none text-white mt-0.5">10</span>
+              </button>
+
+              <div 
+                onClick={(e) => { e.stopPropagation(); togglePlay(); }} 
+                style={{
+                  width: `${playBtnSize}px`,
+                  height: `${playBtnSize}px`,
+                }}
+                className={cn("group/playbtn relative aspect-square rounded-full shrink-0 flex items-center justify-center pointer-events-auto cursor-pointer active:scale-95 transition-all duration-300", showControls ? "opacity-100 scale-100 hover:scale-110" : "opacity-0 scale-150 pointer-events-none")}
+              >
+                  {/* Glowing Liquid Glass Background */}
+                  <div className="absolute inset-0 rounded-full bg-white/25 backdrop-blur-2xl border border-white/40 shadow-[0_0_30px_rgba(255,255,255,0.3),inset_0_2px_4px_rgba(255,255,255,0.6)] group-hover/playbtn:bg-white/40 group-hover/playbtn:border-white/60 group-hover/playbtn:shadow-[0_0_45px_rgba(255,255,255,0.6)] transition-all duration-500 overflow-hidden">
+                      {/* Glass Shine */}
+                      <div className="absolute inset-0 bg-gradient-to-b from-white/70 to-transparent opacity-50 -translate-y-[40%] rounded-[100%] pointer-events-none" />
+                  </div>
+                  {isPlaying ? (
+                    <Pause fill="white" className="w-[44%] h-[44%] relative z-10 text-white drop-shadow-[0_2px_8px_rgba(0,0,0,0.8)] transition-transform duration-300 group-hover/playbtn:scale-110" />
+                  ) : (
+                    <Play fill="white" className="ml-1 w-[44%] h-[44%] relative z-10 text-white drop-shadow-[0_2px_8px_rgba(0,0,0,0.8)] transition-transform duration-300 group-hover/playbtn:scale-110" />
+                  )}
+              </div>
+
+              {/* Mobile Quick Fast-Forward 10s (Hidden on desktop to preserve desktop UI) */}
+              <button
+                type="button"
+                onClick={(e) => { e.stopPropagation(); seek(10); }}
+                className={cn(
+                  "md:hidden pointer-events-auto flex flex-col items-center justify-center w-11 h-11 sm:w-12 sm:h-12 rounded-full bg-black/45 border border-white/20 backdrop-blur-xl active:scale-90 active:bg-white/20 transition-all duration-200 text-white shadow-[0_4px_16px_rgba(0,0,0,0.5)] select-none",
+                  showControls ? "opacity-100 scale-100" : "opacity-0 scale-75 pointer-events-none"
+                )}
+                title="Forward 10s"
+              >
+                <RotateCw size={18} className="text-white drop-shadow" />
+                <span className="text-[9px] font-black tracking-tight leading-none text-white mt-0.5">10</span>
+              </button>
+            </>
           )}
       </div>
 
@@ -2180,19 +2210,43 @@ const OmniPlayer = forwardRef<OmniPlayerRef, OmniPlayerProps>(({
         })()}
 
         <div className="flex items-center justify-between pointer-events-auto">
-           <div className="flex items-center gap-2 md:gap-3.5">
-              <button onClick={(e) => { e.stopPropagation(); togglePlay(); }} className="hover:text-primary-500 transition-colors active:scale-90 p-1.5 md:p-0">{isPlaying ? <Pause size={18} className="md:w-5 md:h-5" /> : <Play size={18} className="md:w-5 md:h-5" />}</button>
+           {/* Left Controls */}
+           <div className="flex items-center gap-1.5 sm:gap-2 md:gap-3.5">
+              <button 
+                onClick={(e) => { e.stopPropagation(); togglePlay(); }} 
+                className="hover:text-primary-500 transition-colors active:scale-90 w-9 h-9 sm:w-10 sm:h-10 md:w-auto md:h-auto flex items-center justify-center p-1 md:p-0 text-white"
+                title={isPlaying ? "Pause" : "Play"}
+              >
+                {isPlaying ? <Pause size={19} className="md:w-5 md:h-5" /> : <Play size={19} className="md:w-5 md:h-5" />}
+              </button>
+
+              {/* Next Episode Button on Mobile (Only when onNext is available) */}
+              {onNext && (
+                <button
+                  type="button"
+                  onClick={(e) => { e.stopPropagation(); onNext(); }}
+                  className="md:hidden flex items-center justify-center w-8 h-8 rounded-full text-zinc-300 hover:text-white active:scale-90 transition-all"
+                  title="Next Episode"
+                >
+                  <SkipForward size={16} />
+                </button>
+              )}
               
               {/* Video Timestamp directly to the right of Play/Pause button */}
-              <div className="text-[10px] md:text-[10px] font-bold text-zinc-400 font-mono shrink-0 select-none">
-                <span className="text-white">{formatTime(currentTime)}</span> / {formatTime(duration)}
+              <div className="text-[10.5px] sm:text-[11px] md:text-[10px] font-bold text-zinc-400 font-mono shrink-0 select-none flex items-center gap-1">
+                <span className="text-white font-black">{formatTime(currentTime)}</span>
+                <span className="text-zinc-600">/</span>
+                <span>{formatTime(duration)}</span>
               </div>
 
+              {/* Desktop-only -10s / +10s seek buttons */}
               <div className="hidden md:flex items-center gap-1 md:gap-2.5">
                   <button onClick={(e) => { e.stopPropagation(); seek(-10); }} className="flex items-center gap-0.5 group/btn px-1.5 py-0.5 md:px-2 md:py-0.5 rounded-full border border-white/20 hover:border-primary-500 hover:bg-primary-500/10 transition-all active:scale-95"><ChevronsLeft size={11} className="md:w-3 text-white group-hover/btn:text-primary-500 transition-colors"/><span className="text-[8px] md:text-[9px] font-black text-white group-hover/btn:text-primary-500 transition-colors">10</span></button>
                   <button onClick={(e) => { e.stopPropagation(); seek(10); }} className="flex items-center gap-0.5 group/btn px-1.5 py-0.5 md:px-2 md:py-0.5 rounded-full border border-white/20 hover:border-primary-500 hover:bg-primary-500/10 transition-all active:scale-95"><span className="text-[8px] md:text-[9px] font-black text-white group-hover/btn:text-primary-500 transition-colors">10</span><ChevronsRight size={11} className="md:w-3 text-white group-hover/btn:text-primary-500 transition-colors"/></button>
               </div>
-              <div className="flex items-center gap-1 md:gap-2 group/vol">
+
+              {/* Volume Slider: Hidden on mobile (uses hardware buttons), full on desktop */}
+              <div className="hidden md:flex items-center gap-1 md:gap-2 group/vol">
                 <button onClick={(e) => { e.stopPropagation(); toggleMute(); }} className="p-1.5 md:p-0">
                   {isMuted || volume === 0 ? <VolumeX size={18} className="md:w-4.5 md:h-4.5"/> : <Volume2 size={18} className="md:w-4.5 md:h-4.5"/>}
                 </button>
@@ -2213,12 +2267,13 @@ const OmniPlayer = forwardRef<OmniPlayerRef, OmniPlayerProps>(({
               </div>
            </div>
 
-           <div className="flex items-center gap-2 md:gap-4 relative">
+           {/* Right Controls */}
+           <div className="flex items-center gap-1 sm:gap-2 md:gap-4 relative">
               <div className="relative">
-                  <button onClick={(e) => { e.stopPropagation(); setActiveMenu(activeMenu === 'main' ? 'none' : 'main'); }} className={cn("hover:text-primary-500 transition-colors active:scale-90 group p-1.5 md:p-0", activeMenu !== 'none' && activeMenu !== 'audio' && activeMenu !== 'subs' && "text-primary-500")}><Settings size={18} className={cn("md:w-4.5 md:h-4.5 transition-transform duration-300", (activeMenu !== 'none' && activeMenu !== 'audio' && activeMenu !== 'subs') ? "rotate-90 text-primary-500" : "rotate-0")} /></button>
+                  <button onClick={(e) => { e.stopPropagation(); setActiveMenu(activeMenu === 'main' ? 'none' : 'main'); }} className={cn("hover:text-primary-500 transition-colors active:scale-90 group w-9 h-9 sm:w-10 sm:h-10 md:w-auto md:h-auto flex items-center justify-center p-1 md:p-0", activeMenu !== 'none' && activeMenu !== 'audio' && activeMenu !== 'subs' && "text-primary-500")}><Settings size={18} className={cn("md:w-4.5 md:h-4.5 transition-transform duration-300", (activeMenu !== 'none' && activeMenu !== 'audio' && activeMenu !== 'subs') ? "rotate-90 text-primary-500" : "rotate-0")} /></button>
                   
                      {activeMenu === 'main' && (
-                        <div className="absolute bottom-10 right-0 bg-zinc-950/90 backdrop-blur-3xl border border-white/10 ring-1 ring-white/10 rounded-2xl shadow-[0_8px_40px_rgba(0,0,0,0.8)] p-2 w-44 sm:w-52 max-h-[300px] sm:max-h-[360px] overflow-y-auto scrollbar-hide z-[70] flex flex-col gap-1 animate-in slide-in-from-bottom-2">
+                        <div className="absolute bottom-2 right-0 sm:right-0 md:bottom-10 md:right-0 bg-zinc-950/95 backdrop-blur-3xl border border-white/10 ring-1 ring-white/10 rounded-2xl shadow-[0_8px_40px_rgba(0,0,0,0.8)] p-2 w-44 sm:w-52 max-h-[calc(100%-16px)] md:max-h-[360px] overflow-y-auto scrollbar-hide z-[70] flex flex-col gap-1 animate-in slide-in-from-bottom-2">
                            <button onClick={(e)=>{e.stopPropagation(); setActiveMenu('quality')}} className="flex items-center justify-between w-full px-2.5 py-1.5 rounded-xl hover:bg-white/10 hover:shadow-inner text-left text-[10px] sm:text-xs font-bold transition-all"><div className="flex items-center gap-1.5"><Settings size={13}/> Quality</div><span className="text-zinc-400 text-[9px] sm:text-[10px] truncate ml-2">{currentQuality === -1 ? autoResolutionText : `${qualities.find(q => q.index === currentQuality)?.height}p`}</span></button>
                            <button onClick={(e)=>{e.stopPropagation(); setActiveMenu('speed')}} className="flex items-center justify-between w-full px-2.5 py-1.5 rounded-xl hover:bg-white/10 hover:shadow-inner text-left text-[10px] sm:text-xs font-bold transition-all"><div className="flex items-center gap-1.5"><Gauge size={13}/> Speed</div><span className="text-zinc-400 text-[9px] sm:text-[10px]">{speed}x</span></button>
                            <button onClick={(e)=>{e.stopPropagation(); setActiveMenu('gestures')}} className="flex items-center justify-between w-full px-2.5 py-1.5 rounded-xl hover:bg-white/10 hover:shadow-inner text-left text-[10px] sm:text-xs font-bold transition-all"><div className="flex items-center gap-1.5"><MousePointerClick size={13}/> Gestures</div><span className="text-zinc-400 uppercase text-[9px] sm:text-[10px]">{doubleTapMode}</span></button>
@@ -2233,13 +2288,13 @@ const OmniPlayer = forwardRef<OmniPlayerRef, OmniPlayerProps>(({
                         </div>
                      )}
                      {activeMenu === 'vGesture' && (
-                        <div className="absolute bottom-10 right-0 bg-zinc-950/90 backdrop-blur-3xl border border-white/10 ring-1 ring-white/10 rounded-2xl shadow-[0_8px_40px_rgba(0,0,0,0.8)] p-2 w-40 sm:w-48 max-h-[280px] sm:max-h-[340px] overflow-y-auto scrollbar-hide z-[70] flex flex-col gap-1 animate-in slide-in-from-bottom-2">
+                        <div className="absolute bottom-2 right-0 sm:right-0 md:bottom-10 md:right-0 bg-zinc-950/95 backdrop-blur-3xl border border-white/10 ring-1 ring-white/10 rounded-2xl shadow-[0_8px_40px_rgba(0,0,0,0.8)] p-2 w-40 sm:w-48 max-h-[calc(100%-16px)] md:max-h-[340px] overflow-y-auto scrollbar-hide z-[70] flex flex-col gap-1 animate-in slide-in-from-bottom-2">
                             <button onClick={(e)=>{e.stopPropagation(); setActiveMenu('main')}} className="flex items-center gap-1.5 text-[10px] px-2 py-1 font-black text-zinc-400 border-b border-white/10 mb-0.5"><ChevronLeft size={13}/> BACK</button>
                             {['vol_bright', 'fullscreen', 'none'].map(m=>(<button key={m} onClick={(e)=>{e.stopPropagation(); updateLocalPrefs({verticalGesture: m}); setActiveMenu('main')}} className={cn("text-[10px] px-2.5 py-1.5 rounded-xl text-left font-bold uppercase transition-all", verticalGesture===m?"bg-gradient-to-r from-primary-600 to-primary-500 text-white shadow-md shadow-primary-500/25 border border-primary-500/50":"hover:bg-white/10 hover:shadow-inner text-zinc-400")}>{m === 'vol_bright' ? 'Vol/Bri' : m}</button>))}
                         </div>
                      )}
                      {activeMenu === 'hGesture' && (
-                        <div className="absolute bottom-10 right-0 bg-zinc-950/90 backdrop-blur-3xl border border-white/10 ring-1 ring-white/10 rounded-2xl shadow-[0_8px_40px_rgba(0,0,0,0.8)] p-2 w-40 sm:w-48 max-h-[280px] sm:max-h-[340px] overflow-y-auto scrollbar-hide z-[70] flex flex-col gap-1 animate-in slide-in-from-bottom-2">
+                        <div className="absolute bottom-2 right-0 sm:right-0 md:bottom-10 md:right-0 bg-zinc-950/95 backdrop-blur-3xl border border-white/10 ring-1 ring-white/10 rounded-2xl shadow-[0_8px_40px_rgba(0,0,0,0.8)] p-2 w-40 sm:w-48 max-h-[calc(100%-16px)] md:max-h-[340px] overflow-y-auto scrollbar-hide z-[70] flex flex-col gap-1 animate-in slide-in-from-bottom-2">
                             <button onClick={(e)=>{e.stopPropagation(); setActiveMenu('main')}} className="flex items-center gap-1.5 text-[10px] px-2 py-1 font-black text-zinc-400 border-b border-white/10 mb-0.5"><ChevronLeft size={13}/> BACK</button>
                             {['seek', 'nav', 'volume', 'none'].map(m=>(<button key={m} onClick={(e)=>{e.stopPropagation(); updateLocalPrefs({horizontalGesture: m}); setActiveMenu('main')}} className={cn("text-[10px] px-2.5 py-1.5 rounded-xl text-left font-bold uppercase transition-all", horizontalGesture===m?"bg-gradient-to-r from-primary-600 to-primary-500 text-white shadow-md shadow-primary-500/25 border border-primary-500/50":"hover:bg-white/10 hover:shadow-inner text-zinc-400")}>{m === 'nav' ? 'Next / Prev' : m}</button>))}
                         </div>
@@ -2259,20 +2314,20 @@ const OmniPlayer = forwardRef<OmniPlayerRef, OmniPlayerProps>(({
                         </div>
                      )}
                      {activeMenu === 'gestures' && (
-                        <div className="absolute bottom-10 right-0 bg-zinc-950/90 backdrop-blur-3xl border border-white/10 ring-1 ring-white/10 rounded-2xl shadow-[0_8px_40px_rgba(0,0,0,0.8)] p-2 w-40 sm:w-48 max-h-[280px] sm:max-h-[340px] overflow-y-auto scrollbar-hide z-[70] flex flex-col gap-1 animate-in slide-in-from-bottom-2">
+                        <div className="absolute bottom-2 right-0 sm:right-0 md:bottom-10 md:right-0 bg-zinc-950/95 backdrop-blur-3xl border border-white/10 ring-1 ring-white/10 rounded-2xl shadow-[0_8px_40px_rgba(0,0,0,0.8)] p-2 w-40 sm:w-48 max-h-[calc(100%-16px)] md:max-h-[340px] overflow-y-auto scrollbar-hide z-[70] flex flex-col gap-1 animate-in slide-in-from-bottom-2">
                             <button onClick={(e)=>{e.stopPropagation(); setActiveMenu('main')}} className="flex items-center gap-1.5 text-[10px] px-2 py-1 font-black text-zinc-400 border-b border-white/10 mb-0.5"><ChevronLeft size={13}/> BACK</button>
                             {['seek', 'playpause', 'fullscreen'].map(m=>(<button key={m} onClick={(e)=>{e.stopPropagation(); updateLocalPrefs({doubleTapMode: m}); setActiveMenu('none')}} className={cn("text-[10px] px-2.5 py-1.5 rounded-xl text-left font-bold uppercase transition-all", doubleTapMode===m?"bg-gradient-to-r from-primary-600 to-primary-500 text-white shadow-md shadow-primary-500/25 border border-primary-500/50":"hover:bg-white/10 hover:shadow-inner text-zinc-400")}>{m}</button>))}
                         </div>
                      )}
                 </div>
 
-                {audioTracks.length > 1 && (<div className="relative"><button onClick={(e) => { e.stopPropagation(); setActiveMenu(activeMenu === 'audio' ? 'none' : 'audio'); }} className={cn("hover:text-primary-500 transition-colors active:scale-90 p-1.5 md:p-0", activeMenu === 'audio' && "text-primary-500")}><AudioWaveform size={18} className="md:w-4.5 md:h-4.5" /></button>{activeMenu === 'audio' && (<div className="absolute bottom-10 right-0 bg-zinc-950/90 backdrop-blur-3xl border border-white/10 ring-1 ring-white/10 rounded-2xl shadow-[0_8px_40px_rgba(0,0,0,0.8)] p-2 w-40 sm:w-48 max-h-[280px] sm:max-h-[340px] overflow-y-auto scrollbar-hide z-[70] flex flex-col gap-1 animate-in slide-in-from-bottom-2">{audioTracks.map((t, i) => (<button key={i} onClick={(e) => { e.stopPropagation(); changeAudio(i); }} className={cn("text-[10px] px-2.5 py-1.5 rounded-xl text-left font-bold transition-all truncate active:scale-95", currentAudio === i ? "bg-gradient-to-r from-primary-600 to-primary-500 text-white shadow-md shadow-primary-500/25 border border-primary-500/50" : "hover:bg-white/10 hover:shadow-inner text-zinc-400")}>{t.name || `Audio ${i+1}`}</button>))}</div>)}</div>)}
+                {audioTracks.length > 1 && (<div className="relative"><button onClick={(e) => { e.stopPropagation(); setActiveMenu(activeMenu === 'audio' ? 'none' : 'audio'); }} className={cn("hover:text-primary-500 transition-colors active:scale-90 w-9 h-9 sm:w-10 sm:h-10 md:w-auto md:h-auto flex items-center justify-center p-1 md:p-0", activeMenu === 'audio' && "text-primary-500")}><AudioWaveform size={18} className="md:w-4.5 md:h-4.5" /></button>{activeMenu === 'audio' && (<div className="absolute bottom-2 right-0 sm:right-0 md:bottom-10 md:right-0 bg-zinc-950/95 backdrop-blur-3xl border border-white/10 ring-1 ring-white/10 rounded-2xl shadow-[0_8px_40px_rgba(0,0,0,0.8)] p-2 w-40 sm:w-48 max-h-[calc(100%-16px)] md:max-h-[340px] overflow-y-auto scrollbar-hide z-[70] flex flex-col gap-1 animate-in slide-in-from-bottom-2">{audioTracks.map((t, i) => (<button key={i} onClick={(e) => { e.stopPropagation(); changeAudio(i); }} className={cn("text-[10px] px-2.5 py-1.5 rounded-xl text-left font-bold transition-all truncate active:scale-95", currentAudio === i ? "bg-gradient-to-r from-primary-600 to-primary-500 text-white shadow-md shadow-primary-500/25 border border-primary-500/50" : "hover:bg-white/10 hover:shadow-inner text-zinc-400")}>{t.name || `Audio ${i+1}`}</button>))}</div>)}</div>)}
 
                 {trackSubtitles.length > 0 && (
                  <div className="relative">
-                     <button onClick={(e) => { e.stopPropagation(); setActiveMenu(activeMenu === 'subs' ? 'none' : 'subs'); }} className={cn("hover:text-primary-500 transition-colors active:scale-90 p-1.5 md:p-0", (activeMenu === 'subs' || currentSubtitle !== -1) ? "text-primary-500 fill-red-500" : "text-white")}><Subtitles size={18} className="md:w-4.5 md:h-4.5" /></button>
+                     <button onClick={(e) => { e.stopPropagation(); setActiveMenu(activeMenu === 'subs' ? 'none' : 'subs'); }} className={cn("hover:text-primary-500 transition-colors active:scale-90 w-9 h-9 sm:w-10 sm:h-10 md:w-auto md:h-auto flex items-center justify-center p-1 md:p-0", (activeMenu === 'subs' || currentSubtitle !== -1) ? "text-primary-500 fill-red-500" : "text-white")}><Subtitles size={18} className="md:w-4.5 md:h-4.5" /></button>
                      {activeMenu === 'subs' && (
-                         <div className="absolute bottom-10 right-0 bg-zinc-950/90 backdrop-blur-3xl border border-white/10 ring-1 ring-white/10 rounded-2xl shadow-[0_8px_40px_rgba(0,0,0,0.8)] p-2 w-44 sm:w-52 max-h-[280px] sm:max-h-[340px] overflow-hidden z-[70] flex flex-col animate-in slide-in-from-bottom-2">
+                         <div className="absolute bottom-2 right-0 sm:right-0 md:bottom-10 md:right-0 bg-zinc-950/95 backdrop-blur-3xl border border-white/10 ring-1 ring-white/10 rounded-2xl shadow-[0_8px_40px_rgba(0,0,0,0.8)] p-2 w-44 sm:w-52 max-h-[calc(100%-16px)] md:max-h-[340px] overflow-hidden z-[70] flex flex-col animate-in slide-in-from-bottom-2">
                               <button onClick={(e) => { e.stopPropagation(); setActiveMenu('subSettings'); }} className="flex items-center gap-1.5 text-[10px] px-2 py-1 rounded-xl text-left font-black text-primary-500 hover:bg-white/5 transition-all mb-1 border-b border-white/10 shrink-0"><Settings size={12}/> CAPTION SETTINGS</button>
                               <div className="overflow-y-auto flex-1 flex flex-col gap-1 scrollbar-hide">
                                 <button onClick={(e) => { e.stopPropagation(); changeSubtitle(-1); }} className={cn("text-[10px] px-2.5 py-1.5 rounded-xl text-left font-bold transition-all active:scale-95 shrink-0", currentSubtitle === -1 ? "bg-gradient-to-r from-primary-600 to-primary-500 text-white shadow-md shadow-primary-500/25 border border-primary-500/50" : "hover:bg-white/10 hover:shadow-inner text-zinc-400")}>Off</button>
@@ -2283,7 +2338,7 @@ const OmniPlayer = forwardRef<OmniPlayerRef, OmniPlayerProps>(({
                          </div>
                      )}
                      {activeMenu === 'subSettings' && (
-                         <div className="absolute bottom-10 right-0 bg-zinc-950/95 backdrop-blur-3xl border border-white/10 ring-1 ring-white/10 rounded-2xl shadow-[0_8px_40px_rgba(0,0,0,0.9)] p-3 w-[220px] sm:w-60 md:w-64 max-h-[300px] sm:max-h-[360px] overflow-y-auto scrollbar-hide z-[70] flex flex-col gap-2.5 animate-in slide-in-from-bottom-2" onClick={(e) => e.stopPropagation()}>
+                         <div className="absolute bottom-2 right-0 sm:right-0 md:bottom-10 md:right-0 bg-zinc-950/95 backdrop-blur-3xl border border-white/10 ring-1 ring-white/10 rounded-2xl shadow-[0_8px_40px_rgba(0,0,0,0.9)] p-3 w-[220px] sm:w-60 md:w-64 max-h-[calc(100%-16px)] md:max-h-[360px] overflow-y-auto scrollbar-hide z-[70] flex flex-col gap-2.5 animate-in slide-in-from-bottom-2" onClick={(e) => e.stopPropagation()}>
                              <div className="flex items-center gap-1.5 text-[10px] sm:text-xs font-black text-zinc-400 border-b border-white/10 pb-1.5"><button onClick={(e)=>{e.stopPropagation(); setActiveMenu('subs')}} className="hover:text-white"><ChevronLeft size={13}/></button> CAPTION STYLE</div>
                              <div className="space-y-1"><span className="text-[9px] sm:text-[10px] font-bold text-zinc-400 uppercase">Color</span><div className="flex gap-1.5 flex-wrap">{Object.keys(SUB_COLORS).map((c) => (<button key={c} onClick={(e) => {e.stopPropagation(); updateLocalPrefs({subStyle: { color: c }})}} className={cn("w-5 h-5 sm:w-6 sm:h-6 rounded-full border transition-all active:scale-90 shrink-0", subStyle.color === c ? "border-white scale-110 shadow-md" : "border-transparent opacity-60")} style={{background: SUB_COLORS[c as keyof typeof SUB_COLORS]}} />))}</div></div>
                              <div className="space-y-1"><span className="text-[9px] sm:text-[10px] font-bold text-zinc-400 uppercase">Size</span><div className="flex gap-1 bg-white/5 rounded-xl p-1">{Object.keys(SUB_SIZES).map((s) => (<button key={s} onClick={(e) => {e.stopPropagation(); updateLocalPrefs({subStyle: { size: s }})}} className={cn("flex-1 py-1 rounded-lg text-[9px] sm:text-[10px] font-bold transition-all active:scale-90 shrink-0", subStyle.size === s ? "bg-white text-black shadow-sm" : "text-zinc-400 hover:text-zinc-200")}>{s}</button>))}</div></div>
@@ -2312,8 +2367,20 @@ const OmniPlayer = forwardRef<OmniPlayerRef, OmniPlayerProps>(({
                  </div>
                 )}
 
-              <button onClick={(e) => { e.stopPropagation(); togglePiP(); }} className="hover:text-primary-500 transition-colors active:scale-90 p-1.5 md:p-0"><PictureInPicture size={18} className="md:w-4.5 md:h-4.5"/></button>
-              <button onClick={(e) => { e.stopPropagation(); toggleFullscreen(); }} className="hover:text-primary-500 transition-colors active:scale-90 p-1.5 md:p-0"><Maximize size={18} className="md:w-4.5 md:h-4.5"/></button>
+              <button 
+                onClick={(e) => { e.stopPropagation(); togglePiP(); }} 
+                className="hidden sm:flex hover:text-primary-500 transition-colors active:scale-90 w-9 h-9 sm:w-10 sm:h-10 md:w-auto md:h-auto items-center justify-center p-1 md:p-0 text-white"
+                title="Picture-in-Picture"
+              >
+                <PictureInPicture size={18} className="md:w-4.5 md:h-4.5"/>
+              </button>
+              <button 
+                onClick={(e) => { e.stopPropagation(); toggleFullscreen(); }} 
+                className="hover:text-primary-500 transition-colors active:scale-90 w-10 h-10 sm:w-10 sm:h-10 md:w-auto md:h-auto flex items-center justify-center p-1 md:p-0 text-white"
+                title="Fullscreen"
+              >
+                <Maximize size={19} className="md:w-4.5 md:h-4.5"/>
+              </button>
            </div>
         </div>
       </div>

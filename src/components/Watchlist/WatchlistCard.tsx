@@ -23,7 +23,6 @@ import {
   PuffedTrash,
   PuffedPlus,
   PuffedStar,
-  PuffedInfo,
   PuffedExternal
 } from './PuffedIcons';
 import { ChevronDown, Check } from 'lucide-react';
@@ -220,15 +219,6 @@ export default function WatchlistCard({
             </span>
           )}
 
-          <button
-            onClick={handleIncrementEp}
-            title="Next episode"
-            className="h-7 px-2 rounded-lg bg-white/5 hover:bg-white/15 text-white border border-white/10 text-[10px] font-bold transition-all flex items-center gap-1 active:scale-95 outline-none focus:outline-none focus:ring-0 focus-visible:outline-none focus-visible:ring-0 select-none"
-          >
-            <PuffedPlus size={11} />
-            <span className="hidden sm:inline">Ep</span>
-          </button>
-
           {/* Status Dropdown */}
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
@@ -324,15 +314,6 @@ export default function WatchlistCard({
         </div>
 
         <div className="flex items-center gap-2 shrink-0" onClick={(e) => e.stopPropagation()}>
-          <button
-            onClick={handleIncrementEp}
-            title="Mark next episode watched"
-            className="px-3 py-1.5 rounded-xl bg-white/10 hover:bg-white text-white hover:text-black border border-white/15 text-xs font-bold transition-all flex items-center gap-1.5 active:scale-95 shadow-sm outline-none focus:outline-none focus:ring-0 focus-visible:outline-none focus-visible:ring-0 select-none"
-          >
-            <PuffedPlus size={12} />
-            <span className="hidden sm:inline">+1 Ep</span>
-          </button>
-
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <button className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold uppercase tracking-wider border border-white/10 bg-white/5 hover:bg-white/10 text-white transition-all active:scale-95 outline-none focus:outline-none focus:ring-0 focus-visible:outline-none focus-visible:ring-0 select-none">
@@ -439,16 +420,7 @@ export default function WatchlistCard({
             </a>
           )}
 
-          <button
-            onClick={(e) => {
-              e.stopPropagation();
-              onOpenIntel(item.anime_id, displayTitle, posterUrl);
-            }}
-            title="Anime Intel"
-            className="w-7 h-7 rounded-full bg-black/70 hover:bg-white text-zinc-300 hover:text-black border border-white/20 flex items-center justify-center backdrop-blur-md transition-all active:scale-95 outline-none focus:outline-none focus:ring-0"
-          >
-            <PuffedInfo size={12} />
-          </button>
+
 
           <button
             onClick={(e) => {
@@ -523,15 +495,6 @@ export default function WatchlistCard({
             })}
           </DropdownMenuContent>
         </DropdownMenu>
-
-        <button
-          onClick={handleIncrementEp}
-          title="Mark next episode watched"
-          className="h-7 px-2.5 rounded-xl bg-white/10 hover:bg-white text-white hover:text-black border border-white/15 text-[10px] font-bold transition-all flex items-center gap-1 active:scale-95 shrink-0 outline-none focus:outline-none focus:ring-0 focus-visible:outline-none focus-visible:ring-0 select-none"
-        >
-          <PuffedPlus size={11} />
-          <span>1</span>
-        </button>
       </div>
     </div>
   );

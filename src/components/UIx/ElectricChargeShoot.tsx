@@ -351,3 +351,4 @@ export default function ElectricChargeShoot({ pathname = '', isMobile = false }:
     </div>
   );
 }
+

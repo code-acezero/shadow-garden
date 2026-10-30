@@ -240,6 +240,42 @@ export const UserDataProvider = ({ children }: { children: React.ReactNode }) =>
                     };
                 });
                 setLibrary(enrichedLibrary);
+
+                // Seamless Traveller -> Adventurer Auto-Migration:
+                // If the user previously saved items to local storage while exploring as a guest,
+                // merge them into their Supabase cloud database so no progress is ever lost.
+                if (typeof window !== 'undefined') {
+                    try {
+                        const guestWatchlist = JSON.parse(localStorage.getItem('shadow_watchlist') || '[]');
+                        const guestReadlist = JSON.parse(localStorage.getItem('shadow_readlist') || '[]');
+                        const guestMerged = [...guestWatchlist, ...guestReadlist];
+                        
+                        if (guestMerged.length > 0 && watchlistRes.data) {
+                            const existingDbIds = new Set(watchlistRes.data.map((x: any) => x.anime_id));
+                            const newToSync = guestMerged.filter((g: any) => {
+                                const aid = g.anime_id || g.id || g.manga_id;
+                                return aid && !existingDbIds.has(aid);
+                            });
+
+                            if (newToSync.length > 0) {
+                                for (const item of newToSync) {
+                                    const aid = item.anime_id || item.id || item.manga_id;
+                                    await supabase.from('watchlist').upsert({
+                                        user_id: user.id,
+                                        anime_id: aid,
+                                        anime_title: item.anime_title || item.title || 'Unknown Title',
+                                        anime_image: item.anime_image || item.poster || null,
+                                        status: item.status || 'watching',
+                                        last_episode_number: item.last_episode_number || item.progress || item.chapters_read || 0,
+                                        total_episodes: item.total_episodes || item.total_chapters || null,
+                                        media_type: item.media_type || (item.chapters_read ? 'manga' : 'anime'),
+                                        updated_at: item.updated_at || new Date().toISOString()
+                                    }, { onConflict: 'user_id,anime_id' });
+                                }
+                            }
+                        }
+                    } catch (_) {}
+                }
             }
             
             if (continueRes.data) {
@@ -628,12 +664,11 @@ export const UserDataProvider = ({ children }: { children: React.ReactNode }) =>
                     anime_title: item.title,
                     anime_image: cover,
                     status,
-                    chapters_read: progress,
                     last_episode_number: progress,
-                    total_chapters: item.total_chapters || null,
+                    total_episodes: item.total_chapters || null,
                     media_type: mediaType,
                     updated_at: new Date().toISOString()
-                }, { onConflict: 'user_id, anime_id' });
+                }, { onConflict: 'user_id,anime_id' });
             } catch (err) {
                 console.error("Failed to sync readlist to Supabase:", err);
             }
@@ -703,12 +738,11 @@ export const UserDataProvider = ({ children }: { children: React.ReactNode }) =>
         if (user) {
             try {
                 const payload: any = {
-                    chapters_read: newChapter,
                     last_episode_number: newChapter,
                     updated_at: new Date().toISOString()
                 };
                 if (newStatus) payload.status = newStatus;
-                if (totalChapters) payload.total_chapters = totalChapters;
+                if (totalChapters) payload.total_episodes = totalChapters;
 
                 await supabase
                     .from('watchlist')
@@ -894,12 +928,11 @@ export const UserDataProvider = ({ children }: { children: React.ReactNode }) =>
                     anime_title: updatedReadlistItem.anime_title,
                     anime_image: updatedReadlistItem.anime_image,
                     status: newStatus,
-                    chapters_read: newChap,
                     last_episode_number: newChap,
-                    total_chapters: totalChaps || existing?.total_chapters || null,
+                    total_episodes: totalChaps || existing?.total_chapters || null,
                     media_type: mediaType,
                     updated_at: new Date().toISOString()
-                }, { onConflict: 'user_id, anime_id' });
+                }, { onConflict: 'user_id,anime_id' });
             } catch (err) {
                 console.error("Failed to sync readlist to Supabase:", err);
             }

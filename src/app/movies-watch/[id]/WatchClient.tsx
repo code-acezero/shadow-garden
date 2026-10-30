@@ -27,6 +27,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import ShadowComments from '@/components/Comments/ShadowComments';
 import { toast } from '@/lib/toast';
 import CastDetailModal, { CastModalData } from '@/components/Watch/CastDetailModal';
+import { useJellyFlip } from '@/lib/useJellyFlip';
 
 // ── Cast & Characters Block (Matches Anime & Drama Watch) ─────────────────────
 
@@ -263,6 +264,10 @@ export default function WatchClient() {
   const [epViewMode, setEpViewMode] = useState<EpViewMode>('compact');
   const [autoNext, setAutoNext] = useState(true);
   const [autoNextCountdown, setAutoNextCountdown] = useState<number | null>(null);
+  const epContainerRef = React.useRef<HTMLDivElement>(null);
+  const mobileEpContainerRef = React.useRef<HTMLDivElement>(null);
+  useJellyFlip(epViewMode, epContainerRef);
+  useJellyFlip(epViewMode, mobileEpContainerRef);
 
   useEffect(() => {
     sfx.pauseBGM();
@@ -776,7 +781,7 @@ export default function WatchClient() {
                     </div>
 
                     <div className="h-auto p-3 no-scrollbar max-h-[300px] overflow-y-auto">
-                      <div className={cn(
+                      <div ref={mobileEpContainerRef} className={cn(
                         "grid gap-1.5 transition-all",
                         epViewMode === 'grid' ? 'grid-cols-5' :
                         epViewMode === 'compact' ? 'grid-cols-8' :
@@ -791,7 +796,7 @@ export default function WatchClient() {
 
                           if (epViewMode === 'list') {
                             return (
-                              <button key={epNum} onClick={() => handleEpisodeClick(activeSeason, epNum, activeServerName)}
+                              <button key={epNum} data-flip-id={epNum} onClick={() => handleEpisodeClick(activeSeason, epNum, activeServerName)}
                                 className={cn(
                                   "relative overflow-hidden w-full flex items-center gap-3 px-3 py-2 rounded-xl border text-left transition-all text-[10px] font-bold transform-gpu duration-300",
                                   isActive ? "bg-green-500/20 backdrop-blur-md border-green-400 text-white shadow-[0_0_15px_rgba(34,197,94,0.5)] z-20 scale-[1.02]"
@@ -820,7 +825,7 @@ export default function WatchClient() {
                           }
 
                           return (
-                            <button key={epNum} onClick={() => handleEpisodeClick(activeSeason, epNum, activeServerName)}
+                            <button key={epNum} data-flip-id={epNum} onClick={() => handleEpisodeClick(activeSeason, epNum, activeServerName)}
                               className={cn(
                                 "relative overflow-hidden rounded-full flex items-center justify-center font-black transition-all border text-[9px] transform-gpu duration-300",
                                 epViewMode === 'grid' ? "aspect-square" : "h-7",
@@ -855,8 +860,8 @@ export default function WatchClient() {
 
             {/* Desktop Right Panel: Episodes for Series / Suggestions for Movies */}
             {isSeries ? (
-              <div className="xl:col-span-4 w-full flex flex-col">
-                <div className="w-full h-full bg-black/40 backdrop-blur-2xl rounded-[40px] border border-white/10 overflow-hidden flex flex-col shadow-[0_8px_32px_0_rgba(0,0,0,0.37)] relative z-20">
+              <div className="xl:col-span-4 w-full h-[460px] sm:h-[520px] xl:h-auto xl:relative xl:self-stretch">
+                <div className="w-full h-full xl:absolute xl:inset-0 bg-black/40 backdrop-blur-2xl rounded-[40px] border border-white/10 overflow-hidden flex flex-col shadow-[0_8px_32px_0_rgba(0,0,0,0.37)] relative z-20">
                   <div className="p-5 bg-white/5 border-b border-emerald-900/30 flex justify-between items-center shrink-0">
                     <div className="flex items-center gap-2">
                       <Layers size={16} className="text-emerald-500" />
@@ -877,8 +882,8 @@ export default function WatchClient() {
                     </div>
                   </div>
 
-                  <div className="xl:flex-1 xl:overflow-y-auto h-auto p-3 no-scrollbar">
-                    <div className={cn(
+                  <div className="flex-1 min-h-0 overflow-y-auto p-3 custom-scrollbar overflow-x-hidden">
+                    <div ref={epContainerRef} className={cn(
                       "grid gap-1.5 transition-all",
                       epViewMode === 'grid' ? 'grid-cols-5' :
                       epViewMode === 'compact' ? 'grid-cols-8' :
@@ -890,7 +895,7 @@ export default function WatchClient() {
                         if (epViewMode === 'list') {
                           const isWatched = getEpisodeProgress(activeSeason, epNum) > 0;
                           return (
-                            <button key={epNum} onClick={() => handleEpisodeClick(activeSeason, epNum, activeServerName)}
+                            <button key={epNum} data-flip-id={epNum} onClick={() => handleEpisodeClick(activeSeason, epNum, activeServerName)}
                               className={cn(
                                 "w-full flex items-center gap-3 px-3 py-2 rounded-xl border text-left transition-all text-[10px] font-bold transform-gpu duration-300",
                                 isActive ? "bg-indigo-600/90 backdrop-blur-md border-indigo-400 text-white shadow-[0_0_15px_rgba(79,70,229,0.6)] z-20 scale-[1.02]"
@@ -906,7 +911,7 @@ export default function WatchClient() {
                         }
                         const isWatched = getEpisodeProgress(activeSeason, epNum) > 0;
                         return (
-                          <button key={epNum} onClick={() => handleEpisodeClick(activeSeason, epNum, activeServerName)}
+                          <button key={epNum} data-flip-id={epNum} onClick={() => handleEpisodeClick(activeSeason, epNum, activeServerName)}
                             className={cn(
                               "rounded-full flex items-center justify-center font-black transition-all border text-[9px] transform-gpu duration-300",
                               epViewMode === 'grid' ? "aspect-square" : "h-7",

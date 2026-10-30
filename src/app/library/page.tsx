@@ -10,7 +10,7 @@ import { cn, getWatchRoute, getSafeImageUrl } from '@/lib/utils';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
   Search, X, Trash2, AlertCircle, Loader2,
-  ChevronDown
+  ChevronDown, SlidersHorizontal
 } from 'lucide-react';
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -430,25 +430,16 @@ function WatchlistContent() {
       {/* Container width strictly matches top nav WhisperIsland (px-2 sm:px-4) */}
       <div className="w-full px-2 sm:px-4">
         
-        {/* ─── HEADER: CLEAN & MONOCHROMATIC ─── */}
-        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-end gap-4 mb-5">
-          <div>
-            <div className="flex items-center gap-2 mb-1">
-              <span className="text-[10px] font-mono tracking-[0.25em] uppercase text-zinc-400 font-bold">
-                Shadow Vault
-              </span>
-              <span className="text-[10px] text-zinc-600 font-mono">/</span>
-              <span className="text-[10px] font-mono text-zinc-400">
-                {currentTotalCount} {libraryMode === 'watchlist' ? 'titles' : 'books'}
-              </span>
-            </div>
+        {/* ─── HEADER: CLEAN & MONOCHROMATIC (Center aligned on mobile/tablet) ─── */}
+        <div className="flex flex-col md:flex-row justify-between items-center md:items-end gap-4 mb-5 text-center md:text-left">
+          <div className="flex flex-col items-center md:items-start w-full md:w-auto">
             <h1 className="text-3xl sm:text-4xl md:text-5xl font-black text-white tracking-tight uppercase">
               Library
             </h1>
           </div>
 
-          {/* Right Header: Compact AniList Mini Dropdown + Watchlist/Readlist Switcher */}
-          <div className="flex items-center gap-2 flex-wrap sm:flex-nowrap">
+          {/* Right Header: Compact AniList Mini Dropdown + Watchlist/Readlist Switcher (Centered on mobile/tablet) */}
+          <div className="flex items-center justify-center gap-2 flex-wrap sm:flex-nowrap w-full md:w-auto">
             <WatchlistSyncCockpit onSyncComplete={() => refreshData()} mediaType={libraryMode === 'watchlist' ? 'anime' : 'manga'} />
 
             {/* Seamless Watchlist / Readlist Switcher */}
@@ -498,9 +489,9 @@ function WatchlistContent() {
 
         {/* ─── CONTROLS: MINIMIZED TABS, COMPACT FORMATS & SEARCH TOOLBAR ─── */}
         <div className="flex flex-col gap-3 mb-6">
-          {/* Row 1: Minimized Primary Status Tabs + Readlist Format Dropdown + Right Toolbar */}
-          <div className="flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3">
-            {/* Left: Minimized Tabs & Status Selector */}
+          {/* DESKTOP TOOLBAR (Unchanged: Left Tabs & Right Tools) */}
+          <div className="hidden md:flex items-center justify-between gap-3 w-full">
+            {/* Left: Desktop Full Horizontal Filter Tabs (Kept exactly as it is) */}
             <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar py-0.5">
               {primaryTabs.map((tab) => {
                 const Icon = tab.icon;
@@ -773,6 +764,209 @@ function WatchlistContent() {
               </div>
             </div>
           </div>
+
+          {/* MOBILE & TABLET TOOLBAR: Two Separate Filter Buttons + Search Filters in the SAME Row */}
+          <div className="flex md:hidden items-center gap-1.5 sm:gap-2 w-full overflow-x-auto no-scrollbar py-0.5">
+            {/* 1. Status Dropdown Filter Button (Jelly Animation) */}
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <motion.button
+                  type="button"
+                  whileTap={{ scale: 0.94 }}
+                  transition={{ type: "spring", stiffness: 450, damping: 20 }}
+                  onClick={() => playGummyTap()}
+                  className={cn(
+                    "h-8 px-2.5 rounded-xl text-xs font-bold transition-all whitespace-nowrap shrink-0 border select-none active:scale-95 flex items-center gap-1.5 outline-none shadow-sm",
+                    activeTab !== 'all'
+                      ? "bg-white text-black border-white"
+                      : "bg-white/[0.04] border-white/10 text-zinc-300 hover:text-white hover:bg-white/[0.08]"
+                  )}
+                >
+                  {(() => {
+                    const tab = [...primaryTabs, ...secondaryTabs].find(t => t.id === activeTab);
+                    const Icon = tab?.icon || PuffedTv;
+                    return <Icon size={12} />;
+                  })()}
+                  <span>{[...primaryTabs, ...secondaryTabs].find(t => t.id === activeTab)?.label || 'Status'}</span>
+                  <span className={cn(
+                    "text-[10px] font-mono",
+                    activeTab !== 'all' ? "text-zinc-700" : "text-zinc-500"
+                  )}>
+                    {[...primaryTabs, ...secondaryTabs].find(t => t.id === activeTab)?.count ?? currentTotalCount}
+                  </span>
+                  <ChevronDown size={11} className={activeTab !== 'all' ? "text-zinc-700" : "text-zinc-500"} />
+                </motion.button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent
+                align="start"
+                className="w-48 max-h-[70vh] overflow-y-auto bg-[#0c0c0e]/95 backdrop-blur-xl border border-white/10 text-white rounded-xl p-1.5 shadow-2xl z-50 outline-none"
+              >
+                <div className="px-2 py-1 text-[10px] font-mono uppercase tracking-widest text-zinc-500 font-bold">
+                  Status Filter
+                </div>
+                {[...primaryTabs, ...secondaryTabs].map((tab) => {
+                  const Icon = tab.icon;
+                  const isTabActive = activeTab === tab.id;
+                  return (
+                    <DropdownMenuItem
+                      key={tab.id}
+                      onSelect={() => handleTabChange(tab.id)}
+                      onClick={() => handleTabChange(tab.id)}
+                      className={cn(
+                        "flex items-center justify-between px-2.5 py-1.5 rounded-lg text-xs font-semibold cursor-pointer transition-colors outline-none",
+                        isTabActive ? "bg-white/15 text-white font-bold" : "text-zinc-400 hover:text-white hover:bg-white/10"
+                      )}
+                    >
+                      <div className="flex items-center gap-2">
+                        <Icon size={12} />
+                        <span>{tab.label}</span>
+                      </div>
+                      <span className="text-[10px] font-mono text-zinc-500">{tab.count}</span>
+                    </DropdownMenuItem>
+                  );
+                })}
+              </DropdownMenuContent>
+            </DropdownMenu>
+
+            {/* 2. Format Dropdown Filter Button (Jelly Animation) */}
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <motion.button
+                  type="button"
+                  whileTap={{ scale: 0.94 }}
+                  transition={{ type: "spring", stiffness: 450, damping: 20 }}
+                  onClick={() => playGummyTap()}
+                  className={cn(
+                    "h-8 px-2.5 rounded-xl text-xs font-bold transition-all whitespace-nowrap shrink-0 border select-none active:scale-95 flex items-center gap-1.5 outline-none shadow-sm",
+                    formatFilter !== 'all'
+                      ? "bg-white text-black border-white"
+                      : "bg-white/[0.04] border-white/10 text-zinc-300 hover:text-white hover:bg-white/[0.08]"
+                  )}
+                >
+                  {libraryMode === 'watchlist' ? <PuffedTv size={12} /> : <PuffedBook size={12} />}
+                  <span>
+                    {formatFilter === 'all' 
+                      ? 'Format' 
+                      : currentFormats.find(f => f.id === formatFilter)?.label || 'Format'}
+                  </span>
+                  {formatFilter !== 'all' && formatCounts[formatFilter] !== undefined && (
+                    <span className="text-[10px] font-mono text-zinc-700">{formatCounts[formatFilter]}</span>
+                  )}
+                  <ChevronDown size={11} className={formatFilter !== 'all' ? "text-zinc-700" : "text-zinc-500"} />
+                </motion.button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent
+                align="start"
+                className="w-48 max-h-[70vh] overflow-y-auto bg-[#0c0c0e]/95 backdrop-blur-xl border border-white/10 text-white rounded-xl p-1.5 shadow-2xl z-50 outline-none"
+              >
+                <div className="px-2 py-1 text-[10px] font-mono uppercase tracking-widest text-zinc-500 font-bold">
+                  Format Filter
+                </div>
+                {currentFormats.map((fmt) => {
+                  const count = formatCounts[fmt.id] ?? 0;
+                  const isSelected = formatFilter === fmt.id;
+                  return (
+                    <DropdownMenuItem
+                      key={fmt.id}
+                      onSelect={() => {
+                        playGummyTap();
+                        setFormatFilter(fmt.id);
+                        const params = new URLSearchParams(searchParams.toString());
+                        if (fmt.id === 'all') params.delete('format');
+                        else params.set('format', fmt.id);
+                        router.push(`?${params.toString()}`, { scroll: false });
+                      }}
+                      onClick={() => {
+                        playGummyTap();
+                        setFormatFilter(fmt.id);
+                        const params = new URLSearchParams(searchParams.toString());
+                        if (fmt.id === 'all') params.delete('format');
+                        else params.set('format', fmt.id);
+                        router.push(`?${params.toString()}`, { scroll: false });
+                      }}
+                      className={cn(
+                        "flex items-center justify-between px-2.5 py-1.5 rounded-lg text-xs font-semibold cursor-pointer transition-colors outline-none",
+                        isSelected ? "bg-white/15 text-white font-bold" : "text-zinc-400 hover:text-white hover:bg-white/10"
+                      )}
+                    >
+                      <span>{fmt.label}</span>
+                      <span className="text-[10px] font-mono text-zinc-500">{count}</span>
+                    </DropdownMenuItem>
+                  );
+                })}
+              </DropdownMenuContent>
+            </DropdownMenu>
+
+            {/* 3. Search Bar in same row */}
+            <div className="relative min-w-[130px] flex-1">
+              <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 text-zinc-500" size={13} />
+              <Input
+                placeholder="Filter by title..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="bg-white/[0.03] border-white/10 pl-7 pr-7 h-8 rounded-xl focus:border-white/30 text-xs text-white placeholder:text-zinc-600 outline-none w-full"
+              />
+              {searchQuery && (
+                <button
+                  type="button"
+                  onClick={() => setSearchQuery('')}
+                  className="absolute right-2 top-1/2 -translate-y-1/2 text-zinc-500 hover:text-white outline-none"
+                >
+                  <X size={12} />
+                </button>
+              )}
+            </div>
+
+            {/* 4. Sort Selector in same row */}
+            <Select value={sortOption} onValueChange={setSortOption}>
+              <SelectTrigger className="w-24 sm:w-28 bg-white/[0.03] border-white/10 h-8 rounded-xl text-[11px] font-bold text-zinc-300 outline-none shrink-0">
+                <SelectValue placeholder="Sort by" />
+              </SelectTrigger>
+              <SelectContent className="bg-zinc-950 border-white/10 text-white rounded-xl text-xs z-50 outline-none">
+                <SelectItem value="updated_at">Recent</SelectItem>
+                <SelectItem value="score">Rating</SelectItem>
+                <SelectItem value="title">Alphabetical</SelectItem>
+                <SelectItem value="progress">Progress</SelectItem>
+              </SelectContent>
+            </Select>
+
+            {/* 5. View Modes in same row */}
+            <div className="flex items-center bg-white/[0.03] rounded-xl border border-white/10 p-0.5 shrink-0">
+              <button
+                type="button"
+                onClick={() => { playGummyTap(); setViewMode('grid'); }}
+                title="Grid view"
+                className={cn(
+                  "p-1.5 rounded-lg transition-colors outline-none",
+                  viewMode === 'grid' ? "bg-white text-black shadow-sm" : "text-zinc-500 hover:text-white"
+                )}
+              >
+                <PuffedGrid size={13} />
+              </button>
+              <button
+                type="button"
+                onClick={() => { playGummyTap(); setViewMode('list'); }}
+                title="List view"
+                className={cn(
+                  "p-1.5 rounded-lg transition-colors outline-none",
+                  viewMode === 'list' ? "bg-white text-black shadow-sm" : "text-zinc-500 hover:text-white"
+                )}
+              >
+                <PuffedList size={13} />
+              </button>
+              <button
+                type="button"
+                onClick={() => { playGummyTap(); setViewMode('compact'); }}
+                title="Compact view"
+                className={cn(
+                  "p-1.5 rounded-lg transition-colors outline-none",
+                  viewMode === 'compact' ? "bg-white text-black shadow-sm" : "text-zinc-500 hover:text-white"
+                )}
+              >
+                <PuffedCompact size={13} />
+              </button>
+            </div>
+          </div>
         </div>
 
         {/* ─── CONTENT GRID / LIST / COMPACT ─── */}
@@ -801,16 +995,6 @@ function WatchlistContent() {
                               onClick={(id, episodeId, type) => router.push(getWatchRoute(id, episodeId, item.media_type || type))}
                             />
                             <div className="absolute top-2.5 right-2.5 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col gap-1 z-30">
-                              <button
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  handleOpenIntel(item.anime_id, item.title, item.poster);
-                                }}
-                                title="Anime Intel"
-                                className="w-7 h-7 rounded-full bg-black/70 hover:bg-white text-zinc-300 hover:text-black border border-white/20 flex items-center justify-center backdrop-blur-md transition-all"
-                              >
-                                <PuffedInfo size={12} />
-                              </button>
                               <button
                                 onClick={() => handleRemove(item.anime_id, true)}
                                 className="w-7 h-7 rounded-full bg-black/70 hover:bg-white text-zinc-300 hover:text-black border border-white/20 flex items-center justify-center backdrop-blur-md transition-all"
@@ -895,14 +1079,6 @@ function WatchlistContent() {
                               >
                                 <PuffedPlay size={11} />
                                 <span className="hidden sm:inline">Resume</span>
-                              </button>
-
-                              <button 
-                                onClick={() => handleOpenIntel(item.anime_id, item.title, item.poster)}
-                                title="Intel Dossier"
-                                className="p-2 rounded-xl text-zinc-500 hover:text-white hover:bg-white/10 transition-colors"
-                              >
-                                <PuffedInfo size={14} />
                               </button>
 
                               <button

@@ -2,7 +2,13 @@
 
 import React, { useId } from 'react';
 
-const ShadowLogo = ({ size = "w-8 h-8" }: { size?: string }) => {
+const ShadowLogo = ({ 
+    size = "w-8 h-8",
+    spinDuration = "11s"
+}: { 
+    size?: string;
+    spinDuration?: string;
+}) => {
     const rawId = useId();
     const id = rawId.replace(/:/g, '_');
 
@@ -26,6 +32,7 @@ const ShadowLogo = ({ size = "w-8 h-8" }: { size?: string }) => {
                     85% { opacity: 0.1; transform: rotate(8deg) scale(0.93) scaleX(-1); }
                     90% { opacity: 0.9; transform: rotate(-3deg) scale(1.03) scaleX(-1); }
                     95% { opacity: 0; transform: rotate(0deg) scale(1) scaleX(-1); }
+                    29% { opacity: 0; }
                     100% { opacity: 0; }
                 }
                 @keyframes shadow-storm-flicker {
@@ -43,7 +50,9 @@ const ShadowLogo = ({ size = "w-8 h-8" }: { size?: string }) => {
                 <svg className="absolute w-0 h-0 pointer-events-none" aria-hidden="true">
                     <defs>
                         <filter id={`tesla_lightning_${id}`} x="-30%" y="-30%" width="160%" height="160%">
-                            <feTurbulence type="fractalNoise" baseFrequency="0.09" numOctaves="3" result="noise" />
+                            <feTurbulence type="fractalNoise" baseFrequency="0.09" numOctaves="3" result="noise">
+                                <animate attributeName="baseFrequency" dur="0.25s" values="0.09;0.14;0.08;0.13;0.09" repeatCount="indefinite"/>
+                            </feTurbulence>
                             <feDisplacementMap in="SourceGraphic" in2="noise" scale="18" xChannelSelector="R" yChannelSelector="G" />
                         </filter>
 
@@ -85,7 +94,7 @@ const ShadowLogo = ({ size = "w-8 h-8" }: { size?: string }) => {
                     viewBox="0 0 32 32" 
                     className="w-full h-full overflow-visible"
                     style={{ 
-                        animation: 'shadow-logo-spin 11s linear infinite',
+                        animation: `shadow-logo-spin ${spinDuration} linear infinite`,
                         filter: 'drop-shadow(0 2px 6px rgba(124, 58, 237, 0.45))'
                     }}
                 >
@@ -138,14 +147,15 @@ const ShadowLogo = ({ size = "w-8 h-8" }: { size?: string }) => {
                         className="absolute inset-0 w-full h-full pointer-events-none overflow-visible opacity-0"
                         style={{ animation: 'shadow-lightning-flash-1 2.1s infinite' }}
                     >
-                        <path 
-                            d="M8,22 L32,38 L42,12 L68,46 L94,24" 
-                            fill="none" 
-                            stroke="#ffffff" 
-                            strokeWidth="1.8" 
-                            filter={`url(#tesla_lightning_${id})`} 
-                            style={{ filter: 'drop-shadow(0 0 4px #c084fc) drop-shadow(0 0 2px #ffffff)' }} 
-                        />
+                        <g style={{ filter: 'drop-shadow(0 0 4px #c084fc) drop-shadow(0 0 2px #ffffff)' }}>
+                            <path 
+                                d="M8,22 L32,38 L42,12 L68,46 L94,24" 
+                                fill="none" 
+                                stroke="#ffffff" 
+                                strokeWidth="1.8" 
+                                filter={`url(#tesla_lightning_${id})`} 
+                            />
+                        </g>
                     </svg>
 
                     {/* Electric Arc 2: Sky Cyan & Purple Spark */}
@@ -154,14 +164,15 @@ const ShadowLogo = ({ size = "w-8 h-8" }: { size?: string }) => {
                         className="absolute inset-0 w-full h-full pointer-events-none overflow-visible opacity-0"
                         style={{ animation: 'shadow-lightning-flash-2 2.7s infinite 0.5s' }}
                     >
-                        <path 
-                            d="M12,82 L38,62 L30,36 L64,22 L86,10" 
-                            fill="none" 
-                            stroke="#c084fc" 
-                            strokeWidth="1.8" 
-                            filter={`url(#tesla_lightning_${id})`} 
-                            style={{ filter: 'drop-shadow(0 0 5px #7c3aed)' }} 
-                        />
+                        <g style={{ filter: 'drop-shadow(0 0 5px #7c3aed)' }}>
+                            <path 
+                                d="M12,82 L38,62 L30,36 L64,22 L86,10" 
+                                fill="none" 
+                                stroke="#c084fc" 
+                                strokeWidth="1.8" 
+                                filter={`url(#tesla_lightning_${id})`} 
+                            />
+                        </g>
                     </svg>
                 </div>
             </div>

@@ -46,3 +46,27 @@ export const processImage = (file: File): Promise<File> => {
     reader.onerror = (error) => reject(error);
   });
 };
+
+/**
+ * Safely resolves post image URLs.
+ * Free image hosts like ImgBB (i.ibb.co) regularly block direct hotlinking from browsers,
+ * returning 503 or CORS errors. Routing them through wsrv.nl (Cloudflare-backed image proxy)
+ * guarantees fast, reliable global caching, CORS bypass, and 100% uptime.
+ */
+export function getOptimizedImageUrl(rawUrl: string | undefined | null): string {
+  if (!rawUrl || typeof rawUrl !== 'string') return '';
+  const trimmed = rawUrl.trim();
+  if (!trimmed) return '';
+  
+  // If already proxied, return as-is
+  if (trimmed.startsWith('https://wsrv.nl/') || trimmed.startsWith('https://images.weserv.nl/')) {
+    return trimmed;
+  }
+  
+  // Known hosts with aggressive hotlink restrictions or 503 errors
+  if (trimmed.includes('i.ibb.co') || trimmed.includes('ibb.co')) {
+    return `https://wsrv.nl/?url=${encodeURIComponent(trimmed)}`;
+  }
+  
+  return trimmed;
+}

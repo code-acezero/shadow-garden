@@ -1,10 +1,10 @@
 'use client';
 
 import React, { useEffect, useState } from 'react';
-import { RotateCcw, Home, Heart, ChevronDown, ChevronUp, Cpu, Smile } from 'lucide-react';
+import { RotateCcw, Home, ChevronDown, ChevronUp, AlertCircle } from 'lucide-react';
 import Link from 'next/link';
 import { motion, AnimatePresence } from 'framer-motion';
-import PageMascot from '@/components/Mascot/PageMascot';
+import PageMascot, { MascotReaction } from '@/components/Mascot/PageMascot';
 import { playGummyPop, playGummyTap } from '@/lib/audioManager';
 
 export default function Error({
@@ -15,15 +15,39 @@ export default function Error({
   reset: () => void;
 }) {
   const [showDetails, setShowDetails] = useState(false);
-  const [boopCount, setBoopCount] = useState(0);
+  const [mascotPaths, setMascotPaths] = useState({
+    directions: '/mascots/fox-directions.webp',
+    reactions: '/mascots/fox-reactions.webp',
+  });
 
   useEffect(() => {
     console.error("Shadow Garden error caught:", error);
+    try {
+      if (typeof window !== 'undefined') {
+        const stored = localStorage.getItem('shadow_mascot_character');
+        if (stored) {
+          const char = JSON.parse(stored);
+          if (char?.id) {
+            setMascotPaths({
+              directions: `/mascots/${char.id}-directions.webp`,
+              reactions: `/mascots/${char.id}-reactions.webp`,
+            });
+          }
+        }
+      }
+    } catch (_) {}
   }, [error]);
 
-  const handleBoop = () => {
+  useEffect(() => {
+    const orig = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return () => {
+      document.body.style.overflow = orig;
+    };
+  }, []);
+
+  const handleBoop = (info: { count: number; reaction: MascotReaction | null; isDizzy: boolean }) => {
     playGummyPop();
-    setBoopCount(c => c + 1);
   };
 
   const handleRetry = () => {
@@ -32,123 +56,100 @@ export default function Error({
   };
 
   return (
-    <div className="min-h-screen w-full flex items-center justify-center p-4 sm:p-6 bg-[#050508] text-white select-none relative overflow-hidden">
+    <div className="fixed inset-0 z-40 w-full h-[100dvh] max-h-[100dvh] flex flex-col items-center justify-center p-4 sm:p-6 bg-[#050508] text-white select-none overflow-hidden">
       {/* Soft Ambient Background Glow */}
-      <div className="absolute top-1/4 left-1/2 -translate-x-1/2 w-[500px] h-[350px] bg-purple-600/10 rounded-full blur-[120px] pointer-events-none" />
-      <div className="absolute bottom-1/4 left-1/2 -translate-x-1/2 w-[400px] h-[250px] bg-rose-500/10 rounded-full blur-[100px] pointer-events-none" />
+      <div className="absolute top-1/4 left-1/2 -translate-x-1/2 w-[520px] h-[300px] bg-purple-600/10 rounded-full blur-[140px] pointer-events-none" />
+      <div className="absolute bottom-1/4 left-1/2 -translate-x-1/2 w-[440px] h-[220px] bg-cyan-500/10 rounded-full blur-[120px] pointer-events-none" />
 
+      {/* Main Wide Layout — No Containers, Clean, Airy */}
       <motion.div 
-        initial={{ opacity: 0, y: 16, scale: 0.96 }}
-        animate={{ opacity: 1, y: 0, scale: 1 }}
-        transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
-        className="max-w-md w-full flex flex-col items-center text-center relative z-10"
+        initial={{ opacity: 0, y: 12 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.45, ease: [0.16, 1, 0.3, 1] }}
+        className="w-full max-w-xl flex flex-col items-center text-center relative z-10 px-4"
       >
-        {/* Cute Mascot Pedestal with Speech Bubble */}
-        <div className="relative mb-3 flex flex-col items-center">
-          {/* Speech Bubble */}
-          <motion.div
-            initial={{ opacity: 0, y: -6, scale: 0.9 }}
-            animate={{ opacity: 1, y: 0, scale: 1 }}
-            transition={{ delay: 0.2 }}
-            className="mb-2 px-3.5 py-1.5 rounded-2xl bg-white/10 border border-white/15 backdrop-blur-md text-[11px] font-bold text-purple-200 shadow-lg flex items-center gap-1.5"
-          >
-            <Heart size={12} className="text-rose-400 fill-rose-400/40" />
-            <span>
-              {boopCount > 3 ? "Nyaa~! Full mana restored! Tap retry!" : "Gomen ne, Master! Mana stream tripped!"}
-            </span>
-          </motion.div>
-
-          {/* Interactive Mascot in Frosted Aura */}
-          <div className="relative group cursor-pointer">
-            <div className="absolute inset-0 rounded-full bg-gradient-to-tr from-purple-500/20 to-rose-500/20 blur-xl group-hover:scale-110 transition-transform duration-500" />
-            <div className="relative w-28 h-28 rounded-full bg-white/[0.04] border border-white/10 backdrop-blur-md flex items-center justify-center shadow-xl group-hover:border-purple-400/40 transition-colors">
-              <PageMascot
-                directions="/mascots/cat/directions.webp"
-                reactions="/mascots/cat/reactions.webp"
-                size={80}
-                onBoop={handleBoop}
-                enableSound={true}
-                className="transform-gpu transition-transform active:scale-90"
-              />
-            </div>
-            {/* Boop Hint */}
-            <span className="absolute -bottom-1 left-1/2 -translate-x-1/2 text-[9px] font-black uppercase tracking-wider text-purple-300/70 bg-[#0c0a14] px-2 py-0.5 rounded-full border border-purple-500/30 whitespace-nowrap">
-              {boopCount > 0 ? `Booped x${boopCount}!` : "Tap to Boop"}
-            </span>
+        {/* Interactive Pet (Height-optimized) */}
+        <div className="relative mb-3 sm:mb-4 flex flex-col items-center">
+          <div className="transform-gpu hover:scale-105 active:scale-95 transition-transform duration-300 cursor-pointer">
+            <PageMascot
+              directions={mascotPaths.directions}
+              reactions={mascotPaths.reactions}
+              size={120}
+              onBoop={handleBoop}
+              enableSound={true}
+              className="select-none"
+            />
           </div>
         </div>
 
-        {/* Cute Badge */}
-        <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-purple-500/10 border border-purple-500/25 text-[10px] font-black uppercase tracking-widest text-purple-300 mb-3 shadow-sm">
-          <Smile size={12} className="text-purple-400" />
-          <span>(｡•́︿•̀｡) Spell Disrupted</span>
-        </div>
-
-        {/* Playful Cute Heading */}
-        <h1 className="text-2xl sm:text-3xl font-black text-white tracking-wide uppercase font-lemon mb-2">
-          Something <span className="text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-rose-400">Tripped Over!</span>
+        {/* Clean, Professional Title & Typography */}
+        <h1 className="text-xl sm:text-2xl md:text-3xl font-bold tracking-tight text-white mb-2">
+          Something went wrong
         </h1>
 
-        {/* Soft Description */}
-        <p className="text-zinc-400 text-xs sm:text-sm mb-6 max-w-sm leading-relaxed">
-          The magic circuits got a little tangled up. Don&apos;t worry, your anime sanctuary is safe! Cast heal below to refresh the realm.
+        <p className="text-zinc-400 text-xs sm:text-sm max-w-md mx-auto mb-5 sm:mb-6 leading-relaxed">
+          An unexpected issue occurred while loading this page. You can try reloading or return to the sanctuary feed.
         </p>
 
-        {/* Action Buttons */}
-        <div className="flex flex-col sm:flex-row items-center gap-2.5 w-full justify-center mb-4">
-          <motion.button
-            whileHover={{ scale: 1.03 }}
-            whileTap={{ scale: 0.95 }}
+        {/* Refined Flat Action Buttons */}
+        <div className="flex flex-row items-center gap-3 justify-center mb-4 sm:mb-5">
+          <button
+            type="button"
             onClick={handleRetry}
-            className="w-full sm:w-auto py-2.5 px-6 rounded-full bg-gradient-to-r from-purple-600 to-rose-600 hover:from-purple-500 hover:to-rose-500 text-white font-black text-xs tracking-wider uppercase shadow-[0_0_24px_rgba(168,85,247,0.35)] cursor-pointer flex items-center justify-center gap-2 transition-all border border-purple-400/30"
+            className="h-10 px-5 sm:px-6 rounded-xl bg-white hover:bg-zinc-200 active:scale-95 text-black font-semibold text-xs sm:text-sm transition-all flex items-center justify-center gap-2 cursor-pointer shadow-sm"
           >
-            <RotateCcw size={14} className="animate-spin-slow" />
-            <span>Cast Heal & Retry</span>
-          </motion.button>
+            <RotateCcw size={15} />
+            <span>Try Again</span>
+          </button>
 
           <Link
             href="/home"
             onClick={() => playGummyTap()}
-            className="w-full sm:w-auto py-2.5 px-6 rounded-full bg-white/5 hover:bg-white/10 border border-white/10 hover:border-white/20 text-zinc-300 hover:text-white font-bold text-xs tracking-wider uppercase transition-all cursor-pointer flex items-center justify-center gap-2 active:scale-95"
+            className="h-10 px-5 sm:px-6 rounded-xl bg-[#1c1c1f] hover:bg-[#28282b] border border-white/10 active:scale-95 text-zinc-300 hover:text-white font-semibold text-xs sm:text-sm transition-all flex items-center justify-center gap-2 cursor-pointer"
           >
-            <Home size={14} className="text-zinc-400" />
+            <Home size={15} />
             <span>Sanctuary Home</span>
           </Link>
         </div>
 
-        {/* Technical Spell Diagnostics Toggle */}
-        <div className="w-full max-w-sm">
-          <button
-            type="button"
-            onClick={() => setShowDetails(!showDetails)}
-            className="text-[10px] font-bold tracking-wider uppercase text-zinc-500 hover:text-zinc-300 transition-colors inline-flex items-center gap-1 cursor-pointer py-1"
-          >
-            <Cpu size={11} />
-            <span>Spell Diagnostics</span>
-            {showDetails ? <ChevronUp size={11} /> : <ChevronDown size={11} />}
-          </button>
+        {/* Collapsible Error Diagnostics (Contained scroll, zero page expansion) */}
+        {error && (
+          <div className="w-full max-w-md">
+            <button
+              type="button"
+              onClick={() => setShowDetails(!showDetails)}
+              className="text-[11px] text-zinc-500 hover:text-zinc-300 transition-colors inline-flex items-center gap-1.5 cursor-pointer py-1"
+            >
+              <AlertCircle size={13} />
+              <span>Technical details</span>
+              {showDetails ? <ChevronUp size={13} /> : <ChevronDown size={13} />}
+            </button>
 
-          <AnimatePresence>
-            {showDetails && (
-              <motion.div
-                initial={{ opacity: 0, height: 0 }}
-                animate={{ opacity: 1, height: 'auto' }}
-                exit={{ opacity: 0, height: 0 }}
-                className="overflow-hidden mt-2 text-left"
-              >
-                <div className="p-3 rounded-xl bg-black/60 border border-white/10 font-mono text-[11px] text-zinc-400 break-words leading-relaxed">
-                  <div className="text-rose-400 font-bold mb-1">Error Trace:</div>
-                  <div className="text-zinc-300">{error?.message || 'Unknown spell interruption'}</div>
-                  {error?.digest && (
-                    <div className="text-zinc-500 mt-1.5 text-[10px]">
-                      Digest: {error.digest}
-                    </div>
-                  )}
-                </div>
-              </motion.div>
-            )}
-          </AnimatePresence>
-        </div>
+            <AnimatePresence>
+              {showDetails && (
+                <motion.div
+                  initial={{ opacity: 0, height: 0 }}
+                  animate={{ opacity: 1, height: 'auto' }}
+                  exit={{ opacity: 0, height: 0 }}
+                  className="overflow-hidden mt-2 text-left"
+                >
+                  <div className="p-3 rounded-xl bg-black/70 border border-zinc-800 font-mono text-[11px] text-zinc-400 break-words leading-relaxed select-text max-h-24 sm:max-h-32 overflow-y-auto">
+                    {error.message && (
+                      <p className="text-rose-400 mb-1 font-semibold">
+                        {error.message}
+                      </p>
+                    )}
+                    {error.digest && (
+                      <p className="text-zinc-500 text-[10px]">
+                        Digest: {error.digest}
+                      </p>
+                    )}
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </div>
+        )}
       </motion.div>
     </div>
   );

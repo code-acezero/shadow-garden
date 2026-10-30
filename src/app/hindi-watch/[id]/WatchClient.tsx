@@ -16,6 +16,7 @@ import {
 } from 'lucide-react';
 
 import { AnimeService, UniversalAnime } from '@/lib/api';
+import { useJellyFlip } from '@/lib/useJellyFlip';
 import { hpi } from '@/lib/hpi';
 import { cn, getSimilarity, isRelatedAnime, getChunkLabel, formatAnimeTitle, sanitizeContinueWatchingEntry, getSafeImageUrl } from '@/lib/utils';
 import { supabase } from '@/lib/supabase';
@@ -182,7 +183,7 @@ PingPongScroll.displayName = "PingPongScroll";
 
 const EpisodeButton = memo(({ ep, isCurrent, isFullyPlayed, percent, viewMode, onClick, category, progressRef, playerRef }: any) => {
     const [realPercent, setRealPercent] = useState(percent);
-    
+
     useEffect(() => {
         setRealPercent(percent);
     }, [percent]);
@@ -207,23 +208,15 @@ const EpisodeButton = memo(({ ep, isCurrent, isFullyPlayed, percent, viewMode, o
     const displayPercent = isCurrent ? realPercent : percent;
 
     return (
-        <motion.button
-            layout
-            layoutId={`ep-tile-hi-${ep.id}`}
-            initial={{ opacity: 0, scale: 0.95 }}
-            animate={{ opacity: 1, scale: isCurrent ? 1.05 : 1 }}
-            exit={{ opacity: 0, scale: 0.95 }}
-            transition={{
-                layout: { type: "spring", stiffness: 350, damping: 30 },
-                scale: { type: "spring", stiffness: 300, damping: 25 },
-                opacity: { duration: 0.2 }
-            }}
+        <button
+            type="button"
+            data-flip-id={ep.id}
             onClick={() => onClick(ep.id)}
             className={cn(
-                "relative overflow-hidden group border transition-all duration-300 transform-gpu shadow-[0_4px_16px_rgba(0,0,0,0.2)]",
+                "relative overflow-hidden group border select-none transition-colors duration-200 transform-gpu active:scale-95 hover:scale-[1.03] shadow-[0_4px_16px_rgba(0,0,0,0.2)]",
                 viewMode === 'grid' ? "h-8 sm:h-9 w-full rounded-full flex items-center justify-center text-[10px] sm:text-[11px] font-black" :
-                viewMode === 'compact' ? "h-7 sm:h-8 aspect-square rounded-full flex items-center justify-center text-[9px] font-bold" :
-                "w-[98%] mx-auto h-8 sm:h-9 rounded-full flex items-center px-3 sm:px-4 text-[10px] sm:text-[11px] font-bold text-left",
+                viewMode === 'compact' ? "h-7 sm:h-8 w-full aspect-square rounded-full flex items-center justify-center text-[9px] font-bold" :
+                "w-full h-8 sm:h-9 rounded-2xl flex items-center px-3 sm:px-4 text-[10px] sm:text-[11px] font-bold text-left",
                 isCurrent ? "bg-green-950/40 backdrop-blur-md border-green-400 text-white ring-1 ring-green-400/50 shadow-[inset_0_0_15px_rgba(74,222,128,0.25),0_0_20px_rgba(34,197,94,0.4)] z-20" :
                 isFullyPlayed ? "border border-red-500/60 text-white shadow-[inset_0_0_25px_rgba(220,38,38,0.8)] drop-shadow-[0_0_10px_rgba(220,38,38,0.5)] overflow-hidden" :
                 "bg-white/5 backdrop-blur-xl border-white/10 text-zinc-400 hover:border-white/30 hover:bg-white/10 hover:text-white hover:shadow-[0_0_15px_rgba(255,255,255,0.15)]"
@@ -241,19 +234,16 @@ const EpisodeButton = memo(({ ep, isCurrent, isFullyPlayed, percent, viewMode, o
             {!isCurrent && !isFullyPlayed && displayPercent > 0 && <div className="absolute inset-0 bg-orange-600/10 animate-liquid pointer-events-none" />}
             
             {isCurrent && (
-                <motion.div 
-                    className="absolute bottom-0 left-0 h-full bg-green-500/35 overflow-hidden pointer-events-none rounded-r-2xl border-r border-green-300/50 shadow-[4px_0_15px_rgba(74,222,128,0.5)] backdrop-blur-sm"
-                    initial={{ width: '4%' }}
-                    animate={{ width: `${Math.max(4, displayPercent)}%` }}
-                    transition={{ ease: "linear", duration: 0.15 }}
+                <div 
+                    className="absolute bottom-0 left-0 h-full bg-green-500/35 overflow-hidden pointer-events-none rounded-r-2xl border-r border-green-300/50 shadow-[4px_0_15px_rgba(74,222,128,0.5)] backdrop-blur-sm transition-all duration-150"
+                    style={{ width: `${Math.max(4, displayPercent)}%` }}
                 >
                     <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-green-300/30 via-transparent to-transparent opacity-80" />
                     <div className="absolute top-0 right-0 bottom-0 w-8 bg-gradient-to-l from-green-300/40 to-transparent" />
                     <div className="absolute top-0 left-0 w-full h-[2px] bg-green-300/70 shadow-[0_0_5px_rgba(134,239,172,0.8)]" />
-                </motion.div>
+                </div>
             )}
 
-            {/* Active Micro-Equalizer Indicator for Grid & Compact Modes */}
             {isCurrent && (viewMode === 'grid' || viewMode === 'compact') && (
                 <span className="absolute top-1 right-1.5 flex items-end gap-[1.5px] h-2 pointer-events-none z-20" aria-label="Now Playing">
                     <span className="w-[1.5px] bg-green-300 rounded-full animate-[audio-bar-1_0.8s_ease-in-out_infinite]" />
@@ -262,14 +252,18 @@ const EpisodeButton = memo(({ ep, isCurrent, isFullyPlayed, percent, viewMode, o
                 </span>
             )}
 
-            <div className={cn("truncate relative z-10 w-full flex items-center font-lemon tracking-wide", viewMode === 'list' ? "justify-between" : "justify-center")}>
-                <span className="truncate">
-                    {viewMode === 'list' ? `${ep.number}. ${ep.title}` : ep.number}
-                </span>
+            <div className={cn("relative z-10 w-full h-full flex items-center font-lemon tracking-wide overflow-hidden", viewMode === 'list' ? "justify-between" : "justify-center")}>
+                <div className="flex items-center gap-2 min-w-0 truncate">
+                    <span className="shrink-0 font-bold">{ep.number}</span>
+                    {viewMode === 'list' && (
+                        <span className="truncate text-[11px] font-sans font-medium text-zinc-300 transition-opacity duration-200">
+                            {ep.title && !ep.title.toLowerCase().startsWith(`episode ${ep.number}`) ? `• ${ep.title}` : ''}
+                        </span>
+                    )}
+                </div>
 
-                {/* Active Playing Badge for List Mode */}
                 {isCurrent && viewMode === 'list' && (
-                    <span className="ml-2 inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-green-500/20 border border-green-400/50 text-[8px] font-black uppercase text-green-300 shadow-[0_0_10px_rgba(74,222,128,0.3)] shrink-0">
+                    <span className="ml-2 inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-green-500/20 border border-green-400/50 text-[8px] font-black uppercase text-green-300 shadow-[0_0_10px_rgba(74,222,128,0.3)] shrink-0 transition-transform duration-200">
                         <span className="inline-flex items-end gap-[1.5px] h-2">
                             <span className="w-[1.5px] bg-green-300 rounded-full animate-[audio-bar-1_0.8s_ease-in-out_infinite]" />
                             <span className="w-[1.5px] bg-green-300 rounded-full animate-[audio-bar-2_0.8s_ease-in-out_infinite]" />
@@ -279,7 +273,7 @@ const EpisodeButton = memo(({ ep, isCurrent, isFullyPlayed, percent, viewMode, o
                     </span>
                 )}
             </div>
-        </motion.button>
+        </button>
     );
 });
 EpisodeButton.displayName = "EpisodeButton";
@@ -869,6 +863,8 @@ function WatchContent() {
   const relatedRef = useDraggable();
   const recommendationsRef = useDraggable();
   const chunksRef = useDraggable();
+    const epContainerRef = useRef<HTMLDivElement>(null);
+    useJellyFlip(epViewMode, epContainerRef);
   const isProgrammaticServerUpdate = useRef(false);
 
   // --- HANDLERS (Hoisted) ---
@@ -1212,7 +1208,7 @@ function WatchContent() {
   }, [currentEpId, isLoadingInfo, anime]);
 
   // Chunk Auto-Select
-  const chunkSize = epViewMode === 'compact' ? 100 : 50;
+  const chunkSize = 50;
   useEffect(() => {
       if (!currentEpId || !anime) return;
       const index = anime.episodes.findIndex(e => e.id === currentEpId);
@@ -1833,7 +1829,7 @@ function WatchContent() {
       <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.8 }} className={cn("w-full flex flex-col items-center relative px-4 pt-0 mt-0 z-10")}>
         <div onClick={() => updateSetting('dimMode', false)} className={cn("fixed inset-0 bg-black/95 transition-opacity duration-500 will-change-[opacity]", settings.dimMode ? 'opacity-100 pointer-events-auto cursor-pointer z-[40]' : 'opacity-0 pointer-events-none z-[40]')} />
         <div className="w-full flex flex-col xl:grid xl:grid-cols-12 gap-8 xl:items-stretch">
-            <div className="xl:col-span-8 w-full flex flex-col justify-between gap-2 order-1">
+            <div className="xl:col-span-8 w-full flex flex-col justify-start gap-3 order-1">
                 <div 
                     ref={playerContainerRef} 
                     tabIndex={0} 
@@ -2118,40 +2114,28 @@ function WatchContent() {
                 </div>
 
                 {/* ATRAX-UI MOBILE CONTROLS */}
-                <div className={cn("flex lg:hidden w-full bg-[#0c1322] border border-white/[0.12] rounded-[28px] shadow-[0_16px_40px_rgba(0,0,0,0.7),inset_0_1px_1px_rgba(255,255,255,0.12)] px-3 py-3 flex-col gap-2.5 overflow-hidden mt-3 transition-all duration-500", settings.dimMode ? "z-[96] relative" : "relative z-10")}>
-                    {/* Row 1: Playback Navigation & Automation Toggles */}
+                <div className={cn("flex lg:hidden w-full bg-[#0c1322] border border-white/[0.10] rounded-[26px] shadow-[0_16px_40px_rgba(0,0,0,0.7)] px-3 py-2.5 flex-col gap-2 overflow-hidden mt-3 transition-all duration-500", settings.dimMode ? "z-[96] relative" : "relative z-10")}>
+                    {/* Row 1: Playback Navigation & Automation Toggles (Monet Material Tonal Pills - No Dots) */}
                     <div className="flex w-full justify-between items-center gap-1.5">
-                        <button disabled={!prevEpisode} onClick={() => prevEpisode && handleEpisodeClick(prevEpisode.id)} className="flex-1 bg-[#141d30] h-8 sm:h-9 rounded-full border border-white/10 flex items-center justify-center text-zinc-300 hover:text-white active:scale-95 disabled:opacity-30 disabled:pointer-events-none transition-all atrax-bubbly-btn atrax-squish-tap" title="Previous Episode"><SkipBack size={13}/></button>
-                        <button onClick={() => updateSetting('autoSkip', !settings.autoSkip)} className={cn("flex-1 h-8 sm:h-9 rounded-full border flex items-center justify-center transition-all relative active:scale-95 atrax-bubbly-btn atrax-squish-tap", settings.autoSkip ? "bg-amber-500/20 border-amber-500/60 text-amber-400 shadow-[0_0_12px_rgba(251,191,36,0.25)]" : "bg-[#141d30] border-white/10 text-zinc-400 hover:text-zinc-200")} title={`Auto Skip Intro: ${settings.autoSkip ? 'ON' : 'OFF'}`}>
-                            <div className="relative flex items-center justify-center">
-                                <FastForward size={13} className={cn("transition-transform", settings.autoSkip && "scale-110")} />
-                                <span className={cn("absolute -top-1 -right-1.5 w-1.5 h-1.5 rounded-full transition-all", settings.autoSkip ? "bg-amber-400 shadow-[0_0_6px_rgba(251,191,36,1)] animate-pulse" : "bg-zinc-600/40")} />
-                            </div>
+                        <button disabled={!prevEpisode} onClick={() => prevEpisode && handleEpisodeClick(prevEpisode.id)} className="flex-1 h-8 sm:h-9 rounded-full border-0 bg-white/[0.06] hover:bg-white/10 flex items-center justify-center text-zinc-300 hover:text-white active:scale-95 disabled:opacity-30 disabled:pointer-events-none transition-all atrax-bubbly-btn atrax-squish-tap" title="Previous Episode"><SkipBack size={13}/></button>
+                        <button onClick={() => updateSetting('autoSkip', !settings.autoSkip)} className={cn("flex-1 h-8 sm:h-9 rounded-full border-0 flex items-center justify-center transition-all active:scale-95 atrax-bubbly-btn atrax-squish-tap", settings.autoSkip ? "bg-amber-400/20 text-amber-300 shadow-sm" : "bg-white/[0.06] hover:bg-white/10 text-zinc-400 hover:text-zinc-200")} title={`Auto Skip Intro: ${settings.autoSkip ? 'ON' : 'OFF'}`}>
+                            <FastForward size={13} className={cn("transition-transform", settings.autoSkip && "scale-110")} />
                         </button>
-                        <button onClick={() => updateSetting('autoSkipOutro', !(settings.autoSkipOutro ?? settings.autoSkip))} className={cn("flex-1 h-8 sm:h-9 rounded-full border flex items-center justify-center transition-all relative active:scale-95 atrax-bubbly-btn atrax-squish-tap", (settings.autoSkipOutro ?? settings.autoSkip) ? "bg-indigo-500/20 border-indigo-500/60 text-indigo-400 shadow-[0_0_12px_rgba(129,140,248,0.25)]" : "bg-[#141d30] border-white/10 text-zinc-400 hover:text-zinc-200")} title={`Auto Skip Outro: ${(settings.autoSkipOutro ?? settings.autoSkip) ? 'ON' : 'OFF'}`}>
-                            <div className="relative flex items-center justify-center">
-                                <SkipForward size={13} className={cn("transition-transform", (settings.autoSkipOutro ?? settings.autoSkip) && "scale-110")} />
-                                <span className={cn("absolute -top-1 -right-1.5 w-1.5 h-1.5 rounded-full transition-all", (settings.autoSkipOutro ?? settings.autoSkip) ? "bg-indigo-400 shadow-[0_0_6px_rgba(129,140,248,1)] animate-pulse" : "bg-zinc-600/40")} />
-                            </div>
+                        <button onClick={() => updateSetting('autoSkipOutro', !(settings.autoSkipOutro ?? settings.autoSkip))} className={cn("flex-1 h-8 sm:h-9 rounded-full border-0 flex items-center justify-center transition-all active:scale-95 atrax-bubbly-btn atrax-squish-tap", (settings.autoSkipOutro ?? settings.autoSkip) ? "bg-indigo-400/20 text-indigo-300 shadow-sm" : "bg-white/[0.06] hover:bg-white/10 text-zinc-400 hover:text-zinc-200")} title={`Auto Skip Outro: ${(settings.autoSkipOutro ?? settings.autoSkip) ? 'ON' : 'OFF'}`}>
+                            <SkipForward size={13} className={cn("transition-transform", (settings.autoSkipOutro ?? settings.autoSkip) && "scale-110")} />
                         </button>
-                        <button onClick={() => updateSetting('autoPlay', !settings.autoPlay)} className={cn("flex-1 h-8 sm:h-9 rounded-full border flex items-center justify-center transition-all relative active:scale-95 atrax-bubbly-btn atrax-squish-tap", settings.autoPlay ? "bg-orange-600/20 border-orange-500/60 text-orange-400 shadow-[0_0_12px_rgba(234,88,12,0.25)]" : "bg-[#141d30] border-white/10 text-zinc-400 hover:text-zinc-200")} title={`Auto Play: ${settings.autoPlay ? 'ON' : 'OFF'}`}>
-                            <div className="relative flex items-center justify-center">
-                                <PlayCircle size={13} className={cn("transition-transform", settings.autoPlay && "scale-110")} />
-                                <span className={cn("absolute -top-1 -right-1.5 w-1.5 h-1.5 rounded-full transition-all", settings.autoPlay ? "bg-orange-500 shadow-[0_0_6px_rgba(234,88,12,1)] animate-pulse" : "bg-zinc-600/40")} />
-                            </div>
+                        <button onClick={() => updateSetting('autoPlay', !settings.autoPlay)} className={cn("flex-1 h-8 sm:h-9 rounded-full border-0 flex items-center justify-center transition-all active:scale-95 atrax-bubbly-btn atrax-squish-tap", settings.autoPlay ? "bg-orange-500/20 text-orange-300 shadow-sm" : "bg-white/[0.06] hover:bg-white/10 text-zinc-400 hover:text-zinc-200")} title={`Auto Play: ${settings.autoPlay ? 'ON' : 'OFF'}`}>
+                            <PlayCircle size={13} className={cn("transition-transform", settings.autoPlay && "scale-110")} />
                         </button>
-                        <button onClick={() => updateSetting('autoNext', !settings.autoNext)} className={cn("flex-1 h-8 sm:h-9 rounded-full border flex items-center justify-center transition-all relative active:scale-95 atrax-bubbly-btn atrax-squish-tap", settings.autoNext ? "bg-orange-600/20 border-orange-500/60 text-orange-400 shadow-[0_0_12px_rgba(234,88,12,0.25)]" : "bg-[#141d30] border-white/10 text-zinc-400 hover:text-zinc-200")} title={`Auto Next Episode: ${settings.autoNext ? 'ON' : 'OFF'}`}>
-                            <div className="relative flex items-center justify-center">
-                                <StepForward size={13} className={cn("transition-transform", settings.autoNext && "scale-110")} />
-                                <span className={cn("absolute -top-1 -right-1.5 w-1.5 h-1.5 rounded-full transition-all", settings.autoNext ? "bg-orange-500 shadow-[0_0_6px_rgba(234,88,12,1)] animate-pulse" : "bg-zinc-600/40")} />
-                            </div>
+                        <button onClick={() => updateSetting('autoNext', !settings.autoNext)} className={cn("flex-1 h-8 sm:h-9 rounded-full border-0 flex items-center justify-center transition-all active:scale-95 atrax-bubbly-btn atrax-squish-tap", settings.autoNext ? "bg-orange-500/20 text-orange-300 shadow-sm" : "bg-white/[0.06] hover:bg-white/10 text-zinc-400 hover:text-zinc-200")} title={`Auto Next Episode: ${settings.autoNext ? 'ON' : 'OFF'}`}>
+                            <StepForward size={13} className={cn("transition-transform", settings.autoNext && "scale-110")} />
                         </button>
-                        <button disabled={!nextEpisode} onClick={() => nextEpisode && handleEpisodeClick(nextEpisode.id)} className="flex-1 bg-[#141d30] h-8 sm:h-9 rounded-full border border-white/10 flex items-center justify-center text-zinc-300 hover:text-white active:scale-95 disabled:opacity-30 disabled:pointer-events-none transition-all atrax-bubbly-btn atrax-squish-tap" title="Next Episode"><SkipForward size={13}/></button>
+                        <button disabled={!nextEpisode} onClick={() => nextEpisode && handleEpisodeClick(nextEpisode.id)} className="flex-1 h-8 sm:h-9 rounded-full border-0 bg-white/[0.06] hover:bg-white/10 flex items-center justify-center text-zinc-300 hover:text-white active:scale-95 disabled:opacity-30 disabled:pointer-events-none transition-all atrax-bubbly-btn atrax-squish-tap" title="Next Episode"><SkipForward size={13}/></button>
                     </div>
 
-                    {/* Row 2: Category selection & Theater Dim Mode */}
+                    {/* Row 2: Category selection & Server Menu */}
                     <div className="flex w-full items-center gap-2">
-                        <div className="flex bg-[#090e18] rounded-full p-1 border border-white/[0.08] shadow-inner flex-1 justify-center relative">
+                        <div className="flex bg-black/40 rounded-full p-1 border border-white/[0.06] flex-1 min-w-0 justify-center relative">
                             {(['sub', 'dub', 'raw'] as const).map((cat) => {
                                 const isAvailable = (servers?.[cat]?.length || 0) > 0;
                                 const isCurrent = settings.category === cat;
@@ -2199,23 +2183,11 @@ function WatchContent() {
                                 );
                             })}
                         </div>
-                        <Button onClick={() => updateSetting('dimMode', !settings.dimMode)} variant="ghost" size="icon" className={cn("rounded-full w-8 h-8 shrink-0 border atrax-bubbly-btn atrax-squish-tap", settings.dimMode ? "text-yellow-400 bg-yellow-500/15 border-yellow-500/40" : "text-zinc-400 bg-[#141d30] border-white/10")} title="Theater Dim Mode">
-                            <Lightbulb size={14} />
-                        </Button>
-                    </div>
 
-                    {/* Row 3: Now Playing Context & Schedule Timer */}
-                    <div className="flex w-full items-center gap-2">
-                        <div className="min-w-0 flex-1"><MarqueeTitle text={currentEpisode?.title ? `EP ${currentEpisode.number}: ${currentEpisode.title}` : `Episode ${currentEpisode?.number || '1'}`} /></div>
-                        <NextEpisodeTimer schedule={nextEpSchedule} status={anime.info.status} />
-                    </div>
-
-                    {/* Row 4: Server Selector & Actions */}
-                    <div className="flex w-full items-center justify-between gap-2 pt-1 border-t border-white/[0.08]">
                         {mounted ? (
                             <DropdownMenu modal={false}>
                                 <DropdownMenuTrigger asChild>
-                                    <Button variant="ghost" className="h-8 gap-1.5 text-[9px] font-black text-zinc-300 bg-[#141d30] rounded-full border border-white/10 px-3 flex-1 justify-between max-w-[170px] atrax-bubbly-btn atrax-squish-tap">
+                                    <Button variant="ghost" className="h-8 gap-1.5 text-[9px] font-black text-zinc-300 bg-white/[0.06] hover:bg-white/10 rounded-full border-0 px-3 shrink-0 justify-between max-w-[130px] sm:max-w-[150px] atrax-bubbly-btn atrax-squish-tap">
                                         <span className="flex items-center gap-1.5 truncate">
                                             <ServerIcon size={11} className="text-orange-500 shrink-0"/> 
                                             <span className="truncate">
@@ -2227,7 +2199,7 @@ function WatchContent() {
                                         <ChevronDown size={10} className="text-zinc-500 shrink-0" />
                                     </Button>
                                 </DropdownMenuTrigger>
-                                <DropdownMenuContent align="start" className="bg-[#0c1322] border border-white/15 rounded-[24px] p-1.5 shadow-[0_20px_50px_rgba(234,88,12,0.4),inset_0_1px_1px_rgba(255,255,255,0.12)] z-[70] min-w-[140px]">
+                                <DropdownMenuContent align="end" className="bg-[#0c1322] border border-white/15 rounded-[22px] p-1.5 shadow-[0_20px_50px_rgba(234,88,12,0.4)] z-[70] min-w-[140px]">
                                     <ScrollArea className="h-auto max-h-[160px]">
                                         <div className="flex flex-col gap-1">
                                             {servers?.[settings.category]?.map((srv: any, idx: number) => (
@@ -2247,18 +2219,24 @@ function WatchContent() {
                                 </DropdownMenuContent>
                             </DropdownMenu>
                         ) : (
-                            <Button variant="ghost" className="h-8 gap-1.5 text-[9px] font-black text-zinc-400 bg-[#141d30] rounded-full border border-white/10 px-2.5">
+                            <Button variant="ghost" className="h-8 gap-1.5 text-[9px] font-black text-zinc-400 bg-white/[0.06] rounded-full border-0 px-2.5 shrink-0">
                                 <ServerIcon size={11} className="text-orange-500 shrink-0"/> 
                                 <span>Server</span>
                             </Button>
                         )}
+                    </div>
+
+                    {/* Row 3: Watchlist, Download, Share, Room & Theater Bulb Mode */}
+                    <div className="flex w-full items-center justify-between gap-1.5">
+                        <div className="flex-1 min-w-0">
+                            <WatchListButton animeId={anime.id} animeTitle={anime.title} animeImage={anime.poster} currentEp={currentEpisode?.number} mediaType="hindi" totalEpisodes={anime.episodes?.length || 1} type={(anime as any).type || (anime.info as any)?.stats?.type || "TV"} />
+                        </div>
 
                         <div className="flex items-center gap-1.5 shrink-0">
-                            <WatchListButton animeId={anime.id} animeTitle={anime.title} animeImage={anime.poster} currentEp={currentEpisode?.number} mediaType="hindi" totalEpisodes={anime.episodes?.length || 1} type={(anime as any).type || (anime.info as any)?.stats?.type || "TV"} />
                             {currentEpId && (
                                 <Link
                                     href={`/download/hindi/${anime.id}?ep=${currentEpId}`}
-                                    className="w-8 h-8 rounded-full border border-white/10 bg-[#141d30] text-zinc-300 flex items-center justify-center transition-all hover:bg-orange-600 hover:border-orange-500 hover:text-white atrax-bubbly-btn atrax-squish-tap"
+                                    className="w-8 h-8 rounded-full border-0 bg-white/[0.06] hover:bg-white/10 text-zinc-300 hover:text-white flex items-center justify-center shrink-0 transition-all active:scale-95 atrax-bubbly-btn atrax-squish-tap"
                                     title="Download Episode"
                                 >
                                     <Download size={13} />
@@ -2266,26 +2244,45 @@ function WatchContent() {
                             )}
                             <button
                                 onClick={() => setShowShareModal(true)}
-                                className="w-8 h-8 rounded-full border border-white/10 bg-[#141d30] text-zinc-300 flex items-center justify-center transition-all hover:bg-orange-600 hover:border-orange-500 hover:text-white atrax-bubbly-btn atrax-squish-tap"
+                                className="w-8 h-8 rounded-full border-0 bg-white/[0.06] hover:bg-white/10 text-zinc-300 hover:text-white flex items-center justify-center shrink-0 transition-all active:scale-95 atrax-bubbly-btn atrax-squish-tap"
                                 title="Share Episode"
                             >
                                 <Share2 size={13} />
                             </button>
                             <button
                                 onClick={handleCreateWatchRoom}
-                                className="w-8 h-8 rounded-full border border-white/10 bg-[#141d30] text-zinc-300 flex items-center justify-center transition-all hover:bg-orange-600 hover:border-orange-500 hover:text-white atrax-bubbly-btn atrax-squish-tap"
+                                className="w-8 h-8 rounded-full border-0 bg-white/[0.06] hover:bg-white/10 text-zinc-300 hover:text-white flex items-center justify-center shrink-0 transition-all active:scale-95 atrax-bubbly-btn atrax-squish-tap"
                                 title="Create Watch Room"
                             >
                                 <Users size={13} />
                             </button>
+                            <Button
+                                onClick={() => updateSetting('dimMode', !settings.dimMode)}
+                                variant="ghost"
+                                size="icon"
+                                className={cn(
+                                    "rounded-full w-8 h-8 shrink-0 border-0 atrax-bubbly-btn atrax-squish-tap",
+                                    settings.dimMode ? "text-yellow-300 bg-yellow-400/20" : "text-zinc-400 bg-white/[0.06] hover:bg-white/10 hover:text-zinc-200"
+                                )}
+                                title="Theater Dim Mode"
+                            >
+                                <Lightbulb size={13} />
+                            </Button>
                         </div>
+                    </div>
+
+                    {/* Row 4: Now Playing Context & Schedule Timer */}
+                    <div className="flex w-full items-center justify-between gap-2 pt-1 border-t border-white/[0.06]">
+                        <div className="min-w-0 flex-1"><MarqueeTitle text={currentEpisode?.title ? `EP ${currentEpisode.number}: ${currentEpisode.title}` : `Episode ${currentEpisode?.number || '1'}`} /></div>
+                        <div className="shrink-0"><NextEpisodeTimer schedule={nextEpSchedule} status={anime.info.status} /></div>
                     </div>
                 </div>
             </motion.div>
             </div>
             
             {/* ATRAX-UI EPISODES SIDEBAR */}
-            <div className="xl:col-span-4 w-full h-full min-h-[420px] max-h-[520px] xl:max-h-none bg-[#0c1322] rounded-[32px] border border-white/[0.12] shadow-[0_16px_45px_rgba(0,0,0,0.7),inset_0_1px_1px_rgba(255,255,255,0.12)] overflow-hidden flex flex-col relative z-20 order-2">
+            <div className="xl:col-span-4 w-full h-[460px] sm:h-[520px] xl:h-auto xl:relative xl:self-stretch order-2">
+                <div className="w-full h-full xl:absolute xl:inset-0 bg-[#0c1322] rounded-[32px] border border-white/[0.12] shadow-[0_16px_45px_rgba(0,0,0,0.7),inset_0_1px_1px_rgba(255,255,255,0.12)] overflow-hidden flex flex-col relative z-20">
                 <div className="p-5 bg-[#0e1628] border-b border-white/[0.08] flex justify-between items-center shrink-0">
                     <div className="flex items-center gap-3"><h3 className="font-black text-white flex items-center gap-2 uppercase text-sm font-lemon tracking-widest"><Layers size={18} className="text-orange-500"/> Episodes</h3><Badge className="bg-[#162138] border border-white/15 text-white font-black text-[10px] px-3 h-5 rounded-full shadow-sm">{anime.episodes.length}</Badge></div>
                     <div className="flex items-center gap-1 bg-[#090e18] p-1 rounded-full border border-white/[0.08]">
@@ -2302,25 +2299,24 @@ function WatchContent() {
                     </div>
                 </div>
                 <div className="flex-1 min-h-0 overflow-y-auto p-2 custom-scrollbar overflow-x-hidden">
-                    <LayoutGroup>
-                        <motion.div layout className={cn("p-2 transition-all duration-500 ease-in-out grid", epViewMode === 'grid' ? 'grid-cols-5 gap-2.5' : epViewMode === 'compact' ? 'grid-cols-10 gap-1.5' : 'grid-cols-1 gap-2')}>
-                            <AnimatePresence mode="popLayout">
-                                {episodeChunks[epChunkIndex]?.map((ep) => {
-                                    const percent = epProgress[ep.number] || 0;
-                                    const isFullyPlayed = percent >= 98;
-                                    const isCurrent = ep.id === currentEpId ||
-                                        String(ep.id) === String(currentEpId) ||
-                                        String(ep.number) === String(currentEpId) ||
-                                        String(ep.id).endsWith(`::${currentEpId}`) ||
-                                        String(ep.id).endsWith(`-${currentEpId}`) ||
-                                        String(ep.id).endsWith(`=${currentEpId}`);
-                                    return (
-                                        <EpisodeButton key={ep.id} ep={ep} isCurrent={isCurrent} isFullyPlayed={isFullyPlayed} percent={percent} viewMode={epViewMode} onClick={handleEpisodeClick} category="anime" progressRef={progressRef} playerRef={playerRef} />
-                                    );
-                                })}
-                            </AnimatePresence>
-                        </motion.div>
-                    </LayoutGroup>
+                        <div
+                            ref={epContainerRef}
+                            className={cn("p-2 grid", epViewMode === 'grid' ? 'grid-cols-5 gap-2.5' : epViewMode === 'compact' ? 'grid-cols-10 gap-1.5' : 'grid-cols-1 gap-2')}
+                        >
+                            {episodeChunks[epChunkIndex]?.map((ep) => {
+                                const percent = epProgress[ep.number] || 0;
+                                const isFullyPlayed = percent >= 98;
+                                const isCurrent = ep.id === currentEpId ||
+                                    String(ep.id) === String(currentEpId) ||
+                                    String(ep.number) === String(currentEpId) ||
+                                    String(ep.id).endsWith(`::${currentEpId}`) ||
+                                    String(ep.id).endsWith(`-${currentEpId}`) ||
+                                    String(ep.id).endsWith(`=${currentEpId}`);
+                                return (
+                                    <EpisodeButton key={ep.id} ep={ep} isCurrent={isCurrent} isFullyPlayed={isFullyPlayed} percent={percent} viewMode={epViewMode} onClick={handleEpisodeClick} category="anime" progressRef={progressRef} playerRef={playerRef} />
+                                );
+                            })}
+                        </div></div>
                 </div>
             </div>
 

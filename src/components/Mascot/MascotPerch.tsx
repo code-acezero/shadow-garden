@@ -4,6 +4,7 @@ import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import PageMascot, { MascotReaction } from './PageMascot';
 import { cn } from '@/lib/utils';
+import { recordDailyTaskProgress } from '@/lib/dailyTasks';
 
 export interface MascotCharacter {
   id: string;
@@ -245,6 +246,11 @@ export const MascotPerch: React.FC<{
   };
 
   const handleBoop = (info: { count: number; reaction: MascotReaction | null; isDizzy: boolean }) => {
+    try {
+      recordDailyTaskProgress('boop_pet', 1);
+      recordDailyTaskProgress('weekly_routine_sun', 1);
+    } catch (_) {}
+
     if (info.isDizzy) {
       triggerSpeech("Woah... dizzy! @~@ (too fast!)");
     } else if (info.reaction === 'heart') {

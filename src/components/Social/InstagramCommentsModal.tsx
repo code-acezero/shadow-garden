@@ -14,6 +14,7 @@ import { ImageAPI } from '@/lib/api';
 import { supabase } from '@/lib/supabase';
 import { useMentions } from '@/hooks/useMentions';
 import MentionDropdown from '@/components/ui/MentionDropdown';
+import { getOptimizedImageUrl } from '@/lib/imageUtils';
 
 export interface InstagramCommentsModalProps {
   post: any | null;
@@ -132,7 +133,7 @@ export default function InstagramCommentsModal({
         <div className="hidden md:flex flex-1 bg-black/80 backdrop-blur-md items-center justify-center relative overflow-hidden border-r border-white/10 p-4">
           {post.images && post.images.length > 0 ? (
             <img 
-              src={post.images[0]} 
+              src={getOptimizedImageUrl(post.images[0])} loading="lazy" 
               alt="Post attachment" 
               className="max-h-full max-w-full w-auto h-auto object-contain rounded-xl shadow-2xl"
             />

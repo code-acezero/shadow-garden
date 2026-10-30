@@ -478,11 +478,10 @@ export async function pullFromAniList(username: string, userId?: string) {
           anime_image: item.anime_image,
           banner_image: item.banner_image,
           status: item.status,
-          last_episode_number: item.last_episode_number,
-          total_episodes: item.total_episodes,
-          total_chapters: item.total_chapters,
+          last_episode_number: item.last_episode_number || item.progress || 0,
+          total_episodes: item.total_episodes || item.total_chapters || null,
           score: item.score,
-          media_type: item.media_type,
+          media_type: item.media_type || (item.total_chapters ? 'manga' : 'anime'),
           updated_at: item.updated_at,
         }, { onConflict: 'user_id,anime_id' });
 

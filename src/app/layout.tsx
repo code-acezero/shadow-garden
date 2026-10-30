@@ -15,9 +15,9 @@ import AlphaWidget from '@/components/AI/AlphaWidget';
 import GuildBoardPopupRenderer from '@/components/UIx/GuildBoardPopupRenderer';
 import AnalyticsTracker from '@/components/Analytics/AnalyticsTracker';
 import AdScriptInjector from '@/components/Ads/AdScriptInjector';
-import LiquidGlassSplashScreen from '@/components/PWA/LiquidGlassSplashScreen';
 import PWAInstaller from '@/components/PWA/PWAInstaller';
 import ChunkErrorRecovery from '@/components/Utils/ChunkErrorRecovery';
+import { ATELIER_GLOBAL_DEFS_SVG, ATELIER_GLOBAL_CSS } from '@/lib/atelierFrames';
 
 // Import fonts from your library (Optimized: These are just variable definitions now)
 import { 
@@ -231,8 +231,11 @@ export default function RootLayout({
             `,
           }}
         />
+              <style id="atelier-global-styles" dangerouslySetInnerHTML={{ __html: ATELIER_GLOBAL_CSS }} />
       </head>
       <body className={`font-sans bg-[#050505] text-foreground antialiased selection:bg-primary-900/30 selection:text-primary-50`} suppressHydrationWarning>
+        {/* Global Frame Symbols & Defs */}
+        <div id="atelier-global-defs" aria-hidden="true" className="contents" dangerouslySetInnerHTML={{ __html: ATELIER_GLOBAL_DEFS_SVG }} />
         
         {/* JSON-LD Script */}
         <script
@@ -240,9 +243,7 @@ export default function RootLayout({
           dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
         />
 
-        {/* Dark Liquid Glass PWA Splash Screen */}
-        <LiquidGlassSplashScreen />
-
+        
         {/* PWA Service Worker & Install Prompt */}
         <PWAInstaller />
 

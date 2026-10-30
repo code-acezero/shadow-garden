@@ -42,7 +42,7 @@ export default class LandingErrorBoundary extends Component<Props, State> {
   render() {
     if (this.state.hasError) {
       return (
-        <div className="min-h-screen w-full bg-[#050508] text-white flex flex-col items-center justify-center p-6 text-center">
+        <div className="fixed inset-0 z-40 w-full h-[100dvh] max-h-[100dvh] bg-[#050508] text-white flex flex-col items-center justify-center p-6 text-center overflow-hidden select-none">
           <div className="max-w-md w-full flex flex-col items-center">
             <span className="text-[10px] font-extrabold uppercase tracking-widest text-primary-400 bg-primary-950/50 border border-primary-500/30 px-3 py-1 rounded-full mb-4">
               Sanctuary Gateway

@@ -1,9 +1,10 @@
 "use client";
 
+import { useJellyFlip } from '@/lib/useJellyFlip';
 import React, { useState, useEffect, useRef, useCallback, memo, Suspense, useMemo } from 'react';
 import { useParams, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion, AnimatePresence, LayoutGroup } from 'framer-motion';
 import { 
   SkipForward, SkipBack, Server as ServerIcon, Layers, Clock, Play, 
   Grid, List, LayoutGrid, ChevronDown, Flame, Info, Loader2, Check, X, 
@@ -90,27 +91,38 @@ interface EpisodeButtonProps {
 const EpisodeButton = memo(({ ep, isCurrent, isPlayed, viewMode, onClick }: EpisodeButtonProps) => {
   return (
     <button
+      type="button"
+      data-flip-id={ep.id}
       onClick={() => onClick(ep.id)}
       className={cn(
-        "relative overflow-hidden group border transition-all duration-200 transform-gpu active:scale-95 text-center font-bold",
+        "relative overflow-hidden group border select-none transition-colors duration-200 transform-gpu active:scale-95 hover:scale-[1.03] text-center font-bold",
         viewMode === 'grid' 
-          ? "h-9 w-full rounded-xl flex items-center justify-center text-[11px] font-black" 
+          ? "h-8 sm:h-9 w-full rounded-full flex items-center justify-center text-[10px] sm:text-[11px] font-black" 
           : viewMode === 'compact' 
-            ? "aspect-square rounded-xl flex items-center justify-center text-[10px] font-black" 
-            : "w-full h-10 rounded-xl flex items-center px-4 text-xs font-bold text-left justify-start",
+            ? "h-7 sm:h-8 w-full aspect-square rounded-full flex items-center justify-center text-[9px] font-bold" 
+            : "w-full h-8 sm:h-9 rounded-2xl flex items-center px-3 sm:px-4 text-[10px] sm:text-[11px] font-bold text-left justify-start",
         isCurrent 
-          ? "bg-emerald-500/20 backdrop-blur-sm border-emerald-400/60 text-emerald-300 shadow-[0_0_15px_rgba(16,185,129,0.3)] z-10" 
+          ? "bg-emerald-500/20 backdrop-blur-md border-emerald-400/60 text-emerald-300 shadow-[0_0_15px_rgba(16,185,129,0.3)] z-10" 
           : isPlayed 
-            ? "bg-rose-500/15 backdrop-blur-sm border-rose-400/30 text-rose-300 hover:border-rose-400/60" 
-            : "bg-white/[0.03] backdrop-blur-sm border-white/[0.06] text-zinc-400 hover:border-cyan-400/40 hover:bg-white/[0.08] hover:text-white"
+            ? "bg-rose-500/15 backdrop-blur-md border-rose-400/30 text-rose-300 hover:border-rose-400/60" 
+            : "bg-white/[0.03] backdrop-blur-md border-white/[0.06] text-zinc-400 hover:border-cyan-400/40 hover:bg-white/[0.08] hover:text-white"
       )}
     >
-      {isCurrent && (
-        <span className="absolute left-1.5 top-1/2 -translate-y-1/2 w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-      )}
-      <span className={cn("truncate relative z-10 w-full", viewMode === 'list' ? "text-left pl-2" : "text-center")}>
-        {viewMode === 'list' ? `${ep.number}. ${ep.title}` : ep.number}
-      </span>
+      <div className={cn("relative z-10 w-full h-full flex items-center font-lemon tracking-wide overflow-hidden", viewMode === 'list' ? "justify-between" : "justify-center")}>
+        <div className="flex items-center gap-2 min-w-0 truncate">
+          <span className="shrink-0 font-bold">{ep.number}</span>
+          {viewMode === 'list' && (
+            <span className="truncate text-[11px] font-sans font-medium text-zinc-300 transition-opacity duration-200">
+              {ep.title && !ep.title.toLowerCase().startsWith(`episode ${ep.number}`) ? `• ${ep.title}` : ''}
+            </span>
+          )}
+        </div>
+        {isCurrent && viewMode === 'list' && (
+          <span className="ml-2 inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-emerald-500/20 border border-emerald-400/50 text-[8px] font-black uppercase text-emerald-300 shadow-[0_0_10px_rgba(52,211,153,0.3)] shrink-0 transition-transform duration-200">
+            <span>PLAYING</span>
+          </span>
+        )}
+      </div>
     </button>
   );
 });
@@ -651,6 +663,8 @@ export function DramaWatchContent() {
   const [showTrailerModal, setShowTrailerModal] = useState(false);
   const [epViewMode, setEpViewMode] = useState<'grid' | 'list' | 'compact'>('grid');
   const [epChunkIndex, setEpChunkIndex] = useState(0);
+  const epContainerRef = useRef<HTMLDivElement>(null);
+  useJellyFlip(epViewMode, epContainerRef);
   const [isAutoNext, setIsAutoNext] = useState(true);
   const chunkSize = 50;
 
@@ -1746,7 +1760,8 @@ export function DramaWatchContent() {
             </div>
 
             {/* Right 4-Column: Exact Animewatch Episode Navigation Sidebar */}
-            <div className="xl:col-span-4 w-full h-full bg-[#0c1322] rounded-[32px] border border-white/[0.12] overflow-hidden flex flex-col shadow-[0_16px_40px_rgba(0,0,0,0.45)] ring-1 ring-white/[0.05] relative z-20 order-2">
+            <div className="xl:col-span-4 w-full h-[460px] sm:h-[520px] xl:h-auto xl:relative xl:self-stretch order-2">
+              <div className="w-full h-full xl:absolute xl:inset-0 bg-[#0c1322] rounded-[32px] border border-white/[0.12] overflow-hidden flex flex-col shadow-[0_16px_40px_rgba(0,0,0,0.45)] ring-1 ring-white/[0.05] relative z-20">
               
               {/* Episodes Section Header */}
               <div className="p-4 bg-[#0e1628] border-b border-white/[0.08] flex justify-between items-center shrink-0">
@@ -1843,11 +1858,14 @@ export function DramaWatchContent() {
               )}
 
               {/* Episode Buttons Container */}
-              <div className="xl:flex-1 xl:overflow-y-auto max-h-[480px] xl:max-h-[580px] p-3 no-scrollbar">
-                <div className={cn(
-                  "grid",
-                  epViewMode === 'grid' ? 'grid-cols-5 gap-2' : epViewMode === 'compact' ? 'grid-cols-10 gap-1.5' : 'grid-cols-1 gap-1.5'
-                )}>
+              <div className="flex-1 min-h-0 overflow-y-auto p-3 custom-scrollbar overflow-x-hidden">
+                <div
+                  ref={epContainerRef}
+                  className={cn(
+                    "grid",
+                    epViewMode === 'grid' ? 'grid-cols-5 gap-2' : epViewMode === 'compact' ? 'grid-cols-10 gap-1.5' : 'grid-cols-1 gap-1.5'
+                  )}
+                >
                   {episodeChunks[epChunkIndex]?.map((ep) => (
                     <EpisodeButton
                       key={ep.id}
@@ -1862,6 +1880,7 @@ export function DramaWatchContent() {
               </div>
 
             </div>
+          </div>
 
             {/* Bottom 12-Column: Overview & Details Card */}
             <div className="xl:col-span-12 w-full bg-[#0c1322] rounded-[32px] border border-white/[0.12] p-6 shadow-[0_16px_40px_rgba(0,0,0,0.45)] ring-1 ring-white/[0.05] flex flex-col lg:flex-row gap-6 items-stretch order-3">

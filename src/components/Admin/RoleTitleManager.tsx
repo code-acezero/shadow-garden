@@ -4,7 +4,7 @@ import React, { useState, useEffect } from 'react';
 import { useAuth } from '@/context/AuthContext';
 import { supabase } from '@/lib/supabase';
 import { 
-  Crown, Shield, Sword, Plus, X, UserCheck, Lock, Sparkles, UserMinus, RefreshCw, Bot, ChevronDown, UserPlus
+  Crown, Shield, Sword, Plus, X, UserCheck, Lock, UserMinus, RefreshCw, Bot, ChevronDown, UserPlus
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -12,6 +12,7 @@ import ProfileAvatar from '@/components/User/ProfileAvatar';
 import { UserOnlinePulse } from '@/components/ui/UserTitleBadge';
 import { toast } from '@/lib/toast';
 import { saveCustomTitleGreetings, deleteCustomTitleGreetings } from '@/lib/alphaGreetings';
+import { isGuildMaster, addFormerTitle, getFrameForTitle } from '@/lib/userTitles';
 
 interface MemberProfile {
   id: string;
@@ -170,7 +171,7 @@ export default function RoleTitleManager() {
   const currentRole = (currentUserProfile as any)?.role || 'user';
   const currentAdminTitle = (currentUserProfile as any)?.admin_title || '';
   
-  const isLeader = currentRole === 'leader' || currentAdminTitle === 'Shadow' || (currentUserProfile as any)?.username === 'shadow.';
+  const isLeader = isGuildMaster(currentUserProfile || user);
   const isAdmin = currentRole === 'admin' || isLeader;
 
   const [admins, setAdmins] = useState<MemberProfile[]>([]);
@@ -304,21 +305,46 @@ export default function RoleTitleManager() {
     }
   };
 
-  // Assign Title to Member
+  // Assign Title to Member & Auto-Bestow Matching Profile Frame
   const handleAssignTitle = async (memberId: string, titleName: string) => {
     try {
       toast.loading(`Assigning "${titleName}"...`);
+      const targetMember = [...admins, ...mods].find(m => m.id === memberId);
+      const targetRole = targetMember?.role || 'admin';
+      const frameForBestowedTitle = getFrameForTitle(titleName, targetRole);
+
+      const { data: memberProfile } = await supabase.from('profiles').select('settings').eq('id', memberId).single();
+      const currentSettings = memberProfile?.settings || {};
+
+      const updateData: Record<string, any> = { 
+        admin_title: titleName,
+        title: titleName,
+        settings: { ...currentSettings, equipped_title: titleName }
+      };
+
+      if (frameForBestowedTitle) {
+        updateData.frame_id = frameForBestowedTitle;
+      }
+
       const { error } = await supabase
         .from('profiles')
-        .update({ admin_title: titleName })
+        .update(updateData)
         .eq('id', memberId);
 
       if (error) throw error;
 
+      if (typeof window !== 'undefined') {
+        localStorage.setItem(`shadow_equipped_title_${memberId}`, titleName);
+        if (frameForBestowedTitle) {
+          localStorage.setItem(`shadow_equipped_frame_${memberId}`, frameForBestowedTitle);
+          window.dispatchEvent(new CustomEvent('shadow-frame-updated', { detail: { frameId: frameForBestowedTitle } }));
+        }
+        window.dispatchEvent(new CustomEvent('shadow-title-updated', { detail: { title: titleName } }));
+      }
+
       toast.success(`Assigned "${titleName}" successfully!`);
 
       // Find target member profile and trigger Alpha AI Job
-      const targetMember = [...admins, ...mods].find(m => m.id === memberId);
       if (targetMember) {
         await triggerAlphaAppointmentJob(targetMember, titleName);
       }
@@ -334,14 +360,32 @@ export default function RoleTitleManager() {
   const handleUnassignTitle = async (memberId: string) => {
     try {
       toast.loading('Removing assigned title...');
+      const targetMember = [...admins, ...mods].find(m => m.id === memberId);
+      if (targetMember?.admin_title) {
+        await addFormerTitle(memberId, `Former ${targetMember.admin_title}`);
+      }
+
+      const { data: memberProfile } = await supabase.from('profiles').select('settings, level').eq('id', memberId).single();
+      const currentSettings = memberProfile?.settings || {};
+      const fallbackTitle = targetMember?.admin_title ? `Former ${targetMember.admin_title}` : 'Novice';
+
       const { error } = await supabase
         .from('profiles')
-        .update({ admin_title: null })
+        .update({ 
+          admin_title: null,
+          title: fallbackTitle,
+          settings: { ...currentSettings, equipped_title: fallbackTitle }
+        })
         .eq('id', memberId);
 
       if (error) throw error;
 
-      toast.success('Title unassigned!');
+      if (typeof window !== 'undefined') {
+        localStorage.setItem(`shadow_equipped_title_${memberId}`, fallbackTitle);
+        window.dispatchEvent(new CustomEvent('shadow-title-updated', { detail: { title: fallbackTitle } }));
+      }
+
+      toast.success('Title unassigned and preserved as Former honor in vault!');
       await fetchMembers();
       refreshSession();
     } catch (e) {
@@ -427,7 +471,7 @@ export default function RoleTitleManager() {
         <div className="p-6 rounded-3xl bg-purple-950/30 border border-purple-500/30 space-y-4 backdrop-blur-2xl shadow-2xl animate-in fade-in slide-in-from-top-3">
           <div className="flex items-center justify-between">
             <h4 className="text-sm font-black text-white flex items-center gap-2">
-              <Sparkles size={16} className="text-amber-400" /> Add Custom Hierarchy Designation
+              <Shield size={16} className="text-amber-400" /> Add Custom Hierarchy Designation
             </h4>
             <button onClick={() => setIsAddingCustom(false)} className="text-zinc-500 hover:text-white transition-colors">
               <X size={18} />
@@ -455,6 +499,28 @@ export default function RoleTitleManager() {
           </div>
         </div>
       )}
+
+      {/* APEX TIER: GUILD MASTER (SHADOW) - SOLE WORLDWIDE */}
+      <div className="p-5 sm:p-6 rounded-3xl bg-gradient-to-r from-amber-950/40 via-[#0e0c18] to-black border border-amber-500/30 backdrop-blur-2xl shadow-xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+        <div className="flex items-center gap-3.5">
+          <div className="w-12 h-12 rounded-2xl bg-amber-400/10 border border-amber-400/30 flex items-center justify-center shrink-0">
+            <Crown size={24} className="text-amber-400 drop-shadow-[0_0_10px_rgba(251,191,36,0.6)]" />
+          </div>
+          <div>
+            <div className="flex items-center gap-2">
+              <span className="text-[10px] font-black uppercase tracking-widest text-amber-400 px-2.5 py-0.5 rounded-full bg-amber-400/10 border border-amber-400/20">
+                Apex Authority • 1 Worldwide
+              </span>
+            </div>
+            <h3 className="text-base sm:text-lg font-black text-white mt-1">
+              Guild Master — Apex Titles: <span className="text-amber-400 font-extrabold">(Guild Master)</span> & <span className="text-amber-400 font-extrabold">(Shadow)</span>
+            </h3>
+            <p className="text-xs text-zinc-400 mt-0.5">
+              The apex titles Guild Master and Shadow are strictly reserved for the sole sovereign Guild Master worldwide. Only the Guild Master can transfer the mantle to a successor via the Succession Protocol in the Adventurers panel.
+            </p>
+          </div>
+        </div>
+      </div>
 
       {/* GROUP I: BOARD OF DARKNESS (ADMINS - SHORT TITLES) */}
       <div className="space-y-4 rounded-3xl border border-white/10 bg-zinc-900/40 backdrop-blur-xl p-5 transition-all duration-300">
@@ -646,7 +712,7 @@ export default function RoleTitleManager() {
                             onError={(e) => { (e.target as HTMLElement).style.display = 'none'; }}
                           />
                           <span className="absolute -bottom-1 -right-1 w-3.5 h-3.5 bg-purple-500 rounded-full border-2 border-black flex items-center justify-center">
-                            <Sparkles size={8} className="text-white" />
+                            <Bot size={8} className="text-white" />
                           </span>
                         </div>
                         <div className="flex-1 min-w-0">

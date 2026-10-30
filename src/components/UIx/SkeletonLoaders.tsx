@@ -1,16 +1,17 @@
 import React from 'react';
 import { cn } from '@/lib/utils';
+import { AscendingOmniPlayerLoader } from '@/components/Player/AscendingOmniPlayerLoader';
 
 const PulseLayer = () => (
   <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/5 to-transparent -translate-x-full animate-[shimmer_2s_infinite]" />
 );
 
 export const PageSkeleton = () => (
-  <div className="min-h-screen bg-[#020617] text-white flex flex-col px-2 sm:px-4 py-4 overflow-hidden relative">
-    <div className="w-full flex flex-col gap-8 mt-2">
-      <div className="w-1/3 h-10 bg-white/5 rounded-2xl relative overflow-hidden"><PulseLayer /></div>
-      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4 md:gap-6">
-        {Array.from({ length: 12 }).map((_, i) => <CardSkeleton key={i} />)}
+  <div className="h-[100dvh] max-h-[100dvh] bg-[#020617] text-white flex flex-col px-2 sm:px-4 py-4 overflow-hidden relative">
+    <div className="w-full flex flex-col gap-6 mt-2">
+      <div className="w-1/3 h-9 bg-white/5 rounded-2xl relative overflow-hidden"><PulseLayer /></div>
+      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3 sm:gap-4 md:gap-6 overflow-hidden">
+        {Array.from({ length: 6 }).map((_, i) => <CardSkeleton key={i} />)}
       </div>
     </div>
   </div>
@@ -22,39 +23,109 @@ export const CardSkeleton = ({ className }: { className?: string }) => (
   </div>
 );
 
-import { MagicalWaveParticlesPlayerLoader } from '@/components/Watch/LiquidWatchLoaders';
-
-export const RunHappyPlayerLoader = ({ text = "LOADING REALITY...", className, transparent = false }: { text?: string; className?: string; transparent?: boolean }) => (
+export const RunHappyPlayerLoader = ({ text = "LOADING STREAM...", className, transparent = false }: { text?: string; className?: string; transparent?: boolean }) => (
   <div className={cn(
     "w-full h-full flex flex-col items-center justify-center select-none overflow-hidden relative",
     transparent
       ? "bg-transparent backdrop-blur-none border-none shadow-none"
-      : "bg-black/80 backdrop-blur-2xl rounded-[30px] border border-white/10 shadow-[0_8px_32px_0_rgba(0,0,0,0.37)] min-h-[180px]",
+      : "bg-black/85 backdrop-blur-2xl rounded-2xl md:rounded-3xl border border-white/10 shadow-[0_8px_32px_0_rgba(0,0,0,0.45)] min-h-[190px]",
     className
   )}>
-    <div className="relative w-[clamp(3.5rem,25%,8rem)] h-[clamp(3.5rem,25%,8rem)] flex items-center justify-center">
-      <img src="/run-happy.gif" alt="Loading..." className="w-full h-full object-contain relative z-10 drop-shadow-[0_0_20px_rgba(239,68,68,0.6)]" />
-      <div className="absolute bottom-2 w-full h-1 bg-gradient-to-r from-transparent via-red-500 to-transparent animate-pulse" />
+    <style>{`
+      @keyframes grass-scrolling {
+        0% { transform: translate3d(-50%, 0, 0); }
+        100% { transform: translate3d(0, 0, 0); }
+      }
+      @keyframes firefly-rise-1 {
+        0%, 100% { transform: translate3d(0, 0, 0) scale(0.6); opacity: 0; }
+        25% { opacity: 0.9; }
+        70% { transform: translate3d(-14px, -35px, 0) scale(1); opacity: 0.7; }
+        90% { opacity: 0; }
+      }
+      @keyframes firefly-rise-2 {
+        0%, 100% { transform: translate3d(0, 0, 0) scale(0.8); opacity: 0; }
+        30% { opacity: 1; }
+        75% { transform: translate3d(18px, -45px, 0) scale(0.6); opacity: 0.8; }
+        95% { opacity: 0; }
+      }
+      @keyframes firefly-rise-3 {
+        0%, 100% { transform: translate3d(0, 0, 0) scale(0.5); opacity: 0; }
+        40% { opacity: 0.85; }
+        80% { transform: translate3d(-8px, -40px, 0) scale(1.1); opacity: 0.6; }
+        95% { opacity: 0; }
+      }
+    `}</style>
+
+    {/* Subtle Purple-Violet Atmospheric Depth */}
+    <div className="absolute inset-0 pointer-events-none overflow-hidden">
+      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-48 h-48 rounded-full bg-[radial-gradient(circle,rgba(168,85,247,0.18)_0%,transparent_70%)] pointer-events-none" />
     </div>
-    <p className="mt-2 font-lemon text-red-500 animate-pulse tracking-[0.3em] text-[9px] sm:text-[10px] font-bold uppercase drop-shadow-[0_0_12px_rgba(239,68,68,0.8)] text-center px-4">
+
+    {/* Happy Run Character & Animated Purple Grass Floor with Firefly Motes */}
+    <div className="relative flex flex-col items-center justify-center">
+      {/* 5 Delicate Red-Violet-Purple Firefly Motes */}
+      <div className="absolute inset-0 pointer-events-none z-30">
+        <div className="absolute bottom-5 left-1/4 w-1.5 h-1.5 rounded-full bg-violet-300 shadow-[0_0_8px_#c084fc]" style={{ animation: 'firefly-rise-1 3.5s ease-in-out infinite' }} />
+        <div className="absolute bottom-4 right-1/4 w-1.5 h-1.5 rounded-full bg-red-400 shadow-[0_0_8px_#f87171]" style={{ animation: 'firefly-rise-2 4.2s ease-in-out infinite 0.7s' }} />
+        <div className="absolute bottom-6 left-1/3 w-1 h-1 rounded-full bg-purple-300 shadow-[0_0_6px_#a855f7]" style={{ animation: 'firefly-rise-3 3.8s ease-in-out infinite 1.4s' }} />
+        <div className="absolute bottom-5 right-1/3 w-1 h-1 rounded-full bg-fuchsia-400 shadow-[0_0_7px_#e879f9]" style={{ animation: 'firefly-rise-1 4.5s ease-in-out infinite 2.1s' }} />
+        <div className="absolute bottom-3 left-1/2 w-1.5 h-1.5 rounded-full bg-rose-400 shadow-[0_0_8px_#fb7185]" style={{ animation: 'firefly-rise-2 3.9s ease-in-out infinite 1.8s' }} />
+      </div>
+
+      {/* Running Character */}
+      <div className="relative z-20 w-16 h-16 sm:w-20 sm:h-20 flex items-center justify-center">
+        <img
+          src="/run-happy.gif"
+          alt="Loading Stream..."
+          className="w-full h-full object-contain drop-shadow-[0_0_16px_rgba(168,85,247,0.7)]"
+        />
+      </div>
+
+      {/* Moving Purple Anime Grass Floor Strip */}
+      <div className="relative -mt-2.5 w-36 sm:w-44 h-4 overflow-hidden pointer-events-none z-10 flex items-end">
+        {/* Shadow under feet */}
+        <div className="absolute inset-x-4 bottom-1 h-2 rounded-full bg-black/60 blur-[2px]" />
+        
+        {/* Seamless scrolling anime grass pattern (loops infinitely at 60fps) */}
+        <div
+          className="flex w-[200%] h-full shrink-0 transform-gpu will-change-transform"
+          style={{ animation: 'grass-scrolling 1.8s linear infinite' }}
+        >
+          {/* Half 1 */}
+          <svg className="w-1/2 h-full text-violet-500/80" viewBox="0 0 160 16" preserveAspectRatio="none">
+            <path d="M0,16 L0,8 Q5,2 8,8 Q12,0 16,8 Q20,3 24,9 Q28,1 32,8 Q36,4 40,9 Q44,0 48,8 Q52,3 56,9 Q60,1 64,8 Q68,4 72,9 Q76,0 80,8 Q84,3 88,9 Q92,1 96,8 Q100,4 104,9 Q108,0 112,8 Q116,3 120,9 Q124,1 128,8 Q132,4 136,9 Q140,0 144,8 Q148,3 152,9 Q156,2 160,8 L160,16 Z" fill="url(#purpleGrassGrad)" />
+            <defs>
+              <linearGradient id="purpleGrassGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+                <stop offset="0%" stopColor="#c084fc" />
+                <stop offset="35%" stopColor="#9333ea" />
+                <stop offset="100%" stopColor="#3b0764" />
+              </linearGradient>
+            </defs>
+          </svg>
+          {/* Half 2 (identical for seamless 100% loop) */}
+          <svg className="w-1/2 h-full text-violet-500/80" viewBox="0 0 160 16" preserveAspectRatio="none">
+            <path d="M0,16 L0,8 Q5,2 8,8 Q12,0 16,8 Q20,3 24,9 Q28,1 32,8 Q36,4 40,9 Q44,0 48,8 Q52,3 56,9 Q60,1 64,8 Q68,4 72,9 Q76,0 80,8 Q84,3 88,9 Q92,1 96,8 Q100,4 104,9 Q108,0 112,8 Q116,3 120,9 Q124,1 128,8 Q132,4 136,9 Q140,0 144,8 Q148,3 152,9 Q156,2 160,8 L160,16 Z" fill="url(#purpleGrassGrad)" />
+          </svg>
+        </div>
+      </div>
+    </div>
+
+    {/* Text: Purple-Violet Theme */}
+    <p className="mt-3 font-lemon text-transparent bg-clip-text bg-gradient-to-r from-violet-300 via-purple-300 to-fuchsia-300 tracking-[0.28em] text-[9.5px] sm:text-[10.5px] font-bold uppercase drop-shadow-[0_0_12px_rgba(168,85,247,0.7)] text-center px-4">
       {text}
     </p>
   </div>
 );
 
-export const LiquidPlayerSkeleton = ({ text = "INITIALIZING STREAM...", className }: { text?: string; className?: string }) => (
-  <div className={cn("w-full h-full absolute inset-0 bg-[#030712] overflow-hidden flex flex-col items-center justify-center", className)}>
-    <PulseLayer />
-    <MagicalWaveParticlesPlayerLoader text={text} />
+export const LiquidPlayerSkeleton = ({ text = "Ascending Omni Player", className }: { text?: string; className?: string }) => (
+  <div className={cn("w-full h-full absolute inset-0 bg-[#020512] overflow-hidden flex flex-col items-center justify-center", className)}>
+    <AscendingOmniPlayerLoader text="Ascending Omni Player" />
   </div>
 );
 
-export const CinemaPlayerStageSkeleton = ({ text = "LOADING CINEMA PLAYER..." }: { text?: string }) => (
-  <div className="w-full aspect-video rounded-2xl md:rounded-3xl border border-white/[0.08] bg-[#030712] relative overflow-hidden shadow-[0_8px_32px_rgba(0,0,0,0.7)] flex flex-col items-center justify-center">
-    <PulseLayer />
-    {/* Subtle radial cinema spotlight */}
-    <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(6,182,212,0.12)_0%,transparent_70%)] pointer-events-none" />
-    <MagicalWaveParticlesPlayerLoader text={text} />
+export const CinemaPlayerStageSkeleton = ({ text = "Ascending Omni Player" }: { text?: string }) => (
+  <div className="w-full aspect-video rounded-2xl md:rounded-3xl border border-white/[0.08] bg-[#020512] relative overflow-hidden shadow-[0_8px_32px_rgba(0,0,0,0.7)] flex flex-col items-center justify-center">
+    <AscendingOmniPlayerLoader text="Ascending Omni Player" />
   </div>
 );
 
@@ -77,7 +148,7 @@ export const WatchPageSkeleton = () => (
         
         {/* Left 8-Column: Player + Controls Skeleton */}
         <div className="xl:col-span-8 w-full flex flex-col gap-3">
-          <CinemaPlayerStageSkeleton text="INITIALIZING CINEMA PLAYER..." />
+          <CinemaPlayerStageSkeleton text="Ascending Omni Player" />
           {/* Controls Bar Skeleton */}
           <div className="w-full bg-[#0a0f1d]/85 backdrop-blur-md border border-white/[0.08] rounded-2xl md:rounded-3xl p-5 flex flex-col gap-3 shadow-xl relative overflow-hidden">
             <PulseLayer />

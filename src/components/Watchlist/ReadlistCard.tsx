@@ -161,15 +161,6 @@ export default function ReadlistCard({
             </span>
           )}
 
-          <button
-            onClick={handleIncrementChapter}
-            title="Next chapter"
-            className="h-7 px-2 rounded-lg bg-white/5 hover:bg-white/15 text-white border border-white/10 text-[10px] font-bold transition-all flex items-center gap-1 active:scale-95 outline-none focus:outline-none focus:ring-0 focus-visible:outline-none focus-visible:ring-0 select-none"
-          >
-            <PuffedPlus size={11} />
-            <span className="hidden sm:inline">Ch</span>
-          </button>
-
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <button className="h-7 px-2.5 rounded-lg bg-white/5 hover:bg-white/10 text-white border border-white/10 text-[10px] font-bold uppercase tracking-wider flex items-center gap-1.5 transition-all outline-none focus:outline-none focus:ring-0 focus-visible:outline-none focus-visible:ring-0 select-none">
@@ -262,15 +253,6 @@ export default function ReadlistCard({
         </div>
 
         <div className="flex items-center gap-2 shrink-0" onClick={(e) => e.stopPropagation()}>
-          <button
-            onClick={handleIncrementChapter}
-            title="Mark next chapter read"
-            className="px-3 py-1.5 rounded-xl bg-white/10 hover:bg-white text-white hover:text-black border border-white/15 text-xs font-bold transition-all flex items-center gap-1.5 active:scale-95 shadow-sm outline-none focus:outline-none focus:ring-0 focus-visible:outline-none focus-visible:ring-0 select-none"
-          >
-            <PuffedPlus size={12} />
-            <span className="hidden sm:inline">+1 Ch</span>
-          </button>
-
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <button className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold uppercase tracking-wider border border-white/10 bg-white/5 hover:bg-white/10 text-white transition-all active:scale-95 outline-none focus:outline-none focus:ring-0 focus-visible:outline-none focus-visible:ring-0 select-none">
@@ -445,15 +427,6 @@ export default function ReadlistCard({
             })}
           </DropdownMenuContent>
         </DropdownMenu>
-
-        <button
-          onClick={handleIncrementChapter}
-          title="Mark next chapter read"
-          className="h-7 px-2.5 rounded-xl bg-white/10 hover:bg-white text-white hover:text-black border border-white/15 text-[10px] font-bold transition-all flex items-center gap-1 active:scale-95 shrink-0 outline-none focus:outline-none focus:ring-0 focus-visible:outline-none focus-visible:ring-0 select-none"
-        >
-          <PuffedPlus size={11} />
-          <span>1</span>
-        </button>
       </div>
     </div>
   );

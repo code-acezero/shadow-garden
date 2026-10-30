@@ -1,11 +1,11 @@
 "use client";
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { 
   Heart, MessageCircle, Send, Bookmark, MoreHorizontal, 
   BarChart2, CheckCircle2, XCircle, HelpCircle, Share2, Trash2, Flag,
-  Repeat2, Play, Star, EyeOff, Eye, Smile, Film, Tv
+  Repeat2, Play, Star, EyeOff, Eye, Smile, Film, Tv, Image as ImageIcon
 } from 'lucide-react';
 import ProfileAvatar from '@/components/User/ProfileAvatar';
 import { formatDistanceToNow } from 'date-fns';
@@ -21,6 +21,7 @@ import { playGummyPop } from '@/lib/audioManager';
 import { atraxSquishTapVariants, atraxChipTapVariants } from '@/lib/atraxMotion';
 import ChibiAnimeIcon from '@/components/Social/ChibiAnimeIcon';
 import { cn } from '@/lib/utils';
+import { getOptimizedImageUrl } from '@/lib/imageUtils';
 
 export interface PollOption {
   id: number;
@@ -81,9 +82,37 @@ export default function InstagramPostCard({
   onVotePoll
 }: InstagramPostCardProps) {
   const [isExpanded, setIsExpanded] = useState(false);
-  const [isBookmarked, setIsBookmarked] = useState(false);
+  const [isBookmarked, setIsBookmarked] = useState(Boolean(post.is_bookmarked));
   const [showHeartAnim, setShowHeartAnim] = useState(false);
   const [activeImageIdx, setActiveImageIdx] = useState(0);
+  const [failedImages, setFailedImages] = useState<Record<number, boolean>>({});
+  const [imgFallbacks, setImgFallbacks] = useState<Record<number, string>>({});
+
+  useEffect(() => {
+    setIsBookmarked(Boolean(post.is_bookmarked));
+  }, [post.is_bookmarked]);
+
+  const resolvePostImg = (idx: number) => {
+    if (imgFallbacks[idx]) return imgFallbacks[idx];
+    const raw = post.images?.[idx];
+    return raw ? getOptimizedImageUrl(raw) : '';
+  };
+
+  const handlePostImgError = (idx: number) => {
+    const raw = post.images?.[idx];
+    if (!raw) {
+      setFailedImages(prev => ({ ...prev, [idx]: true }));
+      return;
+    }
+    const current = imgFallbacks[idx] || getOptimizedImageUrl(raw);
+    if (!current.includes('images.weserv.nl')) {
+      setImgFallbacks(prev => ({ ...prev, [idx]: `https://images.weserv.nl/?url=${encodeURIComponent(raw)}` }));
+    } else if (current !== raw) {
+      setImgFallbacks(prev => ({ ...prev, [idx]: raw }));
+    } else {
+      setFailedImages(prev => ({ ...prev, [idx]: true }));
+    }
+  };
 
   // Reaction state
   const [showReactionTray, setShowReactionTray] = useState(false);
@@ -361,12 +390,23 @@ export default function InstagramPostCard({
               className="relative w-full bg-black overflow-hidden select-none cursor-pointer group"
               onDoubleClick={handleDoubleTap}
             >
-              <img 
-                src={post.images[activeImageIdx]} 
-                alt="Post content" 
-                className="w-full object-cover max-h-[550px] aspect-square sm:aspect-auto"
-                onClick={() => onImageClick && onImageClick(post.images[activeImageIdx])}
-              />
+              {failedImages[activeImageIdx] ? (
+                <div className="w-full aspect-video sm:aspect-[4/3] bg-zinc-900/90 flex flex-col items-center justify-center p-8 text-center text-zinc-500 gap-2 border-y border-white/5">
+                  <ImageIcon size={32} className="opacity-40 text-zinc-500" />
+                  <span className="text-xs font-mono text-zinc-400 font-semibold">Image Unavailable on Host</span>
+                  <span className="text-[11px] text-zinc-600 max-w-xs">The hosting server (ImgBB) has expired or removed this image file.</span>
+                </div>
+              ) : (
+                <img 
+                  src={resolvePostImg(activeImageIdx)} 
+                  alt="Post content" 
+                  referrerPolicy="no-referrer"
+                  onError={() => handlePostImgError(activeImageIdx)}
+                  loading="lazy"
+                  className="w-full object-cover max-h-[550px] aspect-square sm:aspect-auto"
+                  onClick={() => onImageClick && onImageClick(resolvePostImg(activeImageIdx))}
+                />
+              )}
 
               {/* Double Tap Heart Animation Overlay */}
               <AnimatePresence>

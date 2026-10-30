@@ -25,8 +25,7 @@ export default function GlobalError({
           }
         }
       } catch (_) {}
-      // Force fresh fetch bypassing browser disk cache
-      window.location.href = '/?t=' + Date.now();
+      window.location.href = '/home?t=' + Date.now();
     }
   };
 
@@ -46,39 +45,38 @@ export default function GlobalError({
   }, [error]);
 
   return (
-    <html lang="en">
-      <body className="m-0 p-0 bg-[#050508] text-white font-sans antialiased select-none">
-        <div className="min-h-screen w-full flex items-center justify-center p-4 relative overflow-hidden">
-          <div className="absolute top-1/4 left-1/2 -translate-x-1/2 w-[500px] h-[350px] bg-purple-600/10 rounded-full blur-[120px] pointer-events-none" />
+    <html lang="en" className="h-full overflow-hidden">
+      <body className="m-0 p-0 h-[100dvh] max-h-[100dvh] w-full bg-[#050508] text-white font-sans antialiased select-none overflow-hidden flex items-center justify-center">
+        <div className="w-full h-full max-h-[100dvh] flex items-center justify-center p-4 sm:p-6 relative overflow-hidden">
+          <div className="absolute top-1/4 left-1/2 -translate-x-1/2 w-[520px] h-[300px] bg-purple-600/10 rounded-full blur-[140px] pointer-events-none" />
           
-          <div className="max-w-md w-full text-center flex flex-col items-center relative z-10">
-            <span className="text-[10px] font-extrabold uppercase tracking-widest text-purple-300 bg-purple-500/10 border border-purple-500/25 px-3.5 py-1 rounded-full mb-3 shadow-sm">
-              (｡•́︿•̀｡) Critical Anomaly
-            </span>
-
-            <h1 className="text-2xl sm:text-3xl font-black tracking-wide uppercase text-white mb-2">
-              Something <span className="text-purple-400">Tripped Over!</span>
+          <div className="w-full max-w-xl text-center flex flex-col items-center relative z-10 px-4">
+            <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-white mb-2">
+              Application Error
             </h1>
-            <p className="text-zinc-400 text-xs sm:text-sm mb-5 max-w-xs leading-relaxed">
-              A critical mana surge occurred. Let&apos;s flush the cache and restore your anime realm!
+            <p className="text-zinc-400 text-xs sm:text-sm mb-6 max-w-md mx-auto leading-relaxed">
+              We encountered a system disruption. Please reload to restore connection.
             </p>
 
             {error?.message && (
-              <p className="text-[11px] text-rose-300/90 font-mono mb-6 px-3.5 py-2 bg-rose-950/20 border border-rose-500/20 rounded-xl max-w-sm break-words leading-relaxed">
-                {error.message}
-              </p>
+              <div className="w-full max-w-md mb-6 p-3 bg-rose-950/20 border border-rose-500/20 rounded-xl max-h-24 overflow-y-auto text-left">
+                <p className="text-[11px] text-rose-300 font-mono break-words leading-relaxed">
+                  {error.message}
+                </p>
+              </div>
             )}
 
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-3 justify-center">
               <button
+                type="button"
                 onClick={handleReload}
-                className="py-2.5 px-6 rounded-full bg-gradient-to-r from-purple-600 to-rose-600 hover:from-purple-500 hover:to-rose-500 text-white font-black text-xs uppercase tracking-wider shadow-[0_0_24px_rgba(168,85,247,0.35)] active:scale-95 transition-all cursor-pointer border border-purple-400/30"
+                className="h-10 px-5 sm:px-6 rounded-xl bg-white hover:bg-zinc-200 active:scale-95 text-black font-semibold text-xs sm:text-sm transition-all cursor-pointer shadow-sm"
               >
-                Cast Heal & Reload
+                Reload Application
               </button>
               <a
                 href="/home"
-                className="py-2.5 px-6 rounded-full bg-white/5 hover:bg-white/10 text-zinc-300 hover:text-white font-bold text-xs uppercase tracking-wider border border-white/10 active:scale-95 transition-all cursor-pointer"
+                className="h-10 px-5 sm:px-6 rounded-xl bg-[#1c1c1f] hover:bg-[#28282b] border border-white/10 text-zinc-300 hover:text-white font-semibold text-xs sm:text-sm active:scale-95 transition-all cursor-pointer flex items-center justify-center"
               >
                 Sanctuary Home
               </a>

@@ -238,12 +238,7 @@ export async function POST(req: Request) {
               updated_at: new Date(entry.updatedAt ? entry.updatedAt * 1000 : Date.now()).toISOString(),
             };
 
-            if (sgMediaType === 'manga') {
-              payload.total_chapters = media.chapters || null;
-              payload.chapters_read = entry.progress || 0;
-            } else {
-              payload.total_episodes = media.episodes || null;
-            }
+            payload.total_episodes = (sgMediaType === 'manga' ? media.chapters : media.episodes) || null;
 
             const { error } = await supabaseAdmin.from('watchlist').upsert(payload, {
               onConflict: 'user_id,anime_id',
@@ -301,12 +296,7 @@ export async function POST(req: Request) {
               updated_at: new Date(entry.updatedAt ? entry.updatedAt * 1000 : Date.now()).toISOString(),
             };
 
-            if (sgMediaType === 'manga') {
-              payload.total_chapters = media.chapters || null;
-              payload.chapters_read = entry.progress || 0;
-            } else {
-              payload.total_episodes = media.episodes || null;
-            }
+            payload.total_episodes = (sgMediaType === 'manga' ? media.chapters : media.episodes) || null;
 
             const { error } = await supabaseAdmin.from('watchlist').upsert(payload, {
               onConflict: 'user_id,anime_id',
@@ -501,12 +491,7 @@ export async function POST(req: Request) {
                 updated_at: new Date(entry.updatedAt ? entry.updatedAt * 1000 : Date.now()).toISOString(),
               };
 
-              if (sgMediaType === 'manga') {
-                payload.total_chapters = media.chapters || null;
-                payload.chapters_read = entry.progress || 0;
-              } else {
-                payload.total_episodes = media.episodes || null;
-              }
+              payload.total_episodes = (sgMediaType === 'manga' ? media.chapters : media.episodes) || null;
 
               await supabaseAdmin.from('watchlist').upsert(payload, { onConflict: 'user_id,anime_id' });
               pulledCount++;

@@ -23,6 +23,7 @@ import * as VisuallyHidden from "@radix-ui/react-visually-hidden";
 import { AppUser, ImageAPI } from '@/lib/api';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/context/AuthContext';
+import { getOptimizedImageUrl } from '@/lib/imageUtils';
 import { useTravellerProfile } from '@/hooks/useTravellerProfile';
 import { motion, AnimatePresence } from 'framer-motion';
 import { toast } from '@/lib/toast';
@@ -531,6 +532,37 @@ export default function OtakuVerse({ user, onAuthRequired, highlightId, initialN
     }
   };
 
+  // Bookmark Toggle
+  const handleBookmark = async (post: SocialPost) => {
+    if (!user) {
+      onAuthRequired();
+      return;
+    }
+
+    const willBookmark = !post.is_bookmarked;
+    setPosts(prev => prev.map(p => {
+      if (p.id === post.id) {
+        return {
+          ...p,
+          is_bookmarked: willBookmark
+        };
+      }
+      return p;
+    }));
+
+    try {
+      if (!willBookmark) {
+        await supabase.from('social_bookmarks').delete().eq('post_id', post.id).eq('user_id', user.id);
+        toast.success('Removed from saved');
+      } else {
+        await supabase.from('social_bookmarks').insert({ post_id: post.id, user_id: user.id });
+        toast.success('Saved to collection');
+      }
+    } catch (err) {
+      console.error('Bookmark error:', err);
+    }
+  };
+
   // Fetch Comments
   const fetchComments = async (postId: string) => {
     if (!supabase) return;
@@ -816,7 +848,7 @@ export default function OtakuVerse({ user, onAuthRequired, highlightId, initialN
                          onLike={() => handleLike(post)}
                          onComment={() => { setActivePostForComments(post); fetchComments(post.id); }}
 
-                         onBookmark={() => toast.success("Post saved")}
+                         onBookmark={() => handleBookmark(post)}
                          onDelete={() => {
                             supabase.from('social_posts').delete().eq('id', post.id).then(() => fetchPosts());
                          }}
@@ -1218,8 +1250,8 @@ const PostItem = React.forwardRef<HTMLDivElement, any>(({ post, highlightId, onL
             {post.images && post.images.length > 0 && (
                 <div className={`mt-3 rounded-2xl overflow-hidden border border-white/10 image-grid ${post.images.length === 1 ? 'grid-cols-1' : 'grid-cols-2'} grid gap-1`}>
                     {post.images.map((img: string, i: number) => (
-                        <div key={i} className="relative bg-zinc-900 cursor-pointer hover:brightness-110 transition-all" onClick={(e) => { e.stopPropagation(); onImageClick(img); }}>
-                           <img src={img} className="w-full h-full object-cover aspect-video sm:aspect-square" alt="Post media" />
+                        <div key={i} className="relative bg-zinc-900 cursor-pointer hover:brightness-110 transition-all" onClick={(e) => { e.stopPropagation(); onImageClick(getOptimizedImageUrl(img)); }}>
+                           <img src={getOptimizedImageUrl(img)} className="w-full h-full object-cover aspect-video sm:aspect-square" alt="Post media" />
                         </div>
                     ))}
                 </div>

@@ -23,9 +23,9 @@ import Link from 'next/link';
 import Notifications from '@/components/Anime/Notifications'; 
 import ShadowAvatar from '@/components/User/ShadowAvatar';
 import ShadowLogo from '@/components/UIx/ShadowLogo';
-import ElectricChargeShoot from '@/components/UIx/ElectricChargeShoot';
 import ProfileAvatar from '@/components/User/ProfileAvatar';
 import UserTitleBadge from '@/components/ui/UserTitleBadge';
+import { getEquippedTitle, getTitleDefinition, isGuildMaster } from '@/lib/userTitles';
 import { useTravellerProfile } from '@/hooks/useTravellerProfile';
 
 import { playVoice, refreshVoiceCache } from '@/lib/voice'; 
@@ -300,7 +300,19 @@ const SearchBarContent: React.FC<SearchBarContentProps> = ({
             )}
           >
             {/* Pet Name Tag + Message text */}
-            <div className="flex-1 min-w-0 flex items-center gap-1 sm:gap-1.5 overflow-hidden whitespace-nowrap">
+            <div 
+              onClick={(e) => {
+                if (petSpeech.link) {
+                  e.stopPropagation();
+                  router.push(petSpeech.link);
+                  onDismissPetSpeech?.();
+                }
+              }}
+              className={cn(
+                "flex-1 min-w-0 flex items-center gap-1 sm:gap-1.5 overflow-hidden whitespace-nowrap",
+                petSpeech.link && "cursor-pointer hover:opacity-85 transition-opacity"
+              )}
+            >
               <span className={cn("text-[9px] sm:text-[10px] md:text-[11px] font-black uppercase tracking-wider shrink-0", petSpeech.petColor)}>
                 {petSpeech.petName}
               </span>
@@ -567,6 +579,55 @@ function WhisperIslandContent() {
   const isAuthenticated = !!(profile && profile.id && !profile.is_guest);
   const travellerProfile = useTravellerProfile();
   const { settings, updateSetting } = useSettings(); 
+  
+  const [liveFrameId, setLiveFrameId] = useState<string | null>(() => {
+    if (typeof window !== 'undefined') {
+      return localStorage.getItem('shadow_active_frame') || null;
+    }
+    return null;
+  });
+  const [liveTitle, setLiveTitle] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (typeof window !== 'undefined' && profile?.id) {
+      const cached = localStorage.getItem(`shadow_active_frame_${profile.id}`) || localStorage.getItem('shadow_active_frame');
+      if (cached) setLiveFrameId(cached);
+      const cachedTitle = localStorage.getItem(`shadow_equipped_title_${profile.id}`) || localStorage.getItem('shadow_equipped_title_guest');
+      if (cachedTitle) setLiveTitle(cachedTitle);
+    }
+  }, [profile?.id]);
+
+  useEffect(() => {
+    const handleFrameUpdate = (e: any) => {
+      if (e.detail?.frameId) {
+        setLiveFrameId(e.detail.frameId);
+      }
+    };
+    const handleTitleUpdate = (e: any) => {
+      if (e.detail?.title) {
+        setLiveTitle(e.detail.title);
+      }
+    };
+    window.addEventListener('shadow-frame-updated', handleFrameUpdate);
+    window.addEventListener('shadow-title-updated', handleTitleUpdate);
+    return () => {
+      window.removeEventListener('shadow-frame-updated', handleFrameUpdate);
+      window.removeEventListener('shadow-title-updated', handleTitleUpdate);
+    };
+  }, []);
+
+  const activeProfile = useMemo(() => {
+    if (!profile) return profile;
+    const targetFrame = liveFrameId || profile.frame_id;
+    const targetTitle = liveTitle || profile.title;
+    if (targetFrame === profile.frame_id && targetTitle === profile.title) return profile;
+    return {
+      ...profile,
+      frame_id: targetFrame,
+      title: targetTitle,
+      settings: { ...profile.settings, equipped_title: targetTitle }
+    };
+  }, [profile, liveFrameId, liveTitle]); 
   
   const [mounted, setMounted] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
@@ -886,7 +947,8 @@ function WhisperIslandContent() {
             text: e.detail?.text || '',
             petName: currentPet.name,
             petIcon: currentPet.icon,
-            petColor: currentPet.textColor
+            petColor: currentPet.textColor,
+            link: e.detail?.link || (e.detail?.action === 'open_tasks' ? '/profile?tab=vault&sub=tasks' : undefined)
         });
         if (petTimerRef.current) clearTimeout(petTimerRef.current);
         petTimerRef.current = setTimeout(() => {
@@ -1176,10 +1238,10 @@ function WhisperIslandContent() {
             id: u.username || u.id, 
             title: u.username, 
             image: u.avatar_url, 
-            type: u.role === 'admin' ? 'Guild Master' : 'Adventurer', 
+            type: isGuildMaster(u) ? 'Guild Master' : u.role === 'admin' ? 'Admin' : u.role === 'moderator' ? 'Moderator' : 'Adventurer', 
             subtitle: `@${u.username} • Level ${u.level || 1}`,
-            badgeColor: u.role === 'admin' ? 'text-red-400 border-red-500/30' : 'text-emerald-400 border-emerald-500/30',
-            badgeBg: u.role === 'admin' ? 'bg-red-500/10' : 'bg-emerald-500/10',
+            badgeColor: isGuildMaster(u) ? 'text-amber-400 border-amber-500/30' : u.role === 'admin' ? 'text-purple-400 border-purple-500/30' : 'text-emerald-400 border-emerald-500/30',
+            badgeBg: isGuildMaster(u) ? 'bg-amber-500/10' : u.role === 'admin' ? 'bg-purple-500/10' : 'bg-emerald-500/10',
             _kind: 'user', 
             frame_id: u.frame_id, 
             level: u.level, 
@@ -1422,10 +1484,10 @@ function WhisperIslandContent() {
             id: u.username || u.id,
             title: u.username,
             image: u.avatar_url,
-            type: u.role === 'admin' ? 'Guild Master' : 'Adventurer',
+            type: isGuildMaster(u) ? 'Guild Master' : u.role === 'admin' ? 'Admin' : u.role === 'moderator' ? 'Moderator' : 'Adventurer',
             subtitle: `@${u.username} • Level ${u.level || 1}`,
-            badgeColor: 'text-emerald-400 border-emerald-500/30',
-            badgeBg: 'bg-emerald-500/10',
+            badgeColor: isGuildMaster(u) ? 'text-amber-400 border-amber-500/30' : u.role === 'admin' ? 'text-purple-400 border-purple-500/30' : 'text-emerald-400 border-emerald-500/30',
+            badgeBg: isGuildMaster(u) ? 'bg-amber-500/10' : u.role === 'admin' ? 'bg-purple-500/10' : 'bg-emerald-500/10',
             _kind: 'user',
             frame_id: u.frame_id,
             level: u.level,
@@ -1643,15 +1705,12 @@ function WhisperIslandContent() {
   const shouldHideExtras = isMobile && (isMobileSearchExpanded || centerMode === 'ISLAND_DETAILS' || activeNotif || Boolean(petSpeech));
   const circleDiameter = isMobile ? 44 : 48;
 
-  const getBadge = (role: string | undefined) => {
-      switch(role) {
-          case 'admin': return { label: 'Guild Master', textColor: 'text-red-400' };
-          case 'moderator': return { label: 'Guild Manager', textColor: 'text-blue-400' };
-          case 'user': return { label: 'Adventurer', textColor: 'text-emerald-400' };
-          default: return { label: 'Traveler', textColor: 'text-zinc-400' };
-      }
+  const currentEquippedTitle = getEquippedTitle(activeProfile);
+  const activeTitleDef = getTitleDefinition(currentEquippedTitle);
+  const badge = {
+    label: currentEquippedTitle,
+    textColor: activeTitleDef.badgeStyle.bracketColor,
   };
-  const badge = getBadge(profile?.role);
 
   if (!mounted) return <div className="fixed top-0 h-16 w-full z-[9999]" />;
 
@@ -1737,8 +1796,6 @@ function WhisperIslandContent() {
         </svg>
 
         <div className="w-full flex items-center justify-between gap-1 sm:gap-1.5 pointer-events-none relative">
-            {/* Tesla Coil Electric Charge Shoot across Top Nav */}
-            <ElectricChargeShoot pathname={pathname} isMobile={isMobile} />
             
             {/* LOGO & GUILD MASCOT */}
             <div className="pointer-events-auto z-40 shrink-0 flex items-center gap-1.5">
@@ -1944,8 +2001,8 @@ function WhisperIslandContent() {
                         {isAuthenticated ? (
                             <div className="space-y-1.5">
                                 <div className="flex flex-col items-center justify-center text-center px-1.5 pt-0.5 pb-0.5">
-                                    <span className="text-[14.5px] font-black text-white uppercase tracking-wider truncate w-full text-center leading-tight">{profile?.username || 'Adventurer'}</span>
-                                    <span className={cn("text-[8px] font-bold tracking-[0.2em] uppercase mt-0.5 opacity-80 text-center leading-none", badge.textColor)}>{badge.label}</span>
+                                    <span className="text-[14.5px] font-black text-white uppercase tracking-wider truncate w-full text-center leading-tight">{activeProfile?.username || profile?.username || 'Adventurer'}</span>
+                                    <span className={cn("text-[9px] font-black tracking-[0.12em] uppercase mt-0.5 text-center leading-none", activeTitleDef.badgeStyle.bracketColor)}>({currentEquippedTitle})</span>
                                 </div>
                                 <DropdownMenuSeparator className="bg-white/5 my-1" />
                                 <div className="space-y-0.5">
@@ -2051,16 +2108,17 @@ function WhisperIslandContent() {
                                         <button 
                                             onClick={() => playGummyTap()} 
                                             className={cn(
-                                                "relative outline-none aspect-square rounded-full flex items-center justify-center shrink-0 active:scale-90 transition-transform p-0",
+                                                "relative outline-none border-0 ring-0 shadow-none bg-transparent aspect-square rounded-full flex items-center justify-center shrink-0 active:scale-90 transition-transform p-0",
                                                 ISLAND_HEIGHT
                                             )}
                                             title="User Profile"
                                         >
                                             <div className="relative z-10 w-full h-full shrink-0 flex items-center justify-center">
                                                 <ProfileAvatar 
-                                                    profile={profile} 
+                                                    profile={activeProfile} 
                                                     travellerAvatar={!isAuthenticated ? travellerProfile.avatar : undefined} 
                                                     className="w-full h-full" 
+                                                    showLevel={false}
                                                 />
                                             </div>
                                         </button>
@@ -2135,9 +2193,10 @@ function WhisperIslandContent() {
                                     >
                                         <div className="w-[32px] h-[32px] sm:w-[34px] sm:h-[34px] shrink-0 flex items-center justify-center">
                                             <ProfileAvatar 
-                                                profile={profile} 
+                                                profile={activeProfile} 
                                                 travellerAvatar={!isAuthenticated ? travellerProfile.avatar : undefined} 
                                                 className="w-full h-full object-cover" 
+                                                showLevel={false}
                                             />
                                         </div>
                                     </button>

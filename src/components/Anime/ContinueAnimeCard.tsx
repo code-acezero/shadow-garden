@@ -4,6 +4,7 @@ import React, { useState, useRef, useEffect, memo } from "react";
 import { motion } from "framer-motion";
 import { Play, Captions, Mic, X } from "lucide-react";
 import { cn, formatAnimeTitle } from "@/lib/utils";
+import { resolveAniListMedia, AniListMediaDetails } from '@/lib/anilistSync';
 
 // Shared Interface
 export interface ContinueWatchingItem {
@@ -30,6 +31,7 @@ interface ContinueAnimeCardProps {
 }
 
 export default memo(function ContinueAnimeCard({ anime, onClick, onRemove, variants, className }: ContinueAnimeCardProps) {
+  const [aniDetails, setAniDetails] = useState<AniListMediaDetails | null>(null);
   const lastTapRef = useRef<number>(0);
   const clickTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const isTouchRef = useRef<boolean | null>(null);
@@ -37,6 +39,26 @@ export default memo(function ContinueAnimeCard({ anime, onClick, onRemove, varia
   useEffect(() => {
     isTouchRef.current = window.matchMedia('(hover: none)').matches;
   }, []);
+
+  // Dynamically resolve up-to-date metadata & rich poster from AniList
+  useEffect(() => {
+    let isMounted = true;
+    async function loadDynamicInfo() {
+      try {
+        const isManga = anime.type?.toUpperCase() === 'MANGA' || (anime as any).media_type === 'manga';
+        const details = await resolveAniListMedia(anime.title, anime.id, isManga ? 'MANGA' : 'ANIME');
+        if (isMounted && details) {
+          setAniDetails(details);
+        }
+      } catch (_) {}
+    }
+    loadDynamicInfo();
+    return () => { isMounted = false; };
+  }, [anime.title, anime.id, anime.type]);
+
+  const displayTitle = aniDetails?.title?.english || aniDetails?.title?.romaji || aniDetails?.title?.userPreferred || anime.title;
+  const displayPoster = aniDetails?.coverImage?.extraLarge || aniDetails?.coverImage?.large || (anime.poster && anime.poster.trim() !== '' ? anime.poster : "/images/no-poster.png");
+  const displayTotalEpisodes = aniDetails?.episodes || anime.totalEpisodes;
 
   const handleRemove = (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -98,8 +120,8 @@ export default memo(function ContinueAnimeCard({ anime, onClick, onRemove, varia
       {/* 1. Background Poster Image */}
       <div className="absolute inset-0 overflow-hidden rounded-2xl">
         <img
-          src={anime.poster && anime.poster.trim() !== '' ? anime.poster : "/images/no-poster.png"}
-          alt={anime.title}
+          src={displayPoster}
+          alt={displayTitle}
           loading="lazy"
           decoding="async"
           onError={(e) => {
@@ -145,7 +167,7 @@ export default memo(function ContinueAnimeCard({ anime, onClick, onRemove, varia
       <div className="absolute bottom-0 left-0 right-0 p-2.5 sm:p-3 z-20 flex flex-col gap-1 sm:gap-1.5 justify-end pointer-events-none">
         {/* Title */}
         <h3 className="text-xs sm:text-sm font-black text-white leading-tight truncate drop-shadow-md group-hover:text-primary-300 transition-colors">
-          {formatAnimeTitle(anime.title, anime.id)}
+          {formatAnimeTitle(displayTitle, anime.id)}
         </h3>
 
         {/* Episode & Audio Meta Row */}

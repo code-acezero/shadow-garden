@@ -36,6 +36,7 @@ import RoleTitleManager from '@/components/Admin/RoleTitleManager';
 import GuildBoardsPanel from '@/components/Admin/GuildBoardsPanel';
 import AnalyticsSection from '@/components/Admin/AnalyticsSection';
 import AdsMonetizationPanel from '@/components/Admin/AdsMonetizationPanel';
+import { isGuildMaster, addFormerTitle } from '@/lib/userTitles';
 import { cn } from '@/lib/utils';
 
 // --- NOTIFICATION HELPER ---
@@ -558,7 +559,8 @@ const IdentityTab = memo(() => {
 IdentityTab.displayName = 'IdentityTab';
 
 const RosterTab = memo(() => {
-  const { user: currentUser } = useAuth();
+  const { user: currentUser, profile: currentUserProfile } = useAuth();
+  const amIGuildMaster = isGuildMaster(currentUserProfile || currentUser);
   const [users, setUsers] = useState<any[]>([]);
   const [search, setSearch] = useState('');
   const [filter, setFilter] = useState<'ALL'|'ADMIN'|'MOD'|'BANNED'>('ALL');
@@ -569,6 +571,10 @@ const RosterTab = memo(() => {
   const [warnTarget, setWarnTarget] = useState<string | null>(null);
   const [warnMsg, setWarnMsg] = useState('');
 
+  const [successionTarget, setSuccessionTarget] = useState<any | null>(null);
+  const [successionOpen, setSuccessionOpen] = useState(false);
+  const [isTransferring, setIsTransferring] = useState(false);
+
   const fetchUsers = async () => {
     let query = supabase.from('profiles').select('*').order('created_at', { ascending: false }).limit(500);
     const { data } = await query;
@@ -576,7 +582,7 @@ const RosterTab = memo(() => {
         const sorted = data.sort((a: any, b: any) => {
             if (a.id === currentUser?.id) return -1;
             if (b.id === currentUser?.id) return 1;
-            const roleWeight = (r: string) => r === 'admin' ? 3 : r === 'moderator' ? 2 : 1;
+            const roleWeight = (r: string) => r === 'master' ? 4 : r === 'admin' ? 3 : r === 'moderator' ? 2 : 1;
             return roleWeight(b.role) - roleWeight(a.role);
         });
         setUsers(sorted);
@@ -586,11 +592,82 @@ const RosterTab = memo(() => {
   useEffect(() => { fetchUsers(); }, [currentUser]);
 
   const toggleRole = async (uid: string, currentRole: string, targetRole: 'admin' | 'moderator') => {
+      const targetUser = users.find(u => u.id === uid);
       const newRole = currentRole === targetRole ? 'user' : targetRole;
       setUsers(prev => prev.map(u => u.id === uid ? { ...u, role: newRole } : u));
-      const { error } = await supabase.from('profiles').update({ role: newRole }).eq('id', uid);
+      
+      const updatePayload: any = { role: newRole };
+      
+      // Demoted from Admin -> bestow 'Former Admin'
+      if (currentRole === 'admin' && newRole !== 'admin') {
+          await addFormerTitle(uid, 'Former Admin');
+          updatePayload.admin_title = null;
+          if (targetUser?.equipped_title === 'Admin' || targetUser?.equipped_title === 'Shadow') {
+              updatePayload.equipped_title = 'Former Admin';
+          }
+      }
+      
+      // Demoted from Moderator -> bestow 'Former Moderator'
+      if (currentRole === 'moderator' && newRole === 'user') {
+          await addFormerTitle(uid, 'Former Moderator');
+          updatePayload.admin_title = null;
+          if (targetUser?.equipped_title === 'Warden' || targetUser?.equipped_title === 'Moderator') {
+              updatePayload.equipped_title = 'Former Moderator';
+          }
+      }
+
+      // Promoted from Moderator to Admin -> preserve 'Former Moderator' in vault
+      if (currentRole === 'moderator' && newRole === 'admin') {
+          await addFormerTitle(uid, 'Former Moderator');
+      }
+
+      const { error } = await supabase.from('profiles').update(updatePayload).eq('id', uid);
       if (error) { notify("Error", error.message, 'error'); fetchUsers(); }
-      else { notify("Success", "Rank Updated", 'success'); }
+      else { notify("Success", "Rank & Former Honors Updated", 'success'); fetchUsers(); }
+  };
+
+  const handlePassSuccession = async () => {
+      if (!successionTarget || !currentUser) return;
+      setIsTransferring(true);
+      try {
+          // 1. Predecessor permanently receives 'Former Guild Master'
+          await addFormerTitle(currentUser.id, 'Former Guild Master');
+
+          // 2. Predecessor steps into High Council advisory (role: 'admin', title: 'Former Guild Master')
+          const { data: currP } = await supabase.from('profiles').select('settings').eq('id', currentUser.id).single();
+          const currSettings = currP?.settings || {};
+          await supabase.from('profiles').update({
+              role: 'admin',
+              title: 'Former Guild Master',
+              admin_title: 'Former Guild Master',
+              settings: { ...currSettings, is_guild_master: false, equipped_title: 'Former Guild Master' }
+          }).eq('id', currentUser.id);
+
+          // 3. Successor becomes Guild Master with title 'Shadow'
+          const { data: succP } = await supabase.from('profiles').select('settings').eq('id', successionTarget.id).single();
+          const succSettings = succP?.settings || {};
+          await supabase.from('profiles').update({
+              role: 'admin',
+              title: 'Shadow',
+              admin_title: 'Shadow',
+              settings: { ...succSettings, is_guild_master: true, equipped_title: 'Shadow' }
+          }).eq('id', successionTarget.id);
+
+          if (typeof window !== 'undefined') {
+              localStorage.setItem(`shadow_equipped_title_${currentUser.id}`, 'Former Guild Master');
+              localStorage.setItem(`shadow_equipped_title_${successionTarget.id}`, 'Shadow');
+              window.dispatchEvent(new CustomEvent('shadow-title-updated', { detail: { title: 'Former Guild Master' } }));
+          }
+
+          notify("Supreme Decree", `Mantle of Shadow passed to @${successionTarget.username}! You are now Former Guild Master.`, 'success');
+          setSuccessionOpen(false);
+          setSuccessionTarget(null);
+          await fetchUsers();
+      } catch (err: any) {
+          notify("Transfer Error", err?.message || 'Failed to pass mantle', 'error');
+      } finally {
+          setIsTransferring(false);
+      }
   };
 
   const handleBan = async (uid: string, banned: boolean) => { 
@@ -616,7 +693,7 @@ const RosterTab = memo(() => {
   const filteredUsers = useMemo(() => users.filter(u => {
       const matchesSearch = u.username?.toLowerCase().includes(search.toLowerCase());
       if (filter === 'ALL') return matchesSearch;
-      if (filter === 'ADMIN') return matchesSearch && u.role === 'admin';
+      if (filter === 'ADMIN') return matchesSearch && (u.role === 'admin' || u.role === 'master' || u.role === 'leader');
       if (filter === 'MOD') return matchesSearch && u.role === 'moderator';
       if (filter === 'BANNED') return matchesSearch && u.is_banned;
       return matchesSearch;
@@ -634,21 +711,38 @@ const RosterTab = memo(() => {
        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
           {displayedUsers.map(user => {
              const isMe = user.id === currentUser?.id;
+             const isTargetMaster = user.role === 'master' || user.role === 'leader';
              const isAdmin = user.role === 'admin';
              const isMod = user.role === 'moderator';
              
              return (
-             <div key={user.id} className={`bg-zinc-900/30 border p-4 rounded-2xl flex flex-col gap-4 group transition-all ${isMe ? 'border-primary-500/50 bg-primary-950/10' : isAdmin ? 'border-yellow-500/30' : isMod ? 'border-blue-500/30' : 'border-white/5 hover:border-white/10'}`}>
+             <div key={user.id} className={`bg-zinc-900/30 border p-4 rounded-2xl flex flex-col gap-4 group transition-all ${isMe ? 'border-primary-500/50 bg-primary-950/10' : isTargetMaster ? 'border-amber-500/50 bg-amber-950/10' : isAdmin ? 'border-yellow-500/30' : isMod ? 'border-blue-500/30' : 'border-white/5 hover:border-white/10'}`}>
                 <div className="flex items-start justify-between">
                     <div className="flex items-center gap-4">
                         <ProfileAvatar profile={user} className="w-12 h-12" />
                         <div>
                             <h4 className="font-bold text-white flex items-center gap-2">{user.username} {isMe && <Badge className="text-[8px] bg-primary-600 h-4 px-1 rounded-sm">YOU</Badge>}</h4>
-                            <div className="flex items-center gap-2 mt-1"><Badge variant="secondary" className="text-[10px] bg-white/5 hover:bg-white/10 text-zinc-400 border-none rounded-full">{user.role?.toUpperCase() || 'USER'}</Badge>{user.is_banned && <Badge variant="destructive" className="text-[10px] h-5 rounded-full">EXILED</Badge>}</div>
+                            <div className="flex items-center gap-2 mt-1">
+                                <Badge variant="secondary" className={`text-[10px] border-none rounded-full ${isTargetMaster ? 'bg-amber-400/20 text-amber-300 font-bold' : 'bg-white/5 hover:bg-white/10 text-zinc-400'}`}>
+                                    {isTargetMaster ? 'GUILD MASTER' : (user.role?.toUpperCase() || 'USER')}
+                                </Badge>
+                                {user.is_banned && <Badge variant="destructive" className="text-[10px] h-5 rounded-full">EXILED</Badge>}
+                            </div>
                         </div>
                     </div>
                     <div className="flex gap-1">
                         {!isMe && <>
+                            {amIGuildMaster && (
+                                <Button 
+                                    size="icon" 
+                                    variant="ghost" 
+                                    className="h-8 w-8 rounded-full text-amber-400 hover:text-amber-300 hover:bg-amber-400/10" 
+                                    onClick={() => { setSuccessionTarget(user); setSuccessionOpen(true); }} 
+                                    title="Pass Down Mantle of Shadow (Succession)"
+                                >
+                                    <Crown size={14} />
+                                </Button>
+                            )}
                             <Button size="icon" variant="ghost" className={`h-8 w-8 rounded-full ${isAdmin ? 'text-primary-500' : 'text-yellow-500'}`} onClick={() => toggleRole(user.id, user.role, 'admin')} title={isAdmin ? "Demote" : "Make Grandmaster"}>{isAdmin ? <ArrowDownCircle size={14} /> : <Shield size={14} />}</Button>
                             <Button size="icon" variant="ghost" className={`h-8 w-8 rounded-full ${isMod ? 'text-primary-400' : 'text-blue-500'}`} onClick={() => toggleRole(user.id, user.role, 'moderator')} title={isMod ? "Demote" : "Make Manager"}>{isMod ? <ArrowDownCircle size={14} /> : <UserCheck size={14} />}</Button>
                             <Button size="icon" variant="ghost" className={`h-8 w-8 rounded-full ${user.is_banned ? 'text-green-500' : 'text-primary-500'}`} onClick={() => handleBan(user.id, user.is_banned)}>{user.is_banned ? <Unlock size={14} /> : <Lock size={14} />}</Button>
@@ -665,6 +759,43 @@ const RosterTab = memo(() => {
        </div>
        {totalPages > 1 && (<div className="flex justify-center gap-2 mt-6">{Array.from({length: totalPages}, (_, i) => (<button key={i} onClick={() => setPage(i+1)} className={`w-8 h-8 rounded-full text-xs font-bold ${page === i+1 ? 'bg-primary-600 text-white' : 'bg-white/10 text-zinc-400'}`}>{i+1}</button>))}</div>)}
        <Dialog open={warnOpen} onOpenChange={setWarnOpen}><DialogContent className="bg-[#0a0a0a] border-white/10 text-white rounded-2xl"><DialogHeader><DialogTitle>Issue Warning</DialogTitle></DialogHeader><Input placeholder="Reason for warning..." value={warnMsg} onChange={e => setWarnMsg(e.target.value)} className="bg-black/40 border-white/10 rounded-xl"/><DialogFooter><Button onClick={sendWarning} className="bg-primary-600 rounded-full">Transmit</Button></DialogFooter></DialogContent></Dialog>
+       
+       {/* Succession Confirmation Dialog */}
+       <Dialog open={successionOpen} onOpenChange={setSuccessionOpen}>
+           <DialogContent className="bg-[#0c0a14] border border-amber-500/30 text-white rounded-3xl p-6 max-w-md shadow-2xl">
+               <DialogHeader>
+                   <div className="flex items-center gap-2 mb-2">
+                       <Crown className="text-amber-400" size={24} />
+                       <DialogTitle className="text-lg font-black tracking-wide text-white">Guild Master Succession</DialogTitle>
+                   </div>
+               </DialogHeader>
+               <div className="space-y-3 py-2 text-xs text-zinc-300 leading-relaxed">
+                   <p>
+                       You are about to pass down the supreme mantle of <strong className="text-amber-400 font-bold">Guild Master (Title: Shadow)</strong> to <strong className="text-white font-bold">@{successionTarget?.username}</strong>.
+                   </p>
+                   <div className="p-3 rounded-2xl bg-amber-500/10 border border-amber-500/20 space-y-1">
+                       <p className="font-semibold text-amber-300">Succession Covenant:</p>
+                       <ul className="list-disc pl-4 space-y-1 text-zinc-300">
+                           <li>@{successionTarget?.username} becomes the new sole Guild Master of Shadow Garden.</li>
+                           <li>You will step into the High Council as Admin and permanently retain the supreme title <strong className="text-amber-400">(Former Guild Master)</strong> in your vault.</li>
+                       </ul>
+                   </div>
+               </div>
+               <DialogFooter className="flex gap-2 sm:gap-3 mt-4">
+                   <Button variant="ghost" onClick={() => setSuccessionOpen(false)} className="rounded-xl border border-white/10 text-zinc-400 hover:text-white">
+                       Cancel
+                   </Button>
+                   <Button 
+                       onClick={handlePassSuccession} 
+                       disabled={isTransferring}
+                       className="bg-amber-500 hover:bg-amber-400 text-black font-bold rounded-xl flex items-center gap-2 shadow-lg shadow-amber-500/20"
+                   >
+                       {isTransferring ? <Loader2 size={14} className="animate-spin" /> : <Crown size={14} />}
+                       Confirm Succession
+                   </Button>
+               </DialogFooter>
+           </DialogContent>
+       </Dialog>
     </div>
   );
 });

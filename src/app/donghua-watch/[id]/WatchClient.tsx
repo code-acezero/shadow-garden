@@ -1,5 +1,6 @@
 "use client";
 
+import { useJellyFlip } from '@/lib/useJellyFlip';
 import React, { useState, useEffect, useMemo, Suspense, useRef, useCallback, memo } from 'react';
 import { useRouter, useSearchParams, useParams, usePathname } from 'next/navigation';
 import Link from 'next/link';
@@ -169,22 +170,15 @@ PingPongScroll.displayName = "PingPongScroll";
 const EpisodeButton = memo(({ ep, isCurrent, isPlayed, isFullyPlayed, percent, viewMode, onClick }: any) => {
     const isWatched = isFullyPlayed || percent > 0;
     return (
-        <motion.button
-            layout
-            initial={{ opacity: 0, scale: 0.95 }}
-            animate={{ opacity: 1, scale: isCurrent ? 1.05 : 1 }}
-            exit={{ opacity: 0, scale: 0.95 }}
-            transition={{
-                layout: { type: "spring", stiffness: 350, damping: 30 },
-                scale: { type: "spring", stiffness: 300, damping: 25 },
-                opacity: { duration: 0.2 }
-            }}
+        <button
+            type="button"
+            data-flip-id={ep.id}
             onClick={() => onClick(ep.id)}
             className={cn(
-                "relative overflow-hidden group border transition-all duration-300 transform-gpu shadow-[0_4px_16px_rgba(0,0,0,0.2)]",
-                viewMode === 'grid' ? "h-9 w-full rounded-2xl flex items-center justify-center text-[11px] font-black" :
-                viewMode === 'compact' ? "aspect-square rounded-full flex items-center justify-center text-[9px] font-bold" :
-                "w-[98%] mx-auto h-10 rounded-2xl flex items-center px-4 text-[11px] font-bold text-left",
+                "relative overflow-hidden group border select-none transition-colors duration-200 transform-gpu active:scale-95 hover:scale-[1.03] shadow-[0_4px_16px_rgba(0,0,0,0.2)]",
+                viewMode === 'grid' ? "h-8 sm:h-9 w-full rounded-full flex items-center justify-center text-[10px] sm:text-[11px] font-black" :
+                viewMode === 'compact' ? "h-7 sm:h-8 w-full aspect-square rounded-full flex items-center justify-center text-[9px] font-bold" :
+                "w-full h-8 sm:h-9 rounded-2xl flex items-center px-3 sm:px-4 text-[10px] sm:text-[11px] font-bold text-left",
                 isCurrent ? "bg-green-500/20 backdrop-blur-xl border-green-400/50 text-white shadow-[0_0_20px_rgba(34,197,94,0.4)] z-20" :
                 isPlayed ? "bg-red-500/15 backdrop-blur-xl border-red-400/40 text-red-300 shadow-[0_0_16px_rgba(239,68,68,0.25)]" :
                 isWatched ? "bg-emerald-600/10 backdrop-blur-xl border border-emerald-500/30 text-emerald-500 hover:bg-emerald-600/20" :
@@ -193,7 +187,6 @@ const EpisodeButton = memo(({ ep, isCurrent, isPlayed, isFullyPlayed, percent, v
         >
             <div className="absolute inset-x-0 top-0 h-[40%] bg-gradient-to-b from-white/15 to-transparent pointer-events-none rounded-t-2xl" />
             
-            {/* Current episode — green animated shimmer */}
             {isCurrent && (
                 <>
                     <div className="absolute inset-0 bg-gradient-to-tr from-green-500/10 via-transparent to-green-400/20 animate-pulse pointer-events-none" />
@@ -201,7 +194,6 @@ const EpisodeButton = memo(({ ep, isCurrent, isPlayed, isFullyPlayed, percent, v
                 </>
             )}
 
-            {/* Played episode — red animated shimmer */}
             {isPlayed && !isCurrent && (
                 <>
                     <div className="absolute inset-0 bg-gradient-to-tr from-red-500/10 via-transparent to-red-400/15 animate-pulse pointer-events-none" />
@@ -209,7 +201,6 @@ const EpisodeButton = memo(({ ep, isCurrent, isPlayed, isFullyPlayed, percent, v
                 </>
             )}
 
-            {/* Active Micro-Equalizer Indicator for Grid & Compact Modes */}
             {isCurrent && (viewMode === 'grid' || viewMode === 'compact') && (
                 <span className="absolute top-1 right-1.5 flex items-end gap-[1.5px] h-2 pointer-events-none z-20" aria-label="Now Playing">
                     <span className="w-[1.5px] bg-green-300 rounded-full animate-[audio-bar-1_0.8s_ease-in-out_infinite]" />
@@ -218,10 +209,17 @@ const EpisodeButton = memo(({ ep, isCurrent, isPlayed, isFullyPlayed, percent, v
                 </span>
             )}
 
-            <motion.div layout="position" className={cn("truncate relative z-10 w-full font-lemon tracking-wide flex items-center", viewMode === 'list' ? "justify-between" : "justify-center")}>
-                <span className="truncate">{viewMode === 'list' ? `${ep.number}. ${ep.title}` : ep.number}</span>
+            <div className={cn("relative z-10 w-full h-full flex items-center font-lemon tracking-wide overflow-hidden", viewMode === 'list' ? "justify-between" : "justify-center")}>
+                <div className="flex items-center gap-2 min-w-0 truncate">
+                    <span className="shrink-0 font-bold">{ep.number}</span>
+                    {viewMode === 'list' && (
+                        <span className="truncate text-[11px] font-sans font-medium text-zinc-300 transition-opacity duration-200">
+                            {ep.title && !ep.title.toLowerCase().startsWith(`episode ${ep.number}`) ? `• ${ep.title}` : ''}
+                        </span>
+                    )}
+                </div>
                 {isCurrent && viewMode === 'list' && (
-                    <span className="ml-2 inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-green-500/20 border border-green-400/50 text-[8px] font-black uppercase text-green-300 shadow-[0_0_10px_rgba(74,222,128,0.3)] shrink-0">
+                    <span className="ml-2 inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-green-500/20 border border-green-400/50 text-[8px] font-black uppercase text-green-300 shadow-[0_0_10px_rgba(74,222,128,0.3)] shrink-0 transition-transform duration-200">
                         <span className="inline-flex items-end gap-[1.5px] h-2">
                             <span className="w-[1.5px] bg-green-300 rounded-full animate-[audio-bar-1_0.8s_ease-in-out_infinite]" />
                             <span className="w-[1.5px] bg-green-300 rounded-full animate-[audio-bar-2_0.8s_ease-in-out_infinite]" />
@@ -230,12 +228,14 @@ const EpisodeButton = memo(({ ep, isCurrent, isPlayed, isFullyPlayed, percent, v
                         <span>PLAYING</span>
                     </span>
                 )}
-            </motion.div>
+            </div>
             
             {isWatched && !isCurrent && !isPlayed && (
-                <div className="absolute bottom-0 left-0 h-0.5 bg-emerald-500/50 transition-all pointer-events-none" style={{ width: `${percent}%` }} />
+                <div className="absolute bottom-0 left-0 right-0 h-1 bg-black/40 overflow-hidden">
+                    <div className="h-full bg-emerald-500" style={{ width: `${percent}%` }} />
+                </div>
             )}
-        </motion.button>
+        </button>
     );
 });
 EpisodeButton.displayName = "EpisodeButton";
@@ -765,6 +765,8 @@ function WatchContent() {
   const relatedRef = useDraggable();
   const recommendationsRef = useDraggable();
   const chunksRef = useDraggable();
+    const epContainerRef = useRef<HTMLDivElement>(null);
+    useJellyFlip(epViewMode, epContainerRef);
   const isProgrammaticServerUpdate = useRef(false);
   const isSwitchingEpisode = useRef(false);
 
@@ -1067,7 +1069,7 @@ function WatchContent() {
     }
   }, [currentEpId, isLoadingInfo, anime]);
 
-  const chunkSize = epViewMode === 'compact' ? 100 : 50;
+  const chunkSize = 50;
   useEffect(() => {
       if (!currentEpId || !anime) return;
       const index = anime.episodes.findIndex(e => e.id === currentEpId);
@@ -1646,7 +1648,7 @@ function WatchContent() {
       <div onClick={() => updateSetting('dimMode', false)} className={cn("fixed inset-0 bg-black/95 transition-opacity duration-500 will-change-[opacity]", settings.dimMode ? 'opacity-100 pointer-events-auto cursor-pointer z-[40]' : 'opacity-0 pointer-events-none z-[40]')} />
 
         <div className="w-full flex flex-col xl:grid xl:grid-cols-12 gap-8 xl:items-stretch">
-            <div className="xl:col-span-8 w-full flex flex-col justify-between gap-2 order-1">
+            <div className="xl:col-span-8 w-full flex flex-col justify-start gap-3 order-1">
                 <div 
                     ref={playerContainerRef} 
                     tabIndex={0} 
@@ -1894,7 +1896,8 @@ function WatchContent() {
             </motion.div>
             </div>
             
-            <div className="xl:col-span-4 w-full h-full min-h-[420px] max-h-[520px] xl:max-h-none bg-black/40 backdrop-blur-2xl rounded-[30px] border border-white/10 overflow-hidden flex flex-col relative z-20 order-2">
+            <div className="xl:col-span-4 w-full h-[460px] sm:h-[520px] xl:h-auto xl:relative xl:self-stretch order-2">
+                <div className="w-full h-full xl:absolute xl:inset-0 bg-black/40 backdrop-blur-2xl rounded-[30px] border border-white/10 overflow-hidden flex flex-col relative z-20">
                 <div className="p-6 bg-white/5 border-b border-white/5 flex justify-between items-center shrink-0">
                     <div className="flex items-center gap-3"><h3 className="font-black text-white flex items-center gap-2 uppercase text-sm font-lemon tracking-widest"><Layers size={18} className="text-emerald-600"/> Episodes</h3><Badge className="bg-white/10 backdrop-blur-md border border-white/10 text-white font-black text-[10px] px-3 h-5 rounded-full">{anime.episodes.length}</Badge></div>
                     <div className="flex items-center gap-1 bg-black/50 p-1 rounded-lg border border-white/5">
@@ -1911,26 +1914,25 @@ function WatchContent() {
                     </div>
                 </div>
                 <div className="flex-1 min-h-0 overflow-y-auto p-2 custom-scrollbar overflow-x-hidden">
-                    <LayoutGroup>
-                        <motion.div layout className={cn("p-2 transition-all duration-500 ease-in-out grid", epViewMode === 'grid' ? 'grid-cols-5 gap-2.5' : epViewMode === 'compact' ? 'grid-cols-10 gap-1.5' : 'grid-cols-1 gap-2')}>
-                            <AnimatePresence mode="popLayout">
-                                {episodeChunks[epChunkIndex]?.map((ep) => {
-                                    const percent = epProgress[ep.number] || 0;
-                                    const isFullyPlayed = percent >= 80 || percent === 100;
-                                    const isCurrent = ep.id === currentEpId ||
-                                        String(ep.id) === String(currentEpId) ||
-                                        String(ep.number) === String(currentEpId) ||
-                                        String(ep.id).endsWith(`::${currentEpId}`) ||
-                                        String(ep.id).endsWith(`-${currentEpId}`) ||
-                                        String(ep.id).endsWith(`=${currentEpId}`);
-                                    const isPlayed = playedEpIds.has(ep.id) && !isCurrent;
-                                    return (
-                                        <EpisodeButton key={ep.id} ep={ep} isCurrent={isCurrent} isPlayed={isPlayed} isFullyPlayed={isFullyPlayed} percent={percent} viewMode={epViewMode} onClick={handleEpisodeClick} />
-                                    );
-                                })}
-                            </AnimatePresence>
-                        </motion.div>
-                    </LayoutGroup>
+                        <div
+                            ref={epContainerRef}
+                            className={cn("p-2 grid", epViewMode === 'grid' ? 'grid-cols-5 gap-2.5' : epViewMode === 'compact' ? 'grid-cols-10 gap-1.5' : 'grid-cols-1 gap-2')}
+                        >
+                            {episodeChunks[epChunkIndex]?.map((ep) => {
+                                const percent = epProgress[ep.number] || 0;
+                                const isFullyPlayed = percent >= 80 || percent === 100;
+                                const isCurrent = ep.id === currentEpId ||
+                                    String(ep.id) === String(currentEpId) ||
+                                    String(ep.number) === String(currentEpId) ||
+                                    String(ep.id).endsWith(`::${currentEpId}`) ||
+                                    String(ep.id).endsWith(`-${currentEpId}`) ||
+                                    String(ep.id).endsWith(`=${currentEpId}`);
+                                const isPlayed = playedEpIds.has(ep.id) && !isCurrent;
+                                return (
+                                    <EpisodeButton key={ep.id} ep={ep} isCurrent={isCurrent} isPlayed={isPlayed} isFullyPlayed={isFullyPlayed} percent={percent} viewMode={epViewMode} onClick={handleEpisodeClick} />
+                                );
+                            })}
+                        </div></div>
                 </div>
             </div>
 

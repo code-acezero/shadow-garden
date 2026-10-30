@@ -18,6 +18,7 @@ import {
 import { formatDistanceToNow } from 'date-fns';
 import { motion } from 'framer-motion';
 import ProfileAvatar from '@/components/User/ProfileAvatar';
+import { getOptimizedImageUrl } from '@/lib/imageUtils';
 
 // Types (You can also move this to a types.ts file later)
 interface SocialPostCardProps {
@@ -111,7 +112,8 @@ export default function SocialPostCard({
                   return (
                     <div key={i} className={`relative ${post.images.length === 3 && i === 0 ? 'col-span-2' : ''}`}>
                       <img 
-                        src={img} 
+                        src={getOptimizedImageUrl(img)} 
+                        loading="lazy"
                         className="w-full h-auto object-cover max-h-[400px] min-h-[200px] hover:scale-105 transition-transform duration-500 cursor-zoom-in bg-zinc-900" 
                       />
                       {/* Overlay for +More images */}
