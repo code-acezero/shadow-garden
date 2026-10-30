@@ -1,6 +1,36 @@
 import { supabase } from '@/lib/supabase';
 
 // --- WHISPER HELPER ---
+const SLUG_MAP: Record<string, string> = {
+    'alpha': 'alpha',
+    'satoru gojo': 'gojo',
+    'gojo': 'gojo',
+    'kento nanami': 'nanami',
+    'nanami': 'nanami',
+    'ryomen sukuna': 'sukuna',
+    'sukuna': 'sukuna',
+    'levi ackerman': 'levi',
+    'levi': 'levi',
+    'roronoa zoro': 'zoro',
+    'zoro': 'zoro',
+    'makima': 'makima',
+    'rem': 'rem',
+    'alice zuberg': 'alice',
+    'alice': 'alice',
+    'madara uchiha': 'madara',
+    'madara': 'madara',
+    'fern': 'fern',
+    'light yagami': 'light',
+    'light': 'light',
+    'hatsune miku': 'miku',
+    'miku': 'miku',
+    'rei ayanami': 'rei',
+    'rei': 'rei',
+    'sakura haruno': 'sakura',
+    'sakura': 'sakura',
+    'hana': 'hana'
+};
+
 const notifyIsland = (title: string, message: string) => {
     if (typeof window !== 'undefined') {
         window.dispatchEvent(new CustomEvent('shadow-whisper', {
@@ -158,9 +188,8 @@ export const playVoice = (event: VoiceEvent) => {
         }
         
         // Normalize for file system
-        let packName = (settings.pack || 'alpha').toLowerCase();
-        if (packName.startsWith('system-')) packName = packName.replace('system-', '');
-        if (packName.startsWith('sys-')) packName = packName.replace('sys-', '');
+        const rawPack = (settings.pack || 'alpha').toLowerCase().replace(/^(system-|sys-)/, '').trim();
+        const packName = SLUG_MAP[rawPack] || rawPack.split(' ')[0];
         
         const lang = settings.language || 'en';
         fileUrl = `/voices/${lang}/${packName}-${action}.mp3`;

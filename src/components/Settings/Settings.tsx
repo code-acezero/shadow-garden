@@ -220,7 +220,8 @@ export default function Settings() {
                  // 3. Merge & Normalize
                  const allVoices = [...(dbData || []), ...staticVoices].map(v => ({
                      id: v.id || v.name, // Fallback for static files
-                     name: v.character || v.name, // Unify name
+                     name: v.name || v.character, // Proper display name
+                      character: v.character || v.name?.toLowerCase(),
                      language: v.language || 'en',
                      gender: v.gender || 'Unknown', 
                      preview: v.file_url || v.preview || v.path, // Handle both DB url and file path
@@ -247,66 +248,83 @@ export default function Settings() {
           if (!acc[lang][charName]) {
               acc[lang][charName] = {
                   name: charName,
+                  slug: v.character || charName.toLowerCase(),
                   gender: v.gender,
                   clips: []
               };
           }
-          // Add preview clip
-          if (v.preview) acc[lang][charName].clips.push(v.preview);
+          const clipUrl = v.preview || v.file_url;
+          if (clipUrl && !acc[lang][charName].clips.includes(clipUrl)) {
+              acc[lang][charName].clips.push(clipUrl);
+          }
           
           return acc;
       }, {});
   }, [voices]);
 
-  // Preview Logic with Volume Boost
-  const handleVoicePreview = (charName: string, clips: string[]) => {
+  const lastClipIndexRef = useRef<Record<string, number>>({});
+
+  // Preview Logic with Volume Boost & Random clip non-repeating cycle
+  const handleVoicePreview = (charName: string, clips: string[], forcePlayNext: boolean = false) => {
       if (!clips || clips.length === 0) {
           notifyWhisper("No audio crystals found.", "error");
           return;
       }
 
-      // Pick Random Clip
-      const randomUrl = clips[Math.floor(Math.random() * clips.length)];
-      
-      if (playingVoice === charName) {
+      if (playingVoice === charName && !forcePlayNext) {
           audioRef.current?.pause();
           setPlayingVoice(null);
-      } else {
-          if (audioRef.current) { 
-            audioRef.current.pause(); 
-            audioRef.current = null;
-          }
-          
-          const audio = new Audio(randomUrl);
-          audio.crossOrigin = "anonymous";
-          audioRef.current = audio;
-
-          // VOLUME BOOST LOGIC
-          if (settings.volumeBoost) {
-              try {
-                  if (!audioContextRef.current) {
-                      const AudioCtx = window.AudioContext || (window as any).webkitAudioContext;
-                      audioContextRef.current = new AudioCtx();
-                  }
-                  const ctx = audioContextRef.current;
-                  if(ctx && ctx.state === 'suspended') ctx.resume();
-
-                  if (ctx) {
-                      const source = ctx.createMediaElementSource(audio);
-                      const gainNode = ctx.createGain();
-                      gainNode.gain.value = 2.0; 
-                      source.connect(gainNode);
-                      gainNode.connect(ctx.destination);
-                  }
-              } catch(e) { console.warn("Audio Context Error", e); }
-          } else {
-              audio.volume = 1.0;
-          }
-
-          audio.onended = () => setPlayingVoice(null);
-          audio.play().catch(() => notifyWhisper("Audio artifact corrupted.", "error"));
-          setPlayingVoice(charName);
+          return;
       }
+
+      if (audioRef.current) { 
+        audioRef.current.pause(); 
+        audioRef.current = null;
+      }
+      
+      // Pick Random Clip avoiding immediate repetition
+      let nextIndex = 0;
+      if (clips.length > 1) {
+          const lastIdx = lastClipIndexRef.current[charName] ?? -1;
+          let attempts = 0;
+          do {
+              nextIndex = Math.floor(Math.random() * clips.length);
+              attempts++;
+          } while (nextIndex === lastIdx && attempts < 15);
+      }
+      lastClipIndexRef.current[charName] = nextIndex;
+      const randomUrl = clips[nextIndex];
+      
+      const audio = new Audio(randomUrl);
+      audio.crossOrigin = "anonymous";
+      audioRef.current = audio;
+
+      // VOLUME BOOST LOGIC
+      if (settings.volumeBoost) {
+          try {
+              if (!audioContextRef.current) {
+                  const AudioCtx = window.AudioContext || (window as any).webkitAudioContext;
+                  audioContextRef.current = new AudioCtx();
+              }
+              const ctx = audioContextRef.current;
+              if(ctx && ctx.state === 'suspended') ctx.resume();
+
+              if (ctx) {
+                  const source = ctx.createMediaElementSource(audio);
+                  const gainNode = ctx.createGain();
+                  gainNode.gain.value = 2.0; 
+                  source.connect(gainNode);
+                  gainNode.connect(ctx.destination);
+              }
+          } catch(e) { console.warn("Audio Context Error", e); }
+      } else {
+          const vol = (settings as any).whisperVolume !== undefined ? (settings as any).whisperVolume : 0.8;
+          audio.volume = Math.max(0, Math.min(1, vol));
+      }
+
+      audio.onended = () => setPlayingVoice(null);
+      audio.play().catch(() => notifyWhisper("Audio sample playback deferred.", "info"));
+      setPlayingVoice(charName);
   };
 
   const selectVoicePack = (name: string, lang: string) => {
@@ -1136,103 +1154,6 @@ export default function Settings() {
           </div>
       );
 
-      case 'whisper': return (
-          <div className="space-y-8 animate-in fade-in slide-in-from-right-4 duration-500 w-full">
-            <SectionHeader title="Telepathy" desc="Configure your AI system voices" font={currentFont} />
-            <div className="bg-[#0f0f0f] rounded-[32px] p-8 border border-white/5 space-y-6 shadow-lg">
-                <div className="flex items-center justify-between mb-4">
-                    <h3 className="text-xs font-black text-zinc-500 uppercase tracking-widest flex items-center gap-2"><Mic2 size={14} className="text-primary"/> Voice Engine</h3>
-                    <ToggleRow title="Enable Telepathy" desc="System Voice Assistant" checked={settings.whisperEnabled} onChange={(v: boolean) => updateSetting('whisperEnabled', v)} />
-                </div>
-                
-                {settings.whisperEnabled && (
-                    <>
-                        <div className="space-y-4 pt-4 border-t border-white/5">
-                            <label className="text-[10px] font-bold text-zinc-500 uppercase flex items-center gap-2">
-                                <Volume2 size={12}/> Output Volume
-                            </label>
-                            <div className="flex items-center gap-4">
-                                <input 
-                                    type="range" 
-                                    min="0" max="100" 
-                                    value={(settings as any).whisperVolume ? (settings as any).whisperVolume * 100 : 100} 
-                                    onChange={e => updateSetting('whisperVolume', Number(e.target.value) / 100)} 
-                                    className="w-full h-1 bg-zinc-800 rounded-lg appearance-none cursor-pointer accent-primary" 
-                                />
-                                <span className="text-xs font-bold text-zinc-400 w-12 text-right">
-                                    {Math.round(((settings as any).whisperVolume || 1) * 100)}%
-                                </span>
-                            </div>
-                        </div>
-
-                        <div className="space-y-4 pt-4 border-t border-white/5">
-                            <div className="flex items-center justify-between">
-                                <h4 className="text-[10px] font-bold text-zinc-500 uppercase">Select Voice Agent</h4>
-                                <Button size="sm" onClick={() => {
-                                    // Hack to unlock audio context in browsers
-                                    const AudioCtx = window.AudioContext || (window as any).webkitAudioContext;
-                                    const ctx = new AudioCtx();
-                                    ctx.resume().then(() => notifyWhisper('Audio Engine Unlocked', 'success'));
-                                }} className="bg-primary/20 text-primary hover:bg-primary/40 border border-primary/30 h-8 text-[10px] uppercase font-bold rounded-full">Unlock Audio Permissions</Button>
-                            </div>
-                            
-                            <Tabs defaultValue="en" className="w-full">
-                                <TabsList className="bg-zinc-900/50 p-1 rounded-full border border-white/5 mb-4 h-auto flex flex-wrap gap-1">
-                                    {Object.keys(voiceLibrary).concat(['en']).filter((v,i,a)=>a.indexOf(v)===i).map(lang => (
-                                        <TabsTrigger key={lang} value={lang} className="rounded-full px-4 py-2 data-[state=active]:bg-primary text-xs font-bold uppercase">{lang}</TabsTrigger>
-                                    ))}
-                                </TabsList>
-                                
-                                {Object.keys(voiceLibrary).map(lang => (
-                                    <TabsContent key={lang} value={lang} className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                                        {Object.keys(voiceLibrary[lang] || {}).map(char => {
-                                            const v = voiceLibrary[lang][char];
-                                            const isSelected = settings.whisperVoice === v.name;
-                                            return (
-                                                <button 
-                                                    key={v.name}
-                                                    onClick={() => updateSetting('whisperVoice', v.name)}
-                                                    className={`p-4 rounded-2xl border transition-all text-left group ${isSelected ? 'bg-primary/10 border-primary text-white shadow-[0_0_15px_var(--primary-color)]' : 'bg-black/40 border-white/5 text-zinc-400 hover:bg-white/5 hover:border-white/10 hover:text-white'}`}
-                                                >
-                                                    <div className="flex justify-between items-start mb-2">
-                                                        <div className="p-2 bg-white/5 rounded-lg group-hover:bg-primary/20 group-hover:text-primary transition-colors">
-                                                            <AudioWaveform size={14} />
-                                                        </div>
-                                                        {isSelected && <CheckCircle size={14} className="text-primary" />}
-                                                    </div>
-                                                    <h5 className="font-bold text-sm tracking-wide">{v.name}</h5>
-                                                    <span className="text-[9px] uppercase tracking-widest opacity-50">{v.gender} • {lang.toUpperCase()}</span>
-                                                    
-                                                    <div className="mt-4 pt-4 border-t border-white/5">
-                                                        <button 
-                                                            onClick={(e) => { 
-                                                                e.stopPropagation(); 
-                                                                if (v.clips && v.clips[0]) {
-                                                                    const audio = new Audio(v.clips[0]);
-                                                                    audio.volume = (settings as any).whisperVolume || 1.0;
-                                                                    audio.play().catch(err => console.warn(err));
-                                                                } else {
-                                                                    toast.error("Preview unavailable");
-                                                                }
-                                                            }}
-                                                            className="w-full py-2 bg-white/5 hover:bg-white/10 rounded-xl text-[10px] font-bold uppercase tracking-wider transition-colors flex items-center justify-center gap-2"
-                                                        >
-                                                            <Play size={10} /> Preview
-                                                        </button>
-                                                    </div>
-                                                </button>
-                                            );
-                                        })}
-                                    </TabsContent>
-                                ))}
-                            </Tabs>
-                        </div>
-                    </>
-                )}
-            </div>
-          </div>
-      );
-
       case 'player': return (
           <div className="space-y-8 animate-in fade-in slide-in-from-right-4 duration-500 w-full">
             <SectionHeader title="Crystal Ball" desc="Customize your viewing experience" font={currentFont} />
@@ -1380,7 +1301,7 @@ export default function Settings() {
                                 return (
                                     <div 
                                         key={pack.name} 
-                                        onClick={() => selectVoicePack(pack.name, lang)}
+                                        onClick={() => { selectVoicePack(pack.name, lang); handleVoicePreview(pack.name, pack.clips, true); }}
                                         className={cn(
                                             "relative p-5 rounded-[24px] border-[2px] transition-all cursor-pointer overflow-hidden group hover:scale-[1.02] active:scale-95 flex flex-col justify-between gap-4",
                                             isActive 

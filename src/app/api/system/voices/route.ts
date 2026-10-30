@@ -4,24 +4,21 @@ import path from 'path';
 
 const CHAR_META: Record<string, { name: string; gender: string }> = {
   alpha: { name: 'Alpha', gender: 'Female' },
-  hana: { name: 'Hana', gender: 'Female' },
-  miku: { name: 'Miku', gender: 'Female' },
-  nanami: { name: 'Nanami', gender: 'Female' },
-  rei: { name: 'Rei', gender: 'Female' },
-  sakura: { name: 'Sakura', gender: 'Female' },
-  aila: { name: 'Aila', gender: 'Female' },
-  alice: { name: 'Alice', gender: 'Female' },
-  aoi: { name: 'Aoi', gender: 'Female' },
-  ehon: { name: 'Ehon', gender: 'Male' },
+  gojo: { name: 'Satoru Gojo', gender: 'Male' },
+  nanami: { name: 'Kento Nanami', gender: 'Male' },
+  sukuna: { name: 'Ryomen Sukuna', gender: 'Male' },
+  levi: { name: 'Levi Ackerman', gender: 'Male' },
+  zoro: { name: 'Roronoa Zoro', gender: 'Male' },
+  makima: { name: 'Makima', gender: 'Female' },
+  rem: { name: 'Rem', gender: 'Female' },
+  alice: { name: 'Alice Zuberg', gender: 'Female' },
+  madara: { name: 'Madara Uchiha', gender: 'Male' },
   fern: { name: 'Fern', gender: 'Female' },
-  gojo: { name: 'Gojo', gender: 'Male' },
-  gojo2: { name: 'Gojo (Domain)', gender: 'Male' },
-  light: { name: 'Light', gender: 'Male' },
-  madara: { name: 'Madara', gender: 'Male' },
-  minami: { name: 'Minami', gender: 'Female' },
-  rizin: { name: 'Rizin', gender: 'Male' },
-  shigeru: { name: 'Shigeru', gender: 'Male' },
-  sofitia: { name: 'Sofitia', gender: 'Female' },
+  light: { name: 'Light Yagami', gender: 'Male' },
+  miku: { name: 'Hatsune Miku', gender: 'Female' },
+  rei: { name: 'Rei Ayanami', gender: 'Female' },
+  sakura: { name: 'Sakura Haruno', gender: 'Female' },
+  hana: { name: 'Hana', gender: 'Female' }
 };
 
 export async function GET() {
@@ -50,8 +47,8 @@ export async function GET() {
         }
 
         const parts = cleanName.split('-');
-        const pack = parts[0].toLowerCase(); // "hana", "aila"
-        const type = parts.slice(1).join('-'); // "greet-master"
+        const pack = parts[0].toLowerCase();
+        const type = parts.slice(1).join('-');
 
         const eventTrigger = type.toUpperCase().replace(/-/g, '_');
         const uniqueKey = `${lang}-${pack}-${eventTrigger}`;
@@ -70,8 +67,8 @@ export async function GET() {
             language: lang,
             gender: meta.gender,
             event_trigger: eventTrigger,
-            file_url: `/voices/${lang}/${pack}-${type}.mp3`,
-            preview: `/voices/${lang}/${pack}-${type}.mp3`,
+            file_url: `/voices/${lang}/${item.name}`,
+            preview: `/voices/${lang}/${item.name}`,
             source: 'FILE'
           });
         }

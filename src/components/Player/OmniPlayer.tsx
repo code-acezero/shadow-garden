@@ -551,8 +551,12 @@ const OmniPlayer = forwardRef<OmniPlayerRef, OmniPlayerProps>(({
             } catch {}
             if (canSaveRef.current) onInteract?.();
         } else if (videoRef.current) {
+            seekTargetRef.current = time;
             videoRef.current.currentTime = time;
             setCurrentTime(time);
+            if (seekAccumulatorRef.current) clearTimeout(seekAccumulatorRef.current);
+            // @ts-ignore
+            seekAccumulatorRef.current = setTimeout(() => { seekTargetRef.current = null; }, 800);
             if (canSaveRef.current) onInteract?.();
         }
     },
@@ -599,48 +603,34 @@ const OmniPlayer = forwardRef<OmniPlayerRef, OmniPlayerProps>(({
         setDuration(dur);
         onProgress?.({ playedSeconds: cur, loadedSeconds: cur });
 
-        const hasValidIntro = Boolean(intro && typeof intro.start === 'number' && typeof intro.end === 'number' && intro.end > intro.start + 5 && intro.start >= 0);
-        const hasValidOutro = Boolean(outro && typeof outro.start === 'number' && outro.start >= 45 && (!hasValidIntro || outro.start > (intro?.end ?? 0)));
+        const introStart = intro ? Number(intro.start) : NaN;
+        const introEnd = intro ? Number(intro.end) : NaN;
+        const hasValidIntro = !isNaN(introStart) && !isNaN(introEnd) && introEnd > introStart + 5 && introStart >= 0;
+
+        const outroStart = outro ? Number(outro.start) : NaN;
+        const outroEnd = outro ? Number(outro.end) : NaN;
+        const hasValidOutro = !isNaN(outroStart) && outroStart >= 45 && (!hasValidIntro || outroStart > introEnd);
 
         // Rewind reset: If playback seeks backward before intro/outro, reset skip flags
-        if (hasValidIntro && cur < (intro?.start ?? 0) - 2) {
+        if (hasValidIntro && cur < introStart - 2) {
             hasSkippedIntroRef.current = false;
         }
-        if (hasValidOutro && cur < (outro?.start ?? 0) - 2) {
+        if (hasValidOutro && cur < outroStart - 2) {
             hasSkippedOutroRef.current = false;
         }
 
         // Mutual exclusivity: only intro OR outro can ever trigger
-        if (hasValidIntro && intro && cur >= intro.start && cur < intro.end) {
+        if (hasValidIntro && cur >= introStart && cur < introEnd) {
             setShowSkipOutro(false);
             if (localAutoSkip && !hasSkippedIntroRef.current) {
-                hasSkippedIntroRef.current = true;
-                iframeTimeRef.current = intro.end;
-                setCurrentTime(intro.end);
-                setShowSkipIntro(false);
-                notifyWhisper("Auto-Skipped Intro", "success");
-                onSkipIntro?.();
-                try {
-                    const ifr = containerRef.current?.querySelector('iframe');
-                    ifr?.contentWindow?.postMessage(JSON.stringify({ event: 'seek', time: intro.end }), '*');
-                } catch {}
+                executeSkipIntro();
             } else if (!localAutoSkip && !hasSkippedIntroRef.current) {
                 setShowSkipIntro(true);
             }
-        } else if (hasValidOutro && outro && cur >= outro.start && cur <= ((typeof outro.end === 'number' && outro.end > 0) ? outro.end : dur)) {
+        } else if (hasValidOutro && cur >= outroStart && cur <= ((!isNaN(outroEnd) && outroEnd > 0) ? outroEnd : dur)) {
             setShowSkipIntro(false);
-            const epOutroEnd = (typeof outro.end === 'number' && outro.end > 0) ? outro.end : dur;
             if (localAutoSkipOutro && !hasSkippedOutroRef.current) {
-                hasSkippedOutroRef.current = true;
-                setShowSkipOutro(false);
-                notifyWhisper("Auto-Skipped Outro", "success");
-                onSkipOutro?.();
-                if (onNext) {
-                    onNext();
-                } else {
-                    iframeTimeRef.current = epOutroEnd;
-                    setCurrentTime(epOutroEnd);
-                }
+                executeSkipOutro();
             } else if (!localAutoSkipOutro && !hasSkippedOutroRef.current) {
                 setShowSkipOutro(true);
             }
@@ -1093,6 +1083,66 @@ const OmniPlayer = forwardRef<OmniPlayerRef, OmniPlayerProps>(({
     }
   }, [episodeId, title, onInteract]);
 
+  const executeSkipIntro = useCallback(() => {
+    const introEnd = Number(intro?.end);
+    if (isNaN(introEnd) || introEnd <= 0) return;
+    hasSkippedIntroRef.current = true;
+    setShowSkipIntro(false);
+    notifyWhisper("Skipped Intro", "success");
+    onSkipIntro?.();
+
+    if (useIframe) {
+      iframeTimeRef.current = introEnd;
+      setCurrentTime(introEnd);
+      try {
+        const ifr = containerRef.current?.querySelector('iframe');
+        ifr?.contentWindow?.postMessage(JSON.stringify({ event: 'seek', time: introEnd }), '*');
+        ifr?.contentWindow?.postMessage({ command: 'seek', time: introEnd }, '*');
+        ifr?.contentWindow?.postMessage({ event: 'command', func: 'seekTo', args: [introEnd, true] }, '*');
+      } catch {}
+    } else if (videoRef.current) {
+      seekTargetRef.current = introEnd;
+      videoRef.current.currentTime = introEnd;
+      setCurrentTime(introEnd);
+      if (seekAccumulatorRef.current) clearTimeout(seekAccumulatorRef.current);
+      // @ts-ignore
+      seekAccumulatorRef.current = setTimeout(() => { seekTargetRef.current = null; }, 800);
+    }
+    if (canSaveRef.current) onInteract?.();
+  }, [intro, useIframe, onSkipIntro, onInteract]);
+
+  const executeSkipOutro = useCallback(() => {
+    hasSkippedOutroRef.current = true;
+    setShowSkipOutro(false);
+    notifyWhisper("Skipped Outro", "success");
+    onSkipOutro?.();
+
+    if (canGoNext && onNext) {
+      onNext();
+    } else {
+      const outroEnd = Number(outro?.end);
+      const epOutroEnd = (!isNaN(outroEnd) && outroEnd > 0) ? outroEnd : (duration > 1 ? duration - 1 : 1440);
+      if (useIframe) {
+        iframeTimeRef.current = epOutroEnd;
+        setCurrentTime(epOutroEnd);
+        try {
+          const ifr = containerRef.current?.querySelector('iframe');
+          ifr?.contentWindow?.postMessage(JSON.stringify({ event: 'seek', time: epOutroEnd }), '*');
+          ifr?.contentWindow?.postMessage({ command: 'seek', time: epOutroEnd }, '*');
+          ifr?.contentWindow?.postMessage({ event: 'command', func: 'seekTo', args: [epOutroEnd, true] }, '*');
+        } catch {}
+      } else if (videoRef.current) {
+        seekTargetRef.current = epOutroEnd;
+        videoRef.current.currentTime = epOutroEnd;
+        setCurrentTime(epOutroEnd);
+        if (seekAccumulatorRef.current) clearTimeout(seekAccumulatorRef.current);
+        // @ts-ignore
+        seekAccumulatorRef.current = setTimeout(() => { seekTargetRef.current = null; }, 800);
+      }
+    }
+    if (canSaveRef.current) onInteract?.();
+  }, [canGoNext, onNext, outro, duration, useIframe, onSkipOutro, onInteract]);
+
   const seek = (amount: number) => {
     if (videoRef.current) { 
         const basisTime = seekTargetRef.current !== null ? seekTargetRef.current : videoRef.current.currentTime;
@@ -1191,44 +1241,34 @@ const OmniPlayer = forwardRef<OmniPlayerRef, OmniPlayerProps>(({
         }
     }
     
-    const hasValidIntro = Boolean(intro && typeof intro.start === 'number' && typeof intro.end === 'number' && intro.end > intro.start + 5 && intro.start >= 0);
-    const hasValidOutro = Boolean(outro && typeof outro.start === 'number' && outro.start >= 45 && (!hasValidIntro || outro.start > (intro?.end ?? 0)));
+    const introStart = intro ? Number(intro.start) : NaN;
+    const introEnd = intro ? Number(intro.end) : NaN;
+    const hasValidIntro = !isNaN(introStart) && !isNaN(introEnd) && introEnd > introStart + 5 && introStart >= 0;
+
+    const outroStart = outro ? Number(outro.start) : NaN;
+    const outroEnd = outro ? Number(outro.end) : NaN;
+    const hasValidOutro = !isNaN(outroStart) && outroStart >= 45 && (!hasValidIntro || outroStart > introEnd);
 
     // Rewind reset: If playback moves backward before intro/outro start, reset skip flags
-    if (hasValidIntro && video.currentTime < (intro?.start ?? 0) - 2) {
+    if (hasValidIntro && video.currentTime < introStart - 2) {
       hasSkippedIntroRef.current = false;
     }
-    if (hasValidOutro && video.currentTime < (outro?.start ?? 0) - 2) {
+    if (hasValidOutro && video.currentTime < outroStart - 2) {
       hasSkippedOutroRef.current = false;
     }
     
     // Mutual exclusivity: only intro OR outro can ever trigger
-    if (hasValidIntro && intro && video.currentTime >= intro.start && video.currentTime < intro.end) {
+    if (hasValidIntro && video.currentTime >= introStart && video.currentTime < introEnd) {
       setShowSkipOutro(false);
       if (localAutoSkip && !hasSkippedIntroRef.current) { 
-        hasSkippedIntroRef.current = true;
-        video.currentTime = intro.end; 
-        setCurrentTime(intro.end);
-        setShowSkipIntro(false);
-        notifyWhisper("Auto-Skipped Intro", "success"); 
-        onSkipIntro?.();
+        executeSkipIntro();
       } else if (!localAutoSkip && !hasSkippedIntroRef.current) { 
         setShowSkipIntro(true); 
       }
-    } else if (hasValidOutro && outro && video.currentTime >= outro.start && video.currentTime <= ((typeof outro.end === 'number' && outro.end > 0) ? outro.end : (video.duration || 1440))) {
+    } else if (hasValidOutro && video.currentTime >= outroStart && video.currentTime <= ((!isNaN(outroEnd) && outroEnd > 0) ? outroEnd : (video.duration || 1440))) {
       setShowSkipIntro(false);
-      const epOutroEnd = (typeof outro.end === 'number' && outro.end > 0) ? outro.end : (video.duration || 1440);
       if (localAutoSkipOutro && !hasSkippedOutroRef.current) {
-        hasSkippedOutroRef.current = true;
-        setShowSkipOutro(false);
-        notifyWhisper("Auto-Skipped Outro", "success");
-        onSkipOutro?.();
-        if (onNext) {
-          onNext();
-        } else {
-          video.currentTime = epOutroEnd;
-          setCurrentTime(epOutroEnd);
-        }
+        executeSkipOutro();
       } else if (!localAutoSkipOutro && !hasSkippedOutroRef.current) {
         setShowSkipOutro(true);
       }
@@ -1630,18 +1670,7 @@ const OmniPlayer = forwardRef<OmniPlayerRef, OmniPlayerProps>(({
             type="button"
             onClick={(e) => { 
               e.stopPropagation(); 
-              if (intro) { 
-                hasSkippedIntroRef.current = true;
-                iframeTimeRef.current = intro.end; 
-                setCurrentTime(intro.end); 
-                setShowSkipIntro(false);
-                notifyWhisper("Skipped Intro", "success"); 
-                onSkipIntro?.(); 
-                try {
-                  const ifr = containerRef.current?.querySelector('iframe');
-                  ifr?.contentWindow?.postMessage(JSON.stringify({ event: 'seek', time: intro.end }), '*');
-                } catch {}
-              } 
+              executeSkipIntro();
             }} 
             onMouseMove={(e) => e.stopPropagation()}
             onMouseEnter={(e) => e.stopPropagation()}
@@ -1665,15 +1694,7 @@ const OmniPlayer = forwardRef<OmniPlayerRef, OmniPlayerProps>(({
             type="button"
             onClick={(e) => { 
               e.stopPropagation(); 
-              hasSkippedOutroRef.current = true;
-              setShowSkipOutro(false); 
-              notifyWhisper("Skipped Outro", "success"); 
-              onSkipOutro?.(); 
-              if (onNext) onNext();
-              else if (outro) {
-                iframeTimeRef.current = outro.end || iframeDurationRef.current;
-                setCurrentTime(iframeTimeRef.current);
-              }
+              executeSkipOutro();
             }} 
             onMouseMove={(e) => e.stopPropagation()}
             onMouseEnter={(e) => e.stopPropagation()}
@@ -2391,15 +2412,7 @@ const OmniPlayer = forwardRef<OmniPlayerRef, OmniPlayerProps>(({
           type="button"
           onClick={(e) => { 
             e.stopPropagation(); 
-            if (videoRef.current && intro) { 
-              hasSkippedIntroRef.current = true;
-              videoRef.current.currentTime = intro.end; 
-              setCurrentTime(intro.end); 
-              setShowSkipIntro(false); 
-              notifyWhisper("Skipped Intro", "success"); 
-              onSkipIntro?.(); 
-              if(canSaveRef.current) onInteract?.(); 
-            } 
+            executeSkipIntro();
           }} 
           onMouseMove={(e) => e.stopPropagation()}
           onMouseEnter={(e) => e.stopPropagation()}
@@ -2421,16 +2434,7 @@ const OmniPlayer = forwardRef<OmniPlayerRef, OmniPlayerProps>(({
           type="button"
           onClick={(e) => { 
             e.stopPropagation(); 
-            hasSkippedOutroRef.current = true;
-            setShowSkipOutro(false); 
-            notifyWhisper("Skipped Outro", "success"); 
-            onSkipOutro?.(); 
-            if (onNext) onNext(); 
-            else if (videoRef.current && outro) { 
-              videoRef.current.currentTime = outro.end; 
-              setCurrentTime(outro.end); 
-            } 
-            if(canSaveRef.current) onInteract?.(); 
+            executeSkipOutro();
           }} 
           onMouseMove={(e) => e.stopPropagation()}
           onMouseEnter={(e) => e.stopPropagation()}
