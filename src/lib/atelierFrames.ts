@@ -1487,7 +1487,51 @@ export const ATELIER_GLOBAL_CSS = `
 .rise { animation: ri var(--d, 2.2s) cubic-bezier(0.2, 0.8, 0.4, 1) infinite; }
 .fk { animation: fk var(--d, 3s) steps(1) infinite; }
 .ly { transform: translate(100px, 100px) scale(calc(1 + var(--z, 0) * 0.05)) translate(-100px, -100px); }
-.ff-frozen, .ff-frozen * { animation-play-state: paused !important; }
+
+/* Frozen Preview State: completely freezes particles (.rise), sparks (.fk), pulses (.p, .tw, .b), and all animations */
+.ff-preview:not(.ff-playing),
+.ff-preview:not(.ff-playing) *,
+.ff-preview:not(.ff-playing) .rise,
+.ff-preview:not(.ff-playing) .fk,
+.ff-preview:not(.ff-playing) .p,
+.ff-preview:not(.ff-playing) .tw,
+.ff-preview:not(.ff-playing) .b,
+.ff-preview.ff-frozen,
+.ff-preview.ff-frozen *,
+.ff-preview.ff-frozen .rise,
+.ff-preview.ff-frozen .fk,
+.ff-preview.ff-frozen .p,
+.ff-preview.ff-frozen .tw,
+.ff-preview.ff-frozen .b,
+.ff-frozen,
+.ff-frozen * {
+  animation-play-state: paused !important;
+}
+
+/* Run animations only on Card Hover or when Explicitly Tapped/Playing */
+.group:hover .ff-preview,
+.group:hover .ff-preview *,
+.group:hover .ff-preview .rise,
+.group:hover .ff-preview .fk,
+.group:hover .ff-preview .p,
+.group:hover .ff-preview .tw,
+.group:hover .ff-preview .b,
+.ff-preview:hover,
+.ff-preview:hover *,
+.ff-preview:hover .rise,
+.ff-preview:hover .fk,
+.ff-preview:hover .p,
+.ff-preview:hover .tw,
+.ff-preview:hover .b,
+.ff-preview.ff-playing,
+.ff-preview.ff-playing *,
+.ff-preview.ff-playing .rise,
+.ff-preview.ff-playing .fk,
+.ff-preview.ff-playing .p,
+.ff-preview.ff-playing .tw,
+.ff-preview.ff-playing .b {
+  animation-play-state: running !important;
+}
 `;
 
 // ─── Unified Store Frame Inventory ───────────────────────────────────────────

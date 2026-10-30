@@ -72,8 +72,8 @@ export const RunHappyPlayerLoader = ({ text = "LOADING STREAM...", className, tr
         <div className="absolute bottom-3 left-1/2 w-1.5 h-1.5 rounded-full bg-rose-400 shadow-[0_0_8px_#fb7185]" style={{ animation: 'firefly-rise-2 3.9s ease-in-out infinite 1.8s' }} />
       </div>
 
-      {/* Running Character */}
-      <div className="relative z-20 w-16 h-16 sm:w-20 sm:h-20 flex items-center justify-center">
+      {/* Running Character - Centered horizontally to compensate for left transparent padding */}
+      <div className="relative z-20 w-16 h-16 sm:w-20 sm:h-20 flex items-center justify-center -translate-x-1.5 sm:-translate-x-2">
         <img
           src="/run-happy.gif"
           alt="Loading Stream..."
@@ -81,10 +81,10 @@ export const RunHappyPlayerLoader = ({ text = "LOADING STREAM...", className, tr
         />
       </div>
 
-      {/* Moving Purple Anime Grass Floor Strip */}
-      <div className="relative -mt-2.5 w-36 sm:w-44 h-4 overflow-hidden pointer-events-none z-10 flex items-end">
-        {/* Shadow under feet */}
-        <div className="absolute inset-x-4 bottom-1 h-2 rounded-full bg-black/60 blur-[2px]" />
+      {/* Moving Purple Anime Grass Floor Strip with Faded Left and Right Edges */}
+      <div className="relative -mt-2.5 w-36 sm:w-44 h-4 overflow-hidden pointer-events-none z-10 flex items-end [mask-image:linear-gradient(to_right,transparent_0%,black_18%,black_82%,transparent_100%)] [-webkit-mask-image:linear-gradient(to_right,transparent_0%,black_18%,black_82%,transparent_100%)]">
+        {/* Shadow under feet - aligned with visually centered character */}
+        <div className="absolute inset-x-4 bottom-1 h-2 rounded-full bg-black/60 blur-[2px] -translate-x-1.5 sm:-translate-x-2" />
         
         {/* Seamless scrolling anime grass pattern (loops infinitely at 60fps) */}
         <div

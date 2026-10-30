@@ -704,48 +704,34 @@ function FantasyFrame({
   const shouldShowTag = level !== undefined && showLevelTag && !isHidden;
 
   const [isHovered, setIsHovered] = useState(false);
-  const [isMobileInView, setIsMobileInView] = useState(false);
   const [isTapped, setIsTapped] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
 
-  const isPlaying = !previewMode || isHovered || isMobileInView || isTapped;
+  // Strictly play on hover or when tapped (per user directive - no background in-view auto-run)
+  const isPlaying = !previewMode || isHovered || isTapped;
 
-  // Desktop Card Hover Listener
+  // Card Hover & Tap Listeners (Desktop hover & Mobile/Touch tap)
   useEffect(() => {
     if (!previewMode || !containerRef.current) return;
-    const cardParent = containerRef.current.closest('.group') || containerRef.current;
+    const cardParent = (containerRef.current.closest('.group') || containerRef.current) as HTMLElement;
 
     const onEnter = () => setIsHovered(true);
     const onLeave = () => setIsHovered(false);
+    const onTap = (e: Event) => {
+      // Don't toggle tap state if clicking an action button inside the card
+      if ((e.target as HTMLElement)?.closest('button')) return;
+      setIsTapped(prev => !prev);
+    };
 
     cardParent.addEventListener('mouseenter', onEnter);
     cardParent.addEventListener('mouseleave', onLeave);
+    cardParent.addEventListener('click', onTap);
 
     return () => {
       cardParent.removeEventListener('mouseenter', onEnter);
       cardParent.removeEventListener('mouseleave', onLeave);
+      cardParent.removeEventListener('click', onTap);
     };
-  }, [previewMode]);
-
-  // Mobile Viewport In-View Observer (strictly coarse touch devices like smartphones/tablets)
-  useEffect(() => {
-    if (!previewMode || !containerRef.current) return;
-
-    const isTouch = typeof window !== 'undefined' && window.matchMedia('(hover: none) and (pointer: coarse)').matches;
-    if (!isTouch) return;
-
-    const el = containerRef.current;
-    const observer = new IntersectionObserver(
-      (entries) => {
-        entries.forEach((entry) => {
-          setIsMobileInView(entry.isIntersecting);
-        });
-      },
-      { threshold: 0.15 }
-    );
-
-    observer.observe(el);
-    return () => observer.disconnect();
   }, [previewMode]);
 
   const reactId = useId().replace(/[^a-zA-Z0-9]/g, '_');
@@ -823,7 +809,7 @@ function FantasyFrame({
         if (previewMode) setIsTapped(prev => !prev);
       }}
       className={`relative flex items-center justify-center shrink-0 ${
-        previewMode ? `ff-preview ${isPlaying ? 'ff-playing ff-in-view' : 'ff-frozen'}` : ''
+        previewMode ? `ff-preview ${isPlaying ? 'ff-playing' : 'ff-frozen'}` : ''
       } ${className}`}
       style={size ? { width: size, height: size } : {}}
     >

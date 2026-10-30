@@ -2453,11 +2453,11 @@ export default function ProfilePage() {
                                                     </button>
                                                 </div>
 
-                                                {/* Sleek, Compact Active Title & Milestone Strip */}
-                                                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 px-3.5 py-2.5 rounded-xl bg-white/[0.02] border border-white/[0.06] mb-3 text-xs">
+                                                {/* Sleek, Monochromatic Active Title & Milestone Strip */}
+                                                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 px-3.5 py-2.5 rounded-xl bg-white/[0.03] border border-white/[0.08] mb-3 text-xs">
                                                     <div className="flex items-center gap-2 min-w-0">
                                                         <span className="text-[10px] font-bold uppercase tracking-wider text-zinc-500 shrink-0">Active:</span>
-                                                        <UserTitleBadge user={{ ...profile, equipped_title: currentEquippedTitle }} variant="bracket" className="text-sm font-bold truncate" />
+                                                        <span className="text-sm font-bold text-white truncate font-mono">({currentEquippedTitle})</span>
                                                         <span className="text-[11px] text-zinc-500 font-medium truncate hidden sm:inline">
                                                             • {getTitleDefinition(currentEquippedTitle).category === 'level' ? `Lv. ${getTitleDefinition(currentEquippedTitle).minLevel || 1} Rank` : getTitleDefinition(currentEquippedTitle).category === 'staff' ? (currentEquippedTitle.toLowerCase() === 'shadow' ? 'Apex Guild Master' : 'Staff Rank') : getTitleDefinition(currentEquippedTitle).category === 'former' ? 'Bestowed Legacy' : 'Honorary Title'}
                                                         </span>
@@ -2466,18 +2466,18 @@ export default function ProfilePage() {
                                                         <span className="text-[10px] font-bold uppercase tracking-wider text-zinc-500">Next Milestone:</span>
                                                         {milestoneInfo.nextTitle ? (
                                                             <span className="font-semibold text-zinc-300">
-                                                                <span className="text-amber-300 font-bold">({milestoneInfo.nextTitle.title})</span> at Lv. {milestoneInfo.nextTitle.minLevel}
+                                                                <span className="text-zinc-200 font-bold">({milestoneInfo.nextTitle.title})</span> at Lv. {milestoneInfo.nextTitle.minLevel}
                                                                 <span className="text-zinc-500 font-normal ml-1">({milestoneInfo.levelsRemaining} lvls to go)</span>
                                                             </span>
                                                         ) : (
-                                                            <span className="text-amber-400 font-semibold">
+                                                            <span className="text-zinc-200 font-semibold">
                                                                 Supreme Level 100 Achieved
                                                             </span>
                                                         )}
                                                     </div>
                                                 </div>
 
-                                                {/* Filter Tabs for Unlocked Titles (Fit and center aligned on mobile & tablet) */}
+                                                {/* Filter Tabs for Unlocked Titles (2% Thicker & Balanced Pill Buttons) */}
                                                 <div className="flex items-center justify-center flex-wrap gap-2 py-1 my-3 text-xs w-full">
                                                     {[
                                                         { id: 'all', label: 'All Unlocked', count: availableTitles.length },
@@ -2495,14 +2495,14 @@ export default function ProfilePage() {
                                                                     playGummyTap();
                                                                     setTitleFilter(tab.id as any);
                                                                 }}
-                                                                className={`h-7.5 px-3.5 rounded-full font-semibold transition-all flex items-center gap-1.5 whitespace-nowrap cursor-pointer active:scale-95 ${
+                                                                className={`h-8.5 sm:h-9 px-4 rounded-full font-semibold transition-all flex items-center gap-2 whitespace-nowrap cursor-pointer active:scale-95 ${
                                                                     isSelected
                                                                         ? 'bg-white text-black shadow-sm'
-                                                                        : 'bg-white/[0.04] hover:bg-white/[0.08] text-zinc-300 hover:text-white border border-white/[0.05]'
+                                                                        : 'bg-white/[0.05] hover:bg-white/[0.09] text-zinc-300 hover:text-white border border-white/[0.08]'
                                                                 }`}
                                                             >
                                                                 <span>{tab.label}</span>
-                                                                <span className={`text-[9.5px] px-1.5 py-0.2 rounded-full ${isSelected ? 'bg-black/20 text-black' : 'bg-white/10 text-zinc-400'}`}>
+                                                                <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold ${isSelected ? 'bg-black/20 text-black' : 'bg-white/10 text-zinc-400'}`}>
                                                                     {tab.count}
                                                                 </span>
                                                             </button>
@@ -2510,7 +2510,7 @@ export default function ProfilePage() {
                                                     })}
                                                 </div>
 
-                                                {/* Unlocked Titles Grid */}
+                                                {/* Unlocked Titles Grid - Monochromatic & Center Aligned */}
                                                 <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 my-3">
                                                     {filteredTitles.map(t => {
                                                         const isEquipped = currentEquippedTitle.toLowerCase() === t.title.toLowerCase();
@@ -2518,41 +2518,41 @@ export default function ProfilePage() {
                                                         return (
                                                             <div 
                                                                 key={t.id}
-                                                                className={`p-3 rounded-xl border transition-all flex flex-col justify-between ${
+                                                                className={`p-4 rounded-2xl border transition-all flex flex-col justify-between items-center text-center ${
                                                                     isEquipped 
-                                                                        ? 'border-amber-400/40 bg-amber-400/[0.04] shadow-sm' 
-                                                                        : 'border-white/[0.06] bg-[#141416] hover:bg-[#1a1a1e]'
+                                                                        ? 'border-white/30 bg-white/[0.05] shadow-[0_4px_24px_rgba(255,255,255,0.03)]' 
+                                                                        : 'border-white/[0.06] bg-[#141416] hover:bg-[#18181c] hover:border-white/15'
                                                                 }`}
                                                             >
-                                                                <div className="flex items-center justify-between mb-1">
+                                                                <div className="flex items-center justify-between w-full mb-2">
                                                                     <span className="text-[10px] font-bold text-zinc-500 uppercase tracking-wider">
                                                                         {t.category === 'level' ? `Lv. ${t.minLevel}` : t.category === 'former' ? 'Legacy' : t.category === 'staff' ? 'Staff' : 'Special'}
                                                                     </span>
                                                                     {isEquipped ? (
-                                                                        <span className="text-[9px] font-bold text-black bg-emerald-400 px-2 py-0.2 rounded-full flex items-center gap-1 shadow-sm">
+                                                                        <span className="text-[9px] font-bold text-black bg-white px-2.5 py-0.5 rounded-full flex items-center gap-1 shadow-sm">
                                                                             <Check size={10} strokeWidth={3} /> Equipped
                                                                         </span>
                                                                     ) : (
-                                                                        <span className="text-[9px] font-medium text-emerald-400/80 bg-emerald-500/10 px-2 py-0.2 rounded-full">
+                                                                        <span className="text-[9px] font-medium text-zinc-400 bg-white/[0.05] border border-white/[0.08] px-2 py-0.5 rounded-full">
                                                                             Unlocked
                                                                         </span>
                                                                     )}
                                                                 </div>
 
-                                                                <div className="my-1">
-                                                                    <div className="text-sm font-bold">
-                                                                        <span className={t.badgeStyle.bracketColor}>({t.title})</span>
+                                                                <div className="my-2 flex flex-col items-center text-center w-full">
+                                                                    <div className="text-sm font-bold text-zinc-100 tracking-tight">
+                                                                        ({t.title})
                                                                     </div>
-                                                                    <p className="text-[11px] text-zinc-400 line-clamp-2 mt-0.5 leading-snug">
+                                                                    <p className="text-[11px] text-zinc-400 line-clamp-2 mt-1 leading-snug text-center max-w-[220px]">
                                                                         {t.description}
                                                                     </p>
                                                                 </div>
 
-                                                                <div className="mt-2.5 pt-2 border-t border-white/[0.04]">
+                                                                <div className="w-full mt-2.5 pt-2 border-t border-white/[0.04]">
                                                                     {isEquipped ? (
                                                                         <button
                                                                             disabled
-                                                                            className="w-full h-7 rounded-lg bg-emerald-500/15 text-emerald-300 text-xs font-bold flex items-center justify-center gap-1 cursor-default select-none"
+                                                                            className="w-full h-8 rounded-xl bg-white/10 text-white text-xs font-bold border border-white/15 flex items-center justify-center gap-1.5 cursor-default select-none shadow-sm"
                                                                         >
                                                                             <Check size={12} strokeWidth={2.5} /> Equipped
                                                                         </button>
@@ -2562,7 +2562,7 @@ export default function ProfilePage() {
                                                                             whileTap={{ scale: 0.95 }}
                                                                             transition={{ type: "spring", stiffness: 450, damping: 20 }}
                                                                             onClick={() => handleEquipTitle(t.title)}
-                                                                            className="w-full h-7 rounded-lg bg-white/10 hover:bg-white/15 active:scale-95 text-white text-xs font-semibold transition-all cursor-pointer flex items-center justify-center"
+                                                                            className="w-full h-8 rounded-xl bg-white/[0.06] hover:bg-white/12 active:scale-95 text-zinc-200 hover:text-white text-xs font-semibold border border-white/[0.08] transition-all cursor-pointer flex items-center justify-center"
                                                                         >
                                                                             Equip Title
                                                                         </motion.button>
