@@ -1923,7 +1923,7 @@ function WatchContent() {
                                 className="flex items-center justify-center gap-1.5 px-3 h-8 rounded-full border border-white/10 bg-[#141d30] text-[10px] font-black uppercase tracking-tighter transition-all hover:bg-white/10 whitespace-nowrap atrax-bubbly-btn atrax-squish-tap"
                                 title="Auto Play"
                             >
-                                <Play size={12} className={cn("transition-colors", settings.autoPlay ? "text-orange-500 shadow-[0_0_10px_orange]" : "text-zinc-500")}/>
+                                <Play size={12} className={cn("transition-colors", settings.autoPlay ? "text-orange-400 drop-shadow-[0_0_8px_rgba(249,115,22,0.8)]" : "text-zinc-500")}/>
                                 <span className={cn(settings.autoPlay ? "text-white" : "text-zinc-500")}>AUTO</span>
                             </button>
                             <button
@@ -1931,7 +1931,7 @@ function WatchContent() {
                                 className="flex items-center justify-center gap-1.5 px-3 h-8 rounded-full border border-white/10 bg-[#141d30] text-[10px] font-black uppercase tracking-tighter transition-all hover:bg-white/10 whitespace-nowrap atrax-bubbly-btn atrax-squish-tap"
                                 title="Auto Next"
                             >
-                                <SkipForward size={12} className={cn("transition-colors", settings.autoNext ? "text-orange-500 shadow-[0_0_10px_orange]" : "text-zinc-500")}/>
+                                <SkipForward size={12} className={cn("transition-colors", settings.autoNext ? "text-orange-400 drop-shadow-[0_0_8px_rgba(249,115,22,0.8)]" : "text-zinc-500")}/>
                                 <span className={cn(settings.autoNext ? "text-white" : "text-zinc-500")}>NEXT</span>
                             </button>
                             {nextEpisode ? (

@@ -10,6 +10,9 @@ import { AnimeService } from '@/lib/api';
 import { playGummyPop } from '@/lib/audioManager';
 import { cn, getSafeImageUrl, slugifyTitle } from '@/lib/utils';
 
+// Fast global memory cache for card tooltips across page switches (instant 0ms on hover)
+const globalTooltipCache = new Map<string, any>();
+
 export interface UnifiedAnimeData {
   id: string;
   title?: string | { userPreferred?: string; english?: string; romaji?: string; native?: string };
@@ -271,6 +274,14 @@ function AnimeCardComponent({
   // Lazily fetch full anime metadata on hover only for desktop popup
   const fetchDataNow = async () => {
     if (qtip || loading || isHindi) return;
+
+    // Check global cache first for instant 0ms popup
+    const cacheKey = String(anime.id);
+    if (globalTooltipCache.has(cacheKey)) {
+      setQtip(globalTooltipCache.get(cacheKey));
+      return;
+    }
+
     setLoading(true);
     try {
       const isDonghua = normalized.targetRoute.includes('/donghua-watch/') || normalized.type.toLowerCase() === 'donghua';
@@ -279,7 +290,11 @@ function AnimeCardComponent({
       if (isDonghua) {
         data = await import('@/lib/dpi').then(m => m.dpi.bridge.getSmartDetails(anime.id)).catch(() => null);
       } else {
-        data = await AnimeService.getAnimeInfo(anime.id).catch(() => null);
+        // Use fast dedicated tooltip endpoint instead of full heavy anime graph
+        data = await AnimeService.getTooltip(anime.id).catch(() => null);
+        if (!data) {
+          data = await AnimeService.getAnimeInfo(anime.id).catch(() => null);
+        }
       }
 
       if (data) {

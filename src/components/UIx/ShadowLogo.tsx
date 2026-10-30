@@ -50,9 +50,7 @@ const ShadowLogo = ({
                 <svg className="absolute w-0 h-0 pointer-events-none" aria-hidden="true">
                     <defs>
                         <filter id={`tesla_lightning_${id}`} x="-30%" y="-30%" width="160%" height="160%">
-                            <feTurbulence type="fractalNoise" baseFrequency="0.09" numOctaves="3" result="noise">
-                                <animate attributeName="baseFrequency" dur="0.25s" values="0.09;0.14;0.08;0.13;0.09" repeatCount="indefinite"/>
-                            </feTurbulence>
+                            <feTurbulence type="fractalNoise" baseFrequency="0.11" numOctaves="2" result="noise" />
                             <feDisplacementMap in="SourceGraphic" in2="noise" scale="18" xChannelSelector="R" yChannelSelector="G" />
                         </filter>
 

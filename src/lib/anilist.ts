@@ -1333,22 +1333,69 @@ export class AniListService {
   /**
    * 15. TOOLTIP / QUICK INFO
    */
-  static async getTooltip(id: string) {
-    const info = await this.getAnimeInfo(id);
-    if (!info) return null;
-    return {
-      id: info.id,
-      title: info.title,
-      jname: info.jname,
-      poster: info.poster,
-      description: info.description,
-      rating: info.stats?.rating,
-      quality: info.stats?.quality,
-      duration: info.stats?.duration,
-      type: info.stats?.type,
-      genres: info.info?.genres,
-      studios: info.info?.studios?.join(', '),
-      isAdult: info.isAdult
-    };
+  /**
+   * 15. FAST DEDICATED TOOLTIP / QUICK INFO (Ultra-lightweight ~80ms query)
+   */
+  static async getTooltip(idOrSlug: string) {
+    const raw = (idOrSlug || '').trim();
+    const leadingIdMatch = raw.match(/^(\d+)(?:-.*)?$/);
+    const trailingIdMatch = raw.match(/^(?:.*-)?(\d+)$/);
+    const numericId = leadingIdMatch ? leadingIdMatch[1] : (trailingIdMatch ? trailingIdMatch[1] : null);
+    const isNumeric = !!numericId;
+
+    const fastQuery = `
+      query (${isNumeric ? '$id: Int' : '$search: String'}) {
+        Media(${isNumeric ? 'id: $id' : 'search: $search'}, type: ANIME) {
+          id
+          title {
+            english
+            romaji
+            native
+          }
+          coverImage {
+            large
+            extraLarge
+          }
+          description(asHtml: false)
+          averageScore
+          duration
+          format
+          genres
+          isAdult
+          studios(isMain: true) {
+            nodes {
+              name
+            }
+          }
+        }
+      }
+    `;
+
+    try {
+      const data = await queryAniList<any>(fastQuery, isNumeric ? { id: parseInt(numericId, 10) } : { search: raw.replace(/-/g, ' ') });
+      const media = data?.Media;
+      if (!media) return null;
+
+      const genres = media.genres || [];
+      const isEcchi = genres.some((g: string) => typeof g === 'string' && (g.toLowerCase() === 'ecchi' || g.toLowerCase() === 'erotica'));
+      const ageRating = media.isAdult ? '18+' : (isEcchi ? 'R-17' : 'PG-13');
+
+      return {
+        id: String(media.id),
+        title: media.title?.english || media.title?.romaji || media.title?.native || 'Unknown Title',
+        jname: media.title?.romaji || media.title?.native || '',
+        poster: media.coverImage?.extraLarge || media.coverImage?.large || '',
+        description: cleanHtml(media.description) || 'Description unavailable.',
+        rating: ageRating,
+        quality: 'HD',
+        duration: media.duration ? `${media.duration}m` : '',
+        type: media.format || 'TV',
+        genres: genres,
+        studios: media.studios?.nodes?.map((n: any) => n.name).join(', ') || 'Unknown',
+        isAdult: !!media.isAdult
+      };
+    } catch {
+      return null;
+    }
   }
 }

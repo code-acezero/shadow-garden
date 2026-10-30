@@ -94,7 +94,10 @@ export async function POST(req: NextRequest) {
     if (cached && now < cached.expires) {
       return NextResponse.json(cached.data, {
         status: cached.status,
-        headers: { 'X-Cache': 'HIT' }
+        headers: {
+          'X-Cache': 'HIT',
+          'Cache-Control': 'public, max-age=300, stale-while-revalidate=1800'
+        }
       });
     }
 
