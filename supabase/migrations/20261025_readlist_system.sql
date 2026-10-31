@@ -123,7 +123,7 @@ SELECT
     anime_title AS title,
     anime_image AS cover,
     status,
-    COALESCE(chapters_read, last_episode_number, progress, 0) AS progress,
+    COALESCE(chapters_read, last_episode_number, 0) AS progress,
     COALESCE(total_chapters, total_episodes) AS total_chapters,
     media_type,
     score,

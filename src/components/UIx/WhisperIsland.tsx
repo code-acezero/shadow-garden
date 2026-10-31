@@ -282,25 +282,31 @@ const SearchBarContent: React.FC<SearchBarContentProps> = ({
         <MascotPerch embedded noMessages className="shrink-0" onBoopSpeech={onBoopMascot} />
       </div>
 
-      {/* Pet Message Pill: Expands to full available space on mobile/tablet so message shows fully; side-by-side on desktop */}
+      {/* Pet Message Pill: Expands dynamically based on message length; pushes search to the end when long */}
       <AnimatePresence>
         {petSpeech && (
           <motion.div
             key="pet-speech-pill"
-            
             initial={{ opacity: 0, scale: 0.92, x: -16, filter: 'blur(4px)' }}
             animate={{ opacity: 1, scale: 1, x: 0, filter: 'blur(0px)' }}
             exit={{ opacity: 0, scale: 0.92, x: -16, filter: 'blur(4px)' }}
             transition={JELLY_SPRING}
             className={cn(
-              "flex items-center gap-1 sm:gap-2 select-none min-w-0",
+              "flex items-center gap-1 sm:gap-2 select-none min-w-0 transition-all duration-300",
               // Mobile & Tablet: Take full available space so text is never prematurely truncated
               "flex-1 pr-1",
-              // Desktop: Sits side-by-side with divider border
-              "lg:flex-initial lg:max-w-[340px] lg:border-r lg:border-white/10 lg:pr-2.5"
+              // Desktop: Variable push width based on sentence length
+              "lg:border-r lg:border-white/10 lg:pr-2.5",
+              petSpeech.text.length > 70 
+                ? "lg:flex-1 lg:max-w-[680px]" 
+                : petSpeech.text.length > 45 
+                  ? "lg:flex-initial lg:max-w-[520px]" 
+                  : petSpeech.text.length > 25 
+                    ? "lg:flex-initial lg:max-w-[400px]" 
+                    : "lg:flex-initial lg:max-w-[300px]"
             )}
           >
-            {/* Pet Name Tag + Message text */}
+            {/* Pet Name Tag + Spring Animated Message Text */}
             <div 
               onClick={(e) => {
                 if (petSpeech.link) {
@@ -310,7 +316,7 @@ const SearchBarContent: React.FC<SearchBarContentProps> = ({
                 }
               }}
               className={cn(
-                "flex-1 min-w-0 flex items-center gap-1 sm:gap-1.5 overflow-hidden whitespace-nowrap",
+                "flex-1 min-w-0 flex items-center gap-1 sm:gap-1.5 overflow-hidden whitespace-nowrap relative",
                 petSpeech.link && "cursor-pointer hover:opacity-85 transition-opacity"
               )}
             >
@@ -323,9 +329,22 @@ const SearchBarContent: React.FC<SearchBarContentProps> = ({
                 {petSpeech.petName}
               </span>
               <span className="text-zinc-600 text-[8.5px] sm:text-[9px] shrink-0 select-none">•</span>
-              <span className="text-[9.5px] sm:text-[10px] md:text-xs text-zinc-200 truncate font-medium">
-                {petSpeech.text}
-              </span>
+              <div className="flex-1 min-w-0 overflow-hidden relative">
+                <motion.span
+                  className="text-[9.5px] sm:text-[10px] md:text-xs text-zinc-200 font-medium whitespace-nowrap inline-block"
+                  animate={petSpeech.text.length > 36 ? {
+                    x: [0, -Math.min(260, (petSpeech.text.length - 28) * 6.5), 0],
+                    transition: {
+                      duration: Math.max(7, petSpeech.text.length * 0.22),
+                      repeat: Infinity,
+                      repeatDelay: 2.5,
+                      ease: [0.25, 0.1, 0.25, 1],
+                    }
+                  } : { x: 0 }}
+                >
+                  {petSpeech.text}
+                </motion.span>
+              </div>
             </div>
 
             {/* Quick Actions (Link & Dismiss) */}

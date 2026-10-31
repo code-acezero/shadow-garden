@@ -14,7 +14,8 @@ import {
   Mic2, Radio, Menu, ArrowLeft, ChevronRight, Zap,
   Globe, Pause, PanelLeftClose, PanelLeftOpen, AudioWaveform, Upload, CheckCircle, ShieldCheck,
   PawPrint, SlidersHorizontal, Sliders, Smartphone, Flame, BadgeCheck, EyeOff,
-  ChevronLeft, Plus, VolumeX, CheckCircle2, Instagram, Twitter, MessageCircle, Youtube, Github, Music2
+  ChevronLeft, Plus, VolumeX, CheckCircle2, Instagram, Twitter, MessageCircle, Youtube, Github, Music2,
+  BookOpen, Film, Tv, BookCheck, FileText, CheckSquare, FileCode, HelpCircle, Search, FileUp, FileDown
 } from 'lucide-react';
 import Link from 'next/link';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -29,13 +30,13 @@ import { cn } from '@/lib/utils';
 import { MASCOT_ROSTER, STYLE_OPTIONS, DEFAULT_CONFIG, MascotConfig } from '@/components/Mascot/MascotPerch';
 import PageMascot from '@/components/Mascot/PageMascot';
 import Footer from '@/components/Anime/Footer';
-import { refreshVoiceCache, getVoiceSettings, dispatchTelepathy, getCharacterLine, triggerTelepathy, CHARACTER_META, CHARACTER_SCRIPTS } from '@/lib/voice';
+import { refreshVoiceCache, getVoiceSettings, dispatchTelepathy, getCharacterLine, triggerTelepathy, playVoiceSample, CHARACTER_META, CHARACTER_SCRIPTS } from '@/lib/voice';
 import AvatarSelectorModal, { getRandomAvatar } from '@/components/User/AvatarSelectorModal';
 import { playTapSound, playGummyTap, playSquishyJelly } from '@/lib/audioManager';
 import { pullFromAniList, twoWaySync } from '@/lib/anilistSync';
 import { PuffedAnilist, PuffedRefresh, PuffedBookmark, PuffedPlay, PuffedCheck } from '@/components/Watchlist/PuffedIcons';
 import { COLOR_PALETTES, applyColorPalette } from '@/lib/theme';
-import PlayerPreview from './PlayerPreview';
+import OmniPlayer from '@/components/Player/OmniPlayer';
 
 // --- SOCIAL PROFILE LINK TYPES ---
 export type SocialPlatform = 'instagram' | 'twitter' | 'discord' | 'youtube' | 'tiktok' | 'github' | 'website';
@@ -80,7 +81,7 @@ interface MenuItem {
 
 const MENU_GROUPS = [
   { id: 'identity', title: 'Account' },
-  { id: 'media', title: 'Playback & Audio' },
+  { id: 'media', title: 'Playback & Media' },
   { id: 'companion', title: 'Telepathy & Companions' },
   { id: 'system', title: 'System & Archive' },
 ];
@@ -97,10 +98,34 @@ const MENU_ITEMS: MenuItem[] = [
   {
     id: 'player',
     label: 'Video Player',
-    desc: 'Playback automations, quality & subtitles',
+    desc: 'Omni calibration studio, automations & captions',
     icon: Play,
     group: 'media',
     gradient: 'from-rose-500 to-red-600',
+  },
+  {
+    id: 'mangvels',
+    label: 'Mangvels & Novels',
+    desc: 'Reading directions, webtoon mode & page preloading',
+    icon: BookOpen,
+    group: 'media',
+    gradient: 'from-amber-500 to-orange-600',
+  },
+  {
+    id: 'flixverse',
+    label: 'Flixverse & Cinema',
+    desc: 'Cinema stream routes, ambient mode & recap skip',
+    icon: Film,
+    group: 'media',
+    gradient: 'from-emerald-500 to-teal-600',
+  },
+  {
+    id: 'donghua',
+    label: 'Donghua Sanctuary',
+    desc: 'Mandarin voice priority & dual Hanzi/Pinyin subtitles',
+    icon: Tv,
+    group: 'media',
+    gradient: 'from-purple-500 to-indigo-600',
   },
   {
     id: 'sound',
@@ -145,10 +170,18 @@ const MENU_ITEMS: MenuItem[] = [
   {
     id: 'data',
     label: 'Archive & Storage',
-    desc: 'Cache management, history & vault backup',
+    desc: 'Android-style XML backup & restore, history & cache',
     icon: HardDrive,
     group: 'system',
     gradient: 'from-zinc-500 to-slate-600',
+  },
+  {
+    id: 'guide',
+    label: 'Sanctuary Manual',
+    desc: 'Full documentation guide for every setting & option',
+    icon: BookCheck,
+    group: 'system',
+    gradient: 'from-teal-500 to-cyan-600',
   },
 ];
 
@@ -169,6 +202,237 @@ const SOUND_PRESETS = [
   { id: 'bubble', label: 'Liquid Drop', desc: 'Gentle organic aquatic drop' },
   { id: 'pop', label: 'Air Burst', desc: 'Bright airy bubble snap' },
   { id: 'wood', label: 'Acoustic Clack', desc: 'Warm organic hollow strike' },
+];
+
+export interface MediaPreferences {
+  mangvels: {
+    readingDirection: 'webtoon' | 'rtl' | 'ltr';
+    pageLayout: 'single' | 'double' | 'fit-width';
+    preloadChapters: number;
+    readerTheme: 'oled-black' | 'dark-slate' | 'sepia' | 'paper';
+    imageQuality: 'original' | 'compressed' | 'data-saver';
+    volumePageTurn: boolean;
+  };
+  flixverse: {
+    defaultCinemaServer: string;
+    audioTrackLanguage: string;
+    ambientTheaterMode: boolean;
+    autoSkipRecap: boolean;
+    surroundSound: boolean;
+    aspectRatio: '16:9' | '21:9' | 'fill';
+  };
+  donghua: {
+    audioPriority: 'mandarin' | 'english' | 'hindi';
+    hanziSubtitles: boolean;
+    pinyinGuide: boolean;
+    introSkipOffset: number;
+    serverRegion: string;
+  };
+}
+
+const DEFAULT_MEDIA_PREFS: MediaPreferences = {
+  mangvels: {
+    readingDirection: 'webtoon',
+    pageLayout: 'fit-width',
+    preloadChapters: 3,
+    readerTheme: 'oled-black',
+    imageQuality: 'original',
+    volumePageTurn: true,
+  },
+  flixverse: {
+    defaultCinemaServer: 'auto',
+    audioTrackLanguage: 'en',
+    ambientTheaterMode: true,
+    autoSkipRecap: true,
+    surroundSound: false,
+    aspectRatio: '16:9',
+  },
+  donghua: {
+    audioPriority: 'mandarin',
+    hanziSubtitles: true,
+    pinyinGuide: false,
+    introSkipOffset: 90,
+    serverRegion: 'asia-pacific',
+  },
+};
+
+const SITE_GUIDES = [
+  {
+    category: 'identity',
+    title: 'Username',
+    desc: 'Your unique operative codename displayed across leaderboards, guild chats, and public profile badges.',
+    defaultValue: 'Chosen on registration',
+    proTip: 'Username is unique and cannot be duplicated by other operatives in the realm.',
+    badge: 'CORE'
+  },
+  {
+    category: 'identity',
+    title: 'Gender Identity',
+    desc: 'Select your preferred identity (Male, Female, Rather not say, None) to configure community title address.',
+    defaultValue: 'Male',
+    proTip: 'Only authentic standard options are supported to maintain clean sanctuary records.',
+    badge: 'ACCOUNT'
+  },
+  {
+    category: 'identity',
+    title: 'Avatar Atelier',
+    desc: 'Choose from 170+ official character avatars or upload custom portraits from the Atelier.',
+    defaultValue: 'Default Shadow Crest',
+    proTip: 'Equipping an Eternal or Ascendant frame grants active animated electric and ether auras.',
+    badge: 'COSMETIC'
+  },
+  {
+    category: 'identity',
+    title: 'Social & Guild Connections',
+    desc: 'Attach verified links to Instagram, X (Twitter), Discord, YouTube, GitHub, and personal webs.',
+    defaultValue: 'None',
+    proTip: 'Connected links appear on your public Adventurer Card for other operatives to follow.',
+    badge: 'PROFILE'
+  },
+  {
+    category: 'identity',
+    title: 'Danger Zone & Account Eradication',
+    desc: 'Permanently purge your operative account and all related bookmarks, history, and records from the database.',
+    defaultValue: 'Active',
+    proTip: 'Requires typing DELETE in capital letters to prevent accidental loss. Irreversible.',
+    badge: 'SECURITY'
+  },
+  {
+    category: 'playback',
+    title: 'Omni Player Engine',
+    desc: 'Next-gen streaming player supporting adaptive HLS streaming, MP4 direct video, multi-track audio, and gesture controls.',
+    defaultValue: 'Active',
+    proTip: 'Double tap left or right to skip 10 seconds. Swipe vertically on the right half to adjust volume.',
+    badge: 'PLAYBACK'
+  },
+  {
+    category: 'playback',
+    title: 'Auto-Skip OP / ED',
+    desc: 'Automatically skips anime opening and ending themes using precise frame timestamps.',
+    defaultValue: 'Enabled',
+    proTip: 'Can be manually triggered via the on-screen skip pill if automatic trigger is bypassed.',
+    badge: 'AUTOMATION'
+  },
+  {
+    category: 'playback',
+    title: 'Auto-Play Next Episode',
+    desc: 'Continuously advances to the next chapter or episode upon credit completion.',
+    defaultValue: 'Enabled',
+    proTip: 'Ideal for binge-watching marathons without needing to touch your controller or keyboard.',
+    badge: 'AUTOMATION'
+  },
+  {
+    category: 'playback',
+    title: 'Resume Playback',
+    desc: 'Preserves timestamp stamps so you can pause on mobile and resume on desktop exactly where you left off.',
+    defaultValue: 'Enabled',
+    proTip: 'Synced with Continue Watching row on the Home sanctuary.',
+    badge: 'SYNC'
+  },
+  {
+    category: 'playback',
+    title: 'Caption Customization Studio',
+    desc: 'Customize subtitle font size, color palette, outline contrast, and frosted glass background box.',
+    defaultValue: 'Medium · White · Semi-Black Box',
+    proTip: 'Yellow captions offer highest legibility against high-brightness action anime scenes.',
+    badge: 'SUBTITLES'
+  },
+  {
+    category: 'sound',
+    title: 'Sound & Haptics Engine',
+    desc: 'Synthesized low-latency Web Audio sound effects for taps, clicks, switches, and sliders.',
+    defaultValue: 'Squishy Jelly · 35% Volume',
+    proTip: 'Test permissions using the Grant Sound Permission button if browser autoplay muted audio.',
+    badge: 'AUDIO'
+  },
+  {
+    category: 'telepathy',
+    title: 'Telepathy Voice System',
+    desc: 'Hear whispered anime voice greetings and status announcements from your chosen companion character.',
+    defaultValue: 'Enabled · Hana',
+    proTip: 'Click the Sample button on any card in the Companion Roster to hear their greeting line.',
+    badge: 'VOICE'
+  },
+  {
+    category: 'mascot',
+    title: 'Pet Mascot Perch',
+    desc: 'An animated interactive pet that perches atop the Whisper Island navigation bar.',
+    defaultValue: 'Enabled · Cid Kagenou',
+    proTip: 'Click the pet anytime on the search island to boop them and hear their reactions.',
+    badge: 'MASCOT'
+  },
+  {
+    category: 'mangvels',
+    title: 'Reading Direction & Mode',
+    desc: 'Toggle between Vertical Webtoon (continuous scroll for Manhwa/Webtoons) and RTL (Right-to-Left traditional Manga).',
+    defaultValue: 'Vertical Webtoon',
+    proTip: 'Use RTL mode for traditional Japanese tankobon manga to read in authentic orientation.',
+    badge: 'MANGA'
+  },
+  {
+    category: 'mangvels',
+    title: 'Chapter Preloading',
+    desc: 'Caches the next 1 to 5 chapters in browser memory so pages load instantly as you scroll.',
+    defaultValue: '3 Chapters',
+    proTip: 'Reduces wait times on slower mobile internet connections.',
+    badge: 'PERFORMANCE'
+  },
+  {
+    category: 'mangvels',
+    title: 'OLED Reader Theme',
+    desc: 'Renders the reading stage in pure pitch black (#000000) to maximize battery savings and contrast on OLED displays.',
+    defaultValue: 'OLED Pitch Black',
+    proTip: 'Warm Sepia is also available for night reading without eye fatigue.',
+    badge: 'THEME'
+  },
+  {
+    category: 'flixverse',
+    title: 'Cinema Stream Routing',
+    desc: 'Dedicated high-bandwidth stream server routes optimized for full-length movies and western series.',
+    defaultValue: 'Multi-CDN Auto',
+    proTip: 'Switch to VIP Stream Direct if you experience peak evening buffering.',
+    badge: 'CINEMA'
+  },
+  {
+    category: 'flixverse',
+    title: 'Ambient Theater Mode',
+    desc: 'Projects a soft dynamic glow outside the video container matching scene lighting.',
+    defaultValue: 'Enabled',
+    proTip: 'Best experienced in a darkened room on wide desktop displays.',
+    badge: 'CINEMA'
+  },
+  {
+    category: 'donghua',
+    title: 'Mandarin Voice Priority',
+    desc: 'Ensures original Chinese Mandarin audio is selected first, with fallback to English or Hindi dubs.',
+    defaultValue: 'Mandarin (Original)',
+    proTip: 'Cultivation and wuxia titles deliver their fullest impact in the original voice acting.',
+    badge: 'DONGHUA'
+  },
+  {
+    category: 'donghua',
+    title: 'Dual Hanzi & Pinyin Subtitles',
+    desc: 'Displays traditional/simplified Hanzi characters and pinyin pronunciation alongside English subtitles.',
+    defaultValue: 'Hanzi Enabled · Pinyin Disabled',
+    proTip: 'Invaluable for learners practicing Chinese cultivation terminology.',
+    badge: 'SUBTITLES'
+  },
+  {
+    category: 'system',
+    title: 'Library & Account Migration (XML)',
+    desc: 'Android-style portable XML archive. Export or restore your entire library, history, settings, and companion.',
+    defaultValue: 'Portable XML',
+    proTip: 'Your username is never overwritten on restore, guaranteeing account safety across devices.',
+    badge: 'BACKUP'
+  },
+  {
+    category: 'system',
+    title: 'AniList Two-Way Mirror',
+    desc: 'Bi-directionally synchronize episode progress and watch status with your AniList.co profile.',
+    defaultValue: 'Available',
+    proTip: 'Run 2-Way Sync to merge recent activity without losing episode milestones.',
+    badge: 'SYNC'
+  }
 ];
 
 // Helper: Custom Whisper Toast
@@ -304,6 +568,38 @@ export default function Settings() {
   const [watchlistCount, setWatchlistCount] = useState<number>(0);
   const [historyCount, setHistoryCount] = useState<number>(0);
 
+  // Media Preferences (Mangvels, Flixverse, Donghua)
+  const [mediaPrefs, setMediaPrefs] = useState<MediaPreferences>(DEFAULT_MEDIA_PREFS);
+
+  // XML Backup & Account Migration States
+  const [isBackupModalOpen, setIsBackupModalOpen] = useState(false);
+  const [isRestoreModalOpen, setIsRestoreModalOpen] = useState(false);
+  const [backupModules, setBackupModules] = useState({
+    library: true,
+    history: true,
+    settings: true,
+    companion: true,
+    profile: true,
+    mediaPrefs: true,
+  });
+  const [restoreModules, setRestoreModules] = useState({
+    library: true,
+    history: true,
+    settings: true,
+    companion: true,
+    profile: true,
+    mediaPrefs: true,
+  });
+  const [parsedBackupData, setParsedBackupData] = useState<any | null>(null);
+  const [isRestoring, setIsRestoring] = useState(false);
+
+  // Guide Section States
+  const [guideQuery, setGuideQuery] = useState('');
+  const [guideCategory, setGuideCategory] = useState<string>('all');
+
+  // Active Voice Audio Ref
+  const activeVoiceAudioRef = useRef<HTMLAudioElement | null>(null);
+
   const isAuthenticated = !!(profile && profile.id && !profile.is_guest);
 
   useEffect(() => {
@@ -322,6 +618,11 @@ export default function Settings() {
       try {
         const savedMascot = localStorage.getItem('shadow_mascot_config');
         if (savedMascot) setMascotConfig(prev => ({ ...prev, ...JSON.parse(savedMascot) }));
+      } catch {}
+
+      try {
+        const savedMedia = localStorage.getItem('kagemi_media_preferences');
+        if (savedMedia) setMediaPrefs(prev => ({ ...prev, ...JSON.parse(savedMedia) }));
       } catch {}
 
       // Calculate watchlist count & history
@@ -343,6 +644,9 @@ export default function Settings() {
       setAvatarUrl(profile.avatar_url || '');
       setGender(profile.gender || 'male');
       setSocialLinks(parseSocialLinks(profile.website));
+      if (profile.media_preferences && typeof profile.media_preferences === 'object') {
+        setMediaPrefs(prev => ({ ...prev, ...profile.media_preferences }));
+      }
     }
   }, [profile]);
 
@@ -362,6 +666,7 @@ export default function Settings() {
 
   const changeTab = (id: string) => {
     setActiveTab(id);
+    setIsMobileMenuOpen(false);
     playSquishyJelly(0.35);
     if (typeof window !== 'undefined') {
       localStorage.setItem('shadow_settings_tab', id);
@@ -374,6 +679,12 @@ export default function Settings() {
         return isAuthenticated ? (username || profile?.username || 'Member') : (travellerName || traveller.name || 'Traveller');
       case 'player':
         return `${settings.defaultQuality || '1080p'} • ${settings.defaultServer || 'HD-1'}`;
+      case 'mangvels':
+        return `${mediaPrefs.mangvels.readingDirection === 'rtl' ? 'RTL' : mediaPrefs.mangvels.readingDirection === 'webtoon' ? 'Webtoon' : 'LTR'} • ${mediaPrefs.mangvels.readerTheme}`;
+      case 'flixverse':
+        return `${mediaPrefs.flixverse.defaultCinemaServer} • ${mediaPrefs.flixverse.audioTrackLanguage.toUpperCase()}`;
+      case 'donghua':
+        return `${mediaPrefs.donghua.audioPriority === 'mandarin' ? 'Mandarin' : 'Dub'} • ${mediaPrefs.donghua.introSkipOffset}s`;
       case 'sound':
         return SOUND_PRESETS.find(s => s.id === settings.tapSoundEffect)?.label || 'Squishy Jelly';
       case 'whisper':
@@ -386,9 +697,39 @@ export default function Settings() {
         return hasAnilistToken ? (anilistUsername || 'Synced') : 'Off';
       case 'data':
         return `${historyCount} watched`;
+      case 'guide':
+        return 'Docs & Specs';
       default:
         return '';
     }
+  };
+
+  const updateMediaPref = <K extends keyof MediaPreferences, F extends keyof MediaPreferences[K]>(
+    category: K,
+    field: F,
+    value: MediaPreferences[K][F]
+  ) => {
+    setMediaPrefs(prev => {
+      const updated = {
+        ...prev,
+        [category]: {
+          ...prev[category],
+          [field]: value
+        }
+      };
+      if (typeof window !== 'undefined') {
+        localStorage.setItem('kagemi_media_preferences', JSON.stringify(updated));
+      }
+      if (isAuthenticated && profile?.id) {
+        supabase.from('profiles').update({
+          media_preferences: updated,
+          updated_at: new Date().toISOString()
+        }).eq('id', profile.id).then(() => {});
+      }
+      return updated;
+    });
+    playSquishyJelly(0.2);
+    toast.success('Media preference saved');
   };
 
   const handleSaveProfile = async () => {
@@ -506,10 +847,293 @@ export default function Settings() {
   };
 
   const handlePlayVoicePreview = (charId: string) => {
+    if (activeVoiceAudioRef.current) {
+      try {
+        activeVoiceAudioRef.current.pause();
+        activeVoiceAudioRef.current.currentTime = 0;
+      } catch (_) {}
+    }
     setPreviewingVoice(charId);
-    const line = getCharacterLine(charId, 'GREET_MASTER', voiceLanguageTab);
-    triggerTelepathy('GREET_MASTER', line);
-    setTimeout(() => setPreviewingVoice(null), 3000);
+    try {
+      const audio = playVoiceSample(charId, voiceLanguageTab);
+      if (audio) {
+        activeVoiceAudioRef.current = audio;
+        audio.onended = () => setPreviewingVoice(null);
+      } else {
+        setTimeout(() => setPreviewingVoice(null), 2500);
+      }
+    } catch (err) {
+      console.error('Failed to play voice sample:', err);
+      setTimeout(() => setPreviewingVoice(null), 2500);
+    }
+  };
+
+  const handleGenerateXmlBackup = () => {
+    try {
+      const rawWatchlist = localStorage.getItem('shadow_watchlist_v1') || '[]';
+      const rawHistory = localStorage.getItem('shadow_continue_watching') || '[]';
+      const rawMascot = localStorage.getItem('shadow_mascot_config') || '{}';
+      const voicePack = settings.whisperVoice || 'hana';
+
+      const cleanUsername = username || profile?.username || 'traveller';
+      const dateStr = new Date().toISOString().split('T')[0];
+      const timestamp = new Date().toISOString();
+
+      let xml = `<?xml version="1.0" encoding="UTF-8"?>\n`;
+      xml += `<kagemi_backup version="2.4" timestamp="${timestamp}">\n`;
+      xml += `  <metadata>\n`;
+      xml += `    <app>Kagemi Shadow Garden Sanctuary</app>\n`;
+      xml += `    <version>2.4</version>\n`;
+      xml += `    <username>${cleanUsername.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')}</username>\n`;
+      xml += `    <created_at>${timestamp}</created_at>\n`;
+      xml += `  </metadata>\n`;
+      xml += `  <modules>\n`;
+
+      if (backupModules.library) {
+        xml += `    <library>\n`;
+        xml += `      <![CDATA[${rawWatchlist}]]>\n`;
+        xml += `    </library>\n`;
+      }
+
+      if (backupModules.history) {
+        xml += `    <history>\n`;
+        xml += `      <![CDATA[${rawHistory}]]>\n`;
+        xml += `    </history>\n`;
+      }
+
+      if (backupModules.settings) {
+        xml += `    <settings>\n`;
+        xml += `      <![CDATA[${JSON.stringify(settings)}]]>\n`;
+        xml += `    </settings>\n`;
+      }
+
+      if (backupModules.companion) {
+        xml += `    <companion>\n`;
+        xml += `      <![CDATA[${JSON.stringify({ mascot: JSON.parse(rawMascot), voice: voicePack, volume: settings.whisperVolume })}]]>\n`;
+        xml += `    </companion>\n`;
+      }
+
+      if (backupModules.profile) {
+        // NOTE: Username is explicitly EXCLUDED to safeguard recipient operative's account username
+        xml += `    <profile_config>\n`;
+        xml += `      <bio><![CDATA[${bio || ''}]]></bio>\n`;
+        xml += `      <gender>${gender || 'male'}</gender>\n`;
+        xml += `      <avatar_url><![CDATA[${avatarUrl || ''}]]></avatar_url>\n`;
+        xml += `      <socials><![CDATA[${JSON.stringify(socialLinks)}]]></socials>\n`;
+        xml += `    </profile_config>\n`;
+      }
+
+      if (backupModules.mediaPrefs) {
+        xml += `    <media_preferences>\n`;
+        xml += `      <![CDATA[${JSON.stringify(mediaPrefs)}]]>\n`;
+        xml += `    </media_preferences>\n`;
+      }
+
+      xml += `  </modules>\n`;
+      xml += `</kagemi_backup>`;
+
+      const blob = new Blob([xml], { type: 'application/xml;charset=utf-8' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `kagemi_backup_${cleanUsername}_${dateStr}.xml`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+
+      setIsBackupModalOpen(false);
+      toast.success(`Backup archive saved: kagemi_backup_${cleanUsername}_${dateStr}.xml`);
+      notifyWhisper('Portable Android-style XML archive exported.', 'success');
+    } catch (err: any) {
+      toast.error('Failed to generate XML backup: ' + (err.message || ''));
+    }
+  };
+
+  const handleFileSelectForRestore = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      try {
+        const xmlStr = event.target?.result as string;
+        const parser = new DOMParser();
+        const doc = parser.parseFromString(xmlStr, 'text/xml');
+
+        if (doc.querySelector('parsererror')) {
+          throw new Error('Invalid XML document syntax.');
+        }
+
+        const root = doc.querySelector('kagemi_backup');
+        if (!root) {
+          throw new Error('Not a valid Kagemi backup archive.');
+        }
+
+        const sourceUser = doc.querySelector('metadata > username')?.textContent || 'Operative';
+        const createdAt = doc.querySelector('metadata > created_at')?.textContent || '';
+
+        const libraryNode = doc.querySelector('modules > library');
+        const historyNode = doc.querySelector('modules > history');
+        const settingsNode = doc.querySelector('modules > settings');
+        const companionNode = doc.querySelector('modules > companion');
+        const profileNode = doc.querySelector('modules > profile_config');
+        const mediaPrefsNode = doc.querySelector('modules > media_preferences');
+
+        const parsed: any = {
+          metadata: { sourceUser, createdAt },
+          hasLibrary: !!libraryNode,
+          hasHistory: !!historyNode,
+          hasSettings: !!settingsNode,
+          hasCompanion: !!companionNode,
+          hasProfile: !!profileNode,
+          hasMediaPrefs: !!mediaPrefsNode,
+        };
+
+        if (libraryNode) {
+          try {
+            parsed.library = JSON.parse(libraryNode.textContent || '[]');
+          } catch {}
+        }
+        if (historyNode) {
+          try {
+            parsed.history = JSON.parse(historyNode.textContent || '[]');
+          } catch {}
+        }
+        if (settingsNode) {
+          try {
+            parsed.settings = JSON.parse(settingsNode.textContent || '{}');
+          } catch {}
+        }
+        if (companionNode) {
+          try {
+            parsed.companion = JSON.parse(companionNode.textContent || '{}');
+          } catch {}
+        }
+        if (profileNode) {
+          // EXCLUDING USERNAME!
+          parsed.profile = {
+            bio: profileNode.querySelector('bio')?.textContent || '',
+            gender: profileNode.querySelector('gender')?.textContent || 'male',
+            avatar_url: profileNode.querySelector('avatar_url')?.textContent || '',
+            socials: []
+          };
+          try {
+            const socialsText = profileNode.querySelector('socials')?.textContent;
+            if (socialsText) parsed.profile.socials = JSON.parse(socialsText);
+          } catch {}
+        }
+        if (mediaPrefsNode) {
+          try {
+            parsed.mediaPrefs = JSON.parse(mediaPrefsNode.textContent || '{}');
+          } catch {}
+        }
+
+        setParsedBackupData(parsed);
+        setRestoreModules({
+          library: !!parsed.hasLibrary,
+          history: !!parsed.hasHistory,
+          settings: !!parsed.hasSettings,
+          companion: !!parsed.hasCompanion,
+          profile: !!parsed.hasProfile,
+          mediaPrefs: !!parsed.hasMediaPrefs,
+        });
+        setIsRestoreModalOpen(true);
+      } catch (err: any) {
+        toast.error('XML parse error: ' + (err.message || 'Invalid format'));
+      }
+    };
+    reader.readAsText(file);
+    e.target.value = '';
+  };
+
+  const handleExecuteRestore = async () => {
+    if (!parsedBackupData) return;
+    setIsRestoring(true);
+
+    try {
+      let restoredCount = 0;
+
+      // 1. Library / Watchlist
+      if (restoreModules.library && parsedBackupData.library) {
+        localStorage.setItem('shadow_watchlist_v1', JSON.stringify(parsedBackupData.library));
+        setWatchlistCount(parsedBackupData.library.length || 0);
+        restoredCount++;
+      }
+
+      // 2. History & Progress
+      if (restoreModules.history && parsedBackupData.history) {
+        localStorage.setItem('shadow_continue_watching', JSON.stringify(parsedBackupData.history));
+        setHistoryCount(parsedBackupData.history.length || 0);
+        window.dispatchEvent(new Event('shadow_continue_watching_updated'));
+        restoredCount++;
+      }
+
+      // 3. Settings
+      if (restoreModules.settings && parsedBackupData.settings) {
+        Object.entries(parsedBackupData.settings).forEach(([key, val]) => {
+          updateSetting(key as any, val as any);
+        });
+        restoredCount++;
+      }
+
+      // 4. Companion
+      if (restoreModules.companion && parsedBackupData.companion) {
+        if (parsedBackupData.companion.mascot) {
+          updateMascot(parsedBackupData.companion.mascot);
+        }
+        if (parsedBackupData.companion.voice) {
+          updateSetting('whisperVoice', parsedBackupData.companion.voice);
+        }
+        if (parsedBackupData.companion.volume !== undefined) {
+          updateSetting('whisperVolume', parsedBackupData.companion.volume);
+        }
+        restoredCount++;
+      }
+
+      // 5. Profile (EXCLUDING USERNAME!)
+      if (restoreModules.profile && parsedBackupData.profile) {
+        const { bio: rBio, gender: rGender, avatar_url: rAvatar, socials: rSocials } = parsedBackupData.profile;
+        if (rBio !== undefined) setBio(rBio);
+        if (rGender !== undefined) setGender(rGender);
+        if (rAvatar !== undefined) setAvatarUrl(rAvatar);
+        if (Array.isArray(rSocials)) setSocialLinks(rSocials);
+
+        if (isAuthenticated && profile?.id) {
+          await supabase.from('profiles').update({
+            bio: rBio || '',
+            gender: rGender || 'male',
+            avatar_url: rAvatar || '',
+            website: rSocials?.length ? JSON.stringify(rSocials) : '',
+            updated_at: new Date().toISOString()
+          }).eq('id', profile.id);
+          await refreshSession();
+        }
+        restoredCount++;
+      }
+
+      // 6. Media Prefs
+      if (restoreModules.mediaPrefs && parsedBackupData.mediaPrefs) {
+        setMediaPrefs(prev => ({ ...prev, ...parsedBackupData.mediaPrefs }));
+        localStorage.setItem('kagemi_media_preferences', JSON.stringify(parsedBackupData.mediaPrefs));
+        if (isAuthenticated && profile?.id) {
+          await supabase.from('profiles').update({
+            media_preferences: parsedBackupData.mediaPrefs,
+            updated_at: new Date().toISOString()
+          }).eq('id', profile.id);
+        }
+        restoredCount++;
+      }
+
+      toast.success(`Account migration restored successfully (${restoredCount} modules)!`);
+      notifyWhisper('Library and preferences synchronized from XML backup.', 'success');
+      setIsRestoreModalOpen(false);
+      setParsedBackupData(null);
+    } catch (err: any) {
+      toast.error('Restoration failed: ' + (err.message || 'Unknown error'));
+    } finally {
+      setIsRestoring(false);
+    }
   };
 
   const updateMascot = (patch: Partial<MascotConfig>) => {
@@ -701,8 +1325,8 @@ export default function Settings() {
                           >
                             <option value="male" className="bg-zinc-900">Male</option>
                             <option value="female" className="bg-zinc-900">Female</option>
-                            <option value="non-binary" className="bg-zinc-900">Non-Binary</option>
-                            <option value="shadow" className="bg-zinc-900">Shadow Sovereign</option>
+                            <option value="rather_not_say" className="bg-zinc-900">Rather not say</option>
+                            <option value="none" className="bg-zinc-900">None</option>
                           </select>
                         </div>
                       </div>
@@ -973,28 +1597,26 @@ export default function Settings() {
           )}
 
           {activeTab === 'player' && (
-            <SectionBlock title="Video Player & Caption Studio" desc="Tune player automations, stream qualities, and subtitle styling with live video preview.">
-              {/* Interactive Player Preview Canvas */}
+            <SectionBlock title="Video Player & Omni Studio" desc="Calibrate playback automations, stream qualities, and subtitle styling with the live Omni player.">
+              {/* Live Omni Player Calibration Canvas */}
               <div className="pb-8 border-b border-white/[0.06] space-y-4">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <h4 className="text-xs font-black uppercase tracking-wider text-zinc-300">
-                      Live Subtitle & Video Preview
-                    </h4>
-                    <p className="text-[11px] text-zinc-500 mt-0.5">
-                      Tweak subtitle options below and watch the preview update instantly.
-                    </p>
-                  </div>
+                <div>
+                  <h4 className="text-xs font-black uppercase tracking-wider text-zinc-300">
+                    Live Omni Player Calibration Studio
+                  </h4>
+                  <p className="text-[11px] text-zinc-500 mt-0.5">
+                    Live Omni engine running with adaptive controls, skip gestures, and hardware acceleration.
+                  </p>
                 </div>
 
-                <div className="max-w-2xl">
-                  <PlayerPreview
-                    captionSize={(settings.playerPrefs?.captionSize || 'medium') as any}
-                    captionColor={settings.playerPrefs?.captionColor || '#ffffff'}
-                    captionBg={(settings.playerPrefs?.captionBg || 'semi-black') as any}
-                    captionFont={(settings.playerPrefs?.captionFont || 'sans') as any}
-                    playbackSpeed={settings.playerPrefs?.playbackSpeed || 1}
-                    dimMode={settings.dimMode}
+                <div className="w-full max-w-2xl aspect-video rounded-2xl overflow-hidden border border-white/10 shadow-2xl bg-black relative">
+                  <OmniPlayer
+                    url="/videos/demo.mp4"
+                    title="Omni Calibration Studio"
+                    isM3U8={false}
+                    autoPlay={false}
+                    autoSkip={settings.autoSkipOpEd}
+                    autoSkipOutro={settings.autoSkipOutro}
                   />
                 </div>
               </div>
@@ -1194,6 +1816,312 @@ export default function Settings() {
             </SectionBlock>
           )}
 
+          {activeTab === 'mangvels' && (
+            <SectionBlock title="Mangvels & Novels Studio" desc="Configure manga reading orientation, chapter caching, and display themes.">
+              {/* Reading Direction & Mode */}
+              <div className="pb-8 border-b border-white/[0.06] space-y-4">
+                <h4 className="text-xs font-black uppercase tracking-wider text-zinc-300">
+                  Reading Mode & Orientation
+                </h4>
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                  {[
+                    { id: 'webtoon', label: 'Vertical Webtoon', desc: 'Continuous vertical scroll for Manhwa and Webtoons' },
+                    { id: 'rtl', label: 'Right-to-Left (RTL)', desc: 'Standard Japanese manga format, flips right to left' },
+                    { id: 'ltr', label: 'Left-to-Right (LTR)', desc: 'Western comic book orientation, flips left to right' },
+                  ].map((mode) => {
+                    const isSelected = mediaPrefs.mangvels.readingDirection === mode.id;
+                    return (
+                      <motion.button
+                        key={mode.id}
+                        whileTap={{ scale: 0.96 }}
+                        onClick={() => updateMediaPref('mangvels', 'readingDirection', mode.id as any)}
+                        className={cn(
+                          "p-3.5 rounded-xl border text-left transition-all flex flex-col justify-between gap-2 cursor-pointer",
+                          isSelected
+                            ? "bg-primary/10 border-primary text-white"
+                            : "bg-white/[0.03] border-white/[0.06] hover:bg-white/[0.06] text-zinc-400"
+                        )}
+                      >
+                        <span className="text-xs font-bold text-white">{mode.label}</span>
+                        <p className="text-[10px] text-zinc-500 leading-relaxed">{mode.desc}</p>
+                      </motion.button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Reader Theme & Appearance */}
+              <div className="pt-8 pb-8 border-b border-white/[0.06] space-y-4">
+                <h4 className="text-xs font-black uppercase tracking-wider text-zinc-300">
+                  Reader Theme Palette
+                </h4>
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                  {[
+                    { id: 'oled-black', label: 'OLED Pure Black', bg: '#000000', text: '#ffffff' },
+                    { id: 'dark-slate', label: 'Deep Slate', bg: '#0f172a', text: '#cbd5e1' },
+                    { id: 'sepia', label: 'Warm Sepia', bg: '#fbf0d9', text: '#5f4b32' },
+                    { id: 'paper', label: 'Soft Paper', bg: '#f4f4f0', text: '#18181b' },
+                  ].map((theme) => {
+                    const isSelected = mediaPrefs.mangvels.readerTheme === theme.id;
+                    return (
+                      <motion.button
+                        key={theme.id}
+                        whileTap={{ scale: 0.95 }}
+                        onClick={() => updateMediaPref('mangvels', 'readerTheme', theme.id as any)}
+                        className={cn(
+                          "p-3 rounded-xl border flex items-center gap-2.5 transition-all cursor-pointer",
+                          isSelected ? "border-primary ring-1 ring-primary" : "border-white/10 hover:border-white/20"
+                        )}
+                        style={{ backgroundColor: theme.bg }}
+                      >
+                        <div className="w-3.5 h-3.5 rounded-full border border-black/20 shrink-0" style={{ backgroundColor: theme.text }} />
+                        <span className="text-xs font-bold truncate" style={{ color: theme.text }}>{theme.label}</span>
+                      </motion.button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Performance & Layout Toggles */}
+              <div className="pt-8 space-y-4">
+                <h4 className="text-xs font-black uppercase tracking-wider text-zinc-300">
+                  Preload & Hardware Controls
+                </h4>
+                <div className="divide-y divide-white/[0.04]">
+                  <ToggleItem
+                    title="Volume Rocker Page Turn"
+                    desc="Use device physical volume buttons to turn manga pages on mobile and tablet."
+                    checked={mediaPrefs.mangvels.volumePageTurn}
+                    onChange={(v) => updateMediaPref('mangvels', 'volumePageTurn', v)}
+                  />
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2">
+                  <div>
+                    <label className="text-[11px] font-bold uppercase tracking-wider text-zinc-400 block mb-1.5">
+                      Chapter Memory Preloading
+                    </label>
+                    <select
+                      value={mediaPrefs.mangvels.preloadChapters}
+                      onChange={(e) => updateMediaPref('mangvels', 'preloadChapters', parseInt(e.target.value))}
+                      className="w-full h-9 px-3 rounded-xl bg-white/[0.04] border border-white/10 text-white text-xs outline-none cursor-pointer"
+                    >
+                      <option value={1} className="bg-zinc-900">1 Chapter in Advance</option>
+                      <option value={3} className="bg-zinc-900">3 Chapters (Recommended)</option>
+                      <option value={5} className="bg-zinc-900">5 Chapters (Fastest Scroll)</option>
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="text-[11px] font-bold uppercase tracking-wider text-zinc-400 block mb-1.5">
+                      Image Quality Profile
+                    </label>
+                    <select
+                      value={mediaPrefs.mangvels.imageQuality}
+                      onChange={(e) => updateMediaPref('mangvels', 'imageQuality', e.target.value as any)}
+                      className="w-full h-9 px-3 rounded-xl bg-white/[0.04] border border-white/10 text-white text-xs outline-none cursor-pointer"
+                    >
+                      <option value="original" className="bg-zinc-900">Original (Lossless Clarity)</option>
+                      <option value="compressed" className="bg-zinc-900">Adaptive WebP (Balanced)</option>
+                      <option value="data-saver" className="bg-zinc-900">Data Saver (Metered Mobile)</option>
+                    </select>
+                  </div>
+                </div>
+              </div>
+            </SectionBlock>
+          )}
+
+          {activeTab === 'flixverse' && (
+            <SectionBlock title="Flixverse & Cinema" desc="Tune high-bandwidth streaming pipes, surround audio virtualization, and cinema presets.">
+              <div className="pb-8 border-b border-white/[0.06] space-y-4">
+                <h4 className="text-xs font-black uppercase tracking-wider text-zinc-300">
+                  Cinema Stream Architecture
+                </h4>
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                  {[
+                    { id: 'auto', label: 'Multi-CDN Auto', desc: 'Fastest latency route selected automatically per session' },
+                    { id: 'vip-stream', label: 'VIP Stream Direct', desc: 'High-bitrate unthrottled pipe for 4K and 1080p movies' },
+                    { id: 'p2p-mirror', label: 'Edge Global Mirror', desc: 'Decentralized caching mirror with failover redundancy' },
+                  ].map((server) => {
+                    const isSelected = mediaPrefs.flixverse.defaultCinemaServer === server.id;
+                    return (
+                      <motion.button
+                        key={server.id}
+                        whileTap={{ scale: 0.96 }}
+                        onClick={() => updateMediaPref('flixverse', 'defaultCinemaServer', server.id)}
+                        className={cn(
+                          "p-3.5 rounded-xl border text-left transition-all flex flex-col justify-between gap-2 cursor-pointer",
+                          isSelected
+                            ? "bg-primary/10 border-primary text-white"
+                            : "bg-white/[0.03] border-white/[0.06] hover:bg-white/[0.06] text-zinc-400"
+                        )}
+                      >
+                        <span className="text-xs font-bold text-white">{server.label}</span>
+                        <p className="text-[10px] text-zinc-500 leading-relaxed">{server.desc}</p>
+                      </motion.button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              <div className="pt-8 pb-8 border-b border-white/[0.06] space-y-4">
+                <h4 className="text-xs font-black uppercase tracking-wider text-zinc-300">
+                  Cinema Audio & Aspect Ratio
+                </h4>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div>
+                    <label className="text-[11px] font-bold uppercase tracking-wider text-zinc-400 block mb-1.5">
+                      Default Audio Language
+                    </label>
+                    <select
+                      value={mediaPrefs.flixverse.audioTrackLanguage}
+                      onChange={(e) => updateMediaPref('flixverse', 'audioTrackLanguage', e.target.value)}
+                      className="w-full h-9 px-3 rounded-xl bg-white/[0.04] border border-white/10 text-white text-xs outline-none cursor-pointer"
+                    >
+                      <option value="en" className="bg-zinc-900">English (Original / Dub)</option>
+                      <option value="hi" className="bg-zinc-900">Hindi (Cinematic Dub)</option>
+                      <option value="es" className="bg-zinc-900">Spanish (Español)</option>
+                      <option value="fr" className="bg-zinc-900">French (Français)</option>
+                      <option value="multi" className="bg-zinc-900">Multi-Audio (Prompt per Film)</option>
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="text-[11px] font-bold uppercase tracking-wider text-zinc-400 block mb-1.5">
+                      Display Aspect Ratio
+                    </label>
+                    <select
+                      value={mediaPrefs.flixverse.aspectRatio}
+                      onChange={(e) => updateMediaPref('flixverse', 'aspectRatio', e.target.value as any)}
+                      className="w-full h-9 px-3 rounded-xl bg-white/[0.04] border border-white/10 text-white text-xs outline-none cursor-pointer"
+                    >
+                      <option value="16:9" className="bg-zinc-900">16:9 Standard Television</option>
+                      <option value="21:9" className="bg-zinc-900">21:9 Ultrawide CinemaScope</option>
+                      <option value="fill" className="bg-zinc-900">Fill Screen (Crop Black Bars)</option>
+                    </select>
+                  </div>
+                </div>
+              </div>
+
+              <div className="pt-8 space-y-4">
+                <h4 className="text-xs font-black uppercase tracking-wider text-zinc-300">
+                  Playback Automations
+                </h4>
+                <div className="divide-y divide-white/[0.04]">
+                  <ToggleItem
+                    title="Ambient Theater Lighting"
+                    desc="Project soft reactive luminous aura around the video stage."
+                    checked={mediaPrefs.flixverse.ambientTheaterMode}
+                    onChange={(v) => updateMediaPref('flixverse', 'ambientTheaterMode', v)}
+                  />
+                  <ToggleItem
+                    title="Auto-Skip Studio Logos & Recaps"
+                    desc="Automatically skip past introductory production cards and previous episode summaries."
+                    checked={mediaPrefs.flixverse.autoSkipRecap}
+                    onChange={(v) => updateMediaPref('flixverse', 'autoSkipRecap', v)}
+                  />
+                  <ToggleItem
+                    title="Dolby 5.1 Virtualization"
+                    desc="Simulate multi-channel spatial audio field when using standard stereo headphones."
+                    checked={mediaPrefs.flixverse.surroundSound}
+                    onChange={(v) => updateMediaPref('flixverse', 'surroundSound', v)}
+                  />
+                </div>
+              </div>
+            </SectionBlock>
+          )}
+
+          {activeTab === 'donghua' && (
+            <SectionBlock title="Donghua Sanctuary" desc="Dedicated Chinese animation playback controls, Mandarin voice priority, and Hanzi/Pinyin subtitle layers.">
+              <div className="pb-8 border-b border-white/[0.06] space-y-4">
+                <h4 className="text-xs font-black uppercase tracking-wider text-zinc-300">
+                  Voice Track Priority
+                </h4>
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                  {[
+                    { id: 'mandarin', label: 'Mandarin Chinese (Original)', desc: 'Original voice acting for authentic cultivation and wuxia experience' },
+                    { id: 'english', label: 'English Dub Priority', desc: 'English localized voice track when available from studio' },
+                    { id: 'hindi', label: 'Hindi Dub Priority', desc: 'Hindi localized voice track when available from studio' },
+                  ].map((track) => {
+                    const isSelected = mediaPrefs.donghua.audioPriority === track.id;
+                    return (
+                      <motion.button
+                        key={track.id}
+                        whileTap={{ scale: 0.96 }}
+                        onClick={() => updateMediaPref('donghua', 'audioPriority', track.id as any)}
+                        className={cn(
+                          "p-3.5 rounded-xl border text-left transition-all flex flex-col justify-between gap-2 cursor-pointer",
+                          isSelected
+                            ? "bg-primary/10 border-primary text-white"
+                            : "bg-white/[0.03] border-white/[0.06] hover:bg-white/[0.06] text-zinc-400"
+                        )}
+                      >
+                        <span className="text-xs font-bold text-white">{track.label}</span>
+                        <p className="text-[10px] text-zinc-500 leading-relaxed">{track.desc}</p>
+                      </motion.button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              <div className="pt-8 pb-8 border-b border-white/[0.06] space-y-4">
+                <h4 className="text-xs font-black uppercase tracking-wider text-zinc-300">
+                  Donghua Subtitle Layers
+                </h4>
+                <div className="divide-y divide-white/[0.04]">
+                  <ToggleItem
+                    title="Dual Subtitles (Hanzi + English)"
+                    desc="Display simplified Chinese Hanzi characters above English translated captions."
+                    checked={mediaPrefs.donghua.hanziSubtitles}
+                    onChange={(v) => updateMediaPref('donghua', 'hanziSubtitles', v)}
+                  />
+                  <ToggleItem
+                    title="Pinyin Pronunciation Overlay"
+                    desc="Include romanized phonetic pinyin spelling above Chinese cultivation martial arts techniques."
+                    checked={mediaPrefs.donghua.pinyinGuide}
+                    onChange={(v) => updateMediaPref('donghua', 'pinyinGuide', v)}
+                  />
+                </div>
+              </div>
+
+              <div className="pt-8 space-y-4">
+                <h4 className="text-xs font-black uppercase tracking-wider text-zinc-300">
+                  Opening Jump Offset
+                </h4>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div>
+                    <label className="text-[11px] font-bold uppercase tracking-wider text-zinc-400 block mb-1.5">
+                      Cultivation Intro Skip Offset
+                    </label>
+                    <select
+                      value={mediaPrefs.donghua.introSkipOffset}
+                      onChange={(e) => updateMediaPref('donghua', 'introSkipOffset', parseInt(e.target.value))}
+                      className="w-full h-9 px-3 rounded-xl bg-white/[0.04] border border-white/10 text-white text-xs outline-none cursor-pointer"
+                    >
+                      <option value={90} className="bg-zinc-900">90 Seconds (Standard Donghua Opening)</option>
+                      <option value={100} className="bg-zinc-900">100 Seconds (Extended Theme)</option>
+                      <option value={120} className="bg-zinc-900">120 Seconds (Full Recap + Song)</option>
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="text-[11px] font-bold uppercase tracking-wider text-zinc-400 block mb-1.5">
+                      Edge Network Pipe
+                    </label>
+                    <select
+                      value={mediaPrefs.donghua.serverRegion}
+                      onChange={(e) => updateMediaPref('donghua', 'serverRegion', e.target.value)}
+                      className="w-full h-9 px-3 rounded-xl bg-white/[0.04] border border-white/10 text-white text-xs outline-none cursor-pointer"
+                    >
+                      <option value="asia-pacific" className="bg-zinc-900">Asia-Pacific Direct Edge (Lowest Latency)</option>
+                      <option value="global-cdn" className="bg-zinc-900">Global Cloud CDN</option>
+                    </select>
+                  </div>
+                </div>
+              </div>
+            </SectionBlock>
+          )}
+
           {activeTab === 'whisper' && (
             <SectionBlock title="Telepathy & Voice Packs" desc="Choose your personal companion spirit, listen to sample greetings, and calibrate volume.">
               {/* Telepathy Controls */}
@@ -1294,13 +2222,13 @@ export default function Settings() {
                           </Button>
 
                           <Button
-                            size="icon"
+                            size="sm"
                             variant="ghost"
                             onClick={() => handlePlayVoicePreview(char.id)}
-                            className="w-7 h-7 rounded-lg text-zinc-400 hover:text-white hover:bg-white/10 shrink-0"
+                            className="h-7 px-2.5 rounded-lg text-zinc-300 hover:text-white hover:bg-white/10 shrink-0 text-[10px] font-bold uppercase tracking-wider"
                             title="Play Voice Sample"
                           >
-                            {isPreviewing ? <Volume2 size={13} className="text-primary animate-pulse" /> : <Play size={13} />}
+                            {isPreviewing ? "Playing..." : "Sample"}
                           </Button>
                         </div>
                       </div>
@@ -1703,22 +2631,45 @@ export default function Settings() {
                 </div>
               </div>
 
-              {/* Backup & Export Protocols */}
+              {/* Import / Export Library & Account Migration (Android-style XML) */}
               <div className="pt-8 pb-8 border-b border-white/[0.06] space-y-4">
-                <h4 className="text-xs font-black uppercase tracking-wider text-zinc-300">
-                  Vault Export & Import
-                </h4>
-                <div className="flex flex-wrap gap-3">
+                <div>
+                  <h4 className="text-xs font-black uppercase tracking-wider text-zinc-300">
+                    Import / Export Library & Account Migration
+                  </h4>
+                  <p className="text-[11px] text-zinc-500 mt-0.5">
+                    Android-style portable XML archive. Backup or restore your watchlist, continue watching milestones, settings, companions, and profile.
+                  </p>
+                </div>
+
+                <div className="flex flex-wrap items-center gap-3">
                   <Button
-                    onClick={handleExportWatchlist}
-                    className="h-10 px-5 rounded-full bg-primary/20 hover:bg-primary/30 text-primary border border-primary/30 text-xs font-bold"
+                    onClick={() => {
+                      playSquishyJelly(0.25);
+                      setIsBackupModalOpen(true);
+                    }}
+                    className="h-10 px-5 rounded-full bg-primary hover:bg-primary/90 text-white text-xs font-bold transition-all shadow-md"
                   >
-                    <Download size={14} className="mr-2" /> Export Vault JSON
+                    <FileDown size={14} className="mr-2" /> Create XML Backup
                   </Button>
-                  <label className="h-10 px-5 rounded-full bg-white/5 hover:bg-white/10 text-zinc-300 border border-white/10 text-xs font-bold inline-flex items-center cursor-pointer transition-colors">
-                    <Upload size={14} className="mr-2" /> Import Vault Backup
-                    <input type="file" accept=".json" onChange={handleImportBackup} className="hidden" />
+
+                  <label className="h-10 px-5 rounded-full bg-white/[0.06] hover:bg-white/10 text-white border border-white/10 text-xs font-bold inline-flex items-center cursor-pointer transition-colors">
+                    <FileUp size={14} className="mr-2" /> Restore from XML
+                    <input
+                      type="file"
+                      accept=".xml"
+                      onChange={handleFileSelectForRestore}
+                      className="hidden"
+                    />
                   </label>
+
+                  <Button
+                    variant="ghost"
+                    onClick={handleExportWatchlist}
+                    className="h-10 px-4 rounded-full text-zinc-400 hover:text-white text-xs font-medium"
+                  >
+                    Legacy JSON Export
+                  </Button>
                 </div>
               </div>
 
@@ -1765,6 +2716,98 @@ export default function Settings() {
               </div>
             </SectionBlock>
           )}
+
+          {activeTab === 'guide' && (
+            <SectionBlock title="Sanctuary Manual & Documentation" desc="Comprehensive guide for every setting, automation, and engine option across Kagemi.">
+              {/* Search & Category Filter Toolbar */}
+              <div className="pb-6 border-b border-white/[0.06] space-y-3">
+                <div className="relative">
+                  <Search size={14} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-zinc-400" />
+                  <input
+                    type="text"
+                    value={guideQuery}
+                    onChange={(e) => setGuideQuery(e.target.value)}
+                    placeholder="Search options, skip markers, telepathy, audio profiles..."
+                    className="w-full h-10 pl-9 pr-3 rounded-xl bg-white/[0.04] border border-white/10 text-white text-xs placeholder:text-zinc-500 outline-none focus:border-primary transition-all"
+                  />
+                  {guideQuery && (
+                    <button
+                      onClick={() => setGuideQuery('')}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-zinc-500 hover:text-white"
+                    >
+                      <X size={13} />
+                    </button>
+                  )}
+                </div>
+
+                <div className="flex flex-wrap gap-1.5 pt-1">
+                  {[
+                    { id: 'all', label: 'All Manuals' },
+                    { id: 'identity', label: 'Identity & Card' },
+                    { id: 'playback', label: 'Omni Playback' },
+                    { id: 'sound', label: 'Sound & Haptics' },
+                    { id: 'telepathy', label: 'Telepathy' },
+                    { id: 'mascot', label: 'Pet Companion' },
+                    { id: 'mangvels', label: 'Mangvels' },
+                    { id: 'flixverse', label: 'Flixverse' },
+                    { id: 'donghua', label: 'Donghua' },
+                    { id: 'system', label: 'Sync & Backup' },
+                  ].map((cat) => (
+                    <button
+                      key={cat.id}
+                      onClick={() => setGuideCategory(cat.id)}
+                      className={cn(
+                        "px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider transition-all cursor-pointer",
+                        guideCategory === cat.id
+                          ? "bg-primary text-white"
+                          : "bg-white/[0.04] text-zinc-400 hover:text-white hover:bg-white/10"
+                      )}
+                    >
+                      {cat.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Guide Item Cards */}
+              <div className="pt-6 space-y-3">
+                {SITE_GUIDES.filter((g) => {
+                  const matchesCat = guideCategory === 'all' || g.category === guideCategory;
+                  const matchesQuery = !guideQuery || 
+                    g.title.toLowerCase().includes(guideQuery.toLowerCase()) || 
+                    g.desc.toLowerCase().includes(guideQuery.toLowerCase()) || 
+                    g.proTip.toLowerCase().includes(guideQuery.toLowerCase());
+                  return matchesCat && matchesQuery;
+                }).map((item, idx) => (
+                  <div
+                    key={idx}
+                    className="p-4 rounded-xl bg-white/[0.02] border border-white/[0.06] hover:border-white/15 transition-all space-y-2"
+                  >
+                    <div className="flex items-center justify-between gap-2 flex-wrap">
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs font-bold text-white">{item.title}</span>
+                        <span className="text-[9px] font-mono font-bold px-1.5 py-0.5 rounded bg-white/[0.06] text-zinc-400 border border-white/10">
+                          {item.badge}
+                        </span>
+                      </div>
+                      <span className="text-[10px] text-zinc-500 font-mono">
+                        Default: <span className="text-zinc-300 font-medium">{item.defaultValue}</span>
+                      </span>
+                    </div>
+
+                    <p className="text-xs text-zinc-400 leading-relaxed">
+                      {item.desc}
+                    </p>
+
+                    <div className="pt-1.5 flex items-start gap-1.5 text-[11px] text-primary/90 font-medium">
+                      <span className="text-[9px] font-black uppercase tracking-wider px-1 rounded bg-primary/10 border border-primary/20 shrink-0 mt-0.5">Tip</span>
+                      <span>{item.proTip}</span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </SectionBlock>
+          )}
     </div>
   );
 
@@ -1784,48 +2827,27 @@ export default function Settings() {
 
   return (
     <div className="w-full px-2 sm:px-4 md:px-6 py-4 md:py-6 text-white min-h-screen">
-      {/* Page Hero Header (Clean & Minimal, Anti-Container Compliant; Hidden on mobile) */}
-      <div className="w-full mb-6 pb-4 border-b border-white/[0.08] hidden md:flex items-center justify-between gap-4">
-        <div>
-          <div className="flex items-center gap-2.5">
-            <h1 className="text-2xl sm:text-3xl font-black uppercase tracking-tight text-white flex items-center gap-2.5 font-lemon">
-              <SlidersHorizontal size={22} className="text-primary shrink-0" />
-              Settings
-            </h1>
-            <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-white/[0.06] text-zinc-400 border border-white/10 uppercase">
-              Core v2.4
-            </span>
-          </div>
-          <p className="text-xs text-zinc-400 mt-1">
-            Personalize your sanctuary, optimize playback, configure companions & sync libraries.
-          </p>
-        </div>
-      </div>
-
       {/* ── MOBILE EXPERIENCE (< md): Permanent Top-Left Menu & Section Navigation ── */}
       <div className="block md:hidden w-full mb-6">
-        {/* Sticky Permanent Top-Left Toolbar Bar (2D Monet UI) */}
-        <div className="sticky top-14 z-30 -mx-2 px-3 py-2.5 bg-[#070b14]/90 backdrop-blur-xl border-b border-white/[0.08] flex items-center justify-between gap-3 mb-4">
+        {/* Sticky Compact Top-Left Toolbar Bar (2D Monet UI, Unboxed) */}
+        <div className="sticky top-14 z-30 -mx-2 px-3 py-1.5 bg-[#070b14]/95 backdrop-blur-xl border-b border-white/[0.06] flex items-center justify-between gap-2 mb-3">
           <motion.button
-            whileTap={{ scale: 0.92 }}
-            whileHover={{ scale: 1.03 }}
+            whileTap={{ scale: 0.94 }}
             transition={{ type: "spring", stiffness: 450, damping: 18 }}
             onClick={() => {
               playSquishyJelly(0.3);
               setIsMobileMenuOpen(true);
             }}
-            className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-white/[0.06] hover:bg-white/10 border border-white/10 text-white"
+            className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider text-white/90 hover:text-white transition-colors cursor-pointer"
             aria-label="Open Settings Menu"
           >
-            <Menu size={17} className="text-primary shrink-0" />
-            <span className="text-xs font-bold uppercase tracking-wider font-lemon">Sections</span>
+            <Menu size={16} className="text-primary shrink-0" />
+            <span className="font-lemon text-[11px] tracking-wide">Sections</span>
           </motion.button>
 
-          <div className="flex items-center gap-2 pr-1 min-w-0">
-            <div className={cn("w-6 h-6 rounded-[7px] flex items-center justify-center text-white shrink-0", currentMenuItem.gradient)}>
-              <CurrentIcon size={13} />
-            </div>
-            <span className="text-xs font-bold text-white truncate max-w-[160px]">
+          <div className="flex items-center gap-1.5 pr-1 min-w-0">
+            <CurrentIcon size={12} className="text-zinc-400 shrink-0" />
+            <span className="text-[11px] font-bold text-white/90 truncate max-w-[170px]">
               {currentMenuItem.label}
             </span>
           </div>
@@ -1837,39 +2859,18 @@ export default function Settings() {
         </div>
       </div>
 
-      {/* ── TABLET & DESKTOP EXPERIENCE (>= md): iPadOS Master-Detail Adaptive Split View ── */}
+      {/* ── TABLET & DESKTOP EXPERIENCE (>= md): iPadOS Master-Detail Adaptive Split View (Edge-to-Edge Clean) ── */}
       <div className="hidden md:flex w-full gap-6 lg:gap-8 items-start">
         {/* iPadOS / Desktop Navigation Sidebar (2D Monet UI) */}
-        <aside className="w-64 md:w-72 shrink-0 sticky top-24 rounded-2xl bg-[#090d16]/85 border border-white/[0.08] p-3 backdrop-blur-md space-y-4">
-          {/* Profile mini-card at top of sidebar */}
-          <motion.div
-            whileTap={{ scale: 0.96 }}
-            whileHover={{ scale: 1.02 }}
-            transition={{ type: "spring", stiffness: 450, damping: 18 }}
-            onClick={() => changeTab('general')}
-            className={cn(
-              "p-2.5 rounded-xl border flex items-center gap-3 cursor-pointer transition-all",
-              activeTab === 'general'
-                ? "bg-primary/10 border-primary/40"
-                : "bg-white/[0.03] border-white/[0.06] hover:bg-white/[0.06]"
-            )}
-          >
-            <div className="w-10 h-10 rounded-full overflow-hidden border border-white/20 shrink-0 bg-zinc-900">
-              <img
-                src={isAuthenticated ? (avatarUrl || '/images/default-avatar.png') : (travellerAvatar || '/images/default-avatar.png')}
-                alt="Avatar"
-                className="w-full h-full object-cover"
-              />
+        <aside className="w-64 md:w-72 shrink-0 sticky top-24 rounded-2xl bg-[#090d16]/85 border border-white/[0.08] p-3 backdrop-blur-md space-y-3">
+          {/* Simpler Settings Header on Desktop Left Panel */}
+          <div className="px-2 pt-1 pb-3 border-b border-white/[0.06] flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <SlidersHorizontal size={18} className="text-primary shrink-0" />
+              <span className="text-sm font-black uppercase tracking-wider text-white font-lemon">Settings</span>
+              <span className="text-[9px] font-mono px-1.5 py-0.5 rounded-md bg-white/[0.06] text-zinc-400 uppercase">v2.4</span>
             </div>
-            <div className="min-w-0">
-              <h4 className="text-xs font-bold text-white truncate">
-                {isAuthenticated ? (username || profile?.username || 'Member') : (travellerName || traveller.name || 'Explorer')}
-              </h4>
-              <p className="text-[10px] text-zinc-400 truncate">
-                {isAuthenticated ? 'Adventurer Card' : 'Traveller Mode'}
-              </p>
-            </div>
-          </motion.div>
+          </div>
 
           {/* Grouped Sidebar Items */}
           <div className="space-y-3.5">
@@ -2103,6 +3104,277 @@ export default function Settings() {
                   className="h-9 px-5 rounded-full bg-red-600 hover:bg-red-700 text-white text-xs font-bold disabled:opacity-40"
                 >
                   {isDeletingAccount ? "Purging Vault..." : "Erase Identity"}
+                </Button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* XML Backup Modal (Android-style Granular Module Selection) */}
+      <AnimatePresence>
+        {isBackupModalOpen && (
+          <div className="fixed inset-0 z-[30000] flex items-center justify-center p-4 bg-black/80 backdrop-blur-md">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              transition={{ type: "spring", stiffness: 450, damping: 25 }}
+              className="w-full max-w-lg rounded-2xl bg-[#0d111d] border border-white/10 p-6 space-y-5 text-white"
+            >
+              <div className="flex items-center justify-between pb-3 border-b border-white/[0.08]">
+                <div className="flex items-center gap-2.5">
+                  <div className="w-9 h-9 rounded-xl bg-primary/15 border border-primary/30 flex items-center justify-center text-primary shrink-0">
+                    <FileDown size={18} />
+                  </div>
+                  <div>
+                    <h3 className="text-sm font-bold text-white">Create Portable XML Backup</h3>
+                    <p className="text-[11px] text-zinc-400">Android-style granular archive</p>
+                  </div>
+                </div>
+                <button
+                  onClick={() => setIsBackupModalOpen(false)}
+                  className="p-1.5 rounded-full hover:bg-white/10 text-zinc-400 hover:text-white"
+                >
+                  <X size={16} />
+                </button>
+              </div>
+
+              <div className="p-3 rounded-xl bg-white/[0.03] border border-white/[0.06] flex items-center justify-between text-xs font-mono">
+                <span className="text-zinc-400">File:</span>
+                <span className="text-primary truncate max-w-[280px]">
+                  kagemi_backup_{username || travellerName || 'user'}_{new Date().toISOString().split('T')[0]}.xml
+                </span>
+              </div>
+
+              <div className="space-y-2">
+                <div className="flex items-center justify-between text-[11px] font-bold uppercase tracking-wider text-zinc-400 px-1">
+                  <span>Select Modules to Package</span>
+                  <div className="flex gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setBackupModules({ library: true, history: true, settings: true, companion: true, profile: true, mediaPrefs: true })}
+                      className="text-primary hover:underline"
+                    >
+                      All
+                    </button>
+                    <span>•</span>
+                    <button
+                      type="button"
+                      onClick={() => setBackupModules({ library: false, history: false, settings: false, companion: false, profile: false, mediaPrefs: false })}
+                      className="text-zinc-400 hover:underline"
+                    >
+                      None
+                    </button>
+                  </div>
+                </div>
+
+                <div className="divide-y divide-white/[0.04] rounded-xl bg-white/[0.02] border border-white/[0.06] p-2">
+                  {[
+                    { id: 'library', label: 'Watchlist & Library', desc: `${watchlistCount} bookmarked titles & scores` },
+                    { id: 'history', label: 'Continue Watching & History', desc: `${historyCount} episode progress markers` },
+                    { id: 'settings', label: 'Core Preferences & Video Studio', desc: 'Audio profiles, caption styles, automations' },
+                    { id: 'companion', label: 'Pet Companion & Telepathy Spirit', desc: 'Active mascot perch, voice pack & volume' },
+                    { id: 'profile', label: 'Profile Configurations', desc: 'Bio, avatar, gender, socials (Username excluded)' },
+                    { id: 'mediaPrefs', label: 'Media Preferences', desc: 'Mangvels reader, Flixverse cinema, Donghua' },
+                  ].map((mod) => (
+                    <label
+                      key={mod.id}
+                      className="flex items-center justify-between p-2.5 rounded-lg hover:bg-white/[0.04] cursor-pointer transition-colors"
+                    >
+                      <div className="pr-3 min-w-0">
+                        <span className="text-xs font-bold text-white block truncate">{mod.label}</span>
+                        <span className="text-[10px] text-zinc-400 block truncate">{mod.desc}</span>
+                      </div>
+                      <input
+                        type="checkbox"
+                        checked={(backupModules as any)[mod.id]}
+                        onChange={(e) => setBackupModules({ ...backupModules, [mod.id]: e.target.checked })}
+                        className="w-4 h-4 rounded border-white/20 bg-white/5 text-primary accent-primary cursor-pointer shrink-0"
+                      />
+                    </label>
+                  ))}
+                </div>
+              </div>
+
+              <div className="flex items-center justify-end gap-2.5 pt-2">
+                <Button
+                  type="button"
+                  variant="ghost"
+                  onClick={() => setIsBackupModalOpen(false)}
+                  className="h-9 px-4 rounded-full text-zinc-400 hover:text-white text-xs font-bold"
+                >
+                  Cancel
+                </Button>
+                <Button
+                  type="button"
+                  onClick={handleGenerateXmlBackup}
+                  className="h-9 px-6 rounded-full bg-primary hover:bg-primary/90 text-white text-xs font-bold shadow-md"
+                >
+                  Download XML Backup
+                </Button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* XML Restore Modal (Android-style Granular Restoration) */}
+      <AnimatePresence>
+        {isRestoreModalOpen && parsedBackupData && (
+          <div className="fixed inset-0 z-[30000] flex items-center justify-center p-4 bg-black/80 backdrop-blur-md">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              transition={{ type: "spring", stiffness: 450, damping: 25 }}
+              className="w-full max-w-lg rounded-2xl bg-[#0d111d] border border-white/10 p-6 space-y-5 text-white"
+            >
+              <div className="flex items-center justify-between pb-3 border-b border-white/[0.08]">
+                <div className="flex items-center gap-2.5">
+                  <div className="w-9 h-9 rounded-xl bg-emerald-500/15 border border-emerald-500/30 flex items-center justify-center text-emerald-400 shrink-0">
+                    <FileUp size={18} />
+                  </div>
+                  <div>
+                    <h3 className="text-sm font-bold text-white">Restore from XML Archive</h3>
+                    <p className="text-[11px] text-zinc-400">
+                      From operative @{parsedBackupData.metadata.sourceUser || 'Unknown'}
+                    </p>
+                  </div>
+                </div>
+                <button
+                  onClick={() => {
+                    setIsRestoreModalOpen(false);
+                    setParsedBackupData(null);
+                  }}
+                  className="p-1.5 rounded-full hover:bg-white/10 text-zinc-400 hover:text-white"
+                >
+                  <X size={16} />
+                </button>
+              </div>
+
+              <div className="p-3 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-300 text-xs leading-relaxed">
+                Account Protection: Your current username (<strong>@{username || travellerName || 'user'}</strong>) will remain untouched during this restoration.
+              </div>
+
+              <div className="space-y-2">
+                <span className="text-[11px] font-bold uppercase tracking-wider text-zinc-400 px-1 block">
+                  Select Modules to Restore
+                </span>
+
+                <div className="divide-y divide-white/[0.04] rounded-xl bg-white/[0.02] border border-white/[0.06] p-2 max-h-60 overflow-y-auto">
+                  {parsedBackupData.hasLibrary && (
+                    <label className="flex items-center justify-between p-2.5 rounded-lg hover:bg-white/[0.04] cursor-pointer">
+                      <div>
+                        <span className="text-xs font-bold text-white block">Watchlist & Library</span>
+                        <span className="text-[10px] text-zinc-400 block">{parsedBackupData.library?.length || 0} titles</span>
+                      </div>
+                      <input
+                        type="checkbox"
+                        checked={restoreModules.library}
+                        onChange={(e) => setRestoreModules({ ...restoreModules, library: e.target.checked })}
+                        className="w-4 h-4 rounded text-primary accent-primary cursor-pointer"
+                      />
+                    </label>
+                  )}
+
+                  {parsedBackupData.hasHistory && (
+                    <label className="flex items-center justify-between p-2.5 rounded-lg hover:bg-white/[0.04] cursor-pointer">
+                      <div>
+                        <span className="text-xs font-bold text-white block">Continue Watching & History</span>
+                        <span className="text-[10px] text-zinc-400 block">{parsedBackupData.history?.length || 0} progress markers</span>
+                      </div>
+                      <input
+                        type="checkbox"
+                        checked={restoreModules.history}
+                        onChange={(e) => setRestoreModules({ ...restoreModules, history: e.target.checked })}
+                        className="w-4 h-4 rounded text-primary accent-primary cursor-pointer"
+                      />
+                    </label>
+                  )}
+
+                  {parsedBackupData.hasSettings && (
+                    <label className="flex items-center justify-between p-2.5 rounded-lg hover:bg-white/[0.04] cursor-pointer">
+                      <div>
+                        <span className="text-xs font-bold text-white block">Core Preferences & Video Studio</span>
+                        <span className="text-[10px] text-zinc-400 block">Player automations, audio profiles</span>
+                      </div>
+                      <input
+                        type="checkbox"
+                        checked={restoreModules.settings}
+                        onChange={(e) => setRestoreModules({ ...restoreModules, settings: e.target.checked })}
+                        className="w-4 h-4 rounded text-primary accent-primary cursor-pointer"
+                      />
+                    </label>
+                  )}
+
+                  {parsedBackupData.hasCompanion && (
+                    <label className="flex items-center justify-between p-2.5 rounded-lg hover:bg-white/[0.04] cursor-pointer">
+                      <div>
+                        <span className="text-xs font-bold text-white block">Pet Companion & Voice Spirit</span>
+                        <span className="text-[10px] text-zinc-400 block">Mascot configuration & companion</span>
+                      </div>
+                      <input
+                        type="checkbox"
+                        checked={restoreModules.companion}
+                        onChange={(e) => setRestoreModules({ ...restoreModules, companion: e.target.checked })}
+                        className="w-4 h-4 rounded text-primary accent-primary cursor-pointer"
+                      />
+                    </label>
+                  )}
+
+                  {parsedBackupData.hasProfile && (
+                    <label className="flex items-center justify-between p-2.5 rounded-lg hover:bg-white/[0.04] cursor-pointer">
+                      <div>
+                        <span className="text-xs font-bold text-white block">Profile Identity & Social Connections</span>
+                        <span className="text-[10px] text-zinc-400 block">Bio, avatar, gender, socials (Username preserved)</span>
+                      </div>
+                      <input
+                        type="checkbox"
+                        checked={restoreModules.profile}
+                        onChange={(e) => setRestoreModules({ ...restoreModules, profile: e.target.checked })}
+                        className="w-4 h-4 rounded text-primary accent-primary cursor-pointer"
+                      />
+                    </label>
+                  )}
+
+                  {parsedBackupData.hasMediaPrefs && (
+                    <label className="flex items-center justify-between p-2.5 rounded-lg hover:bg-white/[0.04] cursor-pointer">
+                      <div>
+                        <span className="text-xs font-bold text-white block">Media Preferences</span>
+                        <span className="text-[10px] text-zinc-400 block">Mangvels, Flixverse, Donghua settings</span>
+                      </div>
+                      <input
+                        type="checkbox"
+                        checked={restoreModules.mediaPrefs}
+                        onChange={(e) => setRestoreModules({ ...restoreModules, mediaPrefs: e.target.checked })}
+                        className="w-4 h-4 rounded text-primary accent-primary cursor-pointer"
+                      />
+                    </label>
+                  )}
+                </div>
+              </div>
+
+              <div className="flex items-center justify-end gap-2.5 pt-2">
+                <Button
+                  type="button"
+                  variant="ghost"
+                  onClick={() => {
+                    setIsRestoreModalOpen(false);
+                    setParsedBackupData(null);
+                  }}
+                  disabled={isRestoring}
+                  className="h-9 px-4 rounded-full text-zinc-400 hover:text-white text-xs font-bold"
+                >
+                  Cancel
+                </Button>
+                <Button
+                  type="button"
+                  onClick={handleExecuteRestore}
+                  disabled={isRestoring}
+                  className="h-9 px-6 rounded-full bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold shadow-md"
+                >
+                  {isRestoring ? "Restoring..." : "Execute Restore"}
                 </Button>
               </div>
             </motion.div>

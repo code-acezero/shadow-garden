@@ -717,6 +717,51 @@ export const playVoice = (event: VoiceEvent, customText?: string) => {
 };
 
 // --- APP-WIDE TELEPATHY TRIGGER ---
+export const playVoiceSample = (character: string, lang: 'en' | 'jp' = 'en'): HTMLAudioElement | null => {
+    if (typeof window === 'undefined') return null;
+
+    const rawPack = (character || 'alpha').toLowerCase().replace(/^(system-|sys-)/, '').trim();
+    const packName = SLUG_MAP[rawPack] || rawPack.split(' ')[0];
+    const meta = getCharacterMeta(character);
+    const settings = getVoiceSettings();
+
+    // 1. Dispatch Telepathy Whisper to WhisperIsland
+    const scriptText = getCharacterLine(character, 'GREET_MASTER', lang);
+    if (scriptText) {
+        dispatchTelepathy(meta.name, scriptText, {
+            color: meta.color,
+            epithet: meta.title
+        });
+    }
+
+    // 2. Try primary voice path, then fallback to welcome or preview
+    const primaryUrl = `/voices/${lang}/${packName}-greet-master.mp3`;
+    const fallbackUrl1 = `/voices/${lang}/${packName}-welcome.mp3`;
+    const fallbackUrl2 = `/audio/${packName}${lang === 'jp' ? '_jp' : ''}_greet-master.mp3`;
+
+    const audio = new Audio(primaryUrl);
+    audio.volume = settings.volume !== undefined ? Math.max(0.1, settings.volume) : 0.8;
+
+    audio.onerror = () => {
+        console.warn(`[ShadowVoice] Primary voice audio missing at ${primaryUrl}, trying fallback ${fallbackUrl1}`);
+        audio.src = fallbackUrl1;
+        audio.play().catch(() => {
+            audio.src = fallbackUrl2;
+            audio.play().catch(err => {
+                console.error(`[ShadowVoice] All audio paths failed for ${character}:`, err);
+            });
+        });
+    };
+
+    audio.play().catch(e => {
+        console.warn(`[ShadowVoice] Play error for ${character}:`, e);
+        audio.src = fallbackUrl1;
+        audio.play().catch(() => {});
+    });
+
+    return audio;
+};
+
 export const triggerTelepathy = (event: TelepathyEvent, customText?: string) => {
     const settings = getVoiceSettings();
     const meta = getCharacterMeta(settings.pack);

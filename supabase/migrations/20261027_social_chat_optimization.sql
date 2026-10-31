@@ -44,6 +44,8 @@ CREATE INDEX IF NOT EXISTS idx_social_bookmarks_post_user
   ON social_bookmarks (post_id, user_id);
 
 -- 5. CLANS & CLAN MEMBERS OPTIMIZATION
+ALTER TABLE IF EXISTS clans ADD COLUMN IF NOT EXISTS xp BIGINT DEFAULT 0;
+
 CREATE INDEX IF NOT EXISTS idx_clans_level_xp_created 
   ON clans (level DESC, xp DESC, created_at DESC);
 
