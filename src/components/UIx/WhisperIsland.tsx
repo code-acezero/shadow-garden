@@ -117,15 +117,6 @@ const HINDI_STATUS = ["Ongoing", "Completed"];
 const DONGHUA_GENRES = ["Action", "Adventure", "Comedy", "Drama", "Ecchi", "Fantasy", "Harem", "Historical", "Martial Arts", "Mecha", "Mystery", "Romance", "Sci-Fi", "Shounen", "Slice of Life"];
 const DONGHUA_STATUS = ["ongoing", "completed"];
 
-// --- MOCK LOCAL DATA FOR VOICES ---
-const LOCAL_VOICE_PACKS = [
-    { id: 'sys-alpha', name: 'Alpha', language: 'en', gender: 'Female', preview: '/audio/alpha_preview.mp3' },
-    { id: 'sys-beta', name: 'Beta', language: 'en', gender: 'Female', preview: '/audio/beta_preview.mp3' },
-    { id: 'sys-shadow', name: 'Shadow', language: 'en', gender: 'Male', preview: '/audio/shadow_preview.mp3' },
-    { id: 'sys-delta', name: 'Delta', language: 'en', gender: 'Female', preview: '/audio/delta_preview.mp3' },
-    { id: 'sys-zeta', name: 'Zeta', language: 'en', gender: 'Female', preview: '/audio/zeta_preview.mp3' },
-    { id: 'sys-alpha-jp', name: 'Alpha', language: 'jp', gender: 'Female', preview: '/audio/alpha_jp_preview.mp3' },
-];
 
 interface SearchResult { id: string; title: string; image?: string; poster?: string; type?: string; duration?: string; releaseDate?: string; episodeCount?: string; episode?: string; }
 

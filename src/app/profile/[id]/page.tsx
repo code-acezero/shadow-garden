@@ -1045,10 +1045,10 @@ export default function PublicProfilePage() {
                                     onChange={(e) => setAlphaGender(e.target.value)}
                                     className="w-full bg-black/50 border border-zinc-800 text-white text-xs h-10 rounded-xl px-3 focus:outline-none focus:border-purple-500"
                                 >
-                                    <option value="female" className="bg-zinc-900">Female</option>
                                     <option value="male" className="bg-zinc-900">Male</option>
-                                    <option value="other" className="bg-zinc-900">Other</option>
-                                    <option value="hidden" className="bg-zinc-900">Hidden</option>
+                                    <option value="female" className="bg-zinc-900">Female</option>
+                                    <option value="rather_not_say" className="bg-zinc-900">Rather not say</option>
+                                    <option value="none" className="bg-zinc-900">None</option>
                                 </select>
                             </div>
 

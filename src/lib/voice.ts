@@ -704,16 +704,7 @@ export const playVoice = (event: VoiceEvent, customText?: string) => {
                 return;
             }
 
-            // Fallback for legacy paths if needed
-            let packName = (settings.pack || 'alpha').toLowerCase().replace(/^(system-|sys-)/, '');
-            let action = event.toLowerCase().replace(/_/g, '-');
-            const suffix = lang === 'jp' ? '_jp' : '';
-            const legacyUrl = `/audio/${packName}${suffix}_${action}.mp3`;
-            if (fileUrl !== legacyUrl) {
-                const fallbackAudio = new Audio(legacyUrl);
-                fallbackAudio.volume = audio.volume;
-                fallbackAudio.play().catch(() => {});
-            }
+            console.warn(`[ShadowVoice] Autoplay was prevented for ${event}:`, e?.message);
         });
     }
 };
@@ -737,28 +728,24 @@ export const playVoiceSample = (character: string, lang: 'en' | 'jp' = 'en'): HT
         epithet: meta.title
     });
 
-    // 2. Try primary voice path, then fallback to welcome or preview
+    // 2. Try primary voice path, then fallback to welcome if greet-master is missing
     const primaryUrl = `/voices/${lang}/${packName}-greet-master.mp3`;
-    const fallbackUrl1 = `/voices/${lang}/${packName}-welcome.mp3`;
-    const fallbackUrl2 = `/audio/${packName}${lang === 'jp' ? '_jp' : ''}_greet-master.mp3`;
+    const fallbackUrl = `/voices/${lang}/${packName}-welcome.mp3`;
 
     const audio = new Audio(primaryUrl);
     audio.volume = settings.volume !== undefined ? Math.max(0.1, settings.volume) : 0.8;
 
     audio.onerror = () => {
-        console.warn(`[ShadowVoice] Primary voice audio missing at ${primaryUrl}, trying fallback ${fallbackUrl1}`);
-        audio.src = fallbackUrl1;
-        audio.play().catch(() => {
-            audio.src = fallbackUrl2;
-            audio.play().catch(err => {
-                console.error(`[ShadowVoice] All audio paths failed for ${character}:`, err);
-            });
+        console.warn(`[ShadowVoice] Primary voice audio missing at ${primaryUrl}, trying fallback ${fallbackUrl}`);
+        audio.src = fallbackUrl;
+        audio.play().catch(err => {
+            console.error(`[ShadowVoice] Audio playback failed for ${character}:`, err);
         });
     };
 
     audio.play().catch(e => {
         console.warn(`[ShadowVoice] Play error for ${character}:`, e);
-        audio.src = fallbackUrl1;
+        audio.src = fallbackUrl;
         audio.play().catch(() => {});
     });
 
