@@ -629,7 +629,7 @@ export const dispatchTelepathy = (character: string, text: string, options?: { i
             character: meta.name,
             title: meta.name,
             epithet: options?.epithet || meta.title,
-            icon: options?.icon || meta.icon,
+            icon: '',
             color: options?.color || meta.color,
             message: text,
             link: options?.link

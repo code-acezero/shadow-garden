@@ -739,22 +739,25 @@ function FantasyFrame({
 
   // Frame SVG is generated with a transparent center so the real avatar DOM element renders at full size
   const svgHtml = useMemo(() => {
+    const userAvatar = (avatarUrl && !avatarUrl.includes('imgbb.com') && !avatarUrl.includes('ibb.co')) 
+      ? avatarUrl 
+      : 'https://lh3.googleusercontent.com/a/ACg8ocLnpRFtv4bK_qXzuqBG4vBF6UzrdAwPBOCPYofJ0tSYCc5RyKz4=s96-c';
     if (atelier.type === 'showcase' && atelier.showcase) {
       return generateShowcaseFrameSvg(atelier.showcase, {
-        avatarUrl: undefined,
+        avatarUrl: userAvatar,
         uniqueId: reactId,
         transparentCenter: true,
       });
     }
     if (atelier.type === 'special' && atelier.special) {
       return generateSpecialFrameSvg(atelier.special, {
-        avatarUrl: undefined,
+        avatarUrl: userAvatar,
         uniqueId: reactId,
         transparentCenter: true,
       });
     }
     return null;
-  }, [atelier, reactId]);
+  }, [atelier, reactId, avatarUrl]);
 
   // Stable memoized object to prevent React DOM from re-setting innerHTML and destroying the SMIL timeline
   const innerHtmlProp = useMemo(() => (svgHtml ? { __html: svgHtml } : undefined), [svgHtml]);

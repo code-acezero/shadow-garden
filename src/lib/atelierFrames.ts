@@ -729,7 +729,7 @@ export interface SpecialFrameDef {
   type: 'level' | 'darkness' | 'council' | 'role';
   minLevel?: number;
   price?: number;
-  renderFn: (colors: [string, string, string], gradRef: string, index: number) => string;
+  renderFn: (colors: [string, string, string], gradRef: string, index: number, uniquePrefix?: string) => string;
 }
 
 // ─── Top-Nav Yin-Yang Logo Tesla Lightning Filter Engine ─────────────────────
@@ -843,9 +843,9 @@ const rg = (col: string) =>
 
 const T52 = (a: number) => (a / 52).toFixed(4);
 
-const GI = () => {
+const GI = (avTarget: string = '#av') => {
   const g = (x: string, t: number) =>
-    `<g><animateTransform attributeName="transform" type="translate" values="${x}" calcMode="discrete" dur="${t}s" repeatCount="indefinite"/><use href="#av"/></g>`;
+    `<g><animateTransform attributeName="transform" type="translate" values="${x}" calcMode="discrete" dur="${t}s" repeatCount="indefinite"/><use href="${avTarget}"/></g>`;
   return `<g filter="url(#gr)" style="mix-blend-mode:screen">${g(
     '0 0;-3 1;2 -1;-2 0;3 1;0 0',
     2.4
@@ -927,7 +927,7 @@ const SW2 = (() => {
 })();
 
 // Inter-Phase Tesla Lightning Surge for The Eternal
-const ZAP_TESLA = (i: number) => {
+const ZAP_TESLA = (i: number, avTarget: string = '#av') => {
   const kt = [0];
   const v = [0];
   const dk = [0];
@@ -947,13 +947,14 @@ const ZAP_TESLA = (i: number) => {
     ';'
   )}" keyTimes="${dk.map(T52).join(
     ';'
-  )}" dur="52s" repeatCount="indefinite"/><circle cx="100" cy="100" r="52" fill="url(#pl)"/>${GI()}${buildTeslaLogoArcs(
+  )}" dur="52s" repeatCount="indefinite"/><circle cx="100" cy="100" r="52" fill="url(#pl)"/>${GI(avTarget)}${buildTeslaLogoArcs(
     `zap_${i}`
   )}</g>`;
 };
 
 // The 10 Elemental Phases of The Eternal Master Frame with Top-Nav Tesla Lightning
-export const ET3 = (c: [string, string, string], A: string, i: number) => {
+export const ET3 = (c: [string, string, string], A: string, i: number, uniquePrefix?: string) => {
+  const avTarget = uniquePrefix ? `#av_${uniquePrefix}` : '#av';
   const ph = [
     // 0: Water
     rg('#4cc9ff') +
@@ -1035,7 +1036,7 @@ export const ET3 = (c: [string, string, string], A: string, i: number) => {
     .map((x, p) => ph3(p, x))
     .join('');
 
-  return ROT(ph) + ZAP_TESLA(i) + SW2;
+  return ROT(ph) + ZAP_TESLA(i, avTarget) + SW2;
 };
 
 // Aliased helper for legacy callers
@@ -1324,7 +1325,7 @@ export const RAW_SPECIAL_FRAMES: SpecialFrameDef[] = [
     colors: ['#e8f4ff', '#5b3cff', '#7fd6ff'],
     type: 'role',
     minLevel: 100,
-    renderFn: (c, A, i) => ET3(c, A, i),
+    renderFn: (c, A, i, uniquePrefix) => ET3(c, A, i, uniquePrefix),
   },
   {
     id: 'moderator',
@@ -1940,6 +1941,7 @@ export function generateSpecialFrameSvg(
   const uniquePrefix = options.uniqueId || `sp_${frame.id}_${i}`;
   const c = frame.colors;
   const A = `url(#a_${uniquePrefix})`;
+  const actualAvatar = options.avatarUrl || 'https://lh3.googleusercontent.com/a/ACg8ocLnpRFtv4bK_qXzuqBG4vBF6UzrdAwPBOCPYofJ0tSYCc5RyKz4=s96-c';
 
   const avNode = options.transparentCenter
     ? ''
@@ -1951,11 +1953,12 @@ export function generateSpecialFrameSvg(
 <defs>
 <linearGradient id="a_${uniquePrefix}" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="${c[0]}"/><stop offset=".55" stop-color="${c[1]}"/><stop offset="1" stop-color="${c[2]}"/></linearGradient>
 <radialGradient id="b_${uniquePrefix}"><stop offset=".6" stop-color="${c[1]}" stop-opacity=".5"/><stop offset="1" stop-color="${c[1]}" stop-opacity="0"/></radialGradient>
+<g id="av_${uniquePrefix}"><image href="${actualAvatar}" x="48" y="48" width="104" height="104" clip-path="url(#cp)" preserveAspectRatio="xMidYMid slice"/></g>
 </defs>
 ${options.transparentCenter ? '' : `<circle cx="100" cy="100" r="68" fill="url(#b_${uniquePrefix})" class="p" style="--d:4s"/>`}
 ${avNode}
 ${O(52.5, 1.6, c[1])}
-${Y0(1, frame.renderFn(c, A, i))}
+${Y0(1, frame.renderFn(c, A, i, uniquePrefix))}
 ${frame.id === 'admin' ? '' : S(8 + (i % 5), AR(57, 0, 30, 2.6, '#fff', 'opacity=".55"'))}
 ${frame.id !== 'admin' && frame.type === 'darkness' ? S(40, O(70, 0.6, c[0], 'stroke-dasharray="1 6" opacity=".5"'), 1) : ''}
 </svg>`;
@@ -1983,7 +1986,7 @@ export const ATELIER_GLOBAL_DEFS_SVG = `
   <feDisplacementMap in="SourceGraphic" in2="noise" scale="18" xChannelSelector="R" yChannelSelector="G"/>
 </filter>
 
-<g id="av"><g clip-path="url(#cp)"><rect x="40" y="40" width="120" height="120" fill="#241d44"/><circle cx="100" cy="90" r="20" fill="#8f86c9"/><path d="M52 160C56 124 144 124 148 160Z" fill="#8f86c9"/></g></g>
+<g id="av"><image href="https://lh3.googleusercontent.com/a/ACg8ocLnpRFtv4bK_qXzuqBG4vBF6UzrdAwPBOCPYofJ0tSYCc5RyKz4=s96-c" x="48" y="48" width="104" height="104" clip-path="url(#cp)" preserveAspectRatio="xMidYMid slice"/></g>
 ${Object.entries(M)
   .map(([k, d]) => `<path id="m-${k}" d="${d}"/>`)
   .join('\n')}

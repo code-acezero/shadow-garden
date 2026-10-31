@@ -939,7 +939,7 @@ function WhisperIslandContent() {
             setPetSpeech({
                 text: newNotif.content,
                 petName: e.detail?.character || newNotif.title,
-                petIcon: e.detail?.icon || '🔮',
+                petIcon: '',
                 petColor: e.detail?.color || 'text-purple-400',
                 isTelepathy: true,
                 link: newNotif.link
