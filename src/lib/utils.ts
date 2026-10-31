@@ -280,3 +280,55 @@ export function getSafeImageUrl(url?: string | null): string {
     
     return trimmed;
 }
+
+/**
+ * Universal episode title cleaner:
+ * Definitively eliminates double-prefixes like "EP 20: EPISODE 20" or "EP 1: EPISODE 1 - SISTER ROSETTE"
+ * Returns clean standard format: "EP 20" or "EP 1: Sister Rosette"
+ */
+export function getCleanEpisodeTitle(num: number | string, rawTitle?: string): string {
+    const epNum = typeof num === 'string' ? num.replace(/^0+/, '') || num : (num || 1);
+    if (!rawTitle) return `EP ${epNum}`;
+    let title = String(rawTitle).replace(/\u00A0/g, ' ').trim();
+    
+    // Iteratively strip leading Episode / EP / E / # / digits prefixes with any delimiters
+    let prev = '';
+    while (prev !== title) {
+        prev = title;
+        title = title.replace(/^(?:(?:episode|ep\.?|e|#)\s*\d+|\b\d+\b)\s*[:\-–—•.()\[\]]*\s*/i, '').trim();
+        title = title.replace(/^["'“”‘’]+|["'“”‘’]+$/g, '').trim();
+        title = title.replace(/^[:\-–—•.\s]+|[:\-–—•.\s]+$/g, '').trim();
+    }
+    // Clean orphan closing brackets if opening was stripped
+    if (title.endsWith(')') && !title.includes('(')) title = title.slice(0, -1).trim();
+    if (title.endsWith(']') && !title.includes('[')) title = title.slice(0, -1).trim();
+    
+    const lower = title.toLowerCase();
+    const isJustEp = !title || 
+        /^(?:episode|ep\.?|e|#)?\s*\d+\s*$/i.test(title) ||
+        lower === 'episode' || 
+        lower === 'ep' ||
+        lower === `episode ${epNum}` ||
+        lower === `ep ${epNum}` ||
+        lower === `ep.${epNum}` ||
+        lower === `e${epNum}`;
+
+    if (isJustEp) {
+        return `EP ${epNum}`;
+    }
+    return `EP ${epNum}: ${title}`;
+}
+
+/**
+ * Extracts ONLY the subtitle portion of an episode title, stripping "EP X: " or "Episode X: "
+ */
+export function getEpisodeSubtitleOnly(num: number | string, rawTitle?: string): string {
+    if (!rawTitle) return '';
+    const clean = getCleanEpisodeTitle(num, rawTitle);
+    const epNum = typeof num === 'string' ? num.replace(/^0+/, '') || num : (num || 1);
+    const prefix = `EP ${epNum}: `;
+    if (clean.startsWith(prefix)) {
+        return clean.slice(prefix.length).trim();
+    }
+    return '';
+}

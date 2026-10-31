@@ -17,6 +17,9 @@ export interface AppSettings {
   // Player
   autoPlay: boolean;
   autoSkipOpEd: boolean;
+  autoSkipOutro?: boolean;
+  autoNext?: boolean;
+  dimMode?: boolean;
   resumePlayback: boolean;
   volumeBoost: boolean; 
   defaultServer: 'hd-1' | 'hd-2' | 'mirror-1' | 'mirror-2';
@@ -84,7 +87,7 @@ export interface AppSettings {
 
 export const DEFAULT_SETTINGS: AppSettings = {
   twoFactor: false, loginAlerts: true, incognito: false, publicActivity: true, allowRequests: true,
-  autoPlay: true, autoSkipOpEd: true, resumePlayback: true, volumeBoost: false, 
+  autoPlay: true, autoSkipOpEd: true, autoSkipOutro: true, autoNext: true, dimMode: false, resumePlayback: true, volumeBoost: false, 
   defaultServer: 'hd-1', defaultQuality: '1080p', defaultAudio: 'jp', subLanguage: 'en', defaultVolume: 100, haptics: true, pipMode: true, clearMode: true, tapPlayPauseWithControls: true,
   tapSound: true, tapSoundEffect: 'jelly', tapSoundVolume: 0.35,
   accentColor: 'violet', glassEffect: true, particles: true, reducedMotion: false, roundedUI: true, uiGlow: true, uiBorders: 'normal', cardVariant: 'default', fontFamily: 'inter',

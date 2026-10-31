@@ -82,7 +82,7 @@ export default function WatchlistCard({
         if (isMounted && details) {
           setAniDetails(details);
         }
-      } catch (_) {}
+      } catch (_) { }
     }
     loadDynamicInfo();
     return () => { isMounted = false; };
@@ -92,15 +92,15 @@ export default function WatchlistCard({
   const displayTitle = aniDetails?.title?.english || aniDetails?.title?.romaji || aniDetails?.title?.userPreferred || item.anime_title;
   const posterUrl = aniDetails?.coverImage?.extraLarge || aniDetails?.coverImage?.large || item.anime_image || '/images/placeholder-no-img.jpg';
   const totalEps = aniDetails?.episodes || item.total_episodes || null;
-  const score = aniDetails?.averageScore 
-    ? (aniDetails.averageScore / 10).toFixed(1) 
+  const score = aniDetails?.averageScore
+    ? (aniDetails.averageScore / 10).toFixed(1)
     : (item.score ? Number(item.score).toFixed(1) : null);
   const airingStatus = aniDetails?.status; // RELEASING, FINISHED
   const anilistId = aniDetails?.id;
 
   const currentEp = currentProgress;
-  const progressPercent = totalEps && totalEps > 0 
-    ? Math.min(Math.round((currentEp / totalEps) * 100), 100) 
+  const progressPercent = totalEps && totalEps > 0
+    ? Math.min(Math.round((currentEp / totalEps) * 100), 100)
     : null;
 
   const currentStatus = statusConfig[item.status] ? item.status : 'watching';
@@ -153,7 +153,7 @@ export default function WatchlistCard({
                 status: newStatus === 'completed' ? 'COMPLETED' : 'CURRENT'
               }
             })
-          }).catch(() => {});
+          }).catch(() => { });
         }
       } else {
         try {
@@ -165,11 +165,11 @@ export default function WatchlistCard({
             status: newStatus
           } : x);
           localStorage.setItem('shadow_watchlist', JSON.stringify(updated));
-        } catch (_) {}
+        } catch (_) { }
       }
 
       if (onProgressUpdate) onProgressUpdate(item.anime_id, newEp);
-    } catch {} finally {
+    } catch { } finally {
       setIsUpdatingEp(false);
     }
   };
@@ -182,15 +182,15 @@ export default function WatchlistCard({
   // ─── COMPACT VIEW ──────────────────────────────────────────────────────────
   if (viewMode === 'compact') {
     return (
-      <div 
+      <div
         onClick={handleCardClick}
         className="group flex items-center justify-between gap-3 py-2.5 px-3 rounded-xl hover:bg-white/[0.04] border border-transparent hover:border-white/10 transition-all select-none cursor-pointer"
       >
         <div className="flex items-center gap-3 min-w-0 flex-1">
           <div className="w-9 h-12 rounded-lg overflow-hidden shrink-0 bg-zinc-900 border border-white/10">
-            <img 
-              src={getSafeImageUrl(posterUrl)} 
-              alt={displayTitle} 
+            <img
+              src={getSafeImageUrl(posterUrl)}
+              alt={displayTitle}
               className="w-full h-full object-cover"
               onError={(e) => { e.currentTarget.src = '/images/placeholder-no-img.jpg'; }}
             />
@@ -265,19 +265,19 @@ export default function WatchlistCard({
   // ─── LIST VIEW ─────────────────────────────────────────────────────────────
   if (viewMode === 'list') {
     return (
-      <div 
+      <div
         onClick={handleCardClick}
         className="group relative flex items-center gap-4 p-3 rounded-2xl hover:bg-white/[0.03] border border-transparent hover:border-white/10 transition-all select-none cursor-pointer"
       >
         <div className="relative w-16 h-24 sm:w-20 sm:h-28 rounded-xl overflow-hidden shrink-0 bg-zinc-900 border border-white/10">
-          <img 
-            src={getSafeImageUrl(posterUrl)} 
-            alt={displayTitle} 
+          <img
+            src={getSafeImageUrl(posterUrl)}
+            alt={displayTitle}
             className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
             onError={(e) => { e.currentTarget.src = '/images/placeholder-no-img.jpg'; }}
           />
           <div className="absolute inset-x-0 bottom-0 h-1 bg-white/10">
-            <div 
+            <div
               className="h-full bg-white transition-all duration-300"
               style={{ width: `${progressPercent !== null ? progressPercent : (currentEp > 0 ? 25 : 0)}%` }}
             />
@@ -364,15 +364,15 @@ export default function WatchlistCard({
 
   // ─── GRID VIEW (DEFAULT) ───────────────────────────────────────────────────
   return (
-    <div 
+    <div
       onClick={handleCardClick}
       className="group relative flex flex-col rounded-2xl overflow-hidden hover:border-white/20 transition-all duration-200 select-none cursor-pointer"
     >
       {/* POSTER IMAGE */}
       <div className="relative aspect-[2/3] w-full overflow-hidden rounded-2xl bg-zinc-900 border border-white/10 group-hover:border-white/25 transition-colors">
-        <img 
-          src={getSafeImageUrl(posterUrl)} 
-          alt={displayTitle} 
+        <img
+          src={getSafeImageUrl(posterUrl)}
+          alt={displayTitle}
           className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
           onError={(e) => { e.currentTarget.src = '/images/placeholder-no-img.jpg'; }}
         />
@@ -445,7 +445,7 @@ export default function WatchlistCard({
 
           {/* PROGRESS BAR */}
           <div className="w-full h-1 bg-white/10 rounded-full mt-2 overflow-hidden">
-            <div 
+            <div
               className="h-full bg-white transition-all duration-300"
               style={{ width: `${progressPercent !== null ? progressPercent : (currentEp > 0 ? 25 : 0)}%` }}
             />

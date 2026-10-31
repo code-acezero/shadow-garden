@@ -14,7 +14,7 @@ import { omni, MovieDetail } from '@/lib/omni';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/context/AuthContext';
 import { useUserData } from '@/context/UserDataContext';
-import { cn, formatAnimeTitle } from '@/lib/utils';
+import { cn, formatAnimeTitle, getCleanEpisodeTitle } from '@/lib/utils';
 import Footer from '@/components/Anime/Footer';
 import WatchListButton from '@/components/Watch/WatchListButton';
 import PostShareModal from '@/components/Social/PostShareModal';
@@ -600,7 +600,7 @@ export default function WatchClient() {
                             const episodes = season?.episodes || [];
                             const idx = episodes.findIndex(e => e.episodeNumber === activeEpisode);
                             const next = episodes[idx + 1];
-                            return next ? `Ep ${next.episodeNumber}: ${next.title || `Episode ${next.episodeNumber}`}` : 'Next Episode';
+                            return next ? getCleanEpisodeTitle(next.episodeNumber, next.title) : 'Next Episode';
                           })()}
                         </span>
                       </div>
@@ -819,7 +819,7 @@ export default function WatchClient() {
                                 <span className={cn("relative z-10 w-6 h-6 rounded-full flex items-center justify-center text-[9px] font-black shrink-0",
                                   isActive ? "bg-green-500 text-black" : isPlayed ? "bg-red-500/30 text-red-300" : isWatched ? "bg-emerald-500/50 text-white" : "bg-white/10 text-zinc-300"
                                 )}>{epNum}</span>
-                                <span className="relative z-10 truncate">{ep.title || `Episode ${epNum}`}</span>
+                                <span className="relative z-10 truncate">{getCleanEpisodeTitle(epNum, ep.title)}</span>
                               </button>
                             );
                           }
@@ -905,7 +905,7 @@ export default function WatchClient() {
                               <span className={cn("w-6 h-6 rounded-full flex items-center justify-center text-[9px] font-black shrink-0",
                                 isActive ? "bg-indigo-500 text-black" : isWatched ? "bg-indigo-500/50 text-white" : "bg-white/10 text-zinc-300"
                               )}>{epNum}</span>
-                              <span className="truncate">{ep.title || `Episode ${epNum}`}</span>
+                              <span className="truncate">{getCleanEpisodeTitle(epNum, ep.title)}</span>
                             </button>
                           );
                         }

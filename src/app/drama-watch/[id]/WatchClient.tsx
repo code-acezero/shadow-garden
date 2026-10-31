@@ -14,7 +14,7 @@ import {
 } from 'lucide-react';
 import { WatchPageSkeleton, LiquidPlayerSkeleton } from '@/components/UIx/SkeletonLoaders';
 import { omni, DramaDetail, DramaServer, DramaStream, DramaCard } from '@/lib/omni';
-import { cn, formatAnimeTitle } from '@/lib/utils';
+import { cn, formatAnimeTitle, getEpisodeSubtitleOnly } from '@/lib/utils';
 import DramaPlayer, { DramaPlayerRef } from '@/components/Player/DramaPlayer';
 import Footer from '@/components/Anime/Footer';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -1389,7 +1389,7 @@ export function DramaWatchContent() {
                   <div className="flex items-center gap-2 min-w-0 overflow-hidden">
                     <span className="text-[10px] text-cyan-400 font-black uppercase shrink-0">NOW:</span>
                     <span className="text-[10px] font-black uppercase tracking-tighter text-zinc-300 truncate">
-                      {currentEp ? `S${activeSeason}: EP ${currentEp.number} — ${currentEp.title}` : drama.title}
+                      {currentEp ? (getEpisodeSubtitleOnly(currentEp.number, currentEp.title) ? `S${activeSeason}: EP ${currentEp.number} — ${getEpisodeSubtitleOnly(currentEp.number, currentEp.title)}` : `S${activeSeason}: EP ${currentEp.number}`) : drama.title}
                     </span>
                   </div>
                   <div className="flex items-center gap-1.5 shrink-0">

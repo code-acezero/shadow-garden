@@ -19,7 +19,7 @@ import {
 import { AnimeService, UniversalAnime } from '@/lib/api';
 import { dpi } from '@/lib/dpi';
 import { supabase } from '@/lib/supabase';
-import { cn, isRelatedAnime, getChunkLabel, formatAnimeTitle, sanitizeContinueWatchingEntry, getSafeImageUrl } from '@/lib/utils';
+import { cn, isRelatedAnime, getChunkLabel, formatAnimeTitle, sanitizeContinueWatchingEntry, getSafeImageUrl, getCleanEpisodeTitle, getEpisodeSubtitleOnly } from '@/lib/utils';
 import { toast } from '@/lib/toast';
 import { useAuth } from '@/context/AuthContext';
 import { sfx } from '@/lib/audioManager';
@@ -208,7 +208,7 @@ const EpisodeButton = memo(({ ep, isCurrent, isPlayed, isFullyPlayed, percent, v
                     <span className="shrink-0 font-bold">{ep.number}</span>
                     {viewMode === 'list' && (
                         <span className="truncate text-[11px] font-sans font-medium text-zinc-300 transition-opacity duration-200">
-                            {ep.title && !ep.title.toLowerCase().startsWith(`episode ${ep.number}`) ? `• ${ep.title}` : ''}
+                            {getEpisodeSubtitleOnly(ep.number, ep.title) ? `• ${getEpisodeSubtitleOnly(ep.number, ep.title)}` : ''}
                         </span>
                     )}
                 </div>

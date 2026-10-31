@@ -18,7 +18,7 @@ import {
 import { AnimeService, UniversalAnime } from '@/lib/api';
 import { useJellyFlip } from '@/lib/useJellyFlip';
 import { supabase } from '@/lib/supabase';
-import { cn, getSimilarity, isRelatedAnime, getChunkLabel, sanitizeContinueWatchingEntry, getSafeImageUrl, slugifyTitle } from '@/lib/utils';
+import { cn, getSimilarity, isRelatedAnime, getChunkLabel, sanitizeContinueWatchingEntry, getSafeImageUrl, slugifyTitle, getCleanEpisodeTitle, getEpisodeSubtitleOnly } from '@/lib/utils';
 import { toast } from '@/lib/toast';
 import { useAuth } from '@/context/AuthContext';
 import { sfx } from '@/lib/audioManager';
@@ -205,42 +205,6 @@ const PingPongScroll = memo(({ text, className }: { text: string, className?: st
 });
 PingPongScroll.displayName = "PingPongScroll";
 
-const getCleanEpisodeTitle = (num: number | string, rawTitle?: string) => {
-    const epNum = num || 1;
-    if (!rawTitle) return `EP ${epNum}`;
-    let title = rawTitle.trim();
-    while (/^(?:(?:episode|ep\.?|e|#)\s*\d+|\b\d+\b)\s*[:\-–—•.]*\s*/i.test(title)) {
-        title = title.replace(/^(?:(?:episode|ep\.?|e|#)\s*\d+|\b\d+\b)\s*[:\-–—•.]*\s*/i, '').trim();
-    }
-    title = title.replace(/^["'“”‘’]+|["'“”‘’]+$/g, '').trim();
-    while (/^(?:(?:episode|ep\.?|e|#)\s*\d+|\b\d+\b)\s*[:\-–—•.]*\s*/i.test(title)) {
-        title = title.replace(/^(?:(?:episode|ep\.?|e|#)\s*\d+|\b\d+\b)\s*[:\-–—•.]*\s*/i, '').trim();
-    }
-    const lower = title.toLowerCase();
-    if (!title || lower === `episode ${epNum}` || lower === `ep ${epNum}` || lower === `ep.${epNum}` || lower === `e${epNum}` || lower === 'episode' || lower === 'ep' || title === `${epNum}`) {
-        return `EP ${epNum}`;
-    }
-    return `EP ${epNum}: ${title}`;
-};
-
-const getEpisodeSubtitleOnly = (num: number | string, rawTitle?: string) => {
-    if (!rawTitle) return '';
-    const epNum = num || 1;
-    let title = rawTitle.trim();
-    while (/^(?:(?:episode|ep\.?|e|#)\s*\d+|\b\d+\b)\s*[:\-–—•.]*\s*/i.test(title)) {
-        title = title.replace(/^(?:(?:episode|ep\.?|e|#)\s*\d+|\b\d+\b)\s*[:\-–—•.]*\s*/i, '').trim();
-    }
-    title = title.replace(/^["'“”‘’]+|["'“”‘’]+$/g, '').trim();
-    while (/^(?:(?:episode|ep\.?|e|#)\s*\d+|\b\d+\b)\s*[:\-–—•.]*\s*/i.test(title)) {
-        title = title.replace(/^(?:(?:episode|ep\.?|e|#)\s*\d+|\b\d+\b)\s*[:\-–—•.]*\s*/i, '').trim();
-    }
-    const lower = title.toLowerCase();
-    if (!title || lower === `episode ${epNum}` || lower === `ep ${epNum}` || lower === `ep.${epNum}` || lower === `e${epNum}` || lower === 'episode' || lower === 'ep' || title === `${epNum}`) {
-        return '';
-    }
-    return title;
-};
-
 const EpisodeButton = memo(({ ep, isCurrent, isFullyPlayed, percent, viewMode, onClick, category, progressRef, playerRef }: any) => {
     const [realPercent, setRealPercent] = useState(percent);
 
@@ -408,11 +372,12 @@ const getRelationBadgeStyle = (relation?: string) => {
     return 'bg-white/10 text-zinc-300 border-white/15';
 };
 
-const NextEpisodeTimer = ({ schedule, status }: { schedule: any, status: string }) => {
+const NextEpisodeTimer = ({ schedule, status }: { schedule: any, status?: string }) => {
     const [displayText, setDisplayText] = useState<React.ReactNode>("...");
 
     useEffect(() => {
-        const isFinished = status?.toLowerCase().includes("finished") || status?.toLowerCase().includes("completed");
+        const statusLower = (status || '').toLowerCase();
+        const isFinished = statusLower.includes("finished") || statusLower.includes("completed") || statusLower.includes("aired");
         if (isFinished) {
             setDisplayText(<span className="text-[9px] text-zinc-400 font-black uppercase tracking-wider">AIRED</span>);
             return;
@@ -423,10 +388,10 @@ const NextEpisodeTimer = ({ schedule, status }: { schedule: any, status: string 
             : (schedule?.airingAt ? Number(schedule.airingAt) * 1000 : (schedule?.airingTimestamp ? Number(schedule.airingTimestamp) * 1000 : null));
 
         if (!rawTimestamp || isNaN(rawTimestamp)) {
-            if (status?.toLowerCase().includes("releasing")) {
+            if (statusLower.includes("releasing")) {
                 setDisplayText(<span className="text-[9px] text-amber-400 font-bold uppercase tracking-wider">NEXT EP: TBA</span>);
             } else {
-                setDisplayText(<span className="text-[9px] text-zinc-500 font-bold uppercase tracking-wider">UNKNOWN</span>);
+                setDisplayText(<span className="text-[9px] text-zinc-400 font-black uppercase tracking-wider">AIRED</span>);
             }
             return;
         }
@@ -2754,7 +2719,7 @@ function WatchContent({ initialAnime }: { initialAnime?: UniversalAnime | null }
                                             title="Download Episode"
                                         >
                                             <Download size={12} className="shrink-0" />
-                                            <span className="truncate hidden min-[320px]:inline">Download</span>
+                                            <span className="truncate inline">Download</span>
                                         </Link>
                                     )}
                                     <button
@@ -2763,7 +2728,7 @@ function WatchContent({ initialAnime }: { initialAnime?: UniversalAnime | null }
                                         title="Share Episode"
                                     >
                                         <Share2 size={12} className="shrink-0" />
-                                        <span className="truncate hidden min-[390px]:inline">Share</span>
+                                        <span className="truncate inline">Share</span>
                                     </button>
                                     <button
                                         onClick={handleCreateWatchRoom}
@@ -2771,7 +2736,7 @@ function WatchContent({ initialAnime }: { initialAnime?: UniversalAnime | null }
                                         title="Create Watch Room"
                                     >
                                         <Users size={12} className="shrink-0" />
-                                        <span className="truncate hidden min-[450px]:inline">Room</span>
+                                        <span className="truncate hidden min-[400px]:inline">Room</span>
                                     </button>
                                     <Button
                                         onClick={() => updateSetting('dimMode', !settings.dimMode)}
