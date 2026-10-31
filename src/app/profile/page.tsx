@@ -13,7 +13,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { 
-    Grid, Heart, Bookmark, Settings, Upload, Trash2, Link as LinkIcon, Camera, LayoutGrid, CheckCircle, MessageSquare, History, Users, Award, Star, Lock, ShieldAlert, Pencil, Save, X, Move, Image as ImageIcon, Check, Loader2, ChevronRight, Crop, Eye, EyeOff, Zap, Shield, Bell, Tv, AlertTriangle, ShoppingBag, Coins, Music2, MoreHorizontal, ChevronDown, SlidersHorizontal, Share2, LogOut, CalendarCheck, Instagram, Youtube, Github, Twitter, Globe, Plus, Search, MessageCircle, ExternalLink, Layers, Crown, Flame, Swords, Gem, Gift, Trophy, Compass, Cpu, Feather, Trees, Cat, Ghost, Sun, Waves, Moon, type LucideIcon
+    Grid, Heart, Bookmark, Settings, Upload, Trash2, Link as LinkIcon, Camera, LayoutGrid, CheckCircle, MessageSquare, History, Users, Award, Star, Lock, ShieldAlert, Pencil, Save, X, Move, Image as ImageIcon, Check, Loader2, ChevronRight, Crop, Eye, EyeOff, Zap, Shield, Bell, Tv, AlertTriangle, ShoppingBag, Coins, Music2, MoreHorizontal, ChevronDown, SlidersHorizontal, Share2, LogOut, CalendarCheck, Instagram, Youtube, Github, Twitter, Globe, Plus, Search, MessageCircle, ExternalLink, Layers, Crown, Flame, Swords, Gem, Gift, Trophy, Compass, Cpu, Feather, Trees, Cat, Ghost, Sun, Waves, Moon, Clock, Skull, type LucideIcon
 } from 'lucide-react';
 import { toast } from '@/lib/toast';
 import { playGummyTap, playGummyPop, playSquishyJelly, playGummyBubble } from '@/lib/audioManager';
@@ -2074,6 +2074,10 @@ export default function ProfilePage() {
                                 { id: 'all', label: 'All Frames', icon: Layers, count: ALL_FRAMES.filter(f => f.id !== 'none' && (f.type !== 'role' || role === 'admin' || role === 'moderator')).length },
                                 { id: 'cs', label: 'Council of Shadows', icon: Crown, count: ALL_FRAMES.filter(f => f.category === 'cs').length },
                                 { id: 'bd', label: 'Board of Darkness', icon: ShieldAlert, count: ALL_FRAMES.filter(f => f.category === 'bd').length },
+                                { id: 'cw', label: 'Clockwork', icon: Clock, count: ALL_FRAMES.filter(f => f.category === 'cw').length },
+                                { id: 'as', label: 'Astronomical', icon: Compass, count: ALL_FRAMES.filter(f => f.category === 'as').length },
+                                { id: 'sg', label: 'Shinigami', icon: Skull, count: ALL_FRAMES.filter(f => f.category === 'sg').length },
+                                { id: 'to', label: 'Tomoe Eyes', icon: Eye, count: ALL_FRAMES.filter(f => f.category === 'to').length },
                                 { id: 'ce', label: 'Celestial', icon: Moon, count: ALL_FRAMES.filter(f => f.category === 'ce').length },
                                 { id: 'yo', label: 'Yokai & Sakura', icon: Flame, count: ALL_FRAMES.filter(f => f.category === 'yo').length },
                                 { id: 'ho', label: 'Holy & Angelic', icon: Sun, count: ALL_FRAMES.filter(f => f.category === 'ho').length },
@@ -2083,7 +2087,7 @@ export default function ProfilePage() {
                                 { id: 'kn', label: 'Knights', icon: Swords, count: ALL_FRAMES.filter(f => f.category === 'kn').length },
                                 { id: 'em', label: 'Emperors', icon: Gem, count: ALL_FRAMES.filter(f => f.category === 'em').length },
                                 { id: 'lo', label: 'Lords', icon: Award, count: ALL_FRAMES.filter(f => f.category === 'lo').length },
-                                { id: 'st', label: 'Steampunk', icon: Compass, count: ALL_FRAMES.filter(f => f.category === 'st').length },
+                                { id: 'st', label: 'Steampunk', icon: SlidersHorizontal, count: ALL_FRAMES.filter(f => f.category === 'st').length },
                                 { id: 'me', label: 'Mechanical', icon: Cpu, count: ALL_FRAMES.filter(f => f.category === 'me').length },
                                 { id: 'ru', label: 'Runes', icon: Feather, count: ALL_FRAMES.filter(f => f.category === 'ru').length },
                                 { id: 'ju', label: 'Jungle', icon: Trees, count: ALL_FRAMES.filter(f => f.category === 'ju').length },

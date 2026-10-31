@@ -155,7 +155,20 @@ export default function Settings() {
       setBio(profile.bio || '');
       setAvatarUrl(profile.avatar_url || '');
       setGender(profile.gender || 'male');
-      setWebsite(profile.website || '');
+      let cleanWebsite = profile.website || '';
+      if (cleanWebsite.startsWith('[') || cleanWebsite.startsWith('{')) {
+        try {
+          const parsed = JSON.parse(cleanWebsite);
+          if (Array.isArray(parsed) && parsed[0]?.url) {
+            cleanWebsite = parsed[0].url;
+          } else {
+            cleanWebsite = '';
+          }
+        } catch {
+          cleanWebsite = '';
+        }
+      }
+      setWebsite(cleanWebsite);
     }
   }, [profile]);
 
