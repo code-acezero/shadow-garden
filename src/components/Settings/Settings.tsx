@@ -351,7 +351,7 @@ const SITE_GUIDES = [
     title: 'Telepathy Voice System',
     desc: 'Hear whispered anime voice greetings and status announcements from your chosen companion character.',
     defaultValue: 'Enabled · Hana',
-    proTip: 'Click the Sample button on any card in the Companion Roster to hear their greeting line.',
+    proTip: 'Click the Preview button on any card in the Companion Roster to hear their greeting line.',
     badge: 'VOICE'
   },
   {
@@ -2145,7 +2145,7 @@ export default function Settings() {
           )}
 
           {activeTab === 'whisper' && (
-            <SectionBlock title="Telepathy & Voice Packs" desc="Choose your personal companion spirit, listen to sample greetings, and calibrate volume.">
+            <SectionBlock title="Telepathy & Voice Packs" desc="Choose your personal companion spirit, listen to preview greetings, and calibrate volume.">
               {/* Telepathy Controls */}
               <div className="pb-8 border-b border-white/[0.06] space-y-4">
                 <div className="divide-y divide-white/[0.04]">
@@ -2182,7 +2182,7 @@ export default function Settings() {
                       Companion Roster (16 Voice Personas)
                     </h4>
                     <p className="text-[11px] text-zinc-500 mt-0.5">
-                      Select your companion and click to sample their voice.
+                      Select your companion and click to preview their voice.
                     </p>
                   </div>
 
@@ -2248,9 +2248,9 @@ export default function Settings() {
                             variant="ghost"
                             onClick={() => handlePlayVoicePreview(char.id)}
                             className="h-7 px-2.5 rounded-lg text-zinc-300 hover:text-white hover:bg-white/10 shrink-0 text-[10px] font-bold uppercase tracking-wider"
-                            title="Play Voice Sample"
+                            title="Preview Voice"
                           >
-                            {isPreviewing ? "Playing..." : "Sample"}
+                            {isPreviewing ? "Playing..." : "Preview"}
                           </Button>
                         </div>
                       </div>
