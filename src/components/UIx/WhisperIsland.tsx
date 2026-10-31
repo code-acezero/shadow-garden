@@ -268,9 +268,8 @@ const SearchBarContent: React.FC<SearchBarContentProps> = ({
 
   return (
     <motion.div 
-      initial={{ opacity: 0 }} 
-      animate={{ opacity: 1 }} 
-      transition={{ duration: 0.3 }}
+      layout
+      transition={JELLY_SPRING}
       className="w-full h-full flex items-center relative pl-1.5 sm:pl-2 pr-1.5 gap-1.5 sm:gap-2"
     >
       <div className="absolute inset-0 overflow-hidden rounded-[2rem] pointer-events-none">
@@ -283,16 +282,32 @@ const SearchBarContent: React.FC<SearchBarContentProps> = ({
       </div>
 
       {/* Pet Message Pill: Expands dynamically based on message length; pushes search to the end when long */}
-      <AnimatePresence>
+      <AnimatePresence mode="popLayout">
         {petSpeech && (
           <motion.div
+            layout
             key="pet-speech-pill"
-            initial={{ opacity: 0, scale: 0.92, x: -16, filter: 'blur(4px)' }}
-            animate={{ opacity: 1, scale: 1, x: 0, filter: 'blur(0px)' }}
-            exit={{ opacity: 0, scale: 0.92, x: -16, filter: 'blur(4px)' }}
+            initial={{ opacity: 0, scale: 0.94, width: 0 }}
+            animate={{ opacity: 1, scale: 1, width: "auto" }}
+            exit={{ 
+              opacity: 0, 
+              scale: 0.94, 
+              width: 0,
+              maxWidth: 0,
+              paddingRight: 0,
+              paddingLeft: 0,
+              marginRight: 0,
+              marginLeft: 0,
+              filter: 'blur(4px)',
+              transition: { 
+                duration: 0.35, 
+                ease: [0.25, 0.1, 0.25, 1],
+                opacity: { duration: 0.18 }
+              } 
+            }}
             transition={JELLY_SPRING}
             className={cn(
-              "flex items-center gap-1 sm:gap-2 select-none min-w-0 transition-all duration-300",
+              "flex items-center gap-1 sm:gap-2 select-none min-w-0 overflow-hidden",
               // Mobile & Tablet: Take full available space so text is never prematurely truncated
               "flex-1 pr-1",
               // Desktop: Variable push width based on sentence length
@@ -320,11 +335,6 @@ const SearchBarContent: React.FC<SearchBarContentProps> = ({
                 petSpeech.link && "cursor-pointer hover:opacity-85 transition-opacity"
               )}
             >
-              {petSpeech.isTelepathy && (
-                <span className="text-[8px] font-mono font-bold tracking-wider uppercase px-1.5 py-0.5 rounded-full bg-white/10 text-zinc-300 shrink-0 select-none">
-                  Telepathy
-                </span>
-              )}
               <span className={cn("text-[9px] sm:text-[10px] md:text-[11px] font-black uppercase tracking-wider shrink-0", petSpeech.petColor)}>
                 {petSpeech.petName}
               </span>
@@ -373,10 +383,10 @@ const SearchBarContent: React.FC<SearchBarContentProps> = ({
 
       {/* Searchbar Stage: Pushed to the end on mobile/tablet when pet speaks, side-by-side on desktop */}
       <motion.div
-        
+        layout
         transition={JELLY_SPRING}
         className={cn(
-          "h-full flex items-center justify-between gap-1 sm:gap-1.5",
+          "h-full flex items-center justify-between gap-1 sm:gap-1.5 min-w-0",
           petSpeech 
             ? "shrink-0 lg:flex-1 lg:min-w-[140px]" 
             : "flex-1 min-w-0 sm:min-w-[140px]"
@@ -954,12 +964,14 @@ function WhisperIslandContent() {
 
         // Telepathy whisper from companion character
         if (e.detail?.type === 'telepathy' || e.detail?.isTelepathy) {
+            const speakerName = e.detail?.speaker || e.detail?.character || (newNotif.title !== 'Notice' ? newNotif.title : 'Companion');
+            const speakerColor = e.detail?.color || 'text-purple-400';
             setActiveNotif(newNotif);
             setPetSpeech({
                 text: newNotif.content,
-                petName: e.detail?.character || newNotif.title,
+                petName: speakerName,
                 petIcon: '',
-                petColor: e.detail?.color || 'text-purple-400',
+                petColor: speakerColor,
                 isTelepathy: true,
                 link: newNotif.link
             });

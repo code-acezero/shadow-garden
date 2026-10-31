@@ -51,3 +51,4 @@ BEGIN
   RETURN jsonb_build_object('success', true, 'message', 'Operative account eradicated.');
 END;
 $$;
+

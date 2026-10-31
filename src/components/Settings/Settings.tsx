@@ -15,7 +15,8 @@ import {
   Globe, Pause, PanelLeftClose, PanelLeftOpen, AudioWaveform, Upload, CheckCircle, ShieldCheck,
   PawPrint, SlidersHorizontal, Sliders, Smartphone, Flame, BadgeCheck, EyeOff,
   ChevronLeft, Plus, VolumeX, CheckCircle2, Instagram, Twitter, MessageCircle, Youtube, Github, Music2,
-  BookOpen, Film, Tv, BookCheck, FileText, CheckSquare, FileCode, HelpCircle, Search, FileUp, FileDown
+  BookOpen, Film, Tv, BookCheck, FileText, CheckSquare, FileCode, HelpCircle, Search, FileUp, FileDown,
+  DoorOpen, DoorClosed
 } from 'lucide-react';
 import Link from 'next/link';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -452,7 +453,28 @@ export default function Settings() {
 
   const [activeTab, setActiveTab] = useState('general');
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem('shadow_settings_sidebar_collapsed');
+      if (saved !== null) {
+        setIsSidebarCollapsed(saved === 'true');
+      }
+    }
+  }, []);
+
+  const toggleSidebarCollapsed = () => {
+    playSquishyJelly(0.35);
+    setIsSidebarCollapsed(prev => {
+      const next = !prev;
+      if (typeof window !== 'undefined') {
+        localStorage.setItem('shadow_settings_sidebar_collapsed', String(next));
+      }
+      return next;
+    });
+  };
 
   // Profile Identity States
   const [username, setUsername] = useState('');
@@ -2859,17 +2881,50 @@ export default function Settings() {
         </div>
       </div>
 
-      {/* ── TABLET & DESKTOP EXPERIENCE (>= md): iPadOS Master-Detail Adaptive Split View (Edge-to-Edge Clean) ── */}
+      {/* ── TABLET & DESKTOP EXPERIENCE (>= md): Master-Detail Split View (Locked Position & Collapsible) ── */}
       <div className="hidden md:flex w-full gap-6 lg:gap-8 items-start">
-        {/* iPadOS / Desktop Navigation Sidebar (2D Monet UI) */}
-        <aside className="w-64 md:w-72 shrink-0 sticky top-24 rounded-2xl bg-[#090d16]/85 border border-white/[0.08] p-3 backdrop-blur-md space-y-3">
-          {/* Simpler Settings Header on Desktop Left Panel */}
-          <div className="px-2 pt-1 pb-3 border-b border-white/[0.06] flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <SlidersHorizontal size={18} className="text-primary shrink-0" />
-              <span className="text-sm font-black uppercase tracking-wider text-white font-lemon">Settings</span>
-              <span className="text-[9px] font-mono px-1.5 py-0.5 rounded-md bg-white/[0.06] text-zinc-400 uppercase">v2.4</span>
-            </div>
+        {/* Navigation Sidebar (Individually Scrollable, Locked Position, Collapsible with Door Icon) */}
+        <motion.aside
+          layout
+          initial={false}
+          animate={{ width: isSidebarCollapsed ? 76 : 288 }}
+          transition={{ type: "spring", stiffness: 450, damping: 28 }}
+          className={cn(
+            "shrink-0 sticky top-20 max-h-[calc(100vh-theme(spacing.24))] overflow-y-auto overscroll-contain no-scrollbar rounded-2xl bg-[#090d16]/85 border border-white/[0.08] p-3 backdrop-blur-md space-y-3 select-none transition-all",
+            isSidebarCollapsed && "px-2 py-3"
+          )}
+        >
+          {/* Settings Header with Door Collapse / Expand Toggle */}
+          <div className={cn(
+            "pb-3 border-b border-white/[0.06] flex items-center transition-all",
+            isSidebarCollapsed ? "justify-center px-0 pt-0.5" : "justify-between px-2 pt-1"
+          )}>
+            {!isSidebarCollapsed && (
+              <div className="flex items-center gap-2 min-w-0">
+                <SlidersHorizontal size={18} className="text-primary shrink-0" />
+                <span className="text-sm font-black uppercase tracking-wider text-white font-lemon truncate">Settings</span>
+                <span className="text-[9px] font-mono px-1.5 py-0.5 rounded-md bg-white/[0.06] text-zinc-400 uppercase">v2.4</span>
+              </div>
+            )}
+
+            <motion.button
+              whileTap={{ scale: 0.88 }}
+              whileHover={{ scale: 1.08 }}
+              transition={{ type: "spring", stiffness: 450, damping: 18 }}
+              onClick={toggleSidebarCollapsed}
+              className={cn(
+                "p-1.5 rounded-lg text-zinc-400 hover:text-white hover:bg-white/[0.08] transition-colors cursor-pointer shrink-0 flex items-center justify-center",
+                isSidebarCollapsed && "w-10 h-10 bg-white/[0.04] text-primary"
+              )}
+              title={isSidebarCollapsed ? "Expand sidebar (Open gate)" : "Collapse sidebar (Close gate)"}
+              aria-label={isSidebarCollapsed ? "Expand sidebar" : "Collapse sidebar"}
+            >
+              {isSidebarCollapsed ? (
+                <DoorOpen size={20} className="text-primary" />
+              ) : (
+                <DoorClosed size={17} />
+              )}
+            </motion.button>
           </div>
 
           {/* Grouped Sidebar Items */}
@@ -2878,9 +2933,13 @@ export default function Settings() {
               const groupItems = MENU_ITEMS.filter((item) => item.group === group.id);
               return (
                 <div key={group.id} className="space-y-1">
-                  <div className="px-2.5 text-[10px] font-bold uppercase tracking-wider text-zinc-500">
-                    {group.title}
-                  </div>
+                  {!isSidebarCollapsed ? (
+                    <div className="px-2.5 text-[10px] font-bold uppercase tracking-wider text-zinc-500">
+                      {group.title}
+                    </div>
+                  ) : (
+                    <div className="w-6 h-px bg-white/[0.06] mx-auto my-2" />
+                  )}
                   <nav className="flex flex-col gap-0.5">
                     {groupItems.map((item) => {
                       const Icon = item.icon;
@@ -2889,27 +2948,33 @@ export default function Settings() {
                       return (
                         <motion.button
                           key={item.id}
-                          whileTap={{ scale: 0.95 }}
-                          whileHover={{ scale: 1.02 }}
+                          whileTap={{ scale: 0.92 }}
+                          whileHover={{ scale: 1.04 }}
                           transition={{ type: "spring", stiffness: 450, damping: 18 }}
                           onClick={() => changeTab(item.id)}
+                          title={isSidebarCollapsed ? `${item.label} (${group.title})` : undefined}
                           className={cn(
-                            "w-full flex items-center justify-between px-2.5 py-2 rounded-xl text-left text-xs font-semibold transition-all group relative",
+                            "flex items-center rounded-xl text-left text-xs font-semibold transition-all group relative cursor-pointer",
+                            isSidebarCollapsed 
+                              ? "w-10 h-10 mx-auto justify-center p-0" 
+                              : "w-full justify-between px-2.5 py-2",
                             isActive
-                              ? "bg-primary text-white"
+                              ? "bg-primary text-white shadow-lg shadow-primary/20"
                               : "text-zinc-400 hover:text-white hover:bg-white/[0.05]"
                           )}
                         >
-                          <div className="flex items-center gap-2.5 min-w-0">
+                          <div className={cn("flex items-center min-w-0", isSidebarCollapsed ? "justify-center" : "gap-2.5")}>
                             <div className={cn(
                               "w-6 h-6 rounded-[7px] flex items-center justify-center shrink-0 transition-transform group-hover:scale-105",
                               isActive ? "bg-white/20 text-white" : cn("bg-gradient-to-br text-white", item.gradient)
                             )}>
                               <Icon size={13} />
                             </div>
-                            <span className="truncate">{item.label}</span>
+                            {!isSidebarCollapsed && (
+                              <span className="truncate">{item.label}</span>
+                            )}
                           </div>
-                          {valueSnippet && !isActive && (
+                          {!isSidebarCollapsed && valueSnippet && !isActive && (
                             <span className="text-[10px] text-zinc-500 font-medium truncate max-w-[75px] text-right">
                               {valueSnippet}
                             </span>
@@ -2922,7 +2987,7 @@ export default function Settings() {
               );
             })}
           </div>
-        </aside>
+        </motion.aside>
 
         {/* Master-Detail Active Section Content */}
         <main className="flex-1 w-full min-w-0">

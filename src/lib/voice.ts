@@ -627,6 +627,8 @@ export const dispatchTelepathy = (character: string, text: string, options?: { i
             type: 'telepathy',
             isTelepathy: true,
             character: meta.name,
+            speaker: meta.name,
+            charId: meta.id,
             title: meta.name,
             epithet: options?.epithet || meta.title,
             icon: '',
@@ -720,19 +722,20 @@ export const playVoice = (event: VoiceEvent, customText?: string) => {
 export const playVoiceSample = (character: string, lang: 'en' | 'jp' = 'en'): HTMLAudioElement | null => {
     if (typeof window === 'undefined') return null;
 
+    // Disarm any pending autoplay deferred greeting so it doesn't overwrite this sample
+    pendingVoiceTrigger = null;
+
     const rawPack = (character || 'alpha').toLowerCase().replace(/^(system-|sys-)/, '').trim();
     const packName = SLUG_MAP[rawPack] || rawPack.split(' ')[0];
     const meta = getCharacterMeta(character);
     const settings = getVoiceSettings();
 
-    // 1. Dispatch Telepathy Whisper to WhisperIsland
-    const scriptText = getCharacterLine(character, 'GREET_MASTER', lang);
-    if (scriptText) {
-        dispatchTelepathy(meta.name, scriptText, {
-            color: meta.color,
-            epithet: meta.title
-        });
-    }
+    // 1. Dispatch Telepathy Whisper to WhisperIsland with explicit character speaker recognition
+    const scriptText = getCharacterLine(character, 'GREET_MASTER', lang) || `Standing by.`;
+    dispatchTelepathy(character, scriptText, {
+        color: meta.color,
+        epithet: meta.title
+    });
 
     // 2. Try primary voice path, then fallback to welcome or preview
     const primaryUrl = `/voices/${lang}/${packName}-greet-master.mp3`;
@@ -762,14 +765,15 @@ export const playVoiceSample = (character: string, lang: 'en' | 'jp' = 'en'): HT
     return audio;
 };
 
-export const triggerTelepathy = (event: TelepathyEvent, customText?: string) => {
+export const triggerTelepathy = (event: TelepathyEvent, customText?: string, character?: string) => {
     const settings = getVoiceSettings();
-    const meta = getCharacterMeta(settings.pack);
+    const targetChar = character || settings.pack || 'alpha';
+    const meta = getCharacterMeta(targetChar);
     const lang = settings.language || 'en';
-    const text = customText || getCharacterLine(settings.pack, event, lang);
+    const text = customText || getCharacterLine(targetChar, event, lang);
 
     if (text) {
-        dispatchTelepathy(meta.name, text, {
+        dispatchTelepathy(targetChar, text, {
             icon: meta.icon,
             color: meta.color,
             epithet: meta.title
