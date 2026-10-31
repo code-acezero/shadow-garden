@@ -15,8 +15,7 @@ import {
   Globe, Pause, PanelLeftClose, PanelLeftOpen, AudioWaveform, Upload, CheckCircle, ShieldCheck,
   PawPrint, SlidersHorizontal, Sliders, Smartphone, Flame, BadgeCheck, EyeOff,
   ChevronLeft, Plus, VolumeX, CheckCircle2, Instagram, Twitter, MessageCircle, Youtube, Github, Music2,
-  BookOpen, Film, Tv, BookCheck, FileText, CheckSquare, FileCode, HelpCircle, Search, FileUp, FileDown,
-  DoorOpen, DoorClosed
+  BookOpen, Film, Tv, BookCheck, FileText, CheckSquare, FileCode, HelpCircle, Search, FileUp, FileDown
 } from 'lucide-react';
 import Link from 'next/link';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -98,8 +97,8 @@ const MENU_ITEMS: MenuItem[] = [
   },
   {
     id: 'player',
-    label: 'Video Player',
-    desc: 'Omni calibration studio, automations & captions',
+    label: 'Anime & Player',
+    desc: 'Anime title language (EN/JP/Romaji), Omni studio & automations',
     icon: Play,
     group: 'media',
     gradient: 'from-rose-500 to-red-600',
@@ -297,6 +296,14 @@ const SITE_GUIDES = [
     defaultValue: 'Active',
     proTip: 'Requires typing DELETE in capital letters to prevent accidental loss. Irreversible.',
     badge: 'SECURITY'
+  },
+  {
+    category: 'playback',
+    title: 'Global Anime Title Language',
+    desc: 'Switches display titles for all anime across Kagemi between English (localized), Romaji (transliterated Japanese), and Japanese (original Kanji/Kana).',
+    defaultValue: 'English',
+    proTip: 'This global setting is exclusive to anime and dynamically updates cards, watch views, carousels, and search results.',
+    badge: 'ANIME ONLY'
   },
   {
     category: 'playback',
@@ -700,7 +707,7 @@ export default function Settings() {
       case 'general':
         return isAuthenticated ? (username || profile?.username || 'Member') : (travellerName || traveller.name || 'Traveller');
       case 'player':
-        return `${settings.defaultQuality || '1080p'} • ${settings.defaultServer || 'HD-1'}`;
+        return `${(settings.animeTitleLanguage || 'en').toUpperCase()} • ${settings.defaultQuality || '1080p'}`;
       case 'mangvels':
         return `${mediaPrefs.mangvels.readingDirection === 'rtl' ? 'RTL' : mediaPrefs.mangvels.readingDirection === 'webtoon' ? 'Webtoon' : 'LTR'} • ${mediaPrefs.mangvels.readerTheme}`;
       case 'flixverse':
@@ -1619,7 +1626,95 @@ export default function Settings() {
           )}
 
           {activeTab === 'player' && (
-            <SectionBlock title="Video Player & Omni Studio" desc="Calibrate playback automations, stream qualities, and subtitle styling with the live Omni player.">
+            <SectionBlock title="Anime & Video Player Studio" desc="Calibrate anime title display language, playback automations, stream qualities, and subtitle styling with the live Omni player.">
+              {/* Global Anime Title Display Language (Exclusive to Anime) */}
+              <div className="pb-8 border-b border-white/[0.06] space-y-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <h4 className="text-xs font-black uppercase tracking-wider text-zinc-200">
+                        Global Anime Title Language
+                      </h4>
+                      <span className="text-[9px] font-bold px-2 py-0.5 rounded bg-primary/20 text-primary border border-primary/30 uppercase tracking-wider">
+                        Anime Only
+                      </span>
+                    </div>
+                    <p className="text-[11px] text-zinc-400 mt-1">
+                      Select your preferred title naming language for anime across all cards, streams, and browsing directories.
+                    </p>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                  {[
+                    {
+                      id: 'en',
+                      label: 'English',
+                      sub: 'Official Localized Title',
+                      example: 'Attack on Titan',
+                      badge: 'EN'
+                    },
+                    {
+                      id: 'romaji',
+                      label: 'Romaji',
+                      sub: 'Romanized Japanese Title',
+                      example: 'Shingeki no Kyojin',
+                      badge: 'RO'
+                    },
+                    {
+                      id: 'jp',
+                      label: 'Japanese',
+                      sub: 'Original Kanji / Kana',
+                      example: '進撃の巨人',
+                      badge: 'JP'
+                    }
+                  ].map((option) => {
+                    const isSelected = (settings.animeTitleLanguage || 'en') === option.id;
+                    return (
+                      <motion.button
+                        key={option.id}
+                        type="button"
+                        whileTap={{ scale: 0.97 }}
+                        onClick={() => {
+                          playSquishyJelly(0.35);
+                          updateSetting('animeTitleLanguage', option.id as any);
+                          localStorage.setItem('shadow_anime_title_language', option.id);
+                          if (typeof window !== 'undefined') {
+                            window.dispatchEvent(new Event('shadow_settings_changed'));
+                          }
+                        }}
+                        className={cn(
+                          "p-3.5 rounded-xl border text-left transition-all flex flex-col justify-between gap-3 cursor-pointer",
+                          isSelected
+                            ? "bg-primary/10 border-primary text-white shadow-lg shadow-primary/10 ring-1 ring-primary/40"
+                            : "bg-white/[0.03] border-white/[0.06] hover:bg-white/[0.06] text-zinc-400"
+                        )}
+                      >
+                        <div className="flex items-center justify-between w-full">
+                          <span className="text-xs font-black uppercase tracking-wider text-white">
+                            {option.label}
+                          </span>
+                          <span className={cn(
+                            "text-[9px] font-black px-1.5 py-0.5 rounded uppercase font-mono",
+                            isSelected ? "bg-primary text-white" : "bg-white/10 text-zinc-400"
+                          )}>
+                            {option.badge}
+                          </span>
+                        </div>
+                        <div className="space-y-1">
+                          <p className="text-[10px] text-zinc-400 font-medium">
+                            {option.sub}
+                          </p>
+                          <p className="text-xs font-semibold text-zinc-200">
+                            {option.example}
+                          </p>
+                        </div>
+                      </motion.button>
+                    );
+                  })}
+                </div>
+              </div>
+
               {/* Live Omni Player Calibration Canvas */}
               <div className="pb-8 border-b border-white/[0.06] space-y-4">
                 <div>
@@ -2883,49 +2978,46 @@ export default function Settings() {
 
       {/* ── TABLET & DESKTOP EXPERIENCE (>= md): Master-Detail Split View (Locked Position & Collapsible) ── */}
       <div className="hidden md:flex w-full gap-6 lg:gap-8 items-start">
-        {/* Navigation Sidebar (Individually Scrollable, Locked Position, Collapsible with Door Icon) */}
+        {/* Navigation Sidebar (Individually Scrollable, Locked Position, Fluid Spring Collapse/Expand) */}
         <motion.aside
           layout
           initial={false}
           animate={{ width: isSidebarCollapsed ? 76 : 288 }}
-          transition={{ type: "spring", stiffness: 450, damping: 28 }}
+          transition={{ type: "spring", stiffness: 360, damping: 28, mass: 0.8 }}
           className={cn(
-            "shrink-0 sticky top-20 max-h-[calc(100vh-theme(spacing.24))] overflow-y-auto overscroll-contain no-scrollbar rounded-2xl bg-[#090d16]/85 border border-white/[0.08] p-3 backdrop-blur-md space-y-3 select-none transition-all",
+            "shrink-0 sticky top-20 max-h-[calc(100vh-theme(spacing.24))] overflow-y-auto overscroll-contain no-scrollbar rounded-2xl bg-[#090d16]/85 border border-white/[0.08] p-3 backdrop-blur-md space-y-3 select-none",
             isSidebarCollapsed && "px-2 py-3"
           )}
         >
-          {/* Settings Header with Door Collapse / Expand Toggle */}
-          <div className={cn(
-            "pb-3 border-b border-white/[0.06] flex items-center transition-all",
-            isSidebarCollapsed ? "justify-center px-0 pt-0.5" : "justify-between px-2 pt-1"
-          )}>
-            {!isSidebarCollapsed && (
-              <div className="flex items-center gap-2 min-w-0">
-                <SlidersHorizontal size={18} className="text-primary shrink-0" />
+          {/* Settings Header: Interactive toggle that collapses & expands sidebar without door icons */}
+          <motion.div 
+            whileTap={{ scale: 0.95 }}
+            onClick={toggleSidebarCollapsed}
+            className={cn(
+              "pb-3 border-b border-white/[0.06] flex items-center cursor-pointer group select-none overflow-hidden rounded-xl hover:bg-white/[0.03] transition-colors",
+              isSidebarCollapsed ? "justify-center p-1.5" : "justify-between px-2 py-1.5"
+            )}
+            title={isSidebarCollapsed ? "Click Settings icon to expand sidebar" : "Click Settings to collapse sidebar"}
+            aria-label={isSidebarCollapsed ? "Expand sidebar" : "Collapse sidebar"}
+          >
+            <div className="flex items-center gap-2.5 min-w-0">
+              <div className="w-8 h-8 rounded-lg bg-white/[0.04] group-hover:bg-primary/20 flex items-center justify-center shrink-0 transition-colors">
+                <SlidersHorizontal size={17} className="text-primary group-hover:scale-110 transition-transform" />
+              </div>
+              <motion.div 
+                initial={false}
+                animate={{ 
+                  opacity: isSidebarCollapsed ? 0 : 1, 
+                  width: isSidebarCollapsed ? 0 : "auto" 
+                }}
+                transition={{ duration: 0.2 }}
+                className="flex items-center gap-2 overflow-hidden whitespace-nowrap min-w-0"
+              >
                 <span className="text-sm font-black uppercase tracking-wider text-white font-lemon truncate">Settings</span>
                 <span className="text-[9px] font-mono px-1.5 py-0.5 rounded-md bg-white/[0.06] text-zinc-400 uppercase">v2.4</span>
-              </div>
-            )}
-
-            <motion.button
-              whileTap={{ scale: 0.88 }}
-              whileHover={{ scale: 1.08 }}
-              transition={{ type: "spring", stiffness: 450, damping: 18 }}
-              onClick={toggleSidebarCollapsed}
-              className={cn(
-                "p-1.5 rounded-lg text-zinc-400 hover:text-white hover:bg-white/[0.08] transition-colors cursor-pointer shrink-0 flex items-center justify-center",
-                isSidebarCollapsed && "w-10 h-10 bg-white/[0.04] text-primary"
-              )}
-              title={isSidebarCollapsed ? "Expand sidebar (Open gate)" : "Collapse sidebar (Close gate)"}
-              aria-label={isSidebarCollapsed ? "Expand sidebar" : "Collapse sidebar"}
-            >
-              {isSidebarCollapsed ? (
-                <DoorOpen size={20} className="text-primary" />
-              ) : (
-                <DoorClosed size={17} />
-              )}
-            </motion.button>
-          </div>
+              </motion.div>
+            </div>
+          </motion.div>
 
           {/* Grouped Sidebar Items */}
           <div className="space-y-3.5">
@@ -2933,11 +3025,20 @@ export default function Settings() {
               const groupItems = MENU_ITEMS.filter((item) => item.group === group.id);
               return (
                 <div key={group.id} className="space-y-1">
-                  {!isSidebarCollapsed ? (
-                    <div className="px-2.5 text-[10px] font-bold uppercase tracking-wider text-zinc-500">
+                  <motion.div
+                    initial={false}
+                    animate={{ 
+                      opacity: isSidebarCollapsed ? 0 : 1,
+                      height: isSidebarCollapsed ? 0 : "auto"
+                    }}
+                    transition={{ duration: 0.18 }}
+                    className="overflow-hidden"
+                  >
+                    <div className="px-2.5 text-[10px] font-bold uppercase tracking-wider text-zinc-500 whitespace-nowrap">
                       {group.title}
                     </div>
-                  ) : (
+                  </motion.div>
+                  {isSidebarCollapsed && (
                     <div className="w-6 h-px bg-white/[0.06] mx-auto my-2" />
                   )}
                   <nav className="flex flex-col gap-0.5">
@@ -2949,12 +3050,12 @@ export default function Settings() {
                         <motion.button
                           key={item.id}
                           whileTap={{ scale: 0.92 }}
-                          whileHover={{ scale: 1.04 }}
+                          whileHover={{ scale: 1.02 }}
                           transition={{ type: "spring", stiffness: 450, damping: 18 }}
                           onClick={() => changeTab(item.id)}
                           title={isSidebarCollapsed ? `${item.label} (${group.title})` : undefined}
                           className={cn(
-                            "flex items-center rounded-xl text-left text-xs font-semibold transition-all group relative cursor-pointer",
+                            "flex items-center rounded-xl text-left text-xs font-semibold group relative cursor-pointer overflow-hidden",
                             isSidebarCollapsed 
                               ? "w-10 h-10 mx-auto justify-center p-0" 
                               : "w-full justify-between px-2.5 py-2",
@@ -2970,14 +3071,30 @@ export default function Settings() {
                             )}>
                               <Icon size={13} />
                             </div>
-                            {!isSidebarCollapsed && (
-                              <span className="truncate">{item.label}</span>
-                            )}
+                            <motion.span 
+                              initial={false}
+                              animate={{ 
+                                opacity: isSidebarCollapsed ? 0 : 1, 
+                                width: isSidebarCollapsed ? 0 : "auto" 
+                              }}
+                              transition={{ duration: 0.18 }}
+                              className="truncate overflow-hidden whitespace-nowrap"
+                            >
+                              {item.label}
+                            </motion.span>
                           </div>
-                          {!isSidebarCollapsed && valueSnippet && !isActive && (
-                            <span className="text-[10px] text-zinc-500 font-medium truncate max-w-[75px] text-right">
+                          {!isActive && (
+                            <motion.span 
+                              initial={false}
+                              animate={{ 
+                                opacity: isSidebarCollapsed ? 0 : 1, 
+                                width: isSidebarCollapsed ? 0 : "auto" 
+                              }}
+                              transition={{ duration: 0.18 }}
+                              className="text-[10px] text-zinc-500 font-medium truncate max-w-[75px] text-right overflow-hidden whitespace-nowrap"
+                            >
                               {valueSnippet}
-                            </span>
+                            </motion.span>
                           )}
                         </motion.button>
                       );

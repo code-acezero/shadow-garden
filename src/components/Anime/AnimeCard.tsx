@@ -9,6 +9,7 @@ import { HoverCard, HoverCardContent, HoverCardTrigger } from '@/components/ui/h
 import { AnimeService } from '@/lib/api';
 import { playGummyPop } from '@/lib/audioManager';
 import { cn, getSafeImageUrl, slugifyTitle } from '@/lib/utils';
+import { useSettings } from '@/hooks/useSettings';
 
 // Fast global memory cache for card tooltips across page switches (instant 0ms on hover)
 const globalTooltipCache = new Map<string, any>();
@@ -99,6 +100,8 @@ function AnimeCardComponent({
   const [qtip, setQtip] = useState<QTipData | null>(null);
   const [loading, setLoading] = useState(false);
   const fetchTimeout = useRef<NodeJS.Timeout | null>(null);
+  const { settings } = useSettings();
+  const titleLang = settings?.animeTitleLanguage || 'en';
 
   // Normalization of title, image, routes, and audio metadata
   const normalized = useMemo(() => {
@@ -107,10 +110,22 @@ function AnimeCardComponent({
     );
     
     let displayTitle = "Unknown Title";
+    const isDonghuaMedia = (anime.type?.toLowerCase() === 'donghua') || anime.source === 'donghua';
+
     if (typeof anime.title === 'object' && anime.title !== null) {
-      displayTitle = anime.title.userPreferred || anime.title.english || anime.title.romaji || anime.title.native || "Unknown";
+      if (!isDonghuaMedia && titleLang === 'jp') {
+        displayTitle = anime.title.native || (anime as any).jname || anime.title.romaji || anime.title.english || anime.title.userPreferred || "Unknown";
+      } else if (!isDonghuaMedia && titleLang === 'romaji') {
+        displayTitle = anime.title.romaji || anime.title.userPreferred || anime.title.english || anime.title.native || "Unknown";
+      } else {
+        displayTitle = anime.title.english || anime.title.romaji || anime.title.userPreferred || anime.title.native || "Unknown";
+      }
     } else if (anime.title) {
-      displayTitle = anime.title;
+      if (!isDonghuaMedia && titleLang === 'jp' && (anime as any).jname) {
+        displayTitle = (anime as any).jname;
+      } else {
+        displayTitle = anime.title;
+      }
     } else if (anime.name) {
       displayTitle = anime.name;
     }
@@ -206,7 +221,7 @@ function AnimeCardComponent({
       releaseYear,
       status: anime.status || ""
     };
-  }, [anime, isHindi]);
+  }, [anime, isHindi, titleLang]);
 
   // Normalized Numeric Score
   const score = useMemo(() => {

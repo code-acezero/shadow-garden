@@ -216,8 +216,10 @@ export interface OmniPlayerRef {
 export type AnimePlayerProps = OmniPlayerProps;
 export type AnimePlayerRef = OmniPlayerRef;
 
+const EMPTY_SUBTITLES: any[] = [];
+
 const OmniPlayer = forwardRef<OmniPlayerRef, OmniPlayerProps>(({ 
-  url, iframeUrl, isEmbed, episodeId, title, poster, intro, outro, referer, isM3U8, autoSkip = false, autoSkipOutro = false, autoPlay = true, startTime = 0, subtitles = [],
+  url, iframeUrl, isEmbed, episodeId, title, poster, intro, outro, referer, isM3U8, autoSkip = false, autoSkipOutro = false, autoPlay = true, startTime = 0, subtitles = EMPTY_SUBTITLES,
   onEnded, onNext, hasNext, onPlay, onSkipIntro, onSkipOutro, onProgress, onSeek, onInteract, onPause, onBuffer, 
   controlsTimeout = 3000, onControlsChange, initialVolume = 1, initialSpeed = 1, onSettingsChange, onError, onAspectRatioChange
 }, ref) => {
@@ -651,26 +653,32 @@ const OmniPlayer = forwardRef<OmniPlayerRef, OmniPlayerProps>(({
     };
   }, [useIframe, localAutoSkip, localAutoSkipOutro, intro, outro, onProgress, onEnded, onNext, onSkipIntro, onSkipOutro]);
 
-  // --- PREFERENCE LOADING ---
+  // --- PREFERENCE LOADING (Runs once on mount) ---
   useEffect(() => {
       if (typeof window !== 'undefined') {
           const savedPrefs = localStorage.getItem('shadow_player_prefs');
           if (savedPrefs) {
-              const parsed = JSON.parse(savedPrefs);
-              if (parsed.subStyle) {
-                  setSubStyle({
-                      ...DEFAULT_SUB_STYLE,
-                      ...parsed.subStyle
-                  });
-              }
-              if (parsed.doubleTapMode) setDoubleTapMode(parsed.doubleTapMode);
-              if (parsed.verticalGesture) setVerticalGesture(parsed.verticalGesture);
-              if (parsed.horizontalGesture) setHorizontalGesture(parsed.horizontalGesture);
-              if (typeof parsed.autoSkip === 'boolean') setLocalAutoSkip(parsed.autoSkip);
-              if (typeof parsed.autoSkipOutro === 'boolean') setLocalAutoSkipOutro(parsed.autoSkipOutro);
-              if (typeof parsed.autoPlay === 'boolean') setLocalAutoPlay(parsed.autoPlay);
+              try {
+                  const parsed = JSON.parse(savedPrefs);
+                  if (parsed.subStyle) {
+                      setSubStyle(prev => ({
+                          ...prev,
+                          ...parsed.subStyle
+                      }));
+                  }
+                  if (parsed.doubleTapMode) setDoubleTapMode(parsed.doubleTapMode);
+                  if (parsed.verticalGesture) setVerticalGesture(parsed.verticalGesture);
+                  if (parsed.horizontalGesture) setHorizontalGesture(parsed.horizontalGesture);
+                  if (typeof parsed.autoSkip === 'boolean') setLocalAutoSkip(parsed.autoSkip);
+                  if (typeof parsed.autoSkipOutro === 'boolean') setLocalAutoSkipOutro(parsed.autoSkipOutro);
+                  if (typeof parsed.autoPlay === 'boolean') setLocalAutoPlay(parsed.autoPlay);
+              } catch (_) {}
           }
       }
+  }, []);
+
+  // --- SUBTITLES TRACK PROCESSING ---
+  useEffect(() => {
       const validSubs = subtitles?.filter(s => {
           const label = s.label?.toLowerCase() || '';
           const isThumb = label.includes('thumb') || s.kind === 'thumbnails' || label.includes('sprite');

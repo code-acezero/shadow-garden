@@ -146,6 +146,82 @@ const getNotifIcon = (type: string) => {
     }
 };
 
+// --- PET SPEECH MARQUEE VIEWER ---
+// 1. Initial 2.2s delay before moving so text is never rushed.
+// 2. Exact overflow boundary calculation: stops at text edge, never over-scrolls into blank space.
+// 3. 1.8s pause at the end so final words are easily readable.
+// 4. Smooth glide back to origin.
+const PetSpeechMarquee: React.FC<{ text: string }> = ({ text }) => {
+  const containerRef = useRef<HTMLDivElement>(null);
+  const textRef = useRef<HTMLSpanElement>(null);
+  const [overflow, setOverflow] = useState(0);
+
+  useEffect(() => {
+    const measure = () => {
+      if (!containerRef.current || !textRef.current) return;
+      const cWidth = containerRef.current.clientWidth;
+      const tWidth = textRef.current.scrollWidth;
+      const diff = tWidth - cWidth;
+      if (diff > 6) {
+        setOverflow(diff + 14);
+      } else {
+        setOverflow(0);
+      }
+    };
+
+    measure();
+    const timer = setTimeout(measure, 120);
+    window.addEventListener('resize', measure);
+    return () => {
+      clearTimeout(timer);
+      window.removeEventListener('resize', measure);
+    };
+  }, [text]);
+
+  if (overflow <= 0) {
+    return (
+      <div ref={containerRef} className="flex-1 min-w-0 overflow-hidden relative">
+        <span ref={textRef} className="text-[9.5px] sm:text-[10px] md:text-xs text-zinc-200 font-medium whitespace-nowrap inline-block">
+          {text}
+        </span>
+      </div>
+    );
+  }
+
+  const travelDuration = Math.max(3.2, overflow / 24);
+  const initialDelay = 2.2;
+  const endPause = 1.8;
+  const returnDuration = 1.2;
+  const totalDuration = initialDelay + travelDuration + endPause + returnDuration;
+
+  const t0 = 0;
+  const t1 = initialDelay / totalDuration;
+  const t2 = (initialDelay + travelDuration) / totalDuration;
+  const t3 = (initialDelay + travelDuration + endPause) / totalDuration;
+  const t4 = 1;
+
+  return (
+    <div ref={containerRef} className="flex-1 min-w-0 overflow-hidden relative">
+      <motion.span
+        ref={textRef}
+        className="text-[9.5px] sm:text-[10px] md:text-xs text-zinc-200 font-medium whitespace-nowrap inline-block"
+        animate={{
+          x: [0, 0, -overflow, -overflow, 0],
+        }}
+        transition={{
+          times: [t0, t1, t2, t3, t4],
+          duration: totalDuration,
+          repeat: Infinity,
+          repeatDelay: 1.5,
+          ease: "easeInOut",
+        }}
+      >
+        {text}
+      </motion.span>
+    </div>
+  );
+};
+
 // --- UNIFIED SEARCH BAR SUB-COMPONENT ---
 interface SearchBarContentProps {
   query: string;
@@ -282,28 +358,17 @@ const SearchBarContent: React.FC<SearchBarContentProps> = ({
       </div>
 
       {/* Pet Message Pill: Expands dynamically based on message length; pushes search to the end when long */}
-      <AnimatePresence mode="popLayout">
+      <AnimatePresence>
         {petSpeech && (
           <motion.div
             layout
-            key="pet-speech-pill"
-            initial={{ opacity: 0, scale: 0.94, width: 0 }}
-            animate={{ opacity: 1, scale: 1, width: "auto" }}
+            initial={{ opacity: 0, width: 0, scale: 0.95 }}
+            animate={{ opacity: 1, width: "auto", scale: 1 }}
             exit={{ 
               opacity: 0, 
-              scale: 0.94, 
-              width: 0,
-              maxWidth: 0,
-              paddingRight: 0,
-              paddingLeft: 0,
-              marginRight: 0,
-              marginLeft: 0,
-              filter: 'blur(4px)',
-              transition: { 
-                duration: 0.35, 
-                ease: [0.25, 0.1, 0.25, 1],
-                opacity: { duration: 0.18 }
-              } 
+              width: 0, 
+              scale: 0.95,
+              transition: JELLY_SPRING
             }}
             transition={JELLY_SPRING}
             className={cn(
@@ -321,40 +386,34 @@ const SearchBarContent: React.FC<SearchBarContentProps> = ({
                     : "lg:flex-initial lg:max-w-[300px]"
             )}
           >
-            {/* Pet Name Tag + Spring Animated Message Text */}
-            <div 
-              onClick={(e) => {
-                if (petSpeech.link) {
-                  e.stopPropagation();
-                  router.push(petSpeech.link);
-                  onDismissPetSpeech?.();
-                }
-              }}
-              className={cn(
-                "flex-1 min-w-0 flex items-center gap-1 sm:gap-1.5 overflow-hidden whitespace-nowrap relative",
-                petSpeech.link && "cursor-pointer hover:opacity-85 transition-opacity"
-              )}
-            >
-              <span className={cn("text-[9px] sm:text-[10px] md:text-[11px] font-black uppercase tracking-wider shrink-0", petSpeech.petColor)}>
-                {petSpeech.petName}
-              </span>
-              <span className="text-zinc-600 text-[8.5px] sm:text-[9px] shrink-0 select-none">•</span>
-              <div className="flex-1 min-w-0 overflow-hidden relative">
-                <motion.span
-                  className="text-[9.5px] sm:text-[10px] md:text-xs text-zinc-200 font-medium whitespace-nowrap inline-block"
-                  animate={petSpeech.text.length > 36 ? {
-                    x: [0, -Math.min(260, (petSpeech.text.length - 28) * 6.5), 0],
-                    transition: {
-                      duration: Math.max(7, petSpeech.text.length * 0.22),
-                      repeat: Infinity,
-                      repeatDelay: 2.5,
-                      ease: [0.25, 0.1, 0.25, 1],
+            {/* Sliding Message Presence: old message slides right and kicks out; new message slides in from pet mascot */}
+            <div className="flex-1 min-w-0 overflow-hidden relative">
+              <AnimatePresence mode="popLayout" initial={false}>
+                <motion.div 
+                  key={petSpeech.text}
+                  initial={{ x: -35, opacity: 0, scale: 0.96 }}
+                  animate={{ x: 0, opacity: 1, scale: 1 }}
+                  exit={{ x: 70, opacity: 0, scale: 0.96 }}
+                  transition={{ type: "spring", stiffness: 360, damping: 28 }}
+                  onClick={(e) => {
+                    if (petSpeech.link) {
+                      e.stopPropagation();
+                      router.push(petSpeech.link);
+                      onDismissPetSpeech?.();
                     }
-                  } : { x: 0 }}
+                  }}
+                  className={cn(
+                    "flex items-center gap-1 sm:gap-1.5 min-w-0 overflow-hidden whitespace-nowrap",
+                    petSpeech.link && "cursor-pointer hover:opacity-85 transition-opacity"
+                  )}
                 >
-                  {petSpeech.text}
-                </motion.span>
-              </div>
+                  <span className={cn("text-[9px] sm:text-[10px] md:text-[11px] font-black uppercase tracking-wider shrink-0", petSpeech.petColor)}>
+                    {petSpeech.petName}
+                  </span>
+                  <span className="text-zinc-600 text-[8.5px] sm:text-[9px] shrink-0 select-none">•</span>
+                  <PetSpeechMarquee text={petSpeech.text} />
+                </motion.div>
+              </AnimatePresence>
             </div>
 
             {/* Quick Actions (Link & Dismiss) */}

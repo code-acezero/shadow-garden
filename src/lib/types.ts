@@ -37,6 +37,7 @@ export interface AppSettings {
   blurSpoilers: boolean;
   hideFillers: boolean;
   useJapaneseTitle: boolean;
+  animeTitleLanguage: 'en' | 'jp' | 'romaji';
   homeLayout: 'trending' | 'seasonal' | 'classic' | 'personal';
   listView: 'grid' | 'list' | 'comfortable';
 
@@ -82,6 +83,7 @@ export const DEFAULT_SETTINGS: AppSettings = {
   blurSpoilers: true,
   hideFillers: true,
   useJapaneseTitle: false,
+  animeTitleLanguage: 'en',
   homeLayout: 'trending',
   listView: 'grid',
   pushNotifs: true,

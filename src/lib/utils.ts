@@ -190,10 +190,35 @@ export function getStreamUrl(
     return `/stream/${routeId}${qs ? `?${qs}` : ''}`;
 }
 
-export function formatAnimeTitle(rawTitle?: string | null | any, animeId?: string | null): string {
-    // 1. Handle title object variants (english, romaji, userPreferred, name, title)
+export function formatAnimeTitle(
+    rawTitle?: string | null | any, 
+    animeId?: string | null,
+    lang?: 'en' | 'jp' | 'romaji'
+): string {
+    // 0. Determine target anime title language
+    let targetLang = lang;
+    if (!targetLang && typeof window !== 'undefined') {
+        try {
+            const saved = localStorage.getItem('shadow_anime_title_language');
+            if (saved === 'en' || saved === 'jp' || saved === 'romaji') {
+                targetLang = saved;
+            }
+        } catch { }
+    }
+    targetLang = targetLang || 'en';
+
+    // 1. Handle title object variants (english, romaji, userPreferred, native, jname, name, title)
     if (rawTitle && typeof rawTitle === 'object') {
-        const extracted = rawTitle.english || rawTitle.romaji || rawTitle.userPreferred || rawTitle.name || rawTitle.title;
+        let extracted = '';
+        if (targetLang === 'jp') {
+            extracted = rawTitle.native || rawTitle.jname || rawTitle.romaji || rawTitle.english || rawTitle.userPreferred || rawTitle.title || rawTitle.name;
+        } else if (targetLang === 'romaji') {
+            extracted = rawTitle.romaji || rawTitle.userPreferred || rawTitle.english || rawTitle.native || rawTitle.title || rawTitle.name;
+        } else {
+            // 'en'
+            extracted = rawTitle.english || rawTitle.romaji || rawTitle.userPreferred || rawTitle.native || rawTitle.title || rawTitle.name;
+        }
+
         if (extracted && typeof extracted === 'string' && extracted.trim() !== '' && !extracted.toLowerCase().includes('unknown')) {
             return extracted.trim();
         }

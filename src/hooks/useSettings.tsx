@@ -61,6 +61,7 @@ export interface AppSettings {
   blurSpoilers: boolean;
   hideFillers: boolean;
   useJapaneseTitle: boolean;
+  animeTitleLanguage: 'en' | 'jp' | 'romaji';
 
   // Notifications
   pushNotifs: boolean;
@@ -97,7 +98,7 @@ export const DEFAULT_SETTINGS: AppSettings = {
   whisperVoice: 'hana', // [!code highlight]
   whisperVolume: 0.8,
 
-  homeLayout: 'trending', listView: 'grid', showNSFW: false, blurSpoilers: true, hideFillers: true, useJapaneseTitle: false,
+  homeLayout: 'trending', listView: 'grid', showNSFW: false, blurSpoilers: true, hideFillers: true, useJapaneseTitle: false, animeTitleLanguage: 'en',
   pushNotifs: true, emailNotifs: false, newEpAlerts: true, communityAlerts: true, systemAlerts: true, 
   
   // ✅ ENABLED BY DEFAULT
@@ -209,6 +210,14 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
       }
     }
 
+    // Explicit check for anime title language override
+    const savedAnimeTitleLang = localStorage.getItem('shadow_anime_title_language');
+    if (savedAnimeTitleLang === 'en' || savedAnimeTitleLang === 'jp' || savedAnimeTitleLang === 'romaji') {
+      currentSettings.animeTitleLanguage = savedAnimeTitleLang;
+    } else if (currentSettings.useJapaneseTitle) {
+      currentSettings.animeTitleLanguage = 'jp';
+    }
+
     // 2. Profile Sync
     if (user && profile?.settings) {
       currentSettings = { ...currentSettings, ...profile.settings };
@@ -277,6 +286,12 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
       }
       if (key === 'tapSoundVolume') {
         localStorage.setItem('shadow_tap_volume', String(value));
+      }
+      if (key === 'animeTitleLanguage') {
+        localStorage.setItem('shadow_anime_title_language', String(value));
+        if (typeof window !== 'undefined') {
+          window.dispatchEvent(new Event('shadow_settings_changed'));
+        }
       }
 
       if (user && newSettings.autoBackup) {
