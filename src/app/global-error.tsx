@@ -78,7 +78,7 @@ export default function GlobalError({
                 href="/home"
                 className="h-10 px-5 sm:px-6 rounded-xl bg-[#1c1c1f] hover:bg-[#28282b] border border-white/10 text-zinc-300 hover:text-white font-semibold text-xs sm:text-sm active:scale-95 transition-all cursor-pointer flex items-center justify-center"
               >
-                Sanctuary Home
+                Return Home
               </a>
             </div>
           </div>

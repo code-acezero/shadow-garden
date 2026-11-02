@@ -1,7 +1,8 @@
 "use client";
 
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { Bell, X, Check, Trash2, CheckCheck, ExternalLink, Film, Tv, MessageSquare, AlertTriangle } from 'lucide-react';
+import { Bell, X, Check, Trash2, CheckCheck, ExternalLink, Film, Tv, MessageSquare, AlertTriangle, Gift, Loader2 } from 'lucide-react';
+import { toast } from '@/lib/toast';
 import { motion, AnimatePresence } from 'framer-motion';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/context/AuthContext';
@@ -38,6 +39,67 @@ export default function Notifications({ buttonClassName, bellSize = 20, unboxed 
   const buttonRef = useRef<HTMLButtonElement>(null);
   const [notifications, setNotifications] = useState<NotificationItem[]>([]);
   const [tempNotifications, setTempNotifications] = useState<NotificationItem[]>([]);
+  const [claimingId, setClaimingId] = useState<string | null>(null);
+
+  const handleClaimGift = async (item: NotificationItem, e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (!user || !item.link?.startsWith('#claim:') || claimingId) return;
+    setClaimingId(item.id);
+    
+    try {
+      const rawPayload = item.link.replace('#claim:', '');
+      const payload = JSON.parse(rawPayload);
+      const { coins, frame_id, title } = payload;
+      
+      const { data: prof } = await supabase.from('profiles').select('coins, purchased_frames, unlocked_titles').eq('id', user.id).single();
+      
+      const updates: any = {};
+      if (coins && typeof coins === 'number') {
+        updates.coins = (prof?.coins || 0) + coins;
+      }
+      if (frame_id && frame_id !== 'none') {
+        const currentFrames = Array.isArray(prof?.purchased_frames) ? prof.purchased_frames : ['none'];
+        if (!currentFrames.includes(frame_id)) {
+          updates.purchased_frames = [...currentFrames, frame_id];
+        }
+        updates.frame_id = frame_id;
+      }
+      if (title && typeof title === 'string') {
+        const currentTitles = Array.isArray(prof?.unlocked_titles) ? prof.unlocked_titles : [];
+        if (!currentTitles.includes(title)) {
+          updates.unlocked_titles = [...currentTitles, title];
+        }
+        updates.equipped_title = title;
+        updates.title = title;
+      }
+      
+      if (Object.keys(updates).length > 0) {
+        await supabase.from('profiles').update(updates).eq('id', user.id);
+      }
+      
+      await supabase.from('notifications').update({ link: '#claimed', is_read: true }).eq('id', item.id);
+      
+      setNotifications(prev => prev.map(n => n.id === item.id ? { ...n, link: '#claimed', is_read: true } : n));
+      setTempNotifications(prev => prev.map(n => n.id === item.id ? { ...n, link: '#claimed', is_read: true } : n));
+      
+      if (updates.frame_id) {
+        localStorage.setItem(`shadow_active_frame_${user.id}`, updates.frame_id);
+        window.dispatchEvent(new CustomEvent('shadow-frame-updated', { detail: { frameId: updates.frame_id } }));
+      }
+      
+      const parts = [];
+      if (coins) parts.push(`${coins.toLocaleString()} Coins`);
+      if (title) parts.push(`"${title}" Title`);
+      if (frame_id) parts.push(`Profile Frame`);
+      
+      toast.success(`Claimed: ${parts.join(' + ')}!`);
+    } catch (err: any) {
+      console.error('Failed to claim reward:', err);
+      toast.error('Failed to claim reward: ' + (err.message || 'Unknown error'));
+    } finally {
+      setClaimingId(null);
+    }
+  };
   const [loading, setLoading] = useState(false);
 
   // Dismiss on outside click without blocking user interactions on other options
@@ -319,7 +381,10 @@ export default function Notifications({ buttonClassName, bellSize = 20, unboxed 
       }
     }
 
-    if (item.link) {
+    if (item.link?.startsWith('#claim:')) {
+      return;
+    }
+    if (item.link && item.link !== '#claimed') {
       setIsOpen(false);
       router.push(item.link);
     }
@@ -336,6 +401,10 @@ export default function Notifications({ buttonClassName, bellSize = 20, unboxed 
         return <MessageSquare size={14} className="text-sky-400" />;
       case 'MENTION':
         return <Bell size={14} className="text-red-400" />;
+      case 'system':
+      case 'GUILD_GIFT':
+      case 'STAFF_PROMOTION':
+        return <Gift size={14} className="text-fuchsia-400" />;
       default:
         return <Bell size={14} className="text-primary-400" />;
     }
@@ -475,6 +544,30 @@ export default function Notifications({ buttonClassName, bellSize = 20, unboxed 
                           <span className="text-[9px] text-zinc-500 font-mono mt-1 block">
                             {timeAgo}
                           </span>
+
+                          {item.link?.startsWith('#claim:') && (
+                            <div className="mt-2.5 flex items-center gap-2">
+                              <button
+                                type="button"
+                                onClick={(e) => handleClaimGift(item, e)}
+                                disabled={claimingId === item.id}
+                                className="px-3.5 py-1.5 rounded-xl bg-gradient-to-r from-primary-600 to-fuchsia-600 hover:from-primary-500 hover:to-fuchsia-500 text-white font-bold text-[11px] shadow-lg shadow-primary-900/40 flex items-center gap-1.5 active:scale-95 transition-all cursor-pointer"
+                              >
+                                {claimingId === item.id ? (
+                                  <Loader2 size={12} className="animate-spin" />
+                                ) : (
+                                  <Gift size={13} />
+                                )}
+                                <span>Claim Gift</span>
+                              </button>
+                            </div>
+                          )}
+
+                          {item.link === '#claimed' && (
+                            <div className="mt-2 flex items-center gap-1.5 text-[10px] text-emerald-400 font-mono font-bold">
+                              <Check size={12} /> Claimed
+                            </div>
+                          )}
                         </div>
 
                         {/* Delete Single Action */}

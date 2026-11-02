@@ -21,13 +21,15 @@ import AuthModal from '@/components/Auth/AuthModal';
 import ShadowAvatar from '@/components/User/ShadowAvatar'; 
 import ProfileAvatar from '@/components/User/ProfileAvatar';
 import FantasyFrame from '@/components/User/FantasyFrame';
+import ProfileFrame from '@/kagemi-frames/components/ProfileFrame';
 import FilledCoinIcon from '@/components/UIx/FilledCoinIcon';
 import DailyTasksSection from '@/components/User/DailyTasksSection';
 import { ALL_ATELIER_STORE_FRAMES, ATELIER_CATEGORIES } from '@/lib/atelierFrames';
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator } from '@/components/ui/dropdown-menu';
 import UserTitleBadge from '@/components/ui/UserTitleBadge';
-import { getFrameForTitle } from '@/lib/userTitles';
+import { getFrameForTitle, isGuildMaster } from '@/lib/userTitles';
 import { getAvailableTitles, getEquippedTitle, getTitleDefinition, getNextMilestone, ALL_TITLES, TitleDefinition } from '@/lib/userTitles';
+import { ProfilePageSkeleton } from '@/components/UIx/SkeletonLoaders';
 import Footer from '@/components/Anime/Footer';
 import { motion, AnimatePresence } from 'framer-motion';
 import Link from 'next/link';
@@ -50,18 +52,21 @@ const PRESET_COVERS = [
 
 function isDeadAvatarUrl(url?: any): boolean {
   if (!url || typeof url !== 'string') return true;
-  return url.includes('ibb.co') || url.includes('imgbb.com') || url.trim() === '';
+  const trimmed = url.trim();
+  return trimmed === '' || trimmed.includes('imgbb.com') || trimmed.includes('ibb.co');
 }
 
 function resolveSafeAvatar(...candidates: any[]): string {
-  const GOOGLE_FALLBACK = 'https://lh3.googleusercontent.com/a/ACg8ocLnpRFtv4bK_qXzuqBG4vBF6UzrdAwPBOCPYofJ0tSYCc5RyKz4=s96-c';
+  const NEUTRAL_FALLBACK = 'https://cdn.myanimelist.net/images/characters/9/310307.jpg';
   for (const c of candidates) {
     if (typeof c === 'string' && !isDeadAvatarUrl(c)) {
-      return c;
+      return getOptimizedImageUrl(c);
     }
   }
-  return GOOGLE_FALLBACK;
+  return NEUTRAL_FALLBACK;
 }
+
+const isEternalFrame = (fid?: string) => fid === 'admin' || fid === 'eternal' || fid === 'the_eternal' || fid === 'the-eternal';
 
 const TITLE_RANKS = [
     { title: 'Novice', minLevel: 1, desc: 'Granted upon entering the Shadow realm.' },
@@ -77,16 +82,16 @@ const TITLE_RANKS = [
 ];
 
 const MILESTONE_FRAMES: Record<number, { id: string; name: string }> = {
-    5: { id: 'iron', name: 'Iron Seal' },
-    10: { id: 'bronze', name: 'Bronze Crest' },
-    20: { id: 'silver', name: 'Silver Knight' },
-    35: { id: 'crimson', name: 'Crimson Blade' },
-    50: { id: 'sapphire', name: 'Sapphire Arc' },
-    65: { id: 'emerald', name: 'Emerald Wilds' },
-    75: { id: 'golden', name: 'Golden Realm' },
-    85: { id: 'shadow', name: 'Shadow Void' },
-    95: { id: 'celestial', name: 'Celestial Rift' },
-    100: { id: 'divine', name: 'Divine Archon' },
+    5: { id: 'iron-seal', name: 'Iron Seal' },
+    10: { id: 'bronze-crest', name: 'Bronze Crest' },
+    20: { id: 'silver-knight', name: 'Silver Knight' },
+    35: { id: 'crimson-blade', name: 'Crimson Blade' },
+    50: { id: 'sapphire-arc', name: 'Sapphire Arc' },
+    65: { id: 'emerald-wilds', name: 'Emerald Wilds' },
+    75: { id: 'golden-realm', name: 'Golden Realm' },
+    85: { id: 'shadow-void', name: 'Shadow Void' },
+    95: { id: 'celestial-rift', name: 'Celestial Rift' },
+    100: { id: 'divine-archon', name: 'Divine Archon' },
 };
 
 export type SocialPlatform = 'instagram' | 'twitter' | 'discord' | 'youtube' | 'tiktok' | 'github' | 'website';
@@ -277,6 +282,7 @@ export default function ProfilePage() {
     const [showTitleState, setShowTitleState] = useState<boolean>(true);
     const [activeTab, setActiveTab] = useState<string>('posts');
     const [isStoreOpen, setIsStoreOpen] = useState<boolean>(false);
+    const [previewFrameModal, setPreviewFrameModal] = useState<any | null>(null);
 
     useEffect(() => {
         if (typeof window !== 'undefined') {
@@ -357,7 +363,7 @@ export default function ProfilePage() {
     // Frame State
     const [activeFrame, setActiveFrame] = useState('none');
     const [userCoins, setUserCoins] = useState<number>(50);
-    const [purchasedFrames, setPurchasedFrames] = useState<string[]>(['none', 'iron']);
+    const [purchasedFrames, setPurchasedFrames] = useState<string[]>(['none', 'iron', 'iron-seal']);
     const [equippedTitle, setEquippedTitle] = useState<string>('');
     const [titleFilter, setTitleFilter] = useState<'all' | 'level' | 'staff' | 'former' | 'special'>('all');
     const [followerSearchQuery, setFollowerSearchQuery] = useState('');
@@ -506,9 +512,15 @@ export default function ProfilePage() {
                 setActiveFrame(profile.frame_id);
             }
 
-            // Self-healing: if avatar URL in database is the dead 503 imgbb URL, heal it to Google avatar
-            if (profile?.avatar_url && typeof profile.avatar_url === 'string' && (profile.avatar_url.includes('ibb.co') || profile.avatar_url.includes('imgbb.com')) && user?.id) {
-                const healthyAvatar = user.user_metadata?.avatar_url || user.user_metadata?.picture || 'https://lh3.googleusercontent.com/a/ACg8ocLnpRFtv4bK_qXzuqBG4vBF6UzrdAwPBOCPYofJ0tSYCc5RyKz4=s96-c';
+            // Self-healing: if avatar URL in database is the dead 503 imgbb URL OR a non-GM has the Guild Master's leaked avatar, heal it:
+            const amIGM = isGuildMaster(profile) || isGuildMaster(user);
+            const isDeadImgbb = profile?.avatar_url && typeof profile.avatar_url === 'string' && (profile.avatar_url.includes('ibb.co') || profile.avatar_url.includes('imgbb.com'));
+            const isLeakedGMAvatar = !amIGM && profile?.avatar_url && typeof profile.avatar_url === 'string' && profile.avatar_url.includes('ACg8ocLnpRFtv4bK_qXzuqBG4vBF6UzrdAwPBOCPYofJ0tSYCc5RyKz4');
+
+            if ((isDeadImgbb || isLeakedGMAvatar) && user?.id) {
+                const gmDefault = 'https://lh3.googleusercontent.com/a/ACg8ocLnpRFtv4bK_qXzuqBG4vBF6UzrdAwPBOCPYofJ0tSYCc5RyKz4=s96-c';
+                const neutralDefault = 'https://cdn.myanimelist.net/images/characters/9/310307.jpg';
+                const healthyAvatar = user.user_metadata?.avatar_url || user.user_metadata?.picture || (amIGM ? gmDefault : neutralDefault);
                 supabase.from('profiles').update({ avatar_url: healthyAvatar }).eq('id', user.id).then(() => {
                     refreshSession();
                 }).catch(() => {});
@@ -576,7 +588,7 @@ export default function ProfilePage() {
 
         try {
             toast.loading("Uploading cover photo...");
-            const uploadedUrl = await ImageAPI.uploadImage(file);
+            const uploadedUrl = await ImageAPI.uploadImage(file, 'banners');
             toast.dismiss();
 
             if (uploadedUrl) {
@@ -835,7 +847,7 @@ export default function ProfilePage() {
                 const res = await fetch(croppedDataUrl);
                 const blob = await res.blob();
                 const file = new File([blob], `cropped_avatar_${Date.now()}.png`, { type: 'image/png' });
-                finalUrl = await ImageAPI.uploadImage(file);
+                finalUrl = await ImageAPI.uploadImage(file, 'avatars');
             } catch (uploadErr) {
                 // If cloud upload fails, fallback to cropped data URL directly
                 console.warn('Cloud upload fallback to DataURL:', uploadErr);
@@ -875,7 +887,7 @@ export default function ProfilePage() {
         }
     };
 
-    if (!hasMounted || isLoading) return <div className="min-h-screen bg-black flex items-center justify-center"><div className="w-8 h-8 border-4 border-primary-500 border-t-transparent rounded-full animate-spin" /></div>;
+    if (!hasMounted || isLoading) return <ProfilePageSkeleton />;
 
     // Traveller (not logged-in) profile view
     if (!profile || !user) return (
@@ -982,7 +994,8 @@ export default function ProfilePage() {
                     className={`w-full h-48 sm:h-64 md:h-80 rounded-b-3xl relative overflow-hidden bg-zinc-900 shadow-2xl border-b border-white/10 ${isRepositioning ? 'cursor-grab active:cursor-grabbing select-none' : ''}`}
                 >
                     {(() => {
-                        const coverSrc = tempCoverSrc || profile.banner_url || "https://images.unsplash.com/photo-1618336753974-aae8e04506aa?q=80&w=2000";
+                        const rawCover = tempCoverSrc || profile.banner_url || "https://images.unsplash.com/photo-1618336753974-aae8e04506aa?q=80&w=2000";
+                        const coverSrc = getOptimizedImageUrl(rawCover);
                         return (
                             <img 
                                 src={coverSrc} 
@@ -1131,6 +1144,8 @@ export default function ProfilePage() {
                                         <ProfileAvatar 
                                             profile={profile ? {...profile, frame_id: activeFrame || profile.frame_id} : null} 
                                             className="w-full h-full"
+                                            animate="always"
+                                            parallax
                                         />
                                         <div 
                                             onClick={() => setShowAvatarModal(true)} 
@@ -1292,6 +1307,8 @@ export default function ProfilePage() {
                                             <ProfileAvatar 
                                                 profile={profile ? {...profile, frame_id: activeFrame || profile.frame_id} : null} 
                                                 className="w-full h-full"
+                                                animate="always"
+                                                parallax
                                             />
                                             <div 
                                                 onClick={() => setShowAvatarModal(true)} 
@@ -1743,7 +1760,7 @@ export default function ProfilePage() {
                                     <button
                                         type="button"
                                         onClick={handleClearHistory}
-                                        className="px-3.5 py-1.5 rounded-xl bg-red-600/20 hover:bg-red-600/30 text-xs font-bold text-red-300 border border-red-500/30 transition-all cursor-pointer flex items-center gap-1.5 backdrop-blur-md shadow-sm active:scale-95"
+                                        className="px-3.5 py-1.5 rounded-xl bg-primary/20 hover:bg-primary/30 text-xs font-bold text-primary border border-red-500/30 transition-all cursor-pointer flex items-center gap-1.5 backdrop-blur-md shadow-sm active:scale-95"
                                     >
                                         <Trash2 size={13} />
                                         Clear History
@@ -1842,7 +1859,7 @@ export default function ProfilePage() {
                                         </button>
                                         <button
                                             onClick={handleClearNotifications}
-                                            className="px-3 py-1.5 rounded-xl bg-red-600/20 hover:bg-red-600/30 text-xs font-bold text-red-300 border border-red-500/30 transition-all cursor-pointer"
+                                            className="px-3 py-1.5 rounded-xl bg-primary/20 hover:bg-primary/30 text-xs font-bold text-primary border border-red-500/30 transition-all cursor-pointer"
                                         >
                                             Clear All
                                         </button>
@@ -1979,6 +1996,10 @@ export default function ProfilePage() {
                             };
 
                             const handleEquipFrame = async (frameId: string) => {
+                                if (isEternalFrame(frameId) && !(isGuildMaster(profile) || isGuildMaster(user))) {
+                                    toast.error('The Eternal frame is strictly reserved for the Guild Master.');
+                                    return;
+                                }
                                 setActiveFrame(frameId);
                                 if (typeof window !== 'undefined') {
                                     const activeFrameKey = user?.id ? `shadow_active_frame_${user.id}` : 'shadow_active_frame_guest';
@@ -2050,7 +2071,9 @@ export default function ProfilePage() {
 
                             // ── 1. VAULT INVENTORY (Player's Personal Collection - Only Owned / Unlocked) ──
                             const staffBestowed = getFrameForTitle(profile?.admin_title || profile?.title, role);
+                            const amIGM = isGuildMaster(profile) || isGuildMaster(user);
                             const ownedFrames = ALL_FRAMES.filter(f => {
+                                if (isEternalFrame(f.id) && !amIGM) return false;
                                 const isOwned = purchasedFrames.includes(f.id) || f.id === 'none';
                                 const isLevelUnlocked = f.type === 'level' && currentLevel >= f.minLevel;
                                 const isRoleUnlocked = f.type === 'role' && (role === 'admin' || role === 'moderator');
@@ -2062,6 +2085,7 @@ export default function ProfilePage() {
                             // ── 2. STORE CATALOG (All Coin Frames & Level Progression Milestones) ──
                             const storeFrames = ALL_FRAMES.filter(f => {
                                 if (f.id === 'none') return false;
+                                if (isEternalFrame(f.id) && !amIGM) return false;
                                 if (f.type === 'role' && role !== 'admin' && role !== 'moderator') return false;
                                 if (frameFilterTab === 'all') return true;
                                 if (frameFilterTab === 'lv' || frameFilterTab === 'level') return f.type === 'level';
@@ -2153,7 +2177,11 @@ export default function ProfilePage() {
                                                             whileHover={{ y: -3, scale: 1.015 }}
                                                             whileTap={{ scale: 0.98 }}
                                                             transition={{ type: "spring", stiffness: 400, damping: 25 }}
-                                                            className={`group relative flex flex-col items-center justify-between p-4 rounded-2xl transition-all transform-gpu ${
+                                                            onClick={() => {
+                                                                playGummyTap();
+                                                                setPreviewFrameModal(frame);
+                                                            }}
+                                                            className={`group relative flex flex-col items-center justify-between p-4 rounded-2xl transition-all transform-gpu cursor-pointer ${
                                                                 isActive 
                                                                     ? 'bg-[#202024] border border-white/15 shadow-md' 
                                                                     : 'bg-[#18181b] hover:bg-[#202024] border border-white/[0.04]'
@@ -2188,7 +2216,8 @@ export default function ProfilePage() {
                                                                         type="button"
                                                                         whileTap={{ scale: 0.94 }}
                                                                         transition={{ type: "spring", stiffness: 450, damping: 20 }}
-                                                                        onClick={() => {
+                                                                        onClick={(e) => {
+                                                                            e.stopPropagation();
                                                                             playGummyPop();
                                                                             handleEquipFrame(frame.id);
                                                                         }}
@@ -2299,7 +2328,11 @@ export default function ProfilePage() {
                                                             whileHover={{ y: -3, scale: 1.015 }}
                                                             whileTap={{ scale: 0.98 }}
                                                             transition={{ type: "spring", stiffness: 400, damping: 25 }}
-                                                            className={`group relative flex flex-col items-center justify-between p-4 rounded-2xl transition-all transform-gpu ${
+                                                            onClick={() => {
+                                                                playGummyTap();
+                                                                setPreviewFrameModal(frame);
+                                                            }}
+                                                            className={`group relative flex flex-col items-center justify-between p-4 rounded-2xl transition-all transform-gpu cursor-pointer ${
                                                                 isActive 
                                                                     ? 'bg-[#202024] border border-white/15 shadow-md' 
                                                                     : 'bg-[#18181b] hover:bg-[#202024] border border-white/[0.04]'
@@ -2336,7 +2369,8 @@ export default function ProfilePage() {
                                                                         type="button"
                                                                         whileTap={{ scale: 0.94 }}
                                                                         transition={{ type: "spring", stiffness: 450, damping: 20 }}
-                                                                        onClick={() => {
+                                                                        onClick={(e) => {
+                                                                            e.stopPropagation();
                                                                             playGummyPop();
                                                                             handleEquipFrame(frame.id);
                                                                         }}
@@ -2350,7 +2384,8 @@ export default function ProfilePage() {
                                                                             type="button"
                                                                             whileTap={{ scale: 0.94 }}
                                                                             transition={{ type: "spring", stiffness: 450, damping: 20 }}
-                                                                            onClick={() => {
+                                                                            onClick={(e) => {
+                                                                                e.stopPropagation();
                                                                                 playSquishyJelly();
                                                                                 handleBuyFrame(frame);
                                                                             }}
@@ -2599,6 +2634,170 @@ export default function ProfilePage() {
                                             </div>
                                         );
                                     })()}
+
+                                    {/* ── FRAME INSPECTION / PREVIEW POPUP MODAL ── */}
+                                    <AnimatePresence>
+                                        {previewFrameModal && (() => {
+                                            const isModalFrameActive = activeFrame === previewFrameModal.id;
+                                            const isModalFrameOwned = purchasedFrames.includes(previewFrameModal.id) 
+                                                || previewFrameModal.id === 'none'
+                                                || (previewFrameModal.type === 'level' && currentLevel >= previewFrameModal.minLevel) 
+                                                || (previewFrameModal.type === 'role' && (role === 'admin' || role === 'moderator'));
+                                            const isModalFrameStore = previewFrameModal.type === 'store';
+                                            const isModalFrameLevel = previewFrameModal.type === 'level';
+                                            const modalLevelsNeeded = isModalFrameLevel ? Math.max(0, previewFrameModal.minLevel - currentLevel) : 0;
+
+                                            return (
+                                                <div className="fixed inset-0 z-[99999] flex items-center justify-center p-4">
+                                                    {/* Backdrop with smooth blur */}
+                                                    <motion.div
+                                                        initial={{ opacity: 0 }}
+                                                        animate={{ opacity: 1 }}
+                                                        exit={{ opacity: 0 }}
+                                                        transition={{ duration: 0.18 }}
+                                                        onClick={() => {
+                                                            playGummyTap();
+                                                            setPreviewFrameModal(null);
+                                                        }}
+                                                        className="absolute inset-0 bg-black/80 backdrop-blur-md"
+                                                    />
+
+                                                    {/* Modal Card */}
+                                                    <motion.div
+                                                        initial={{ opacity: 0, scale: 0.92, y: 14 }}
+                                                        animate={{ opacity: 1, scale: 1, y: 0 }}
+                                                        exit={{ opacity: 0, scale: 0.92, y: 14 }}
+                                                        transition={{ type: "spring", stiffness: 420, damping: 28 }}
+                                                        className="relative z-10 w-full max-w-sm bg-[#141417]/95 border border-white/10 rounded-3xl p-6 sm:p-7 shadow-2xl flex flex-col items-center text-center overflow-hidden"
+                                                    >
+                                                        {/* Subtle Radial Glow */}
+                                                        <div 
+                                                            className="absolute -top-20 left-1/2 -translate-x-1/2 w-48 h-48 rounded-full blur-3xl opacity-25 pointer-events-none"
+                                                            style={{ background: previewFrameModal.color || '#a855f7' }}
+                                                        />
+
+                                                        {/* Close Button */}
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => {
+                                                                playGummyTap();
+                                                                setPreviewFrameModal(null);
+                                                            }}
+                                                            className="absolute top-4 right-4 w-8 h-8 rounded-full bg-white/5 hover:bg-white/15 text-zinc-400 hover:text-white flex items-center justify-center transition-colors cursor-pointer"
+                                                            aria-label="Close"
+                                                        >
+                                                            <X size={16} />
+                                                        </button>
+
+                                                        {/* Collection / Tier Pill */}
+                                                        <div className="mb-2">
+                                                            <span className="px-3 py-1 rounded-full text-[11px] font-semibold bg-white/5 border border-white/10 text-zinc-300 uppercase tracking-wider">
+                                                                {previewFrameModal.categoryName || previewFrameModal.tierBadge || 'Exclusive Frame'}
+                                                            </span>
+                                                        </div>
+
+                                                        {/* Animated Frame Showcase with 3D Parallax Tilt */}
+                                                        <div className="w-44 h-44 sm:w-48 sm:h-48 flex items-center justify-center my-3 relative">
+                                                            <ProfileFrame
+                                                                frame={previewFrameModal.id}
+                                                                src={userAvatarUrl}
+                                                                size={160}
+                                                                animate="always"
+                                                                parallax={true}
+                                                            />
+                                                        </div>
+
+                                                        {/* Frame Name */}
+                                                        <h3 className="text-lg sm:text-xl font-bold text-white tracking-tight">
+                                                            {previewFrameModal.name}
+                                                        </h3>
+
+                                                        {/* Frame Description */}
+                                                        <p className="text-xs text-zinc-400 mt-1 max-w-[280px] leading-relaxed">
+                                                            {previewFrameModal.description || 'Exclusive decorative animated frame for your avatar.'}
+                                                        </p>
+
+                                                        {/* Status Info */}
+                                                        {isModalFrameLevel && (
+                                                            <div className="mt-3 text-xs text-amber-300 font-medium flex items-center gap-1.5">
+                                                                <Trophy size={13} />
+                                                                <span>
+                                                                    {currentLevel >= previewFrameModal.minLevel
+                                                                        ? `Unlocked at Level ${previewFrameModal.minLevel}`
+                                                                        : `Reach Level ${previewFrameModal.minLevel} (${modalLevelsNeeded} lvls away)`}
+                                                                </span>
+                                                            </div>
+                                                        )}
+
+                                                        {isModalFrameStore && !isModalFrameOwned && (
+                                                            <div className="mt-3 flex items-center gap-1.5 text-xs text-amber-300 font-semibold px-3 py-1 rounded-full bg-amber-400/10 border border-amber-400/20">
+                                                                <FilledCoinIcon size={13} />
+                                                                <span>{previewFrameModal.price.toLocaleString()} Coins</span>
+                                                            </div>
+                                                        )}
+
+                                                        {/* Action Button */}
+                                                        <div className="w-full mt-6">
+                                                            {isModalFrameActive ? (
+                                                                <button
+                                                                    disabled
+                                                                    className="w-full h-11 rounded-2xl bg-emerald-500/15 text-emerald-300 text-sm font-bold flex items-center justify-center gap-2 cursor-default select-none border border-emerald-500/20"
+                                                                >
+                                                                    <Check size={16} strokeWidth={2.5} /> Equipped
+                                                                </button>
+                                                            ) : isModalFrameOwned ? (
+                                                                <motion.button
+                                                                    type="button"
+                                                                    whileTap={{ scale: 0.96 }}
+                                                                    transition={{ type: "spring", stiffness: 450, damping: 20 }}
+                                                                    onClick={() => {
+                                                                        playGummyPop();
+                                                                        handleEquipFrame(previewFrameModal.id);
+                                                                        setPreviewFrameModal(null);
+                                                                    }}
+                                                                    className="w-full h-11 rounded-2xl bg-white text-black hover:bg-zinc-200 active:scale-95 text-sm font-bold transition-all cursor-pointer flex items-center justify-center shadow-lg"
+                                                                >
+                                                                    Equip Frame
+                                                                </motion.button>
+                                                            ) : isModalFrameStore ? (
+                                                                userCoins >= previewFrameModal.price ? (
+                                                                    <motion.button
+                                                                        type="button"
+                                                                        whileTap={{ scale: 0.96 }}
+                                                                        transition={{ type: "spring", stiffness: 450, damping: 20 }}
+                                                                        onClick={() => {
+                                                                            playSquishyJelly();
+                                                                            handleBuyFrame(previewFrameModal);
+                                                                            setPreviewFrameModal(null);
+                                                                        }}
+                                                                        className="w-full h-11 rounded-2xl bg-purple-600 hover:bg-purple-500 active:scale-95 text-white text-sm font-bold flex items-center justify-center gap-2 transition-all cursor-pointer shadow-lg shadow-purple-600/30"
+                                                                    >
+                                                                        <FilledCoinIcon size={14} />
+                                                                        <span>Buy & Equip for {previewFrameModal.price.toLocaleString()} Coins</span>
+                                                                    </motion.button>
+                                                                ) : (
+                                                                    <button
+                                                                        disabled
+                                                                        className="w-full h-11 rounded-2xl bg-zinc-800 text-zinc-500 text-xs font-medium flex items-center justify-center gap-2 cursor-not-allowed select-none border border-white/5"
+                                                                    >
+                                                                        Need {(previewFrameModal.price - userCoins).toLocaleString()} More Coins
+                                                                    </button>
+                                                                )
+                                                            ) : (
+                                                                <button
+                                                                    disabled
+                                                                    className="w-full h-11 rounded-2xl bg-zinc-800 text-zinc-500 text-xs font-medium flex items-center justify-center gap-2 cursor-not-allowed select-none border border-white/5"
+                                                                >
+                                                                    Locked (Level {previewFrameModal.minLevel} Required)
+                                                                </button>
+                                                            )}
+                                                        </div>
+                                                    </motion.div>
+                                                </div>
+                                            );
+                                        })()}
+                                    </AnimatePresence>
+
                                 </div>
                             );
                         })()}
@@ -2750,7 +2949,8 @@ export default function ProfilePage() {
                                 <SelectContent className="bg-[#262626] border-zinc-700 text-white">
                                     <SelectItem value="male">Male</SelectItem>
                                     <SelectItem value="female">Female</SelectItem>
-                                    <SelectItem value="other">Prefer not to say</SelectItem>
+                                    <SelectItem value="rather_not_say">Rather not say</SelectItem>
+                                    <SelectItem value="none">None</SelectItem>
                                 </SelectContent>
                             </Select>
                         </div>
@@ -2831,11 +3031,11 @@ export default function ProfilePage() {
                                     <Upload size={20} />
                                 </div>
                                 <div>
-                                    <h4 className="text-sm font-bold text-white group-hover:text-blue-300 transition-colors">Upload Custom Photo</h4>
+                                    <h4 className="text-sm font-bold text-white group-hover:text-purple-300 transition-colors">Upload Custom Photo</h4>
                                     <p className="text-xs text-zinc-400">PNG, JPG, WEBP from your device</p>
                                 </div>
                             </div>
-                            <ChevronRight size={18} className="text-zinc-500 group-hover:text-blue-300 group-hover:translate-x-0.5 transition-all shrink-0" />
+                            <ChevronRight size={18} className="text-zinc-500 group-hover:text-purple-300 group-hover:translate-x-0.5 transition-all shrink-0" />
                         </button>
 
                         {/* Option 3: Reposition & Resize Photo */}
@@ -3094,8 +3294,14 @@ export default function ProfilePage() {
 
                                     {/* 3. Milestone Frame (if any) */}
                                     {frameMilestone && (
-                                        <div className="flex flex-col items-center min-w-0 flex-1">
-                                            <div className="w-18 h-18 sm:w-20 sm:h-20 rounded-2xl bg-sky-500/[0.08] border border-sky-400/25 flex items-center justify-center relative shadow-inner">
+                                        <div 
+                                            onClick={() => {
+                                                playGummyTap();
+                                                setPreviewFrameModal(frameMilestone);
+                                            }}
+                                            className="flex flex-col items-center min-w-0 flex-1 cursor-pointer group"
+                                        >
+                                            <div className="w-18 h-18 sm:w-20 sm:h-20 rounded-2xl bg-purple-500/[0.08] hover:bg-purple-500/[0.15] border border-purple-400/25 group-hover:border-purple-400/40 flex items-center justify-center relative shadow-inner transition-all">
                                                 <FantasyFrame frameId={frameMilestone.id} avatarUrl={userAvatarUrl} size={48} showLevelTag={false}>
                                                     <div className="w-full h-full bg-zinc-950 rounded-full overflow-hidden flex items-center justify-center">
                                                         <img src={userAvatarUrl} alt="" className="w-full h-full object-cover rounded-full" />
@@ -3112,10 +3318,10 @@ export default function ProfilePage() {
                                     {/* Standard Level Mastery perk if no title and no frame */}
                                     {!milestoneDef && !frameMilestone && (
                                         <div className="flex flex-col items-center min-w-0 flex-1">
-                                            <div className="w-18 h-18 sm:w-20 sm:h-20 rounded-2xl bg-sky-500/[0.08] border border-sky-400/25 flex items-center justify-center relative shadow-inner">
-                                                <Zap size={30} className="text-sky-300 drop-shadow-[0_0_8px_rgba(56,189,248,0.45)]" />
+                                            <div className="w-18 h-18 sm:w-20 sm:h-20 rounded-2xl bg-purple-500/[0.08] border border-purple-400/25 flex items-center justify-center relative shadow-inner">
+                                                <Zap size={30} className="text-purple-300 drop-shadow-[0_0_8px_rgba(168,85,247,0.45)]" />
                                             </div>
-                                            <span className="text-xs font-bold text-sky-300 mt-1.5 truncate max-w-[85px]">
+                                            <span className="text-xs font-bold text-purple-300 mt-1.5 truncate max-w-[85px]">
                                                 Mastery
                                             </span>
                                             <span className="text-[10px] text-zinc-400 font-medium">+1 Level</span>

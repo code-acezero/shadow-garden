@@ -35,13 +35,13 @@ export default function WatchListButton({ animeId, animeTitle, animeImage, curre
         setMounted(true);
     }, []);
 
-    // Status Configurations
+    // Status Configurations (Material Purple/Violet aligned, no random blue)
     const statusMap: any = {
-        "watching": { label: "Watching", icon: <Eye size={14}/>, color: "text-green-400 border-green-500/20 bg-green-500/10" },
-        "completed": { label: "Completed", icon: <CheckCircle size={14}/>, color: "text-blue-400 border-blue-500/20 bg-blue-500/10" },
-        "plan_to_watch": { label: "Planning", icon: <Clock size={14}/>, color: "text-purple-400 border-purple-500/20 bg-purple-500/10" },
-        "on_hold": { label: "On Hold", icon: <Clock size={14}/>, color: "text-yellow-400 border-yellow-500/20 bg-yellow-500/10" },
-        "dropped": { label: "Dropped", icon: <XCircle size={14}/>, color: "text-primary-400 border-primary-500/20 bg-primary-500/10" },
+        "watching": { label: "Watching", icon: <Eye size={14}/>, color: "text-purple-400 border-purple-500/20 bg-purple-500/10" },
+        "completed": { label: "Completed", icon: <CheckCircle size={14}/>, color: "text-primary-400 border-primary-500/20 bg-primary-500/10" },
+        "plan_to_watch": { label: "Planning", icon: <Clock size={14}/>, color: "text-violet-400 border-violet-500/20 bg-violet-500/10" },
+        "on_hold": { label: "On Hold", icon: <Clock size={14}/>, color: "text-amber-400 border-amber-500/20 bg-amber-500/10" },
+        "dropped": { label: "Dropped", icon: <XCircle size={14}/>, color: "text-rose-400 border-rose-500/20 bg-rose-500/10" },
     };
 
     // 1. Initial Check: Is this anime in the user's DB?
@@ -78,45 +78,51 @@ export default function WatchListButton({ animeId, animeTitle, animeImage, curre
         return () => { isMounted = false; };
     }, [animeId, user, isAuthLoading]);
 
-    // 2. Handle Add / Update Status
     const handleUpdate = async (newStatus: string) => {
-        if (!user) { toast.error("Log in to track your journey."); return; }
-        
-        setLoading(true);
+        if (!user) {
+            if (typeof window !== 'undefined') {
+                window.dispatchEvent(new CustomEvent('shadow-open-auth', { detail: { view: 'ENTER' } }));
+            }
+            return;
+        }
 
+        setLoading(true);
         try {
+            const payload: any = {
+                user_id: user.id,
+                anime_id: animeId,
+                status: newStatus,
+                media_type: mediaType,
+                title: animeTitle,
+                poster: animeImage,
+                updated_at: new Date().toISOString()
+            };
+
+            if (currentEp !== undefined) payload.current_episode = currentEp;
+            if (totalEpisodes !== undefined) payload.total_episodes = totalEpisodes;
+
+            // ✅ Upsert using the Shared Client
             const { error } = await supabase
                 .from('watchlist')
-                .upsert({
-                    user_id: user.id,
-                    anime_id: animeId,
-                    status: newStatus,
-                    anime_title: animeTitle,
-                    anime_image: animeImage,
-                    media_type: mediaType,
-                    total_episodes: Number(totalEpisodes) || 1,
-                    last_episode_number: currentEp || 1, 
-                    updated_at: new Date().toISOString()
-                }, { onConflict: 'user_id, anime_id' });
+                .upsert(payload, { onConflict: 'user_id, anime_id' });
 
             if (error) throw error;
 
             setStatus(newStatus);
-            toast.success(`Moved to ${statusMap[newStatus].label}`);
-            triggerTelepathy('BOOKMARK');
+            toast.success(`Marked as ${statusMap[newStatus]?.label || newStatus}`);
+            triggerTelepathy('BOOKMARK', `Marked ${animeTitle} as ${statusMap[newStatus]?.label || newStatus}`);
         } catch (err: any) {
-            console.error("Supabase Update Error:", err); 
-            toast.error("Failed to update status");
+            console.error("WatchList Update Error:", err);
+            toast.error("Failed to update status.");
         } finally {
             setLoading(false);
         }
     };
 
-    // 3. Handle Remove
     const handleRemove = async () => {
         if (!user) return;
-        setLoading(true);
 
+        setLoading(true);
         try {
             const { error } = await supabase
                 .from('watchlist')
@@ -142,7 +148,7 @@ export default function WatchListButton({ animeId, animeTitle, animeImage, curre
         <button 
             disabled={loading || isAuthLoading}
             className={cn(
-                "flex items-center justify-center gap-2 rounded-full px-4 h-8 text-[9px] sm:text-[10px] font-black transition-all shadow-lg active:scale-95 border outline-none focus:outline-none focus:ring-0 whitespace-nowrap flex-shrink-0",
+                "flex items-center justify-center gap-2 rounded-full px-4 h-8 text-[9px] sm:text-[10px] font-black transition-all shadow-lg active:scale-95 border outline-none focus:outline-none focus:ring-0 whitespace-nowrap flex-shrink-0 cursor-pointer",
                 activeConfig 
                     ? activeConfig.color 
                     : "bg-white/5 border-white/10 text-zinc-400 hover:bg-white/10 hover:text-white"
@@ -162,14 +168,14 @@ export default function WatchListButton({ animeId, animeTitle, animeImage, curre
             <DropdownMenuTrigger asChild>
                 {triggerButton}
             </DropdownMenuTrigger>
-            <DropdownMenuContent className="bg-[#0a0a0a] border-white/10 text-zinc-300 z-[100] shadow-2xl shadow-primary-900/20 min-w-[150px]">
+            <DropdownMenuContent className="min-w-[150px]">
                 {Object.keys(statusMap).map((key) => (
                     <DropdownMenuItem 
                         key={key} 
                         onClick={() => handleUpdate(key)} 
                         className={cn(
-                            "text-xs cursor-pointer hover:bg-white/5 gap-2 uppercase tracking-wide font-bold focus:bg-white/10",
-                            status === key && "text-primary-500 bg-primary-900/10"
+                            "gap-2 uppercase tracking-wide font-bold",
+                            status === key && "text-primary bg-primary/15"
                         )}
                     >
                         {statusMap[key].icon} {statusMap[key].label}
@@ -178,8 +184,8 @@ export default function WatchListButton({ animeId, animeTitle, animeImage, curre
                 
                 {status && (
                     <>
-                        <DropdownMenuSeparator className="bg-white/10" />
-                        <DropdownMenuItem onClick={handleRemove} className="text-xs cursor-pointer text-primary-500 hover:bg-primary-900/20 gap-2 font-bold uppercase tracking-wide focus:bg-primary-900/20">
+                        <DropdownMenuSeparator />
+                        <DropdownMenuItem onClick={handleRemove} className="text-rose-400 hover:text-rose-300 hover:bg-rose-500/10 gap-2 font-bold uppercase tracking-wide focus:bg-rose-500/10">
                             <Trash2 size={14} /> Remove
                         </DropdownMenuItem>
                     </>

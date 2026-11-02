@@ -80,10 +80,12 @@ interface ContinueItem {
   isAdult: boolean;
 }
 
+import { LibraryPageSkeleton, CardSkeleton } from '@/components/UIx/SkeletonLoaders';
+
 const WatchlistSkeleton = () => (
-  <div className="w-full grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4 md:gap-5 animate-pulse">
-    {[...Array(12)].map((_, i) => (
-      <div key={i} className="aspect-[2/3] bg-white/[0.03] rounded-2xl border border-white/5" />
+  <div className="w-full grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3 sm:gap-4 md:gap-5">
+    {Array.from({ length: 12 }).map((_, i) => (
+      <CardSkeleton key={i} />
     ))}
   </div>
 );
@@ -392,7 +394,7 @@ function WatchlistContent() {
   const activeSecondary = secondaryTabs.find(t => t.id === activeTab);
   const currentTotalCount = libraryMode === 'watchlist' ? watchlist.length : readlist.length;
 
-  if (authLoading) return <div className="min-h-screen bg-[#050507]" />;
+  if (authLoading) return <LibraryPageSkeleton />;
 
   return (
     <div className="flex-1 pb-16 pt-2">
@@ -1182,7 +1184,7 @@ function WatchlistContent() {
 export default function WatchlistPage() {
   return (
     <div className="min-h-screen bg-[#050507] text-white flex flex-col font-sans selection:bg-white/20 overflow-x-hidden">
-      <Suspense fallback={<div className="min-h-screen bg-[#050507]"><WatchlistSkeleton /></div>}>
+      <Suspense fallback={<LibraryPageSkeleton />}>
         <WatchlistContent />
       </Suspense>
       <Footer />

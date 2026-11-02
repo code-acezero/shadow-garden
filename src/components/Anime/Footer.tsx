@@ -38,9 +38,59 @@ function FooterComponent() {
         </div>
       </div>
 
-      {/* Main Multi-Column Footer Grid */}
+      {/* Main Multi-Column Footer Grid (Desktop) & Compact Mobile Footer */}
       <div className="w-full px-2 sm:px-4 md:px-6 pt-5 pb-2 md:pt-6 md:pb-2">
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6 lg:gap-8">
+        {/* Compact Mobile Footer (< md) - Shorter, sleek and clutter-free */}
+        <div className="flex md:hidden flex-col gap-2.5 text-center items-center py-2">
+          <div className="flex items-center justify-between w-full">
+            <Link 
+              href="/" 
+              onClick={() => playGummyTap()}
+              className="flex items-center gap-2 text-white group"
+            >
+              <span className="text-sm font-lemon font-black tracking-widest text-white group-hover:text-purple-400 transition-colors">
+                KAGEMI
+              </span>
+              <span className="text-[10px] font-mono text-zinc-500 font-bold uppercase tracking-wider">v4.0</span>
+            </Link>
+
+            <button 
+              onClick={scrollToTop} 
+              className="flex items-center gap-1 px-2.5 py-1 rounded-full bg-white/[0.04] text-zinc-400 hover:text-white border border-white/10 text-[10px] font-bold active:scale-95"
+              title="Return to top"
+            >
+              <span>Top</span>
+              <ChevronUp size={11} />
+            </button>
+          </div>
+
+          {/* Quick Category Links */}
+          <div className="flex items-center justify-center gap-3 text-xs font-semibold text-zinc-400">
+            <Link href="/explore?library=anime" onClick={() => playGummyTap()} className="hover:text-white transition-colors">Anime</Link>
+            <span>&bull;</span>
+            <Link href="/manga" onClick={() => playGummyTap()} className="hover:text-white transition-colors">Manga</Link>
+            <span>&bull;</span>
+            <Link href="/cinema" onClick={() => playGummyTap()} className="hover:text-white transition-colors">Cinema</Link>
+            <span>&bull;</span>
+            <Link href="/donghua" onClick={() => playGummyTap()} className="hover:text-white transition-colors">Donghua</Link>
+            <span>&bull;</span>
+            <Link href="/schedule" onClick={() => playGummyTap()} className="hover:text-white transition-colors">Schedule</Link>
+          </div>
+
+          {/* Legal Row */}
+          <div className="flex items-center justify-center gap-3 text-[10px] text-zinc-500">
+            <span>&copy; {currentYear} KAGEMI</span>
+            <span>&bull;</span>
+            <Link href="/settings" onClick={() => playGummyTap()} className="hover:text-zinc-300 transition-colors">DMCA</Link>
+            <span>&bull;</span>
+            <Link href="/settings" onClick={() => playGummyTap()} className="hover:text-zinc-300 transition-colors">Terms</Link>
+            <span>&bull;</span>
+            <Link href="/settings" onClick={() => playGummyTap()} className="hover:text-zinc-300 transition-colors">Privacy</Link>
+          </div>
+        </div>
+
+        {/* Complete Multi-Column Grid (Desktop & Tablet >= md) */}
+        <div className="hidden md:grid md:grid-cols-2 lg:grid-cols-5 gap-6 lg:gap-8">
           
           {/* Column 1 & 2: Branding & Platform Info */}
           <div className="lg:col-span-2 flex flex-col items-start gap-3 pr-0 lg:pr-8">
@@ -49,7 +99,7 @@ function FooterComponent() {
               onClick={() => playGummyTap()}
               className="flex flex-col text-white group"
             >
-              <span className="text-base md:text-lg font-lemon font-black tracking-widest text-white group-hover:text-red-400 transition-colors">
+              <span className="text-base md:text-lg font-lemon font-black tracking-widest text-white group-hover:text-purple-400 transition-colors">
                 KAGEMI
               </span>
               <span className="text-[8.5px] font-black uppercase tracking-[0.25em] text-zinc-500 -mt-0.5">
@@ -58,14 +108,14 @@ function FooterComponent() {
             </Link>
 
             <p className="text-xs text-zinc-400 leading-relaxed max-w-md font-medium">
-              An edge-accelerated, unified discovery sanctuary for Anime, Manga, Light Novels, Asian Dramas, and Worldwide Cinema. Engineered with ultra-minimal dark aesthetics and fluid interactions.
+              An edge-accelerated, unified discovery platform for Anime, Manga, Light Novels, Asian Dramas, and Worldwide Cinema. Engineered with ultra-minimal dark aesthetics and fluid interactions.
             </p>
           </div>
 
           {/* Column 3: Media Discovery */}
           <div className="flex flex-col gap-2.5">
             <div className="flex items-center gap-2 text-xs font-black uppercase tracking-[0.2em] text-white">
-              <Compass size={13} className="text-red-400" />
+              <Compass size={13} className="text-purple-400" />
               <span>Discovery</span>
             </div>
             <ul className="flex flex-col gap-2 text-xs font-medium">
@@ -185,7 +235,7 @@ function FooterComponent() {
           {/* Column 5: Platform & Compliance */}
           <div className="flex flex-col gap-2.5">
             <div className="flex items-center gap-2 text-xs font-black uppercase tracking-[0.2em] text-white">
-              <ShieldCheck size={13} className="text-blue-400" />
+              <ShieldCheck size={13} className="text-purple-400" />
               <span>Compliance</span>
             </div>
             
@@ -249,21 +299,17 @@ function FooterComponent() {
 
         </div>
 
-        {/* Bottom Legal & Copyright Strip */}
-        <div className="mt-6 pt-3 pb-5 md:pb-2 border-t border-white/[0.06] flex flex-col sm:flex-row items-center justify-between gap-3 text-xs font-medium text-zinc-500">
+        {/* Bottom Legal & Copyright Strip (Desktop) */}
+        <div className="hidden md:flex mt-6 pt-3 pb-2 border-t border-white/[0.06] flex-row items-center justify-between gap-3 text-xs font-medium text-zinc-500">
           
           <div className="flex items-center gap-2">
             <span>&copy; {currentYear} KAGEMI.</span>
             <span>All rights reserved.</span>
-            <span className="hidden sm:inline text-zinc-600">&bull;</span>
+            <span className="inline text-zinc-600">&bull;</span>
             <span className="text-[10px] font-mono font-bold tracking-wider text-zinc-500 uppercase">VERSION 4</span>
           </div>
 
           <div className="flex items-center gap-4">
-            <span className="text-[10px] text-zinc-600 tracking-wider uppercase font-bold">
-              ESTABLISHED IN THE SHADOWS
-            </span>
-
             {/* Back to Top Quick Action */}
             <button 
               onClick={scrollToTop} 

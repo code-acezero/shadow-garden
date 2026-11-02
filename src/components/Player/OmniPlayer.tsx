@@ -9,13 +9,14 @@ import {
   Wand2, AudioWaveform, PictureInPicture, Gauge,
   ChevronRight, ChevronLeft, MousePointerClick, 
   ChevronsLeft, ChevronsRight, Sun, MoveHorizontal, MoveVertical, RotateCcw, RotateCw,
-  Loader2, Cast, Radio, FastForward, SkipForward
+  Loader2, Cast, Radio, FastForward, SkipForward, Check
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { RunHappyPlayerLoader } from '@/components/UIx/SkeletonLoaders';
 import { adManager } from '@/lib/adManager';
 import IframeAdShield from './IframeAdShield';
 import PlayerAdBreakOverlay from './PlayerAdBreakOverlay';
+import PlayerEndingOverlay from './PlayerEndingOverlay';
 
 // --- 1. CONFIGURATION CONSTANTS ---
 const SUB_COLORS = { 
@@ -192,7 +193,7 @@ export interface OmniPlayerProps {
   onPlay?: () => void;
   onSkipIntro?: () => void;
   onSkipOutro?: () => void;
-  onProgress?: (state: { playedSeconds: number; loadedSeconds: number }) => void;
+  onProgress?: (state: { playedSeconds: number; loadedSeconds: number; duration?: number }) => void;
   onSeek?: (seconds: number) => void;
   onInteract?: () => void; 
   onPause?: () => void;
@@ -204,6 +205,18 @@ export interface OmniPlayerProps {
   onSettingsChange?: (key: string, value: any) => void;
   onError?: (error: any) => void;
   onAspectRatioChange?: (ratio: number) => void;
+  nextAiringEpisode?: {
+    episode?: number;
+    airingAt?: number;
+    timeUntilAiring?: number;
+    airingISOTimestamp?: string;
+    airingTimestamp?: number;
+  } | null;
+  status?: string;
+  animeTitle?: string;
+  totalEpisodes?: number;
+  currentEpisodeNumber?: number | string;
+  onReplay?: () => void;
 }
 
 export interface OmniPlayerRef {
@@ -221,7 +234,8 @@ const EMPTY_SUBTITLES: any[] = [];
 const OmniPlayer = forwardRef<OmniPlayerRef, OmniPlayerProps>(({ 
   url, iframeUrl, isEmbed, episodeId, title, poster, intro, outro, referer, isM3U8, autoSkip = false, autoSkipOutro = false, autoPlay = true, startTime = 0, subtitles = EMPTY_SUBTITLES,
   onEnded, onNext, hasNext, onPlay, onSkipIntro, onSkipOutro, onProgress, onSeek, onInteract, onPause, onBuffer, 
-  controlsTimeout = 3000, onControlsChange, initialVolume = 1, initialSpeed = 1, onSettingsChange, onError, onAspectRatioChange
+  controlsTimeout = 3000, onControlsChange, initialVolume = 1, initialSpeed = 1, onSettingsChange, onError, onAspectRatioChange,
+  nextAiringEpisode, status, animeTitle, totalEpisodes, currentEpisodeNumber, onReplay
 }, ref) => {
   // Refs
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -343,6 +357,7 @@ const OmniPlayer = forwardRef<OmniPlayerRef, OmniPlayerProps>(({
 
   // Gesture Refs
   const touchStartRef = useRef<{ x: number, y: number, time: number, val: number, bright: number, curTime: number } | null>(null);
+  const touchSeekTargetRef = useRef<number | null>(null);
   const gestureLockRef = useRef<'vertical' | 'horizontal' | null>(null); 
   const lastTapTimeRef = useRef(0);
 
@@ -350,6 +365,23 @@ const OmniPlayer = forwardRef<OmniPlayerRef, OmniPlayerProps>(({
   const [isPlaying, setIsPlaying] = useState(false);
   const [hasStarted, setHasStarted] = useState(false); 
   const [isBuffering, setIsBuffering] = useState(false); 
+
+  // Series Finale / Next Episode Digital Countdown Overlay State
+  const [showEndingOverlay, setShowEndingOverlay] = useState(false);
+
+  useEffect(() => {
+    setShowEndingOverlay(false);
+    hasSeekedStartTimeRef.current = false;
+  }, [url, episodeId]);
+
+  const handleReplayEnding = useCallback(() => {
+    setShowEndingOverlay(false);
+    if (videoRef.current) {
+      videoRef.current.currentTime = 0;
+      videoRef.current.play().then(() => setIsPlaying(true)).catch(() => {});
+    }
+    onReplay?.();
+  }, [onReplay]); 
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(0);
   const [volume, setVolume] = useState(initialVolume);
@@ -365,6 +397,16 @@ const OmniPlayer = forwardRef<OmniPlayerRef, OmniPlayerProps>(({
   const [showControls, setShowControls] = useState(true);
   const [showSkipIntro, setShowSkipIntro] = useState(false);
   const [showSkipOutro, setShowSkipOutro] = useState(false);
+  const [skippedHudToast, setSkippedHudToast] = useState<'intro' | 'outro' | null>(null);
+  const skippedHudTimerRef = useRef<NodeJS.Timeout | null>(null);
+
+  const triggerSkippedHudToast = useCallback((type: 'intro' | 'outro') => {
+    if (skippedHudTimerRef.current) clearTimeout(skippedHudTimerRef.current);
+    setSkippedHudToast(type);
+    skippedHudTimerRef.current = setTimeout(() => {
+      setSkippedHudToast(null);
+    }, 2500);
+  }, []);
   const [isScrubbing, setIsScrubbing] = useState(false);
   const [hoverTime, setHoverTime] = useState<number | null>(null);
   const [hoverPos, setHoverPos] = useState<number>(0);
@@ -538,7 +580,11 @@ const OmniPlayer = forwardRef<OmniPlayerRef, OmniPlayerProps>(({
 
   useImperativeHandle(ref, () => ({
     getCurrentTime: () => (useIframe ? iframeTimeRef.current : (videoRef.current?.currentTime || 0)),
-    getDuration: () => (useIframe ? (iframeDurationRef.current || 1440) : (videoRef.current?.duration || 0)),
+    getDuration: () => {
+        if (useIframe) return iframeDurationRef.current || 1440;
+        const d = videoRef.current?.duration;
+        return (typeof d === 'number' && !isNaN(d) && isFinite(d) && d > 0) ? d : (duration > 0 ? duration : 1440);
+    },
     seekTo: (time: number) => { 
         if (useIframe) {
             iframeTimeRef.current = time;
@@ -589,7 +635,11 @@ const OmniPlayer = forwardRef<OmniPlayerRef, OmniPlayerProps>(({
             }
             if (data.event === 'ended' || data.type === 'ended') {
                 onEnded?.();
-                onNext?.();
+                if (canGoNext) {
+                    onNext?.();
+                } else {
+                    setShowEndingOverlay(true);
+                }
             }
         } catch {}
     };
@@ -643,7 +693,11 @@ const OmniPlayer = forwardRef<OmniPlayerRef, OmniPlayerProps>(({
 
         if (cur >= dur - 15) {
             onEnded?.();
-            onNext?.();
+            if (canGoNext) {
+                onNext?.();
+            } else {
+                setShowEndingOverlay(true);
+            }
         }
     }, 1000);
 
@@ -741,9 +795,41 @@ const OmniPlayer = forwardRef<OmniPlayerRef, OmniPlayerProps>(({
         videoRef.current.playbackRate = initialSpeed;
         
         const checkForCast = () => {
-            // @ts-ignore
-            if (videoRef.current && typeof videoRef.current.remote !== 'undefined') {
-                setCastAvailable(true);
+            const v = videoRef.current;
+            if (typeof window !== 'undefined') {
+                const hasCastFramework = !!(window as any).cast?.framework || !!(window as any).chrome?.cast;
+                const hasRemote = v && typeof (v as any).remote !== 'undefined';
+                const hasAirPlay = v && typeof (v as any).webkitShowPlaybackTargetPicker === 'function';
+                const hasPresentation = 'PresentationRequest' in window || (typeof navigator !== 'undefined' && 'presentation' in navigator);
+                if (hasCastFramework || hasRemote || hasAirPlay || hasPresentation) {
+                    setCastAvailable(true);
+                }
+                if (v && typeof (v as any).addEventListener === 'function') {
+                    (v as any).addEventListener('webkitplaybacktargetavailabilitychanged', (e: any) => {
+                        if (e.availability === 'available') setCastAvailable(true);
+                    });
+                }
+
+                // Dynamically inject Google Cast SDK for Chrome / Edge
+                if (!(window as any).__googleCastLoaded) {
+                    (window as any).__googleCastLoaded = true;
+                    (window as any)['__onGCastApiAvailable'] = (isAvailable: boolean) => {
+                        if (isAvailable && (window as any).cast?.framework) {
+                            try {
+                                const castContext = (window as any).cast.framework.CastContext.getInstance();
+                                castContext.setOptions({
+                                    receiverApplicationId: (window as any).chrome?.cast?.media?.DEFAULT_MEDIA_RECEIVER_APP_ID || 'CC1AD845',
+                                    autoJoinPolicy: (window as any).chrome?.cast?.AutoJoinPolicy?.ORIGIN_SCOPED || 'origin_scoped',
+                                });
+                                setCastAvailable(true);
+                            } catch {}
+                        }
+                    };
+                    const s = document.createElement('script');
+                    s.src = 'https://www.gstatic.com/cv/js/sender/v1/cast_sender.js?loadCastFramework=1';
+                    s.async = true;
+                    document.head.appendChild(s);
+                }
             }
         };
         checkForCast();
@@ -815,6 +901,18 @@ const OmniPlayer = forwardRef<OmniPlayerRef, OmniPlayerProps>(({
       hls.on(Hls.Events.MANIFEST_PARSED, (_, data) => {
         const levels = data.levels.map((l, i) => ({ height: l.height, index: i })).sort((a, b) => b.height - a.height);
         setQualities(levels);
+        
+        // Ensure direct HLS accurately seeks to saved progress on startup
+        if (startTime > 0 && !hasSeekedStartTimeRef.current) {
+            try {
+                video.currentTime = startTime;
+                setCurrentTime(startTime);
+                hasSeekedStartTimeRef.current = true;
+            } catch (e) {}
+        }
+        hasInitializedRef.current = true;
+        canSaveRef.current = true;
+
         if (autoPlay) {
             const playPromise = video.play();
             if (playPromise !== undefined) {
@@ -826,6 +924,17 @@ const OmniPlayer = forwardRef<OmniPlayerRef, OmniPlayerProps>(({
                 });
             }
         }
+      });
+      hls.on(Hls.Events.LEVEL_LOADED, (_, data) => {
+          if (startTime > 0 && !hasSeekedStartTimeRef.current && data.details && !data.details.live) {
+              try {
+                  video.currentTime = startTime;
+                  setCurrentTime(startTime);
+                  hasSeekedStartTimeRef.current = true;
+              } catch (e) {}
+          }
+          hasInitializedRef.current = true;
+          canSaveRef.current = true;
       });
       hls.on(Hls.Events.LEVEL_SWITCHED, (_, data) => {
           const height = hls.levels[data.level]?.height;
@@ -1096,6 +1205,7 @@ const OmniPlayer = forwardRef<OmniPlayerRef, OmniPlayerProps>(({
     if (isNaN(introEnd) || introEnd <= 0) return;
     hasSkippedIntroRef.current = true;
     setShowSkipIntro(false);
+    triggerSkippedHudToast('intro');
     notifyWhisper("Skipped Intro", "success");
     onSkipIntro?.();
 
@@ -1122,6 +1232,7 @@ const OmniPlayer = forwardRef<OmniPlayerRef, OmniPlayerProps>(({
   const executeSkipOutro = useCallback(() => {
     hasSkippedOutroRef.current = true;
     setShowSkipOutro(false);
+    triggerSkippedHudToast('outro');
     notifyWhisper("Skipped Outro", "success");
     onSkipOutro?.();
 
@@ -1187,16 +1298,65 @@ const OmniPlayer = forwardRef<OmniPlayerRef, OmniPlayerProps>(({
   };
 
   const handleCast = async () => {
-      if (videoRef.current && 'remote' in videoRef.current) {
+      // 1. Google Cast Framework (Chromecast, Google TV, Android TV, Smart TVs)
+      if (typeof window !== 'undefined') {
           try {
-              // @ts-ignore
-              await videoRef.current.remote.prompt();
-          } catch (e) {
-              notifyWhisper("Casting not available or cancelled", "error");
+              const castContext = (window as any).cast?.framework?.CastContext?.getInstance?.();
+              if (castContext) {
+                  await castContext.requestSession();
+                  notifyWhisper("Casting connected", "success");
+                  return;
+              }
+          } catch (e: any) {
+              if (e?.name === 'Cancel' || e?.errorCode === 'cancel' || e?.message?.includes('cancel')) {
+                  return; // User cancelled
+              }
+              console.warn("Google Cast request error", e);
           }
-      } else {
-          notifyWhisper("Casting not supported in this browser", "error");
       }
+
+      const v = videoRef.current;
+
+      // 2. Apple Safari AirPlay
+      if (v && typeof (v as any).webkitShowPlaybackTargetPicker === 'function') {
+          try {
+              (v as any).webkitShowPlaybackTargetPicker();
+              return;
+          } catch (e: any) {
+              console.warn("AirPlay prompt failed", e);
+          }
+      }
+
+      // 3. Chromium Remote Playback API
+      if (v && 'remote' in v && typeof (v as any).remote?.prompt === 'function') {
+          try {
+              await (v as any).remote.prompt();
+              return;
+          } catch (e: any) {
+              if (e.name === 'NotAllowedError' || e.name === 'AbortError') {
+                  return; // User dismissed picker
+              }
+              console.warn("Remote Playback failed, trying Presentation API fallback", e);
+          }
+      }
+
+      // 4. Presentation API Fallback (Supported on Chrome/Edge/Smart TVs)
+      if (typeof window !== 'undefined' && 'PresentationRequest' in window) {
+          try {
+              const targetUrl = (url && url.startsWith('http')) ? url : window.location.href;
+              const request = new (window as any).PresentationRequest([targetUrl]);
+              await request.start();
+              notifyWhisper("Cast connection initiated", "success");
+              return;
+          } catch (e: any) {
+              if (e.name === 'NotAllowedError' || e.name === 'AbortError') {
+                  return; // User cancelled
+              }
+              console.warn("Presentation API error", e);
+          }
+      }
+
+      notifyWhisper("Casting initiated or use browser menu (⋮ > Cast)", "info");
   };
 
   const toggleMute = () => {
@@ -1240,11 +1400,20 @@ const OmniPlayer = forwardRef<OmniPlayerRef, OmniPlayerProps>(({
 
     if (!hasStarted && video.currentTime > 0) setHasStarted(true); 
     
+    // Do not report 0s progress if we are supposed to resume from startTime > 0
+    if (startTime > 5 && video.currentTime < 2 && !hasSeekedStartTimeRef.current) {
+        return;
+    }
+
     if (onProgress && (canSaveRef.current || video.currentTime > 0)) { 
         canSaveRef.current = true;
         const now = Date.now();
-        if (now - lastProgressTimeRef.current > 1000) {
-            onProgress({ playedSeconds: video.currentTime, loadedSeconds: video.buffered.length ? video.buffered.end(video.buffered.length - 1) : 0 });
+        if (now - lastProgressTimeRef.current > 350) {
+            onProgress({ 
+                playedSeconds: video.currentTime, 
+                loadedSeconds: video.buffered.length ? video.buffered.end(video.buffered.length - 1) : 0,
+                duration: video.duration || 0
+            });
             lastProgressTimeRef.current = now;
         }
     }
@@ -1395,6 +1564,12 @@ const OmniPlayer = forwardRef<OmniPlayerRef, OmniPlayerProps>(({
   };
 
   const handleTouchStart = (e: React.TouchEvent) => {
+      // Seekbar preview must NEVER show or get stuck during player video touch / gestures
+      setHoverTime(null);
+      setIsHoveringSeek(false);
+      setIsScrubbing(false);
+      touchSeekTargetRef.current = null;
+
       const target = e.target as HTMLElement;
       if (target.closest('button') || target.closest('input') || target.closest('[role="menu"]') || target.closest('[data-player-menu="true"]') || target.closest('.absolute.bottom-12') || target.closest('.absolute.bottom-16') || target.closest('[class*="group/seek"]') || target.closest('[class*="bg-black/60"]')) return;
       if (!videoRef.current || !containerRef.current) return;
@@ -1436,10 +1611,15 @@ const OmniPlayer = forwardRef<OmniPlayerRef, OmniPlayerProps>(({
       if (gestureLockRef.current === 'horizontal') {
           if (horizontalGesture === 'seek') {
               const seekTime = Math.max(0, Math.min(duration, touchStartRef.current.curTime + (deltaX / rect.width) * 90)); 
-              videoRef.current.currentTime = seekTime;
+              touchSeekTargetRef.current = seekTime;
               setCurrentTime(seekTime);
+              const deltaSeconds = Math.round(seekTime - touchStartRef.current.curTime);
+              const deltaSign = deltaSeconds > 0 ? '+' : '';
               const seekIcon = deltaX > 0 ? <ChevronsRight size={32}/> : <ChevronsLeft size={32}/>;
-              setGestureOverlay({ icon: seekIcon, text: formatTime(seekTime) });
+              setGestureOverlay({ 
+                  icon: seekIcon, 
+                  text: `${deltaSign}${deltaSeconds}s (${formatTime(seekTime)})` 
+              });
           } else if (horizontalGesture === 'volume') {
               const newVol = Math.max(0, Math.min(1, touchStartRef.current.val + (deltaX / 200)));
               setVolume(newVol);
@@ -1465,7 +1645,24 @@ const OmniPlayer = forwardRef<OmniPlayerRef, OmniPlayerProps>(({
   const handleTouchEnd = (e: React.TouchEvent) => {
       endLongPress(); 
       setGestureOverlay(null); 
+      setHoverTime(null);
+      setIsHoveringSeek(false);
+      setIsScrubbing(false);
+
       if (!touchStartRef.current) return;
+      
+      // If horizontal seek gesture was performed, commit the target seek position cleanly on touch release
+      if (gestureLockRef.current === 'horizontal' && horizontalGesture === 'seek' && touchSeekTargetRef.current !== null) {
+          const finalSeekTime = touchSeekTargetRef.current;
+          if (videoRef.current) {
+              videoRef.current.currentTime = finalSeekTime;
+              setCurrentTime(finalSeekTime);
+          }
+          syncSubtitlesAtTime(finalSeekTime);
+          if (onSeek) onSeek(finalSeekTime);
+          if (canSaveRef.current) onInteract?.();
+          touchSeekTargetRef.current = null;
+      }
       
       const deltaX = e.changedTouches[0].clientX - touchStartRef.current.x;
       const deltaY = touchStartRef.current.y - e.changedTouches[0].clientY;
@@ -1483,6 +1680,7 @@ const OmniPlayer = forwardRef<OmniPlayerRef, OmniPlayerProps>(({
       }
       touchStartRef.current = null;
       gestureLockRef.current = null;
+      touchSeekTargetRef.current = null;
   };
 
   const handleMouseDown = (e: React.MouseEvent) => {
@@ -1572,8 +1770,11 @@ const OmniPlayer = forwardRef<OmniPlayerRef, OmniPlayerProps>(({
         seekTargetRef.current = null; 
     }
     setIsScrubbing(false); 
-    if (!isHoveringSeek) {
+    // On touch devices or touch events, ALWAYS clear hoverTime and isHoveringSeek immediately
+    const isTouch = 'changedTouches' in e || 'touches' in e || (typeof window !== 'undefined' && !window.matchMedia('(hover: hover) and (pointer: fine)').matches);
+    if (isTouch || !isHoveringSeek) {
       setHoverTime(null);
+      setIsHoveringSeek(false);
     }
     syncSubtitlesAtTime(time);
     if (onSeek) onSeek(time);
@@ -1581,6 +1782,8 @@ const OmniPlayer = forwardRef<OmniPlayerRef, OmniPlayerProps>(({
   };
 
   const handleSeekHover = (e: React.MouseEvent<HTMLDivElement>) => {
+    // Only handle hover for fine mouse pointer devices (never touch-synthesized mouse events)
+    if (typeof window !== 'undefined' && !window.matchMedia('(hover: hover) and (pointer: fine)').matches) return;
     const rect = e.currentTarget.getBoundingClientRect();
     const clampedX = Math.max(0, Math.min(rect.width, e.clientX - rect.left));
     const percent = rect.width > 0 ? (clampedX / rect.width) * 100 : 0;
@@ -1601,6 +1804,7 @@ const OmniPlayer = forwardRef<OmniPlayerRef, OmniPlayerProps>(({
       const clampedX = Math.max(0, Math.min(rect.width, touch.clientX - rect.left));
       const percent = rect.width > 0 ? (clampedX / rect.width) * 100 : 0;
       const time = (percent / 100) * (duration || 0);
+      setIsScrubbing(true);
       setHoverTime(time);
       setHoverPos(percent);
       setHoverPixelX(clampedX);
@@ -1639,9 +1843,11 @@ const OmniPlayer = forwardRef<OmniPlayerRef, OmniPlayerProps>(({
   useEffect(() => {
       if (startTime > 0 && videoRef.current && !hasSeekedStartTimeRef.current) {
           try {
-              videoRef.current.currentTime = startTime;
-              setCurrentTime(startTime);
-              hasSeekedStartTimeRef.current = true;
+              if (videoRef.current.readyState >= 1) {
+                  videoRef.current.currentTime = startTime;
+                  setCurrentTime(startTime);
+                  hasSeekedStartTimeRef.current = true;
+              }
           } catch (e) {}
       }
   }, [startTime]);
@@ -1761,6 +1967,7 @@ const OmniPlayer = forwardRef<OmniPlayerRef, OmniPlayerProps>(({
       onTouchStart={handleTouchStart}
       onTouchMove={handleTouchMove}
       onTouchEnd={handleTouchEnd}
+      onTouchCancel={handleTouchEnd}
       onContextMenu={(e) => e.preventDefault()} 
     >
       <video
@@ -1769,10 +1976,43 @@ const OmniPlayer = forwardRef<OmniPlayerRef, OmniPlayerProps>(({
         className="w-full h-full object-contain transition-all duration-100 outline-none focus:outline-none"
         style={{ filter: isPiPActive ? 'none' : `brightness(${brightness})` }} 
         onPlay={() => { setIsPlaying(true); updateBuffering(false); onPlay?.(); showUI(); }}
-        onPause={() => { setIsPlaying(false); onPause?.(); if(canSaveRef.current) onInteract?.(); showUI(); }}
+        onPause={() => { 
+          setIsPlaying(false); 
+          if (videoRef.current) {
+            onProgress?.({
+              playedSeconds: videoRef.current.currentTime,
+              loadedSeconds: videoRef.current.buffered.length ? videoRef.current.buffered.end(videoRef.current.buffered.length - 1) : 0,
+              duration: videoRef.current.duration || 0
+            });
+          }
+          onPause?.(); 
+          if(canSaveRef.current) onInteract?.(); 
+          showUI(); 
+        }}
+        onSeeked={() => {
+          if (videoRef.current) {
+            onSeek?.(videoRef.current.currentTime);
+            onProgress?.({
+              playedSeconds: videoRef.current.currentTime,
+              loadedSeconds: videoRef.current.buffered.length ? videoRef.current.buffered.end(videoRef.current.buffered.length - 1) : 0,
+              duration: videoRef.current.duration || 0
+            });
+          }
+        }}
         onWaiting={() => { if(!seekOverlay) updateBuffering(true); }}
         onPlaying={() => { updateBuffering(false); setHasStarted(true); }}
-        onCanPlay={() => updateBuffering(false)}
+        onCanPlay={() => {
+          updateBuffering(false);
+          if (startTime > 0 && !hasSeekedStartTimeRef.current && videoRef.current) {
+            try {
+              if (Math.abs(videoRef.current.currentTime - startTime) > 2) {
+                videoRef.current.currentTime = startTime;
+                setCurrentTime(startTime);
+              }
+              hasSeekedStartTimeRef.current = true;
+            } catch (err) {}
+          }
+        }}
         onTimeUpdate={handleTimeUpdate}
         onLoadedMetadata={() => {
             if (videoRef.current) {
@@ -1802,7 +2042,13 @@ const OmniPlayer = forwardRef<OmniPlayerRef, OmniPlayerProps>(({
                 }
             }
         }}
-        onEnded={() => { if(canSaveRef.current) onInteract?.(); onEnded?.(); }}
+        onEnded={() => { 
+          if(canSaveRef.current) onInteract?.(); 
+          onEnded?.(); 
+          if (!canGoNext) {
+            setShowEndingOverlay(true);
+          }
+        }}
         playsInline
         {...(trackSubtitles.length > 0 ? { crossOrigin: "anonymous" } : {})}
       >
@@ -1913,9 +2159,21 @@ const OmniPlayer = forwardRef<OmniPlayerRef, OmniPlayerProps>(({
           videoRef.current?.play().then(() => setIsPlaying(true)).catch(() => {});
         }}
       />
+
+      {/* Series Finale / Next Episode Digital Countdown Overlay */}
+      <PlayerEndingOverlay
+        isOpen={showEndingOverlay}
+        onClose={() => setShowEndingOverlay(false)}
+        onReplay={handleReplayEnding}
+        animeTitle={animeTitle || title}
+        currentEpisodeNumber={currentEpisodeNumber}
+        totalEpisodes={totalEpisodes}
+        status={status}
+        nextAiringEpisode={nextAiringEpisode}
+      />
       
       {/* Title Island with Cast */}
-      <div className={cn("absolute top-2 md:top-4 left-1/2 -translate-x-1/2 z-40 transition-all duration-500 max-w-[90%] w-auto", showControls ? "opacity-100 translate-y-0" : "opacity-0 -translate-y-10")}>
+      <div className={cn("absolute top-2 md:top-4 left-1/2 -translate-x-1/2 z-40 transition-all duration-500 max-w-[90%] w-auto", (showControls && !showEndingOverlay) ? "opacity-100 translate-y-0" : "opacity-0 -translate-y-10 pointer-events-none")}>
           <div ref={titleContainerRef} className="bg-black/60 md:bg-black/80 border border-white/10 rounded-full px-4 py-1.5 md:py-2 shadow-2xl backdrop-blur-md flex items-center gap-3 overflow-hidden pointer-events-auto">
               
               
@@ -1940,7 +2198,7 @@ const OmniPlayer = forwardRef<OmniPlayerRef, OmniPlayerProps>(({
           transform: 'translate(-50%, -50%)',
         }}
       >
-          {!isBuffering && !seekOverlay && !gestureOverlay && (
+          {!isBuffering && !seekOverlay && !gestureOverlay && !showEndingOverlay && (
             <>
               {/* Mobile Quick Rewind 10s (Hidden on desktop to preserve desktop UI) */}
               <button
@@ -1993,10 +2251,18 @@ const OmniPlayer = forwardRef<OmniPlayerRef, OmniPlayerProps>(({
           )}
       </div>
 
-      <div className={cn("absolute inset-0 bg-gradient-to-t from-black/90 via-transparent to-transparent flex flex-col justify-end px-3 pb-2 md:px-5 md:pb-3 transition-opacity duration-300 z-[60] pointer-events-none", showControls ? "opacity-100" : "opacity-0")}>
+      <div className={cn("absolute inset-0 bg-gradient-to-t from-black/90 via-transparent to-transparent flex flex-col justify-end px-3 pb-2 md:px-5 md:pb-3 transition-opacity duration-300 z-[60] pointer-events-none", (showControls && !showEndingOverlay) ? "opacity-100" : "opacity-0 pointer-events-none")}>
         {(() => {
-          const showPreview = (hoverTime !== null || isScrubbing) && (duration > 0);
-          const previewTime = isScrubbing ? currentTime : (hoverTime ?? 0);
+          const isTouchOnly = typeof window !== 'undefined' && !window.matchMedia('(hover: hover) and (pointer: fine)').matches;
+          // Seek preview should ONLY show when directly interacting with the seekbar:
+          // - On mobile / touch devices: ONLY while actively touching & scrubbing the seekbar (isScrubbing === true)
+          // - On desktop with mouse: while scrubbing OR while actively hovering over the seekbar with mouse (isHoveringSeek && hoverTime !== null)
+          const showPreview = duration > 0 && (
+            isTouchOnly 
+              ? isScrubbing 
+              : (isScrubbing || (hoverTime !== null && isHoveringSeek))
+          );
+          const previewTime = isScrubbing ? (hoverTime ?? currentTime) : (hoverTime ?? 0);
           const previewPos = duration > 0 ? (previewTime / duration) * 100 : 0;
           const currentVideoTime = useIframe ? iframeTimeRef.current : (videoRef.current?.currentTime || 0);
           const seekDeltaSeconds = Math.round(previewTime - currentVideoTime);
@@ -2056,6 +2322,7 @@ const OmniPlayer = forwardRef<OmniPlayerRef, OmniPlayerProps>(({
               className="group/seek relative w-full h-4 sm:h-5 flex items-center cursor-pointer mb-1.5 md:mb-2 pointer-events-auto select-none" 
               onMouseMove={handleSeekHover} 
               onMouseEnter={(e) => {
+                if (typeof window !== 'undefined' && !window.matchMedia('(hover: hover) and (pointer: fine)').matches) return;
                 setIsHoveringSeek(true);
                 const rect = e.currentTarget.getBoundingClientRect();
                 if (rect.width > 0) setSeekbarWidth(rect.width);
@@ -2233,6 +2500,7 @@ const OmniPlayer = forwardRef<OmniPlayerRef, OmniPlayerProps>(({
                 onTouchMove={handleTouchSeek}
                 onMouseUp={handleSeekEnd} 
                 onTouchEnd={handleSeekEnd} 
+                onTouchCancel={handleSeekEnd} 
                 className="absolute inset-0 w-full h-full opacity-0 cursor-pointer pointer-events-auto z-10" 
                 onClick={(e) => e.stopPropagation()} 
               />
@@ -2398,6 +2666,15 @@ const OmniPlayer = forwardRef<OmniPlayerRef, OmniPlayerProps>(({
                  </div>
                 )}
 
+              {castAvailable && (
+                <button 
+                  onClick={(e) => { e.stopPropagation(); handleCast(); }} 
+                  className="hidden sm:flex hover:text-primary-500 transition-colors active:scale-90 w-9 h-9 sm:w-10 sm:h-10 md:w-auto md:h-auto items-center justify-center p-1 md:p-0 text-white"
+                  title="Cast / AirPlay"
+                >
+                  <Cast size={18} className="md:w-4.5 md:h-4.5"/>
+                </button>
+              )}
               <button 
                 onClick={(e) => { e.stopPropagation(); togglePiP(); }} 
                 className="hidden sm:flex hover:text-primary-500 transition-colors active:scale-90 w-9 h-9 sm:w-10 sm:h-10 md:w-auto md:h-auto items-center justify-center p-1 md:p-0 text-white"
@@ -2459,6 +2736,48 @@ const OmniPlayer = forwardRef<OmniPlayerRef, OmniPlayerProps>(({
           <SkipForward size={14} className="text-indigo-400" /> Skip Outro
         </button>
       )}
+      {/* In-Player Skipped Intro Toast (LEFT) */}
+      <AnimatePresence>
+        {skippedHudToast === 'intro' && (
+          <motion.div
+            initial={{ opacity: 0, x: -24, scale: 0.92 }}
+            animate={{ opacity: 1, x: 0, scale: 1 }}
+            exit={{ opacity: 0, x: -20, scale: 0.95 }}
+            transition={{ type: 'spring', stiffness: 350, damping: 25 }}
+            style={{
+              bottom: showControls ? (isMobile ? '70px' : '78px') : (isMobile ? '20px' : '26px'),
+            }}
+            className="absolute left-4 sm:left-6 z-[85] pointer-events-none flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-black/85 backdrop-blur-md border border-amber-500/30 shadow-[0_8px_24px_rgba(0,0,0,0.7)] text-amber-300 text-[11px] font-mono font-bold uppercase tracking-wider"
+          >
+            <div className="w-3.5 h-3.5 bg-amber-400 rounded-full flex items-center justify-center shrink-0">
+              <Check size={8} className="text-black stroke-[4]" />
+            </div>
+            <span>Skipped Intro</span>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* In-Player Skipped Outro Toast (RIGHT) */}
+      <AnimatePresence>
+        {skippedHudToast === 'outro' && (
+          <motion.div
+            initial={{ opacity: 0, x: 24, scale: 0.92 }}
+            animate={{ opacity: 1, x: 0, scale: 1 }}
+            exit={{ opacity: 0, x: 20, scale: 0.95 }}
+            transition={{ type: 'spring', stiffness: 350, damping: 25 }}
+            style={{
+              bottom: showControls ? (isMobile ? '70px' : '78px') : (isMobile ? '20px' : '26px'),
+            }}
+            className="absolute right-4 sm:right-6 z-[85] pointer-events-none flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-black/85 backdrop-blur-md border border-indigo-500/30 shadow-[0_8px_24px_rgba(0,0,0,0.7)] text-indigo-300 text-[11px] font-mono font-bold uppercase tracking-wider"
+          >
+            <span>Skipped Outro</span>
+            <div className="w-3.5 h-3.5 bg-indigo-400 rounded-full flex items-center justify-center shrink-0">
+              <Check size={8} className="text-black stroke-[4]" />
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       {!isPlaying && duration > 0 && Math.abs(currentTime - duration) < 1 && canGoNext && onNext && (
         <button 
           type="button"

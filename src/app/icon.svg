@@ -1,14 +1,16 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
-  <style>
-    @media (prefers-color-scheme: dark) {
-      /* Optional: Add glow logic here if supported by browser */
-    }
-  </style>
-  <circle cx="12" cy="12" r="10" fill="white" stroke="black" stroke-width="0.5" />
-  
-  <path fill="#dc2626" d="M12 2a10 10 0 0 1 0 20 5 5 0 0 1 0-10 5 5 0 0 0 0-10z" />
-  
-  <circle cx="12" cy="7" r="1.5" fill="#dc2626" />
-  
-  <circle cx="12" cy="17" r="1.5" fill="white" />
+  <defs>
+    <linearGradient id="violet_grad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#a78bfa" />
+      <stop offset="100%" stop-color="#7c3aed" />
+    </linearGradient>
+    <linearGradient id="white_grad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#ffffff" />
+      <stop offset="100%" stop-color="#ede9fe" />
+    </linearGradient>
+  </defs>
+  <circle cx="12" cy="12" r="10" fill="url(#white_grad)" stroke="#4c1d95" stroke-width="0.75" />
+  <path fill="url(#violet_grad)" d="M12 2a10 10 0 0 1 0 20 5 5 0 0 1 0-10 5 5 0 0 0 0-10z" />
+  <circle cx="12" cy="7" r="1.6" fill="url(#violet_grad)" />
+  <circle cx="12" cy="17" r="1.6" fill="#ffffff" />
 </svg>

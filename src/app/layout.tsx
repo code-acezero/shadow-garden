@@ -18,6 +18,8 @@ import AdScriptInjector from '@/components/Ads/AdScriptInjector';
 import PWAInstaller from '@/components/PWA/PWAInstaller';
 import ChunkErrorRecovery from '@/components/Utils/ChunkErrorRecovery';
 import { ATELIER_GLOBAL_DEFS_SVG, ATELIER_GLOBAL_CSS } from '@/lib/atelierFrames';
+import '@/kagemi-frames/frames.css';
+import FrameDefs from '@/kagemi-frames/components/FrameDefs';
 
 // Import fonts from your library (Optimized: These are just variable definitions now)
 import { 
@@ -25,7 +27,7 @@ import {
 } from '@/lib/fonts';
 
 export const viewport: Viewport = {
-  themeColor: '#050505',
+  themeColor: '#070512',
   width: 'device-width',
   initialScale: 1,
   maximumScale: 1,
@@ -233,7 +235,10 @@ export default function RootLayout({
         />
               <style id="atelier-global-styles" dangerouslySetInnerHTML={{ __html: ATELIER_GLOBAL_CSS }} />
       </head>
-      <body className={`font-sans bg-[#050505] text-foreground antialiased selection:bg-primary-900/30 selection:text-primary-50`} suppressHydrationWarning>
+      <body className={`font-sans bg-background text-foreground antialiased selection:bg-primary-900/30 selection:text-primary-50`} suppressHydrationWarning>
+        {/* Kagemi SVG Frame Defs (169 frames) */}
+        <FrameDefs />
+
         {/* Global Frame Symbols & Defs */}
         <div id="atelier-global-defs" aria-hidden="true" className="contents" dangerouslySetInnerHTML={{ __html: ATELIER_GLOBAL_DEFS_SVG }} />
         

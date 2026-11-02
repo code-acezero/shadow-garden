@@ -1,0 +1,16 @@
+/* Kagemi frames: import once (app/layout.tsx). Everything is scoped under .kf-root. */
+.kf-root{position:relative;display:inline-block;line-height:0}
+.kf-root svg{display:block;overflow:visible}
+.kf-root .p{transform-box:fill-box;transform-origin:center;animation:kf-pl var(--d,3s) ease-in-out infinite}
+.kf-root .tw{animation:kf-tw var(--d,3s) ease-in-out infinite}
+.kf-root .b{animation:kf-bo var(--d,3s) ease-in-out infinite}
+.kf-root .rise{animation:kf-ri var(--d,3s) linear infinite}
+.kf-root .fk{animation:kf-fk var(--d,2s) linear infinite}
+.kf-root .ly{transform:translate(calc(var(--z) * var(--px,0) * 1px),calc(var(--z) * var(--py,0) * 1px));transition:transform .2s ease-out}
+@keyframes kf-pl{50%{transform:scale(1.14);opacity:.65}}
+@keyframes kf-tw{0%,100%{opacity:.2}50%{opacity:1}}
+@keyframes kf-bo{50%{transform:translateY(-3px)}}
+@keyframes kf-ri{0%{transform:translate(0,0);opacity:0}20%{opacity:1}100%{transform:translate(var(--x,0),var(--y,-30px));opacity:0}}
+@keyframes kf-fk{0%,86%,95%,100%{opacity:0}88%,93%{opacity:1}91%{opacity:.2}}
+.kf-root .kf-paused *{animation-play-state:paused!important}
+@media (prefers-reduced-motion:reduce){.kf-root svg *{animation:none!important}}

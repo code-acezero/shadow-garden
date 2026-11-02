@@ -691,26 +691,43 @@ export class AnimeService {
             }
 
             if (blakiteDetail) {
-                const cleanTitle = (blakiteDetail.title || '')
-                    .replace(/\(Hindi Dubbed\)/i, '')
-                    .replace(/\(Hindi Dub\)/i, '')
-                    .replace(/\[Hindi Dub\]/i, '')
+                const { cleanBlakiteTitle } = await import('@/lib/blakite');
+                const cleanTitle = cleanBlakiteTitle(blakiteDetail.title || '')
+                    .replace(/\s*[\(\[]\s*(Season\s*\d+|S\d+)\s*[\)\]]/gi, '')
                     .replace(/Season \d+/i, '')
                     .trim();
 
                 let anilistMatch: UniversalAnime | null = null;
                 if (cleanTitle) {
                     anilistMatch = await AniListService.getAnimeInfo(cleanTitle).catch(() => null);
+                    if (!anilistMatch) {
+                        const searchResults = await AniListService.search(cleanTitle, 1, 1).catch(() => null);
+                        if (searchResults?.results?.[0]?.id) {
+                            anilistMatch = await AniListService.getAnimeInfo(String(searchResults.results[0].id)).catch(() => null);
+                        }
+                    }
                 }
 
                 if (anilistMatch) {
-                    (anilistMatch as any).hindiDub = {
-                        available: true,
-                        dubType: blakiteDetail.language === 'ORG' ? 'Hindi Official Dub' : 'Hindi Dub',
-                        blakiteId: blakiteDetail.id,
-                        totalEpisodes: blakiteDetail.episodes?.length || 1,
-                        score: blakiteDetail.score
-                    };
+                    const isEng = /english/i.test(blakiteDetail.title || blakiteDetail.language || '');
+                    (anilistMatch as any).blakiteId = blakiteDetail.id;
+                    if (isEng) {
+                        (anilistMatch as any).englishDub = {
+                            available: true,
+                            dubType: 'English Dub',
+                            blakiteId: blakiteDetail.id,
+                            totalEpisodes: blakiteDetail.episodes?.length || 1,
+                            score: blakiteDetail.score
+                        };
+                    } else {
+                        (anilistMatch as any).hindiDub = {
+                            available: true,
+                            dubType: blakiteDetail.language === 'ORG' ? 'Hindi Official Dub' : (blakiteDetail.language === 'Fandub' ? 'Hindi Fan Dub' : 'Hindi Dub'),
+                            blakiteId: blakiteDetail.id,
+                            totalEpisodes: blakiteDetail.episodes?.length || 1,
+                            score: blakiteDetail.score
+                        };
+                    }
                     return anilistMatch;
                 }
 
@@ -972,23 +989,48 @@ export class UserAPI {
 }
 
 export class ImageAPI {
-    static async uploadImage(file: File): Promise<string> {
-        const API_KEY = process.env.NEXT_PUBLIC_IMGBB_API_KEY;
-        if (!API_KEY) {
-            console.error('⚠️ IMGBB_API_KEY not found in environment variables');
-            throw new Error('Image upload service is not configured');
-        }
-        const formData = new FormData();
-        formData.append('image', file);
+    static async uploadImage(file: File, bucket: 'avatars' | 'banners' | 'asset' = 'avatars'): Promise<string> {
+        // 1. Primary: Permanent Supabase Storage via /api/upload
         try {
-            const response = await fetch(`https://api.imgbb.com/1/upload?key=${API_KEY}`, { method: 'POST', body: formData });
-            if (!response.ok) throw new Error(`Upload failed: ${response.status}`);
-            const data = await response.json();
-            if (!data.success) throw new Error('Image upload failed');
-            return data.data.url;
-        } catch (error) {
-            console.error('Image upload error:', error);
-            throw error;
+            const formData = new FormData();
+            formData.append('file', file);
+            formData.append('bucket', bucket);
+
+            const response = await fetch('/api/upload', {
+                method: 'POST',
+                body: formData,
+            });
+
+            if (response.ok) {
+                const data = await response.json();
+                if (data?.success && data?.url) {
+                    return data.url;
+                }
+            } else {
+                console.warn('[ImageAPI] /api/upload returned non-200:', response.status);
+            }
+        } catch (storageErr) {
+            console.warn('[ImageAPI] Supabase storage upload failed, attempting fallback...', storageErr);
         }
+
+        // 2. Secondary Fallback: ImgBB API (if configured)
+        const API_KEY = process.env.NEXT_PUBLIC_IMGBB_API_KEY;
+        if (API_KEY) {
+            try {
+                const formData = new FormData();
+                formData.append('image', file);
+                const response = await fetch(`https://api.imgbb.com/1/upload?key=${API_KEY}`, { method: 'POST', body: formData });
+                if (response.ok) {
+                    const data = await response.json();
+                    if (data?.success && data?.data?.url) {
+                        return data.data.url;
+                    }
+                }
+            } catch (imgbbErr) {
+                console.warn('[ImageAPI] ImgBB fallback failed:', imgbbErr);
+            }
+        }
+
+        throw new Error('Image upload failed. Please try again.');
     }
 }

@@ -1,6 +1,7 @@
 "use client";
 
 import { supabase } from '@/lib/supabase';
+import { executeAdminAction } from '@/lib/adminApi';
 
 export interface AdsConfig {
   enabled: boolean;
@@ -155,12 +156,20 @@ export const adManager = {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(merged));
       window.dispatchEvent(new CustomEvent('shadow-ads-config-changed', { detail: merged }));
 
-      // Persist to Supabase site_config
-      await supabase.from('site_config').upsert({
-        key: 'ads_config',
-        value: JSON.stringify(merged),
-        updated_at: new Date().toISOString()
-      });
+      // Persist to Supabase site_config via secure backend admin API
+      try {
+        await executeAdminAction('update_site_config', {
+          key: 'ads_config',
+          value: merged
+        });
+      } catch (backendErr) {
+        console.warn('Backend admin update failed, falling back to client:', backendErr);
+        await supabase.from('site_config').upsert({
+          key: 'ads_config',
+          value: JSON.stringify(merged),
+          updated_at: new Date().toISOString()
+        });
+      }
 
       return true;
     } catch (e) {

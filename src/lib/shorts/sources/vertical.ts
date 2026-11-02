@@ -29,10 +29,10 @@ const FALLBACK_VERTICAL_DRAMAS: Partial<ShortDramaDetail>[] = [
   {
     id: 'vd_3289',
     title: 'Crazy Love from My Cold CEO',
-    cover: 'https://www.vertical-drama.net/wp-content/uploads/2026/09/crazy-love-cold-ceo-poster-1-200x300.jpg',
-    banner: 'https://www.vertical-drama.net/wp-content/uploads/2026/09/crazy-love-cold-ceo-banner-1920x1080.jpg',
+    cover: 'https://fffgood.com/upload/vod/20260422-1/7d3dd438e26e178dbe94ee51faabd0ec.jpg',
+    banner: 'https://fffgood.com/upload/vod/20260422-1/7d3dd438e26e178dbe94ee51faabd0ec.jpg',
     description: 'She raised his son alone for four years. Now she is the paralyzed billionaire heir’s caregiver, and he has no idea the boy is his flesh and blood.',
-    totalEpisodes: 68,
+    totalEpisodes: 22,
     language: 'English Dub',
     tags: ['CEO', 'Billionaire', 'Secret Child', 'Revenge'],
     views: '2.8M views',
@@ -40,112 +40,119 @@ const FALLBACK_VERTICAL_DRAMAS: Partial<ShortDramaDetail>[] = [
     releaseYear: '2024',
     status: 'Completed',
     isUnlocked: true,
-    firstEpisodeStream: 'https://raw.githubusercontent.com/bower-media-samples/big-buck-bunny-1080p-30s/master/video.mp4'
+    firstEpisodeStream: 'https://vip.ffzy-play10.com/20260422/54765_8599154e/index.m3u8'
   },
   {
     id: 'vd_boss_obey',
     title: 'Boss, You’ve Been Obeying Me All Along',
-    cover: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=600&auto=format&fit=crop',
-    banner: 'https://images.unsplash.com/photo-1517841905240-472988babdf9?w=1200&auto=format&fit=crop',
+    cover: 'https://fffgood.com/upload/vod/20261027-1/6180f6d31b5921bcf137d2bf7336bf20.jpg',
+    banner: 'https://fffgood.com/upload/vod/20261027-1/6180f6d31b5921bcf137d2bf7336bf20.jpg',
     description: 'A sharp junior executive accidentally signs an ironclad contract with her cold conglomerate CEO, only to discover she holds all the cards.',
-    totalEpisodes: 72,
+    totalEpisodes: 63,
     language: 'English Dub',
     tags: ['CEO', 'Romance', 'Office', 'Billionaire'],
     views: '1.9M views',
     rating: '9.2',
     releaseYear: '2024',
     status: 'Completed',
-    isUnlocked: true
+    isUnlocked: true,
+    firstEpisodeStream: 'https://vip.ffzy-play9.com/20261027/51635_b91f9a80/index.m3u8'
   },
   {
     id: 'vd_teleport_bed',
     title: 'Oops, I Just Teleported Onto My Boss’s Bed',
-    cover: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=600&auto=format&fit=crop',
-    banner: 'https://images.unsplash.com/photo-1534447677768-be436bb09401?w=1200&auto=format&fit=crop',
+    cover: 'https://fffgood.com/upload/vod/20260818-1/fd70f139fb4a84f85cfb54222160f357.jpg',
+    banner: 'https://fffgood.com/upload/vod/20260818-1/fd70f139fb4a84f85cfb54222160f357.jpg',
     description: 'A supernatural mishap lands a quirky assistant right into the private penthouse of the city\'s most elusive billionaire.',
-    totalEpisodes: 60,
+    totalEpisodes: 66,
     language: 'English Dub',
     tags: ['Supernatural', 'Romance', 'Comedy', 'Billionaire'],
     views: '2.1M views',
     rating: '9.1',
     releaseYear: '2024',
     status: 'Completed',
-    isUnlocked: true
+    isUnlocked: true,
+    firstEpisodeStream: 'https://vip.ffzy-play9.com/20260818/47997_907f872f/index.m3u8'
   },
   {
     id: 'vd_son_girlfriend',
     title: 'My Son Hired Me a Girlfriend',
-    cover: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=600&auto=format&fit=crop',
-    banner: 'https://images.unsplash.com/photo-1492691527719-9d1e07e534b4?w=1200&auto=format&fit=crop',
+    cover: 'https://fffgood.com/upload/vod/20260829-1/ff546ff75283661a405e0c1b2fac6d2e.jpg',
+    banner: 'https://fffgood.com/upload/vod/20260829-1/ff546ff75283661a405e0c1b2fac6d2e.jpg',
     description: 'A cunning 5-year-old child prodigy secretly interviews over 100 women to find the perfect fake wife for his workaholic CEO father.',
-    totalEpisodes: 80,
+    totalEpisodes: 74,
     language: 'English Dub',
     tags: ['Single Father', 'Contract Marriage', 'Family', 'Sweet Romance'],
     views: '3.4M views',
     rating: '9.6',
     releaseYear: '2024',
     status: 'Completed',
-    isUnlocked: true
+    isUnlocked: true,
+    firstEpisodeStream: 'https://vip.ffzy-play10.com/20260829/71263_0fa82e56/index.m3u8'
   },
   {
     id: 'vd_waiter_tycoon',
     title: 'The Waiter Turns Out To Be A Tycoon',
-    cover: 'https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?w=600&auto=format&fit=crop',
-    banner: 'https://images.unsplash.com/photo-1519085360753-af0119f7cbe7?w=1200&auto=format&fit=crop',
+    cover: 'https://fffgood.com/upload/vod/20260320-1/36a63246f9687d008e4576905d0b5b18.jpg',
+    banner: 'https://fffgood.com/upload/vod/20260320-1/36a63246f9687d008e4576905d0b5b18.jpg',
     description: 'He hid his trillionaire identity to work undercover at a luxury hotel, testing his greedy in-laws before unveiling his empire.',
-    totalEpisodes: 75,
+    totalEpisodes: 80,
     language: 'English Dub',
     tags: ['Undercover Boss', 'Revenge', 'Billionaire', 'Hidden Identity'],
     views: '4.1M views',
     rating: '9.5',
     releaseYear: '2024',
     status: 'Completed',
-    isUnlocked: true
+    isUnlocked: true,
+    firstEpisodeStream: 'https://vod.feifei-online.com/20260320/453136_d3bbbbe6/index.m3u8'
   },
   {
     id: 'vd_secret_billionaire',
     title: 'Her Secret Billionaire',
-    cover: 'https://images.unsplash.com/photo-1517841905240-472988babdf9?w=600&auto=format&fit=crop',
-    banner: 'https://images.unsplash.com/photo-1522071820081-009f0129c71c?w=1200&auto=format&fit=crop',
+    cover: 'https://fffgood.com/upload/vod/20260422-1/7d3dd438e26e178dbe94ee51faabd0ec.jpg',
+    banner: 'https://fffgood.com/upload/vod/20260422-1/7d3dd438e26e178dbe94ee51faabd0ec.jpg',
     description: 'Betrayed by her fiancé, she marries a quiet mechanic who turns out to control the largest financial conglomerate in North America.',
-    totalEpisodes: 82,
+    totalEpisodes: 22,
     language: 'English Dub',
     tags: ['Contract Marriage', 'Billionaire', 'Sweet Romance', 'Revenge'],
     views: '3.9M views',
     rating: '9.5',
     releaseYear: '2024',
     status: 'Completed',
-    isUnlocked: true
+    isUnlocked: true,
+    firstEpisodeStream: 'https://vip.ffzy-play10.com/20260422/54765_8599154e/index.m3u8'
   },
   {
     id: 'vd_scholarship_rat',
     title: 'The Scholarship Rat Is a Billionaire',
-    cover: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=600&auto=format&fit=crop',
-    banner: 'https://images.unsplash.com/photo-1517245386807-bb43f82c33c4?w=1200&auto=format&fit=crop',
+    cover: 'https://fffgood.com/upload/vod/20260818-1/d5df564b303b817bb7103d20a901e074.jpg',
+    banner: 'https://fffgood.com/upload/vod/20260818-1/d5df564b303b817bb7103d20a901e074.jpg',
     description: 'Mocked and bullied at an elite academy for taking a scholarship, she reveals her true status as the heiress to the university endowment.',
-    totalEpisodes: 64,
+    totalEpisodes: 85,
     language: 'English Dub',
     tags: ['Secret Heiress', 'School', 'Revenge', 'Billionaire'],
     views: '2.7M views',
     rating: '9.3',
     releaseYear: '2024',
     status: 'Completed',
-    isUnlocked: true
+    isUnlocked: true,
+    firstEpisodeStream: 'https://vip.ffzy-play9.com/20260818/47369_d2625d00/index.m3u8'
   },
   {
     id: 'vd_claimed_godfather',
     title: 'Claimed by My Fiancé’s Godfather',
-    cover: 'https://images.unsplash.com/photo-1524504388940-b1c1722653e1?w=600&auto=format&fit=crop',
-    banner: 'https://images.unsplash.com/photo-1509198397868-475647b2a1e5?w=1200&auto=format&fit=crop',
+    cover: 'https://fffgood.com/upload/vod/20260912-1/8cdac7a0c2318718a7f7a092eac6283f.jpg',
+    banner: 'https://fffgood.com/upload/vod/20260912-1/8cdac7a0c2318718a7f7a092eac6283f.jpg',
     description: 'When her fiancé abandons her at the altar, the city’s most feared and powerful patriarch steps forward to make her his queen.',
-    totalEpisodes: 88,
+    totalEpisodes: 78,
     language: 'English Dub',
     tags: ['Mafia', 'Dark Romance', 'Forbidden Love', 'Billionaire'],
     views: '4.6M views',
     rating: '9.7',
     releaseYear: '2024',
     status: 'Completed',
-    isUnlocked: true
+    isUnlocked: true,
+    firstEpisodeStream: 'https://vip.ffzy-play9.com/20260912/49257_c7f32eb1/index.m3u8'
   }
 ];
 
@@ -183,7 +190,7 @@ export async function getVerticalDramas(page: number = 1): Promise<{ items: Shor
         id: `vd_${post.id}`,
         source: 'vertical_drama' as const,
         title,
-        cover: featuredImg || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=600&auto=format&fit=crop',
+        cover: featuredImg || FALLBACK_VERTICAL_DRAMAS[0].cover || '',
         description: desc,
         totalEpisodes: 60 + (post.id % 40),
         language: 'English Dub',
@@ -271,8 +278,8 @@ export async function getVerticalDramaDetail(id: string): Promise<ShortDramaDeta
       episodes.push({
         episodeNumber: i,
         title: `Episode ${i}`,
-        streamUrl: fallback.firstEpisodeStream || 'https://www.w3schools.com/html/mov_bbb.mp4',
-        type: 'mp4'
+        streamUrl: fallback.firstEpisodeStream || 'https://vip.ffzy-play9.com/20261027/51635_b91f9a80/index.m3u8',
+        type: 'hls'
       });
     }
 

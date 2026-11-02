@@ -243,7 +243,7 @@ export default function SearchBar() {
                     </button>
 
                     <button type="button" onClick={() => router.push('/ai/imagesearch')} className="group/ai relative flex items-center justify-center w-8 h-8 rounded-full hover:bg-white/5 transition-all">
-                          <ImageIcon className="w-4 h-4 text-gray-400 group-hover/ai:text-blue-400 transition-colors" />
+                          <ImageIcon className="w-4 h-4 text-gray-400 group-hover/ai:text-primary-400 transition-colors" />
                           <Wand2 className="w-2 h-2 text-yellow-400 absolute top-1.5 right-1.5 animate-pulse" />
                     </button>
                 </div>

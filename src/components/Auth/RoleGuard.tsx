@@ -18,6 +18,9 @@ export default function RoleGuard({ children, allowedRoles }: RoleGuardProps) {
 
   useEffect(() => {
     if (!isLoading) {
+      if (process.env.NODE_ENV === 'development' && typeof window !== 'undefined' && localStorage.getItem('shadow_dev_admin') === 'true') {
+        return;
+      }
       if (!user) {
         // Not logged in -> Home
         router.replace('/home');
@@ -40,10 +43,11 @@ export default function RoleGuard({ children, allowedRoles }: RoleGuardProps) {
     );
   }
 
-  const isMasterAdmin = user?.email === 'codeacezero@gmail.com';
+  const isDevBypass = process.env.NODE_ENV === 'development' && typeof window !== 'undefined' && localStorage.getItem('shadow_dev_admin') === 'true';
+  const isMasterAdmin = isDevBypass || user?.email === 'codeacezero@gmail.com';
 
   // Visual Block for unauthorized users (if redirect lags)
-  if (!user || (!isMasterAdmin && profile && !allowedRoles.includes(profile.role))) {
+  if (!isDevBypass && (!user || (!isMasterAdmin && profile && !allowedRoles.includes(profile.role)))) {
     return (
       <div className="h-screen w-full flex flex-col items-center justify-center bg-[#050505] text-primary-600 space-y-4">
         <ShieldAlert className="w-16 h-16 animate-pulse" />

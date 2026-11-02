@@ -22,8 +22,8 @@ export const COLOR_PALETTES: ColorPalette[] = [
   // 1. SKY PURPLE VIOLET (Default)
   {
     id: 'sky-purple-violet',
-    name: 'Sky Purple Violet',
-    description: 'Celestial sky blue & ethereal purple-violet aura inspired by twilight skies.',
+    name: 'Material Purple Violet',
+    description: 'Celestial matte violet & ethereal lavender purple aura.',
     category: 'Astral & Space',
     dark: {
       layer0_bg: '#070512',
@@ -31,7 +31,7 @@ export const COLOR_PALETTES: ColorPalette[] = [
       layer2_elevated: '#1a133b',
       layer3_border: '#2e2163',
       layer4_accent: '#8b5cf6',
-      layer5_sky: '#38bdf8',
+      layer5_sky: '#a78bfa',
       text: '#f8fafc',
       textMuted: '#94a3b8',
     },
@@ -41,7 +41,7 @@ export const COLOR_PALETTES: ColorPalette[] = [
       layer2_elevated: '#ede9fe',
       layer3_border: '#ddd6fe',
       layer4_accent: '#7c3aed',
-      layer5_sky: '#0284c7',
+      layer5_sky: '#7c3aed',
       text: '#0f172a',
       textMuted: '#64748b',
     },
@@ -662,6 +662,118 @@ export const COLOR_PALETTES: ColorPalette[] = [
       textMuted: '#312e81',
     },
   },
+
+  // 24. SAKURA BLOSSOM (Pastel & Anime)
+  {
+    id: 'sakura-blossom',
+    name: 'Sakura Blossom',
+    description: 'Ethereal Japanese cherry blossom petals with radiant pink-rose aura.',
+    category: 'Pastel & Anime',
+    dark: {
+      layer0_bg: '#0f0810',
+      layer1_card: '#1a0d1b',
+      layer2_elevated: '#28142a',
+      layer3_border: '#451f47',
+      layer4_accent: '#ec4899',
+      layer5_sky: '#f472b6',
+      text: '#fdf2f8',
+      textMuted: '#cbd5e1',
+    },
+    light: {
+      layer0_bg: '#fff5f7',
+      layer1_card: '#ffffff',
+      layer2_elevated: '#fce7f3',
+      layer3_border: '#fbcfe8',
+      layer4_accent: '#db2777',
+      layer5_sky: '#f472b6',
+      text: '#1e293b',
+      textMuted: '#64748b',
+    },
+  },
+
+  // 25. QUANTUM MATRIX (Cyber & Neon)
+  {
+    id: 'quantum-matrix',
+    name: 'Quantum Matrix',
+    description: 'Ultraviolet cybernetic grid with vivid cyan lasers & cobalt depth.',
+    category: 'Cyber & Neon',
+    dark: {
+      layer0_bg: '#050814',
+      layer1_card: '#0a1024',
+      layer2_elevated: '#101c3d',
+      layer3_border: '#1a3068',
+      layer4_accent: '#06b6d4',
+      layer5_sky: '#3b82f6',
+      text: '#ecfeff',
+      textMuted: '#94a3b8',
+    },
+    light: {
+      layer0_bg: '#f0fdfa',
+      layer1_card: '#ffffff',
+      layer2_elevated: '#ccfbf1',
+      layer3_border: '#99f6e4',
+      layer4_accent: '#0891b2',
+      layer5_sky: '#2563eb',
+      text: '#134e4a',
+      textMuted: '#475569',
+    },
+  },
+
+  // 26. MATCHA ZEN (Pastel & Anime)
+  {
+    id: 'matcha-zen',
+    name: 'Matcha Zen',
+    description: 'Soothing Japanese matcha green tea tones with warm creamy milk and bamboo accents.',
+    category: 'Pastel & Anime',
+    dark: {
+      layer0_bg: '#09100a',
+      layer1_card: '#111c13',
+      layer2_elevated: '#1a2a1c',
+      layer3_border: '#2c4530',
+      layer4_accent: '#84cc16',
+      layer5_sky: '#a3e635',
+      text: '#f7fee7',
+      textMuted: '#cbd5e1',
+    },
+    light: {
+      layer0_bg: '#f7fee7',
+      layer1_card: '#ffffff',
+      layer2_elevated: '#ecfccb',
+      layer3_border: '#d9f99d',
+      layer4_accent: '#65a30d',
+      layer5_sky: '#84cc16',
+      text: '#1a2e05',
+      textMuted: '#475569',
+    },
+  },
+
+  // 27. SUNSET PEACH (Pastel & Anime)
+  {
+    id: 'sunset-peach',
+    name: 'Sunset Peach',
+    description: 'Radiant pastel peach sorbet and coral rose gradient aura.',
+    category: 'Pastel & Anime',
+    dark: {
+      layer0_bg: '#140a08',
+      layer1_card: '#22110e',
+      layer2_elevated: '#331a15',
+      layer3_border: '#542a22',
+      layer4_accent: '#fb923c',
+      layer5_sky: '#f43f5e',
+      text: '#fff7ed',
+      textMuted: '#cbd5e1',
+    },
+    light: {
+      layer0_bg: '#fff7ed',
+      layer1_card: '#ffffff',
+      layer2_elevated: '#ffedd5',
+      layer3_border: '#fed7aa',
+      layer4_accent: '#ea580c',
+      layer5_sky: '#e11d48',
+      text: '#431407',
+      textMuted: '#64748b',
+    },
+  },
 ];
 
 export const DEFAULT_THEME_ID = 'sky-purple-violet';
@@ -711,9 +823,21 @@ export function applyColorPalette(paletteId: string = DEFAULT_THEME_ID, mode?: '
   if (savedMode === 'light') {
     root.classList.remove('dark');
     root.classList.add('light');
+    root.style.colorScheme = 'light';
+    root.style.backgroundColor = layers.layer0_bg;
+    if (typeof document !== 'undefined' && document.body) {
+      document.body.style.backgroundColor = layers.layer0_bg;
+      document.body.style.color = layers.text;
+    }
   } else {
     root.classList.remove('light');
     root.classList.add('dark');
+    root.style.colorScheme = 'dark';
+    root.style.backgroundColor = layers.layer0_bg;
+    if (typeof document !== 'undefined' && document.body) {
+      document.body.style.backgroundColor = layers.layer0_bg;
+      document.body.style.color = layers.text;
+    }
   }
 
   // 2. Set the 5 distinct architectural layers

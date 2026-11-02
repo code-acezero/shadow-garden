@@ -88,14 +88,14 @@ const EpisodeButton = React.memo(({ epNum, isCurrent, isPlayed, viewMode, onClic
       {/* Watched Episode Marking: Card itself is marked with grayed out green (no corner green dot) */}
 
       <div className={cn("truncate relative z-10 w-full font-mono tracking-wide flex items-center", viewMode === 'list' ? "justify-between" : "justify-center")}>
-        <span className={cn("truncate flex items-center gap-1", isPlayed && !isCurrent ? "text-emerald-300/80" : "")}>
+        <span className={cn("truncate flex items-center gap-1", isPlayed && !isCurrent ? "text-purple-300/80" : "")}>
           {isPlayed && !isCurrent && viewMode === 'grid' && (
-            <Check className="w-2.5 h-2.5 text-emerald-400/80 stroke-[3] inline-block shrink-0" />
+            <Check className="w-2.5 h-2.5 text-purple-400/80 stroke-[3] inline-block shrink-0" />
           )}
           {viewMode === 'list' ? `Episode ${epNum}` : epNum}
         </span>
         {isCurrent && viewMode === 'list' && (
-          <span className="ml-2 inline-flex items-center gap-1.5 px-2 py-0.5 rounded text-[8px] font-black uppercase bg-white/20 text-white shrink-0">
+          <span className="ml-2 inline-flex items-center gap-1.5 text-purple-300 text-[8.5px] font-black uppercase tracking-wider shrink-0 select-none">
             <span className="inline-flex items-end gap-[1.5px] h-2">
               <span className="w-[1.5px] bg-white rounded-none animate-[audio-bar-1_0.8s_ease-in-out_infinite]" />
               <span className="w-[1.5px] bg-white rounded-none animate-[audio-bar-2_0.8s_ease-in-out_infinite]" />
@@ -105,7 +105,7 @@ const EpisodeButton = React.memo(({ epNum, isCurrent, isPlayed, viewMode, onClic
           </span>
         )}
         {isPlayed && !isCurrent && viewMode === 'list' && (
-          <span className="ml-2 inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[8px] font-bold uppercase bg-emerald-950/60 text-emerald-300/80 border border-emerald-800/50 shrink-0">
+          <span className="ml-2 inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[8px] font-bold uppercase bg-purple-950/60 text-purple-300/80 border border-purple-800/50 shrink-0">
             <Check className="w-2.5 h-2.5 stroke-[3]" />
             <span>PLAYED</span>
           </span>
@@ -3333,7 +3333,7 @@ export default function VerticalWatchFeed({
                         className={cn(
                           "py-2 rounded-xl text-xs font-bold border transition-all active:scale-95",
                           playbackSpeed === spd
-                            ? "bg-primary text-white border-primary shadow-[0_0_12px_rgba(220,38,38,0.4)]"
+                            ? "bg-primary text-white border-primary shadow-[0_0_12px_rgba(139, 92, 246, 0.4)]"
                             : "bg-zinc-950/80 text-zinc-400 border-zinc-800/80 hover:bg-zinc-800 hover:text-white"
                         )}
                       >
@@ -3384,7 +3384,7 @@ export default function VerticalWatchFeed({
                           className={cn(
                             "py-2 rounded-xl font-medium border transition-all active:scale-95 truncate px-1",
                             isActive
-                              ? "bg-primary text-white border-primary font-bold shadow-[0_0_12px_rgba(220,38,38,0.4)]"
+                              ? "bg-primary text-white border-primary font-bold shadow-[0_0_12px_rgba(139, 92, 246, 0.4)]"
                               : "bg-zinc-950/80 text-zinc-400 border-zinc-800/80 hover:bg-zinc-800 hover:text-white"
                           )}
                         >

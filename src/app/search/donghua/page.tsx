@@ -87,13 +87,13 @@ function DonghuaSearchContent() {
     <div className="min-h-screen bg-[#050505] text-white">
       {/* Header */}
       <div className="relative overflow-hidden">
-        <div className="absolute inset-0 bg-gradient-to-b from-red-950/20 via-transparent to-transparent" />
-        <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[800px] h-[400px] bg-red-600/5 rounded-full blur-[120px]" />
+        <div className="absolute inset-0 bg-gradient-to-b from-primary-950/20 via-transparent to-transparent" />
+        <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[800px] h-[400px] bg-primary/5 rounded-full blur-[120px]" />
         
         <div className="relative z-10 w-full">
           <div className="flex items-center gap-3 mb-2">
-            <div className="h-px w-8 bg-red-500" />
-            <span className={`text-red-400 text-[10px] tracking-[0.3em] font-bold uppercase font-lemon`}>
+            <div className="h-px w-8 bg-primary" />
+            <span className={`text-primary text-[10px] tracking-[0.3em] font-bold uppercase font-lemon`}>
               <Flame size={12} className="inline mr-2" />
               Donghua
             </span>
@@ -101,9 +101,9 @@ function DonghuaSearchContent() {
           
           <h1 className={`text-4xl md:text-6xl text-white mb-2 font-gradvis`}>
             {keyword ? (
-              <>DONGHUA <span className="text-red-500">RESULTS</span></>
+              <>DONGHUA <span className="text-primary">RESULTS</span></>
             ) : (
-              <>DONGHUA <span className="text-red-500">LIBRARY</span></>
+              <>DONGHUA <span className="text-primary">LIBRARY</span></>
             )}
           </h1>
           
@@ -119,13 +119,13 @@ function DonghuaSearchContent() {
           {/* Search Bar */}
           <form onSubmit={handleSearch} className="mt-6 flex gap-3">
             <div className="relative flex-1">
-              <Flame size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-red-500/60" />
+              <Flame size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-primary/60" />
               <input
                 type="text"
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
                 placeholder="Search Donghua..."
-                className="w-full bg-white/5 border border-white/10 rounded-2xl py-3.5 pl-12 pr-4 text-white text-sm focus:outline-none focus:border-red-500/50 focus:bg-white/[0.08] transition-all placeholder-zinc-500"
+                className="w-full bg-white/5 border border-white/10 rounded-2xl py-3.5 pl-12 pr-4 text-white text-sm focus:outline-none focus:border-primary/50 focus:bg-white/[0.08] transition-all placeholder-zinc-500"
               />
               {query && (
                 <button type="button" onClick={() => setQuery('')} className="absolute right-4 top-1/2 -translate-y-1/2 text-zinc-500 hover:text-white">
@@ -133,7 +133,7 @@ function DonghuaSearchContent() {
                 </button>
               )}
             </div>
-            <button type="submit" className="py-3.5 bg-red-600 hover:bg-red-700 rounded-2xl text-sm font-bold transition-colors shadow-lg shadow-red-600/20">
+            <button type="submit" className="py-3.5 bg-primary hover:bg-primary/90 text-white rounded-2xl text-sm font-bold transition-colors shadow-lg shadow-primary/20">
               Search
             </button>
           </form>
@@ -181,13 +181,13 @@ function DonghuaSearchContent() {
                 className={`flex items-center gap-2 px-5 py-2.5 rounded-xl border text-sm font-bold transition-all ${
                   currentPage === 1
                     ? 'opacity-30 cursor-not-allowed border-white/5 text-zinc-600'
-                    : 'border-white/10 text-zinc-300 hover:bg-red-600 hover:border-red-500 hover:text-white'
+                    : 'border-white/10 text-zinc-300 hover:bg-primary hover:border-primary hover:text-white'
                 }`}
               >
                 <ChevronLeft size={16} /> Prev
               </button>
 
-              <div className="flex items-center justify-center w-10 h-10 rounded-xl bg-red-500/10 border border-red-500/20 font-bold text-red-500 shadow-[0_0_15px_rgba(220,38,38,0.2)]">
+              <div className="flex items-center justify-center w-10 h-10 rounded-xl bg-primary/10 border border-red-500/20 font-bold text-primary shadow-[0_0_15px_rgba(139, 92, 246, 0.2)]">
                 {currentPage}
               </div>
 
@@ -197,7 +197,7 @@ function DonghuaSearchContent() {
                 className={`flex items-center gap-2 px-5 py-2.5 rounded-xl border text-sm font-bold transition-all ${
                   !hasNextPage
                     ? 'opacity-30 cursor-not-allowed border-white/5 text-zinc-600'
-                    : 'border-white/10 text-zinc-300 hover:bg-red-600 hover:border-red-500 hover:text-white'
+                    : 'border-white/10 text-zinc-300 hover:bg-primary hover:border-primary hover:text-white'
                 }`}
               >
                 Next <ChevronRight size={16} />

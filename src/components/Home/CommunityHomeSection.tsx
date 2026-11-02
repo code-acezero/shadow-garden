@@ -464,7 +464,7 @@ export default function CommunityHomeSection() {
               <div className="pt-2 border-t border-white/[0.06] flex items-center justify-between text-[10.5px] text-zinc-500 font-medium">
                 <span className="inline-flex items-center gap-1 text-purple-400/80 font-bold">
                   <ShieldCheck size={12} />
-                  <span>Sanctuary Verified</span>
+                  <span>Verified</span>
                 </span>
                 <Link
                   href={media.watchUrl}

@@ -45,7 +45,7 @@ const getYesterdayString = (): string => {
 const DEFAULT_DAILY_TASKS: Omit<DailyTask, 'progress' | 'completed' | 'claimed'>[] = [
   {
     id: 'daily_checkin',
-    title: 'Sanctuary Check-in',
+    title: 'Daily Check-in',
     desc: 'Log in and claim your daily streak reward',
     category: 'daily',
     reward: 5,

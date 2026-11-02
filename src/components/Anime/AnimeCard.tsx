@@ -603,7 +603,7 @@ function AnimeCardComponent({
                   <div className="w-full h-1 bg-white/15 rounded-full overflow-hidden mt-0.5">
                     <div 
                       style={{ width: `${Math.min(100, Math.max(0, progress))}%` }} 
-                      className="h-full bg-primary-500 shadow-[0_0_8px_rgba(220,38,38,0.8)]" 
+                      className="h-full bg-primary-500 shadow-[0_0_8px_rgba(139, 92, 246, 0.8)]" 
                     />
                   </div>
                 )}

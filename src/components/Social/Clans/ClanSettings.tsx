@@ -68,7 +68,7 @@ export default function ClanSettings({ clan, onUpdate, members }: { clan: Clan, 
           <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 relative z-10">
             <div className="flex items-center gap-4">
               <div className="p-3 bg-gradient-to-br from-primary-600/30 to-primary-900/10 border border-primary-500/20 rounded-[18px] text-primary-400 shadow-[0_0_30px_rgba(220,38,38,0.15)] shrink-0">
-                <Shield size={22} className="drop-shadow-[0_0_10px_rgba(220,38,38,0.5)]" />
+                <Shield size={22} className="drop-shadow-[0_0_10px_rgba(139, 92, 246, 0.5)]" />
               </div>
               <div>
                 <h2 className="text-base font-black text-white uppercase tracking-widest leading-tight flex items-center gap-2">

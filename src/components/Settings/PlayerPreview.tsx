@@ -15,7 +15,7 @@ interface PlayerPreviewProps {
 
 const CUE_TIMESTAMPS = [
   { start: 0, end: 4.5, text: "I am Atomic. The shadows bow to no one." },
-  { start: 4.5, end: 8.5, text: "Kagemi — Sanctuary of the Shadow Garden." },
+  { start: 4.5, end: 8.5, text: "Kagemi — High Definition Anime Streaming." },
   { start: 8.5, end: 12.5, text: "Through the endless night, our code remains absolute." },
   { start: 12.5, end: 16.5, text: "True power does not shout. It whispers in the void." },
   { start: 16.5, end: 20.0, text: "Enter the abyss. Witness the supreme majesty." }

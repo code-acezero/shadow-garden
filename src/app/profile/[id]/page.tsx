@@ -521,10 +521,13 @@ export default function PublicProfilePage() {
             <div className="relative w-full mb-2">
                 <div className="w-full h-44 sm:h-60 md:h-72 rounded-b-3xl relative overflow-hidden bg-zinc-900 shadow-2xl border-b border-white/10">
                     <img 
-                        src={profile.banner_url || "https://images.unsplash.com/photo-1618336753974-aae8e04506aa?q=80&w=2000"} 
+                        src={getOptimizedImageUrl(profile.banner_url) || "https://images.unsplash.com/photo-1618336753974-aae8e04506aa?q=80&w=2000"} 
                         alt={`${profile.username}'s Cover`} 
                         className="w-full h-full object-cover"
                         style={{ objectPosition: `center ${profile.banner_pos !== undefined && profile.banner_pos !== null ? profile.banner_pos : 50}%` }}
+                        onError={(e) => {
+                            (e.target as HTMLImageElement).src = "https://images.unsplash.com/photo-1618336753974-aae8e04506aa?q=80&w=2000";
+                        }}
                     />
                     <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/30 to-transparent pointer-events-none" />
                 </div>
@@ -541,6 +544,8 @@ export default function PublicProfilePage() {
                             <ProfileAvatar 
                                 profile={profile} 
                                 className="w-full h-full"
+                                animate="always"
+                                parallax
                             />
                         </div>
                     </div>
@@ -728,6 +733,8 @@ export default function PublicProfilePage() {
                                 <ProfileAvatar 
                                     profile={profile} 
                                     className="w-full h-full"
+                                    animate="always"
+                                    parallax
                                 />
                             </div>
                         </div>

@@ -93,7 +93,7 @@ export default function NotFound() {
                 </h2>
 
                 <p className="text-zinc-400 text-xs sm:text-sm md:text-base max-w-lg mx-auto leading-relaxed">
-                    Kuro searched through every corridor of the sanctuary, but couldn't find this page. It may have vanished or moved.
+                    We searched everywhere, but couldn't find this page. It may have vanished or moved.
                 </p>
 
                 {/* Clean Action Buttons (No Containers, Sleek Flat Styling) */}
@@ -113,7 +113,7 @@ export default function NotFound() {
                         className="h-10 sm:h-11 px-6 rounded-xl bg-[#1c1c1f] hover:bg-[#28282b] border border-white/10 active:scale-95 text-zinc-300 hover:text-white font-semibold text-xs sm:text-sm transition-all flex items-center justify-center gap-2 cursor-pointer"
                     >
                         <Home size={15} />
-                        <span>Sanctuary Home</span>
+                        <span>Return Home</span>
                     </Link>
                 </div>
             </motion.div>

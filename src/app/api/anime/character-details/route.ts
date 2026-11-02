@@ -142,7 +142,7 @@ async function fetchAniListGql(query: string, variables: Record<string, any>) {
       headers: {
         'Content-Type': 'application/json',
         'Accept': 'application/json',
-        'User-Agent': 'ShadowGarden/2.0 (Anime Character Dossier)',
+        'User-Agent': 'Kagemi/4.0 (Anime Character Dossier)',
       },
       body: JSON.stringify({ query, variables }),
       signal: AbortSignal.timeout(9000),

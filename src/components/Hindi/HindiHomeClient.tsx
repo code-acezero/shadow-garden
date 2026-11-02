@@ -135,7 +135,7 @@ export default function HindiHomeClient() {
             <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-orange-500/10 border border-orange-500/20 backdrop-blur-md">
               <Mic className="w-3.5 h-3.5 text-orange-400" />
               <span className="text-[11px] font-black uppercase tracking-wider text-orange-200">
-                Hindi Dubbed Anime Sanctuary
+                Hindi Dubbed Anime
               </span>
             </div>
             <Link

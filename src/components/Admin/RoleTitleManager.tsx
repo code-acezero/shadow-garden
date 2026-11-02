@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '@/context/AuthContext';
 import { supabase } from '@/lib/supabase';
+import { executeAdminAction } from '@/lib/adminApi';
 import { 
   Crown, Shield, Sword, Plus, X, UserCheck, Lock, UserMinus, RefreshCw, Bot, ChevronDown, UserPlus
 } from 'lucide-react';
@@ -313,25 +314,52 @@ export default function RoleTitleManager() {
       const targetRole = targetMember?.role || 'admin';
       const frameForBestowedTitle = getFrameForTitle(titleName, targetRole);
 
-      const { data: memberProfile } = await supabase.from('profiles').select('settings').eq('id', memberId).single();
+      const { data: memberProfile } = await supabase.from('profiles').select('settings, coins, level, xp, purchased_frames, unlocked_titles').eq('id', memberId).single();
       const currentSettings = memberProfile?.settings || {};
+      const currentFrames = Array.isArray(memberProfile?.purchased_frames) ? memberProfile.purchased_frames : ['none'];
+      const currentTitles = Array.isArray(memberProfile?.unlocked_titles) ? memberProfile.unlocked_titles : [];
+
+      const bonusCoins = targetRole === 'admin' ? 10000 : 5000;
 
       const updateData: Record<string, any> = { 
         admin_title: titleName,
         title: titleName,
-        settings: { ...currentSettings, equipped_title: titleName }
+        equipped_title: titleName,
+        coins: (memberProfile?.coins || 0) + bonusCoins,
+        settings: { ...currentSettings, equipped_title: titleName },
+        unlocked_titles: Array.from(new Set([...currentTitles, titleName]))
       };
+
+      if (targetRole === 'admin') {
+        updateData.level = 100;
+        updateData.xp = 999999;
+      }
 
       if (frameForBestowedTitle) {
         updateData.frame_id = frameForBestowedTitle;
+        updateData.purchased_frames = Array.from(new Set([...currentFrames, frameForBestowedTitle]));
       }
 
-      const { error } = await supabase
-        .from('profiles')
-        .update(updateData)
-        .eq('id', memberId);
+      // Persist profile updates securely via backend admin API
+      await executeAdminAction('update_profile', {
+        userId: memberId,
+        updates: updateData
+      });
 
-      if (error) throw error;
+      // Dispatched promotion notification from Alpha with claim button
+      await executeAdminAction('dispatch_notifications', {
+        notifications: [{
+          user_id: memberId,
+          type: 'system',
+          content: `Promotion Gift from Guild Master: You have been appointed to ${targetRole === 'admin' ? 'Board of Darkness' : 'Council of Shadows'} with the sacred title "${titleName}"! Claim your ${bonusCoins.toLocaleString()} Coins and matching Profile Frame.`,
+          link: `#claim:${JSON.stringify({
+            coins: bonusCoins,
+            frame_id: frameForBestowedTitle || 'none',
+            title: titleName
+          })}`,
+          is_read: false
+        }]
+      });
 
       if (typeof window !== 'undefined') {
         localStorage.setItem(`shadow_equipped_title_${memberId}`, titleName);
@@ -369,16 +397,14 @@ export default function RoleTitleManager() {
       const currentSettings = memberProfile?.settings || {};
       const fallbackTitle = targetMember?.admin_title ? `Former ${targetMember.admin_title}` : 'Novice';
 
-      const { error } = await supabase
-        .from('profiles')
-        .update({ 
+      await executeAdminAction('update_profile', {
+        userId: memberId,
+        updates: { 
           admin_title: null,
           title: fallbackTitle,
           settings: { ...currentSettings, equipped_title: fallbackTitle }
-        })
-        .eq('id', memberId);
-
-      if (error) throw error;
+        }
+      });
 
       if (typeof window !== 'undefined') {
         localStorage.setItem(`shadow_equipped_title_${memberId}`, fallbackTitle);
@@ -435,31 +461,29 @@ export default function RoleTitleManager() {
   return (
     <div className="space-y-8 pb-12 font-sans">
       {/* SECTION HEADER BANNER */}
-      <div className="relative p-6 sm:p-8 rounded-3xl bg-gradient-to-r from-purple-950/40 via-[#0c0a15]/80 to-black border border-purple-500/20 backdrop-blur-2xl shadow-[0_15px_40px_rgba(0,0,0,0.6)] overflow-hidden">
-        <div className="absolute top-0 right-0 w-80 h-80 bg-purple-600/10 blur-[90px] pointer-events-none" />
-        
+      <div className="relative p-5 sm:p-6 rounded-2xl bg-[#0c0c12]/80 border border-purple-500/20 backdrop-blur-xl shadow-lg overflow-hidden">
         <div className="relative z-10 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
           <div>
-            <div className="flex items-center gap-2 mb-1.5">
-              <Crown className="text-amber-400 drop-shadow-[0_0_8px_rgba(251,191,36,0.5)]" size={24} />
-              <h2 className="text-xl sm:text-3xl font-black text-white tracking-wider">Hierarchy & Title Command</h2>
+            <div className="flex items-center gap-2 mb-1">
+              <Crown className="text-amber-400 drop-shadow-[0_0_8px_rgba(251,191,36,0.4)]" size={20} />
+              <h2 className="text-lg sm:text-xl font-lemon font-bold text-white tracking-wide">Hierarchy &amp; Title Command</h2>
             </div>
             <p className="text-xs text-zinc-400 max-w-xl">
               Assign exclusive title designations to the Board of Darkness and Council of Shadows. Titles remain locked to assignees until liberated.
             </p>
           </div>
 
-          <div className="flex items-center gap-3">
-            <Button onClick={fetchMembers} variant="ghost" className="h-10 w-10 p-0 text-zinc-400 hover:text-white bg-black/40 border border-white/10 rounded-2xl">
-              <RefreshCw size={16} className={loading ? 'animate-spin' : ''} />
+          <div className="flex items-center gap-2.5">
+            <Button onClick={fetchMembers} variant="ghost" className="h-9 w-9 p-0 text-zinc-400 hover:text-white bg-white/[0.04] border border-white/[0.08] rounded-xl">
+              <RefreshCw size={15} className={loading ? 'animate-spin' : ''} />
             </Button>
 
             {isAdmin && (
               <Button 
                 onClick={() => setIsAddingCustom(true)} 
-                className="h-10 px-5 text-xs font-black bg-purple-600 hover:bg-purple-500 text-white rounded-2xl flex items-center gap-2 shadow-[0_0_20px_rgba(168,85,247,0.4)] transition-all hover:scale-105"
+                className="h-9 px-4 text-xs font-semibold bg-purple-600 hover:bg-purple-500 text-white rounded-xl flex items-center gap-1.5 shadow-md shadow-purple-900/20 transition-all hover:scale-[1.02]"
               >
-                <Plus size={16} /> Create Title
+                <Plus size={15} /> Create Title
               </Button>
             )}
           </div>
@@ -468,7 +492,7 @@ export default function RoleTitleManager() {
 
       {/* CUSTOM TITLE MODAL */}
       {isAddingCustom && (
-        <div className="p-6 rounded-3xl bg-purple-950/30 border border-purple-500/30 space-y-4 backdrop-blur-2xl shadow-2xl animate-in fade-in slide-in-from-top-3">
+        <div className="p-6 rounded-2xl bg-purple-950/30 border border-purple-500/30 space-y-4 backdrop-blur-2xl shadow-2xl animate-in fade-in slide-in-from-top-3">
           <div className="flex items-center justify-between">
             <h4 className="text-sm font-black text-white flex items-center gap-2">
               <Shield size={16} className="text-amber-400" /> Add Custom Hierarchy Designation
@@ -501,7 +525,7 @@ export default function RoleTitleManager() {
       )}
 
       {/* APEX TIER: GUILD MASTER (SHADOW) - SOLE WORLDWIDE */}
-      <div className="p-5 sm:p-6 rounded-3xl bg-gradient-to-r from-amber-950/40 via-[#0e0c18] to-black border border-amber-500/30 backdrop-blur-2xl shadow-xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+      <div className="p-5 sm:p-6 rounded-2xl bg-gradient-to-r from-amber-950/40 via-[#0e0c18] to-black border border-amber-500/30 backdrop-blur-2xl shadow-xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <div className="flex items-center gap-3.5">
           <div className="w-12 h-12 rounded-2xl bg-amber-400/10 border border-amber-400/30 flex items-center justify-center shrink-0">
             <Crown size={24} className="text-amber-400 drop-shadow-[0_0_10px_rgba(251,191,36,0.6)]" />
@@ -523,7 +547,7 @@ export default function RoleTitleManager() {
       </div>
 
       {/* GROUP I: BOARD OF DARKNESS (ADMINS - SHORT TITLES) */}
-      <div className="space-y-4 rounded-3xl border border-white/10 bg-zinc-900/40 backdrop-blur-xl p-5 transition-all duration-300">
+      <div className="space-y-4 rounded-2xl border border-white/10 bg-zinc-900/40 backdrop-blur-xl p-5 transition-all duration-300">
         <div 
           onClick={() => setOpenGroup(openGroup === 'board' ? null : 'board')}
           className="flex items-center justify-between pb-1 cursor-pointer group select-none"
@@ -534,7 +558,7 @@ export default function RoleTitleManager() {
             </div>
             <div>
               <div className="flex items-center gap-2">
-                <h3 className="text-lg font-black text-white tracking-wide group-hover:text-amber-300 transition-colors">Group I: Board of Darkness</h3>
+                <h3 className="text-sm sm:text-base font-bold text-white tracking-wide font-sans group-hover:text-amber-300 transition-colors">Group I: Board of Darkness</h3>
                 <span className="text-[10px] font-black uppercase bg-amber-950/80 border border-amber-500/40 text-amber-300 px-2.5 py-0.5 rounded-full shadow-[0_0_10px_rgba(251,191,36,0.2)]">
                   Admins
                 </span>
@@ -564,7 +588,7 @@ export default function RoleTitleManager() {
               return (
                 <div 
                   key={tName}
-                  className={`p-5 rounded-3xl border transition-all duration-300 flex flex-col justify-between backdrop-blur-xl relative hover:z-40 focus-within:z-50 ${
+                  className={`p-5 rounded-2xl border transition-all duration-300 flex flex-col justify-between backdrop-blur-xl relative hover:z-40 focus-within:z-50 ${
                     isTaken 
                       ? 'border-amber-500/40 bg-gradient-to-br from-amber-950/20 via-zinc-900/60 to-black shadow-[0_10px_25px_rgba(251,191,36,0.1)]' 
                       : 'border-white/10 bg-zinc-900/30 hover:border-white/20 hover:-translate-y-0.5'
@@ -632,7 +656,7 @@ export default function RoleTitleManager() {
       </div>
 
       {/* GROUP II: COUNCIL OF SHADOWS (MODERATORS - ROLE TITLES) */}
-      <div className="space-y-4 rounded-3xl border border-white/10 bg-zinc-900/40 backdrop-blur-xl p-5 transition-all duration-300">
+      <div className="space-y-4 rounded-2xl border border-white/10 bg-zinc-900/40 backdrop-blur-xl p-5 transition-all duration-300">
         <div 
           onClick={() => setOpenGroup(openGroup === 'council' ? null : 'council')}
           className="flex items-center justify-between pb-1 cursor-pointer group select-none"
@@ -643,7 +667,7 @@ export default function RoleTitleManager() {
             </div>
             <div>
               <div className="flex items-center gap-2">
-                <h3 className="text-lg font-black text-white tracking-wide group-hover:text-purple-300 transition-colors">Group II: Council of Shadows</h3>
+                <h3 className="text-sm sm:text-base font-bold text-white tracking-wide font-sans group-hover:text-purple-300 transition-colors">Group II: Council of Shadows</h3>
                 <span className="text-[10px] font-black uppercase bg-purple-950/80 border border-purple-500/40 text-purple-300 px-2.5 py-0.5 rounded-full shadow-[0_0_10px_rgba(168,85,247,0.2)]">
                   Seven Shadows & Council
                 </span>
@@ -674,7 +698,7 @@ export default function RoleTitleManager() {
               return (
                 <div 
                   key={tName}
-                  className={`p-5 rounded-3xl border transition-all duration-300 flex flex-col justify-between backdrop-blur-xl relative hover:z-40 focus-within:z-50 ${
+                  className={`p-5 rounded-2xl border transition-all duration-300 flex flex-col justify-between backdrop-blur-xl relative hover:z-40 focus-within:z-50 ${
                     isFirstShadow
                       ? 'border-purple-500/60 bg-gradient-to-br from-purple-950/40 via-zinc-900/80 to-black shadow-[0_10px_30px_rgba(168,85,247,0.2)]'
                       : isTaken 

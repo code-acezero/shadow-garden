@@ -1941,7 +1941,7 @@ export function generateSpecialFrameSvg(
   const uniquePrefix = options.uniqueId || `sp_${frame.id}_${i}`;
   const c = frame.colors;
   const A = `url(#a_${uniquePrefix})`;
-  const actualAvatar = options.avatarUrl || 'https://lh3.googleusercontent.com/a/ACg8ocLnpRFtv4bK_qXzuqBG4vBF6UzrdAwPBOCPYofJ0tSYCc5RyKz4=s96-c';
+  const actualAvatar = options.avatarUrl || 'https://cdn.myanimelist.net/images/characters/9/310307.jpg';
 
   const avNode = options.transparentCenter
     ? ''
@@ -1986,7 +1986,7 @@ export const ATELIER_GLOBAL_DEFS_SVG = `
   <feDisplacementMap in="SourceGraphic" in2="noise" scale="18" xChannelSelector="R" yChannelSelector="G"/>
 </filter>
 
-<g id="av"><image href="https://lh3.googleusercontent.com/a/ACg8ocLnpRFtv4bK_qXzuqBG4vBF6UzrdAwPBOCPYofJ0tSYCc5RyKz4=s96-c" x="48" y="48" width="104" height="104" clip-path="url(#cp)" preserveAspectRatio="xMidYMid slice"/></g>
+<g id="av"><image href="https://cdn.myanimelist.net/images/characters/9/310307.jpg" x="48" y="48" width="104" height="104" clip-path="url(#cp)" preserveAspectRatio="xMidYMid slice"/></g>
 ${Object.entries(M)
   .map(([k, d]) => `<path id="m-${k}" d="${d}"/>`)
   .join('\n')}
@@ -2102,76 +2102,6 @@ export const ATELIER_GLOBAL_CSS = `
 `;
 
 // ─── Unified Store Frame Inventory ───────────────────────────────────────────
-export const ALL_ATELIER_STORE_FRAMES = [
-  ...ATELIER_SHOWCASE_FRAMES.map((f) => ({
-    id: f.id,
-    name: f.name,
-    type: 'store' as const,
-    minLevel: 0,
-    price: f.price,
-    tag: f.rarity,
-    tierBadge: `Tier ${f.tier}`,
-    description: `${f.rarity} ${f.categoryName} Frame. Motif: ${f.motif}, Attachment: ${f.attachment}.`,
-    category: f.category,
-    categoryName: f.categoryName,
-    color: f.colors[0],
-    colors: f.colors,
-    legacyId: f.legacyId,
-  })),
-  ...RAW_SPECIAL_FRAMES.filter((f) => f.type === 'council').map((f) => ({
-    id: f.id,
-    name: f.name,
-    type: 'store' as const,
-    minLevel: 0,
-    price: f.price || 6000,
-    tag: 'Council',
-    tierBadge: 'Council of Shadows',
-    description: f.desc,
-    category: 'cs',
-    categoryName: 'Council of Shadows',
-    color: f.colors[0],
-    colors: f.colors,
-  })),
-  ...RAW_SPECIAL_FRAMES.filter((f) => f.type === 'darkness').map((f) => ({
-    id: f.id,
-    name: f.name,
-    type: 'store' as const,
-    minLevel: 0,
-    price: f.price || 4500,
-    tag: 'Darkness',
-    tierBadge: 'Board of Darkness',
-    description: f.desc,
-    category: 'bd',
-    categoryName: 'Board of Darkness',
-    color: f.colors[0],
-    colors: f.colors,
-  })),
-  ...RAW_SPECIAL_FRAMES.filter((f) => f.type === 'level').map((f) => ({
-    id: f.id,
-    name: f.name,
-    type: 'level' as const,
-    minLevel: f.minLevel || 0,
-    price: 0,
-    tag: `Lv. ${f.minLevel}`,
-    tierBadge: 'Milestone',
-    description: f.desc,
-    category: 'lv',
-    categoryName: 'Level Milestones',
-    color: f.colors[0],
-    colors: f.colors,
-  })),
-  ...RAW_SPECIAL_FRAMES.filter((f) => f.type === 'role').map((f) => ({
-    id: f.id,
-    name: f.name,
-    type: 'role' as const,
-    minLevel: 0,
-    price: 0,
-    tag: 'Staff',
-    tierBadge: 'Exclusive',
-    description: f.desc,
-    category: 'role',
-    categoryName: 'Supreme Staff',
-    color: f.colors[0],
-    colors: f.colors,
-  })),
-];
+import { ALL_KAGEMI_FRAMES } from '@/kagemi-frames/normalize';
+
+export const ALL_ATELIER_STORE_FRAMES = ALL_KAGEMI_FRAMES;

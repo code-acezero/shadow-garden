@@ -3,7 +3,7 @@
 import React, { createContext, useContext, useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { supabase } from '@/lib/supabase'; 
 import { useAuth } from '@/context/AuthContext';
-import { applyColorPalette, DEFAULT_THEME_ID } from '@/lib/theme';
+import { applyColorPalette, DEFAULT_THEME_ID, COLOR_PALETTES } from '@/lib/theme';
 import { toast } from '@/lib/toast';
 
 // --- TYPES & DEFAULTS ---
@@ -16,6 +16,7 @@ export interface AppSettings {
   
   // Player
   autoPlay: boolean;
+  autoSkip?: boolean;
   autoSkipOpEd: boolean;
   autoSkipOutro?: boolean;
   autoNext?: boolean;
@@ -23,8 +24,11 @@ export interface AppSettings {
   resumePlayback: boolean;
   volumeBoost: boolean; 
   defaultServer: 'hd-1' | 'hd-2' | 'mirror-1' | 'mirror-2';
+  server?: string;
   defaultQuality?: '1080p' | '720p' | '480p' | 'Auto';
   defaultAudio: 'jp' | 'en' | 'hi' | 'cn' | 'es' | 'pt'; 
+  audio?: string;
+  category?: 'sub' | 'dub' | 'raw';
   preferredAudio?: 'jp' | 'en' | 'hi' | 'cn';
   subLanguage: 'en' | 'es' | 'fr' | 'none';
   defaultVolume: number;
@@ -33,12 +37,23 @@ export interface AppSettings {
   clearMode: boolean;
   tapPlayPauseWithControls: boolean;
 
+  // Shorts & Reels
+  shortsMuted?: boolean;
+  shortsClearMode?: boolean;
+  shortsTapPlayPause?: boolean;
+  shortsAspectFit?: 'cover' | 'contain';
+  shortsAutoAdvance?: boolean;
+  shortsCcBg?: 'none' | 'solid' | 'blur';
+  shortsCcOpacity?: number;
+  shortsCcPosY?: number;
+
   // Sound & Haptics
   tapSound: boolean;
   tapSoundEffect: 'jelly' | 'switch' | 'taptic' | 'bubble' | 'pop' | 'wood';
   tapSoundVolume: number;
 
   // Appearance
+  themeMode?: 'dark' | 'light';
   accentColor: 'red' | 'orange' | 'gold' | 'green' | 'lime' | 'teal' | 'cyan' | 'blue' | 'indigo' | 'violet' | 'purple' | 'pink' | 'rose' | 'mono';
   glassEffect: boolean;
   particles: boolean;
@@ -88,14 +103,15 @@ export interface AppSettings {
 
 export const DEFAULT_SETTINGS: AppSettings = {
   twoFactor: false, loginAlerts: true, incognito: false, publicActivity: true, allowRequests: true,
-  autoPlay: true, autoSkipOpEd: true, autoSkipOutro: true, autoNext: true, dimMode: false, resumePlayback: true, volumeBoost: false, 
-  defaultServer: 'hd-1', defaultQuality: '1080p', defaultAudio: 'jp', subLanguage: 'en', defaultVolume: 100, haptics: true, pipMode: true, clearMode: true, tapPlayPauseWithControls: true,
+  autoPlay: true, autoSkip: true, autoSkipOpEd: true, autoSkipOutro: true, autoNext: true, dimMode: false, resumePlayback: true, volumeBoost: false, 
+  defaultServer: 'hd-1', server: 'MegaCloud', defaultQuality: '1080p', defaultAudio: 'jp', audio: 'jp', category: 'sub', subLanguage: 'en', defaultVolume: 100, haptics: true, pipMode: true, clearMode: true, tapPlayPauseWithControls: true,
   tapSound: true, tapSoundEffect: 'jelly', tapSoundVolume: 0.35,
+  themeMode: 'dark',
   accentColor: 'violet', glassEffect: true, particles: true, reducedMotion: false, roundedUI: true, uiGlow: true, uiBorders: 'normal', cardVariant: 'default', fontFamily: 'inter',
   
-  // ✅ ENABLED BY DEFAULT + SET TO HANA
+  // ✅ ENABLED BY DEFAULT + SET TO ALPHA (ENGLISH)
   whisperEnabled: true, 
-  whisperVoice: 'hana', // [!code highlight]
+  whisperVoice: 'alpha',
   whisperVolume: 0.8,
 
   homeLayout: 'trending', listView: 'grid', showNSFW: false, blurSpoilers: true, hideFillers: true, useJapaneseTitle: false, animeTitleLanguage: 'en',
@@ -103,6 +119,16 @@ export const DEFAULT_SETTINGS: AppSettings = {
   
   // ✅ ENABLED BY DEFAULT
   enableWhisper: true, 
+
+  // Shorts & Reels
+  shortsMuted: false,
+  shortsClearMode: false,
+  shortsTapPlayPause: true,
+  shortsAspectFit: 'cover',
+  shortsAutoAdvance: true,
+  shortsCcBg: 'blur',
+  shortsCcOpacity: 75,
+  shortsCcPosY: 20,
 
   autoBackup: true, bandwidthSaver: false,
   
@@ -142,29 +168,40 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
     const root = document.documentElement;
 
     // Apply color palette from central theme engine
-    const savedPalette = localStorage.getItem('shadow_color_palette') || DEFAULT_THEME_ID;
-    const savedMode = (localStorage.getItem('shadow_theme_mode') || 'dark') as 'dark' | 'light';
-    applyColorPalette(savedPalette, savedMode);
-    const palettes: Record<string, any> = {
-      red:    { 50: '#fef2f2', 100: '#fee2e2', 200: '#fecaca', 300: '#fca5a5', 400: '#f87171', 500: '#ef4444', 600: '#dc2626', 700: '#b91c1c', 800: '#991b1b', 900: '#7f1d1d', 950: '#450a0a' },
-      orange: { 50: '#fff7ed', 100: '#ffedd5', 200: '#fed7aa', 300: '#fdba74', 400: '#fb923c', 500: '#f97316', 600: '#ea580c', 700: '#c2410c', 800: '#9a3412', 900: '#7c2d12', 950: '#431407' },
-      gold:   { 50: '#fffbeb', 100: '#fef3c7', 200: '#fde68a', 300: '#fcd34d', 400: '#fbbf24', 500: '#f59e0b', 600: '#d97706', 700: '#b45309', 800: '#92400e', 900: '#78350f', 950: '#451a03' },
-      lime:   { 50: '#f7fee7', 100: '#ecfccb', 200: '#d9f99d', 300: '#bef264', 400: '#a3e635', 500: '#84cc16', 600: '#65a30d', 700: '#4d7c0f', 800: '#3f6212', 900: '#365314', 950: '#1a2e05' }, 
-      green:  { 50: '#f0fdf4', 100: '#dcfce7', 200: '#bbf7d0', 300: '#86efac', 400: '#4ade80', 500: '#22c55e', 600: '#16a34a', 700: '#15803d', 800: '#166534', 900: '#14532d', 950: '#052e16' },
-      teal:   { 50: '#f0fdfa', 100: '#ccfbf1', 200: '#99f6e4', 300: '#5eead4', 400: '#2dd4bf', 500: '#14b8a6', 600: '#0d9488', 700: '#0f766e', 800: '#115e59', 900: '#134e4a', 950: '#042f2e' },
-      cyan:   { 50: '#ecfeff', 100: '#cffafe', 200: '#a5f3fc', 300: '#67e8f9', 400: '#22d3ee', 500: '#06b6d4', 600: '#0891b2', 700: '#0e7490', 800: '#155e75', 900: '#164e63', 950: '#083344' },
-      blue:   { 50: '#eff6ff', 100: '#dbeafe', 200: '#bfdbfe', 300: '#93c5fd', 400: '#60a5fa', 500: '#3b82f6', 600: '#2563eb', 700: '#1d4ed8', 800: '#1e40af', 900: '#1e3a8a', 950: '#172554' },
-      indigo: { 50: '#eef2ff', 100: '#e0e7ff', 200: '#c7d2fe', 300: '#a5b4fc', 400: '#818cf8', 500: '#6366f1', 600: '#4f46e5', 700: '#4338ca', 800: '#3730a3', 900: '#312e81', 950: '#1e1b4b' },
-      violet: { 50: '#f5f3ff', 100: '#ede9fe', 200: '#ddd6fe', 300: '#c4b5fd', 400: '#a78bfa', 500: '#8b5cf6', 600: '#7c3aed', 700: '#6d28d9', 800: '#5b21b6', 900: '#4c1d95', 950: '#2e1065' },
-      purple: { 50: '#faf5ff', 100: '#f3e8ff', 200: '#e9d5ff', 300: '#d8b4fe', 400: '#c084fc', 500: '#a855f7', 600: '#9333ea', 700: '#7e22ce', 800: '#6b21a8', 900: '#581c87', 950: '#3b0764' },
-      pink:   { 50: '#fdf2f8', 100: '#fce7f3', 200: '#fbcfe8', 300: '#f9a8d4', 400: '#f472b6', 500: '#ec4899', 600: '#db2777', 700: '#be123c', 800: '#9d174d', 900: '#831843', 950: '#500724' },
-      rose:   { 50: '#fff1f2', 100: '#ffe4e6', 200: '#fecdd3', 300: '#fda4af', 400: '#fb7185', 500: '#f43f5e', 600: '#e11d48', 700: '#be123c', 800: '#9f1239', 900: '#881337', 950: '#4c0519' },
-      mono:   { 50: '#fafafa', 100: '#f4f4f5', 200: '#e4e4e7', 300: '#d4d4d8', 400: '#a1a1aa', 500: '#71717a', 600: '#52525b', 700: '#3f3f46', 800: '#27272a', 900: '#18181b', 950: '#09090b' },
-    };
+    let paletteId = DEFAULT_THEME_ID;
+    const savedPalette = localStorage.getItem('shadow_color_palette');
+    
+    // Prioritize saved color palette if valid
+    if (savedPalette && COLOR_PALETTES.some(p => p.id === savedPalette)) {
+      paletteId = savedPalette;
+    } else if (s.accentColor && s.accentColor !== 'red') {
+      const colorToPaletteMap: Record<string, string> = {
+        violet: 'sky-purple-violet',
+        purple: 'amethyst-twilight',
+        blue: 'midnight-sapphire',
+        cyan: 'vortex-cyan',
+        green: 'cyber-emerald',
+        lime: 'toxic-lime',
+        gold: 'solar-gold',
+        orange: 'hyper-orange',
+        rose: 'rose-quartz',
+        pink: 'rose-quartz',
+        mono: 'phantom-mono',
+        indigo: 'deep-abyss',
+        teal: 'cyber-emerald',
+      };
+      if (colorToPaletteMap[s.accentColor]) {
+        paletteId = colorToPaletteMap[s.accentColor];
+      } else if (COLOR_PALETTES.some(p => p.id === s.accentColor)) {
+        paletteId = s.accentColor;
+      }
+    } else if (s.accentColor === 'red') {
+      // Migrate away from legacy crimson to default material/matte purple-violet
+      paletteId = 'sky-purple-violet';
+    }
 
-    const activePalette = palettes[s.accentColor] || palettes['red'];
-    Object.keys(activePalette).forEach(shade => root.style.setProperty(`--primary-${shade}`, activePalette[shade]));
-    root.style.setProperty('--primary-color', activePalette[600]);
+    const savedMode = (s.themeMode || localStorage.getItem('shadow_theme_mode') || 'dark') as 'dark' | 'light';
+    applyColorPalette(paletteId, savedMode);
 
     const fontMap: Record<string, string> = {
         'inter': 'var(--font-sans)',
@@ -222,27 +259,57 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
     if (user && profile?.settings) {
       currentSettings = { ...currentSettings, ...profile.settings };
       
+      // Preserve active local color palette if specifically chosen
+      const activeLocalPalette = localStorage.getItem('shadow_color_palette');
+      if (activeLocalPalette && COLOR_PALETTES.some(p => p.id === activeLocalPalette)) {
+        currentSettings.accentColor = activeLocalPalette as any;
+      }
+      
+      localStorage.setItem(key, JSON.stringify(currentSettings));
+      
       // Override local shadow_player_prefs if DB has newer playerPrefs
       if (currentSettings.playerPrefs) {
           localStorage.setItem('shadow_player_prefs', JSON.stringify(currentSettings.playerPrefs));
       }
     }
 
-    // --- ✅ FORCE-ACTIVATE DEFAULT VOICE (HANA) IF MISSING ---
+    // Single-source player settings sync across player and watch pages
+    try {
+      const syncPlayer = {
+        autoPlay: currentSettings.autoPlay,
+        autoSkip: currentSettings.autoSkip ?? currentSettings.autoSkipOpEd ?? false,
+        autoSkipOutro: currentSettings.autoSkipOutro ?? false,
+        autoNext: currentSettings.autoNext ?? true,
+        dimMode: currentSettings.dimMode ?? false,
+        server: currentSettings.server || (currentSettings.defaultServer === 'hd-1' ? 'MegaCloud' : currentSettings.defaultServer) || 'MegaCloud',
+        audio: currentSettings.audio || currentSettings.defaultAudio || 'jp',
+        category: currentSettings.category || ((currentSettings.defaultAudio === 'en' || currentSettings.defaultAudio === 'hi') ? 'dub' : 'sub'),
+        volume: currentSettings.defaultVolume ? currentSettings.defaultVolume / 100 : 1,
+        ...(currentSettings.playerPrefs || {})
+      };
+      localStorage.setItem('shadow_player_prefs', JSON.stringify(syncPlayer));
+      localStorage.setItem('shadow_watch_settings_anime', JSON.stringify(syncPlayer));
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent('update_player_prefs', { detail: { playerPrefs: syncPlayer } }));
+      }
+    } catch (e) {}
+
+    // --- ✅ FORCE-ACTIVATE DEFAULT VOICE (ALPHA - EN) IF MISSING ---
     const voiceConfig = localStorage.getItem('shadow_voice_settings');
     if (!voiceConfig) {
-      console.log("🔊 Injecting Default Voice Model: Hana");
+      console.log("🔊 Injecting Default Voice Model: Alpha (EN)");
       const defaultVoice = {
-        pack: 'hana', // [!code highlight]
+        pack: 'alpha',
         language: 'en',
         volume: 0.8,
         speed: 1.0,
-        pitch: 1.0
+        pitch: 1.0,
+        enabled: true
       };
       localStorage.setItem('shadow_voice_settings', JSON.stringify(defaultVoice));
       
       // Also sync it to our settings state just in case
-      currentSettings.whisperVoice = 'hana'; // [!code highlight]
+      currentSettings.whisperVoice = 'alpha';
       currentSettings.whisperEnabled = true;
     }
     // ---------------------------------------------------
@@ -263,19 +330,46 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
   const updateSetting = useCallback((key: keyof AppSettings, value: any) => {
     setSettings((prev) => {
       const newSettings = { ...prev, [key]: value };
-      const storageKey = user?.id ? `shadow_settings_${user.id}` : `shadow_settings_guest`;
+      
+      // Keep aliases in sync
+      if (key === 'autoSkip') {
+        newSettings.autoSkipOpEd = value;
+      } else if (key === 'autoSkipOpEd') {
+        newSettings.autoSkip = value;
+      }
 
+      if (key === 'audio') {
+        newSettings.defaultAudio = value as any;
+        newSettings.category = (value === 'en' || value === 'hi') ? 'dub' : 'sub';
+      } else if (key === 'defaultAudio') {
+        newSettings.audio = value;
+        newSettings.category = (value === 'en' || value === 'hi') ? 'dub' : 'sub';
+      } else if (key === 'category') {
+        if (!newSettings.audio || newSettings.audio === 'jp' || newSettings.audio === 'en') {
+          newSettings.audio = value === 'dub' ? 'en' : 'jp';
+          newSettings.defaultAudio = newSettings.audio as any;
+        }
+      }
+
+      const storageKey = user?.id ? `shadow_settings_${user.id}` : `shadow_settings_guest`;
       localStorage.setItem(storageKey, JSON.stringify(newSettings));
       
-      if (['accentColor', 'fontFamily', 'uiGlow', 'uiBorders', 'roundedUI'].includes(key)) {
+      if (['accentColor', 'fontFamily', 'uiGlow', 'uiBorders', 'roundedUI', 'themeMode'].includes(key)) {
         applyThemeRef.current(newSettings);
         localStorage.setItem('shadow_theme_cache', JSON.stringify({
+            themeMode: newSettings.themeMode,
             accentColor: newSettings.accentColor, 
             fontFamily: newSettings.fontFamily,
             uiGlow: newSettings.uiGlow,
             uiBorders: newSettings.uiBorders,
             roundedUI: newSettings.roundedUI
         }));
+        if (key === 'accentColor') {
+          localStorage.setItem('shadow_color_palette', String(value));
+        }
+        if (key === 'themeMode') {
+          localStorage.setItem('shadow_theme_mode', String(value));
+        }
       }
 
       if (key === 'tapSound') {
@@ -294,11 +388,73 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
         }
       }
 
-      if (user && newSettings.autoBackup) {
+      // Synchronize Shorts & Reels preferences
+      if (key === 'shortsMuted') {
+        localStorage.setItem('shadow_shorts_muted', String(value));
+      }
+      if (key === 'shortsClearMode') {
+        localStorage.setItem('shadow_clear_mode', String(value));
+        if (typeof window !== 'undefined') {
+          window.dispatchEvent(new CustomEvent('shadow_clear_mode_toggle', { detail: { enabled: value } }));
+        }
+      }
+      if (key === 'shortsTapPlayPause') {
+        localStorage.setItem('shadow_tap_play_pause', String(value));
+        if (typeof window !== 'undefined') {
+          window.dispatchEvent(new CustomEvent('shadow_tap_play_pause_toggle', { detail: { enabled: value } }));
+        }
+      }
+      if (key === 'shortsAspectFit') {
+        localStorage.setItem('shadow_shorts_aspect_fit', String(value));
+      }
+      if (key === 'shortsAutoAdvance') {
+        localStorage.setItem('shadow_shorts_auto_advance', String(value));
+      }
+      if (key === 'shortsCcBg') {
+        localStorage.setItem('shadow_shorts_cc_bg', String(value));
+      }
+      if (key === 'shortsCcOpacity') {
+        localStorage.setItem('shadow_shorts_cc_opacity', String(value));
+      }
+      if (key === 'shortsCcPosY') {
+        localStorage.setItem('shadow_shorts_cc_pos_y', String(value));
+      }
+
+      // Synchronize player settings globally across OmniPlayer, watch pages, and settings
+      if (['autoPlay', 'autoSkip', 'autoSkipOpEd', 'autoSkipOutro', 'autoNext', 'dimMode', 'defaultServer', 'server', 'defaultAudio', 'audio', 'category', 'playerPrefs', 'defaultVolume'].includes(key as string)) {
+        try {
+          const curPrefs = JSON.parse(localStorage.getItem('shadow_player_prefs') || '{}');
+          const updatedPlayerPrefs = {
+            ...curPrefs,
+            autoPlay: newSettings.autoPlay,
+            autoSkip: newSettings.autoSkip ?? newSettings.autoSkipOpEd ?? false,
+            autoSkipOutro: newSettings.autoSkipOutro ?? false,
+            autoNext: newSettings.autoNext ?? true,
+            dimMode: newSettings.dimMode ?? false,
+            server: newSettings.server || (newSettings.defaultServer === 'hd-1' ? 'MegaCloud' : newSettings.defaultServer) || 'MegaCloud',
+            audio: newSettings.audio || newSettings.defaultAudio || 'jp',
+            category: newSettings.category || ((newSettings.defaultAudio === 'en' || newSettings.defaultAudio === 'hi') ? 'dub' : 'sub'),
+            volume: newSettings.defaultVolume ? newSettings.defaultVolume / 100 : 1,
+            ...(newSettings.playerPrefs || {})
+          };
+          localStorage.setItem('shadow_player_prefs', JSON.stringify(updatedPlayerPrefs));
+          localStorage.setItem('shadow_watch_settings_anime', JSON.stringify(updatedPlayerPrefs));
+          if (typeof window !== 'undefined') {
+            window.dispatchEvent(new CustomEvent('update_player_prefs', { detail: { playerPrefs: updatedPlayerPrefs } }));
+          }
+        } catch (e) {}
+      }
+
+      // Single source of truth in Supabase for authenticated users
+      if (user) {
         if (debounceTimer.current) clearTimeout(debounceTimer.current);
         debounceTimer.current = setTimeout(async () => {
-          await supabase.from('profiles').update({ settings: newSettings }).eq('id', user.id);
-        }, 1000); 
+          try {
+            await supabase.from('profiles').update({ settings: newSettings }).eq('id', user.id);
+          } catch (err) {
+            console.warn("Supabase player settings sync:", err);
+          }
+        }, 500); 
       }
       return newSettings;
     });

@@ -10,6 +10,7 @@ import {
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
+import { RealtimePresenceModal } from '@/components/Admin/RealtimePresenceModal';
 
 interface AnalyticsData {
   totalAdventurers: number;
@@ -21,6 +22,16 @@ interface AnalyticsData {
   bannedCount: number;
   newToday: number;
   loading: boolean;
+  totalTreasuryCoins: number;
+  avgCoinsPerUser: number;
+  whalesCount: number;
+  eliteCoinCount: number;
+  activeCoinCount: number;
+  initiateCoinCount: number;
+  apexLevelCount: number;
+  highLevelCount: number;
+  midLevelCount: number;
+  noviceLevelCount: number;
   weeklyTrend: { day: string; visits: number; adventurers: number }[];
 }
 
@@ -35,10 +46,21 @@ export default function AnalyticsSection({ accentColor = 'red' }: { accentColor?
     bannedCount: 0,
     newToday: 0,
     loading: true,
+    totalTreasuryCoins: 0,
+    avgCoinsPerUser: 0,
+    whalesCount: 0,
+    eliteCoinCount: 0,
+    activeCoinCount: 0,
+    initiateCoinCount: 0,
+    apexLevelCount: 0,
+    highLevelCount: 0,
+    midLevelCount: 0,
+    noviceLevelCount: 0,
     weeklyTrend: [],
   });
 
   const [activeTimeframe, setActiveTimeframe] = useState<'7d' | '30d'>('7d');
+  const [presenceModalOpen, setPresenceModalOpen] = useState(false);
   // Use a ref so fetchAnalytics doesn't need realtimeActive as a dep (prevents infinite loop)
   const realtimeActiveRef = React.useRef(1);
 
@@ -49,13 +71,22 @@ export default function AnalyticsSection({ accentColor = 'red' }: { accentColor?
       // 1. Total Adventurers Count & Role Breakdown
       const { data: profiles, count: totalProfiles } = await supabase
         .from('profiles')
-        .select('id, role, is_banned, created_at', { count: 'exact' });
+        .select('id, role, is_banned, created_at, coins, level', { count: 'exact' });
 
       let admins = 0;
       let mods = 0;
       let users = 0;
       let banned = 0;
       let newCount = 0;
+      let totalCoins = 0;
+      let whales = 0;
+      let eliteCoins = 0;
+      let activeCoins = 0;
+      let initiateCoins = 0;
+      let apexLevels = 0;
+      let highLevels = 0;
+      let midLevels = 0;
+      let noviceLevels = 0;
       const now = new Date();
       const oneDayAgo = new Date(now.getTime() - 24 * 60 * 60 * 1000);
 
@@ -76,6 +107,19 @@ export default function AnalyticsSection({ accentColor = 'red' }: { accentColor?
           else if (p.role === 'admin') admins++;
           else if (p.role === 'moderator') mods++;
           else users++;
+
+          const coinVal = Number(p.coins) || 0;
+          totalCoins += coinVal;
+          if (coinVal >= 50000) whales++;
+          else if (coinVal >= 10000) eliteCoins++;
+          else if (coinVal >= 1000) activeCoins++;
+          else initiateCoins++;
+
+          const lvl = Number(p.level) || 1;
+          if (lvl >= 90) apexLevels++;
+          else if (lvl >= 50) highLevels++;
+          else if (lvl >= 20) midLevels++;
+          else noviceLevels++;
 
           if (p.created_at) {
             const pDate = new Date(p.created_at);
@@ -178,23 +222,19 @@ export default function AnalyticsSection({ accentColor = 'red' }: { accentColor?
     <div className="space-y-6 w-full animate-in fade-in duration-500">
       
       {/* Analytics Section Header */}
-      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 bg-zinc-900/40 border border-white/10 rounded-[2rem] p-6 backdrop-blur-xl shadow-xl">
-        <div className="flex items-center gap-4">
-          <div className={cn("p-3.5 rounded-2xl bg-white/5 border border-white/10 shadow-lg", textHighlight)}>
-            <Activity className="w-6 h-6 animate-pulse" />
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 bg-zinc-900/40 border border-white/[0.08] rounded-2xl p-5 backdrop-blur-xl shadow-lg">
+        <div className="flex items-center gap-3.5">
+          <div className={cn("p-2.5 rounded-xl bg-white/[0.05] border border-white/[0.08]", textHighlight)}>
+            <Activity className="w-5 h-5" />
           </div>
           <div>
             <div className="flex items-center gap-2.5">
-              <h2 className="text-xl font-black tracking-wide text-white font-minomu uppercase">GUILD TELEMETRY & ANALYTICS</h2>
-              <Badge variant="outline" className={cn("rounded-full text-[10px] font-bold px-2.5 py-0.5 flex items-center gap-1.5", badgeStyle)}>
-                <span className="relative flex h-2 w-2">
-                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-                  <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
-                </span>
+              <h2 className="text-base sm:text-lg font-black tracking-wide text-white uppercase font-sans">GUILD TELEMETRY & ANALYTICS</h2>
+              <Badge variant="outline" className={cn("rounded-md text-[10px] font-mono font-bold px-2 py-0.5", badgeStyle)}>
                 LIVE
               </Badge>
             </div>
-            <p className="text-xs text-zinc-400 mt-1">Real-time telemetry, visitor traffic curves, adventurer metrics, and active socket connections.</p>
+            <p className="text-xs text-zinc-400 mt-0.5">Real-time telemetry, visitor traffic curves, adventurer metrics, and active socket connections.</p>
           </div>
         </div>
 
@@ -204,7 +244,7 @@ export default function AnalyticsSection({ accentColor = 'red' }: { accentColor?
             disabled={data.loading}
             variant="outline"
             size="sm"
-            className="rounded-full bg-white/5 border-white/10 hover:bg-white/10 text-zinc-300 hover:text-white text-xs font-bold gap-2"
+            className="rounded-xl bg-white/[0.05] border-white/[0.1] hover:bg-white/[0.1] text-zinc-300 hover:text-white text-xs font-semibold gap-2 h-9"
           >
             <RefreshCw className={cn("w-3.5 h-3.5", data.loading && "animate-spin")} />
             <span>Refresh</span>
@@ -213,76 +253,80 @@ export default function AnalyticsSection({ accentColor = 'red' }: { accentColor?
       </div>
 
       {/* Main Key Metrics Cards Grid */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
 
         {/* STAT 1: TOTAL ADVENTURERS */}
-        <div className={cn("p-6 rounded-[2rem] border bg-gradient-to-br backdrop-blur-xl relative overflow-hidden group transition-all duration-300 hover:border-white/20 shadow-xl", themeGlow)}>
-          <div className="flex items-center justify-between mb-4">
-            <span className="text-xs font-bold uppercase tracking-wider text-zinc-400 flex items-center gap-2">
+        <div className={cn("p-5 rounded-2xl border bg-gradient-to-br backdrop-blur-xl relative overflow-hidden group transition-all duration-300 hover:border-white/20 shadow-md", themeGlow)}>
+          <div className="flex items-center justify-between mb-3">
+            <span className="text-xs font-semibold uppercase tracking-wider text-zinc-400 flex items-center gap-2">
               <Sword className={cn("w-4 h-4", textHighlight)} /> Total Adventurers
             </span>
-            <Badge className="bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 text-[10px] font-bold rounded-full">
+            <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
               +{data.newToday} Today
-            </Badge>
+            </span>
           </div>
 
-          <div className="flex items-baseline justify-between mt-2">
-            <span className="text-4xl font-black text-white tracking-tight font-mono">
+          <div className="flex items-baseline justify-between mt-1">
+            <span className="text-3xl sm:text-4xl font-black text-white tracking-tight font-mono">
               {data.loading ? "..." : data.totalAdventurers.toLocaleString()}
             </span>
-            <span className="text-xs text-zinc-500 font-semibold">Registered Accounts</span>
+            <span className="text-[11px] text-zinc-400 font-medium">Registered Accounts</span>
           </div>
 
-          <div className="mt-4 pt-3 border-t border-white/5 flex items-center justify-between text-xs text-zinc-400">
-            <span>Standard Members: <strong className="text-white">{data.usersCount}</strong></span>
+          <div className="mt-4 pt-3 border-t border-white/[0.06] flex items-center justify-between text-xs text-zinc-400 font-mono">
+            <span>Members: <strong className="text-white">{data.usersCount}</strong></span>
             <span>New (24h): <strong className="text-emerald-400">+{data.newToday}</strong></span>
           </div>
         </div>
 
         {/* STAT 2: REALTIME ACTIVE COUNT */}
-        <div className="p-6 rounded-[2rem] border border-emerald-500/30 bg-gradient-to-br from-emerald-950/20 via-black/30 to-emerald-900/10 backdrop-blur-xl relative overflow-hidden group transition-all duration-300 hover:border-emerald-500/50 shadow-xl shadow-emerald-950/20">
-          <div className="flex items-center justify-between mb-4">
-            <span className="text-xs font-bold uppercase tracking-wider text-emerald-400 flex items-center gap-2">
-              <Radio className="w-4 h-4 text-emerald-400 animate-pulse" /> Real-time Active
+        <div 
+          onClick={() => setPresenceModalOpen(true)}
+          className="p-5 rounded-2xl border border-emerald-500/25 bg-gradient-to-br from-emerald-950/20 via-black/30 to-emerald-900/10 backdrop-blur-xl relative overflow-hidden group transition-all duration-300 hover:border-emerald-500/50 hover:bg-emerald-950/30 cursor-pointer shadow-md select-none"
+          title="Click to view all active users and travellers"
+        >
+          <div className="flex items-center justify-between mb-3">
+            <span className="text-xs font-semibold uppercase tracking-wider text-emerald-400 flex items-center gap-2">
+              <Radio className="w-4 h-4 text-emerald-400" /> Real-time Active
             </span>
-            <Badge className="bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 text-[10px] font-bold rounded-full flex items-center gap-1">
-              <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-ping" /> ONLINE NOW
-            </Badge>
+            <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded bg-emerald-500/15 text-emerald-300 border border-emerald-500/30 group-hover:bg-emerald-500/30 transition-colors">
+              VIEW ROSTER →
+            </span>
           </div>
 
-          <div className="flex items-baseline justify-between mt-2">
-            <span className="text-4xl font-black text-emerald-300 tracking-tight font-mono">
+          <div className="flex items-baseline justify-between mt-1">
+            <span className="text-3xl sm:text-4xl font-black text-emerald-300 tracking-tight font-mono">
               {data.loading ? "..." : data.realtimeActive}
             </span>
-            <span className="text-xs text-emerald-500/80 font-semibold">Active Connections</span>
+            <span className="text-[11px] text-emerald-400/80 font-medium">Active Connections</span>
           </div>
 
-          <div className="mt-4 pt-3 border-t border-emerald-500/10 flex items-center justify-between text-xs text-zinc-400">
-            <span>Presence Socket: <strong className="text-emerald-400">Connected</strong></span>
+          <div className="mt-4 pt-3 border-t border-emerald-500/10 flex items-center justify-between text-xs text-zinc-400 font-mono">
+            <span>Presence: <strong className="text-emerald-400">Connected</strong></span>
             <span>Latency: <strong className="text-emerald-400">&lt;18ms</strong></span>
           </div>
         </div>
 
         {/* STAT 3: TOTAL VISITS / PAGE VIEWS */}
-        <div className="p-6 rounded-[2rem] border border-blue-500/20 bg-gradient-to-br from-blue-950/20 via-black/30 to-indigo-900/10 backdrop-blur-xl relative overflow-hidden group transition-all duration-300 hover:border-blue-500/40 shadow-xl">
-          <div className="flex items-center justify-between mb-4">
-            <span className="text-xs font-bold uppercase tracking-wider text-blue-400 flex items-center gap-2">
+        <div className="p-5 rounded-2xl border border-blue-500/20 bg-gradient-to-br from-blue-950/20 via-black/30 to-indigo-900/10 backdrop-blur-xl relative overflow-hidden group transition-all duration-300 hover:border-blue-500/40 shadow-md">
+          <div className="flex items-center justify-between mb-3">
+            <span className="text-xs font-semibold uppercase tracking-wider text-blue-400 flex items-center gap-2">
               <Eye className="w-4 h-4 text-blue-400" /> Site Visits & Views
             </span>
-            <Badge className="bg-blue-500/10 text-blue-400 border border-blue-500/20 text-[10px] font-bold rounded-full">
+            <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded bg-blue-500/10 text-blue-400 border border-blue-500/20">
               Portal Traffic
-            </Badge>
+            </span>
           </div>
 
-          <div className="flex items-baseline justify-between mt-2">
-            <span className="text-4xl font-black text-white tracking-tight font-mono">
+          <div className="flex items-baseline justify-between mt-1">
+            <span className="text-3xl sm:text-4xl font-black text-white tracking-tight font-mono">
               {data.loading ? "..." : data.totalVisits.toLocaleString()}
             </span>
-            <span className="text-xs text-zinc-500 font-semibold font-mono">Total Page Hits</span>
+            <span className="text-[11px] text-zinc-400 font-medium">Total Page Hits</span>
           </div>
 
-          <div className="mt-4 pt-3 border-t border-white/5 flex items-center justify-between text-xs text-zinc-400">
-            <span>Session Status: <strong className="text-blue-400">Active</strong></span>
+          <div className="mt-4 pt-3 border-t border-white/[0.06] flex items-center justify-between text-xs text-zinc-400 font-mono">
+            <span>Session: <strong className="text-blue-400">Active</strong></span>
             <span>Analytics: <strong className="text-blue-400">Synced</strong></span>
           </div>
         </div>
@@ -292,31 +336,31 @@ export default function AnalyticsSection({ accentColor = 'red' }: { accentColor?
       {/* ================================================================= */}
       {/* GRAPH 1: 7-DAY TRAFFIC & VISITS TREND BAR CHART */}
       {/* ================================================================= */}
-      <div className="p-6 md:p-8 rounded-[2rem] bg-zinc-900/30 border border-white/10 backdrop-blur-xl space-y-6 shadow-xl">
+      <div className="p-5 sm:p-6 rounded-2xl bg-zinc-900/30 border border-white/[0.08] backdrop-blur-xl space-y-5 shadow-lg">
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
           <div className="flex items-center gap-3">
-            <div className={cn("p-2.5 rounded-xl bg-white/5 border border-white/10", textHighlight)}>
-              <BarChart3 className="w-5 h-5" />
+            <div className={cn("p-2 rounded-xl bg-white/[0.05] border border-white/[0.08]", textHighlight)}>
+              <BarChart3 className="w-4 h-4" />
             </div>
             <div>
-              <h3 className="text-base font-bold text-white uppercase tracking-wider font-minomu">Weekly Portal Traffic & Visits Trend</h3>
+              <h3 className="text-sm sm:text-base font-bold text-white uppercase tracking-wider font-sans">Weekly Portal Traffic & Visits Trend</h3>
               <p className="text-xs text-zinc-400">7-Day comparative breakdown of site visits vs new adventurer signups</p>
             </div>
           </div>
-          <div className="flex items-center gap-4 text-xs">
+          <div className="flex items-center gap-4 text-xs font-mono">
             <div className="flex items-center gap-2">
-              <span className="w-3 h-3 rounded-sm bg-primary-500 inline-block" />
-              <span className="text-zinc-300 font-bold">Portal Visits</span>
+              <span className="w-2.5 h-2.5 rounded-sm bg-primary-500 inline-block" />
+              <span className="text-zinc-300 font-medium">Portal Visits</span>
             </div>
             <div className="flex items-center gap-2">
-              <span className="w-3 h-3 rounded-sm bg-emerald-400 inline-block" />
-              <span className="text-zinc-300 font-bold">Adventurers</span>
+              <span className="w-2.5 h-2.5 rounded-sm bg-emerald-400 inline-block" />
+              <span className="text-zinc-300 font-medium">Adventurers</span>
             </div>
           </div>
         </div>
 
         {/* Visual Bar Chart */}
-        <div className="pt-4 pb-2 px-2 border-t border-b border-white/5">
+        <div className="pt-3 pb-2 px-2 border-t border-b border-white/[0.06]">
           <div className="h-44 flex items-end justify-between gap-3 md:gap-6 w-full">
             {data.weeklyTrend.map((item, idx) => {
               const visitPct = Math.max(12, Math.round((item.visits / maxWeeklyVisits) * 100));
@@ -335,12 +379,12 @@ export default function AnalyticsSection({ accentColor = 'red' }: { accentColor?
                     {/* Visits Bar */}
                     <div 
                       style={{ height: `${visitPct}%` }}
-                      className={cn("w-full max-w-[28px] rounded-t-lg transition-all duration-500 group-hover:brightness-125 group-hover:scale-105 shadow-lg", barGradient)}
+                      className={cn("w-full max-w-[28px] rounded-t-lg transition-all duration-500 group-hover:brightness-125 group-hover:scale-105 shadow-md", barGradient)}
                     />
                     {/* Adventurers Bar */}
                     <div 
                       style={{ height: `${advPct}%` }}
-                      className="w-full max-w-[14px] rounded-t-lg bg-gradient-to-t from-emerald-700 to-emerald-400 transition-all duration-500 group-hover:brightness-125 shadow-lg opacity-80 group-hover:opacity-100"
+                      className="w-full max-w-[14px] rounded-t-lg bg-gradient-to-t from-emerald-700 to-emerald-400 transition-all duration-500 group-hover:brightness-125 shadow-md opacity-80 group-hover:opacity-100"
                     />
                   </div>
 
@@ -353,18 +397,18 @@ export default function AnalyticsSection({ accentColor = 'red' }: { accentColor?
         </div>
 
         {/* Quick Insights Footer */}
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 pt-1">
-          <div className="p-3 rounded-2xl bg-white/5 border border-white/5 flex items-center justify-between">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-1">
+          <div className="p-3 rounded-xl bg-white/[0.03] border border-white/[0.06] flex items-center justify-between">
             <span className="text-xs text-zinc-400">Peak Traffic Day</span>
-            <span className="text-xs font-black text-primary-400 font-mono">Friday (142 visits)</span>
+            <span className="text-xs font-bold text-primary-400 font-mono">Friday (142 visits)</span>
           </div>
-          <div className="p-3 rounded-2xl bg-white/5 border border-white/5 flex items-center justify-between">
-            <span className="text-xs text-zinc-400">Avg Daily Engagement</span>
-            <span className="text-xs font-black text-emerald-400 font-mono">4.8 min/session</span>
+          <div className="p-3 rounded-xl bg-white/[0.03] border border-white/[0.06] flex items-center justify-between">
+            <span className="text-xs text-zinc-400">Avg Session Duration</span>
+            <span className="text-xs font-bold text-emerald-400 font-mono">4.8 min/session</span>
           </div>
-          <div className="p-3 rounded-2xl bg-white/5 border border-white/5 flex items-center justify-between">
+          <div className="p-3 rounded-xl bg-white/[0.03] border border-white/[0.06] flex items-center justify-between">
             <span className="text-xs text-zinc-400">Conversion Rate</span>
-            <span className="text-xs font-black text-purple-400 font-mono">18.4% signup</span>
+            <span className="text-xs font-bold text-purple-400 font-mono">18.4% signup</span>
           </div>
         </div>
       </div>
@@ -372,54 +416,54 @@ export default function AnalyticsSection({ accentColor = 'red' }: { accentColor?
       {/* ================================================================= */}
       {/* GRAPH 2 & 3: DEVICE DISTRIBUTION & SYSTEM TELEMETRY */}
       {/* ================================================================= */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
 
         {/* DEVICE & PLATFORM BREAKDOWN */}
-        <div className="p-6 rounded-[2rem] bg-zinc-900/30 border border-white/10 backdrop-blur-xl space-y-5 shadow-xl">
-          <div className="flex items-center justify-between border-b border-white/5 pb-4">
-            <div className="flex items-center gap-3">
-              <PieChart className="w-5 h-5 text-blue-400" />
-              <h3 className="text-sm font-bold text-white uppercase tracking-wider font-minomu">Device Platform Distribution</h3>
+        <div className="p-5 sm:p-6 rounded-2xl bg-zinc-900/30 border border-white/[0.08] backdrop-blur-xl space-y-4 shadow-lg">
+          <div className="flex items-center justify-between border-b border-white/[0.06] pb-3">
+            <div className="flex items-center gap-2.5">
+              <PieChart className="w-4 h-4 text-blue-400" />
+              <h3 className="text-sm font-bold text-white uppercase tracking-wider font-sans">Device Platform Distribution</h3>
             </div>
-            <Badge variant="outline" className="text-[9px] border-blue-500/30 text-blue-400 bg-blue-500/10">REALTIME USAGE</Badge>
+            <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded bg-blue-500/10 text-blue-400 border border-blue-500/20">REALTIME</span>
           </div>
 
-          <div className="space-y-4">
+          <div className="space-y-3.5">
             {/* Desktop */}
-            <div className="space-y-1.5">
-              <div className="flex items-center justify-between text-xs font-bold">
+            <div className="space-y-1">
+              <div className="flex items-center justify-between text-xs font-medium">
                 <span className="flex items-center gap-2 text-zinc-300">
-                  <Monitor className="w-4 h-4 text-blue-400" /> Desktop Browsers
+                  <Monitor className="w-3.5 h-3.5 text-blue-400" /> Desktop Browsers
                 </span>
-                <span className="font-mono text-blue-400">64% (223 sessions)</span>
+                <span className="font-mono text-blue-400 text-xs">64% (223 sessions)</span>
               </div>
-              <div className="w-full h-2.5 bg-black/40 rounded-full overflow-hidden p-0.5 border border-white/5">
+              <div className="w-full h-2 bg-black/40 rounded-full overflow-hidden p-0.5 border border-white/[0.06]">
                 <div className="h-full bg-gradient-to-r from-blue-600 to-indigo-400 rounded-full w-[64%]" />
               </div>
             </div>
 
             {/* Mobile */}
-            <div className="space-y-1.5">
-              <div className="flex items-center justify-between text-xs font-bold">
+            <div className="space-y-1">
+              <div className="flex items-center justify-between text-xs font-medium">
                 <span className="flex items-center gap-2 text-zinc-300">
-                  <Smartphone className="w-4 h-4 text-emerald-400" /> Mobile Devices
+                  <Smartphone className="w-3.5 h-3.5 text-emerald-400" /> Mobile Devices
                 </span>
-                <span className="font-mono text-emerald-400">31% (108 sessions)</span>
+                <span className="font-mono text-emerald-400 text-xs">31% (108 sessions)</span>
               </div>
-              <div className="w-full h-2.5 bg-black/40 rounded-full overflow-hidden p-0.5 border border-white/5">
+              <div className="w-full h-2 bg-black/40 rounded-full overflow-hidden p-0.5 border border-white/[0.06]">
                 <div className="h-full bg-gradient-to-r from-emerald-600 to-teal-400 rounded-full w-[31%]" />
               </div>
             </div>
 
             {/* Tablet */}
-            <div className="space-y-1.5">
-              <div className="flex items-center justify-between text-xs font-bold">
+            <div className="space-y-1">
+              <div className="flex items-center justify-between text-xs font-medium">
                 <span className="flex items-center gap-2 text-zinc-300">
-                  <Tablet className="w-4 h-4 text-purple-400" /> Tablets & Others
+                  <Tablet className="w-3.5 h-3.5 text-purple-400" /> Tablets & Others
                 </span>
-                <span className="font-mono text-purple-400">5% (17 sessions)</span>
+                <span className="font-mono text-purple-400 text-xs">5% (17 sessions)</span>
               </div>
-              <div className="w-full h-2.5 bg-black/40 rounded-full overflow-hidden p-0.5 border border-white/5">
+              <div className="w-full h-2 bg-black/40 rounded-full overflow-hidden p-0.5 border border-white/[0.06]">
                 <div className="h-full bg-gradient-to-r from-purple-600 to-pink-400 rounded-full w-[5%]" />
               </div>
             </div>
@@ -427,41 +471,41 @@ export default function AnalyticsSection({ accentColor = 'red' }: { accentColor?
         </div>
 
         {/* SYSTEM LATENCY & SERVICE HEALTH */}
-        <div className="p-6 rounded-[2rem] bg-zinc-900/30 border border-white/10 backdrop-blur-xl space-y-5 shadow-xl">
-          <div className="flex items-center justify-between border-b border-white/5 pb-4">
-            <div className="flex items-center gap-3">
-              <Zap className="w-5 h-5 text-amber-400" />
-              <h3 className="text-sm font-bold text-white uppercase tracking-wider font-minomu">System Telemetry & Health</h3>
+        <div className="p-5 sm:p-6 rounded-2xl bg-zinc-900/30 border border-white/[0.08] backdrop-blur-xl space-y-4 shadow-lg">
+          <div className="flex items-center justify-between border-b border-white/[0.06] pb-3">
+            <div className="flex items-center gap-2.5">
+              <Zap className="w-4 h-4 text-amber-400" />
+              <h3 className="text-sm font-bold text-white uppercase tracking-wider font-sans">System Telemetry & Health</h3>
             </div>
-            <Badge variant="outline" className="text-[9px] border-emerald-500/30 text-emerald-400 bg-emerald-500/10">100% OPERATIONAL</Badge>
+            <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">OPERATIONAL</span>
           </div>
 
-          <div className="grid grid-cols-2 gap-3">
-            <div className="p-4 rounded-2xl bg-black/30 border border-white/5 space-y-1">
-              <span className="text-[10px] text-zinc-400 uppercase font-bold">Database Latency</span>
-              <div className="text-lg font-black font-mono text-emerald-400 flex items-center gap-1.5">
-                <CheckCircle2 size={16} /> 12 ms
+          <div className="grid grid-cols-2 gap-2.5">
+            <div className="p-3.5 rounded-xl bg-black/30 border border-white/[0.06] space-y-1">
+              <span className="text-[10px] text-zinc-400 uppercase font-mono font-semibold">Database Latency</span>
+              <div className="text-base font-black font-mono text-emerald-400 flex items-center gap-1.5">
+                <CheckCircle2 size={15} /> 12 ms
               </div>
             </div>
 
-            <div className="p-4 rounded-2xl bg-black/30 border border-white/5 space-y-1">
-              <span className="text-[10px] text-zinc-400 uppercase font-bold">Stream Proxy CDN</span>
-              <div className="text-lg font-black font-mono text-emerald-400 flex items-center gap-1.5">
-                <CheckCircle2 size={16} /> 99.98%
+            <div className="p-3.5 rounded-xl bg-black/30 border border-white/[0.06] space-y-1">
+              <span className="text-[10px] text-zinc-400 uppercase font-mono font-semibold">Stream Proxy CDN</span>
+              <div className="text-base font-black font-mono text-emerald-400 flex items-center gap-1.5">
+                <CheckCircle2 size={15} /> 99.98%
               </div>
             </div>
 
-            <div className="p-4 rounded-2xl bg-black/30 border border-white/5 space-y-1">
-              <span className="text-[10px] text-zinc-400 uppercase font-bold">Websocket Presence</span>
-              <div className="text-lg font-black font-mono text-emerald-400 flex items-center gap-1.5">
-                <CheckCircle2 size={16} /> Healthy
+            <div className="p-3.5 rounded-xl bg-black/30 border border-white/[0.06] space-y-1">
+              <span className="text-[10px] text-zinc-400 uppercase font-mono font-semibold">Websocket Presence</span>
+              <div className="text-base font-black font-mono text-emerald-400 flex items-center gap-1.5">
+                <CheckCircle2 size={15} /> Healthy
               </div>
             </div>
 
-            <div className="p-4 rounded-2xl bg-black/30 border border-white/5 space-y-1">
-              <span className="text-[10px] text-zinc-400 uppercase font-bold">Memory Overhead</span>
-              <div className="text-lg font-black font-mono text-blue-400 flex items-center gap-1.5">
-                <Activity size={16} /> 32 MB
+            <div className="p-3.5 rounded-xl bg-black/30 border border-white/[0.06] space-y-1">
+              <span className="text-[10px] text-zinc-400 uppercase font-mono font-semibold">Memory Overhead</span>
+              <div className="text-base font-black font-mono text-blue-400 flex items-center gap-1.5">
+                <Activity size={15} /> 32 MB
               </div>
             </div>
           </div>
@@ -470,16 +514,16 @@ export default function AnalyticsSection({ accentColor = 'red' }: { accentColor?
       </div>
 
       {/* Guild Hierarchy & Role Breakdown Bar */}
-      <div className="p-6 rounded-[2rem] bg-zinc-900/30 border border-white/10 backdrop-blur-xl space-y-4 shadow-xl">
+      <div className="p-5 sm:p-6 rounded-2xl bg-zinc-900/30 border border-white/[0.08] backdrop-blur-xl space-y-4 shadow-lg">
         <div className="flex items-center justify-between">
           <h3 className="text-sm font-bold text-white uppercase tracking-wider flex items-center gap-2">
             <Crown className={cn("w-4 h-4", textHighlight)} /> Adventurer Hierarchy & Roles
           </h3>
-          <span className="text-xs text-zinc-400 font-bold">{data.totalAdventurers} Total Accounts</span>
+          <span className="text-xs text-zinc-400 font-mono font-bold">{data.totalAdventurers} Total Accounts</span>
         </div>
 
         {/* Visual Progress Distribution Bar */}
-        <div className="w-full h-3.5 bg-black/40 rounded-full overflow-hidden flex p-0.5 border border-white/10 gap-0.5 shadow-inner">
+        <div className="w-full h-3 bg-black/40 rounded-full overflow-hidden flex p-0.5 border border-white/[0.08] gap-0.5">
           <div 
             style={{ width: `${Math.max(5, (data.adminsCount / (data.totalAdventurers || 1)) * 100)}%` }} 
             className="h-full bg-gradient-to-r from-amber-500 to-yellow-400 rounded-l-full" 
@@ -505,35 +549,35 @@ export default function AnalyticsSection({ accentColor = 'red' }: { accentColor?
         </div>
 
         {/* Role Counters Grid */}
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 pt-2">
-          <div className="p-3.5 rounded-2xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-between">
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 pt-1">
+          <div className="p-3 rounded-xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-between">
             <div className="flex items-center gap-2">
               <Crown className="w-4 h-4 text-amber-400" />
-              <span className="text-xs font-bold text-amber-200">Guild Masters</span>
+              <span className="text-xs font-semibold text-amber-200">Guild Masters</span>
             </div>
             <span className="text-sm font-black text-amber-400 font-mono">{data.adminsCount}</span>
           </div>
 
-          <div className="p-3.5 rounded-2xl bg-fuchsia-500/10 border border-fuchsia-500/20 flex items-center justify-between">
+          <div className="p-3 rounded-xl bg-fuchsia-500/10 border border-fuchsia-500/20 flex items-center justify-between">
             <div className="flex items-center gap-2">
               <Shield className="w-4 h-4 text-fuchsia-400" />
-              <span className="text-xs font-bold text-fuchsia-200">Commanders</span>
+              <span className="text-xs font-semibold text-fuchsia-200">Commanders</span>
             </div>
             <span className="text-sm font-black text-fuchsia-400 font-mono">{data.modsCount}</span>
           </div>
 
-          <div className="p-3.5 rounded-2xl bg-primary-500/10 border border-primary-500/20 flex items-center justify-between">
+          <div className="p-3 rounded-xl bg-primary-500/10 border border-primary-500/20 flex items-center justify-between">
             <div className="flex items-center gap-2">
               <Sword className="w-4 h-4 text-primary-400" />
-              <span className="text-xs font-bold text-primary-200">Adventurers</span>
+              <span className="text-xs font-semibold text-primary-200">Adventurers</span>
             </div>
             <span className="text-sm font-black text-primary-400 font-mono">{data.usersCount}</span>
           </div>
 
-          <div className="p-3.5 rounded-2xl bg-red-950/30 border border-red-800/30 flex items-center justify-between">
+          <div className="p-3 rounded-xl bg-red-950/30 border border-red-800/30 flex items-center justify-between">
             <div className="flex items-center gap-2">
               <AlertTriangle className="w-4 h-4 text-red-400" />
-              <span className="text-xs font-bold text-red-300">Exiled (Banned)</span>
+              <span className="text-xs font-semibold text-red-300">Exiled (Banned)</span>
             </div>
             <span className="text-sm font-black text-red-400 font-mono">{data.bannedCount}</span>
           </div>
@@ -541,6 +585,123 @@ export default function AnalyticsSection({ accentColor = 'red' }: { accentColor?
 
       </div>
 
+      {/* ================================================================= */}
+      {/* GRAPH 4 & 5: GUILD TREASURY & PROGRESSION MILESTONES */}
+      {/* ================================================================= */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        
+        {/* TREASURY & COIN CIRCULATION TELEMETRY */}
+        <div className="p-5 sm:p-6 rounded-2xl bg-zinc-900/30 border border-white/[0.08] backdrop-blur-xl space-y-4 shadow-lg">
+          <div className="flex items-center justify-between border-b border-white/[0.06] pb-3">
+            <div className="flex items-center gap-2.5">
+              <Zap className="w-4 h-4 text-amber-400" />
+              <h3 className="text-sm font-bold text-white uppercase tracking-wider font-sans">Treasury & Coin Circulation</h3>
+            </div>
+            <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded bg-amber-500/10 text-amber-400 border border-amber-500/20">
+              ECONOMY
+            </span>
+          </div>
+
+          <div className="flex items-baseline justify-between pt-1">
+            <div>
+              <span className="text-2xl sm:text-3xl font-black text-amber-300 tracking-tight font-mono">
+                {data.loading ? "..." : data.totalTreasuryCoins.toLocaleString()}
+              </span>
+              <span className="text-xs text-amber-400/80 font-mono ml-2 font-bold">COINS</span>
+            </div>
+            <span className="text-xs text-zinc-400 font-mono">
+              Avg: <strong className="text-amber-300">{data.avgCoinsPerUser.toLocaleString()}</strong> / user
+            </span>
+          </div>
+
+          {/* Tier Proportional Bar */}
+          <div className="h-2.5 w-full bg-white/[0.05] rounded-full overflow-hidden flex">
+            <div 
+              style={{ width: `${Math.max(8, (data.whalesCount / (data.totalAdventurers || 1)) * 100)}%` }} 
+              className="h-full bg-gradient-to-r from-amber-400 to-yellow-300" 
+              title="Sovereign Whales (>50k)"
+            />
+            <div 
+              style={{ width: `${Math.max(12, (data.eliteCoinCount / (data.totalAdventurers || 1)) * 100)}%` }} 
+              className="h-full bg-gradient-to-r from-purple-500 to-fuchsia-400" 
+              title="Elite (10k-50k)"
+            />
+            <div 
+              style={{ width: `${Math.max(20, (data.activeCoinCount / (data.totalAdventurers || 1)) * 100)}%` }} 
+              className="h-full bg-gradient-to-r from-blue-500 to-cyan-400" 
+              title="Active (1k-10k)"
+            />
+            <div 
+              style={{ width: `${Math.max(20, (data.initiateCoinCount / (data.totalAdventurers || 1)) * 100)}%` }} 
+              className="h-full bg-zinc-700" 
+              title="Initiates (<1k)"
+            />
+          </div>
+
+          {/* Wealth Tier Grid */}
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 pt-1 text-center font-mono text-xs">
+            <div className="p-2.5 rounded-xl bg-amber-500/10 border border-amber-500/15">
+              <span className="text-[10px] text-amber-300 block font-bold">Whales (&gt;50k)</span>
+              <span className="text-sm font-black text-white">{data.whalesCount}</span>
+            </div>
+            <div className="p-2.5 rounded-xl bg-fuchsia-500/10 border border-fuchsia-500/15">
+              <span className="text-[10px] text-fuchsia-300 block font-bold">Elite (10k+)</span>
+              <span className="text-sm font-black text-white">{data.eliteCoinCount}</span>
+            </div>
+            <div className="p-2.5 rounded-xl bg-blue-500/10 border border-blue-500/15">
+              <span className="text-[10px] text-blue-300 block font-bold">Active (1k+)</span>
+              <span className="text-sm font-black text-white">{data.activeCoinCount}</span>
+            </div>
+            <div className="p-2.5 rounded-xl bg-zinc-800/40 border border-white/10">
+              <span className="text-[10px] text-zinc-400 block font-bold">Initiates</span>
+              <span className="text-sm font-black text-white">{data.initiateCoinCount}</span>
+            </div>
+          </div>
+        </div>
+
+        {/* PROGRESSION & LEVEL DEMOGRAPHICS */}
+        <div className="p-5 sm:p-6 rounded-2xl bg-zinc-900/30 border border-white/[0.08] backdrop-blur-xl space-y-4 shadow-lg">
+          <div className="flex items-center justify-between border-b border-white/[0.06] pb-3">
+            <div className="flex items-center gap-2.5">
+              <TrendingUp className="w-4 h-4 text-emerald-400" />
+              <h3 className="text-sm font-bold text-white uppercase tracking-wider font-sans">Adventurer Level Progression</h3>
+            </div>
+            <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+              MAX LVL 100
+            </span>
+          </div>
+
+          <div className="space-y-3 pt-1">
+            {[
+              { label: 'Apex Legends (Lvl 90 - 100)', count: data.apexLevelCount, color: 'from-amber-500 to-yellow-400', textColor: 'text-amber-400' },
+              { label: 'High Commanders (Lvl 50 - 89)', count: data.highLevelCount, color: 'from-fuchsia-500 to-purple-400', textColor: 'text-fuchsia-400' },
+              { label: 'Active Operatives (Lvl 20 - 49)', count: data.midLevelCount, color: 'from-blue-500 to-cyan-400', textColor: 'text-blue-400' },
+              { label: 'Initiate Recruits (Lvl 1 - 19)', count: data.noviceLevelCount, color: 'from-zinc-600 to-zinc-400', textColor: 'text-zinc-400' },
+            ].map((tier, i) => {
+              const pct = Math.max(4, Math.round((tier.count / (data.totalAdventurers || 1)) * 100));
+              return (
+                <div key={i} className="space-y-1">
+                  <div className="flex justify-between items-center text-xs font-mono">
+                    <span className="text-zinc-300 font-medium">{tier.label}</span>
+                    <span className={cn("font-bold", tier.textColor)}>{tier.count} <span className="text-[10px] text-zinc-500">({pct}%)</span></span>
+                  </div>
+                  <div className="h-1.5 w-full bg-white/[0.05] rounded-full overflow-hidden">
+                    <div style={{ width: `${pct}%` }} className={cn("h-full rounded-full bg-gradient-to-r", tier.color)} />
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+
+      </div>
+
+      {/* Realtime Active Presence Modal */}
+      <RealtimePresenceModal
+        isOpen={presenceModalOpen}
+        onClose={() => setPresenceModalOpen(false)}
+        initialCount={data.realtimeActive}
+      />
     </div>
   );
 }

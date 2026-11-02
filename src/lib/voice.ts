@@ -43,17 +43,17 @@ export const CHARACTER_META: Record<string, CharacterMeta> = {
     alpha: { id: 'alpha', name: 'Alpha', title: 'The First Shadow', icon: 'α', color: 'text-purple-400' },
     sukuna: { id: 'sukuna', name: 'Ryomen Sukuna', title: 'King of Curses', icon: '⚡', color: 'text-rose-500' },
     fern: { id: 'fern', name: 'Fern', title: 'Zoltraak Mage', icon: '✨', color: 'text-violet-400' },
-    gojo: { id: 'gojo', name: 'Satoru Gojo', title: 'The Honored One', icon: '🤞', color: 'text-cyan-400' },
+    gojo: { id: 'gojo', name: 'Satoru Gojo', title: 'The Honored One', icon: '🤞', color: 'text-indigo-400' },
     nanami: { id: 'nanami', name: 'Kento Nanami', title: '7:3 Sorcerer', icon: '👔', color: 'text-amber-400' },
     levi: { id: 'levi', name: 'Levi Ackerman', title: "Humanity's Strongest", icon: '⚔️', color: 'text-zinc-300' },
     zoro: { id: 'zoro', name: 'Roronoa Zoro', title: 'Pirate Hunter', icon: '🗡️', color: 'text-emerald-400' },
     makima: { id: 'makima', name: 'Makima', title: 'Control Devil', icon: '👁️', color: 'text-rose-400' },
-    rem: { id: 'rem', name: 'Rem', title: 'Demon Maid', icon: '💙', color: 'text-sky-300' },
+    rem: { id: 'rem', name: 'Rem', title: 'Demon Maid', icon: '💙', color: 'text-violet-400' },
     alice: { id: 'alice', name: 'Alice Zuberg', title: 'Integrity Knight', icon: '⚜️', color: 'text-yellow-400' },
     madara: { id: 'madara', name: 'Madara Uchiha', title: 'Ghost of the Uchiha', icon: '🔥', color: 'text-red-500' },
     light: { id: 'light', name: 'Light Yagami', title: 'God of the New World', icon: '📓', color: 'text-red-400' },
-    miku: { id: 'miku', name: 'Hatsune Miku', title: 'Virtual Diva', icon: '🎵', color: 'text-teal-400' },
-    rei: { id: 'rei', name: 'Rei Ayanami', title: 'First Child', icon: '🧬', color: 'text-sky-300' },
+    miku: { id: 'miku', name: 'Hatsune Miku', title: 'Virtual Diva', icon: '🎵', color: 'text-fuchsia-400' },
+    rei: { id: 'rei', name: 'Rei Ayanami', title: 'First Child', icon: '🧬', color: 'text-violet-300' },
     sakura: { id: 'sakura', name: 'Sakura Haruno', title: 'Medical Kunoichi', icon: '🌸', color: 'text-pink-400' },
     hana: { id: 'hana', name: 'Hana', title: 'Guild Attendant', icon: '🪷', color: 'text-amber-300' },
 };
@@ -75,24 +75,24 @@ export const getCharacterMeta = (packName?: string): CharacterMeta => {
 export const CHARACTER_SCRIPTS: Record<string, { en: Record<string, string>; jp: Record<string, string> }> = {
     alpha: {
         en: {
-            GREET_MASTER: "Welcome back, Lord Shadow. All seven shades remain poised at your absolute command.",
+            GREET_MASTER: "Welcome back, adventurer. All seven shades remain poised at your command.",
             GREET_ADVENTURER: "Welcome back, adventurer. The Shadow Garden honors your continued dedication.",
-            GREET_TRAVELER: "Greetings, traveler. If you wish to join the shadows, prove your worth today.",
-            WELCOME: "Welcome to Kagemi Sanctuary. Here, wisdom and power lurk beneath the surface. Walk carefully.",
+            GREET_TRAVELER: "Greetings, traveler. If you seek the wisdom of our realm, let us guide your steps.",
+            WELCOME: "Welcome to Kagemi. Here, wisdom and power lurk beneath the surface. Walk carefully.",
             REGISTER: "Your covenant with Shadow Garden is sealed. Let no one stand in your path.",
-            BYE_MASTER: "Until our next encounter, Lord Shadow. We shall lurk in your darkness.",
+            BYE_MASTER: "Until our next encounter, adventurer. May the shadows guide your path.",
             BYE_ADVENTURER: "Farewell, adventurer. May the shadows guide and protect your steps.",
             BOOKMARK: "Target archived into our intelligence files.",
             EPISODE_FINISH: "Mission debrief complete. Logged in our records.",
             LEVEL_UP: "Your latent authority expands. Remarkable progress."
         },
         jp: {
-            GREET_MASTER: "おかえりなさいませ、シャドウ様。七陰は常に貴方様のご命令に従います。",
+            GREET_MASTER: "おかえりなさいませ、冒険者。七陰は常に貴方のご命令に従います。",
             GREET_ADVENTURER: "おかえり、冒険者。シャドウガーデンはお前の忠誠を認めているわ。",
-            GREET_TRAVELER: "ようこそ、旅人よ。我ら陰の組織に加わる覚悟はあるかしら？",
+            GREET_TRAVELER: "ようこそ、旅人よ。我らの聖域で何を求めるのかしら？",
             WELCOME: "カゲミへようこそ。ここは知恵と力が集う聖域。足元には気をつけて。",
             REGISTER: "カゲミへの誓約、確認したわ。これよりお前も陰の盟友よ。",
-            BYE_MASTER: "またお会いできる時まで、シャドウ様。陰より見守っております。",
+            BYE_MASTER: "またお会いできる時まで、冒険者。陰より見守っております。",
             BYE_ADVENTURER: "また会いましょう、冒険者。影があなたの歩みを守らんことを。",
             BOOKMARK: "対象を諜報網に記録しました。",
             EPISODE_FINISH: "記録完了。次の局面に備えましょう。",
@@ -283,7 +283,7 @@ export const CHARACTER_SCRIPTS: Record<string, { en: Record<string, string>; jp:
     },
     alice: {
         en: {
-            GREET_MASTER: "Welcome back, Master. Integrity Knight Alice Synthesis Thirty stands ready to protect this sanctuary.",
+            GREET_MASTER: "Welcome back, Master. Integrity Knight Alice Synthesis Thirty stands ready.",
             GREET_ADVENTURER: "Welcome back, valiant warrior. Your sword shines with honorable valor.",
             GREET_TRAVELER: "Halt. State your intent, traveler. As long as your heart is noble, you are welcome here.",
             WELCOME: "Welcome to Kagemi. Beneath the osmanthus blossoms, courage and justice shall prevail.",
@@ -496,7 +496,7 @@ export const VOICE_SCRIPTS = {
     GREET_MASTER: "Welcome back, Master. The shadows await your command.",
     GREET_ADVENTURER: "Welcome back, Adventurer. It is good to see you again.",
     GREET_TRAVELER: "Greetings, Traveler. Do you wish to join our ranks today?",
-    WELCOME: "Welcome to Kagemi. This is a sanctuary for those who seek the wisdom of anime. What brings you here today, traveler?",
+    WELCOME: "Welcome to Kagemi. Enjoy your anime journey. What brings you here today, traveler?",
     REGISTER: "Thanks for registering at Kagemi. Good luck with your adventurer journey.",
     BYE_MASTER: "See you again master, have a nice day.",
     BYE_ADVENTURER: "See you again adventurer, have a nice day.",
@@ -526,17 +526,203 @@ export interface VoicePreference {
     language: string;
     enabled: boolean;
     volume?: number;
+    speed?: number;
+    pitch?: number;
 }
 
+export const DEFAULT_VOICE_SETTINGS: VoicePreference = {
+    pack: 'alpha',
+    language: 'en',
+    enabled: true,
+    volume: 0.8,
+    speed: 1.0,
+    pitch: 1.0
+};
+
+export const getTravellerVoiceSettings = (): VoicePreference => {
+    if (typeof window === 'undefined') return DEFAULT_VOICE_SETTINGS;
+    try {
+        const stored = localStorage.getItem('shadow_traveller_voice_settings');
+        if (stored) {
+            const parsed = JSON.parse(stored);
+            if (parsed && typeof parsed === 'object') {
+                return {
+                    pack: (parsed.pack || 'alpha').toLowerCase(),
+                    language: parsed.language || 'en',
+                    enabled: parsed.enabled !== false,
+                    volume: typeof parsed.volume === 'number' ? parsed.volume : 0.8,
+                    speed: typeof parsed.speed === 'number' ? parsed.speed : 1.0,
+                    pitch: typeof parsed.pitch === 'number' ? parsed.pitch : 1.0
+                };
+            }
+        }
+    } catch {}
+    return DEFAULT_VOICE_SETTINGS;
+};
+
+export const saveTravellerVoiceSettings = (settings: Partial<VoicePreference>) => {
+    if (typeof window === 'undefined') return;
+    try {
+        const current = getTravellerVoiceSettings();
+        const updated: VoicePreference = {
+            ...current,
+            ...settings,
+            pack: (settings.pack || current.pack || 'alpha').toLowerCase(),
+            language: settings.language || current.language || 'en'
+        };
+        localStorage.setItem('shadow_traveller_voice_settings', JSON.stringify(updated));
+        localStorage.setItem('shadow_voice_settings', JSON.stringify(updated));
+        window.dispatchEvent(new CustomEvent('shadow_voice_settings_changed', { detail: updated }));
+    } catch (e) {
+        console.warn("Failed to save traveller voice settings", e);
+    }
+};
+
+export const getUserVoiceSettings = (userId: string): VoicePreference | null => {
+    if (typeof window === 'undefined' || !userId) return null;
+    try {
+        const stored = localStorage.getItem(`shadow_user_voice_${userId}`);
+        if (stored) {
+            const parsed = JSON.parse(stored);
+            if (parsed && typeof parsed === 'object') {
+                return {
+                    pack: (parsed.pack || 'alpha').toLowerCase(),
+                    language: parsed.language || 'en',
+                    enabled: parsed.enabled !== false,
+                    volume: typeof parsed.volume === 'number' ? parsed.volume : 0.8,
+                    speed: typeof parsed.speed === 'number' ? parsed.speed : 1.0,
+                    pitch: typeof parsed.pitch === 'number' ? parsed.pitch : 1.0
+                };
+            }
+        }
+    } catch {}
+    return null;
+};
+
+export const saveUserVoiceSettings = (userId: string, settings: Partial<VoicePreference>) => {
+    if (typeof window === 'undefined' || !userId) return;
+    try {
+        const current = getUserVoiceSettings(userId) || DEFAULT_VOICE_SETTINGS;
+        const updated: VoicePreference = {
+            ...current,
+            ...settings,
+            pack: (settings.pack || current.pack || 'alpha').toLowerCase(),
+            language: settings.language || current.language || 'en'
+        };
+        localStorage.setItem(`shadow_user_voice_${userId}`, JSON.stringify(updated));
+        localStorage.setItem('shadow_voice_settings', JSON.stringify(updated));
+        window.dispatchEvent(new CustomEvent('shadow_voice_settings_changed', { detail: updated }));
+    } catch (e) {
+        console.warn("Failed to save user voice settings", e);
+    }
+};
+
+export const setActiveVoiceSettings = (settings: VoicePreference) => {
+    if (typeof window === 'undefined') return;
+    try {
+        const normalized: VoicePreference = {
+            pack: (settings.pack || 'alpha').toLowerCase(),
+            language: settings.language || 'en',
+            enabled: settings.enabled !== false,
+            volume: typeof settings.volume === 'number' ? settings.volume : 0.8,
+            speed: typeof settings.speed === 'number' ? settings.speed : 1.0,
+            pitch: typeof settings.pitch === 'number' ? settings.pitch : 1.0
+        };
+        localStorage.setItem('shadow_voice_settings', JSON.stringify(normalized));
+        window.dispatchEvent(new CustomEvent('shadow_voice_settings_changed', { detail: normalized }));
+    } catch {}
+};
+
+export const restoreTravellerVoice = (): VoicePreference => {
+    const traveller = getTravellerVoiceSettings();
+    setActiveVoiceSettings(traveller);
+    return traveller;
+};
+
+export const loadAccountVoice = async (userId: string, profileData?: any): Promise<VoicePreference> => {
+    if (!userId) return DEFAULT_VOICE_SETTINGS;
+    
+    // 1. Try from passed profileData (prioritize whisperVoice as user's active choice)
+    let dbPack = profileData?.settings?.whisperVoice || profileData?.settings?.voice_pack || profileData?.voice_pack;
+    let dbLang = profileData?.settings?.voice_language;
+
+    // 2. If not provided or missing, query Supabase
+    if (!dbPack && supabase) {
+        try {
+            const { data } = await supabase.from('profiles').select('voice_pack, settings').eq('id', userId).single();
+            if (data) {
+                dbPack = data.settings?.whisperVoice || data.settings?.voice_pack || data.voice_pack;
+                dbLang = data.settings?.voice_language;
+            }
+        } catch {}
+    }
+
+    // 3. Fallback to cached user voice
+    const cached = getUserVoiceSettings(userId);
+    const chosenPack = (dbPack || cached?.pack || 'alpha').toLowerCase();
+    const chosenLang = (dbLang || cached?.language || 'en') as 'en' | 'jp';
+
+    const accountVoice: VoicePreference = {
+        pack: chosenPack,
+        language: chosenLang,
+        enabled: true,
+        volume: 0.8,
+        speed: 1.0,
+        pitch: 1.0
+    };
+
+    saveUserVoiceSettings(userId, accountVoice);
+    setActiveVoiceSettings(accountVoice);
+    return accountVoice;
+};
+
+export const saveAccountVoice = async (userId: string, settings: Partial<VoicePreference>): Promise<void> => {
+    if (!userId) return;
+    const pack = (settings.pack || 'alpha').toLowerCase();
+    const lang = settings.language || 'en';
+
+    saveUserVoiceSettings(userId, { pack, language: lang });
+
+    if (supabase) {
+        try {
+            const { data: currentProfile } = await supabase.from('profiles').select('settings').eq('id', userId).single();
+            const existingSettings = currentProfile?.settings || {};
+            await supabase.from('profiles').update({
+                voice_pack: pack,
+                settings: {
+                    ...existingSettings,
+                    whisperVoice: pack,
+                    voice_pack: pack,
+                    voice_language: lang
+                }
+            }).eq('id', userId);
+        } catch (e) {
+            console.warn("Failed to persist account voice to Supabase", e);
+        }
+    }
+};
+
 export const getVoiceSettings = (): VoicePreference => {
-    if (typeof window === 'undefined') return { pack: 'Alpha', language: 'en', enabled: true };
+    if (typeof window === 'undefined') return DEFAULT_VOICE_SETTINGS;
     try {
         const stored = localStorage.getItem('shadow_voice_settings');
-        if (stored) return JSON.parse(stored);
+        if (stored) {
+            const parsed = JSON.parse(stored);
+            if (parsed && typeof parsed === 'object') {
+                return {
+                    pack: (parsed.pack || 'alpha').toLowerCase(),
+                    language: parsed.language || 'en',
+                    enabled: parsed.enabled !== false,
+                    volume: typeof parsed.volume === 'number' ? parsed.volume : 0.8,
+                    speed: typeof parsed.speed === 'number' ? parsed.speed : 1.0,
+                    pitch: typeof parsed.pitch === 'number' ? parsed.pitch : 1.0
+                };
+            }
+        }
     } catch (e) {
         console.warn("Invalid shadow_voice_settings in localStorage");
     }
-    return { pack: 'Alpha', language: 'en', enabled: true };
+    return DEFAULT_VOICE_SETTINGS;
 };
 
 // --- GLOBAL AUDIO UNLOCKER & AUTOPLAY HANDLER ---
@@ -640,13 +826,28 @@ export const dispatchTelepathy = (character: string, text: string, options?: { i
 };
 
 // --- PLAY VOICE & TRIGGER TELEPATHY ---
-export const playVoice = (event: VoiceEvent, customText?: string) => {
-    const settings = getVoiceSettings();
+let lastGreetingTimestamp = 0;
+let lastGreetingEvent = '';
+
+export const playVoice = (event: VoiceEvent, customText?: string, explicitSettings?: VoicePreference): HTMLAudioElement | null => {
+    // Prevent double-audio firing (e.g. multiple components triggering greeting within 3.5s)
+    const isGreeting = ['GREET_MASTER', 'GREET_ADVENTURER', 'GREET_TRAVELER', 'WELCOME', 'REGISTER', 'BYE_MASTER', 'BYE_ADVENTURER'].includes(event);
+    const now = Date.now();
+    if (isGreeting && (now - lastGreetingTimestamp < 3500)) {
+        console.log(`🔇 [ShadowVoice] Suppressing duplicate ${event} (played ${now - lastGreetingTimestamp}ms ago)`);
+        return null;
+    }
+    if (isGreeting) {
+        lastGreetingTimestamp = now;
+        lastGreetingEvent = event;
+    }
+
+    const settings = explicitSettings || getVoiceSettings();
     const meta = getCharacterMeta(settings.pack);
-    const lang = settings.language || 'en';
+    const lang = (settings.language === 'jp' ? 'jp' : 'en');
     const scriptText = customText || getCharacterLine(settings.pack, event, lang);
 
-    // 1. Dispatch Telepathy Whisper to WhisperIsland
+    // 1. Dispatch Telepathy Whisper to WhisperIsland with character name and color
     if (scriptText) {
         dispatchTelepathy(meta.name, scriptText, {
             icon: meta.icon,
@@ -655,58 +856,64 @@ export const playVoice = (event: VoiceEvent, customText?: string) => {
         });
     }
 
-    if (!settings.enabled) return;
+    if (!settings.enabled) return null;
 
-    // 2. Determine Audio Source
-    let fileUrl = '';
-    
-    // Check Dynamic Cache (DB)
-    const dynamicMatch = dynamicVoiceCache.find(v => 
-        (v.character?.toLowerCase() === settings.pack?.toLowerCase() || v.name?.toLowerCase() === settings.pack?.toLowerCase()) && 
-        v.language === lang &&
-        (v.event_trigger === event || v.event_trigger === event.replace(/_/g, '-'))
-    );
-
-    if (dynamicMatch) {
-        fileUrl = dynamicMatch.file_url;
-    } else {
-        // Fallback to Local System
-        let action = "";
-        switch (event) {
-            case 'WELCOME': action = "welcome"; break;
-            case 'REGISTER': action = "register"; break;
-            case 'GREET_MASTER': action = "greet-master"; break;
-            case 'GREET_ADVENTURER': action = "greet-adventurer"; break;
-            case 'GREET_TRAVELER': action = "greet-traveler"; break;
-            case 'BYE_MASTER': action = "bye-master"; break;
-            case 'BYE_ADVENTURER': action = "bye-adventurer"; break;
-        }
-        
-        const rawPack = (settings.pack || 'alpha').toLowerCase().replace(/^(system-|sys-)/, '').trim();
-        const packName = SLUG_MAP[rawPack] || rawPack.split(' ')[0];
-        fileUrl = `/voices/${lang}/${packName}-${action}.mp3`;
+    // 2. Action mapping for voice mp3
+    let action = "";
+    switch (event) {
+        case 'WELCOME': action = "welcome"; break;
+        case 'REGISTER': action = "register"; break;
+        case 'GREET_MASTER': action = "greet-master"; break;
+        case 'GREET_ADVENTURER': action = "greet-adventurer"; break;
+        case 'GREET_TRAVELER': action = "greet-traveler"; break;
+        case 'BYE_MASTER': action = "bye-master"; break;
+        case 'BYE_ADVENTURER': action = "bye-adventurer"; break;
+        default: action = "welcome"; break;
     }
 
-    // 3. Play Audio
-    if (fileUrl) {
-        console.log(`🔊 [ShadowVoice] Playing (${meta.name} - ${event}): ${fileUrl}`);
-        const audio = new Audio(fileUrl);
-        audio.volume = settings.volume !== undefined ? settings.volume : 1.0; 
-        
-        audio.play().catch(e => {
-            const isAutoplayBlocked = e?.name === 'NotAllowedError' || 
-                                     e?.message?.toLowerCase().includes('interact') ||
-                                     e?.message?.toLowerCase().includes('user gesture') ||
-                                     e?.message?.toLowerCase().includes('autoplay');
-            if (isAutoplayBlocked) {
-                console.log(`🔊 [ShadowVoice] Autoplay deferred until first user interaction for event: ${event}`);
-                pendingVoiceTrigger = event;
-                return;
+    const rawPack = (settings.pack || 'alpha').toLowerCase().replace(/^(system-|sys-)/, '').trim();
+    const packName = SLUG_MAP[rawPack] || rawPack.split(' ')[0] || 'alpha';
+    const primaryUrl = `/voices/${lang}/${packName}-${action}.mp3`;
+    const fallbackUrl = `/voices/${lang}/${packName}-welcome.mp3`;
+
+    console.log(`🔊 [ShadowVoice] Playing (${meta.name} - ${event}): ${primaryUrl}`);
+
+    const audio = new Audio(primaryUrl);
+    audio.volume = settings.volume !== undefined ? Math.min(1.0, Math.max(0.1, settings.volume)) : 0.8;
+
+    if (typeof window !== 'undefined') {
+        try {
+            if ((window as any).__shadow_voice_active_audio) {
+                (window as any).__shadow_voice_active_audio.pause();
+                (window as any).__shadow_voice_active_audio.src = '';
             }
-
-            console.warn(`[ShadowVoice] Autoplay was prevented for ${event}:`, e?.message);
-        });
+        } catch (_) {}
+        (window as any).__shadow_voice_active_audio = audio;
     }
+
+    // Attach fallback in case specific action file is missing
+    audio.onerror = () => {
+        if (primaryUrl !== fallbackUrl) {
+            console.warn(`[ShadowVoice] Primary voice audio missing at ${primaryUrl}, trying fallback ${fallbackUrl}`);
+            audio.src = fallbackUrl;
+            audio.play().catch(() => {});
+        }
+    };
+
+    audio.play().catch(e => {
+        const isAutoplayBlocked = e?.name === 'NotAllowedError' || 
+                                 e?.message?.toLowerCase().includes('interact') ||
+                                 e?.message?.toLowerCase().includes('user gesture') ||
+                                 e?.message?.toLowerCase().includes('autoplay');
+        if (isAutoplayBlocked) {
+            console.log(`🔊 [ShadowVoice] Autoplay deferred until first user interaction for event: ${event}`);
+            pendingVoiceTrigger = event;
+            return;
+        }
+        console.warn(`[ShadowVoice] Audio play error for ${event}:`, e?.message);
+    });
+
+    return audio;
 };
 
 // --- APP-WIDE TELEPATHY TRIGGER ---

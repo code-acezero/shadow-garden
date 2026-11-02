@@ -217,7 +217,7 @@ export default function AllTimeFavoriteCarousel({ initialItems = [] }: AllTimeFa
 
           {loadingMore && (
             <div className="flex-shrink-0 w-[42%] sm:w-[28%] md:w-[22%] lg:w-[15.5%] xl:w-[15.5%] aspect-[3/4] flex items-center justify-center rounded-2xl border border-white/5 bg-white/[0.02]">
-              <Loader2 size={24} className="animate-spin text-red-500" />
+              <Loader2 size={24} className="animate-spin text-primary" />
             </div>
           )}
         </div>

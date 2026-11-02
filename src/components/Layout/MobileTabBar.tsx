@@ -2,15 +2,19 @@
 
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import { Home, MessageCircle, Search, Flame, Clapperboard, Calendar, Scroll, BookOpen } from 'lucide-react';
 import { motion, LayoutGroup } from 'framer-motion';
 import { cn } from '@/lib/utils';
 import { ATRAX_BUBBLY_SPRING } from '@/lib/atraxMotion';
 import { playGummyTap } from '@/lib/audioManager';
+import { useSettings } from '@/hooks/useSettings';
 
 export default function MobileTabBar() {
   const pathname = usePathname();
+  const router = useRouter();
+  const { settings } = useSettings();
+  const isLight = settings.themeMode === 'light';
   const [isFullscreen, setIsFullscreen] = useState(false);
 
   useEffect(() => {
@@ -50,7 +54,12 @@ export default function MobileTabBar() {
     <div className="md:hidden fixed bottom-0 inset-x-0 w-full z-[99999] pointer-events-none">
       <nav 
         aria-label="Mobile Navigation"
-        className="pointer-events-auto w-full bg-[#080d1a]/95 border-t border-white/[0.12] shadow-[0_-8px_32px_rgba(0,0,0,0.75),inset_0_1px_1px_rgba(255,255,255,0.12)] rounded-t-[22px] sm:rounded-t-[26px] rounded-b-none px-2 pt-1.5 pb-2 pb-safe flex items-center justify-between backdrop-blur-2xl"
+        className={cn(
+          "pointer-events-auto w-full border-t rounded-t-[22px] sm:rounded-t-[26px] rounded-b-none px-2 pt-1.5 pb-2 pb-safe flex items-center justify-between backdrop-blur-2xl transition-colors",
+          isLight
+            ? "bg-white/95 border-black/10 shadow-[0_-8px_32px_rgba(0,0,0,0.08),inset_0_1px_1px_rgba(255,255,255,0.9)] text-zinc-900"
+            : "bg-[#080d1a]/95 border-white/[0.12] shadow-[0_-8px_32px_rgba(0,0,0,0.75),inset_0_1px_1px_rgba(255,255,255,0.12)] text-white"
+        )}
       >
         <LayoutGroup id="mobile-tab-bar">
           {tabs.map((tab) => {
@@ -73,9 +82,16 @@ export default function MobileTabBar() {
               <Link 
                 key={tab.id} 
                 href={tab.path}
+                prefetch={true}
                 aria-label={tab.label}
+                onPointerEnter={() => {
+                  try { router.prefetch(tab.path); } catch (_) {}
+                }}
+                onTouchStart={() => {
+                  try { router.prefetch(tab.path); } catch (_) {}
+                }}
                 onClick={() => {
-                  playGummyTap();
+                  setTimeout(playGummyTap, 0);
                   setOptimisticTab(tab.id);
                 }}
                 className="relative flex-1 flex flex-col items-center justify-center h-10 select-none group"
@@ -93,16 +109,16 @@ export default function MobileTabBar() {
                     transition: { type: "spring", stiffness: 600, damping: 15 } 
                   }}
                   className={cn(
-                    "relative isolate flex items-center justify-center w-full h-full rounded-2xl select-none",
-                    isActive ? "text-white" : "text-zinc-400 group-hover:text-zinc-200"
+                    "relative isolate flex items-center justify-center w-full h-full rounded-2xl select-none transition-colors",
+                    isActive ? "text-white" : isLight ? "text-zinc-600 hover:text-zinc-950" : "text-zinc-400 group-hover:text-zinc-200"
                   )}
                 >
-                  {/* Active Bubbly/Jelly Pill Indicator (Gradient Violet Material Metallic) */}
+                  {/* Active Bubbly/Jelly Pill Indicator (Theme dynamic) */}
                   {isActive && (
                     <motion.div
                       layoutId="atrax-active-tab-pill"
                       transition={{ type: "spring", stiffness: 420, damping: 24, mass: 0.8 }}
-                      className="absolute inset-0 bg-gradient-to-br from-violet-600 via-purple-600 to-indigo-700 rounded-[18px] shadow-[0_2px_16px_rgba(139,92,246,0.6),inset_0_1px_1px_rgba(255,255,255,0.35)] border border-violet-400/40 z-0 pointer-events-none"
+                      className="absolute inset-0 bg-primary rounded-[18px] shadow-[0_2px_16px_rgba(0,0,0,0.25)] border border-white/20 z-0 pointer-events-none"
                     />
                   )}
 

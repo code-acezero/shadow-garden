@@ -66,13 +66,13 @@ export const PAGE_THEMES: Record<string, PageThemeStyles> = {
     // 1. Shorts Watch: YouTube Shorts Crimson / Red
     shorts: {
         name: 'Shorts',
-        buttonActive: 'bg-red-600 hover:bg-red-500 text-white shadow-[0_0_15px_rgba(220,38,38,0.45)]',
-        focusUnderline: 'bg-red-500',
+        buttonActive: 'bg-red-600 hover:bg-red-500 text-white shadow-[0_0_15px_rgba(139, 92, 246, 0.45)]',
+        focusUnderline: 'bg-primary',
         focusBorder: 'focus:border-red-500',
         accentText: 'text-red-400 hover:text-red-300',
-        activeChipBg: 'bg-red-600/20 text-red-400 border-red-500/40',
+        activeChipBg: 'bg-primary/20 text-primary border-primary/40',
         borderAccent: 'border-red-500',
-        trayTabActive: 'bg-red-600 text-white shadow-[0_0_10px_rgba(220,38,38,0.4)]',
+        trayTabActive: 'bg-red-600 text-white shadow-[0_0_10px_rgba(139, 92, 246, 0.4)]',
     },
     // 2. Donghua Watch: Signature Jade / Emerald
     donghua: {
@@ -132,13 +132,13 @@ export const PAGE_THEMES: Record<string, PageThemeStyles> = {
     // 7. Anime Watch / General: Dynamic Brand Primary Theme
     anime: {
         name: 'Anime',
-        buttonActive: 'bg-primary hover:bg-primary/90 text-white font-semibold shadow-[0_0_15px_rgba(220,38,38,0.4)]',
+        buttonActive: 'bg-primary hover:bg-primary/90 text-white font-semibold shadow-[0_0_15px_rgba(139, 92, 246, 0.4)]',
         focusUnderline: 'bg-primary',
         focusBorder: 'focus:border-primary',
         accentText: 'text-primary hover:opacity-80',
         activeChipBg: 'bg-primary/20 text-primary border-primary/40',
         borderAccent: 'border-primary',
-        trayTabActive: 'bg-primary text-white shadow-[0_0_10px_rgba(220,38,38,0.35)]',
+        trayTabActive: 'bg-primary text-white shadow-[0_0_10px_rgba(139, 92, 246, 0.35)]',
     },
     // 8. Classic YouTube Blue
     youtube: {

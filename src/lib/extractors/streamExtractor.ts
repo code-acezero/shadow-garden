@@ -148,8 +148,8 @@ export async function fetchBlakiteHindiStream(
     const { 
       checkHindiDub, 
       getBlakiteDetail, 
-      getBlakiteStreamUrl,
-      extractSeasonInfo,
+      getBlakiteStreamUrl, 
+      extractSeasonInfo, 
       findEpisodeInBlakite 
     } = await import('../blakite');
 
@@ -193,6 +193,63 @@ export async function fetchBlakiteHindiStream(
     ];
   } catch (err) {
     console.error('[Blakite Extractor Error]', err);
+    return null;
+  }
+}
+
+/**
+ * 2B. ENGLISH DUB EXTRACTOR (Blakite / Rumble Cloud CDN)
+ */
+export async function fetchBlakiteEnglishStream(
+  title: string,
+  episode: number | string
+): Promise<StreamServer[] | null> {
+  try {
+    const { 
+      checkEnglishDub, 
+      getBlakiteDetail, 
+      getBlakiteStreamUrl, 
+      extractSeasonInfo, 
+      findEpisodeInBlakite 
+    } = await import('../blakite');
+
+    const epNum = Number(episode);
+    if (isNaN(epNum) || epNum <= 0) return null;
+
+    const checkResult = await checkEnglishDub(title, epNum);
+    if (!checkResult?.available || !checkResult.id || !checkResult.episodeAvailable) {
+      return null;
+    }
+
+    let targetSlug: string | null = checkResult.matchedEpisode?.id || null;
+
+    if (!targetSlug) {
+      const detailData = await getBlakiteDetail(checkResult.id);
+      if (!detailData || !detailData.episodes?.length) return null;
+
+      const qInfo = extractSeasonInfo(title);
+      const epObj = findEpisodeInBlakite(detailData.episodes as any, qInfo.season, epNum, qInfo.isSeasonExplicit);
+      if (!epObj) return null;
+      targetSlug = epObj.id;
+    }
+
+    if (!targetSlug) return null;
+
+    const watchData = await getBlakiteStreamUrl(targetSlug);
+    if (!watchData || !watchData.url) return null;
+
+    const isM3U8 = watchData.isM3U8 === true || watchData.url.includes('.m3u8');
+    return [
+      {
+        serverId: 'blakite-cloud-dub',
+        serverName: 'Blakite Cloud',
+        url: watchData.url,
+        type: isM3U8 ? 'm3u8' : 'mp4',
+        referer: 'https://blakiteapi.xyz/'
+      }
+    ];
+  } catch (err) {
+    console.error('[Blakite English Extractor Error]', err);
     return null;
   }
 }
@@ -555,6 +612,19 @@ export async function resolveUnifiedStreams({
         if (withOutro?.outro && !outroData) outroData = withOutro.outro;
       }
     })
+  );
+
+  // B3. English Dub via Blakite (runs in parallel, expands available English Dub servers with Blakite Cloud CDN)
+  fetchPromises.push(
+    fetchBlakiteEnglishStream(title, epNum).then(engServers => {
+      if (engServers?.length) {
+        for (const s of engServers) {
+          if (!serversByAudio.en.some(existing => existing.url === s.url)) {
+            serversByAudio.en.push(s);
+          }
+        }
+      }
+    }).catch(() => {})
   );
 
   // C. Hindi Dub via Blakite (runs in parallel, fully populating Hindi stream with zero blocking)

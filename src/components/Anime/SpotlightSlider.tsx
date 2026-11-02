@@ -236,7 +236,7 @@ const SpotlightActions = ({ anime }: { anime: SpotlightAnime }) => {
                                     <Eye size={14} className="mr-2 text-green-400" /> Watching
                                 </DropdownMenuItem>
                                 <DropdownMenuItem onClick={() => handleUpdateStatus("completed")} className="text-white/90 hover:bg-white/10 cursor-pointer">
-                                    <CheckCircle size={14} className="mr-2 text-blue-400" /> Completed
+                                    <CheckCircle size={14} className="mr-2 text-purple-400" /> Completed
                                 </DropdownMenuItem>
                                 <DropdownMenuItem onClick={() => handleUpdateStatus("plan_to_watch")} className="text-white/90 hover:bg-white/10 cursor-pointer">
                                     <Clock size={14} className="mr-2 text-purple-400" /> Planning
@@ -324,7 +324,7 @@ export default function SpotlightSlider({ animes }: { animes: SpotlightAnime[] }
           "rounded-none md:rounded-3xl",
           "border-y md:border border-white/5",
           isSliding 
-            ? "shadow-[0_0_40px_rgba(220,38,38,0.3)] border-primary-500/30 duration-300" 
+            ? "shadow-[0_0_40px_rgba(139, 92, 246, 0.3)] border-primary-500/30 duration-300" 
             : "shadow-[0_20px_50px_rgba(0,0,0,0.9)] border-white/5 duration-1000"
         )}
       >

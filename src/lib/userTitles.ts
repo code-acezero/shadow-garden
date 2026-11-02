@@ -878,29 +878,31 @@ export function getFrameForTitle(titleName?: string | null, role?: string | null
   const r = (role || '').trim().toLowerCase();
 
   // 1. Board of Darkness Admin Titles -> Exclusive Board Frames
-  if (t === 'abyss archon') return 'abyss_archon';
-  if (t === 'void monarch') return 'void_monarch';
-  if (t === 'eclipse blade') return 'eclipse_blade';
-  if (t === 'umbral lord') return 'umbral_lord';
-  if (t === 'dark primarch') return 'dark_primarch';
-  if (t === 'guild master' || t === 'shadow' || t === 'admin') return 'admin';
+  if (t === 'abyss archon') return 'abyss-archon';
+  if (t === 'void monarch') return 'void-monarch';
+  if (t === 'eclipse blade') return 'eclipse-blade';
+  if (t === 'umbral lord') return 'umbral-lord';
+  if (t === 'dark primarch') return 'dark-primarch';
+  // Note: Only Guild Master and Shadow titles get 'the-eternal' (The Eternal)
+  if (t === 'guild master' || t === 'shadow') return 'the-eternal';
 
   // 2. Council of Shadows Moderator Titles -> Exclusive Council Frames
-  if (t === 'first shadow') return 'first_shadow';
-  if (t === 'second shadow') return 'second_shadow';
-  if (t === 'third shadow') return 'third_shadow';
-  if (t === 'fourth shadow') return 'fourth_shadow';
-  if (t === 'fifth shadow') return 'fifth_shadow';
-  if (t === 'sixth shadow') return 'sixth_shadow';
-  if (t === 'seventh shadow') return 'seventh_shadow';
-  if (t === 'eighth shadow') return 'eighth_shadow';
-  if (t === 'ninth shadow') return 'ninth_shadow';
-  if (t === 'tenth shadow') return 'tenth_shadow';
-  if (t === 'the warden' || t === 'warden' || t === 'moderator') return 'moderator';
+  if (t === 'first shadow') return 'first-shadow';
+  if (t === 'second shadow') return 'second-shadow';
+  if (t === 'third shadow') return 'third-shadow';
+  if (t === 'fourth shadow') return 'fourth-shadow';
+  if (t === 'fifth shadow') return 'fifth-shadow';
+  if (t === 'sixth shadow') return 'sixth-shadow';
+  if (t === 'seventh shadow') return 'seventh-shadow';
+  if (t === 'eighth shadow') return 'eighth-shadow';
+  if (t === 'ninth shadow') return 'ninth-shadow';
+  if (t === 'tenth shadow') return 'tenth-shadow';
+  if (t === 'the warden' || t === 'warden' || t === 'moderator') return 'the-warden';
 
   // 3. Fallbacks by Staff Role
-  if (r === 'admin' || r === 'leader' || r === 'master') return 'admin';
-  if (r === 'moderator') return 'moderator';
+  if (r === 'master' || r === 'leader') return 'the-eternal';
+  if (r === 'admin') return 'abyss-archon';
+  if (r === 'moderator') return 'the-warden';
 
   return null;
 }

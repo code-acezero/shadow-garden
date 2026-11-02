@@ -54,18 +54,22 @@ function sanitizeCard(item: any, category: 'sub' | 'english' | 'hindi' | 'chines
     }
 
     const id = item.id || item.slug || '';
-    const slug = slugifyTitle(item.title || item.name);
+    const rawTitleStr = item.title || item.name || '';
+    const slug = slugifyTitle(rawTitleStr);
     const routeId = (slug && !String(id).includes('-')) ? `${id}-${slug}` : id;
+
+    const isEngItem = item.isEnglish === true || category === 'english' || /english/i.test(item.language || '') || /english/i.test(rawTitleStr);
+    const isHindiItem = !isEngItem && (category === 'hindi' || item.isHindi === true || /hindi/i.test(rawTitleStr));
 
     let targetRoute = item.targetRoute || '';
     if (!targetRoute) {
-        if (category === 'hindi') {
-            targetRoute = `/watch/${routeId}?audio=hi`;
+        if (isEngItem) {
+            const ep = rawDub || epValue || 1;
+            targetRoute = `/watch/${routeId}?ep=${ep}&audio=en&type=dub`;
+        } else if (isHindiItem) {
+            targetRoute = `/watch/${routeId}?ep=${epValue || 1}&audio=hi&type=dub`;
         } else if (category === 'chinese') {
             targetRoute = `/donghua-watch/${id}`;
-        } else if (category === 'english') {
-            const ep = rawDub || epValue || 1;
-            targetRoute = `/watch/${routeId}?ep=${ep}&type=dub`;
         } else {
             const ep = rawSub || epValue || 1;
             targetRoute = `/watch/${routeId}?ep=${ep}&type=sub`;
@@ -86,8 +90,7 @@ function sanitizeCard(item: any, category: 'sub' | 'english' | 'hindi' | 'chines
         timestamp = Date.now();
     }
 
-    const isHindiItem = category === 'hindi' || item.isHindi === true || (typeof item.title === 'string' && /hindi/i.test(item.title));
-    const finalDubCount = rawDub > 0 ? rawDub : (isHindiItem ? (epValue || rawTotal || 1) : (category === 'english' ? (epValue || 1) : null));
+    const finalDubCount = rawDub > 0 ? rawDub : (isHindiItem || isEngItem ? (epValue || rawTotal || 1) : null);
 
     let displayTitle = item.title || item.name || 'Unknown Title';
     if (isHindiItem && !/hindi/i.test(displayTitle)) {
@@ -105,18 +108,19 @@ function sanitizeCard(item: any, category: 'sub' | 'english' | 'hindi' | 'chines
         score: item.score || item.rating || null,
         isAdult: item.isAdult || item.nsfw || false,
         episodes: {
-            sub: isHindiItem ? null : (category === 'english' ? null : (rawSub > 0 ? rawSub : epValue || null)),
+            sub: (isHindiItem || isEngItem) ? null : (rawSub > 0 ? rawSub : epValue || null),
             dub: finalDubCount,
             total: rawTotal || epValue || null
         },
-        sub: isHindiItem ? null : (rawSub > 0 ? rawSub : epValue || null),
+        sub: (isHindiItem || isEngItem) ? null : (rawSub > 0 ? rawSub : epValue || null),
         dub: finalDubCount,
         episode: epValue || rawTotal || 1,
         totalEpisodes: rawTotal || epValue || null,
-        category,
+        category: isEngItem ? 'english' : (isHindiItem ? 'hindi' : category),
         isHindi: isHindiItem,
+        isEnglish: isEngItem,
         isDonghua: category === 'chinese',
-        isDub: category === 'english',
+        isDub: isEngItem,
         targetRoute,
         timestamp
     };

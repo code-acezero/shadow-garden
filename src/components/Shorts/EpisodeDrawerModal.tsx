@@ -136,7 +136,7 @@ export default function EpisodeDrawerModal({
                           isCurrent
                             ? "bg-primary text-white border-primary shadow-lg shadow-primary/40 font-black scale-105"
                             : isPlayed
-                            ? "bg-[#14261c]/90 text-emerald-300/80 border-emerald-800/50 hover:border-emerald-600/60 hover:bg-[#1a3325] hover:text-emerald-100 shadow-[inset_0_0_10px_rgba(16,185,129,0.06)]"
+                            ? "bg-[#1c142e]/90 text-purple-300/80 border-purple-800/40 hover:border-purple-600/60 hover:bg-[#281b45] hover:text-purple-100 shadow-[inset_0_0_10px_rgba(168,85,247,0.06)]"
                             : "bg-slate-900/90 text-slate-300 border-white/10 hover:border-white/30 hover:bg-slate-800"
                         )}
                       >
@@ -150,8 +150,8 @@ export default function EpisodeDrawerModal({
                           </div>
                         ) : (
                           <div className="flex flex-col items-center justify-center">
-                            <span className={cn("text-xs font-mono font-bold leading-none flex items-center gap-0.5", isPlayed && "text-emerald-300/80")}>
-                              {isPlayed && <Check className="w-2.5 h-2.5 text-emerald-400/80 stroke-[3]" />}
+                            <span className={cn("text-xs font-mono font-bold leading-none flex items-center gap-0.5", isPlayed && "text-purple-300/90")}>
+                              {isPlayed && <Check className="w-2.5 h-2.5 text-purple-400/80 stroke-[3]" />}
                               {ep.episodeNumber}
                             </span>
                           </div>
@@ -171,7 +171,7 @@ export default function EpisodeDrawerModal({
               {/* Bottom Quick Bar */}
               <div className="p-4 border-t border-white/10 bg-slate-900/60 flex items-center justify-between text-xs text-slate-400">
                 <span>Playing Episode: <strong className="text-white">{currentEpisode} of {totalEpisodes}</strong></span>
-                <span className="text-[10px] text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded-full border border-emerald-500/20">
+                <span className="text-[10px] text-purple-400 bg-purple-500/10 px-2 py-0.5 rounded-full border border-purple-500/20">
                   100% Unlocked
                 </span>
               </div>

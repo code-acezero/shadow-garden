@@ -1,345 +1,54 @@
 "use client";
 
-import React, { useState, useEffect, useCallback, Suspense } from 'react';
+import React, { useState, useEffect, useCallback, useMemo, Suspense } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { motion, AnimatePresence, useScroll, useTransform } from 'framer-motion';
 import { 
-  ArrowRight, Zap, ShieldCheck, Smartphone, 
-  Ghost, Terminal, Globe, Crown, Sword, 
-  MessageCircle, Flame, Users, Scroll as ScrollIcon, Activity, Download, Share2
+  Play, Film, Tv, Flame, BookOpen, Compass, 
+  MessageCircle, ShieldCheck, Download, ArrowRight, 
+  ChevronRight, Zap, Globe, Layers, Smartphone, Users,
+  Star, Clock, Crown, Shield, Activity, Share2, Eye,
+  CheckCircle2
 } from 'lucide-react';
 
-
-// ✅ FIXED IMPORTS
 import { useAuth } from '@/context/AuthContext';
 import { supabase } from '@/lib/supabase';
 import { AnimeService, UserAPI, UniversalAnimeBase } from '@/lib/api';
+import { CURATED_ENGLISH_DRAMAS, CURATED_HINDI_DRAMAS } from '@/lib/shorts/curated';
 import { Button } from '@/components/ui/button';
-import { sfx } from '@/lib/audioManager'; 
 import AuthModal from '@/components/Auth/AuthModal';
 import SearchBar from '@/components/Anime/SearchBar';
 import AdsterraNativeBanner from '@/components/Ads/AdsterraNativeBanner';
+import CuteShareBar from '@/components/Home/CuteShareBar';
 import dynamic from 'next/dynamic';
 import { getRandomAvatar, getRandomGuestName } from '@/components/User/AvatarSelectorModal';
+import { Capacitor } from '@capacitor/core';
+import { formatAnimeTitle, slugifyTitle, cn } from '@/lib/utils';
 
+// Dynamic 3D WebGL Portal with safe fallback
 const ShadowGardenPortal = dynamic(
   () =>
     import('@/components/Portal/ShadowGardenPortal').catch((err) => {
       console.warn('[Landing] Chunk load failed for ShadowGardenPortal, self-healing:', err);
-      if (typeof window !== 'undefined') {
-        const lockKey = 'shadow_portal_chunk_reload';
-        const last = sessionStorage.getItem(lockKey);
-        const now = Date.now();
-        if (!last || now - parseInt(last, 10) > 10000) {
-          sessionStorage.setItem(lockKey, now.toString());
-          if (typeof caches !== 'undefined') {
-            caches.keys().then(keys => Promise.all(keys.map(k => caches.delete(k)))).finally(() => {
-              window.location.href = window.location.pathname + '?t=' + Date.now();
-            });
-            return { default: () => null };
-          }
-          window.location.href = window.location.pathname + '?t=' + Date.now();
-        }
-      }
       return { default: () => null };
     }),
   { 
-    ssr: false,
-    loading: () => null
+    ssr: false, 
+    loading: () => null 
   }
 );
-import { Capacitor } from '@capacitor/core';
-import CuteShareBar from '@/components/Home/CuteShareBar';
-import { formatAnimeTitle, slugifyTitle } from '@/lib/utils';
 
-
-// --- ASSETS ---
-const WAIFU_BG_LIST = [
-  "/images/index/bg-1.jpg", "/images/index/bg-2.jpg", "/images/index/bg-3.jpg",
-  "/images/index/bg-4.jpg", "/images/index/bg-5.jpg", "/images/index/bg-6.png",
-  "/images/index/bg-7.png", "/images/index/bg-8.png", "/images/index/bg-9.png", "/images/index/bg-10.png"
+// High-resolution thematic backgrounds
+const HERO_BG_IMAGES = [
+  "/images/index/bg-1.jpg", 
+  "/images/index/bg-2.jpg", 
+  "/images/index/bg-3.jpg",
+  "/images/index/bg-4.jpg", 
+  "/images/index/bg-5.jpg"
 ];
 
-const FEATURE_GIF = "/images/index/feature-main.gif";
-const FOOTER_GIF = "/images/footer.gif";
-
-const FLOATING_STICKERS = [
-  { src: "/images/index/sticker-1.gif", x: "85%", y: "15%", delay: 1 },
-  { src: "/images/index/sticker-2.gif", x: "5%", y: "60%", delay: 2 },
-  { src: "/images/index/sticker-3.gif", x: "80%", y: "70%", delay: 3 },
-];
-
-const BOARD_OF_DARKNESS = [
-  { title: "Shadow", role: "Leader" },
-  { title: "The Mask", role: "Admin" },
-  { title: "Viking", role: "Admin" },
-  { title: "Assassin", role: "Admin" },
-  { title: "Phantom", role: "Admin" }
-];
-
-const COUNCIL_OF_SHADOWS = [
-  { title: "First Shadow", role: "Alpha" },
-  { title: "Second Shadow", role: "Moderator" },
-  { title: "Third Shadow", role: "Moderator" },
-  { title: "Fourth Shadow", role: "Moderator" },
-  { title: "Fifth Shadow", role: "Moderator" },
-  { title: "Sixth Shadow", role: "Moderator" },
-  { title: "Seventh Shadow", role: "Moderator" },
-  { title: "Eighth Shadow", role: "Moderator" },
-  { title: "Ninth Shadow", role: "Moderator" },
-  { title: "Tenth Shadow", role: "Moderator" }
-];
-
-// --- COMPONENTS ---
-
-// --- COMPONENTS ---
-
-const GuildStats = React.memo(() => {
-  const [stats, setStats] = useState({ users: 15420, posts: 8540 });
-  const [liveUsers, setLiveUsers] = useState(1200);
-
-  useEffect(() => {
-    let isMounted = true;
-    const fetchStats = async () => {
-      try {
-        const { count: userCount } = await supabase.from('profiles').select('*', { count: 'exact', head: true });
-        const { count: postCount } = await supabase.from('social_posts').select('*', { count: 'exact', head: true });
-        
-        if (isMounted) {
-          const totalUsers = userCount && userCount > 0 ? userCount : 15420;
-          const totalPosts = postCount && postCount > 0 ? postCount : 8540;
-          setStats({ 
-            users: totalUsers,
-            posts: totalPosts 
-          });
-          setLiveUsers(Math.floor(totalUsers * 0.12) + Math.floor(Math.random() * 8));
-        }
-      } catch (e) {
-        console.warn("Guild Stats Error - Using Fallback", e);
-      }
-    };
-    fetchStats();
-
-    const interval = setInterval(() => {
-      setLiveUsers(prev => {
-        const change = Math.floor(Math.random() * 5) - 2;
-        return Math.max(12, prev + change);
-      });
-    }, 3000);
-
-    return () => {
-      isMounted = false;
-      clearInterval(interval);
-    };
-  }, []);
-
-  return (
-    <div className="grid grid-cols-1 md:grid-cols-3 gap-4 w-full mt-12 px-4 max-w-5xl mx-auto">
-      <StatCard icon={Users} label="Total Adventurers" value={stats.users.toLocaleString()} sub="Registered Accounts" />
-      <StatCard icon={Activity} label="Active Users Online" value={liveUsers.toLocaleString()} sub="Real-time Active" isLive />
-      <StatCard icon={ScrollIcon} label="Intel Reports" value={stats.posts.toLocaleString()} sub="Community Posts" />
-    </div>
-  );
-});
-GuildStats.displayName = 'GuildStats';
-
-const StatCard = React.memo(({ icon: Icon, label, value, sub, isLive }: any) => (
-  <div className="bg-black/40 backdrop-blur-md border border-white/10 p-4 rounded-xl flex items-center gap-4 hover:bg-primary-950/20 hover:border-primary-500/30 transition-all group shadow-lg">
-    <div className={`p-3 rounded-lg ${isLive ? 'bg-green-900/20' : 'bg-primary-900/20'} border ${isLive ? 'border-green-500/30' : 'border-primary-500/30'}`}>
-      <Icon className={`w-6 h-6 ${isLive ? 'text-green-500' : 'text-primary-500'}`} />
-    </div>
-    <div>
-      <div className="text-2xl font-bold font-mono text-white flex items-center gap-2">
-        {value}
-        {isLive && <span className="w-2.5 h-2.5 rounded-full bg-green-500 animate-pulse shadow-[0_0_10px_#22c55e]" />}
-      </div>
-      <div className="text-xs text-gray-400 font-medium uppercase tracking-wider font-mono">{label}</div>
-    </div>
-  </div>
-));
-StatCard.displayName = 'StatCard';
-
-const LatestSocialFeedSection = React.memo(() => {
-  const [posts, setPosts] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    let isMounted = true;
-    const fetchLatestPosts = async () => {
-      try {
-        const { data, error } = await supabase
-          .from('social_posts')
-          .select('id, content, created_at, profiles:user_id(username, avatar_url, role), social_likes(count), social_comments(count)')
-          .order('created_at', { ascending: false })
-          .limit(4);
-
-        if (error) throw error;
-        if (isMounted && data && data.length > 0) {
-          setPosts(data);
-        } else if (isMounted) {
-          setPosts([
-            {
-              id: '1',
-              content: 'Just finished watching Solo Leveling Season 2! The animation during the Monarch awakening gate scene was mindblowing.',
-              created_at: new Date(Date.now() - 3600000).toISOString(),
-              likes_count: 142,
-              comments_count: 28,
-              profiles: { username: 'ShadowLeader', avatar_url: '/images/index/bg-1.jpg', role: 'ADMIN' }
-            },
-            {
-              id: '2',
-              content: 'Kagemi node stream servers are running at 0ms latency tonight. Perfect 1080p 60fps streaming.',
-              created_at: new Date(Date.now() - 7200000).toISOString(),
-              likes_count: 98,
-              comments_count: 14,
-              profiles: { username: 'VikingHunter', avatar_url: '/images/index/bg-2.jpg', role: 'MEMBER' }
-            },
-            {
-              id: '3',
-              content: 'What donghua recommendations do you agents have for this weekend? Looking for high action cultivation series.',
-              created_at: new Date(Date.now() - 14400000).toISOString(),
-              likes_count: 76,
-              comments_count: 42,
-              profiles: { username: 'CelestialMonarch', avatar_url: '/images/index/bg-3.jpg', role: 'MODERATOR' }
-            },
-            {
-              id: '4',
-              content: 'New grimoire watchlist system is so clean! Tracked all my upcoming summer anime releases in seconds.',
-              created_at: new Date(Date.now() - 21600000).toISOString(),
-              likes_count: 110,
-              comments_count: 19,
-              profiles: { username: 'AlphaAgent', avatar_url: '/images/index/bg-4.jpg', role: 'MEMBER' }
-            }
-          ]);
-        }
-      } catch (err) {
-        console.warn("Social feed fetch error - using fallbacks", err);
-        if (isMounted) {
-          setPosts([
-            {
-              id: '1',
-              content: 'Just finished watching Solo Leveling Season 2! The animation during the Monarch awakening gate scene was mindblowing.',
-              created_at: new Date(Date.now() - 3600000).toISOString(),
-              likes_count: 142,
-              comments_count: 28,
-              profiles: { username: 'ShadowLeader', avatar_url: '/images/index/bg-1.jpg', role: 'ADMIN' }
-            },
-            {
-              id: '2',
-              content: 'Kagemi node stream servers are running at 0ms latency tonight. Perfect 1080p 60fps streaming.',
-              created_at: new Date(Date.now() - 7200000).toISOString(),
-              likes_count: 98,
-              comments_count: 14,
-              profiles: { username: 'VikingHunter', avatar_url: '/images/index/bg-2.jpg', role: 'MEMBER' }
-            }
-          ]);
-        }
-      } finally {
-        if (isMounted) setLoading(false);
-      }
-    };
-    fetchLatestPosts();
-  }, []);
-
-  return (
-    <section className="relative z-10 w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
-      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-10 border-b border-white/10 pb-6">
-        <div>
-          <div className="flex items-center gap-2 text-primary-500 font-mono text-xs uppercase tracking-[0.2em] mb-1">
-            <MessageCircle className="w-4 h-4" /> INTEL FEED BROADCAST
-          </div>
-          <h3 className="text-3xl md:text-4xl font-normal font-gradvis text-white tracking-wide" style={{ fontFamily: 'var(--font-above), serif' }}>
-            LATEST INTEL FROM SHADOW FEED
-          </h3>
-        </div>
-        <Link href="/social">
-          <Button variant="outline" className="border-primary-500/30 text-primary-300 hover:text-white hover:bg-primary-950/40 text-xs font-mono tracking-widest uppercase rounded-full">
-            VIEW ALL REPORTS <ArrowRight className="ml-2 w-4 h-4" />
-          </Button>
-        </Link>
-      </div>
-
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        {posts.map((post) => {
-          const profile = Array.isArray(post.profiles) ? post.profiles[0] : post.profiles;
-          const likes = post.social_likes?.[0]?.count ?? post.likes_count ?? 0;
-          const comments = post.social_comments?.[0]?.count ?? post.comments_count ?? 0;
-          const formattedDate = post.created_at ? new Date(post.created_at).toLocaleDateString() : 'Recent';
-
-          return (
-            <div key={post.id} className="p-6 rounded-2xl bg-black/40 border border-white/10 hover:border-primary-500/40 backdrop-blur-md transition-all group hover:-translate-y-1 shadow-lg">
-              <div className="flex items-center gap-3 mb-4">
-                <img 
-                  src={profile?.avatar_url || '/images/index/bg-1.jpg'} 
-                  alt={profile?.username || 'Agent'} 
-                  className="w-10 h-10 rounded-full object-cover border border-primary-500/40"
-                  onError={(e) => { (e.target as HTMLImageElement).src = '/images/index/bg-1.jpg'; }}
-                />
-                <div>
-                  <div className="flex items-center gap-2">
-                    <span className="font-bold text-sm text-white font-mono">{profile?.username || 'Anonymous Agent'}</span>
-                    {profile?.role && (
-                      <span className="text-[9px] px-2 py-0.5 rounded bg-primary-900/40 border border-primary-500/30 text-primary-300 font-mono uppercase">
-                        {profile.role}
-                      </span>
-                    )}
-                  </div>
-                  <span className="text-[10px] text-gray-500 font-mono">{formattedDate}</span>
-                </div>
-              </div>
-              <p className="text-xs sm:text-sm text-gray-300 font-mono leading-relaxed line-clamp-3 mb-4">
-                {post.content}
-              </p>
-              <div className="flex items-center gap-4 text-xs text-gray-400 font-mono pt-3 border-t border-white/5">
-                <span className="flex items-center gap-1.5 hover:text-red-400 transition-colors">
-                  <Flame className="w-3.5 h-3.5 text-primary-500" /> {likes} Likes
-                </span>
-                <span className="flex items-center gap-1.5 hover:text-cyan-400 transition-colors">
-                  <MessageCircle className="w-3.5 h-3.5 text-cyan-400" /> {comments} Comments
-                </span>
-              </div>
-            </div>
-          );
-        })}
-      </div>
-    </section>
-  );
-});
-LatestSocialFeedSection.displayName = 'LatestSocialFeedSection';
-
-const FloatingParticles = React.memo(() => (
-  <div className="absolute inset-0 overflow-hidden pointer-events-none z-20">
-    {[...Array(20)].map((_, i) => (
-      <motion.div
-        key={i}
-        className="absolute w-1 h-1 bg-primary-500/40 rounded-full blur-[1px]"
-        style={{ left: `${Math.random() * 100}%`, top: `${Math.random() * 100}%` }}
-        animate={{
-          y: [-20, -50, -20],
-          x: [0, Math.random() * 20 - 10, 0],
-          opacity: [0.2, 0.6, 0.2],
-          scale: [1, 1.3, 1],
-        }}
-        transition={{ duration: 4 + Math.random() * 3, repeat: Infinity, delay: Math.random() * 3, ease: "easeInOut" }}
-      />
-    ))}
-  </div>
-));
-FloatingParticles.displayName = 'FloatingParticles';
-
-const FeatureCard = React.memo(({ icon: Icon, title, desc }: { icon: any, title: string, desc: string }) => (
-  <div className="p-8 rounded-xl bg-black/40 border border-white/5 hover:border-primary-500/40 transition-all group backdrop-blur-md hover:bg-primary-950/10 hover:-translate-y-1 duration-300" style={{ willChange: 'transform' }}>
-    <div className="w-14 h-14 rounded-lg bg-black flex items-center justify-center mb-6 border border-white/10 group-hover:border-primary-500/50 group-hover:shadow-[0_0_15px_rgba(220,38,38,0.3)] transition-all">
-      <Icon className="w-7 h-7 text-primary-700 group-hover:text-primary-500 transition-colors" />
-    </div>
-    <h3 className="text-xl font-bold text-white mb-3 group-hover:text-primary-100 font-above tracking-wide">{title}</h3>
-    <p className="text-sm text-gray-400 font-light leading-relaxed">{desc}</p>
-  </div>
-));
-FeatureCard.displayName = 'FeatureCard';
-
-// --- ERROR BOUNDARY FOR 3D PORTAL ---
+// Error Boundary for 3D Portal
 interface PortalErrorBoundaryProps {
   children: React.ReactNode;
   onError?: () => void;
@@ -365,56 +74,72 @@ class PortalErrorBoundary extends React.Component<PortalErrorBoundaryProps, Port
   }
 
   render() {
-    if (this.state.hasError) {
-      return null;
-    }
+    if (this.state.hasError) return null;
     return this.props.children;
   }
 }
-
-// --- MAIN COMPONENT ---
 
 export default function LandingClient() {
   const router = useRouter();
   const [isCheckingAuth, setIsCheckingAuth] = useState(true);
   const [showAuth, setShowAuth] = useState(false);
-  const [showLandingUI, setShowLandingUI] = useState(false);   
+  
+  // Adaptive UI state: returning/skip users get instant UI, first-time users see intro
+  const [showLandingUI, setShowLandingUI] = useState(() => {
+    if (typeof window !== 'undefined') {
+      const hasAudio = localStorage.getItem('shadow_audio_permitted') === 'true' || localStorage.getItem('guild_audio_permit') === 'true';
+      const isSkip = localStorage.getItem('anim_never_ask') === 'true' || localStorage.getItem('anim_preference') === 'skip' || localStorage.getItem('sg_portal_seen') === 'true';
+      return hasAudio && isSkip;
+    }
+    return false;
+  });
 
-  const [triggerEntry, setTriggerEntry] = useState(false);     
-  const [bgImage, setBgImage] = useState(WAIFU_BG_LIST[0]);
-  const [isMobile, setIsMobile] = useState(false);
-  const [selectedGender, setSelectedGender] = useState<'boy' | 'girl' | 'neutral' | null>(null);
+  const [triggerEntry, setTriggerEntry] = useState(false);
+  const [bgImage, setBgImage] = useState(HERO_BG_IMAGES[0]);
   const [installPrompt, setInstallPrompt] = useState<any>(null);
   
-  const [trending, setTrending] = useState<UniversalAnimeBase[]>([]); 
-  const [isLoadingTrending, setIsLoadingTrending] = useState(true);
+  // Real dynamic data
+  const [trending, setTrending] = useState<UniversalAnimeBase[]>([]);
+  const [stats, setStats] = useState({ users: 28450, titles: 15400, shorts: 35000 });
+  const [socialPosts, setSocialPosts] = useState<any[]>([]);
 
+  // Parallax scroll effects
   const { scrollY } = useScroll();
-  const heroOpacity = useTransform(scrollY, [0, 400], [1, 0]);
-  const heroScale = useTransform(scrollY, [0, 400], [1, 1.1]);
+  const heroOpacity = useTransform(scrollY, [0, 450], [1, 0.15]);
+  const heroScale = useTransform(scrollY, [0, 450], [1, 1.05]);
+
+  // Curated Shorts for showcase
+  const featuredShorts = useMemo(() => {
+    return [
+      ...CURATED_ENGLISH_DRAMAS.slice(0, 2),
+      ...CURATED_HINDI_DRAMAS.slice(0, 2)
+    ];
+  }, []);
+
+  // When 3D portal intro finishes or scene is ready, reveal landing UI smoothly
+  const handleSceneReady = useCallback(() => {
+    setShowLandingUI(true);
+  }, []);
 
   useEffect(() => {
-    const mobileCheck = window.innerWidth < 768;
-    setIsMobile(mobileCheck);
+    // 1. Random Hero Backdrop
+    const randomIdx = Math.floor(Math.random() * HERO_BG_IMAGES.length);
+    setBgImage(HERO_BG_IMAGES[randomIdx]);
 
-    // Safety fallback: reveal landing UI after 60s only if WebGL / 3D portal never triggers scene ready
-    const uiTimer = setTimeout(() => {
+    // 2. Safety timer: reveal landing UI after 5s if user hasn't seen it yet
+    const fallbackTimer = setTimeout(() => {
       setShowLandingUI(true);
-    }, 60000);
+    }, 5000);
 
+    // 3. PWA Handler
     const pwaHandler = (e: any) => {
       e.preventDefault();
       setInstallPrompt(e);
     };
     window.addEventListener('beforeinstallprompt', pwaHandler);
 
-    // 1. Random BG (Client-side only)
-    const randomIdx = Math.floor(Math.random() * WAIFU_BG_LIST.length);
-    setBgImage(WAIFU_BG_LIST[randomIdx]);
-
-    // 2. Auth & Data
+    // 4. Auth & Dynamic Data Fetching
     const init = async () => {
-      // Check if running inside Native App container (Android APK, iOS App, Windows EXE, or Installed PWA)
       const isAndroidAPK = typeof window !== 'undefined' && (
         Capacitor.isNativePlatform() || 
         /wv|Android.*Version\/[0-9.]+/i.test(navigator.userAgent || '') ||
@@ -424,25 +149,19 @@ export default function LandingClient() {
       );
       const isNativeContainer = isAndroidAPK || (typeof window !== 'undefined' && window.matchMedia('(display-mode: standalone)').matches);
       const hasSeenPortal = typeof window !== 'undefined' && localStorage.getItem('shadow_apk_intro_completed') === 'true';
-      const hasAuthHint = typeof window !== 'undefined' && localStorage.getItem('shadow_auth_hint') === 'true';
 
-      // 1. On Native App Container / APK:
-      // Intro & 3D portal sequence plays ONCE on app launch, then bypasses to /home on future launches
       if (isNativeContainer && hasSeenPortal) {
         router.replace('/home');
         return;
       }
 
-      // 2. Always do the full API check — the hint approach caused permanent
-      // redirects for logged-out users since the hint was never cleared on logout.
       try {
         const user = await UserAPI.getCurrentUser();
         if (user) {
           if (typeof window !== 'undefined') localStorage.setItem('shadow_auth_hint', 'true');
-          router.replace('/home'); 
+          router.replace('/home');
           return;
         } else {
-          // User is not logged in — clear stale hint so future checks stay accurate
           if (typeof window !== 'undefined') localStorage.removeItem('shadow_auth_hint');
         }
       } catch (authErr) {
@@ -451,27 +170,85 @@ export default function LandingClient() {
         setIsCheckingAuth(false);
       }
 
-      // Fetch Trending (Only if we stay)
+      // Fetch Trending Airing Anime
       try {
         const data = await AnimeService.getTopAiring(1);
         if (data && data.length > 0) {
-          setTrending(data.slice(0, 6)); 
+          setTrending(data.slice(0, 12));
         }
       } catch (err) {
         console.error("Failed to load trending:", err);
-      } finally {
-        setIsLoadingTrending(false);
+      }
+
+      // Fetch Community Stats & Posts
+      try {
+        const [profileRes, postRes, postsData] = await Promise.all([
+          supabase.from('profiles').select('*', { count: 'exact', head: true }),
+          supabase.from('social_posts').select('*', { count: 'exact', head: true }),
+          supabase
+            .from('social_posts')
+            .select('id, content, created_at, profiles:user_id(username, avatar_url, role), social_likes(count), social_comments(count)')
+            .order('created_at', { ascending: false })
+            .limit(4)
+        ]);
+
+        if (profileRes.count) {
+          setStats(prev => ({ ...prev, users: profileRes.count || prev.users }));
+        }
+
+        if (postsData.data && postsData.data.length > 0) {
+          setSocialPosts(postsData.data);
+        } else {
+          // Clean fallback community items
+          setSocialPosts([
+            {
+              id: '1',
+              content: 'The 1080p stream on Kagemi for Solo Leveling Season 2 is astonishing. Zero buffer delay and the Japanese audio is crystal clear.',
+              created_at: new Date(Date.now() - 3600000).toISOString(),
+              likes_count: 154,
+              comments_count: 32,
+              profiles: { username: 'ShadowMonarch', avatar_url: '/images/index/bg-1.jpg', role: 'ADMIN' }
+            },
+            {
+              id: '2',
+              content: 'Just discovered the vertical shorts catalog! 1-minute episodes of billionaire drama with English audio is my new addiction.',
+              created_at: new Date(Date.now() - 7200000).toISOString(),
+              likes_count: 118,
+              comments_count: 24,
+              profiles: { username: 'Valkyrie', avatar_url: '/images/index/bg-2.jpg', role: 'MEMBER' }
+            },
+            {
+              id: '3',
+              content: 'The dual subtitle engine is top notch. Smooth sync and great font rendering across all donghua series.',
+              created_at: new Date(Date.now() - 14400000).toISOString(),
+              likes_count: 89,
+              comments_count: 19,
+              profiles: { username: 'KitsuneSage', avatar_url: '/images/index/bg-3.jpg', role: 'MODERATOR' }
+            },
+            {
+              id: '4',
+              content: 'Grimoire watchlist synced all 48 shows from my AniList seamlessly. Best platform update yet.',
+              created_at: new Date(Date.now() - 21600000).toISOString(),
+              likes_count: 142,
+              comments_count: 27,
+              profiles: { username: 'AuraKnight', avatar_url: '/images/index/bg-4.jpg', role: 'MEMBER' }
+            }
+          ]);
+        }
+      } catch (e) {
+        console.warn("Community feed error:", e);
       }
     };
+
     init();
 
     return () => {
-      clearTimeout(uiTimer);
+      clearTimeout(fallbackTimer);
       window.removeEventListener('beforeinstallprompt', pwaHandler);
     };
   }, [router]);
 
-  // Handlers
+  // Audio & Interaction SFX
   const initializeAudio = useCallback(() => {
     try {
       const AudioContext = window.AudioContext || (window as any).webkitAudioContext;
@@ -482,21 +259,9 @@ export default function LandingClient() {
     } catch (e) {
       console.warn("Audio Context init failed:", e);
     }
-    // Always mark audio as permitted — user clicked, that satisfies the browser gate
     localStorage.setItem('shadow_audio_permitted', 'true');
     localStorage.setItem('guild_audio_permit', 'true');
   }, []);
-
-  const handleSceneReady = useCallback(() => { setShowLandingUI(true); }, []);
-  const processGenderSelection = useCallback(() => {
-    if (selectedGender) {
-      localStorage.setItem('shadow_traveller_gender', selectedGender);
-      const genderArg = selectedGender === 'neutral' ? undefined : selectedGender;
-      const avatar = getRandomAvatar(true, genderArg);
-      localStorage.setItem('shadow_traveller_avatar', avatar);
-      localStorage.setItem('shadow_traveller_name', getRandomGuestName());
-    }
-  }, [selectedGender]);
 
   const handlePortalComplete = useCallback(() => { 
     if (typeof window !== 'undefined') {
@@ -506,39 +271,38 @@ export default function LandingClient() {
     router.push('/home'); 
   }, [router]);
 
-  const handleEnterClick = useCallback(() => { 
+  /**
+   * Triggers the full 3D interactive transmigration sequence:
+   * 1. Fades out the landing page UI overlay
+   * 2. Sets triggerEntry=true to launch performEntrySequence() in ShadowGardenPortal
+   * 3. Plays Drop -> Crouch -> Stand -> Confusion -> Walk -> Dimension Alert BracePopup -> Push -> Suction -> Wormhole Tunnel -> Arrival -> /home
+   */
+  const handleEnterClick = useCallback((e?: React.MouseEvent) => { 
+    if (e) {
+      e.preventDefault();
+      e.stopPropagation();
+    }
     initializeAudio();
-    processGenderSelection();
-    
-    // If user has already seen portal or chosen skip preference, route immediately
-    const isSkip = typeof window !== 'undefined' && (
-      localStorage.getItem('anim_never_ask') === 'true' ||
-      localStorage.getItem('anim_preference') === 'skip' ||
-      localStorage.getItem('sg_portal_seen') === 'true'
-    );
-    
-    if (isSkip) {
+
+    // Check if user has explicitly chosen 'always skip'
+    const isAlwaysSkip = typeof window !== 'undefined' && localStorage.getItem('anim_never_ask') === 'true';
+    if (isAlwaysSkip) {
       handlePortalComplete();
       return;
     }
 
-    setShowLandingUI(false); 
+    // Smoothly dissolve the landing UI to unveil the full-screen 3D Portal sequence
+    setShowLandingUI(false);
     setTriggerEntry(true); 
-  }, [initializeAudio, processGenderSelection, handlePortalComplete]);
-  
-  const handleJoinGuildClick = useCallback(() => {
-    initializeAudio();
-    processGenderSelection();
-    setShowAuth(true);
-  }, [initializeAudio, processGenderSelection]);
+  }, [initializeAudio, handlePortalComplete]);
 
-  // Safety timeout: if portal transition takes longer than 4s to route to /home, force navigation
+  // Extended safety timeout during 3D sequence (allowing full drop -> brace popup -> tunnel walkthrough)
   useEffect(() => {
     if (triggerEntry) {
-      const fallbackTimer = setTimeout(() => {
+      const timer = setTimeout(() => {
         handlePortalComplete();
-      }, 4000);
-      return () => clearTimeout(fallbackTimer);
+      }, 35000); // 35s safety net
+      return () => clearTimeout(timer);
     }
   }, [triggerEntry, handlePortalComplete]);
 
@@ -551,18 +315,26 @@ export default function LandingClient() {
     }
   };
 
-  // Prevent Flash
-  if (isCheckingAuth) return <div className="min-h-screen bg-[#050505]" />;
+  if (isCheckingAuth) {
+    return <div className="min-h-screen bg-[#050508]" />;
+  }
 
   return (
-    <main className={`relative min-h-screen w-full bg-[#050505] text-white overflow-x-hidden selection:bg-primary-900/50   `}>
+    <main className="relative min-h-screen w-full bg-[#050508] text-white selection:bg-purple-900/40 selection:text-white overflow-x-hidden">
       
-      {/* 1. PORTAL BACKGROUND */}
+      {/* 3D PORTAL ENGINE (Background ambience during browsing, Full-Screen 100% focus during entry sequence) */}
       <PortalErrorBoundary onError={() => {
         setShowLandingUI(true);
         if (triggerEntry) handlePortalComplete();
       }}>
-        <div className="fixed inset-0 z-0">
+        <div 
+          className={cn(
+            "fixed inset-0 transition-all duration-1000",
+            triggerEntry 
+              ? "z-[99990] opacity-100 pointer-events-auto bg-black" 
+              : "z-0 opacity-40 pointer-events-auto mix-blend-screen"
+          )}
+        >
           <Suspense fallback={null}>
             <ShadowGardenPortal 
               startTransition={triggerEntry}
@@ -573,302 +345,695 @@ export default function LandingClient() {
         </div>
       </PortalErrorBoundary>
 
-      {/* 2. OVERLAY */}
+      {/* SKIP ANIMATION CONTROLLER (Prominently available whenever entry transition is running) */}
+      {triggerEntry && (
+        <div className="fixed top-6 right-6 z-[100000] pointer-events-auto">
+          <button
+            onClick={() => handlePortalComplete()}
+            className="px-5 py-2.5 rounded-full bg-black/85 hover:bg-black text-white border border-purple-500/50 hover:border-purple-400 backdrop-blur-xl text-xs font-mono font-bold tracking-widest uppercase transition-all shadow-[0_0_30px_rgba(168,85,247,0.4)] flex items-center gap-2 cursor-pointer active:scale-95"
+          >
+            <span>Skip To Home</span>
+            <ArrowRight className="w-4 h-4 text-purple-400" />
+          </button>
+        </div>
+      )}
+
+      {/* LANDING PAGE INTERFACE (Fades in on mount/intro complete, dissolves when portal entry begins) */}
       <AnimatePresence mode="wait">
-        {showLandingUI && (
-          <motion.div 
-            // ✅ FIXED JSX ERROR: Replaced <style jsx> with Tailwind
-            className="absolute inset-0 z-10 overflow-y-auto overflow-x-hidden [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]"
+        {showLandingUI && !triggerEntry && (
+          <motion.div
+            key="landing-ui"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
-            exit={{ opacity: 0, y: -50, filter: "blur(20px)" }}
-            transition={{ duration: 1.5, ease: "easeInOut" }}
+            exit={{ opacity: 0, y: -40, filter: "blur(20px)" }}
+            transition={{ duration: 0.8, ease: "easeInOut" }}
+            className="relative z-10 w-full"
           >
-            {/* Static Background */}
-            <motion.div 
-              style={{ opacity: heroOpacity, scale: heroScale, willChange: 'transform, opacity' }} 
-              className="absolute inset-0 z-0 pointer-events-none h-screen fixed"
-            >
-               <img src={bgImage} alt="Background" loading="eager" className="absolute inset-0 w-full h-full object-cover opacity-20 mix-blend-overlay" />
-               <div className="absolute inset-0 bg-gradient-to-b from-black/60 via-[#050505]/90 to-[#050505]" />
-               <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-10 mix-blend-overlay" />
-               <FloatingParticles />
-            </motion.div>
-
-            {/* HERO SECTION */}
-            <section className="relative flex flex-col justify-center items-center p-4 min-h-screen">
-               {FLOATING_STICKERS.map((s, i) => (
-                 <motion.img 
-                   key={i} src={s.src} alt="Sticker" loading="lazy"
-                   className="absolute w-16 h-16 sm:w-20 sm:h-20 md:w-32 md:h-32 object-contain pointer-events-none drop-shadow-[0_0_15px_rgba(0,0,0,0.8)]"
-                   style={{ left: s.x, top: s.y, willChange: 'transform, opacity' }}
-                   initial={{ scale: 0, opacity: 0 }}
-                   animate={{ scale: 1, opacity: 0.6, y: [0, -15, 0] }}
-                   transition={{ scale: { delay: s.delay, duration: 0.5 }, opacity: { delay: s.delay, duration: 0.5 }, y: { repeat: Infinity, duration: 3, ease: "easeInOut", delay: s.delay } }}
-                 />
-               ))}
-
-               <div className="relative z-20 text-center px-4 w-full max-w-4xl mx-auto">
-                 <motion.div initial={{ y: 20, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ duration: 1.5, ease: "easeOut" }}>
-                   
-                   <div className="relative inline-block mb-6">
-                     <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-primary-900/30 border border-primary-500/30 backdrop-blur-md mb-4 animate-pulse">
-                        <span className="w-1.5 h-1.5 rounded-full bg-primary-500 shadow-[0_0_8px_red]" />
-                        <span className="text-primary-200 text-[10px] font-bold tracking-widest uppercase font-mono">Guild System Online • v3.0 (beta)</span>
-                     </div>
-                     <h1 className="text-5xl md:text-8xl font-normal tracking-wide font-gradvis text-primary-600 drop-shadow-[0_0_30px_rgba(220,38,38,0.6)] relative z-10" style={{ fontFamily: 'var(--font-gradvis), serif' }}>KAGEMI</h1>
-                     <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[120%] h-[120%] opacity-50 z-0 pointer-events-none mix-blend-screen">
-                        <div className="w-full h-full bg-primary-500/20 blur-[60px] rounded-full animate-pulse" />
-                     </div>
-                   </div>
-                   
-                   <p className="text-base md:text-xl text-gray-300 font-light mb-10 leading-relaxed font-sans tracking-wide w-full max-w-2xl mx-auto">
-                      The ultimate sanctuary for the awakened. <br/>
-                      Join the guild. Access the archives. Become legend.
-                   </p>
-
-                   <div className="w-full max-w-xl mx-auto mb-10 transform hover:scale-105 transition-transform duration-300 relative z-20">
-                      <div className="relative z-50 p-1 rounded-full bg-gradient-to-r from-primary-900/50 via-primary-600/50 to-primary-900/50 shadow-[0_0_30px_rgba(220,38,38,0.3)] mb-8">
-                        <div className="bg-black/90 backdrop-blur-xl rounded-full"><SearchBar /></div>
-                      </div>
-                      <div className="flex flex-col sm:flex-row gap-5 justify-center items-center relative z-20 max-w-md mx-auto">
-                        <Button 
-                          onMouseEnter={() => (window as any).sfx?.play('crystal')}
-                          onClick={() => { (window as any).sfx?.play('metal'); handleJoinGuildClick(); }} 
-                          className="h-14 rounded-full bg-primary-800 hover:bg-primary-700 text-white font-bold text-lg shadow-[0_0_35px_rgba(220,38,38,0.4)] border border-primary-500/50 backdrop-blur-md tracking-wider w-full"
-                        >
-                          <Crown className="mr-3 h-5 w-5" /> Join The Guild
-                        </Button>
-                        <Button 
-                          onMouseEnter={() => (window as any).sfx?.play('crystal')}
-                          onClick={() => { (window as any).sfx?.play('metal'); handleEnterClick(); }} 
-                          variant="ghost" 
-                          className="h-14 rounded-full text-white/70 hover:text-white hover:bg-white/10 border border-white/10 text-lg hover:border-primary-500/50 backdrop-blur-md transition-all tracking-wider w-full"
-                        >
-                          Enter as Visitor <ArrowRight className="ml-3 w-5 h-5" />
-                        </Button>
-                      </div>
-                      
-                      {installPrompt && (
-                        <div className="flex justify-center mt-6 relative z-20">
-                          <Button 
-                            onMouseEnter={() => (window as any).sfx?.play('crystal')}
-                            onClick={() => { (window as any).sfx?.play('metal'); handleInstallClick(); }} 
-                            variant="outline" 
-                            className="rounded-full bg-blue-900/30 text-blue-300 border-blue-500/40 hover:bg-blue-800/50 hover:text-white backdrop-blur-md font-mono tracking-widest text-xs uppercase h-10 px-6"
-                          >
-                            <Download className="mr-2 w-4 h-4" /> Install App
-                          </Button>
-                        </div>
-                      )}
-                   </div>
-
-                   <GuildStats />
-                 </motion.div>
-               </div>
-            </section>
-
-            {/* EXTENDED CONTENT */}
-            <div className="relative bg-gradient-to-b from-transparent via-[#050505] to-[#050505] pt-4 space-y-12 z-10">
-               
-               {/* TOP RANKING */}
-               <section className="w-full py-4 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-                  <div className="w-full">
-                     <div className="flex items-center gap-3 mb-8 border-b border-white/10 pb-4">
-                        <Flame className="w-6 h-6 text-primary-600" />
-                        <h3 className="text-3xl font-normal font-gradvis text-white tracking-widest">TOP BOUNTIES</h3>
-                     </div>
-                     <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-3">
-                        {trending.map((anime, i) => {
-                           const titleStr = formatAnimeTitle(anime.title, anime.id);
-                           const slug = slugifyTitle(titleStr);
-                           const routeId = (slug && !String(anime.id).includes('-')) ? `${anime.id}-${slug}` : anime.id;
-                           return (
-                             <Link key={anime.id || i} href={`/watch/${routeId}`} className="relative w-full aspect-[2/3] rounded-3xl overflow-hidden cursor-pointer group border border-white/10 hover:border-primary-500/50 transition-all hover:scale-105 hover:shadow-[0_0_20px_rgba(220,38,38,0.3)]">
-                                <img src={anime.poster} alt={titleStr} loading="lazy" className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110" />
-                                <div className="absolute inset-0 bg-gradient-to-t from-black via-transparent to-transparent opacity-90" />
-                                <div className="absolute top-2 right-2 w-7 h-7 rounded-full bg-primary-600/90 backdrop-blur-md flex items-center justify-center font-black text-xs border border-primary-400 shadow-[0_0_10px_red] z-10">{i + 1}</div>
-                                <div className="absolute bottom-0 w-full p-3 text-center">
-                                   <h4 className="text-xs font-bold text-white mb-1 leading-tight drop-shadow-md line-clamp-2 group-hover:text-primary-400 transition-colors">{titleStr}</h4>
-                                </div>
-                             </Link>
-                           );
-                        })}
-                     </div>
+            {/* FIXED GLASSMORPHIC LANDING NAVBAR (Strict w-full px-2 sm:px-4 md:px-6 alignment) */}
+            <header className="fixed top-0 inset-x-0 z-50 w-full px-2 sm:px-4 md:px-6 py-3 transition-all duration-300">
+              <div className="w-full flex items-center justify-between px-3 sm:px-4 py-2 rounded-2xl bg-black/60 backdrop-blur-xl border border-white/10 shadow-2xl">
+                {/* Left: Brand Identity */}
+                <Link href="/home" className="flex items-center gap-2.5 group">
+                  <div className="w-8 h-8 rounded-xl bg-purple-600/20 border border-purple-500/40 flex items-center justify-center text-purple-300 group-hover:scale-105 transition-transform">
+                    <Shield className="w-4 h-4 fill-purple-500/30 text-purple-400" />
                   </div>
-               </section>
+                  <div className="flex flex-col">
+                    <span className="font-extrabold tracking-widest text-sm text-white font-lemon leading-none">
+                      KAGEMI
+                    </span>
+                    <span className="text-[8.5px] font-mono tracking-widest text-purple-300/80 uppercase">
+                      Streaming Platform
+                    </span>
+                  </div>
+                </Link>
 
-               {/* LATEST INTEL FROM SHADOW FEED */}
-               <LatestSocialFeedSection />
+                {/* Center: Realm Links (Desktop) */}
+                <nav className="hidden md:flex items-center gap-1 text-xs font-semibold tracking-wide text-zinc-300">
+                  <Link 
+                    href="/home" 
+                    className="px-3 py-1.5 rounded-full hover:text-white hover:bg-white/10 transition-colors flex items-center gap-1.5"
+                  >
+                    <Tv className="w-3.5 h-3.5 text-purple-400" />
+                    <span>Anime</span>
+                  </Link>
+                  <Link 
+                    href="/donghua" 
+                    className="px-3 py-1.5 rounded-full hover:text-white hover:bg-white/10 transition-colors flex items-center gap-1.5"
+                  >
+                    <Layers className="w-3.5 h-3.5 text-sky-400" />
+                    <span>Donghua</span>
+                  </Link>
+                  <Link 
+                    href="/cinema" 
+                    className="px-3 py-1.5 rounded-full hover:text-white hover:bg-white/10 transition-colors flex items-center gap-1.5"
+                  >
+                    <Film className="w-3.5 h-3.5 text-amber-400" />
+                    <span>Cinema</span>
+                  </Link>
+                  <Link 
+                    href="/shorts" 
+                    className="px-3 py-1.5 rounded-full hover:text-white hover:bg-white/10 transition-colors flex items-center gap-1.5"
+                  >
+                    <Flame className="w-3.5 h-3.5 text-rose-400" />
+                    <span>Shorts</span>
+                  </Link>
+                  <Link 
+                    href="/manga" 
+                    className="px-3 py-1.5 rounded-full hover:text-white hover:bg-white/10 transition-colors flex items-center gap-1.5"
+                  >
+                    <BookOpen className="w-3.5 h-3.5 text-emerald-400" />
+                    <span>Mangvels</span>
+                  </Link>
+                  <Link 
+                    href="/social" 
+                    className="px-3 py-1.5 rounded-full hover:text-white hover:bg-white/10 transition-colors flex items-center gap-1.5"
+                  >
+                    <MessageCircle className="w-3.5 h-3.5 text-indigo-400" />
+                    <span>OtakuVerse</span>
+                  </Link>
+                </nav>
 
-               {/* ARCHIVES */}
-               <section className="py-8 relative overflow-hidden max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-                  <div className="flex flex-col md:flex-row items-center gap-12 relative z-10 w-full">
-                     <div className="flex-1 space-y-8">
-                        <h3 className="text-4xl font-normal text-primary-600 font-gradvis border-l-4 border-primary-600 pl-6" style={{ fontFamily: 'var(--font-above), serif' }}>THE FORBIDDEN LIBRARY</h3>
-                        <p className="text-gray-300 text-lg leading-relaxed font-sans tracking-wide">
-                           Kagemi isn't just a website; it's a repository of otaku culture. 
-                           We index over 15,000 series, automatically sync with MyAnimeList and AniList.
-                        </p>
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                           {["Soul-Link Sync", "Oracle Recommendations", "Personal Grimoire (Watchlist)", "Guild Chat (Comments)"].map((item, i) => (
-                              <div key={i} className="flex items-center gap-3 text-white/80 font-medium text-sm p-3 rounded-lg bg-white/5 border border-white/5 hover:border-primary-500/30 transition-colors">
-                                 <Sword className="w-4 h-4 text-primary-500" /> {item}
+                {/* Right: Quick Action Controls */}
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => {
+                      initializeAudio();
+                      setShowAuth(true);
+                    }}
+                    className="px-3.5 py-1.5 rounded-full text-xs font-medium text-zinc-300 hover:text-white hover:bg-white/5 border border-white/10 transition-all active:scale-95"
+                  >
+                    Sign In
+                  </button>
+                  <button
+                    onClick={handleEnterClick}
+                    className="px-4 py-1.5 rounded-full bg-purple-600 hover:bg-purple-500 text-white text-xs font-semibold shadow-lg shadow-purple-600/30 transition-all active:scale-95 flex items-center gap-1.5"
+                  >
+                    <span>Enter App</span>
+                    <ArrowRight className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+              </div>
+            </header>
+
+            {/* MAIN CONTENT WRAPPER */}
+            <div className="relative pt-20 sm:pt-24 space-y-16 sm:space-y-24">
+              
+              {/* 1. CINEMATIC HERO SECTION */}
+              <section className="relative w-full px-2 sm:px-4 md:px-6 min-h-[85vh] flex flex-col justify-center items-center text-center">
+                {/* Subtle Dynamic Ambient Glow */}
+                <motion.div 
+                  style={{ opacity: heroOpacity, scale: heroScale }}
+                  className="absolute inset-0 pointer-events-none z-0"
+                >
+                  <img 
+                    src={bgImage} 
+                    alt="Atmospheric Backdrop" 
+                    className="w-full h-full object-cover opacity-15 filter blur-sm" 
+                  />
+                  <div className="absolute inset-0 bg-gradient-to-b from-[#050508]/40 via-[#050508]/85 to-[#050508]" />
+                </motion.div>
+
+                <div className="relative z-10 w-full max-w-4xl mx-auto flex flex-col items-center">
+                  {/* Top Typographic Pill */}
+                  <div className="inline-flex items-center gap-2 px-3.5 py-1 rounded-full bg-white/5 border border-white/15 backdrop-blur-md mb-6">
+                    <span className="text-[11px] font-mono font-bold tracking-widest text-purple-300 uppercase">
+                      Next-Gen High-Fidelity Streaming
+                    </span>
+                  </div>
+
+                  {/* Headline with Luminous Gradient */}
+                  <h1 className="text-4xl sm:text-6xl md:text-7xl font-extrabold tracking-tight text-white mb-4 leading-[1.1] font-gradvis">
+                    Where Stories <span className="text-transparent bg-clip-text bg-gradient-to-r from-purple-400 via-sky-300 to-purple-400">Ascend.</span>
+                  </h1>
+
+                  {/* Value Proposition */}
+                  <p className="text-sm sm:text-base md:text-lg text-zinc-300 font-normal leading-relaxed max-w-2xl mb-8">
+                    Stream 15,000+ anime & donghua episodes in pristine 1080p 60fps, alongside 35,000+ unlocked vertical mini-dramas and manga. Zero interruptions, zero lag.
+                  </p>
+
+                  {/* Instant Search Bar */}
+                  <div className="w-full max-w-xl mx-auto mb-6">
+                    <div className="p-1 rounded-2xl bg-gradient-to-r from-purple-600/30 via-white/10 to-sky-600/30 border border-white/15 shadow-2xl backdrop-blur-xl">
+                      <SearchBar />
+                    </div>
+                    {/* Quick Suggestion Chips */}
+                    <div className="flex items-center justify-center gap-1.5 flex-wrap mt-3 text-[11px] text-zinc-400">
+                      <span className="text-zinc-500 font-medium">Trending:</span>
+                      {['Solo Leveling', 'Bleach TYBW', 'Demon Slayer', 'Frieren', 'Omniscient Reader'].map((name) => (
+                        <Link
+                          key={name}
+                          href={`/search?q=${encodeURIComponent(name)}`}
+                          className="px-2.5 py-0.5 rounded-full bg-white/5 hover:bg-white/15 hover:text-white transition-colors"
+                        >
+                          {name}
+                        </Link>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Action Buttons */}
+                  <div className="flex flex-col sm:flex-row items-center gap-3 w-full sm:w-auto">
+                    <button
+                      onClick={handleEnterClick}
+                      className="w-full sm:w-auto px-7 py-3 rounded-full bg-purple-600 hover:bg-purple-500 text-white text-sm font-bold shadow-xl shadow-purple-600/30 flex items-center justify-center gap-2 transition-all active:scale-95"
+                    >
+                      <Play className="w-4 h-4 fill-current" />
+                      <span>Start Watching Free</span>
+                    </button>
+
+                    <Link href="/explore" className="w-full sm:w-auto">
+                      <button className="w-full sm:w-auto px-6 py-3 rounded-full bg-white/10 hover:bg-white/15 text-white border border-white/15 text-sm font-medium flex items-center justify-center gap-2 backdrop-blur-md transition-all active:scale-95">
+                        <Compass className="w-4 h-4 text-zinc-300" />
+                        <span>Explore Catalog</span>
+                      </button>
+                    </Link>
+
+                    {installPrompt && (
+                      <button
+                        onClick={handleInstallClick}
+                        className="w-full sm:w-auto px-5 py-3 rounded-full bg-sky-950/40 hover:bg-sky-900/60 text-sky-300 border border-sky-500/30 text-sm font-medium flex items-center justify-center gap-2 transition-all active:scale-95"
+                      >
+                        <Download className="w-4 h-4" />
+                        <span>Install App</span>
+                      </button>
+                    )}
+                  </div>
+
+                  {/* Platform Metrics Row (Strictly aligned, typographic counts, NO breathing dots) */}
+                  <div className="w-full grid grid-cols-2 sm:grid-cols-4 gap-4 mt-12 pt-8 border-t border-white/10 text-center">
+                    <div>
+                      <div className="text-xl sm:text-2xl font-black font-mono text-white">15,000+</div>
+                      <div className="text-[11px] font-mono text-zinc-400 uppercase tracking-wider mt-0.5">Anime & Donghua</div>
+                    </div>
+                    <div>
+                      <div className="text-xl sm:text-2xl font-black font-mono text-purple-300">35,000+</div>
+                      <div className="text-[11px] font-mono text-zinc-400 uppercase tracking-wider mt-0.5">Vertical Shorts</div>
+                    </div>
+                    <div>
+                      <div className="text-xl sm:text-2xl font-black font-mono text-sky-300">1080p 60fps</div>
+                      <div className="text-[11px] font-mono text-zinc-400 uppercase tracking-wider mt-0.5">Ultra HD Quality</div>
+                    </div>
+                    <div>
+                      <div className="text-xl sm:text-2xl font-black font-mono text-emerald-300">Zero Lag</div>
+                      <div className="text-[11px] font-mono text-zinc-400 uppercase tracking-wider mt-0.5">Global Edge CDN</div>
+                    </div>
+                  </div>
+                </div>
+              </section>
+
+              {/* 2. EXPLORE REALMS (4 Multi-Universe Pillars) */}
+              <section className="w-full px-2 sm:px-4 md:px-6">
+                <div className="mb-6 flex items-center justify-between border-b border-white/10 pb-4">
+                  <div>
+                    <div className="text-xs font-mono uppercase tracking-widest text-purple-400 font-bold mb-1">
+                      Unified Ecosystem
+                    </div>
+                    <h2 className="text-2xl sm:text-3xl font-bold tracking-tight text-white font-gradvis">
+                      EXPLORE ALL REALMS
+                    </h2>
+                  </div>
+                  <Link href="/explore" className="text-xs font-mono text-zinc-400 hover:text-white flex items-center gap-1 transition-colors">
+                    <span>View All</span>
+                    <ChevronRight className="w-3.5 h-3.5" />
+                  </Link>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                  {/* Realm 1: Anime & Donghua */}
+                  <Link 
+                    href="/home" 
+                    className="group relative p-6 rounded-2xl bg-zinc-900/40 hover:bg-zinc-900/80 border border-white/10 hover:border-purple-500/40 transition-all duration-300 flex flex-col justify-between overflow-hidden shadow-lg"
+                  >
+                    <div className="absolute top-0 right-0 w-32 h-32 bg-purple-600/10 rounded-full blur-2xl group-hover:bg-purple-600/20 transition-all" />
+                    <div>
+                      <div className="w-10 h-10 rounded-xl bg-purple-600/20 border border-purple-500/30 flex items-center justify-center text-purple-400 mb-4 group-hover:scale-105 transition-transform">
+                        <Tv className="w-5 h-5" />
+                      </div>
+                      <h3 className="text-lg font-bold text-white mb-1.5 group-hover:text-purple-300 transition-colors">
+                        Anime & Donghua
+                      </h3>
+                      <p className="text-xs text-zinc-400 leading-relaxed">
+                        Broadcast simultaneously from Japan & China. High-definition Sub & Dub episodes updated daily.
+                      </p>
+                    </div>
+                    <div className="flex items-center gap-1.5 text-xs font-semibold text-purple-400 pt-6">
+                      <span>Browse Series</span>
+                      <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-1 transition-transform" />
+                    </div>
+                  </Link>
+
+                  {/* Realm 2: Shorts & Mini-Dramas */}
+                  <Link 
+                    href="/shorts" 
+                    className="group relative p-6 rounded-2xl bg-zinc-900/40 hover:bg-zinc-900/80 border border-white/10 hover:border-rose-500/40 transition-all duration-300 flex flex-col justify-between overflow-hidden shadow-lg"
+                  >
+                    <div className="absolute top-0 right-0 w-32 h-32 bg-rose-600/10 rounded-full blur-2xl group-hover:bg-rose-600/20 transition-all" />
+                    <div>
+                      <div className="w-10 h-10 rounded-xl bg-rose-600/20 border border-rose-500/30 flex items-center justify-center text-rose-400 mb-4 group-hover:scale-105 transition-transform">
+                        <Flame className="w-5 h-5" />
+                      </div>
+                      <h3 className="text-lg font-bold text-white mb-1.5 group-hover:text-rose-300 transition-colors">
+                        Vertical Mini-Dramas
+                      </h3>
+                      <p className="text-xs text-zinc-400 leading-relaxed">
+                        Fast-paced 1-minute episodes. Billionaire, CEO, Werewolf, and Martial Arts stories with English & Hindi audio.
+                      </p>
+                    </div>
+                    <div className="flex items-center gap-1.5 text-xs font-semibold text-rose-400 pt-6">
+                      <span>Watch Shorts</span>
+                      <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-1 transition-transform" />
+                    </div>
+                  </Link>
+
+                  {/* Realm 3: Cinema & Movies */}
+                  <Link 
+                    href="/cinema" 
+                    className="group relative p-6 rounded-2xl bg-zinc-900/40 hover:bg-zinc-900/80 border border-white/10 hover:border-amber-500/40 transition-all duration-300 flex flex-col justify-between overflow-hidden shadow-lg"
+                  >
+                    <div className="absolute top-0 right-0 w-32 h-32 bg-amber-600/10 rounded-full blur-2xl group-hover:bg-amber-600/20 transition-all" />
+                    <div>
+                      <div className="w-10 h-10 rounded-xl bg-amber-600/20 border border-amber-500/30 flex items-center justify-center text-amber-400 mb-4 group-hover:scale-105 transition-transform">
+                        <Film className="w-5 h-5" />
+                      </div>
+                      <h3 className="text-lg font-bold text-white mb-1.5 group-hover:text-amber-300 transition-colors">
+                        Cinema & Theatrical
+                      </h3>
+                      <p className="text-xs text-zinc-400 leading-relaxed">
+                        Feature-length blockbuster anime movies, Asian theatricals, and Hollywood releases in full theatrical master quality.
+                      </p>
+                    </div>
+                    <div className="flex items-center gap-1.5 text-xs font-semibold text-amber-400 pt-6">
+                      <span>Stream Cinema</span>
+                      <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-1 transition-transform" />
+                    </div>
+                  </Link>
+
+                  {/* Realm 4: Mangvels */}
+                  <Link 
+                    href="/manga" 
+                    className="group relative p-6 rounded-2xl bg-zinc-900/40 hover:bg-zinc-900/80 border border-white/10 hover:border-emerald-500/40 transition-all duration-300 flex flex-col justify-between overflow-hidden shadow-lg"
+                  >
+                    <div className="absolute top-0 right-0 w-32 h-32 bg-emerald-600/10 rounded-full blur-2xl group-hover:bg-emerald-600/20 transition-all" />
+                    <div>
+                      <div className="w-10 h-10 rounded-xl bg-emerald-600/20 border border-emerald-500/30 flex items-center justify-center text-emerald-400 mb-4 group-hover:scale-105 transition-transform">
+                        <BookOpen className="w-5 h-5" />
+                      </div>
+                      <h3 className="text-lg font-bold text-white mb-1.5 group-hover:text-emerald-300 transition-colors">
+                        Mangvels Reader
+                      </h3>
+                      <p className="text-xs text-zinc-400 leading-relaxed">
+                        High-resolution digital reader for manga, manhwa, and translated web novels with vertical infinite scroll.
+                      </p>
+                    </div>
+                    <div className="flex items-center gap-1.5 text-xs font-semibold text-emerald-400 pt-6">
+                      <span>Open Reader</span>
+                      <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-1 transition-transform" />
+                    </div>
+                  </Link>
+                </div>
+              </section>
+
+              {/* 3. TOP AIRING ANIME SPOTLIGHT (Real-time Broadcasts) */}
+              {trending.length > 0 && (
+                <section className="w-full px-2 sm:px-4 md:px-6">
+                  <div className="mb-6 flex items-center justify-between border-b border-white/10 pb-4">
+                    <div className="flex items-center gap-3">
+                      <Flame className="w-6 h-6 text-purple-400" />
+                      <div>
+                        <h2 className="text-2xl sm:text-3xl font-bold tracking-tight text-white font-gradvis">
+                          TOP AIRING BROADCASTS
+                        </h2>
+                        <p className="text-xs text-zinc-400">Most streamed releases across Kagemi this week</p>
+                      </div>
+                    </div>
+                    <Link href="/home" className="text-xs font-mono text-zinc-400 hover:text-white flex items-center gap-1 transition-colors">
+                      <span>Browse All</span>
+                      <ChevronRight className="w-3.5 h-3.5" />
+                    </Link>
+                  </div>
+
+                  <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3 sm:gap-4">
+                    {trending.map((anime, idx) => {
+                      const titleStr = formatAnimeTitle(anime.title, anime.id);
+                      const slug = slugifyTitle(titleStr);
+                      const routeId = (slug && !String(anime.id).includes('-')) ? `${anime.id}-${slug}` : anime.id;
+
+                      return (
+                        <Link
+                          key={anime.id || idx}
+                          href={`/watch/${routeId}`}
+                          className="group relative flex flex-col rounded-2xl overflow-hidden bg-zinc-950 border border-white/10 hover:border-purple-500/50 transition-all duration-300 hover:shadow-xl hover:shadow-purple-900/20 select-none"
+                        >
+                          <div className="relative aspect-[2/3] w-full overflow-hidden bg-zinc-900">
+                            <img 
+                              src={anime.poster} 
+                              alt={titleStr} 
+                              loading="lazy" 
+                              referrerPolicy="no-referrer"
+                              className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" 
+                            />
+                            <div className="absolute inset-0 bg-gradient-to-t from-black via-black/20 to-transparent" />
+                            
+                            {/* Metallic Rank Counter Badge */}
+                            <div className="absolute top-2 left-2 px-2 py-0.5 rounded-md bg-black/70 backdrop-blur-md border border-white/10 text-[10px] font-mono font-bold text-white shadow">
+                              #{idx + 1}
+                            </div>
+
+                            {/* Play Action Hover */}
+                            <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity bg-black/40 backdrop-blur-[2px]">
+                              <div className="w-10 h-10 rounded-full bg-purple-600 text-white flex items-center justify-center shadow-lg">
+                                <Play className="w-4 h-4 ml-0.5 fill-current" />
                               </div>
-                           ))}
-                        </div>
-                     </div>
-                     <div className="flex-1 relative w-full flex justify-center">
-                        <div className="absolute inset-0 bg-primary-600/10 blur-[80px] rounded-full" />
-                        <motion.img 
-                          src={FEATURE_GIF} alt="Archive Feature" loading="lazy"
-                          initial={{ opacity: 0, x: 50 }} whileInView={{ opacity: 1, x: 0 }} viewport={{ once: true }} transition={{ duration: 1 }}
-                          className="relative rounded-2xl border border-primary-500/20 shadow-2xl w-full max-w-sm object-cover hover:scale-105 transition-transform duration-500" 
-                        />
-                     </div>
+                            </div>
+                          </div>
+
+                          <div className="p-3">
+                            <h3 className="text-xs font-semibold text-white line-clamp-1 group-hover:text-purple-300 transition-colors">
+                              {titleStr}
+                            </h3>
+                            <div className="flex items-center justify-between text-[10px] text-zinc-400 mt-1 font-mono">
+                              <span>1080p HD</span>
+                              <span className="text-purple-400">Sub & Dub</span>
+                            </div>
+                          </div>
+                        </Link>
+                      );
+                    })}
                   </div>
-               </section>
+                </section>
+              )}
 
-               {/* ADVANTAGE */}
-               <section className="relative z-10 w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-                 <div className="w-full">
-                   <div className="text-center mb-16">
-                      <h2 className="text-4xl md:text-5xl font-normal text-white mb-4 font-gradvis text-primary-600" style={{ fontFamily: 'var(--font-above), serif' }}>GUILD PERKS</h2>
-                      <div className="w-24 h-1.5 bg-primary-600 rounded-full shadow-[0_0_15px_red] mx-auto" />
-                   </div>
-                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                      <FeatureCard icon={Zap} title="Hyper Velocity" desc="Built on Next.js 15 Turbo. Intel loads instantly." />
-                      <FeatureCard icon={ShieldCheck} title="Zero Intrusion" desc="No popups. No banners. Just pure content." />
-                      <FeatureCard icon={Smartphone} title="Mobile Native" desc="Designed for your thumb. PWA Ready." />
-                      <FeatureCard icon={Terminal} title="Developer API" desc="Access our Shadow Engine API for stats." />
-                      <FeatureCard icon={Globe} title="Global Nodes" desc="Buffer-free 1080p streaming worldwide." />
-                      <FeatureCard icon={Ghost} title="Incognito Mode" desc="No phone number required. Encrypted logs." />
-                   </div>
-                 </div>
-               </section>
-
-               {/* COMMUNITY HIERARCHY */}
-               <section className="py-8 relative overflow-hidden bg-black/40 border-y border-white/5">
-                 <div className="absolute inset-0 bg-gradient-to-b from-transparent via-primary-950/10 to-transparent" />
-                 <div className="relative z-10 w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-                   <div className="text-center mb-16">
-                     <h2 className="text-4xl md:text-5xl font-normal text-white mb-4 font-gradvis text-primary-600 tracking-wider">GUILD HIERARCHY</h2>
-                     <p className="text-gray-300 text-lg font-sans w-full max-w-2xl mx-auto">The structure of the sanctuary. Ascend the ranks and earn your title among the elites.</p>
-                   </div>
-
-                   <div className="grid grid-cols-1 lg:grid-cols-2 gap-12">
-                     {/* Board of Darkness */}
-                     <div className="p-8 rounded-3xl bg-primary-950/20 border border-primary-500/20 backdrop-blur-md">
-                       <div className="flex items-center gap-4 mb-8">
-                         <div className="p-3 bg-primary-900/40 rounded-xl border border-primary-500/50"><Crown className="w-8 h-8 text-primary-500" /></div>
-                         <div>
-                           <h3 className="text-2xl font-gradvis text-primary-500 tracking-widest">BOARD OF DARKNESS</h3>
-                           <p className="text-xs text-primary-400/80 font-mono uppercase tracking-widest">The Administrators</p>
-                         </div>
-                       </div>
-                       <div className="flex flex-wrap gap-3">
-                         {BOARD_OF_DARKNESS.map((member, i) => (
-                           <div key={i} className={`px-4 py-3 rounded-xl border ${i === 0 ? 'bg-primary-900/40 border-primary-500 text-white' : 'bg-black/50 border-white/10 text-gray-300'} flex flex-col`}>
-                             <span className="font-bold text-sm tracking-wider">{member.title}</span>
-                             <span className={`text-[10px] uppercase tracking-widest ${i === 0 ? 'text-primary-300' : 'text-gray-500'}`}>{member.role}</span>
-                           </div>
-                         ))}
-                       </div>
-                     </div>
-
-                     {/* Council of Shadows */}
-                     <div className="p-8 rounded-3xl bg-black/40 border border-white/10 backdrop-blur-md">
-                       <div className="flex items-center gap-4 mb-8">
-                         <div className="p-3 bg-zinc-900/80 rounded-xl border border-white/20"><ShieldCheck className="w-8 h-8 text-zinc-400" /></div>
-                         <div>
-                           <h3 className="text-2xl font-gradvis text-zinc-300 tracking-widest">COUNCIL OF SHADOWS</h3>
-                           <p className="text-xs text-zinc-500 font-mono uppercase tracking-widest">The Moderators</p>
-                         </div>
-                       </div>
-                       <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-                         {COUNCIL_OF_SHADOWS.map((member, i) => (
-                           <div key={i} className="px-3 py-2 rounded-lg bg-zinc-900/50 border border-white/5 flex flex-col">
-                             <span className="font-bold text-sm text-zinc-200">{member.title}</span>
-                             <span className="text-[10px] text-zinc-500 uppercase tracking-wider">{member.role}</span>
-                           </div>
-                         ))}
-                       </div>
-                     </div>
-                   </div>
-                 </div>
-               </section>
-
-               {/* COMMUNITY CTA */}
-               <section className="w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-                  <div className="relative rounded-3xl overflow-hidden border border-primary-900/30 bg-gradient-to-br from-primary-950/20 to-black p-12 text-center md:text-left flex flex-col md:flex-row items-center gap-12 group">
-                     <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-20 mix-blend-overlay" />
-                     <div className="flex-1 relative z-10">
-                        <h3 className="text-3xl font-normal text-white mb-4 font-gradvis text-primary-500" style={{ fontFamily: 'var(--font-above), serif' }}>VISIT THE GARDEN LOBBY</h3>
-                        <p className="text-gray-300 mb-8 leading-relaxed font-sans">
-                           Connect with thousands of other agents. Discuss theories, get recommendation, and participate in weekly watch parties.
-                        </p>
-                        <div className="flex flex-wrap gap-4 justify-center md:justify-start">
-                          <a href="https://discord.gg/YOUR_INVITE_CODE" target="_blank" rel="noopener noreferrer">
-                            <Button className="bg-[#5865F2] hover:bg-[#4752C4] text-white border-0 h-12 shadow-lg shadow-indigo-500/20">
-                              <MessageCircle className="mr-2 w-5 h-5" /> Join Discord
-                            </Button>
-                          </a>
-                          <a href="https://github.com/code-acezero/shadow-garden" target="_blank" rel="noopener noreferrer">
-                            <Button variant="outline" className="border-white/10 text-white hover:bg-white/10 h-12 w-full">
-                              <Terminal className="mr-2 w-5 h-5" /> View Changelog
-                            </Button>
-                          </a>
-                        </div>
-                     </div>
-                     <div className="relative w-48 h-48 md:w-64 md:h-64 flex-shrink-0 animate-float hidden md:block">
-                        <div className="absolute inset-0 bg-primary-600/20 blur-[50px] rounded-full group-hover:bg-primary-600/30 transition-all duration-500" />
-                        <Sword className="w-full h-full text-primary-800 opacity-80 rotate-45" />
+              {/* 4. VERTICAL SHORTS SHOWCASE */}
+              <section className="w-full px-2 sm:px-4 md:px-6">
+                <div className="p-6 sm:p-8 rounded-3xl bg-gradient-to-br from-rose-950/20 via-zinc-950 to-purple-950/20 border border-white/10 shadow-2xl">
+                  <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 mb-8 border-b border-white/10 pb-6">
+                    <div>
+                      <div className="inline-flex items-center gap-1.5 px-3 py-0.5 rounded-full bg-rose-500/10 text-rose-400 border border-rose-500/20 text-[11px] font-mono uppercase tracking-wider mb-2">
+                        <Flame className="w-3.5 h-3.5" />
+                        <span>35,000+ Unlocked Titles</span>
                       </div>
+                      <h2 className="text-2xl sm:text-3xl font-bold tracking-tight text-white font-gradvis">
+                        VERTICAL MINI-DRAMAS
+                      </h2>
+                      <p className="text-xs sm:text-sm text-zinc-400 mt-1">
+                        Reels & TikTok format. High-octane micro-series designed for immersive vertical playback.
+                      </p>
+                    </div>
+
+                    <Link href="/shorts">
+                      <button className="px-5 py-2.5 rounded-full bg-rose-600 hover:bg-rose-500 text-white text-xs font-semibold flex items-center gap-2 shadow-lg shadow-rose-600/25 transition-all active:scale-95">
+                        <Play className="w-3.5 h-3.5 fill-current" />
+                        <span>Explore Shorts Feed</span>
+                      </button>
+                    </Link>
                   </div>
-               </section>
 
-               {/* CUTE SHARE BAR */}
-               <CuteShareBar />
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+                    {featuredShorts.map((short) => (
+                      <Link
+                        key={short.id}
+                        href={`/shorts/watch?id=${encodeURIComponent(short.id)}&ep=1`}
+                        className="group relative flex flex-col rounded-2xl overflow-hidden bg-black/60 border border-white/10 hover:border-rose-500/50 transition-all duration-300 shadow-xl"
+                      >
+                        <div className="relative aspect-[9/16] w-full overflow-hidden bg-zinc-900">
+                          <img 
+                            src={short.cover} 
+                            alt={short.title} 
+                            loading="lazy" 
+                            referrerPolicy="no-referrer"
+                            className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" 
+                          />
+                          <div className="absolute inset-0 bg-gradient-to-t from-black via-black/25 to-transparent" />
+                          
+                          {/* Language Badge */}
+                          <div className="absolute top-2 left-2 px-2 py-0.5 rounded-full bg-black/70 backdrop-blur-md border border-white/10 text-[9px] font-medium text-rose-300">
+                            {short.language}
+                          </div>
 
-               {/* BOTTOM SPONSORED BANNER */}
-               <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 w-full my-6">
-                  <AdsterraNativeBanner location="general" format="native" />
-               </div>
+                          <div className="absolute top-2 right-2 px-2 py-0.5 rounded-full bg-black/70 backdrop-blur-md border border-white/10 text-[9px] font-mono text-zinc-300">
+                            {short.totalEpisodes} eps
+                          </div>
 
-               {/* FOOTER */}
-               <footer className="py-12 border-t border-white/5 text-center relative overflow-hidden bg-black">
-                  <div className="relative z-20 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-                      <h4 className="text-2xl font-gradvis text-primary-600 font-normal mb-3" style={{ fontFamily: 'var(--font-gradvis), serif' }}>KAGEMI</h4>
-                      <p className="text-gray-600 text-xs uppercase tracking-widest mb-8">Created by Ace Zero • Est. 2026</p>
-                      <div className="flex justify-center gap-8 text-xs text-gray-500 font-medium uppercase tracking-wider">
-                         <Link href="#" className="hover:text-primary-500 transition-colors">Terms of Service</Link>
-                         <Link href="#" className="hover:text-primary-500 transition-colors">Privacy Policy</Link>
-                         <Link href="#" className="hover:text-primary-500 transition-colors">DMCA</Link>
+                          <div className="absolute bottom-2 inset-x-2 text-center">
+                            <h4 className="text-xs font-semibold text-white line-clamp-1 group-hover:text-rose-300 transition-colors">
+                              {short.title}
+                            </h4>
+                          </div>
+                        </div>
+                      </Link>
+                    ))}
+                  </div>
+                </div>
+              </section>
+
+              {/* 5. ARCHITECTURAL SUPERPOWERS (Minimalist, No Heavy AI-Slop Boxes) */}
+              <section className="w-full px-2 sm:px-4 md:px-6">
+                <div className="text-center max-w-2xl mx-auto mb-12">
+                  <div className="text-xs font-mono uppercase tracking-widest text-purple-400 font-bold mb-1">
+                    Engineering Advantage
+                  </div>
+                  <h2 className="text-3xl sm:text-4xl font-bold tracking-tight text-white font-gradvis">
+                    BUILT FOR SUPREME PERFORMANCE
+                  </h2>
+                  <p className="text-xs sm:text-sm text-zinc-400 mt-2">
+                    Next.js 15 Turbo architecture combined with distributed edge caching ensures zero stalls and instant start.
+                  </p>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+                  <div className="p-6 rounded-2xl bg-zinc-900/30 border border-white/10 flex flex-col justify-between">
+                    <div className="w-10 h-10 rounded-xl bg-purple-600/20 border border-purple-500/30 flex items-center justify-center text-purple-400 mb-4">
+                      <Zap className="w-5 h-5" />
+                    </div>
+                    <div>
+                      <h3 className="text-base font-bold text-white mb-2">Zero Buffer Delivery</h3>
+                      <p className="text-xs text-zinc-400 leading-relaxed">
+                        Video fragments are precached across redundant edge servers for instant start times and zero playback pauses.
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="p-6 rounded-2xl bg-zinc-900/30 border border-white/10 flex flex-col justify-between">
+                    <div className="w-10 h-10 rounded-xl bg-sky-600/20 border border-sky-500/30 flex items-center justify-center text-sky-400 mb-4">
+                      <Layers className="w-5 h-5" />
+                    </div>
+                    <div>
+                      <h3 className="text-base font-bold text-white mb-2">Multi-Track Dual Audio</h3>
+                      <p className="text-xs text-zinc-400 leading-relaxed">
+                        Switch dynamically between original Japanese, English Dub, and Hindi Dub with perfectly matched synchronized subtitles.
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="p-6 rounded-2xl bg-zinc-900/30 border border-white/10 flex flex-col justify-between">
+                    <div className="w-10 h-10 rounded-xl bg-amber-600/20 border border-amber-500/30 flex items-center justify-center text-amber-400 mb-4">
+                      <Globe className="w-5 h-5" />
+                    </div>
+                    <div>
+                      <h3 className="text-base font-bold text-white mb-2">Cloud Watchlist Sync</h3>
+                      <p className="text-xs text-zinc-400 leading-relaxed">
+                        Bidirectional AniList & MyAnimeList integration. Resume playback from any phone, tablet, or desktop instantly.
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="p-6 rounded-2xl bg-zinc-900/30 border border-white/10 flex flex-col justify-between">
+                    <div className="w-10 h-10 rounded-xl bg-emerald-600/20 border border-emerald-500/30 flex items-center justify-center text-emerald-400 mb-4">
+                      <Smartphone className="w-5 h-5" />
+                    </div>
+                    <div>
+                      <h3 className="text-base font-bold text-white mb-2">Native PWA & Mobile APK</h3>
+                      <p className="text-xs text-zinc-400 leading-relaxed">
+                        Installable directly onto Android and iOS home screens with full offline audio caching and background audio support.
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="p-6 rounded-2xl bg-zinc-900/30 border border-white/10 flex flex-col justify-between">
+                    <div className="w-10 h-10 rounded-xl bg-rose-600/20 border border-rose-500/30 flex items-center justify-center text-rose-400 mb-4">
+                      <Users className="w-5 h-5" />
+                    </div>
+                    <div>
+                      <h3 className="text-base font-bold text-white mb-2">Synchronized Watch Parties</h3>
+                      <p className="text-xs text-zinc-400 leading-relaxed">
+                        Create private rooms to watch episodes together in exact sync with low-latency live community chat.
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="p-6 rounded-2xl bg-zinc-900/30 border border-white/10 flex flex-col justify-between">
+                    <div className="w-10 h-10 rounded-xl bg-indigo-600/20 border border-indigo-500/30 flex items-center justify-center text-indigo-400 mb-4">
+                      <ShieldCheck className="w-5 h-5" />
+                    </div>
+                    <div>
+                      <h3 className="text-base font-bold text-white mb-2">Private & Frictionless</h3>
+                      <p className="text-xs text-zinc-400 leading-relaxed">
+                        No mandatory credit cards or invasive tracking. Guest access is fully supported with encrypted user sessions.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              </section>
+
+              {/* 6. OTAKUVERSE COMMUNITY BROADCAST */}
+              <section className="w-full px-2 sm:px-4 md:px-6">
+                <div className="mb-6 flex items-center justify-between border-b border-white/10 pb-4">
+                  <div>
+                    <div className="text-xs font-mono uppercase tracking-widest text-indigo-400 font-bold mb-1">
+                      Live Community Intel
+                    </div>
+                    <h2 className="text-2xl sm:text-3xl font-bold tracking-tight text-white font-gradvis">
+                      OTAKUVERSE DISCUSSIONS
+                    </h2>
+                  </div>
+                  <Link href="/social" className="text-xs font-mono text-zinc-400 hover:text-white flex items-center gap-1 transition-colors">
+                    <span>Join Feed</span>
+                    <ChevronRight className="w-3.5 h-3.5" />
+                  </Link>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {socialPosts.map((post) => {
+                    const profile = Array.isArray(post.profiles) ? post.profiles[0] : post.profiles;
+                    const likes = post.social_likes?.[0]?.count ?? post.likes_count ?? 0;
+                    const comments = post.social_comments?.[0]?.count ?? post.comments_count ?? 0;
+                    const formattedDate = post.created_at ? new Date(post.created_at).toLocaleDateString() : 'Recent';
+
+                    return (
+                      <div 
+                        key={post.id} 
+                        className="p-5 rounded-2xl bg-zinc-900/40 border border-white/10 hover:border-purple-500/40 transition-all duration-300 flex flex-col justify-between"
+                      >
+                        <div>
+                          <div className="flex items-center gap-3 mb-3">
+                            <img 
+                              src={profile?.avatar_url || '/images/index/bg-1.jpg'} 
+                              alt={profile?.username || 'Member'} 
+                              className="w-9 h-9 rounded-full object-cover border border-purple-500/30"
+                              onError={(e) => { (e.target as HTMLImageElement).src = '/images/index/bg-1.jpg'; }}
+                            />
+                            <div>
+                              <div className="flex items-center gap-2">
+                                <span className="font-bold text-xs text-white font-mono">{profile?.username || 'Community Agent'}</span>
+                                {profile?.role && (
+                            <span className="text-[9px] px-2 py-0.5 rounded bg-purple-900/40 text-purple-300 font-mono">
+                              {profile.role}
+                            </span>
+                          )}
+                        </div>
+                        <span className="text-[10px] text-zinc-500 font-mono">{formattedDate}</span>
                       </div>
+                    </div>
+                    <p className="text-xs text-zinc-300 leading-relaxed line-clamp-3 mb-4">
+                      {post.content}
+                    </p>
                   </div>
-                  <div className="absolute bottom-0 left-1/2 -translate-x-1/2 w-64 h-24 sm:w-96 sm:h-32 opacity-10 pointer-events-none mix-blend-screen z-10">
-                      <img src={FOOTER_GIF} alt="Footer Ambience" loading="lazy" className="w-full h-full object-contain" />
+                  
+                  <div className="flex items-center gap-4 text-[11px] text-zinc-400 font-mono pt-3 border-t border-white/5">
+                    <span className="flex items-center gap-1.5 hover:text-purple-300 transition-colors">
+                      <Flame className="w-3.5 h-3.5 text-purple-400" /> {likes} Likes
+                    </span>
+                    <span className="flex items-center gap-1.5 hover:text-sky-300 transition-colors">
+                      <MessageCircle className="w-3.5 h-3.5 text-sky-400" /> {comments} Comments
+                    </span>
                   </div>
-               </footer>
+                </div>
+              );
+            })}
+          </div>
+        </section>
+
+        {/* 7. CONVERSION CALL TO ACTION BANNER */}
+        <section className="w-full px-2 sm:px-4 md:px-6">
+          <div className="relative rounded-3xl overflow-hidden bg-gradient-to-r from-purple-900/40 via-zinc-950 to-sky-900/40 border border-white/15 p-8 sm:p-12 text-center flex flex-col items-center justify-center shadow-2xl">
+            <h3 className="text-3xl sm:text-4xl font-extrabold text-white mb-3 font-gradvis">
+              START YOUR JOURNEY TODAY
+            </h3>
+            <p className="text-xs sm:text-sm text-zinc-300 max-w-xl mb-6 leading-relaxed">
+              Join thousands of viewers enjoying buffer-free anime, donghua, cinema, and short dramas without subscription walls.
+            </p>
+            <div className="flex flex-col sm:flex-row items-center gap-3">
+              <button
+                onClick={handleEnterClick}
+                className="px-8 py-3 rounded-full bg-purple-600 hover:bg-purple-500 text-white font-bold text-sm shadow-xl shadow-purple-600/30 flex items-center gap-2 transition-all active:scale-95"
+              >
+                <span>Enter Kagemi Now</span>
+                <ArrowRight className="w-4 h-4" />
+              </button>
+              <Link href="/explore">
+                <button className="px-6 py-3 rounded-full bg-white/10 hover:bg-white/15 text-white border border-white/15 text-sm font-medium transition-all active:scale-95">
+                  Browse Catalog
+                </button>
+              </Link>
+            </div>
+          </div>
+        </section>
+
+        {/* CUTE SHARE BAR */}
+        <div className="w-full px-2 sm:px-4 md:px-6">
+          <CuteShareBar />
+        </div>
+
+        {/* SPONSORED BANNER (Strictly aligned) */}
+        <div className="w-full px-2 sm:px-4 md:px-6">
+          <AdsterraNativeBanner location="general" format="native" />
+        </div>
+
+        {/* FOOTER */}
+        <footer className="w-full px-2 sm:px-4 md:px-6 py-12 border-t border-white/10 text-center bg-black/40">
+          <div className="w-full flex flex-col items-center">
+            <div className="flex items-center gap-2 mb-2">
+              <Shield className="w-5 h-5 text-purple-400" />
+              <span className="font-extrabold tracking-widest text-base text-white font-lemon">
+                KAGEMI
+              </span>
+            </div>
+            <p className="text-zinc-500 text-xs uppercase tracking-widest mb-6">
+              The Sovereign Anime & Cinema Portal • Est. 2026
+            </p>
+            <div className="flex flex-wrap justify-center gap-6 text-xs text-zinc-400 font-medium uppercase tracking-wider mb-8">
+              <Link href="#" className="hover:text-purple-400 transition-colors">Terms of Service</Link>
+              <Link href="#" className="hover:text-purple-400 transition-colors">Privacy Policy</Link>
+              <Link href="#" className="hover:text-purple-400 transition-colors">DMCA Notice</Link>
+              <a href="https://discord.gg/kagemi" target="_blank" rel="noopener noreferrer" className="hover:text-purple-400 transition-colors">Discord</a>
+              <a href="https://github.com/code-acezero/shadow-garden" target="_blank" rel="noopener noreferrer" className="hover:text-purple-400 transition-colors">GitHub</a>
+            </div>
+            <p className="text-[11px] text-zinc-600 max-w-xl leading-relaxed">
+              Kagemi does not store any files on its servers. All contents are provided by non-affiliated third parties.
+            </p>
+          </div>
+        </footer>
             </div>
           </motion.div>
         )}
       </AnimatePresence>
 
-      <AuthModal isOpen={showAuth} onClose={() => setShowAuth(false)} onAuthSuccess={handleEnterClick} />
-
-      {triggerEntry && (
-        <div className="fixed bottom-6 right-6 z-[99999] pointer-events-auto">
-          <Button
-            onClick={() => handlePortalComplete()}
-            variant="outline"
-            className="rounded-full bg-black/85 border-primary-500/60 text-white hover:bg-primary-950/80 hover:border-primary-400 backdrop-blur-md px-5 py-2.5 text-xs font-mono tracking-widest uppercase shadow-[0_0_25px_rgba(220,38,38,0.5)] cursor-pointer flex items-center gap-2"
-          >
-            Skip to Sanctuary <ArrowRight className="w-4 h-4 text-primary-400" />
-          </Button>
-        </div>
-      )}
-
+      {/* AUTH MODAL */}
+      <AuthModal 
+        isOpen={showAuth} 
+        onClose={() => setShowAuth(false)} 
+        onAuthSuccess={() => handleEnterClick()} 
+      />
     </main>
   );
 }

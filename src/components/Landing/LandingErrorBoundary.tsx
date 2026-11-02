@@ -45,11 +45,11 @@ export default class LandingErrorBoundary extends Component<Props, State> {
         <div className="fixed inset-0 z-40 w-full h-[100dvh] max-h-[100dvh] bg-[#050508] text-white flex flex-col items-center justify-center p-6 text-center overflow-hidden select-none">
           <div className="max-w-md w-full flex flex-col items-center">
             <span className="text-[10px] font-extrabold uppercase tracking-widest text-primary-400 bg-primary-950/50 border border-primary-500/30 px-3 py-1 rounded-full mb-4">
-              Sanctuary Gateway
+              Kagemi Gateway
             </span>
             <h1 className="text-3xl font-extrabold font-lemon mb-2 text-white tracking-widest">KAGEMI</h1>
             <p className="text-zinc-400 text-sm mb-6 max-w-xs leading-relaxed">
-              Encountered a gateway transition anomaly. Enter the sanctuary directly or reload.
+              Encountered a transition anomaly. Enter Kagemi directly or reload.
             </p>
             <div className="flex items-center gap-3">
               <button

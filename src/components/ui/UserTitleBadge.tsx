@@ -3,7 +3,7 @@ import { getEquippedTitle, getTitleDefinition } from '@/lib/userTitles';
 
 export interface UserTitleProfile {
   id?: string;
-  username?: string;
+  username?: string | null;
   admin_title?: string | null;
   custom_title?: string | null;
   equipped_title?: string | null;

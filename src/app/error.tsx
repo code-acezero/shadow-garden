@@ -88,7 +88,7 @@ export default function Error({
         </h1>
 
         <p className="text-zinc-400 text-xs sm:text-sm max-w-md mx-auto mb-5 sm:mb-6 leading-relaxed">
-          An unexpected issue occurred while loading this page. You can try reloading or return to the sanctuary feed.
+          An unexpected issue occurred while loading this page. You can try reloading or return to home.
         </p>
 
         {/* Refined Flat Action Buttons */}
@@ -108,7 +108,7 @@ export default function Error({
             className="h-10 px-5 sm:px-6 rounded-xl bg-[#1c1c1f] hover:bg-[#28282b] border border-white/10 active:scale-95 text-zinc-300 hover:text-white font-semibold text-xs sm:text-sm transition-all flex items-center justify-center gap-2 cursor-pointer"
           >
             <Home size={15} />
-            <span>Sanctuary Home</span>
+            <span>Return Home</span>
           </Link>
         </div>
 

@@ -3,13 +3,27 @@
 import React, { useState, useEffect } from 'react';
 import { usePathname } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
-import { X, ExternalLink, Sparkles, Megaphone } from 'lucide-react';
+import { X, ExternalLink, Megaphone, Bell } from 'lucide-react';
 import { GuildBoardPopup } from '@/components/Admin/GuildBoardsPanel';
 
 export default function GuildBoardPopupRenderer() {
   const pathname = usePathname();
   const [activePopup, setActivePopup] = useState<GuildBoardPopup | null>(null);
   const [visible, setVisible] = useState(false);
+  const [isTestMode, setIsTestMode] = useState(false);
+
+  // Admin instant preview listener (bypasses page whitelist for testing)
+  useEffect(() => {
+    const handleTest = (e: any) => {
+      if (e.detail) {
+        setActivePopup(e.detail);
+        setIsTestMode(true);
+        setVisible(true);
+      }
+    };
+    window.addEventListener('shadow_trigger_test_popup', handleTest);
+    return () => window.removeEventListener('shadow_trigger_test_popup', handleTest);
+  }, []);
 
   // Check if current page is explicitly allowed to display Guild Boards
   const isAllowedPage = React.useMemo(() => {
@@ -130,48 +144,52 @@ export default function GuildBoardPopupRenderer() {
     };
   }, [pathname, isAllowedPage]);
 
-  if (!isAllowedPage || !activePopup || !visible) return null;
+  if ((!isAllowedPage && !isTestMode) || !activePopup || !visible) return null;
 
   // Render Placement Styles
   const placement = activePopup.placement || 'center_modal';
 
   if (placement === 'center_modal') {
     return (
-      <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/80 backdrop-blur-md animate-in fade-in zoom-in-95 duration-300">
-        <div className="relative w-full max-w-md bg-[#0d0b1a]/95 border border-fuchsia-500/40 rounded-3xl p-6 shadow-[0_25px_60px_rgba(0,0,0,0.9)] space-y-4 overflow-hidden">
-          <div className="absolute top-0 right-0 w-64 h-64 bg-fuchsia-600/10 blur-[80px] pointer-events-none" />
+      <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/85 backdrop-blur-md animate-in fade-in zoom-in-95 duration-250 select-none">
+        <div className="relative w-full max-w-lg bg-[#0b0c13] border border-white/[0.08] rounded-2xl p-6 sm:p-8 shadow-[0_30px_90px_rgba(0,0,0,0.9)] space-y-4 overflow-hidden">
+          {/* Subtle top ambient sheen */}
+          <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-white/20 to-transparent pointer-events-none" />
 
           <button
             onClick={() => setVisible(false)}
-            className="absolute top-4 right-4 p-2 text-zinc-400 hover:text-white rounded-full bg-white/5 hover:bg-white/10 transition-colors z-20"
+            className="absolute top-4 right-4 p-2 text-zinc-400 hover:text-white rounded-full bg-white/[0.04] hover:bg-white/[0.08] transition-colors z-20 cursor-pointer"
+            aria-label="Close Notice"
           >
-            <X size={18} />
+            <X size={16} />
           </button>
 
           {activePopup.image_url && (
-            <div className="w-full h-44 rounded-2xl overflow-hidden border border-white/10">
+            <div className="w-full h-48 rounded-xl overflow-hidden border border-white/[0.06] bg-black/40">
               <img src={activePopup.image_url} alt={activePopup.title} className="w-full h-full object-cover" />
             </div>
           )}
 
-          <div className="space-y-1">
-            <span className="text-[10px] font-black uppercase text-fuchsia-400 tracking-widest flex items-center gap-1.5">
-              <Sparkles size={12} /> Official Announcement
+          <div className="space-y-1.5 pt-1">
+            <span className="text-[10px] font-mono uppercase tracking-[0.22em] text-zinc-400 flex items-center gap-1.5 font-bold">
+              <Megaphone size={12} className="text-zinc-300" /> Guild Announcement
             </span>
-            <h3 className="text-xl font-black text-white">{activePopup.title}</h3>
-            {activePopup.subtitle && <p className="text-xs text-fuchsia-300 font-medium">{activePopup.subtitle}</p>}
+            <h3 className="text-xl sm:text-2xl font-black text-white tracking-tight leading-snug">{activePopup.title}</h3>
+            {activePopup.subtitle && <p className="text-xs text-zinc-400 font-medium tracking-wide">{activePopup.subtitle}</p>}
           </div>
 
-          <p className="text-xs text-zinc-300 leading-relaxed whitespace-pre-line">{activePopup.content}</p>
+          <p className="text-xs sm:text-sm text-zinc-300 leading-relaxed whitespace-pre-line font-sans">{activePopup.content}</p>
 
           {activePopup.button_text && (
-            <a
-              href={activePopup.button_url || '#'}
-              onClick={() => setVisible(false)}
-              className="w-full py-3 px-4 rounded-2xl bg-fuchsia-600 hover:bg-fuchsia-500 text-white font-black text-xs flex items-center justify-center gap-2 shadow-lg shadow-fuchsia-600/30 transition-all hover:scale-[1.02] block text-center"
-            >
-              {activePopup.button_text} <ExternalLink size={14} />
-            </a>
+            <div className="pt-2">
+              <a
+                href={activePopup.button_url || '#'}
+                onClick={() => setVisible(false)}
+                className="w-full py-3 px-5 rounded-full bg-white hover:bg-zinc-200 text-black font-black text-xs uppercase tracking-wider flex items-center justify-center gap-2 shadow-lg transition-transform active:scale-[0.98] text-center"
+              >
+                {activePopup.button_text} <ExternalLink size={13} />
+              </a>
+            </div>
           )}
         </div>
       </div>
@@ -180,29 +198,29 @@ export default function GuildBoardPopupRenderer() {
 
   if (placement === 'top_banner') {
     return (
-      <div className="fixed top-4 left-4 right-4 z-[100] max-w-4xl mx-auto bg-[#0d0b1a]/95 border border-fuchsia-500/40 rounded-2xl p-4 shadow-2xl backdrop-blur-md flex items-center justify-between gap-4 animate-in slide-in-from-top duration-300">
+      <div className="fixed top-4 inset-x-3 sm:inset-x-6 z-[100] max-w-4xl mx-auto bg-[#0b0c13]/95 border border-white/[0.08] rounded-full px-4 sm:px-6 py-2.5 shadow-[0_16px_50px_rgba(0,0,0,0.8)] backdrop-blur-xl flex items-center justify-between gap-3 animate-in slide-in-from-top duration-300">
         <div className="flex items-center gap-3 min-w-0">
-          <div className="p-2.5 rounded-xl bg-fuchsia-500/20 text-fuchsia-400 shrink-0">
-            <Megaphone size={18} />
+          <div className="w-7 h-7 rounded-full bg-white/[0.06] text-white flex items-center justify-center shrink-0">
+            <Megaphone size={13} />
           </div>
           <div className="truncate">
-            <h4 className="text-xs font-black text-white truncate">{activePopup.title}</h4>
-            <p className="text-[11px] text-zinc-300 truncate">{activePopup.content}</p>
+            <h4 className="text-xs font-bold text-white truncate">{activePopup.title}</h4>
+            <p className="text-[11px] text-zinc-400 truncate">{activePopup.content}</p>
           </div>
         </div>
 
-        <div className="flex items-center gap-3 shrink-0">
+        <div className="flex items-center gap-2.5 shrink-0">
           {activePopup.button_text && (
             <a
               href={activePopup.button_url || '#'}
               onClick={() => setVisible(false)}
-              className="px-4 py-2 rounded-xl bg-fuchsia-600 text-white text-xs font-black hover:bg-fuchsia-500 transition-colors"
+              className="px-3.5 py-1.5 rounded-full bg-white text-black text-xs font-bold hover:bg-zinc-200 transition-colors"
             >
               {activePopup.button_text}
             </a>
           )}
-          <button onClick={() => setVisible(false)} className="p-1 text-zinc-400 hover:text-white">
-            <X size={16} />
+          <button onClick={() => setVisible(false)} className="p-1.5 text-zinc-400 hover:text-white rounded-full transition-colors cursor-pointer" aria-label="Dismiss">
+            <X size={15} />
           </button>
         </div>
       </div>
@@ -211,24 +229,24 @@ export default function GuildBoardPopupRenderer() {
 
   // Floating Bottom Right Toast/Card Default
   return (
-    <div className="fixed bottom-6 right-6 z-[100] w-full max-w-sm bg-[#0d0b1a]/95 border border-fuchsia-500/40 rounded-3xl p-5 shadow-[0_15px_40px_rgba(0,0,0,0.8)] backdrop-blur-md space-y-3 animate-in slide-in-from-bottom duration-300">
+    <div className="fixed bottom-6 right-6 z-[100] w-full max-w-sm bg-[#0b0c13]/95 border border-white/[0.08] rounded-2xl p-5 shadow-[0_20px_50px_rgba(0,0,0,0.85)] backdrop-blur-xl space-y-2.5 animate-in slide-in-from-bottom duration-300">
       <div className="flex items-start justify-between">
         <div className="space-y-0.5">
-          <span className="text-[9px] font-black text-fuchsia-400 uppercase tracking-widest">Guild Notice</span>
-          <h4 className="text-sm font-black text-white">{activePopup.title}</h4>
+          <span className="text-[9px] font-mono text-zinc-400 uppercase tracking-widest font-bold">Guild Notice</span>
+          <h4 className="text-sm font-bold text-white">{activePopup.title}</h4>
         </div>
-        <button onClick={() => setVisible(false)} className="p-1 text-zinc-400 hover:text-white">
-          <X size={16} />
+        <button onClick={() => setVisible(false)} className="p-1 text-zinc-400 hover:text-white rounded-full transition-colors cursor-pointer" aria-label="Dismiss">
+          <X size={15} />
         </button>
       </div>
 
-      <p className="text-xs text-zinc-300 line-clamp-3">{activePopup.content}</p>
+      <p className="text-xs text-zinc-300 line-clamp-3 leading-relaxed font-sans">{activePopup.content}</p>
 
       {activePopup.button_text && (
         <a
           href={activePopup.button_url || '#'}
           onClick={() => setVisible(false)}
-          className="w-full py-2 px-3 rounded-xl bg-fuchsia-600 text-white text-xs font-black text-center block hover:bg-fuchsia-500 transition-colors"
+          className="w-full py-2.5 px-4 rounded-full bg-white hover:bg-zinc-200 text-black text-xs font-bold text-center block transition-all"
         >
           {activePopup.button_text}
         </a>

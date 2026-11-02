@@ -101,26 +101,30 @@ export default function HindiAnimeCard({ anime }: { anime: any }) {
     })();
 
     const type = anime.type || anime.format || 'TV';
-    const cleanTitle = (title || "").replace(/\(Hindi Dubbed\)/i, '').replace(/\(Hindi Dub\)/i, '').replace(/\[Hindi Dub\]/i, '').trim();
+    const isEnglish = anime.isEnglish === true || /english/i.test(anime.language || '') || /english/i.test(anime.dubType || '') || /english/i.test(title);
+    const cleanTitle = (title || "")
+      .replace(/\s*[\(\[]\s*(English|Hindi|Tamil|Telugu|Japanese|ORG|FanDub|Multi|Dual\s*Audio)\s*(Dubbed|Dub|Subbed|Sub)?\s*[\)\]]/gi, '')
+      .replace(/\s*[\(\[]\s*(Season\s*\d+|S\d+)\s*[\)\]]/gi, '')
+      .replace(/\(Hindi Dubbed\)|\(English Dubbed\)|\(English Subbed\)|\(Hindi Subbed\)|\(Hindi Dub\)|\(English Dub\)|\(ORG\)|\(FanDub\)/gi, '')
+      .trim();
     const titleSlug = slugifyTitle(cleanTitle || title);
     const routeId = (titleSlug && !String(anime.id).includes('-')) ? `${anime.id}-${titleSlug}` : anime.id;
 
+    const defaultAudio = isEnglish ? 'en' : 'hi';
     let targetRoute = anime.targetRoute;
     if (!targetRoute) {
-      targetRoute = `/watch/${routeId}?audio=hi`;
-      if (anime.episodeId || anime.episode) {
-        targetRoute = `/watch/${routeId}?ep=${anime.episodeId || anime.episode}&audio=hi`;
-      }
+      const epParam = anime.episodeId || anime.episode;
+      targetRoute = `/watch/${routeId}?${epParam ? `ep=${epParam}&` : ''}audio=${defaultAudio}${isEnglish ? '&type=dub' : ''}`;
     } else if (targetRoute.startsWith('/hindi-watch/')) {
       targetRoute = targetRoute.replace('/hindi-watch/', '/watch/');
       if (!targetRoute.includes('audio=')) {
-        targetRoute += `${targetRoute.includes('?') ? '&' : '?'}audio=hi`;
+        targetRoute += `${targetRoute.includes('?') ? '&' : '?'}audio=${defaultAudio}${isEnglish ? '&type=dub' : ''}`;
       }
     }
 
     const dataId = anime.dataId || anime.id || anime.slug || '';
     const releaseYear = anime.year || (anime.releaseDate ? String(anime.releaseDate).split('-')[0] : '');
-    return { poster: cleanPoster, title, type, targetRoute, releasedEp, totalEp, dataId, releaseYear };
+    return { poster: cleanPoster, title: cleanTitle || title, type, targetRoute, releasedEp, totalEp, dataId, releaseYear, isEnglish };
   }, [anime]);
 
   // --- 2. FETCH DATA (HPI Version) ---
@@ -273,10 +277,13 @@ export default function HindiAnimeCard({ anime }: { anime: any }) {
             </h3>
             
             <div className="flex items-center justify-between gap-1 w-full overflow-hidden text-[9px]">
-                {/* Left: Unboxed HINDI with last released episode number */}
-                <div className="inline-flex items-center gap-1 font-mono font-bold text-amber-300 text-[9px] uppercase tracking-wide shrink-0">
-                    <Mic size={9.5} className="text-amber-400 shrink-0" /> 
-                    <span>HINDI</span>
+                {/* Left: Unboxed Dub tag (ENGLISH or HINDI) with last released episode number */}
+                <div className={cn(
+                    "inline-flex items-center gap-1 font-mono font-bold text-[9px] uppercase tracking-wide shrink-0",
+                    normalized.isEnglish ? "text-emerald-300" : "text-amber-300"
+                )}>
+                    <Mic size={9.5} className={cn("shrink-0", normalized.isEnglish ? "text-emerald-400" : "text-amber-400")} /> 
+                    <span>{normalized.isEnglish ? 'ENGLISH' : (anime.dubType === 'FanDub' || anime.dubType === 'Hindi Fan Dub' ? 'HINDI (FAN)' : 'HINDI')}</span>
                     {normalized.releasedEp ? (
                       <span className="text-zinc-200 ml-0.5">EP {normalized.releasedEp}</span>
                     ) : null}

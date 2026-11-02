@@ -113,7 +113,7 @@ export async function translateText(
       )}&langpair=${encodeURIComponent(normSource)}|${encodeURIComponent(normTarget)}`;
 
       const memRes = await fetch(memUrl, {
-        headers: { 'User-Agent': 'ShadowGarden/2.0' }
+        headers: { 'User-Agent': 'Kagemi/4.0' }
       });
 
       if (memRes.ok) {

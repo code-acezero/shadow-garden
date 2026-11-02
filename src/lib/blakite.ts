@@ -506,7 +506,7 @@ export function normalizeBlakiteTitle(t: string): string {
   return (t || '')
     .toLowerCase()
     .replace(/\(tv\)|\(movie\)|\(dub\)|\(sub\)|\(hindi dubbed\)|\(hindi fan dubbed\)|\(english dubbed\)|\(english subbed\)/gi, '')
-    .replace(/hindidubbed|hindifandubbed|fandubbed|dubbed|hindi/gi, '')
+    .replace(/hindidubbed|hindifandubbed|fandubbed|englishdubbed|englishsubbed|dubbed|subbed|hindi|english/gi, '')
     .replace(/[^a-z0-9]/g, '');
 }
 
@@ -561,7 +561,8 @@ export async function checkHindiDub(
   if (!qClean) return { available: false, episodeAvailable: false };
 
   const matched = allItems.find(({ item }) => {
-    const isHindi = item.language === 'ORG' || item.language === 'Fandub' || /hindi/i.test(item.language || '') || /hindi/i.test(item.title || '');
+    const isHindi = (item.language === 'ORG' || item.language === 'Fandub' || /hindi/i.test(item.language || '') || /hindi/i.test(item.title || '')) &&
+      !/english/i.test(item.language || '') && !/english/i.test(item.title || '');
     if (!isHindi) return false;
 
     const tInfo = extractSeasonInfo(item.title || '');
@@ -615,6 +616,97 @@ export async function checkHindiDub(
     title: matched.item.title,
     dubType,
     language: matched.item.language,
+    season: qInfo.season,
+    totalEpisodes: totalEps,
+    episodeAvailable,
+    matchedEpisode: epObj ? {
+      id: epObj.id,
+      season: epObj.seasonNumber,
+      epInSeason: epObj.episodeInSeason,
+      number: epObj.number
+    } : undefined,
+    score: Number(matched.item.TMDB_DATA?.rating) || 0
+  };
+}
+
+export async function checkEnglishDub(
+  title: string,
+  episode?: number | string
+): Promise<{
+  available: boolean;
+  id?: string;
+  title?: string;
+  dubType?: string;
+  language?: string;
+  season?: number;
+  totalEpisodes?: number;
+  episodeAvailable?: boolean;
+  matchedEpisode?: { id: string; season?: number; epInSeason?: number; number?: string };
+  score?: number;
+}> {
+  const db = await fetchBlakiteDatabase();
+  if (!db || !title) return { available: false, episodeAvailable: false };
+
+  const allItems: { id: string; item: BlakiteRawItem }[] = [
+    ...Object.entries(db.series || {}).map(([id, item]) => ({ id, item })),
+    ...Object.entries(db.movies || {}).map(([id, item]) => ({ id, item }))
+  ].filter(({ item }) => !isBlakiteLiveAction(item));
+
+  const qInfo = extractSeasonInfo(title);
+  const qClean = normalizeBlakiteTitle(qInfo.baseTitle);
+  if (!qClean) return { available: false, episodeAvailable: false };
+
+  const matched = allItems.find(({ item }) => {
+    const isEng = /english/i.test(item.language || '') || /english/i.test(item.title || '');
+    if (!isEng) return false;
+
+    const tInfo = extractSeasonInfo(item.title || '');
+    const tClean = normalizeBlakiteTitle(tInfo.baseTitle);
+
+    const titleMatches = (tClean === qClean) ||
+      (qClean.length >= 5 && (tClean.includes(qClean) || qClean.includes(tClean)));
+    if (!titleMatches) return false;
+
+    if (item.seasons) {
+      const availSeasons = Object.values(item.seasons).map(s => s.seasonNumber);
+      if (qInfo.isSeasonExplicit) return availSeasons.includes(qInfo.season);
+      return availSeasons.includes(qInfo.season) || availSeasons.length === 1;
+    }
+    return qInfo.season === 1;
+  });
+
+  if (!matched) return { available: false, episodeAvailable: false };
+
+  let totalEps = 0;
+  if (matched.item.seasons) {
+    if (qInfo.isSeasonExplicit) {
+      const targetSeasonObj = Object.values(matched.item.seasons).find(s => s.seasonNumber === qInfo.season);
+      totalEps = targetSeasonObj?.totalEpisodes || 0;
+    } else {
+      const s1 = Object.values(matched.item.seasons).find(s => s.seasonNumber === 1);
+      totalEps = s1?.totalEpisodes || Object.values(matched.item.seasons).reduce((acc, s) => acc + (s.totalEpisodes || 0), 0);
+    }
+  } else if (matched.item.type === 'Movie') {
+    totalEps = 1;
+  }
+
+  const episodes = generateBlakiteEpisodes(matched.item, matched.id);
+
+  let epObj: BlakiteEpisode | null = null;
+  let episodeAvailable = true;
+
+  if (episode !== undefined && episode !== null && String(episode).trim() !== '') {
+    const epNum = Number(episode);
+    epObj = findEpisodeInBlakite(episodes, qInfo.season, epNum, qInfo.isSeasonExplicit);
+    episodeAvailable = !!epObj;
+  }
+
+  return {
+    available: true,
+    id: matched.id,
+    title: matched.item.title,
+    dubType: 'English Dub',
+    language: matched.item.language || 'English Dubbed',
     season: qInfo.season,
     totalEpisodes: totalEps,
     episodeAvailable,
@@ -928,10 +1020,12 @@ export interface HindiScheduleItem {
   episode: number;
   seasonNumber: number;
   totalEpisodes: number;
-  dubType: 'ORG' | 'FanDub' | 'Hindi Dub';
+  dubType: 'ORG' | 'FanDub' | 'Hindi Dub' | 'English Dub' | string;
   status: string;
   type: string;
   watchUrl: string;
+  isEnglish?: boolean;
+  isHindi?: boolean;
 }
 
 export interface HindiScheduleResponse {
@@ -941,14 +1035,16 @@ export interface HindiScheduleResponse {
   targetDate: string;
 }
 
-export function cleanHindiTitle(rawTitle: string): string {
+export function cleanBlakiteTitle(rawTitle: string): string {
   return (rawTitle || '')
-    .replace(/\(Hindi Dubbed\)/gi, '')
-    .replace(/\(Hindi Dub\)/gi, '')
-    .replace(/\[Hindi Dub\]/gi, '')
-    .replace(/\(ORG\)/gi, '')
-    .replace(/\(FanDub\)/gi, '')
+    .replace(/\s*[\(\[]\s*(English|Hindi|Tamil|Telugu|Japanese|ORG|FanDub|Multi|Dual\s*Audio)\s*(Dubbed|Dub|Subbed|Sub)?\s*[\)\]]/gi, '')
+    .replace(/\s*[\(\[]\s*(Season\s*\d+|S\d+)\s*[\)\]]/gi, '')
+    .replace(/\(Hindi Dubbed\)|\(English Dubbed\)|\(English Subbed\)|\(Hindi Subbed\)|\(Hindi Dub\)|\(English Dub\)|\(ORG\)|\(FanDub\)/gi, '')
     .trim();
+}
+
+export function cleanHindiTitle(rawTitle: string): string {
+  return cleanBlakiteTitle(rawTitle);
 }
 
 export async function getHindiDubSchedule(targetDate?: string): Promise<HindiScheduleResponse> {
@@ -968,7 +1064,7 @@ export async function getHindiDubSchedule(targetDate?: string): Promise<HindiSch
     if (isBlakiteLiveAction(item)) return false;
     const lang = (item.language || '').toLowerCase();
     const title = (item.title || '').toLowerCase();
-    return item.language === 'ORG' || item.language === 'FanDub' || lang.includes('dub') || lang.includes('hindi') || title.includes('hindi');
+    return item.language === 'ORG' || item.language === 'FanDub' || lang.includes('dub') || lang.includes('hindi') || title.includes('hindi') || lang.includes('english') || title.includes('english');
   });
 
   const parsedItems: HindiScheduleItem[] = [];
@@ -978,9 +1074,12 @@ export async function getHindiDubSchedule(targetDate?: string): Promise<HindiSch
     const cleanTitle = cleanHindiTitle(item.title);
     const poster = item.IMAGES?.poster || item.IMAGES?.backdrop || '';
     const score = Number(item.TMDB_DATA?.rating) || 0;
-    const dubType: 'ORG' | 'FanDub' | 'Hindi Dub' = 
-      item.language === 'ORG' ? 'ORG' : 
-      (item.language === 'FanDub' ? 'FanDub' : 'Hindi Dub');
+    const isEng = /english/i.test(item.language || '') || /english/i.test(item.title || '');
+    const isHindi = !isEng;
+    const isEnglish = isEng;
+    const dubType: 'ORG' | 'FanDub' | 'Hindi Dub' | 'English Dub' | string = isEng
+      ? 'English Dub'
+      : (item.language === 'ORG' ? 'ORG' : (item.language === 'FanDub' ? 'FanDub' : 'Hindi Dub'));
 
     if (item.seasons && Object.keys(item.seasons).length > 0) {
       for (const s of Object.values(item.seasons)) {
@@ -1009,7 +1108,9 @@ export async function getHindiDubSchedule(targetDate?: string): Promise<HindiSch
           dubType,
           status: s.status || item.status || 'Ongoing',
           type: item.type || 'TV',
-          watchUrl: `/watch/${id}?ep=${s.totalEpisodes || 1}&audio=hi&type=dub`
+          isEnglish,
+          isHindi,
+          watchUrl: `/watch/${id}?ep=${s.totalEpisodes || 1}&audio=${isEng ? 'en' : 'hi'}&type=dub`
         };
 
         parsedItems.push(scheduleItem);
@@ -1046,7 +1147,9 @@ export async function getHindiDubSchedule(targetDate?: string): Promise<HindiSch
         dubType,
         status: item.status || 'Completed',
         type: item.type || 'Movie',
-        watchUrl: `/watch/${id}?ep=1&audio=hi&type=dub`
+        isEnglish,
+        isHindi,
+        watchUrl: `/watch/${id}?ep=1&audio=${isEng ? 'en' : 'hi'}&type=dub`
       });
     }
   }
@@ -1092,7 +1195,8 @@ export async function getHindiReleasingToday(limit = 24) {
     score: item.score,
     type: item.type || 'TV',
     airingAt: item.timestamp,
-    isHindi: true,
+    isHindi: item.isHindi ?? !item.isEnglish,
+    isEnglish: item.isEnglish ?? false,
     dubType: item.dubType,
     watchUrl: item.watchUrl
   }));

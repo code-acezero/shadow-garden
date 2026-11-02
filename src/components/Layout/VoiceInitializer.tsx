@@ -25,13 +25,16 @@ export default function VoiceInitializer() {
 
     const runVoice = async () => {
         try {
+            // If greeting was already played this session (e.g. by AuthModal on sign-in), never double-fire
+            if (sessionStorage.getItem('shadow_welcome_shown') === 'true') return;
+
             const hasVisited = localStorage.getItem('shadow_has_visited');
 
             if (user) {
                // ✅ 2. Use context profile directly. No new Supabase calls.
                const isMaster = profile?.role === 'admin' || profile?.role === 'owner';
                playVoice(isMaster ? 'GREET_MASTER' : 'GREET_ADVENTURER');
-               
+               sessionStorage.setItem('shadow_welcome_shown', 'true');
                if (!hasVisited) localStorage.setItem('shadow_has_visited', 'true');
             } else {
                // Guest
@@ -41,6 +44,7 @@ export default function VoiceInitializer() {
                } else {
                  playVoice('GREET_TRAVELER');
                }
+               sessionStorage.setItem('shadow_welcome_shown', 'true');
             }
         } catch (e) {
             console.error("Voice Error", e);

@@ -36,7 +36,7 @@ async function executeAniListFetch(bodyString: string, authHeader?: string | nul
   const headers: Record<string, string> = {
     'Content-Type': 'application/json',
     'Accept': 'application/json',
-    'User-Agent': 'ShadowGarden/2.0 (Anime Streamer)',
+    'User-Agent': 'Kagemi/4.0 (Anime Streamer)',
   };
 
   if (authHeader) {

@@ -116,7 +116,7 @@ function normalizeItem(raw: any, source: MacCMSSource): ShortDramaItem {
     source,
     title: sanitizeRawChineseTitle(rawTitle),
     originalTitle: rawTitle,
-    cover: raw.vod_pic || 'https://images.unsplash.com/photo-1536440136628-849c177e76a1?w=600&auto=format&fit=crop',
+    cover: raw.vod_pic || 'https://fffgood.com/upload/vod/20261027-1/6180f6d31b5921bcf137d2bf7336bf20.jpg',
     description: desc,
     totalEpisodes: episodes.length > 0 ? episodes.length : 1,
     language: 'English Sub',

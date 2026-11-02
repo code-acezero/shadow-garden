@@ -313,7 +313,7 @@ export function getSafeImageUrl(url?: string | null): string {
  */
 export function getCleanEpisodeTitle(num: number | string, rawTitle?: string): string {
     const epNum = typeof num === 'string' ? num.replace(/^0+/, '') || num : (num || 1);
-    if (!rawTitle) return `EP ${epNum}`;
+    if (!rawTitle) return `Episode ${epNum}`;
     let title = String(rawTitle).replace(/\u00A0/g, ' ').trim();
     
     // Iteratively strip leading Episode / EP / E / # / digits prefixes with any delimiters
@@ -339,21 +339,25 @@ export function getCleanEpisodeTitle(num: number | string, rawTitle?: string): s
         lower === `e${epNum}`;
 
     if (isJustEp) {
-        return `EP ${epNum}`;
+        return `Episode ${epNum}`;
     }
-    return `EP ${epNum}: ${title}`;
+    return `Episode ${epNum}: ${title}`;
 }
 
 /**
- * Extracts ONLY the subtitle portion of an episode title, stripping "EP X: " or "Episode X: "
+ * Extracts ONLY the subtitle portion of an episode title, stripping "Episode X: " or "EP X: "
  */
 export function getEpisodeSubtitleOnly(num: number | string, rawTitle?: string): string {
     if (!rawTitle) return '';
     const clean = getCleanEpisodeTitle(num, rawTitle);
     const epNum = typeof num === 'string' ? num.replace(/^0+/, '') || num : (num || 1);
-    const prefix = `EP ${epNum}: `;
+    const prefix = `Episode ${epNum}: `;
+    const shortPrefix = `EP ${epNum}: `;
     if (clean.startsWith(prefix)) {
         return clean.slice(prefix.length).trim();
+    }
+    if (clean.startsWith(shortPrefix)) {
+        return clean.slice(shortPrefix.length).trim();
     }
     return '';
 }

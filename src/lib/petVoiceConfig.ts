@@ -74,8 +74,8 @@ export const PET_ROSTER: Record<string, PetVoiceMeta> = {
     name: 'Paladin',
     title: 'Order Guardian',
     icon: '🛡️',
-    textColor: 'text-sky-400',
-    dotColor: 'bg-sky-400',
+    textColor: 'text-purple-300',
+    dotColor: 'bg-purple-400',
     quotes: [
       "Shields ready, Master! Standing guard over your queue.",
       "Guarding your watchlist with my life and honor!",
@@ -126,8 +126,8 @@ export const PET_ROSTER: Record<string, PetVoiceMeta> = {
     name: 'Scout-07',
     title: 'Cyber Recon',
     icon: '🛸',
-    textColor: 'text-cyan-400',
-    dotColor: 'bg-cyan-400',
+    textColor: 'text-violet-400',
+    dotColor: 'bg-violet-400',
     quotes: [
       "BEEP BOOP. Elite otaku bio-signature confirmed.",
       "Scanning global media perimeter... all streams optimal.",

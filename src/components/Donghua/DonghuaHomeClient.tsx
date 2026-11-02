@@ -151,7 +151,7 @@ export default function DonghuaHomeClient() {
           {/* CUTE SHARE BAR */}
           <CuteShareBar 
             badgeText="Share Donghua"
-            badgeSubtext="Cultivation Sanctuary"
+            badgeSubtext="Chinese Animation"
             title="Invite your Daoists to Kagemi!"
             description="Share Chinese donghua, 3D cultivation adventures, and supernatural battles in ultra HD with zero ads."
           />

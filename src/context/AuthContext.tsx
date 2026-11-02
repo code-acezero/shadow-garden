@@ -157,7 +157,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       // Only send heartbeat if the tab is actively visible to prevent ghost online states
       if (typeof document !== 'undefined' && document.visibilityState === 'visible') {
         supabase.from('profiles').update({ 
-          is_online: true, 
+          last_seen_at: new Date().toISOString(), 
           updated_at: new Date().toISOString() 
         }).eq('id', user.id).then(null, () => {});
       }
@@ -171,7 +171,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     
     // Mark as offline when tab is closed
     const handleBeforeUnload = () => {
-      supabase.from('profiles').update({ is_online: false }).eq('id', user.id).then(null, () => {});
+      supabase.from('profiles').update({ last_seen_at: new Date().toISOString() }).eq('id', user.id).then(null, () => {});
     };
     
     if (typeof window !== 'undefined') {
@@ -195,8 +195,11 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       ]);
     } catch {}
     if (typeof window !== 'undefined') {
-      sessionStorage.removeItem('shadow_welcome_shown');
-      window.location.assign('/home');
+      sessionStorage.setItem('shadow_just_signed_out', 'true');
+      sessionStorage.setItem('shadow_welcome_shown', 'true');
+      setUser(null);
+      setProfile(null);
+      currentProfileId.current = null;
     }
   }, []);
 

@@ -123,7 +123,7 @@ function mapMangaDexItem(raw: any): ReadingItem {
   const coverFileName = coverRel?.attributes?.fileName;
   const cover = coverFileName 
     ? `https://uploads.mangadex.org/covers/${id}/${coverFileName}.512.jpg`
-    : '/images/placeholder.jpg';
+    : '/images/no-poster.png';
 
   // Determine Type based on originalLanguage and tags
   const origLang = attrs.originalLanguage || 'ja';
@@ -228,7 +228,7 @@ export const mangaService = {
 
     try {
       const res = await fetch(`${MANGADEX_BASE}/manga?${urlParams.toString()}`, {
-        headers: { 'User-Agent': 'ShadowGarden/2.0' },
+        headers: { 'User-Agent': 'Kagemi/4.0' },
         next: { revalidate: 300 }
       });
 
@@ -275,7 +275,7 @@ export const mangaService = {
 
     try {
       const res = await fetch(`${MANGADEX_BASE}/manga?${urlParams.toString()}`, {
-        headers: { 'User-Agent': 'ShadowGarden/2.0' },
+        headers: { 'User-Agent': 'Kagemi/4.0' },
         next: { revalidate: 60 }
       });
 
@@ -294,7 +294,7 @@ export const mangaService = {
   async getDetails(id: string): Promise<ReadingItem | null> {
     try {
       const res = await fetch(`${MANGADEX_BASE}/manga/${id}?includes[]=cover_art&includes[]=author&includes[]=artist`, {
-        headers: { 'User-Agent': 'ShadowGarden/2.0' },
+        headers: { 'User-Agent': 'Kagemi/4.0' },
         next: { revalidate: 600 }
       });
       if (!res.ok) return null;
@@ -340,7 +340,7 @@ export const mangaService = {
         }
 
         const res = await fetch(`${MANGADEX_BASE}/manga/${mangaId}/feed?${urlParams.toString()}`, {
-          headers: { 'User-Agent': 'ShadowGarden/2.0' },
+          headers: { 'User-Agent': 'Kagemi/4.0' },
           next: { revalidate: 300 }
         });
 
@@ -380,10 +380,21 @@ export const mangaService = {
           };
         });
 
-      // CHECK: If English chapters are missing or sparse (< 15 chapters e.g. Solo Leveling, Omniscient Reader due to MangaDex DMCA takedowns),
+      // CHECK: If English chapters are missing, sparse (< 15 chapters), or missing early chapters (e.g. starts at Ch 145/231/423 due to MangaDex DMCA takedowns),
       // seamlessly query our secondary archive provider (WeebCentral) to provide the complete chapter catalog (Ch 0 to End).
       const enChapters = parsedChapters.filter(c => (c.language || 'en').toLowerCase() === 'en');
-      if ((!language || language === 'en') && enChapters.length < 15) {
+      const minEnChapter = enChapters.length > 0 
+        ? Math.min(...enChapters.map(c => parseFloat(c.chapter)).filter(n => !isNaN(n)))
+        : Infinity;
+      const maxEnChapter = enChapters.length > 0
+        ? Math.max(...enChapters.map(c => parseFloat(c.chapter)).filter(n => !isNaN(n)))
+        : 0;
+
+      const isEnglishMissingStart = enChapters.length > 0 && minEnChapter > 3;
+      const isEnglishSparse = enChapters.length < 15;
+      const isEnglishGap = maxEnChapter > 50 && enChapters.length < (maxEnChapter * 0.4);
+
+      if ((!language || language === 'en') && (isEnglishSparse || isEnglishMissingStart || isEnglishGap)) {
         try {
           const details = await this.getDetails(mangaId);
           const candidates: string[] = [];
@@ -398,11 +409,17 @@ export const mangaService = {
           const seriesId = await searchWeebCentral(candidates);
           if (seriesId) {
             const fallbackChapters = await getWeebCentralChapters(seriesId, mangaId);
-            if (fallbackChapters.length > enChapters.length) {
-              // Filter out sparse English chapters and merge complete fallback chapters
+            if (fallbackChapters.length > 0) {
+              // Merge fallback chapters so that missing early chapters (e.g. Ch 1 to 144) are fully populated
+              const mergedMap = new Map<string, ReadingChapter>();
+              fallbackChapters.forEach(fc => mergedMap.set(fc.chapter, fc));
+              // Overlay any existing MangaDex English chapters if available
+              enChapters.forEach(ec => mergedMap.set(ec.chapter, ec));
+
+              const mergedEnChapters = Array.from(mergedMap.values());
               parsedChapters = [
                 ...parsedChapters.filter(c => (c.language || 'en').toLowerCase() !== 'en'),
-                ...fallbackChapters
+                ...mergedEnChapters
               ];
             }
           }
@@ -462,7 +479,7 @@ export const mangaService = {
     for (let attempt = 0; attempt < 2; attempt++) {
       try {
         const res = await fetch(`${MANGADEX_BASE}/at-home/server/${chapterId}`, {
-          headers: { 'User-Agent': 'ShadowGarden/2.0' }
+          headers: { 'User-Agent': 'Kagemi/4.0' }
         });
 
         if (!res.ok) {
@@ -533,14 +550,14 @@ async function searchWeebCentral(titleOrTitles: string | string[]): Promise<stri
     if (!cleanTitle || cleanTitle.length < 2) continue;
 
     try {
-      const url = `https://weebcentral.com/search/data?text=${encodeURIComponent(cleanTitle)}&sort=Best+Match&order=Ascending&official=Any&anime=Any`;
+      const url = `https://weebcentral.com/search/data?author=&text=${encodeURIComponent(cleanTitle)}&sort=Best+Match&order=Ascending&official=Any&anime=Any&adult=Any&display_mode=Full+Display`;
       const res = await fetch(url, {
         headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36' },
         signal: AbortSignal.timeout(6000)
       });
       if (!res.ok) continue;
       const html = await res.text();
-      const seriesMatch = html.match(/href="https:\/\/weebcentral\.com\/series\/([^"\/]+)\/([^"]+)"/i);
+      const seriesMatch = html.match(/href=["']https:\/\/weebcentral\.com\/series\/([^"'/]+)\/([^"']+)["']/i);
       if (seriesMatch) {
         return seriesMatch[1];
       }
@@ -560,7 +577,7 @@ async function getWeebCentralChapters(seriesId: string, mangaId: string): Promis
     });
     if (!res.ok) return [];
     const html = await res.text();
-    const re = /href="\/chapters\/([^"]+)"[\s\S]*?<span[^>]*>(Chapter\s+([0-9.]+)[^<]*)<\/span>/gi;
+    const re = /href=["'](?:https:\/\/weebcentral\.com)?\/chapters\/([^"']+)["'][\s\S]*?<span[^>]*>((?:Chapter|Episode|Ep\.?|Ch\.?)\s*([0-9.]+)[^<]*)<\/span>/gi;
     let match;
     const chapters: ReadingChapter[] = [];
     while ((match = re.exec(html)) !== null) {
@@ -655,7 +672,7 @@ export const novelService = {
         nativeTitle: m.title.native,
         altTitles: [m.title.romaji, m.title.native].filter(Boolean),
         description: (m.description || 'No synopsis available.').replace(/<[^>]*>?/gm, ''),
-        cover: m.coverImage?.extraLarge || m.coverImage?.large || '/images/placeholder.jpg',
+        cover: m.coverImage?.extraLarge || m.coverImage?.large || '/images/no-poster.png',
         banner: m.bannerImage || m.coverImage?.extraLarge,
         type: 'light_novel' as ReadingMediaType,
         status: m.status?.toLowerCase() || 'ongoing',
@@ -712,7 +729,7 @@ export const novelService = {
         nativeTitle: m.title.native,
         altTitles: [m.title.romaji, m.title.native].filter(Boolean),
         description: (m.description || '').replace(/<[^>]*>?/gm, ''),
-        cover: m.coverImage?.extraLarge || m.coverImage?.large || '/images/placeholder.jpg',
+        cover: m.coverImage?.extraLarge || m.coverImage?.large || '/images/no-poster.png',
         banner: m.bannerImage,
         type: 'light_novel' as ReadingMediaType,
         status: m.status?.toLowerCase() || 'ongoing',
@@ -773,7 +790,7 @@ export const novelService = {
         nativeTitle: m.title.native,
         altTitles: [m.title.romaji, m.title.native].filter(Boolean),
         description: (m.description || 'No synopsis available.').replace(/<[^>]*>?/gm, ''),
-        cover: m.coverImage?.extraLarge || m.coverImage?.large || '/images/placeholder.jpg',
+        cover: m.coverImage?.extraLarge || m.coverImage?.large || '/images/no-poster.png',
         banner: m.bannerImage || m.coverImage?.extraLarge,
         type: 'light_novel' as ReadingMediaType,
         status: m.status?.toLowerCase() || 'ongoing',

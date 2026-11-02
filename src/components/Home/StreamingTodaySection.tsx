@@ -259,13 +259,15 @@ export default function StreamingTodaySection({ initialItems = [] }: StreamingTo
               : null;
 
             const titleStr = typeof anime.title === 'string' ? anime.title : (anime.title?.english || anime.title?.romaji || anime.title?.native || 'Unknown Anime');
+            const isItemEnglish = anime.isEnglish === true || /english/i.test(anime.dubType || '') || /english.*dub/i.test(titleStr);
+            const isItemHindi = !isItemEnglish && (anime.isHindi === true || /hindi/i.test(anime.dubType || '') || /hindi.*dub/i.test(titleStr));
             const slug = slugifyTitle(titleStr);
             const routeId = (slug && !String(anime.id).includes('-')) ? `${anime.id}-${slug}` : anime.id;
-            const targetHref = anime.watchUrl || `/watch/${routeId}?ep=${anime.episode || 1}&audio=${anime.isHindi ? 'hi' : 'jp'}`;
+            const targetHref = anime.watchUrl || `/watch/${routeId}?ep=${anime.episode || 1}&audio=${isItemHindi ? 'hi' : (isItemEnglish ? 'en' : 'jp')}${isItemEnglish ? '&type=dub' : ''}`;
 
             return (
               <AnimeHoverCard
-                key={`${anime.id}-${anime.episode}-${anime.isHindi ? 'hi' : 'sub'}-${idx}`}
+                key={`${anime.id}-${anime.episode}-${isItemEnglish ? 'en' : (isItemHindi ? 'hi' : 'sub')}-${idx}`}
                 anime={anime}
                 themeVariant="emerald"
                 side="right"
@@ -305,13 +307,17 @@ export default function StreamingTodaySection({ initialItems = [] }: StreamingTo
                       </div>
                     )}
 
-                    {/* Bottom Badges: Episode and Hindi Dub Indicator (Miruro Sleek Pills) */}
+                    {/* Bottom Badges: Episode and Hindi/English Dub Indicator (Miruro Sleek Pills) */}
                     <div className="absolute bottom-2 right-2 z-10 flex items-center gap-1 pointer-events-none">
-                      {anime.isHindi && (
+                      {isItemEnglish ? (
+                        <span className="px-2 py-0.5 rounded-full bg-gradient-to-r from-emerald-600 to-teal-600 text-white font-black text-[8.5px] uppercase shadow-sm">
+                          ENGLISH
+                        </span>
+                      ) : isItemHindi ? (
                         <span className="px-2 py-0.5 rounded-full bg-gradient-to-r from-orange-500 to-amber-500 text-white font-black text-[8.5px] uppercase shadow-sm">
                           {anime.dubType === 'FanDub' || anime.dubType === 'Hindi Fan Dub' ? 'HINDI (FAN)' : 'HINDI'}
                         </span>
-                      )}
+                      ) : null}
                       <span className="px-2 py-0.5 rounded-full bg-[#0e1628]/95 border border-white/15 text-white font-bold text-[9.5px] uppercase backdrop-blur-md shadow-sm">
                         EP {anime.episode || '?'}
                       </span>

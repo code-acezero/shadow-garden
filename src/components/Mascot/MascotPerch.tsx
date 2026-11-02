@@ -149,6 +149,7 @@ export const MascotPerch: React.FC<{
   size?: number;
   noMessages?: boolean;
   noEdit?: boolean;
+  overrideCharacterId?: string;
   onBoopSpeech?: (text: string) => void;
 }> = ({ 
   className, 
@@ -156,6 +157,7 @@ export const MascotPerch: React.FC<{
   size,
   noMessages = false,
   noEdit = false,
+  overrideCharacterId,
   onBoopSpeech
 }) => {
   const [config, setConfig] = useState<MascotConfig>(DEFAULT_CONFIG);
@@ -204,8 +206,9 @@ export const MascotPerch: React.FC<{
   }, []);
 
   const currentCharacter = useMemo(() => {
-    return MASCOT_ROSTER.find((c) => c.id === config.characterId) || MASCOT_ROSTER[0];
-  }, [config.characterId]);
+    const charId = overrideCharacterId || config.characterId;
+    return MASCOT_ROSTER.find((c) => c.id === charId) || MASCOT_ROSTER[0];
+  }, [overrideCharacterId, config.characterId]);
 
   // Compute sprite sheet paths
   const { directionsPath, reactionsPath } = useMemo(() => {

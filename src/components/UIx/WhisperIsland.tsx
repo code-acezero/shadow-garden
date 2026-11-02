@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useRef, Suspense, useMemo } from 'react';
 import { useRouter, usePathname, useSearchParams } from 'next/navigation';
-import { motion, AnimatePresence, LayoutGroup, Transition, Variants } from 'framer-motion';
+import { motion, AnimatePresence, LayoutGroup, Transition, Variants, useAnimationControls } from 'framer-motion';
 import { 
   Search, X, Loader2, Filter, Calendar, Tv, Layers, 
   Bot, LogIn, LogOut, Settings, User, CircleUser, Cat, ChevronDown, ArrowRight, Dices, Wand2,
@@ -28,7 +28,7 @@ import UserTitleBadge from '@/components/ui/UserTitleBadge';
 import { getEquippedTitle, getTitleDefinition, isGuildMaster } from '@/lib/userTitles';
 import { useTravellerProfile } from '@/hooks/useTravellerProfile';
 
-import { playVoice, refreshVoiceCache } from '@/lib/voice'; 
+import { playVoice, refreshVoiceCache, getVoiceSettings, restoreTravellerVoice } from '@/lib/voice'; 
 import { useSettings } from '@/hooks/useSettings'; 
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { hpi } from '@/lib/hpi';
@@ -138,74 +138,82 @@ const getNotifIcon = (type: string) => {
 };
 
 // --- PET SPEECH MARQUEE VIEWER ---
-// 1. Initial 2.2s delay before moving so text is never rushed.
-// 2. Exact overflow boundary calculation: stops at text edge, never over-scrolls into blank space.
-// 3. 1.8s pause at the end so final words are easily readable.
-// 4. Smooth glide back to origin.
+// 1. Initial 3.5s generous delay so start of message is easily read before any movement.
+// 2. Only scrolls if text genuine overflows the container width. If it fits, stays completely stationary.
+// 3. Exact overflow boundary: stops precisely at the text boundary, never scrolling past last character.
+// 4. 2.5s pause at the end so final words are easily readable.
+// 5. Smooth glide back to origin (0.85s), with 2.5s pause before looping.
 const PetSpeechMarquee: React.FC<{ text: string }> = ({ text }) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const textRef = useRef<HTMLSpanElement>(null);
-  const [overflow, setOverflow] = useState(0);
+  const controls = useAnimationControls();
 
   useEffect(() => {
-    const measure = () => {
+    let isMounted = true;
+    controls.set({ x: 0 });
+
+    const runMarquee = async () => {
+      // Allow parent layout/spring expansion to settle completely
+      await new Promise(r => setTimeout(r, 550));
+      if (!isMounted) return;
+
       if (!containerRef.current || !textRef.current) return;
       const cWidth = containerRef.current.clientWidth;
       const tWidth = textRef.current.scrollWidth;
-      const diff = tWidth - cWidth;
-      if (diff > 6) {
-        setOverflow(diff + 14);
-      } else {
-        setOverflow(0);
+      const overflow = Math.ceil(tWidth - cWidth);
+
+      // If text fits comfortably within container, do not scroll at all!
+      if (overflow <= 6) {
+        controls.set({ x: 0 });
+        return;
+      }
+
+      // Loop with generous readable delays
+      while (isMounted) {
+        // Step 1: Initial readable pause at origin (3.5s)
+        await controls.start({ x: 0, transition: { duration: 0 } });
+        await new Promise(r => setTimeout(r, 3500));
+        if (!isMounted) break;
+
+        // Step 2: Smooth scroll to exact overflow boundary
+        const scrollDuration = Math.max(2.6, overflow / 22);
+        await controls.start({
+          x: -overflow,
+          transition: { duration: scrollDuration, ease: "easeInOut" }
+        });
+        if (!isMounted) break;
+
+        // Step 3: Pause at the end for 2.5s so last words are easily readable
+        await new Promise(r => setTimeout(r, 2500));
+        if (!isMounted) break;
+
+        // Step 4: Smooth return to start
+        await controls.start({
+          x: 0,
+          transition: { duration: 0.85, ease: "easeInOut" }
+        });
+        if (!isMounted) break;
+
+        // Step 5: Pause at start before next cycle
+        await new Promise(r => setTimeout(r, 2500));
       }
     };
 
-    measure();
-    const timer = setTimeout(measure, 120);
-    window.addEventListener('resize', measure);
+    runMarquee();
+
     return () => {
-      clearTimeout(timer);
-      window.removeEventListener('resize', measure);
+      isMounted = false;
+      controls.stop();
     };
-  }, [text]);
-
-  if (overflow <= 0) {
-    return (
-      <div ref={containerRef} className="flex-1 min-w-0 overflow-hidden relative">
-        <span ref={textRef} className="text-[9.5px] sm:text-[10px] md:text-xs text-zinc-200 font-medium whitespace-nowrap inline-block">
-          {text}
-        </span>
-      </div>
-    );
-  }
-
-  const travelDuration = Math.max(3.2, overflow / 24);
-  const initialDelay = 2.2;
-  const endPause = 1.8;
-  const returnDuration = 1.2;
-  const totalDuration = initialDelay + travelDuration + endPause + returnDuration;
-
-  const t0 = 0;
-  const t1 = initialDelay / totalDuration;
-  const t2 = (initialDelay + travelDuration) / totalDuration;
-  const t3 = (initialDelay + travelDuration + endPause) / totalDuration;
-  const t4 = 1;
+  }, [text, controls]);
 
   return (
-    <div ref={containerRef} className="flex-1 min-w-0 overflow-hidden relative">
+    <div ref={containerRef} className="flex-1 min-w-0 overflow-hidden relative flex items-center">
       <motion.span
         ref={textRef}
-        className="text-[9.5px] sm:text-[10px] md:text-xs text-zinc-200 font-medium whitespace-nowrap inline-block"
-        animate={{
-          x: [0, 0, -overflow, -overflow, 0],
-        }}
-        transition={{
-          times: [t0, t1, t2, t3, t4],
-          duration: totalDuration,
-          repeat: Infinity,
-          repeatDelay: 1.5,
-          ease: "easeInOut",
-        }}
+        animate={controls}
+        initial={{ x: 0 }}
+        className="text-[10px] sm:text-[11px] md:text-xs text-zinc-200 font-medium whitespace-nowrap inline-flex items-center"
       >
         {text}
       </motion.span>
@@ -237,6 +245,7 @@ interface SearchBarContentProps {
   handleRandomSummon: () => void;
   isRandomLoading?: boolean;
   petSpeech?: {
+    id?: number | string;
     text: string;
     petName: string;
     petIcon: string;
@@ -334,9 +343,7 @@ const SearchBarContent: React.FC<SearchBarContentProps> = ({
   );
 
   return (
-    <motion.div 
-      layout
-      transition={JELLY_SPRING}
+    <div
       className="w-full h-full flex items-center relative pl-1.5 sm:pl-2 pr-1.5 gap-1.5 sm:gap-2"
     >
       <div className="absolute inset-0 overflow-hidden rounded-[2rem] pointer-events-none">
@@ -352,7 +359,7 @@ const SearchBarContent: React.FC<SearchBarContentProps> = ({
       <AnimatePresence>
         {petSpeech && (
           <motion.div
-            layout
+            layout="size"
             initial={{ opacity: 0, width: 0, scale: 0.95 }}
             animate={{ opacity: 1, width: "auto", scale: 1 }}
             exit={{ 
@@ -364,28 +371,20 @@ const SearchBarContent: React.FC<SearchBarContentProps> = ({
             transition={JELLY_SPRING}
             className={cn(
               "flex items-center gap-1 sm:gap-2 select-none min-w-0 overflow-hidden",
-              // Mobile & Tablet: Take full available space so text is never prematurely truncated
-              "flex-1 pr-1",
-              // Desktop: Variable push width based on sentence length
-              "lg:border-r lg:border-white/10 lg:pr-2.5",
-              petSpeech.text.length > 70 
-                ? "lg:flex-1 lg:max-w-[680px]" 
-                : petSpeech.text.length > 45 
-                  ? "lg:flex-initial lg:max-w-[520px]" 
-                  : petSpeech.text.length > 25 
-                    ? "lg:flex-initial lg:max-w-[400px]" 
-                    : "lg:flex-initial lg:max-w-[300px]"
+              // Width dynamically driven by content; never excessively push search
+              "shrink-0 max-w-[220px] sm:max-w-[300px] md:max-w-[380px] lg:max-w-[460px]",
+              "border-r border-white/10 pr-2 sm:pr-2.5"
             )}
           >
             {/* Sliding Message Presence: old message slides right and kicks out; new message slides in from pet mascot */}
-            <div className="flex-1 min-w-0 overflow-hidden relative">
+            <div className="flex-1 min-w-0 overflow-hidden relative h-full flex items-center">
               <AnimatePresence mode="popLayout" initial={false}>
                 <motion.div 
-                  key={petSpeech.text}
-                  initial={{ x: -35, opacity: 0, scale: 0.96 }}
-                  animate={{ x: 0, opacity: 1, scale: 1 }}
-                  exit={{ x: 70, opacity: 0, scale: 0.96 }}
-                  transition={{ type: "spring", stiffness: 360, damping: 28 }}
+                  key={petSpeech.id || petSpeech.text}
+                  initial={{ x: -70, opacity: 0 }}
+                  animate={{ x: 0, opacity: 1 }}
+                  exit={{ x: "100%", opacity: 0 }}
+                  transition={{ type: "spring", stiffness: 320, damping: 28, mass: 0.8 }}
                   onClick={(e) => {
                     if (petSpeech.link) {
                       e.stopPropagation();
@@ -394,15 +393,15 @@ const SearchBarContent: React.FC<SearchBarContentProps> = ({
                     }
                   }}
                   className={cn(
-                    "flex items-center gap-1 sm:gap-1.5 min-w-0 overflow-hidden whitespace-nowrap",
+                    "w-full flex items-center gap-1.5 sm:gap-2 min-w-0 overflow-hidden whitespace-nowrap leading-none",
                     petSpeech.link && "cursor-pointer hover:opacity-85 transition-opacity"
                   )}
                 >
-                  <span className={cn("text-[9px] sm:text-[10px] md:text-[11px] font-black uppercase tracking-wider shrink-0", petSpeech.petColor)}>
+                  <span className={cn("text-[10px] sm:text-[11px] md:text-xs font-black uppercase tracking-wider shrink-0 inline-flex items-center select-none", petSpeech.petColor)}>
                     {petSpeech.petName}
                   </span>
-                  <span className="text-zinc-600 text-[8.5px] sm:text-[9px] shrink-0 select-none">•</span>
-                  <PetSpeechMarquee text={petSpeech.text} />
+                  <span className="text-zinc-500 text-[10px] select-none shrink-0 font-normal inline-flex items-center">·</span>
+                  <PetSpeechMarquee key={petSpeech.id || petSpeech.text} text={petSpeech.text} />
                 </motion.div>
               </AnimatePresence>
             </div>
@@ -433,12 +432,12 @@ const SearchBarContent: React.FC<SearchBarContentProps> = ({
 
       {/* Searchbar Stage: Pushed to the end on mobile/tablet when pet speaks, side-by-side on desktop */}
       <motion.div
-        layout
+        layout="size"
         transition={JELLY_SPRING}
         className={cn(
           "h-full flex items-center justify-between gap-1 sm:gap-1.5 min-w-0",
           petSpeech 
-            ? "shrink-0 lg:flex-1 lg:min-w-[140px]" 
+            ? "shrink-0 lg:flex-1 lg:min-w-[160px]"
             : "flex-1 min-w-0 sm:min-w-[140px]"
         )}
       >
@@ -459,8 +458,8 @@ const SearchBarContent: React.FC<SearchBarContentProps> = ({
 
         {/* Search Icon (Desktop always, or Mobile/Tablet when pet is NOT speaking) */}
         <div className={cn(
-          "w-4 h-4 sm:w-5 sm:h-5 items-center justify-center text-zinc-400 shrink-0 pointer-events-none",
-          petSpeech ? "hidden lg:flex" : "flex"
+          "w-4 h-4 sm:w-5 sm:h-5 items-center justify-center text-zinc-400 shrink-0 pointer-events-none transition-opacity duration-200",
+          petSpeech ? "max-lg:hidden flex" : "flex"
         )}>
           {isLoadingSearch ? (
             <Loader2 className="w-3.5 h-3.5 animate-spin text-primary-500" />
@@ -473,13 +472,15 @@ const SearchBarContent: React.FC<SearchBarContentProps> = ({
         <form 
           onSubmit={handleSearchSubmit} 
           className={cn(
-            "h-full items-center relative overflow-visible z-10 gap-1 sm:gap-1.5 pr-0.5 sm:pr-1 min-w-[50px]",
-            petSpeech ? "hidden lg:flex lg:flex-1" : "flex flex-1"
+            "h-full items-center relative z-10 gap-1 sm:gap-1.5 pr-0.5 sm:pr-1 flex-1 transition-[opacity,width] duration-300",
+            petSpeech 
+              ? "max-lg:w-0 max-lg:min-w-0 max-lg:opacity-0 max-lg:overflow-hidden max-lg:pointer-events-none flex lg:min-w-[50px]" 
+              : "flex min-w-[50px] opacity-100"
           )}
         >
           {target.id !== 'all' && (
             <motion.div
-              layout
+              layout="size"
               initial={{ scale: 0.8, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
               exit={{ scale: 0.8, opacity: 0 }}
@@ -524,26 +525,36 @@ const SearchBarContent: React.FC<SearchBarContentProps> = ({
           "items-center gap-0.5 sm:gap-1 shrink-0 z-10",
           petSpeech ? "hidden lg:flex" : "flex"
         )}>
-          {query && (
-            <button 
-              type="button" 
-              onClick={handleSearchSubmit} 
-              className="p-1 bg-primary-600 text-white rounded-full hover:bg-primary-700 shadow-md transition-all active:scale-95"
-              title="Search"
-            >
-              <ArrowRight size={11} />
-            </button>
-          )}
-          {query ? (
-            <button 
-              type="button" 
-              onClick={handleClear} 
-              className="p-1 text-zinc-500 hover:text-white transition-colors"
-              title="Clear input"
-            >
-              <X size={11} />
-            </button>
-          ) : null}
+          {/* Arrow & X: Smoothly animate in when user types something */}
+          <AnimatePresence initial={false}>
+            {query && (
+              <motion.div
+                key="query-active-actions"
+                initial={{ opacity: 0, width: 0, scale: 0.8 }}
+                animate={{ opacity: 1, width: "auto", scale: 1 }}
+                exit={{ opacity: 0, width: 0, scale: 0.8 }}
+                transition={{ duration: 0.22, ease: "easeInOut" }}
+                className="flex items-center gap-0.5 overflow-hidden shrink-0"
+              >
+                <button 
+                  type="button" 
+                  onClick={handleSearchSubmit} 
+                  className="p-1 bg-primary-600 text-white rounded-full hover:bg-primary-700 shadow-md transition-all active:scale-95 shrink-0"
+                  title="Search"
+                >
+                  <ArrowRight size={11} />
+                </button>
+                <button 
+                  type="button" 
+                  onClick={handleClear} 
+                  className="p-1 text-zinc-500 hover:text-white transition-colors shrink-0"
+                  title="Clear input"
+                >
+                  <X size={11} />
+                </button>
+              </motion.div>
+            )}
+          </AnimatePresence>
 
           <div className={cn(
             "flex items-center gap-0.5 border-l border-white/10 pl-1 ml-0.5",
@@ -578,18 +589,27 @@ const SearchBarContent: React.FC<SearchBarContentProps> = ({
               <Filter size={13} />
             </button>
 
-            {/* AI Image Search: Accessible on desktop, and on mobile when expanded or space permits (>430px) */}
-            <button 
-              type="button" 
-              onClick={(e) => { e.stopPropagation(); playGummyTap(); router.push('/ai/imagesearch'); }} 
-              className={cn(
-                "p-1 sm:p-1.5 rounded-full text-zinc-400 hover:text-primary-500 hover:bg-white/5 transition-colors",
-                compact ? "hidden min-[430px]:flex" : "flex"
+            {/* AI Image Search: Smoothly hides when user is typing (when query exists) */}
+            <AnimatePresence initial={false}>
+              {!query && (
+                <motion.button 
+                  key="ai-image-search-btn"
+                  initial={{ opacity: 0, width: 0, scale: 0.8 }}
+                  animate={{ opacity: 1, width: "auto", scale: 1 }}
+                  exit={{ opacity: 0, width: 0, scale: 0.8 }}
+                  transition={{ duration: 0.22, ease: "easeInOut" }}
+                  type="button" 
+                  onClick={(e) => { e.stopPropagation(); playGummyTap(); router.push('/ai/imagesearch'); }} 
+                  className={cn(
+                    "p-1 sm:p-1.5 rounded-full text-zinc-400 hover:text-primary-500 hover:bg-white/5 transition-colors overflow-hidden flex items-center justify-center shrink-0",
+                    compact ? "hidden min-[430px]:flex" : "flex"
+                  )}
+                  title="AI Image Search"
+                >
+                  <ScanSearch size={13} className="sm:w-3.5 sm:h-3.5 shrink-0" />
+                </motion.button>
               )}
-              title="AI Image Search"
-            >
-              <ScanSearch size={13} className="sm:w-3.5 sm:h-3.5" />
-            </button>
+            </AnimatePresence>
           </div>
         </div>
       </motion.div>
@@ -624,7 +644,7 @@ const SearchBarContent: React.FC<SearchBarContentProps> = ({
           onSeeAllClick={handleSearchSubmit} 
         />
       )}
-    </motion.div>
+    </div>
   );
 };
 
@@ -721,7 +741,7 @@ function WhisperIslandContent() {
     };
   }, [profile, liveFrameId, liveTitle]); 
   
-  const [mounted, setMounted] = useState(false);
+  const [mounted, setMounted] = useState(true);
   const [isMobile, setIsMobile] = useState(false);
   const [logoState, setLogoState] = useState(0);
 
@@ -902,6 +922,7 @@ function WhisperIslandContent() {
   const [activeNotif, setActiveNotif] = useState<any | null>(null);
   const [activePetMeta, setActivePetMeta] = useState<PetVoiceMeta>(getActivePetMeta);
   const [petSpeech, setPetSpeech] = useState<{
+    id?: number | string;
     text: string;
     petName: string;
     petIcon: string;
@@ -921,6 +942,7 @@ function WhisperIslandContent() {
     const pet = getActivePetMeta();
     setActivePetMeta(pet);
     setPetSpeech({
+      id: Date.now(),
       text,
       petName: pet.name,
       petIcon: pet.icon,
@@ -1018,6 +1040,7 @@ function WhisperIslandContent() {
             const speakerColor = e.detail?.color || 'text-purple-400';
             setActiveNotif(newNotif);
             setPetSpeech({
+                id: newNotif.id || Date.now(),
                 text: newNotif.content,
                 petName: speakerName,
                 petIcon: '',
@@ -1041,6 +1064,7 @@ function WhisperIslandContent() {
         const voicedText = currentPet.formatEvent(newNotif.title, newNotif.content, newNotif.type);
         setActiveNotif(newNotif);
         setPetSpeech({
+            id: newNotif.id || Date.now(),
             text: voicedText,
             petName: currentPet.name,
             petIcon: currentPet.icon,
@@ -1061,6 +1085,7 @@ function WhisperIslandContent() {
         const currentPet = getActivePetMeta();
         setActivePetMeta(currentPet);
         setPetSpeech({
+            id: e.detail?.id || Date.now(),
             text: e.detail?.text || '',
             petName: currentPet.name,
             petIcon: currentPet.icon,
@@ -1143,6 +1168,13 @@ function WhisperIslandContent() {
     if (isLoading || voiceLock.current) return; 
 
     if (typeof window !== 'undefined') {
+        const justSignedOut = sessionStorage.getItem('shadow_just_signed_out');
+        if (justSignedOut) {
+            // Clean up flag after cooldown and suppress traveler welcome
+            setTimeout(() => sessionStorage.removeItem('shadow_just_signed_out'), 4000);
+            return;
+        }
+
         const hasVisitedHistory = localStorage.getItem('shadow_visited_history');
         const isJustRegistered = sessionStorage.getItem('shadow_just_registered');
         const welcomeShownSession = sessionStorage.getItem('shadow_welcome_shown');
@@ -1817,7 +1849,7 @@ function WhisperIslandContent() {
     setShowFilters(false);
   };
   const resetFilters = () => setFilters({ target: 'all', genre: [], season: "", year: "", format: "", status: "", sort: "newest", language: "" });
-  const shouldHideExtras = isMobile && (isMobileSearchExpanded || centerMode === 'ISLAND_DETAILS');
+  const shouldHideExtras = isMobile && (isMobileSearchExpanded || centerMode === 'ISLAND_DETAILS' || Boolean(petSpeech));
   const circleDiameter = isMobile ? 44 : 48;
 
   const currentEquippedTitle = getEquippedTitle(activeProfile);
@@ -1827,7 +1859,6 @@ function WhisperIslandContent() {
     textColor: activeTitleDef.badgeStyle.bracketColor,
   };
 
-  if (!mounted) return <div className="fixed top-0 h-16 w-full z-[9999]" />;
 
   return (
     <div ref={wrapperRef} className="fixed top-0 left-0 right-0 z-[9999] pt-[0.08rem] px-2 sm:px-4 pointer-events-none font-sans h-auto min-h-[64px]">
@@ -1971,7 +2002,7 @@ function WhisperIslandContent() {
                         {(() => {
                             const activeTitleKey = `${logoState}-${logoState === 0 ? 'KAGEMI' : currentPageInfo.name}`;
                             return (
-                                <AnimatePresence mode="popLayout">
+                                <AnimatePresence mode="wait">
                                     <motion.div 
                                         key={activeTitleKey} 
                                         variants={glitchVariants} 
@@ -2064,7 +2095,7 @@ function WhisperIslandContent() {
                         }} 
                         className={cn(
                             `relative liquid-glass rounded-[30px] ${ISLAND_HEIGHT} flex items-center flex-1 w-full min-w-0`,
-                            (isMobile && !isMobileSearchExpanded) ? "overflow-hidden" : "!overflow-visible"
+                            (isMobile && !isMobileSearchExpanded && !petSpeech) ? "overflow-hidden" : "!overflow-visible"
                         )}
                     >
                         <SearchBarContent 
@@ -2137,23 +2168,16 @@ function WhisperIslandContent() {
                                 <DropdownMenuItem onClick={(e) => { 
                                     e.preventDefault(); 
                                     const role = profile?.role;
-                                    let voiceKey: "BYE_MASTER" | "BYE_ADVENTURER" = "BYE_ADVENTURER";
-                                    if (role === 'admin' || role === 'moderator') {
-                                        voiceKey = 'BYE_MASTER'; 
-                                    } else {
-                                        voiceKey = 'BYE_ADVENTURER'; 
-                                    }
-                                    playVoice(voiceKey);
+                                    const voiceKey: "BYE_MASTER" | "BYE_ADVENTURER" = (role === 'admin' || role === 'moderator') ? 'BYE_MASTER' : 'BYE_ADVENTURER';
+                                    const currentAccountVoice = getVoiceSettings();
+                                    playVoice(voiceKey, undefined, currentAccountVoice);
                                     if (typeof window !== 'undefined') {
-                                        sessionStorage.removeItem('shadow_welcome_shown'); 
-                                        sessionStorage.removeItem('shadow_suppress_welcome');
+                                        sessionStorage.setItem('shadow_just_signed_out', 'true');
+                                        sessionStorage.setItem('shadow_welcome_shown', 'true');
+                                        sessionStorage.setItem('shadow_suppress_welcome', 'true');
                                     }
+                                    restoreTravellerVoice();
                                     signOut().catch(() => {});
-                                    setTimeout(() => {
-                                        if (typeof window !== 'undefined') {
-                                            window.location.reload(); 
-                                        }
-                                    }, 4000);
                                 }} className="text-red-500 cursor-pointer hover:bg-red-500/10 hover:text-red-400 transition-colors text-xs py-1.5 px-2.5 rounded-lg font-bold">
                                     <LogOut size={14} className="mr-2 shrink-0" /> Leave
                                 </DropdownMenuItem>
@@ -2187,7 +2211,7 @@ function WhisperIslandContent() {
                                 {!shouldHideExtras && (
                                     <motion.div 
                                         key="actions" 
-                                        layout
+                                        layout="size"
                                         initial={{ width: 0, opacity: 0, scale: 0.6 }} 
                                         animate={{ width: "auto", opacity: 1, scale: 1 }} 
                                         exit={{ width: 0, opacity: 0, scale: 0.6 }} 
@@ -2254,7 +2278,7 @@ function WhisperIslandContent() {
                             </div>
 
                             {/* Alpha AI Button with Divider: Morph Hide only when Search is actively expanded */}
-                            {!isMobileSearchExpanded && (
+                            {!shouldHideExtras && (
                                 <>
                                     <div className="w-[1px] h-3.5 bg-white/10 shrink-0 mx-0.5" />
                                     <button 

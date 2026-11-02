@@ -369,7 +369,7 @@ const TopChartCard = ({ anime, rank, index, mobileActiveIndex, onMobileClick }: 
                     transform: `rotate(${numberRotation}deg)`,
                     color: rank <= 3 ? '#b91c1c' : '#52525b',
                     filter: rank <= 3 
-                        ? `drop-shadow(2px 2px 0px #7f1d1d) drop-shadow(-1px -1px 0 #fff) drop-shadow(0px 5px 10px rgba(220,38,38,0.5))`
+                        ? `drop-shadow(2px 2px 0px #7f1d1d) drop-shadow(-1px -1px 0 #fff) drop-shadow(0px 5px 10px rgba(139,92,246,0.5))`
                         : `drop-shadow(2px 2px 0px #27272a) drop-shadow(-1px -1px 0 #a1a1aa) drop-shadow(0px 5px 5px rgba(0,0,0,0.8))`
                 }}
             >
@@ -383,7 +383,7 @@ const TopChartCard = ({ anime, rank, index, mobileActiveIndex, onMobileClick }: 
                 return (
                     <Link href={`/watch/${routeId}`} className={cn(
                         "block w-full h-full relative bg-[#0a0a0a] rounded-xl overflow-hidden shadow-[0_10px_30px_-5px_rgba(0,0,0,0.8)] transition-all ring-1 ring-white/10",
-                        isMobileActive ? "ring-red-500/50 shadow-[0_20px_50px_rgba(220,38,38,0.3)]" : "group-hover:ring-red-500/50 group-hover:shadow-[0_20px_50px_rgba(220,38,38,0.3)]"
+                        isMobileActive ? "ring-red-500/50 shadow-[0_20px_50px_rgba(139, 92, 246, 0.3)]" : "group-hover:ring-red-500/50 group-hover:shadow-[0_20px_50px_rgba(139, 92, 246, 0.3)]"
                     )}>
                         <div className="absolute inset-0 rounded-xl border-r border-t border-white/20 z-20 pointer-events-none" />
                         <div className="absolute inset-y-0 left-0 w-1/3 bg-gradient-to-r from-black/90 to-transparent z-20 pointer-events-none mix-blend-multiply" />
@@ -727,7 +727,21 @@ export default function SchedulePage() {
                       <AnimatePresence mode="wait">
                           {loadingSchedule ? (
                               <motion.div key="skeleton" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-                                  {[...Array(8)].map((_, i) => <div key={i} className="h-24 bg-white/5 rounded-2xl animate-pulse border border-white/5" />)}
+                                  {Array.from({ length: 8 }).map((_, i) => (
+                                    <div key={i} className="h-28 rounded-2xl bg-white/[0.03] border border-white/[0.05] p-3 flex gap-3 relative overflow-hidden">
+                                      <div className="w-16 h-full rounded-xl bg-white/[0.06] shrink-0" />
+                                      <div className="flex-1 flex flex-col justify-between py-0.5">
+                                        <div className="space-y-1.5">
+                                          <div className="h-3 w-16 bg-white/[0.08] rounded" />
+                                          <div className="h-4 w-4/5 bg-white/[0.06] rounded" />
+                                        </div>
+                                        <div className="flex items-center justify-between">
+                                          <div className="h-3.5 w-14 bg-white/[0.04] rounded-full" />
+                                          <div className="h-3.5 w-16 bg-white/[0.04] rounded-full" />
+                                        </div>
+                                      </div>
+                                    </div>
+                                  ))}
                               </motion.div>
                           ) : filteredSchedule.length > 0 ? (
                               <motion.div key={`${filterCategory}-${format(selectedDate, 'yyyy-MM-dd')}`} variants={containerVariants} initial="hidden" animate="show" className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
@@ -791,7 +805,7 @@ export default function SchedulePage() {
                           <div className="space-y-3">{dashboard ? dashboard.completed.map((a: any, i: number) => <CompactAnimeCard key={`${a.id || 'comp'}-${i}`} anime={a} rank={i+1}/>) : <div className="h-40 bg-white/5 animate-pulse rounded-xl"/>}</div>
                       </div>
                       <div className="bg-[#0a0a0a] border border-white/5 rounded-3xl p-6 shadow-xl">
-                          <div className="flex items-center gap-3 mb-6"><div className="p-2 bg-blue-900/20 rounded-lg text-blue-500"><PlusCircle size={16} /></div><h4 className={`text-lg text-white font-lemon`}>NEWLY ADDED</h4></div>
+                          <div className="flex items-center gap-3 mb-6"><div className="p-2 bg-purple-900/20 rounded-lg text-purple-400"><PlusCircle size={16} /></div><h4 className={`text-lg text-white font-lemon`}>NEWLY ADDED</h4></div>
                           <div className="space-y-3">{dashboard ? dashboard.newAdded.map((a: any, i: number) => <CompactAnimeCard key={`${a.id || 'new'}-${i}`} anime={a}/>) : <div className="h-40 bg-white/5 animate-pulse rounded-xl"/>}</div>
                       </div>
                       <div className="bg-[#0a0a0a] border border-white/5 rounded-3xl p-6 shadow-xl">

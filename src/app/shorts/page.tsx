@@ -124,27 +124,26 @@ function ShortsDiscoveryContent() {
   const curatedEnglish = useMemo(() => CURATED_ENGLISH_DRAMAS.map(toItem), []);
   const allCurated = useMemo(() => [...curatedEnglish, ...curatedHindi], [curatedEnglish, curatedHindi]);
 
-  // Featured Hero Blockbusters
+  // Featured Hero Blockbusters - derives dynamically from loaded feed with curated fallback
   const heroItems = useMemo(() => {
-    return [
-      curatedEnglish[0], // The Double Life of My Billionaire Husband (2.4M)
-      curatedHindi[2],   // The Fake Daughter & The Billionaire (1.2M)
-      curatedEnglish[2], // The Alpha's Unwanted Mate (1.9M)
-      curatedHindi[0],   // My Heart Belongs to His Bodyguard (840k)
-    ].filter(Boolean);
-  }, [curatedEnglish, curatedHindi]);
+    if (dramas.length >= 4) {
+      return dramas.slice(0, 4);
+    }
+    const combined = [...dramas, ...curatedEnglish, ...curatedHindi];
+    const seen = new Set<string>();
+    return combined.filter(item => {
+      if (!item || seen.has(item.id)) return false;
+      seen.add(item.id);
+      return true;
+    }).slice(0, 4);
+  }, [dramas, curatedEnglish, curatedHindi]);
 
-  // Curated Shelf collections
+  // Curated Shelf collections - Top 10 Leaderboard from live feed + verified curated hits
   const top10Leaderboard = useMemo(() => {
-    const list = [
-      curatedEnglish[0], // Double Life of Billionaire Husband
-      curatedHindi[2],   // Fake Daughter & Billionaire
-      curatedEnglish[2], // Alpha's Unwanted Mate
-      curatedEnglish[1], // Never Divorce Secret Heiress
-      curatedHindi[0],   // Heart Belongs to Bodyguard
-      curatedHindi[1],   // The Magician Choomantar
-      ...dramas.slice(0, 4)
-    ].filter(Boolean);
+    if (dramas.length >= 10) {
+      return dramas.slice(0, 10);
+    }
+    const list = [...dramas, ...curatedEnglish, ...curatedHindi].filter(Boolean);
 
     // Deduplicate by ID
     const seen = new Set<string>();
@@ -153,7 +152,7 @@ function ShortsDiscoveryContent() {
       seen.add(item.id);
       return true;
     }).slice(0, 10);
-  }, [curatedEnglish, curatedHindi, dramas]);
+  }, [dramas, curatedEnglish, curatedHindi]);
 
   const ceoCollection = useMemo(() => {
     return allCurated.filter(d => 
@@ -395,7 +394,7 @@ function ShortsDiscoveryContent() {
               {searchQuery ? (
                 <>
                   <span>Search Results for</span>
-                  <span className="text-sky-400">"{searchQuery}"</span>
+                  <span className="text-primary-300">"{searchQuery}"</span>
                 </>
               ) : activeTab === 'saved' ? (
                 <>

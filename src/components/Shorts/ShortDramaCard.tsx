@@ -2,7 +2,7 @@
 
 import React, { useState, useMemo } from 'react';
 import Link from 'next/link';
-import { Play, Star, Bookmark, MoreVertical, Share2, Check, Eye } from 'lucide-react';
+import { Play, Star, Bookmark, Film, MoreVertical, Share2, Check, Eye } from 'lucide-react';
 import { ShortDramaItem } from '@/lib/shorts/types';
 import { cn } from '@/lib/utils';
 
@@ -101,13 +101,29 @@ export default function ShortDramaCard({
           {/* 9:16 Portrait Thumbnail with Clean Rounded Styling */}
           <div className="relative aspect-[9/16] flex-1 min-w-0 overflow-hidden rounded-2xl bg-[#141414] border border-white/5 shadow-md shadow-black/50 transition-all duration-300 group-hover:border-white/20 group-hover:shadow-2xl group-hover:shadow-black/80">
             {/* Poster Image with smooth hover scale */}
-            <img
-              src={coverUrl}
-              alt={drama.title}
-              onError={() => setImgError(true)}
-              className="h-full w-full object-cover object-center transition-transform duration-500 ease-out group-hover:scale-[1.04] filter brightness-95 group-hover:brightness-105"
-              loading={priority ? 'eager' : 'lazy'}
-            />
+            {!imgError && drama.cover ? (
+              <img
+                src={drama.cover}
+                alt={drama.title}
+                referrerPolicy="no-referrer"
+                crossOrigin="anonymous"
+                onError={() => setImgError(true)}
+                className="h-full w-full object-cover object-center transition-transform duration-500 ease-out group-hover:scale-[1.04] filter brightness-95 group-hover:brightness-105"
+                loading={priority ? 'eager' : 'lazy'}
+              />
+            ) : (
+              <div className="h-full w-full bg-gradient-to-br from-zinc-900 via-purple-950/20 to-zinc-950 flex flex-col items-center justify-center p-4 text-center">
+                <div className="w-10 h-10 rounded-full bg-white/5 border border-white/10 flex items-center justify-center mb-2">
+                  <Film className="w-5 h-5 text-zinc-400" />
+                </div>
+                <span className="text-xs font-semibold text-zinc-300 line-clamp-2 px-1">
+                  {drama.title}
+                </span>
+                <span className="text-[10px] text-zinc-500 mt-1 uppercase tracking-wider">
+                  {drama.language || 'Shorts'}
+                </span>
+              </div>
+            )}
 
             {/* Ambient Dark Gradient Vignette */}
             <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/25 via-45% to-transparent pointer-events-none" />

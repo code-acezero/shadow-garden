@@ -22,7 +22,7 @@ declare global {
   }
 }
 
-const supportsFsAccess = () => typeof window !== 'undefined' && !!window.showSaveFilePicker;
+const supportsFsAccess = () => typeof window !== 'undefined' && typeof window.showSaveFilePicker === 'function';
 
 export function useDownloadEngine() {
   const [items, setItems] = useState<Record<string, DownloadItem>>({});
@@ -33,6 +33,26 @@ export function useDownloadEngine() {
   }, []);
 
   const start = useCallback(async (opts: { id: string; label: string; filename: string; url: string }) => {
+    // 1. Immediately request file handle synchronously while the user gesture is active!
+    let fileHandle: any = null;
+    let writable: any = null;
+
+    if (supportsFsAccess()) {
+      try {
+        fileHandle = await window.showSaveFilePicker!({ suggestedName: opts.filename });
+        if (fileHandle) {
+          writable = await fileHandle.createWritable();
+        }
+      } catch (pickerErr: any) {
+        if (pickerErr?.name === 'AbortError') {
+          // User deliberately cancelled the file picker dialog
+          return;
+        }
+        fileHandle = null;
+        writable = null;
+      }
+    }
+
     const controller = new AbortController();
     controllers.current[opts.id] = controller;
 
@@ -59,19 +79,6 @@ export function useDownloadEngine() {
       update(opts.id, { totalBytes });
 
       const reader = res.body.getReader();
-
-      // Prefer streaming straight to disk so multi-GB files never sit in memory.
-      let fileHandle: any = null;
-      let writable: any = null;
-      if (supportsFsAccess()) {
-        try {
-          fileHandle = await window.showSaveFilePicker!({ suggestedName: opts.filename });
-          writable = await fileHandle.createWritable();
-        } catch {
-          // user cancelled the save dialog, or API unsupported at runtime -> fall back to blob
-          fileHandle = null;
-        }
-      }
       const chunks: Uint8Array[] = [];
 
       let received = 0;
@@ -110,11 +117,14 @@ export function useDownloadEngine() {
         document.body.appendChild(a);
         a.click();
         a.remove();
-        setTimeout(() => URL.revokeObjectURL(blobUrl), 5000);
+        setTimeout(() => URL.revokeObjectURL(blobUrl), 10000);
       }
 
       update(opts.id, { status: 'done', receivedBytes: received, speedBps: 0 });
     } catch (err: any) {
+      if (writable) {
+        try { await writable.abort(); } catch {}
+      }
       if (err?.name === 'AbortError') {
         update(opts.id, { status: 'cancelled' });
       } else {

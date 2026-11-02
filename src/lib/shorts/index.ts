@@ -110,7 +110,10 @@ export async function getShortDramaFeed(
           firstEpisodeStream: d.episodes[0]?.streamUrl
         }));
 
-      const verticalRes = await getVerticalDramas(page);
+      const [verticalRes, maccmsCeo] = await Promise.all([
+        getVerticalDramas(page),
+        searchMacCMS('总裁', page)
+      ]);
       const ceoVertical = verticalRes.items.filter(d => 
         d.tags.some(t => {
           const l = t.toLowerCase();
@@ -118,7 +121,7 @@ export async function getShortDramaFeed(
         })
       );
 
-      const items = page === 1 ? [...curatedCeo, ...ceoVertical] : ceoVertical;
+      const items = page === 1 ? [...curatedCeo, ...ceoVertical, ...maccmsCeo] : [...ceoVertical, ...maccmsCeo];
 
       return {
         items,
@@ -188,15 +191,70 @@ export async function getShortDramaFeed(
   }
 }
 
+export const LEGACY_ID_MAP: Record<string, string> = {
+  // Legacy English Mock IDs -> Real Verified MacCMS IDs
+  'eng_billionaire_husband': 'ffzy_100074',
+  'eng_never_divorce_heiress': 'ffzy_96864',
+  'eng_alphas_unwanted_mate': 'ffzy_99344',
+  'eng_contract_marriage_ceo': 'ffzy_94684',
+  // Legacy Hindi Mock IDs -> Real Verified MacCMS IDs
+  'hindi_billionaire_bodyguard': 'ffzy_97406',
+  'hindi_choomantar': 'ffzy_99068',
+  'hindi_fake_daughter_billionaire': 'ffzy_99079',
+  'hindi_revenge_twin_sister': 'ffzy_99077',
+  // Legacy Vertical IDs -> Real Verified MacCMS IDs
+  'vd_3289': 'ffzy_96864',
+  'vd_boss_obey': 'ffzy_100074',
+  'vd_teleport_bed': 'ffzy_99079',
+  'vd_son_girlfriend': 'ffzy_99077',
+  'vd_waiter_tycoon': 'ffzy_94684',
+  'vd_secret_billionaire': 'ffzy_96864',
+  'vd_scholarship_rat': 'ffzy_99068',
+  'vd_claimed_godfather': 'ffzy_99344'
+};
+
 /**
  * Resolves full drama detail and all unlocked episode streams across all integrated sources
  */
 export async function getShortDramaById(id: string): Promise<ShortDramaDetail | null> {
-  // 1. Check curated collections first
-  const curatedMatch = [...CURATED_HINDI_DRAMAS, ...CURATED_ENGLISH_DRAMAS].find(d => d.id === id);
+  const targetId = LEGACY_ID_MAP[id] || id;
+
+  // 1. If target ID is a MacCMS drama (ffzy_, bfzy_, ikun_, wujin_), fetch live details first
+  // so the player gets the full uncompressed episode list (40-120+ episodes) with verified HLS streams
+  if (targetId.startsWith('ffzy_') || targetId.startsWith('bfzy_') || targetId.startsWith('ikun_') || targetId.startsWith('wujin_')) {
+    const maccmsDetail = await getMacCMSDetail(targetId);
+    if (maccmsDetail) {
+      const isHindi = id.includes('hindi') || targetId === 'ffzy_97406' || targetId === 'ffzy_99068' || targetId === 'ffzy_99079' || targetId === 'ffzy_99077';
+      if (isHindi) {
+        maccmsDetail.language = 'Hindi Dub';
+        if (!maccmsDetail.title.includes('Hindi Dub')) {
+          maccmsDetail.title = `${maccmsDetail.title} (Hindi Dub)`;
+        }
+      }
+      maccmsDetail.recommendations = [
+        ...CURATED_HINDI_DRAMAS.slice(0, 3),
+        ...CURATED_ENGLISH_DRAMAS.slice(0, 3)
+      ].map(d => ({
+        id: d.id,
+        source: d.source,
+        title: d.title,
+        cover: d.cover,
+        description: d.description,
+        totalEpisodes: d.totalEpisodes,
+        language: d.language,
+        tags: d.tags,
+        status: d.status,
+        isUnlocked: true
+      }));
+      return maccmsDetail;
+    }
+  }
+
+  // 2. Check curated collections
+  const curatedMatch = [...CURATED_HINDI_DRAMAS, ...CURATED_ENGLISH_DRAMAS].find(d => d.id === targetId || d.id === id);
   if (curatedMatch) {
     const recommendations = [...CURATED_ENGLISH_DRAMAS, ...CURATED_HINDI_DRAMAS]
-      .filter(d => d.id !== id)
+      .filter(d => d.id !== curatedMatch.id)
       .slice(0, 6)
       .map(d => ({
         id: d.id,
@@ -223,9 +281,9 @@ export async function getShortDramaById(id: string): Promise<ShortDramaDetail | 
     };
   }
 
-  // 2. Check Vertical Drama Network (vd_ prefix)
-  if (id.startsWith('vd_')) {
-    const vdDetail = await getVerticalDramaDetail(id);
+  // 3. Check Vertical Drama Network (vd_ prefix)
+  if (targetId.startsWith('vd_')) {
+    const vdDetail = await getVerticalDramaDetail(targetId);
     if (vdDetail) {
       vdDetail.recommendations = [...CURATED_ENGLISH_DRAMAS.slice(0, 4)].map(d => ({
         id: d.id,
@@ -241,27 +299,6 @@ export async function getShortDramaById(id: string): Promise<ShortDramaDetail | 
       }));
       return vdDetail;
     }
-  }
-
-  // 3. Query MacCMS provider (ffzy_, bfzy_, ikun_, wujin_)
-  const maccmsDetail = await getMacCMSDetail(id);
-  if (maccmsDetail) {
-    maccmsDetail.recommendations = [
-      ...CURATED_HINDI_DRAMAS.slice(0, 3),
-      ...CURATED_ENGLISH_DRAMAS.slice(0, 3)
-    ].map(d => ({
-      id: d.id,
-      source: d.source,
-      title: d.title,
-      cover: d.cover,
-      description: d.description,
-      totalEpisodes: d.totalEpisodes,
-      language: d.language,
-      tags: d.tags,
-      status: d.status,
-      isUnlocked: true
-    }));
-    return maccmsDetail;
   }
 
   return null;

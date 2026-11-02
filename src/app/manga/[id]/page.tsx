@@ -17,6 +17,7 @@ import { getLanguageMeta } from '@/lib/translator';
 import { cn } from '@/lib/utils';
 import { useUserData } from '@/context/UserDataContext';
 import { playTapSound } from '@/lib/audioManager';
+import { MangaDetailsSkeleton } from '@/components/UIx/SkeletonLoaders';
 
 const READLIST_STATUSES = [
   { id: 'reading', label: 'Reading', color: 'text-violet-400', bg: 'bg-violet-500/20', icon: <BookOpen size={14} className="text-violet-400" /> },
@@ -35,6 +36,7 @@ export default function MangaDetailsPage() {
 
   const [item, setItem] = useState<ReadingItem | null>(null);
   const [chapters, setChapters] = useState<ReadingChapter[]>([]);
+  const [chaptersCache, setChaptersCache] = useState<Record<string, ReadingChapter[]>>({});
   const [selectedLang, setSelectedLang] = useState<string>('en');
   const [searchChapter, setSearchChapter] = useState('');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
@@ -135,19 +137,27 @@ export default function MangaDetailsPage() {
     return () => { isSubscribed = false; };
   }, [id]);
 
-  // Fetch All Readable Chapters
+  // Fetch Readable Chapters tailored for selected language and sort order
   useEffect(() => {
     if (!id) return;
     let isSubscribed = true;
 
     async function loadChapters() {
+      const cacheKey = `${selectedLang}_${sortOrder}`;
+      if (chaptersCache[cacheKey]) {
+        setChapters(chaptersCache[cacheKey]);
+        return;
+      }
+
       setLoadingChapters(true);
       try {
-        const res = await fetch(`/api/manga/chapters?id=${encodeURIComponent(id)}&order=${sortOrder}`);
+        const langParam = selectedLang ? `&lang=${encodeURIComponent(selectedLang)}` : '';
+        const res = await fetch(`/api/manga/chapters?id=${encodeURIComponent(id)}&order=${sortOrder}${langParam}`);
         if (res.ok) {
           const json = await res.json();
           if (isSubscribed && json.data) {
             setChapters(json.data);
+            setChaptersCache(prev => ({ ...prev, [cacheKey]: json.data }));
           }
         }
       } catch (err) {
@@ -159,20 +169,26 @@ export default function MangaDetailsPage() {
 
     loadChapters();
     return () => { isSubscribed = false; };
-  }, [id, sortOrder]);
+  }, [id, sortOrder, selectedLang]);
 
   const isNovel = item?.isNovel || item?.type === 'light_novel' || item?.type === 'web_novel';
 
-  // Compute languages that actually have loaded chapters
+  // Compute languages available from manga metadata & loaded chapters
   const loadedLanguages = useMemo(() => {
     if (isNovel) {
       return ['en', 'hi', 'bn', 'es', 'fr', 'ja'];
     }
 
     const set = new Set<string>();
+    if (item?.availableLanguages && Array.isArray(item.availableLanguages)) {
+      item.availableLanguages.forEach(l => {
+        if (l) set.add(l.toLowerCase());
+      });
+    }
     for (const c of chapters) {
       if (c.language) set.add(c.language.toLowerCase());
     }
+    set.add('en');
 
     return Array.from(set).sort((a, b) => {
       if (a === 'en') return -1;
@@ -183,7 +199,7 @@ export default function MangaDetailsPage() {
       if (b === 'bn') return 1;
       return a.localeCompare(b);
     });
-  }, [chapters, isNovel]);
+  }, [chapters, isNovel, item?.availableLanguages]);
 
   // Auto-select valid language if selectedLang has no chapters
   useEffect(() => {
@@ -203,14 +219,23 @@ export default function MangaDetailsPage() {
       const l = (c.language || 'en').toLowerCase();
       counts[l] = (counts[l] || 0) + 1;
     }
+    if (item?.availableLanguages) {
+      item.availableLanguages.forEach(l => {
+        const key = l.toLowerCase();
+        if (!counts[key]) counts[key] = counts[selectedLang] || chapters.length || 1;
+      });
+    }
     return counts;
-  }, [chapters]);
+  }, [chapters, item?.availableLanguages, selectedLang]);
 
   // Filter Chapters for currently selected language & search query
   const filteredChapters = useMemo(() => {
     let list = isNovel 
       ? chapters 
-      : chapters.filter(c => (c.language || 'en').toLowerCase() === selectedLang.toLowerCase());
+      : chapters.filter(c => 
+          (c.language || 'en').toLowerCase() === selectedLang.toLowerCase() || 
+          chapters.every(ch => (ch.language || 'en').toLowerCase() === selectedLang.toLowerCase())
+        );
 
     if (searchChapter.trim()) {
       const q = searchChapter.toLowerCase().trim();
@@ -222,15 +247,7 @@ export default function MangaDetailsPage() {
   }, [chapters, selectedLang, searchChapter, isNovel]);
 
   if (loading) {
-    return (
-      <MobileContainer hasBottomNav className="bg-[#050505] min-h-screen">
-        <div className="p-4 md:p-8 animate-pulse flex flex-col gap-6">
-          <div className="h-8 w-24 bg-white/5 rounded-full" />
-          <div className="h-64 bg-white/5 rounded-3xl" />
-          <div className="h-96 bg-white/5 rounded-3xl" />
-        </div>
-      </MobileContainer>
-    );
+    return <MangaDetailsSkeleton />;
   }
 
   if (!item) {

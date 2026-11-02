@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect, memo, Suspense } from 'react';
-import { usePathname } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import Link from 'next/link';
 
 import { Home, User, Heart, MessageCircle, Search, Compass, Settings, Bell, Clapperboard, Flame, Film, Calendar, Scroll, BookOpen } from 'lucide-react';
@@ -10,12 +10,17 @@ import WhisperIsland from '@/components/UIx/WhisperIsland';
 import AuthModal from '@/components/Auth/AuthModal';
 import MobileTabBar from './MobileTabBar';
 import { playGummyTap } from '@/lib/audioManager';
+import { useSettings } from '@/hooks/useSettings';
+import { cn } from '@/lib/utils';
 
 // Memoized Island to prevent re-renders when Nav state changes
 const MemoizedWhisperIsland = memo(WhisperIsland);
 
 export default function Navigation() {
   const pathname = usePathname();
+  const router = useRouter();
+  const { settings } = useSettings();
+  const isLight = settings.themeMode === 'light';
   
   // Optimistic pending tab for instantaneous switch without waiting for route completion
   const [pendingTab, setPendingTab] = useState<string | null>(null);
@@ -66,7 +71,7 @@ export default function Navigation() {
   }, []);
 
   const isReader = pathname?.startsWith('/manga/read') || pathname?.startsWith('/novel/read');
-  if (pathname === '/' || pathname?.startsWith('/master') || isReader) return null;
+  if (pathname === '/' || pathname?.startsWith('/master') || pathname?.startsWith('/admin') || pathname?.startsWith('/manager') || isReader) return null;
 
   const navItems = [
     { id: 'home', icon: Home, label: 'Home', path: '/home' },
@@ -83,13 +88,16 @@ export default function Navigation() {
   return (
     <>
       <div className={isShortsWatch ? "hidden lg:block" : ""}>
-        <Suspense fallback={null}>
-          <MemoizedWhisperIsland />
-        </Suspense>
+        <MemoizedWhisperIsland />
       </div>
 
       <nav className="hidden md:block fixed bottom-4 left-1/2 transform -translate-x-1/2 z-[99999] w-auto pointer-events-auto">
-        <div className="relative bg-[#0c1322]/95 border border-white/[0.12] rounded-full shadow-[0_18px_50px_rgba(0,0,0,0.85),inset_0_1px_1px_rgba(255,255,255,0.15)] px-3 py-2 backdrop-blur-xl">
+        <div className={cn(
+          "relative rounded-full px-3 py-2 backdrop-blur-xl transition-colors",
+          isLight
+            ? "bg-white/95 border border-black/10 shadow-[0_18px_50px_rgba(0,0,0,0.1),inset_0_1px_1px_rgba(255,255,255,0.9)]"
+            : "bg-[#0c1322]/95 border border-white/[0.12] shadow-[0_18px_50px_rgba(0,0,0,0.85),inset_0_1px_1px_rgba(255,255,255,0.15)]"
+        )}>
           <LayoutGroup id="desktop-bottom-nav">
             <div className="flex items-center gap-1.5">
               {navItems.map((item) => {
@@ -112,8 +120,14 @@ export default function Navigation() {
                     key={item.id} 
                     href={item.path} 
                     prefetch={true} 
+                    onPointerEnter={() => {
+                      try { router.prefetch(item.path); } catch (_) {}
+                    }}
+                    onTouchStart={() => {
+                      try { router.prefetch(item.path); } catch (_) {}
+                    }}
                     onClick={() => {
-                      playGummyTap();
+                      setTimeout(playGummyTap, 0);
                       setPendingTab(item.path);
                     }} 
                     className="relative group select-none"
@@ -129,16 +143,21 @@ export default function Navigation() {
                         scale: 0.88, 
                         transition: { type: "spring", stiffness: 600, damping: 18 } 
                       }}
-                      className={`relative isolate flex items-center justify-center h-10 rounded-full select-none ${
-                        isActive ? 'text-white font-bold px-4' : 'text-zinc-400 hover:text-white px-3'
-                      }`}
+                      className={cn(
+                        "relative isolate flex items-center justify-center h-10 rounded-full select-none transition-colors",
+                        isActive 
+                          ? "text-white font-bold px-4" 
+                          : isLight 
+                          ? "text-zinc-600 hover:text-zinc-950 px-3" 
+                          : "text-zinc-400 hover:text-white px-3"
+                      )}
                     >
                       {/* Active Pill - ISOLATED at z-0 so it NEVER slips behind navbar background */}
                       {isActive && (
                         <motion.div 
                           layoutId="desktop-nav-active-pill"
                           transition={{ type: "spring", stiffness: 400, damping: 30, mass: 0.8 }}
-                          className="absolute inset-0 bg-primary-600 rounded-full shadow-[0_2px_14px_rgba(0,0,0,0.4)] z-0 pointer-events-none" 
+                          className="absolute inset-0 bg-primary rounded-full shadow-[0_2px_14px_rgba(0,0,0,0.3)] z-0 pointer-events-none" 
                         />
                       )}
                       

@@ -53,8 +53,11 @@ export async function fetchWithCustomReferer(url: string, refererUrl?: string, r
   if (!url) throw new Error("URL is required");
   
   try {
+    const isMangaDex = url.includes('mangadex.org') || (refererUrl && refererUrl.includes('mangadex.org'));
     const headers: Record<string, string> = {
-      "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+      "User-Agent": isMangaDex
+        ? "Kagemi/4.0"
+        : "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
       "Accept": "*/*",
       "Accept-Language": "en-US,en;q=0.9",
       "Connection": "keep-alive",
@@ -63,7 +66,9 @@ export async function fetchWithCustomReferer(url: string, refererUrl?: string, r
       try {
         const urlObj = new URL(refererUrl);
         headers["Referer"] = refererUrl;
-        headers["Origin"] = urlObj.origin;
+        if (!isMangaDex) {
+          headers["Origin"] = urlObj.origin;
+        }
       } catch {}
     }
     if (range) headers["Range"] = range;

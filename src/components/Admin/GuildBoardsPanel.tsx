@@ -2,8 +2,9 @@
 
 import React, { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabase';
+import { executeAdminAction } from '@/lib/adminApi';
 import { 
-  Megaphone, Plus, Sparkles, Layers, Eye, Smartphone, Monitor, 
+  Megaphone, Plus, Layers, Eye, Smartphone, Monitor, 
   Clock, Calendar, Trash2, Edit3, CheckCircle2, XCircle, Link2, 
   Upload, Sliders, Play, X, Shield, RefreshCw
 } from 'lucide-react';
@@ -13,6 +14,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Switch } from '@/components/ui/switch';
 import { Badge } from '@/components/ui/badge';
 import { toast } from '@/lib/toast';
+import { useAdminSave } from './AdminSaveContext';
 
 export interface GuildBoardPopup {
   id: string;
@@ -95,7 +97,7 @@ export default function GuildBoardsPanel() {
     }
 
     const newPopup: GuildBoardPopup = {
-      id: form.id || `popup_${Date.now()}`,
+      id: form.id || (typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : `00000000-0000-4000-8000-${Date.now().toString().padStart(12, '0').slice(-12)}`),
       title: form.title || 'Guild Notice',
       subtitle: form.subtitle || '',
       content: form.content || '',
@@ -123,10 +125,15 @@ export default function GuildBoardsPanel() {
     setPopups(updatedList);
     localStorage.setItem('shadow_guild_boards', JSON.stringify(updatedList));
 
-    // Try sync with Supabase
+    // Sync with Supabase via secure backend admin API
     try {
-      await supabase.from('guild_boards').upsert(newPopup);
-    } catch (e) {}
+      const saved = await executeAdminAction('save_guild_board', { popup: newPopup });
+      if (saved?.id) {
+        newPopup.id = saved.id;
+      }
+    } catch (e: any) {
+      console.warn('Backend save_guild_board error:', e);
+    }
 
     toast.success(form.id ? 'Popup updated successfully!' : 'Guild Board Popup created!');
     setIsCreating(false);
@@ -140,8 +147,10 @@ export default function GuildBoardsPanel() {
     setPopups(updated);
     localStorage.setItem('shadow_guild_boards', JSON.stringify(updated));
     try {
-      await supabase.from('guild_boards').update({ is_active: !popup.is_active }).eq('id', popup.id);
-    } catch (e) {}
+      await executeAdminAction('save_guild_board', { popup: { ...popup, is_active: !popup.is_active } });
+    } catch (e: any) {
+      console.warn('Backend toggle error:', e);
+    }
     toast.success(`Popup ${!popup.is_active ? 'Activated' : 'Deactivated'}`);
   };
 
@@ -151,34 +160,41 @@ export default function GuildBoardsPanel() {
     setPopups(updated);
     localStorage.setItem('shadow_guild_boards', JSON.stringify(updated));
     try {
-      await supabase.from('guild_boards').delete().eq('id', id);
-    } catch (e) {}
+      await executeAdminAction('delete_guild_board', { id });
+    } catch (e: any) {
+      console.warn('Backend delete error:', e);
+    }
     toast.success('Popup deleted');
+  };
+
+  // Instant Screen Test
+  const handleTestLive = (target?: Partial<GuildBoardPopup>) => {
+    const payload = target || form;
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('shadow_trigger_test_popup', { detail: payload }));
+      toast.success('Live preview triggered on screen!');
+    }
   };
 
   return (
     <div className="space-y-8 font-sans pb-12">
       
       {/* --- HEADER BANNER --- */}
-      <div className="relative p-6 sm:p-8 rounded-3xl bg-gradient-to-r from-fuchsia-950/40 via-[#0c0a18]/80 to-black border border-fuchsia-500/30 backdrop-blur-2xl shadow-[0_15px_45px_rgba(0,0,0,0.8)] overflow-hidden">
-        <div className="absolute top-0 right-0 w-96 h-96 bg-fuchsia-600/10 blur-[100px] pointer-events-none" />
-        
+      <div className="relative p-5 sm:p-6 rounded-2xl bg-[#0c0d14]/70 border border-white/[0.08] backdrop-blur-xl shadow-lg overflow-hidden">
         <div className="relative z-10 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
           <div>
-            <div className="flex items-center gap-2.5 mb-2">
-              <div className="p-2 rounded-2xl bg-fuchsia-500/20 border border-fuchsia-500/40 text-fuchsia-400">
-                <Megaphone size={22} />
-              </div>
-              <h2 className="text-xl sm:text-3xl font-black text-white tracking-wider">Guild Boards & Popups Engine</h2>
+            <div className="flex items-center gap-3 mb-1">
+              <Megaphone className="w-6 h-6 text-primary-400 shrink-0" strokeWidth={2.2} />
+              <h2 className="text-base sm:text-lg font-bold text-white tracking-wide">Guild Boards &amp; Announcement Engine</h2>
             </div>
             <p className="text-xs text-zinc-400 max-w-xl leading-relaxed">
-              Design, configure, and deploy interactive modal popups, floating banners, and announcement toasts across specific pages with live device preview.
+              Design modal popups, ambient banners, and notices across the site.
             </p>
           </div>
 
-          <div className="flex items-center gap-3">
-            <Button onClick={fetchPopups} variant="ghost" className="h-11 w-11 p-0 text-zinc-400 hover:text-white bg-black/40 border border-white/10 rounded-2xl">
-              <RefreshCw size={16} className={loading ? 'animate-spin' : ''} />
+          <div className="flex items-center gap-2.5">
+            <Button onClick={fetchPopups} variant="ghost" className="h-9 w-9 p-0 text-zinc-400 hover:text-white bg-white/[0.04] border border-white/[0.08] rounded-xl" title="Refresh">
+              <RefreshCw size={14} className={loading ? 'animate-spin' : ''} />
             </Button>
 
             <Button 
@@ -187,9 +203,9 @@ export default function GuildBoardsPanel() {
                 setEditingPopup(null);
                 setIsCreating(true);
               }} 
-              className="h-11 px-6 text-xs font-black bg-fuchsia-600 hover:bg-fuchsia-500 text-white rounded-2xl flex items-center gap-2 shadow-[0_0_25px_rgba(192,38,211,0.4)] transition-all hover:scale-105"
+              className="h-9 px-4 text-xs font-bold bg-white hover:bg-zinc-200 text-black rounded-xl flex items-center gap-2 shadow-sm transition-all"
             >
-              <Plus size={16} /> New Guild Board Popup
+              <Plus size={14} /> New Notice
             </Button>
           </div>
         </div>
@@ -200,7 +216,7 @@ export default function GuildBoardsPanel() {
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 animate-in fade-in slide-in-from-top-4 duration-300">
           
           {/* LEFT: FORM CONTROLS (7 COLS) */}
-          <div className="lg:col-span-7 space-y-6 bg-zinc-900/40 border border-white/10 p-6 sm:p-8 rounded-3xl backdrop-blur-2xl shadow-2xl">
+          <div className="lg:col-span-7 space-y-6 bg-zinc-900/40 border border-white/10 p-6 sm:p-8 rounded-xl backdrop-blur-2xl shadow-2xl">
             <div className="flex items-center justify-between border-b border-white/10 pb-4">
               <h3 className="text-base font-black text-white flex items-center gap-2">
                 <Sliders size={18} className="text-fuchsia-400" /> 
@@ -222,7 +238,7 @@ export default function GuildBoardsPanel() {
                   value={form.title || ''}
                   onChange={(e) => setForm({ ...form, title: e.target.value })}
                   placeholder="e.g. Tournament Announcement..."
-                  className="bg-black/70 border-white/15 text-white h-11 text-xs rounded-2xl"
+                  className="bg-black/70 border-white/15 text-white h-11 text-xs rounded-xl"
                 />
               </div>
 
@@ -232,7 +248,7 @@ export default function GuildBoardsPanel() {
                   value={form.subtitle || ''}
                   onChange={(e) => setForm({ ...form, subtitle: e.target.value })}
                   placeholder="e.g. Join the Seven Shadows Grand Battle"
-                  className="bg-black/70 border-white/15 text-white h-11 text-xs rounded-2xl"
+                  className="bg-black/70 border-white/15 text-white h-11 text-xs rounded-xl"
                 />
               </div>
 
@@ -242,7 +258,7 @@ export default function GuildBoardsPanel() {
                   value={form.content || ''}
                   onChange={(e) => setForm({ ...form, content: e.target.value })}
                   placeholder="Enter main announcement message..."
-                  className="bg-black/70 border-white/15 text-white min-h-[90px] text-xs rounded-2xl"
+                  className="bg-black/70 border-white/15 text-white min-h-[90px] text-xs rounded-xl"
                 />
               </div>
             </div>
@@ -255,7 +271,7 @@ export default function GuildBoardsPanel() {
                   value={form.image_url || ''}
                   onChange={(e) => setForm({ ...form, image_url: e.target.value })}
                   placeholder="https://..."
-                  className="bg-black/70 border-white/15 text-white h-11 text-xs rounded-2xl"
+                  className="bg-black/70 border-white/15 text-white h-11 text-xs rounded-xl"
                 />
               </div>
 
@@ -265,7 +281,7 @@ export default function GuildBoardsPanel() {
                   value={form.button_text || ''}
                   onChange={(e) => setForm({ ...form, button_text: e.target.value })}
                   placeholder="e.g. Claim Reward"
-                  className="bg-black/70 border-white/15 text-white h-11 text-xs rounded-2xl"
+                  className="bg-black/70 border-white/15 text-white h-11 text-xs rounded-xl"
                 />
               </div>
 
@@ -275,7 +291,7 @@ export default function GuildBoardsPanel() {
                   value={form.button_url || ''}
                   onChange={(e) => setForm({ ...form, button_url: e.target.value })}
                   placeholder="e.g. /social or https://discord.gg/..."
-                  className="bg-black/70 border-white/15 text-white h-11 text-xs rounded-2xl"
+                  className="bg-black/70 border-white/15 text-white h-11 text-xs rounded-xl"
                 />
               </div>
             </div>
@@ -287,7 +303,7 @@ export default function GuildBoardsPanel() {
                 <select
                   value={form.target_page || 'all'}
                   onChange={(e) => setForm({ ...form, target_page: e.target.value })}
-                  className="w-full bg-black/80 border border-white/15 text-white h-11 px-3 text-xs rounded-2xl cursor-pointer"
+                  className="w-full bg-black/80 border border-white/15 text-white h-11 px-3 text-xs rounded-xl cursor-pointer"
                 >
                   <option value="all">All Pages (Global)</option>
                   <option value="/">Home Landing Page (/)</option>
@@ -302,7 +318,7 @@ export default function GuildBoardsPanel() {
                 <select
                   value={form.trigger_type || 'delay'}
                   onChange={(e) => setForm({ ...form, trigger_type: e.target.value as any })}
-                  className="w-full bg-black/80 border border-white/15 text-white h-11 px-3 text-xs rounded-2xl cursor-pointer"
+                  className="w-full bg-black/80 border border-white/15 text-white h-11 px-3 text-xs rounded-xl cursor-pointer"
                 >
                   <option value="on_load">Instant On Page Load</option>
                   <option value="delay">Time Delay (Seconds)</option>
@@ -316,7 +332,7 @@ export default function GuildBoardsPanel() {
                 <select
                   value={form.placement || 'center_modal'}
                   onChange={(e) => setForm({ ...form, placement: e.target.value as any })}
-                  className="w-full bg-black/80 border border-white/15 text-white h-11 px-3 text-xs rounded-2xl cursor-pointer"
+                  className="w-full bg-black/80 border border-white/15 text-white h-11 px-3 text-xs rounded-xl cursor-pointer"
                 >
                   <option value="center_modal">Center Glass Modal</option>
                   <option value="top_banner">Top Ambient Banner</option>
@@ -345,7 +361,7 @@ export default function GuildBoardsPanel() {
                   max={100}
                   value={form.max_display_count || 3}
                   onChange={(e) => setForm({ ...form, max_display_count: Number(e.target.value) })}
-                  className="bg-black/70 border-white/15 text-white h-11 text-xs rounded-2xl"
+                  className="bg-black/70 border-white/15 text-white h-11 text-xs rounded-xl"
                 />
               </div>
 
@@ -357,7 +373,7 @@ export default function GuildBoardsPanel() {
                   max={120}
                   value={form.duration_seconds || 15}
                   onChange={(e) => setForm({ ...form, duration_seconds: Number(e.target.value) })}
-                  className="bg-black/70 border-white/15 text-white h-11 text-xs rounded-2xl"
+                  className="bg-black/70 border-white/15 text-white h-11 text-xs rounded-xl"
                 />
               </div>
             </div>
@@ -371,22 +387,31 @@ export default function GuildBoardsPanel() {
                 <span className="text-xs font-bold text-white">Active Immediately</span>
               </div>
 
-              <div className="flex items-center gap-3">
+              <div className="flex items-center gap-2.5">
                 <Button 
                   type="button" 
                   variant="ghost" 
                   onClick={() => { setIsCreating(false); setEditingPopup(null); }}
-                  className="text-xs font-bold text-zinc-400 hover:text-white"
+                  className="text-xs font-medium text-zinc-400 hover:text-white"
                 >
                   Cancel
                 </Button>
 
                 <Button 
                   type="button" 
-                  onClick={handleSavePopup}
-                  className="text-xs font-black bg-fuchsia-600 hover:bg-fuchsia-500 text-white px-6 h-11 rounded-2xl shadow-lg shadow-fuchsia-600/30"
+                  variant="outline" 
+                  onClick={() => handleTestLive(form)}
+                  className="text-xs font-bold border-white/10 text-zinc-200 hover:text-white bg-white/[0.04] px-4 h-10 rounded-xl flex items-center gap-1.5 transition-colors cursor-pointer"
                 >
-                  Save Guild Board
+                  <Play size={13} className="text-zinc-300" /> Test on Screen
+                </Button>
+
+                <Button 
+                  type="button" 
+                  onClick={handleSavePopup}
+                  className="text-xs font-bold bg-white hover:bg-zinc-200 text-black px-5 h-10 rounded-xl shadow-md transition-all cursor-pointer"
+                >
+                  Save Announcement
                 </Button>
               </div>
             </div>
@@ -394,7 +419,7 @@ export default function GuildBoardsPanel() {
 
           {/* RIGHT: REALTIME DUAL DEVICE PREVIEW (5 COLS) */}
           <div className="lg:col-span-5 space-y-4">
-            <div className="bg-zinc-900/40 border border-white/10 p-6 rounded-3xl backdrop-blur-2xl shadow-2xl space-y-4 sticky top-6">
+            <div className="bg-zinc-900/40 border border-white/10 p-6 rounded-xl backdrop-blur-2xl shadow-2xl space-y-4 sticky top-6">
               
               <div className="flex items-center justify-between border-b border-white/10 pb-3">
                 <div className="flex items-center gap-2">
@@ -423,15 +448,15 @@ export default function GuildBoardsPanel() {
               </div>
 
               {/* LIVE DEVICE CANVAS */}
-              <div className="relative bg-[#050509] border border-white/10 rounded-3xl p-4 min-h-[420px] flex items-center justify-center overflow-hidden">
+              <div className="relative bg-[#050509] border border-white/10 rounded-xl p-4 min-h-[420px] flex items-center justify-center overflow-hidden">
                 <div className="absolute inset-0 bg-gradient-to-br from-fuchsia-950/20 via-black to-zinc-950 opacity-80 pointer-events-none" />
 
                 {/* DESKTOP PREVIEW */}
                 {previewDevice === 'desktop' ? (
                   <div className="relative w-full max-w-sm z-10 transition-all duration-300">
-                    <div className="p-5 rounded-3xl bg-[#0e0c1a]/95 border border-fuchsia-500/40 shadow-[0_20px_50px_rgba(0,0,0,0.9)] backdrop-blur-2xl space-y-4">
+                    <div className="p-5 rounded-xl bg-[#0e0c1a]/95 border border-fuchsia-500/40 shadow-[0_20px_50px_rgba(0,0,0,0.9)] backdrop-blur-2xl space-y-4">
                       {form.image_url && (
-                        <div className="w-full h-36 rounded-2xl overflow-hidden border border-white/10">
+                        <div className="w-full h-36 rounded-xl overflow-hidden border border-white/10">
                           <img src={form.image_url} alt="Preview" className="w-full h-full object-cover" />
                         </div>
                       )}
@@ -456,7 +481,7 @@ export default function GuildBoardsPanel() {
                     <div className="w-20 h-4 bg-zinc-800 rounded-full mb-3 shrink-0" />
                     
                     <div className="w-full flex-1 flex items-center justify-center">
-                      <div className="w-full p-3 rounded-2xl bg-[#0e0c1a]/95 border border-fuchsia-500/40 shadow-xl backdrop-blur-xl space-y-2.5">
+                      <div className="w-full p-3 rounded-xl bg-[#0e0c1a]/95 border border-fuchsia-500/40 shadow-xl backdrop-blur-xl space-y-2.5">
                         {form.image_url && (
                           <div className="w-full h-24 rounded-xl overflow-hidden border border-white/10">
                             <img src={form.image_url} alt="Preview" className="w-full h-full object-cover" />
@@ -493,7 +518,7 @@ export default function GuildBoardsPanel() {
         </div>
 
         {popups.length === 0 ? (
-          <div className="p-12 text-center bg-zinc-900/30 border border-white/10 rounded-3xl backdrop-blur-xl space-y-3">
+          <div className="p-12 text-center bg-zinc-900/30 border border-white/10 rounded-xl backdrop-blur-xl space-y-3">
             <Megaphone size={36} className="text-zinc-600 mx-auto" />
             <p className="text-sm text-zinc-400 font-bold">No Guild Board Popups Created Yet</p>
             <p className="text-xs text-zinc-500 max-w-sm mx-auto">Click "New Guild Board Popup" above to design your first custom announcement popover.</p>
@@ -503,7 +528,7 @@ export default function GuildBoardsPanel() {
             {popups.map((popup) => (
               <div 
                 key={popup.id}
-                className={`p-5 rounded-3xl border transition-all duration-300 flex flex-col justify-between backdrop-blur-xl ${
+                className={`p-5 rounded-xl border transition-all duration-300 flex flex-col justify-between backdrop-blur-xl ${
                   popup.is_active 
                     ? 'border-fuchsia-500/40 bg-gradient-to-br from-fuchsia-950/20 via-zinc-900/60 to-black shadow-[0_10px_25px_rgba(192,38,211,0.15)]' 
                     : 'border-white/10 bg-zinc-900/30 opacity-70'
@@ -545,6 +570,15 @@ export default function GuildBoardsPanel() {
                 </div>
 
                 <div className="flex items-center justify-end gap-2 pt-4 border-t border-white/10 mt-4">
+                  <Button
+                    onClick={() => handleTestLive(popup)}
+                    variant="ghost"
+                    className="h-8 px-2.5 text-xs text-zinc-300 hover:text-white bg-white/[0.04] hover:bg-white/[0.08] rounded-xl flex items-center gap-1 cursor-pointer"
+                    title="Test on Screen"
+                  >
+                    <Play size={12} className="text-zinc-400" /> Test
+                  </Button>
+
                   <Button
                     onClick={() => {
                       setForm(popup);

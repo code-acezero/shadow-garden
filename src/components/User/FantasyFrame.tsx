@@ -3,6 +3,9 @@
 import React, { useId, useState, useEffect, useRef, useMemo } from 'react';
 import { motion } from 'framer-motion';
 import { useSettings } from '@/hooks/useSettings';
+import ProfileFrame from '@/kagemi-frames/components/ProfileFrame';
+import { normalizeFrameId } from '@/kagemi-frames/normalize';
+import { getOptimizedImageUrl } from '@/lib/imageUtils';
 import {
   getAtelierFrame,
   generateShowcaseFrameSvg,
@@ -560,10 +563,12 @@ export interface FantasyFrameProps {
   showLevelTag?: boolean;
   children?: React.ReactNode;
   className?: string;
-  size?: number; // diameter in px, default 64
+  size?: number | string; // diameter in px or css string
   avatarUrl?: string | null;
   transparentBg?: boolean;
-  previewMode?: boolean; // When true, animations stay frozen and run only on hover (desktop) or in-view / tap (mobile)
+  previewMode?: boolean; // When true, animations stay frozen and run only on hover
+  animate?: 'always' | 'inview' | 'hover' | 'never';
+  parallax?: boolean;
 }
 
 
@@ -697,6 +702,8 @@ function FantasyFrame({
   avatarUrl,
   transparentBg = false,
   previewMode = false,
+  animate,
+  parallax = false,
 }: FantasyFrameProps) {
   useFantasyFrameOptimizations();
   const settingsContext = useSettings();
@@ -718,7 +725,6 @@ function FantasyFrame({
     const onEnter = () => setIsHovered(true);
     const onLeave = () => setIsHovered(false);
     const onTap = (e: Event) => {
-      // Don't toggle tap state if clicking an action button inside the card
       if ((e.target as HTMLElement)?.closest('button')) return;
       setIsTapped(prev => !prev);
     };
@@ -734,55 +740,13 @@ function FantasyFrame({
     };
   }, [previewMode]);
 
-  const reactId = useId().replace(/[^a-zA-Z0-9]/g, '_');
-  const atelier = useMemo(() => (!frameId || frameId === 'none' ? { type: 'none' as const } : getAtelierFrame(frameId)), [frameId]);
-
-  // Frame SVG is generated with a transparent center so the real avatar DOM element renders at full size
-  const svgHtml = useMemo(() => {
-    const userAvatar = (avatarUrl && !avatarUrl.includes('imgbb.com') && !avatarUrl.includes('ibb.co')) 
-      ? avatarUrl 
-      : 'https://lh3.googleusercontent.com/a/ACg8ocLnpRFtv4bK_qXzuqBG4vBF6UzrdAwPBOCPYofJ0tSYCc5RyKz4=s96-c';
-    if (atelier.type === 'showcase' && atelier.showcase) {
-      return generateShowcaseFrameSvg(atelier.showcase, {
-        avatarUrl: userAvatar,
-        uniqueId: reactId,
-        transparentCenter: true,
-      });
-    }
-    if (atelier.type === 'special' && atelier.special) {
-      return generateSpecialFrameSvg(atelier.special, {
-        avatarUrl: userAvatar,
-        uniqueId: reactId,
-        transparentCenter: true,
-      });
-    }
-    return null;
-  }, [atelier, reactId, avatarUrl]);
-
-  // Stable memoized object to prevent React DOM from re-setting innerHTML and destroying the SMIL timeline
-  const innerHtmlProp = useMemo(() => (svgHtml ? { __html: svgHtml } : undefined), [svgHtml]);
-
-  // SVG SMIL Animation Engine Freeze / Unfreeze Controller
-  useEffect(() => {
-    if (!previewMode || !containerRef.current) return;
-    const svgs = containerRef.current.querySelectorAll('svg');
-    svgs.forEach((svgEl) => {
-      try {
-        if (isPlaying) {
-          svgEl.unpauseAnimations();
-        } else {
-          svgEl.pauseAnimations();
-        }
-      } catch (e) {}
-    });
-  }, [previewMode, isPlaying, svgHtml]);
-
-  // Fallback avatar constant (Ace Zero Google Profile Picture)
-  const FALLBACK_AVATAR = 'https://lh3.googleusercontent.com/a/ACg8ocLnpRFtv4bK_qXzuqBG4vBF6UzrdAwPBOCPYofJ0tSYCc5RyKz4=s96-c';
+  // Fallback avatar constant (Neutral anime adventurer fallback)
+  const FALLBACK_AVATAR = 'https://cdn.myanimelist.net/images/characters/9/310307.jpg';
 
   const isDeadUrl = (url?: string | null) => {
     if (!url || typeof url !== 'string') return true;
-    return url.includes('ibb.co') || url.includes('imgbb.com');
+    const trimmed = url.trim();
+    return trimmed === '' || trimmed.includes('imgbb.com') || trimmed.includes('ibb.co');
   };
 
   // Extract avatar URL if provided or available in React element children
@@ -798,13 +762,61 @@ function FantasyFrame({
         }
       }
     }
-    // Automatically intercept dead imgbb 503 URL and fall back to Google profile avatar
     if (isDeadUrl(srcCandidate)) {
       return FALLBACK_AVATAR;
     }
-    return srcCandidate || FALLBACK_AVATAR;
+    return getOptimizedImageUrl(srcCandidate) || FALLBACK_AVATAR;
   }, [avatarUrl, children]);
 
+  const normalized = useMemo(() => normalizeFrameId(frameId), [frameId]);
+
+  const resolvedAnimate = useMemo(() => {
+    if (animate) return animate;
+    if (previewMode) return isPlaying ? 'always' : 'hover';
+    return 'hover';
+  }, [animate, previewMode, isPlaying]);
+
+  // Standalone thumbnail mode (e.g. Frame Store / Vault previews)
+  if (size && !children) {
+    return (
+      <div 
+        ref={containerRef}
+        onClick={() => {
+          if (previewMode) setIsTapped(prev => !prev);
+        }}
+        className={`relative flex items-center justify-center shrink-0 ${
+          previewMode ? `ff-preview ${isPlaying ? 'ff-playing' : 'ff-frozen'}` : ''
+        } ${className}`}
+        style={{ width: size, height: size }}
+      >
+        <ProfileFrame
+          frame={normalized}
+          src={resolvedAvatarUrl}
+          size={size}
+          animate={resolvedAnimate}
+          parallax={parallax}
+          className="w-full h-full"
+        />
+
+        {/* Level Badge */}
+        {shouldShowTag && (
+          <div 
+            className="absolute left-1/2 z-30 pointer-events-none flex items-center justify-center"
+            style={{ 
+              width: '40%',
+              height: '40%',
+              bottom: '0%', 
+              transform: 'translate(-50%, 50%)'
+            }}
+          >
+            <UserLevelBadge level={level!} frameId={normalized} className="w-full h-full overflow-visible" />
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  // Fluid / Avatar wrapper mode (used across top nav, chats, profiles, comments)
   return (
     <div 
       ref={containerRef}
@@ -822,7 +834,7 @@ function FantasyFrame({
           children
         ) : (
           <img
-            src={resolvedAvatarUrl || FALLBACK_AVATAR}
+            src={resolvedAvatarUrl}
             alt="Avatar"
             className="w-full h-full object-cover rounded-full"
             onError={(e) => {
@@ -832,8 +844,8 @@ function FantasyFrame({
         )}
       </div>
 
-      {/* ── 2. ATELIER FANTASY FRAME SVG OVERLAY: Mathematically Snapped to Outer Rim ── */}
-      {svgHtml && (
+      {/* ── 2. KAGEMI PROFILE FRAME OVERLAY: Mathematically Snapped to 215.38% Outer Rim ── */}
+      {normalized !== 'none' && (
         <div 
           className="absolute pointer-events-none flex items-center justify-center overflow-visible z-20"
           style={{
@@ -842,8 +854,16 @@ function FantasyFrame({
             top: '-57.69%',
             left: '-57.69%',
           }}
-          dangerouslySetInnerHTML={innerHtmlProp}
-        />
+        >
+          <ProfileFrame
+            frame={normalized}
+            src={resolvedAvatarUrl}
+            size="100%"
+            animate={resolvedAnimate}
+            parallax={parallax}
+            className="w-full h-full"
+          />
+        </div>
       )}
 
       {/* ── 3. LEVEL BADGE: Centered right on the bottom rim of the avatar ── */}
@@ -857,7 +877,7 @@ function FantasyFrame({
             transform: 'translate(-50%, 50%)'
           }}
         >
-          <UserLevelBadge level={level!} frameId={frameId || 'none'} className="w-full h-full overflow-visible" />
+          <UserLevelBadge level={level!} frameId={normalized} className="w-full h-full overflow-visible" />
         </div>
       )}
     </div>

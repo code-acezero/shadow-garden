@@ -3,7 +3,7 @@ import { NextRequest, NextResponse } from 'next/server';
 export const runtime = 'nodejs';
 export const maxDuration = 300; // Vercel Hobby plan max; upgrade to Pro for longer durations
 
-const UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36';
+const UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36';
 
 export async function GET(request: NextRequest) {
   const sp = request.nextUrl.searchParams;
@@ -18,12 +18,19 @@ export async function GET(request: NextRequest) {
     const decodedReferer = decodeURIComponent(referer);
     const range = request.headers.get('range');
 
+    let origin: string | undefined;
+    try {
+      origin = new URL(decodedReferer).origin;
+    } catch {
+      origin = undefined;
+    }
+
     const headers: Record<string, string> = {
       Referer: decodedReferer,
-      Origin: new URL(decodedReferer).origin,
       'User-Agent': UA,
       Accept: '*/*',
     };
+    if (origin) headers.Origin = origin;
     if (range) headers.Range = range;
 
     const upstream = await fetch(decodedUrl, { headers, redirect: 'follow' });
@@ -31,9 +38,11 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: `Upstream error ${upstream.status}` }, { status: upstream.status });
     }
 
+    const cleanBase = filename.replace(/\.mp4$/i, '').replace(/[^a-z0-9\-_. ]/gi, '_');
+
     const respHeaders: Record<string, string> = {
       'Content-Type': upstream.headers.get('Content-Type') || 'video/mp4',
-      'Content-Disposition': `attachment; filename="${filename.replace(/[^a-z0-9\-_. ]/gi, '_')}"`,
+      'Content-Disposition': `attachment; filename="${cleanBase}.mp4"`,
       'Accept-Ranges': upstream.headers.get('Accept-Ranges') || 'bytes',
       'Cache-Control': 'no-store',
       'Access-Control-Expose-Headers': 'Content-Length, Content-Range, Accept-Ranges',

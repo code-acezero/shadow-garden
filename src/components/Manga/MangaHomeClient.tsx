@@ -336,7 +336,7 @@ export default function MangaHomeClient() {
         {/* CUTE SHARE BAR */}
         <CuteShareBar 
           badgeText="Share Mangvels"
-          badgeSubtext="Reader Sanctuary"
+          badgeSubtext="Manga & Novels"
           title="Invite your Fellow Readers to Kagemi!"
           description="Share tens of thousands of manga, manhwa, manhua & light novels with instant chapter loads, vertical webtoon scroll, and progress sync."
         />

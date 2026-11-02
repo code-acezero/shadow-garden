@@ -70,6 +70,8 @@ export default function ShortsHeroCarousel({
             <img
               src={current.banner || current.cover}
               alt={current.title}
+              referrerPolicy="no-referrer"
+              crossOrigin="anonymous"
               className="w-full h-full object-cover object-center filter brightness-[0.45]"
             />
           </motion.div>
@@ -204,6 +206,8 @@ export default function ShortsHeroCarousel({
                   <img
                     src={current.cover}
                     alt={current.title}
+                    referrerPolicy="no-referrer"
+                    crossOrigin="anonymous"
                     className="w-full h-full object-cover"
                   />
                   <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent" />

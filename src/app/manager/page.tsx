@@ -350,7 +350,7 @@ const OverviewTab = memo(({ changeTab }: { changeTab: (t: Tab) => void }) => {
         {/* ✅ VIOLET-GREEN OPEN STATE LOGIC */}
         <div className={`col-span-1 p-8 rounded-[2rem] border relative overflow-hidden group transition-all duration-500 ${
           isLocked 
-            ? 'bg-primary-950/20 border-primary-500/30 shadow-[0_0_30px_-10px_rgba(220,38,38,0.2)]' 
+            ? 'bg-primary-950/20 border-primary-500/30 shadow-[0_0_30px_-10px_rgba(139, 92, 246, 0.2)]' 
             : 'bg-gradient-to-br from-violet-900/20 via-black/20 to-emerald-900/20 border-emerald-500/30 shadow-[0_0_30px_-10px_rgba(16,185,129,0.2)]'
         }`}>
           <div className={`absolute inset-0 opacity-10 transition-opacity duration-500 ${isLocked ? 'bg-primary-600' : 'bg-gradient-to-r from-violet-600 to-emerald-600'}`} />

@@ -9,7 +9,7 @@ import {
   Check, ChevronDown, Grid, LayoutGrid, List, Star, Film, Clapperboard, X,
   SkipBack, SkipForward, Repeat1, Globe, Users, Lightbulb, Share2
 } from 'lucide-react';
-import { WatchPageSkeleton, LiquidPlayerSkeleton } from '@/components/UIx/SkeletonLoaders';
+import { MovieWatchSkeleton, LiquidPlayerSkeleton } from '@/components/UIx/SkeletonLoaders';
 import { omni, MovieDetail } from '@/lib/omni';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/context/AuthContext';
@@ -241,7 +241,7 @@ const TrailerViewer = ({ title, imdbId }: { title: string; imdbId?: string }) =>
 
 // ── Loader ────────────────────────────────────────────────────────────────────
 
-const PremiumLoader = memo(() => <WatchPageSkeleton />);
+const PremiumLoader = memo(() => <MovieWatchSkeleton />);
 PremiumLoader.displayName = "PremiumLoader";
 
 type EpViewMode = 'compact' | 'grid' | 'list';
@@ -637,13 +637,13 @@ export default function WatchClient() {
                 <div className="flex items-center gap-2 min-w-0 overflow-hidden">
                   <DropdownMenu modal={false}>
                     <DropdownMenuTrigger asChild>
-                      <Button variant="ghost" className="h-8 gap-1.5 text-[10px] font-black text-emerald-300 hover:text-white uppercase rounded-full border border-emerald-900/40 bg-emerald-950/20 px-3 max-w-[130px]">
+                      <Button variant="ghost" className="h-8 gap-1.5 text-[10px] font-black text-purple-300 hover:text-white uppercase rounded-full border border-purple-900/40 bg-purple-950/20 px-3 max-w-[130px]">
                         <ServerIcon size={11} className="shrink-0" />
                         <span className="truncate">{activeServerName || 'Server'}</span>
                         <ChevronDown size={10} className="shrink-0" />
                       </Button>
                     </DropdownMenuTrigger>
-                    <DropdownMenuContent align="start" className="bg-[#020617] border border-emerald-900/30 rounded-2xl shadow-2xl z-[80] p-1.5 min-w-[150px]">
+                    <DropdownMenuContent align="start" className="bg-[#0c0d18]/95 backdrop-blur-2xl border border-white/10 rounded-2xl shadow-2xl z-[80] p-1.5 min-w-[150px]">
                       {movie.streams.map((server: any, idx: number) => {
                         const serverUrl = isSeries
                           ? (() => {
@@ -655,7 +655,7 @@ export default function WatchClient() {
                         return (
                           <DropdownMenuItem key={`${server.name}-${idx}`} onClick={() => { setActiveServerUrl(serverUrl); setActiveServerName(server.name); }}
                             className={cn("cursor-pointer px-3 py-1.5 rounded-xl text-[10px] uppercase font-bold tracking-wider mb-0.5 transition-all",
-                              activeServerName === server.name ? "bg-emerald-500 text-black" : "text-emerald-100/60 hover:text-emerald-300")}>
+                              activeServerName === server.name ? "bg-primary text-white" : "text-zinc-400 hover:text-white")}>
                             {server.name} {server.lang ? `(${server.lang})` : ''}
                           </DropdownMenuItem>
                         );
@@ -666,16 +666,16 @@ export default function WatchClient() {
                   {isSeries && (
                     <DropdownMenu modal={false}>
                       <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" className="h-8 gap-1 text-[10px] font-black text-emerald-300 hover:text-white uppercase rounded-full border border-emerald-900/40 bg-emerald-950/20 px-3">
+                        <Button variant="ghost" className="h-8 gap-1 text-[10px] font-black text-purple-300 hover:text-white uppercase rounded-full border border-purple-900/40 bg-purple-950/20 px-3">
                           <span>S{activeSeason}</span> <ChevronDown size={10} className="shrink-0" />
                         </Button>
                       </DropdownMenuTrigger>
-                      <DropdownMenuContent align="start" className="bg-[#020617] border border-emerald-900/30 rounded-2xl shadow-2xl z-[80] p-1.5 min-w-[130px]">
+                      <DropdownMenuContent align="start" className="bg-[#0c0d18]/95 backdrop-blur-2xl border border-white/10 rounded-2xl shadow-2xl z-[80] p-1.5 min-w-[130px]">
                         {movie.seasons!.map((season) => (
                           <DropdownMenuItem key={season.seasonNumber}
                             onClick={() => handleEpisodeClick(season.seasonNumber, 1, activeServerName)}
                             className={cn("cursor-pointer px-3 py-1.5 rounded-xl text-[10px] uppercase font-bold mb-0.5 transition-all",
-                              activeSeason === season.seasonNumber ? "bg-emerald-500 text-black" : "text-emerald-100/60 hover:text-emerald-300")}>
+                              activeSeason === season.seasonNumber ? "bg-primary text-white" : "text-zinc-400 hover:text-white")}>
                             Season {season.seasonNumber}
                           </DropdownMenuItem>
                         ))}
@@ -799,25 +799,25 @@ export default function WatchClient() {
                               <button key={epNum} data-flip-id={epNum} onClick={() => handleEpisodeClick(activeSeason, epNum, activeServerName)}
                                 className={cn(
                                   "relative overflow-hidden w-full flex items-center gap-3 px-3 py-2 rounded-xl border text-left transition-all text-[10px] font-bold transform-gpu duration-300",
-                                  isActive ? "bg-green-500/20 backdrop-blur-md border-green-400 text-white shadow-[0_0_15px_rgba(34,197,94,0.5)] z-20 scale-[1.02]"
+                                  isActive ? "bg-primary-500/20 backdrop-blur-md border-primary-400 text-white shadow-[0_0_15px_rgba(168,85,247,0.4)] z-20 scale-[1.02]"
                                     : isPlayed ? "bg-red-500/15 backdrop-blur-md border-red-400/40 text-red-300 shadow-[0_0_15px_rgba(239,68,68,0.25)]"
-                                    : isWatched ? "bg-emerald-600/20 backdrop-blur-md border-emerald-500/40 text-emerald-300"
+                                    : isWatched ? "bg-purple-950/30 backdrop-blur-md border-purple-800/40 text-purple-300"
                                     : "bg-white/5 border-white/10 text-zinc-400 hover:border-white/20 hover:text-white"
                                 )}>
                                 {isActive && (
                                   <>
-                                    <div className="absolute inset-0 bg-gradient-to-tr from-green-500/10 via-transparent to-green-400/20 animate-pulse pointer-events-none" />
-                                    <div className="absolute inset-0 bg-[linear-gradient(45deg,transparent_25%,rgba(74,222,128,0.2)_50%,transparent_75%)] bg-[length:250%_250%] animate-shimmer pointer-events-none" />
+                                    <div className="absolute inset-0 bg-gradient-to-tr from-primary-500/10 via-transparent to-primary-400/20 animate-pulse pointer-events-none" />
+                                    <div className="absolute inset-0 bg-[linear-gradient(45deg,transparent_25%,rgba(168,85,247,0.25)_50%,transparent_75%)] bg-[length:250%_250%] animate-shimmer pointer-events-none" />
                                   </>
                                 )}
                                 {isPlayed && !isActive && (
                                   <>
                                     <div className="absolute inset-0 bg-gradient-to-tr from-red-500/10 via-transparent to-red-400/15 animate-pulse pointer-events-none" />
-                                    <div className="absolute inset-0 bg-[linear-gradient(45deg,transparent_25%,rgba(239,68,68,0.18)_50%,transparent_75%)] bg-[length:250%_250%] animate-shimmer pointer-events-none" />
+                                    <div className="absolute inset-0 bg-[linear-gradient(45deg,transparent_25%,rgba(139, 92, 246, 0.18)_50%,transparent_75%)] bg-[length:250%_250%] animate-shimmer pointer-events-none" />
                                   </>
                                 )}
                                 <span className={cn("relative z-10 w-6 h-6 rounded-full flex items-center justify-center text-[9px] font-black shrink-0",
-                                  isActive ? "bg-green-500 text-black" : isPlayed ? "bg-red-500/30 text-red-300" : isWatched ? "bg-emerald-500/50 text-white" : "bg-white/10 text-zinc-300"
+                                  isActive ? "bg-primary-500 text-white" : isPlayed ? "bg-primary/30 text-primary-300" : isWatched ? "bg-purple-600/40 text-white" : "bg-white/10 text-zinc-300"
                                 )}>{epNum}</span>
                                 <span className="relative z-10 truncate">{getCleanEpisodeTitle(epNum, ep.title)}</span>
                               </button>
@@ -830,21 +830,21 @@ export default function WatchClient() {
                                 "relative overflow-hidden rounded-full flex items-center justify-center font-black transition-all border text-[9px] transform-gpu duration-300",
                                 epViewMode === 'grid' ? "aspect-square" : "h-7",
                                 isActive
-                                  ? "bg-green-500/20 backdrop-blur-md border-green-400 text-white shadow-[0_0_15px_rgba(34,197,94,0.5)] z-20 scale-105"
+                                  ? "bg-primary-500/20 backdrop-blur-md border-primary-400 text-white shadow-[0_0_15px_rgba(168,85,247,0.4)] z-20 scale-105"
                                   : isPlayed ? "bg-red-500/15 backdrop-blur-md border-red-400/40 text-red-300 shadow-[0_0_15px_rgba(239,68,68,0.25)]"
-                                  : isWatched ? "bg-emerald-600/20 backdrop-blur-md border-emerald-500/40 text-emerald-300"
+                                  : isWatched ? "bg-purple-950/30 backdrop-blur-md border-purple-800/40 text-purple-300"
                                   : "bg-white/5 border-white/10 text-zinc-400 hover:border-white/20 hover:text-white"
                               )}>
                               {isActive && (
                                 <>
-                                  <div className="absolute inset-0 bg-gradient-to-tr from-green-500/10 via-transparent to-green-400/20 animate-pulse pointer-events-none" />
-                                  <div className="absolute inset-0 bg-[linear-gradient(45deg,transparent_25%,rgba(74,222,128,0.2)_50%,transparent_75%)] bg-[length:250%_250%] animate-shimmer pointer-events-none" />
+                                  <div className="absolute inset-0 bg-gradient-to-tr from-primary-500/10 via-transparent to-primary-400/20 animate-pulse pointer-events-none" />
+                                  <div className="absolute inset-0 bg-[linear-gradient(45deg,transparent_25%,rgba(168,85,247,0.25)_50%,transparent_75%)] bg-[length:250%_250%] animate-shimmer pointer-events-none" />
                                 </>
                               )}
                               {isPlayed && !isActive && (
                                 <>
                                   <div className="absolute inset-0 bg-gradient-to-tr from-red-500/10 via-transparent to-red-400/15 animate-pulse pointer-events-none" />
-                                  <div className="absolute inset-0 bg-[linear-gradient(45deg,transparent_25%,rgba(239,68,68,0.18)_50%,transparent_75%)] bg-[length:250%_250%] animate-shimmer pointer-events-none" />
+                                  <div className="absolute inset-0 bg-[linear-gradient(45deg,transparent_25%,rgba(139, 92, 246, 0.18)_50%,transparent_75%)] bg-[length:250%_250%] animate-shimmer pointer-events-none" />
                                 </>
                               )}
                               <span className="relative z-10">{epNum}</span>
@@ -994,7 +994,7 @@ export default function WatchClient() {
                 {/* Title + meta */}
                 <div className="relative z-20 flex-1 p-5 flex flex-col justify-end gap-2">
                   <div className="flex items-center gap-2 mb-1">
-                    <Check size={12} className="text-emerald-400 p-0.5 bg-emerald-400/20 rounded-full shrink-0" />
+                    <Check size={12} className="text-purple-400 p-0.5 bg-purple-400/20 rounded-full shrink-0" />
                     <span className="text-[9px] font-bold text-emerald-300 tracking-[0.2em] uppercase font-lemon">Shadow Theater</span>
                     {isSeries && <Badge className="bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-[8px] px-2 h-4">SERIES</Badge>}
                   </div>

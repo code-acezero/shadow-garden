@@ -234,40 +234,20 @@ export default function OtakuVerse({ user, onAuthRequired, highlightId, initialN
     return () => observer.disconnect();
   }, []);
 
-  // --- ANILIST NEWS LOGIC ---
+  // --- ANILIST NEWS LOGIC (Via internal proxy & cache) ---
   useEffect(() => {
     const fetchAniListNews = async () => {
       try {
-        const query = `
-          query {
-            Page(page: 1, perPage: 8) {
-              threads(sort: ID_DESC) {
-                id
-                title
-                body
-                createdAt
-                user {
-                  name
-                  avatar { large }
-                }
-                categories { name }
-                replyCount
-                viewCount
-              }
-            }
+        setIsAniNewsLoading(true);
+        const res = await fetch('/api/social/news');
+        if (res.ok) {
+          const data = await res.json();
+          if (data.threads && Array.isArray(data.threads)) {
+            setAniListNews(data.threads);
           }
-        `;
-        const res = await fetch('https://graphql.anilist.co', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
-          body: JSON.stringify({ query })
-        });
-        const data = await res.json();
-        if (data.data?.Page?.threads) {
-          setAniListNews(data.data.Page.threads);
         }
       } catch (e) {
-        console.error('AniList News fetch error:', e);
+        // Silently handled without raising console error
       } finally {
         setIsAniNewsLoading(false);
       }
@@ -283,23 +263,16 @@ export default function OtakuVerse({ user, onAuthRequired, highlightId, initialN
         setActiveNewsItem(thread);
         fetchNewsComments(thread.id);
       } else {
-        // If it's an older news item not in the first 8, we might need to fetch it specifically.
-        // For now, just fetch the specific thread if not found.
-        fetch('https://graphql.anilist.co', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
-          body: JSON.stringify({
-            query: `query { Thread(id: ${initialNewsId}) { id title body createdAt user { name avatar { large } } } }`
+        // Fetch specific thread via internal proxy
+        fetch(`/api/social/news?id=${initialNewsId}`)
+          .then(res => res.ok ? res.json() : null)
+          .then(data => {
+            if (data?.thread) {
+              setActiveNewsItem(data.thread);
+              fetchNewsComments(data.thread.id);
+            }
           })
-        })
-        .then(res => res.json())
-        .then(data => {
-          if (data.data?.Thread) {
-            setActiveNewsItem(data.data.Thread);
-            fetchNewsComments(data.data.Thread.id);
-          }
-        })
-        .catch(console.error);
+          .catch(() => {});
       }
     }
   }, [initialNewsId, aniListNews]);

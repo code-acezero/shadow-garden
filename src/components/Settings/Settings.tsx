@@ -30,7 +30,7 @@ import { cn } from '@/lib/utils';
 import { MASCOT_ROSTER, STYLE_OPTIONS, DEFAULT_CONFIG, MascotConfig } from '@/components/Mascot/MascotPerch';
 import PageMascot from '@/components/Mascot/PageMascot';
 import Footer from '@/components/Anime/Footer';
-import { refreshVoiceCache, getVoiceSettings, dispatchTelepathy, getCharacterLine, triggerTelepathy, playVoiceSample, CHARACTER_META, CHARACTER_SCRIPTS } from '@/lib/voice';
+import { refreshVoiceCache, getVoiceSettings, dispatchTelepathy, getCharacterLine, triggerTelepathy, playVoiceSample, saveAccountVoice, CHARACTER_META, CHARACTER_SCRIPTS } from '@/lib/voice';
 import AvatarSelectorModal, { getRandomAvatar } from '@/components/User/AvatarSelectorModal';
 import { playTapSound, playGummyTap, playSquishyJelly } from '@/lib/audioManager';
 import { pullFromAniList, twoWaySync } from '@/lib/anilistSync';
@@ -97,35 +97,27 @@ const MENU_ITEMS: MenuItem[] = [
   },
   {
     id: 'player',
-    label: 'Anime & Player',
-    desc: 'Anime title language (EN/JP/Romaji), Omni studio & automations',
+    label: 'Omni Player',
+    desc: 'Live video preview, title language & automations',
     icon: Play,
     group: 'media',
-    gradient: 'from-rose-500 to-red-600',
+    gradient: 'from-violet-600 to-purple-600',
   },
   {
-    id: 'mangvels',
-    label: 'Mangvels & Novels',
-    desc: 'Reading directions, webtoon mode & page preloading',
-    icon: BookOpen,
-    group: 'media',
-    gradient: 'from-amber-500 to-orange-600',
-  },
-  {
-    id: 'flixverse',
-    label: 'Flixverse & Cinema',
-    desc: 'Cinema stream routes, ambient mode & recap skip',
-    icon: Film,
-    group: 'media',
-    gradient: 'from-emerald-500 to-teal-600',
-  },
-  {
-    id: 'donghua',
-    label: 'Donghua Sanctuary',
-    desc: 'Mandarin voice priority & dual Hanzi/Pinyin subtitles',
-    icon: Tv,
+    id: 'media',
+    label: 'Media Configs',
+    desc: 'Manga reader modes, cinema, and Donghua preferences',
+    icon: Layers,
     group: 'media',
     gradient: 'from-purple-500 to-indigo-600',
+  },
+  {
+    id: 'shorts',
+    label: 'Shorts & Reels',
+    desc: 'Auto-advance, default sound, aspect fill, tap gestures & captions',
+    icon: Smartphone,
+    group: 'media',
+    gradient: 'from-pink-600 to-rose-600',
   },
   {
     id: 'sound',
@@ -177,7 +169,7 @@ const MENU_ITEMS: MenuItem[] = [
   },
   {
     id: 'guide',
-    label: 'Sanctuary Manual',
+    label: 'User Guide',
     desc: 'Full documentation guide for every setting & option',
     icon: BookCheck,
     group: 'system',
@@ -270,7 +262,7 @@ const SITE_GUIDES = [
     title: 'Gender Identity',
     desc: 'Select your preferred identity (Male, Female, Rather not say, None) to configure community title address.',
     defaultValue: 'Male',
-    proTip: 'Only authentic standard options are supported to maintain clean sanctuary records.',
+    proTip: 'Only authentic standard options are supported to maintain clean profile records.',
     badge: 'ACCOUNT'
   },
   {
@@ -334,7 +326,7 @@ const SITE_GUIDES = [
     title: 'Resume Playback',
     desc: 'Preserves timestamp stamps so you can pause on mobile and resume on desktop exactly where you left off.',
     defaultValue: 'Enabled',
-    proTip: 'Synced with Continue Watching row on the Home sanctuary.',
+    proTip: 'Synced with Continue Watching row on the Home page.',
     badge: 'SYNC'
   },
   {
@@ -454,7 +446,7 @@ const notifyWhisper = (message: string, type: 'success' | 'error' | 'info' = 'su
 };
 
 export default function Settings() {
-  const { profile, refreshSession, signOut } = useAuth();
+  const { user, profile, refreshSession, signOut } = useAuth();
   const { settings, updateSetting, resetSettings, storageUsage, clearCache } = useSettings();
   const router = useRouter();
 
@@ -599,6 +591,7 @@ export default function Settings() {
 
   // Media Preferences (Mangvels, Flixverse, Donghua)
   const [mediaPrefs, setMediaPrefs] = useState<MediaPreferences>(DEFAULT_MEDIA_PREFS);
+  const [mediaSubTab, setMediaSubTab] = useState<'anime' | 'donghua' | 'cinema' | 'manga'>('anime');
 
   // XML Backup & Account Migration States
   const [isBackupModalOpen, setIsBackupModalOpen] = useState(false);
@@ -708,6 +701,10 @@ export default function Settings() {
         return isAuthenticated ? (username || profile?.username || 'Member') : (travellerName || traveller.name || 'Traveller');
       case 'player':
         return `${(settings.animeTitleLanguage || 'en').toUpperCase()} • ${settings.defaultQuality || '1080p'}`;
+      case 'media':
+        return `${mediaPrefs.mangvels.readingDirection.toUpperCase()} • ${mediaPrefs.flixverse.aspectRatio}`;
+      case 'shorts':
+        return `${settings.shortsMuted ? 'Muted' : 'Sound On'} • ${settings.shortsAutoAdvance ? 'Auto-Next' : 'Loop'}`;
       case 'mangvels':
         return `${mediaPrefs.mangvels.readingDirection === 'rtl' ? 'RTL' : mediaPrefs.mangvels.readingDirection === 'webtoon' ? 'Webtoon' : 'LTR'} • ${mediaPrefs.mangvels.readerTheme}`;
       case 'flixverse':
@@ -911,7 +908,7 @@ export default function Settings() {
       let xml = `<?xml version="1.0" encoding="UTF-8"?>\n`;
       xml += `<kagemi_backup version="2.4" timestamp="${timestamp}">\n`;
       xml += `  <metadata>\n`;
-      xml += `    <app>Kagemi Shadow Garden Sanctuary</app>\n`;
+      xml += `    <app>Kagemi</app>\n`;
       xml += `    <version>2.4</version>\n`;
       xml += `    <username>${cleanUsername.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')}</username>\n`;
       xml += `    <created_at>${timestamp}</created_at>\n`;
@@ -1516,6 +1513,90 @@ export default function Settings() {
                 </div>
               </div>
 
+              {/* Theme Appearance (Dark / Light Mode) */}
+              <div className="pt-8 pb-8 border-b border-white/[0.06] space-y-4">
+                <div className="flex items-center justify-between">
+                  <h4 className="text-xs font-black uppercase tracking-wider text-zinc-400 flex items-center gap-2">
+                    <Sun size={14} className="text-primary" /> Device Appearance & Mode
+                  </h4>
+                  <span className="text-[10px] font-mono text-zinc-500 uppercase">
+                    {(settings.themeMode || 'dark') === 'light' ? 'Light Ethereal' : 'Dark Cosmos'}
+                  </span>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 max-w-xl">
+                  {/* Dark Mode Card */}
+                  <motion.div
+                    whileTap={{ scale: 0.98 }}
+                    onClick={() => {
+                      playSquishyJelly(0.35);
+                      updateSetting('themeMode', 'dark');
+                      applyColorPalette((settings as any).accentColor || 'sky-purple-violet', 'dark');
+                      toast.success("Appearance switched to Dark Cosmos");
+                    }}
+                    className={cn(
+                      "p-4 rounded-2xl border cursor-pointer transition-all flex items-center justify-between",
+                      (settings.themeMode || 'dark') === 'dark'
+                        ? "bg-white/[0.08] border-primary/50 shadow-md"
+                        : "bg-white/[0.02] border-white/5 hover:border-white/15 hover:bg-white/[0.04]"
+                    )}
+                  >
+                    <div className="flex items-center gap-3">
+                      <div className={cn(
+                        "w-9 h-9 rounded-xl flex items-center justify-center transition-colors",
+                        (settings.themeMode || 'dark') === 'dark' ? "bg-primary text-white" : "bg-white/5 text-zinc-400"
+                      )}>
+                        <Moon size={18} />
+                      </div>
+                      <div>
+                        <div className="text-xs font-bold text-white">Dark Cosmos</div>
+                        <div className="text-[10px] text-zinc-400">Deep obsidian & glowing accents</div>
+                      </div>
+                    </div>
+                    {(settings.themeMode || 'dark') === 'dark' && (
+                      <div className="w-5 h-5 rounded-full bg-primary flex items-center justify-center text-white shrink-0">
+                        <Check size={12} strokeWidth={3} />
+                      </div>
+                    )}
+                  </motion.div>
+
+                  {/* Light Mode Card */}
+                  <motion.div
+                    whileTap={{ scale: 0.98 }}
+                    onClick={() => {
+                      playSquishyJelly(0.35);
+                      updateSetting('themeMode', 'light');
+                      applyColorPalette((settings as any).accentColor || 'sky-purple-violet', 'light');
+                      toast.success("Appearance switched to Light Ethereal");
+                    }}
+                    className={cn(
+                      "p-4 rounded-2xl border cursor-pointer transition-all flex items-center justify-between",
+                      settings.themeMode === 'light'
+                        ? "bg-white/[0.08] border-amber-500/50 shadow-md"
+                        : "bg-white/[0.02] border-white/5 hover:border-white/15 hover:bg-white/[0.04]"
+                    )}
+                  >
+                    <div className="flex items-center gap-3">
+                      <div className={cn(
+                        "w-9 h-9 rounded-xl flex items-center justify-center transition-colors",
+                        settings.themeMode === 'light' ? "bg-amber-500 text-black" : "bg-white/5 text-zinc-400"
+                      )}>
+                        <Sun size={18} />
+                      </div>
+                      <div>
+                        <div className="text-xs font-bold text-white">Light Ethereal</div>
+                        <div className="text-[10px] text-zinc-400">Crisp high-contrast surfaces</div>
+                      </div>
+                    </div>
+                    {settings.themeMode === 'light' && (
+                      <div className="w-5 h-5 rounded-full bg-amber-500 flex items-center justify-center text-black shrink-0">
+                        <Check size={12} strokeWidth={3} />
+                      </div>
+                    )}
+                  </motion.div>
+                </div>
+              </div>
+
               {/* Security & Access Section */}
               <div className="pt-8 pb-8 border-b border-white/[0.06] space-y-4">
                 <h4 className="text-xs font-black uppercase tracking-wider text-zinc-400 flex items-center gap-2">
@@ -1933,313 +2014,712 @@ export default function Settings() {
             </SectionBlock>
           )}
 
-          {activeTab === 'mangvels' && (
-            <SectionBlock title="Mangvels & Novels Studio" desc="Configure manga reading orientation, chapter caching, and display themes.">
-              {/* Reading Direction & Mode */}
-              <div className="pb-8 border-b border-white/[0.06] space-y-4">
-                <h4 className="text-xs font-black uppercase tracking-wider text-zinc-300">
-                  Reading Mode & Orientation
-                </h4>
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                  {[
-                    { id: 'webtoon', label: 'Vertical Webtoon', desc: 'Continuous vertical scroll for Manhwa and Webtoons' },
-                    { id: 'rtl', label: 'Right-to-Left (RTL)', desc: 'Standard Japanese manga format, flips right to left' },
-                    { id: 'ltr', label: 'Left-to-Right (LTR)', desc: 'Western comic book orientation, flips left to right' },
-                  ].map((mode) => {
-                    const isSelected = mediaPrefs.mangvels.readingDirection === mode.id;
-                    return (
-                      <motion.button
-                        key={mode.id}
-                        whileTap={{ scale: 0.96 }}
-                        onClick={() => updateMediaPref('mangvels', 'readingDirection', mode.id as any)}
-                        className={cn(
-                          "p-3.5 rounded-xl border text-left transition-all flex flex-col justify-between gap-2 cursor-pointer",
-                          isSelected
-                            ? "bg-primary/10 border-primary text-white"
-                            : "bg-white/[0.03] border-white/[0.06] hover:bg-white/[0.06] text-zinc-400"
-                        )}
-                      >
-                        <span className="text-xs font-bold text-white">{mode.label}</span>
-                        <p className="text-[10px] text-zinc-500 leading-relaxed">{mode.desc}</p>
-                      </motion.button>
-                    );
-                  })}
-                </div>
-              </div>
-
-              {/* Reader Theme & Appearance */}
-              <div className="pt-8 pb-8 border-b border-white/[0.06] space-y-4">
-                <h4 className="text-xs font-black uppercase tracking-wider text-zinc-300">
-                  Reader Theme Palette
-                </h4>
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                  {[
-                    { id: 'oled-black', label: 'OLED Pure Black', bg: '#000000', text: '#ffffff' },
-                    { id: 'dark-slate', label: 'Deep Slate', bg: '#0f172a', text: '#cbd5e1' },
-                    { id: 'sepia', label: 'Warm Sepia', bg: '#fbf0d9', text: '#5f4b32' },
-                    { id: 'paper', label: 'Soft Paper', bg: '#f4f4f0', text: '#18181b' },
-                  ].map((theme) => {
-                    const isSelected = mediaPrefs.mangvels.readerTheme === theme.id;
-                    return (
-                      <motion.button
-                        key={theme.id}
-                        whileTap={{ scale: 0.95 }}
-                        onClick={() => updateMediaPref('mangvels', 'readerTheme', theme.id as any)}
-                        className={cn(
-                          "p-3 rounded-xl border flex items-center gap-2.5 transition-all cursor-pointer",
-                          isSelected ? "border-primary ring-1 ring-primary" : "border-white/10 hover:border-white/20"
-                        )}
-                        style={{ backgroundColor: theme.bg }}
-                      >
-                        <div className="w-3.5 h-3.5 rounded-full border border-black/20 shrink-0" style={{ backgroundColor: theme.text }} />
-                        <span className="text-xs font-bold truncate" style={{ color: theme.text }}>{theme.label}</span>
-                      </motion.button>
-                    );
-                  })}
-                </div>
-              </div>
-
-              {/* Performance & Layout Toggles */}
-              <div className="pt-8 space-y-4">
-                <h4 className="text-xs font-black uppercase tracking-wider text-zinc-300">
-                  Preload & Hardware Controls
-                </h4>
-                <div className="divide-y divide-white/[0.04]">
-                  <ToggleItem
-                    title="Volume Rocker Page Turn"
-                    desc="Use device physical volume buttons to turn manga pages on mobile and tablet."
-                    checked={mediaPrefs.mangvels.volumePageTurn}
-                    onChange={(v) => updateMediaPref('mangvels', 'volumePageTurn', v)}
-                  />
-                </div>
-
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2">
-                  <div>
-                    <label className="text-[11px] font-bold uppercase tracking-wider text-zinc-400 block mb-1.5">
-                      Chapter Memory Preloading
-                    </label>
-                    <select
-                      value={mediaPrefs.mangvels.preloadChapters}
-                      onChange={(e) => updateMediaPref('mangvels', 'preloadChapters', parseInt(e.target.value))}
-                      className="w-full h-9 px-3 rounded-xl bg-white/[0.04] border border-white/10 text-white text-xs outline-none cursor-pointer"
+          {(activeTab === 'media' || activeTab === 'mangvels' || activeTab === 'flixverse' || activeTab === 'donghua') && (
+            <SectionBlock 
+              title="Media Configs" 
+              desc="Configure stream, audio, and reading preferences across Anime, Donghua, Cinema, and Manga."
+            >
+              {/* Quick Jump Anchor Pills */}
+              <div className="flex items-center gap-2 overflow-x-auto no-scrollbar pb-3 border-b border-white/[0.06] sticky top-0 z-20 bg-[#070b14]/90 backdrop-blur-xl -mx-1 px-1">
+                {[
+                  { id: 'media-sec-anime', label: 'Anime', icon: Tv },
+                  { id: 'media-sec-donghua', label: 'Donghua', icon: Flame },
+                  { id: 'media-sec-cinema', label: 'Movies & Cinema', icon: Film },
+                  { id: 'media-sec-manga', label: 'Manga & Novels', icon: BookOpen },
+                ].map((item) => {
+                  const Icon = item.icon;
+                  return (
+                    <button
+                      key={item.id}
+                      type="button"
+                      onClick={() => {
+                        playSquishyJelly(0.2);
+                        document.getElementById(item.id)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                      }}
+                      className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-xs font-bold text-zinc-300 hover:text-white bg-white/[0.05] hover:bg-white/[0.1] transition-all cursor-pointer select-none border-0 ring-0 shrink-0"
                     >
-                      <option value={1} className="bg-zinc-900">1 Chapter in Advance</option>
-                      <option value={3} className="bg-zinc-900">3 Chapters (Recommended)</option>
-                      <option value={5} className="bg-zinc-900">5 Chapters (Fastest Scroll)</option>
-                    </select>
+                      <Icon size={12} className="text-primary-400" />
+                      <span>{item.label}</span>
+                    </button>
+                  );
+                })}
+              </div>
+
+              <div className="space-y-12 pt-4">
+                {/* ── 1. ANIME PLAYBACK ── */}
+                <div id="media-sec-anime" className="space-y-8 scroll-mt-20">
+                  <div className="flex items-center gap-2.5 pb-2.5 border-b border-white/[0.08]">
+                    <div className="p-1.5 rounded-xl bg-primary-500/15 text-primary-400">
+                      <Tv size={16} />
+                    </div>
+                    <div>
+                      <h3 className="text-sm font-black uppercase tracking-wider text-white">Anime Stream & Titles</h3>
+                      <p className="text-[11px] text-zinc-400">Title naming language, primary stream servers, and automation rules.</p>
+                    </div>
                   </div>
 
-                  <div>
-                    <label className="text-[11px] font-bold uppercase tracking-wider text-zinc-400 block mb-1.5">
-                      Image Quality Profile
-                    </label>
-                    <select
-                      value={mediaPrefs.mangvels.imageQuality}
-                      onChange={(e) => updateMediaPref('mangvels', 'imageQuality', e.target.value as any)}
-                      className="w-full h-9 px-3 rounded-xl bg-white/[0.04] border border-white/10 text-white text-xs outline-none cursor-pointer"
+                  {/* Global Anime Title Display Language */}
+                  <div className="space-y-4 pb-8 border-b border-white/[0.06]">
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <h4 className="text-xs font-black uppercase tracking-wider text-zinc-200">
+                          Global Anime Title Language
+                        </h4>
+                        <span className="text-[9px] font-bold px-2 py-0.5 rounded bg-primary/20 text-primary uppercase tracking-wider">
+                          Anime Only
+                        </span>
+                      </div>
+                      <p className="text-[11px] text-zinc-400 mt-1">
+                        Select your preferred title naming language for anime across all cards, streams, and browsing directories.
+                      </p>
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
+                      {[
+                        {
+                          id: 'en',
+                          label: 'English',
+                          sub: 'Official Localized Title',
+                          example: 'Attack on Titan',
+                          badge: 'EN'
+                        },
+                        {
+                          id: 'romaji',
+                          label: 'Romaji',
+                          sub: 'Romanized Japanese Title',
+                          example: 'Shingeki no Kyojin',
+                          badge: 'RO'
+                        },
+                        {
+                          id: 'jp',
+                          label: 'Japanese',
+                          sub: 'Original Kanji / Kana',
+                          example: '進撃の巨人',
+                          badge: 'JP'
+                        }
+                      ].map((option) => {
+                        const isSelected = (settings.animeTitleLanguage || 'en') === option.id;
+                        return (
+                          <button
+                            key={option.id}
+                            type="button"
+                            onClick={() => {
+                              playSquishyJelly(0.35);
+                              updateSetting('animeTitleLanguage', option.id as any);
+                              localStorage.setItem('shadow_anime_title_language', option.id);
+                              if (typeof window !== 'undefined') {
+                                window.dispatchEvent(new Event('shadow_settings_changed'));
+                              }
+                            }}
+                            className={cn(
+                              "p-3.5 rounded-2xl text-left transition-all flex flex-col justify-between gap-3 cursor-pointer select-none border-0 ring-0",
+                              isSelected
+                                ? "bg-[#7c3aed] text-white shadow-none"
+                                : "bg-white/[0.03] hover:bg-white/[0.06] text-zinc-400 hover:text-white"
+                            )}
+                          >
+                            <div className="flex items-center justify-between w-full">
+                              <span className="text-xs font-black uppercase tracking-wider">
+                                {option.label}
+                              </span>
+                              <span className={cn(
+                                "text-[9px] font-black px-1.5 py-0.5 rounded uppercase font-mono",
+                                isSelected ? "bg-white/20 text-white" : "bg-white/10 text-zinc-400"
+                              )}>
+                                {option.badge}
+                              </span>
+                            </div>
+                            <div className="space-y-0.5">
+                              <p className={cn("text-[10px] font-medium", isSelected ? "text-purple-100" : "text-zinc-500")}>
+                                {option.sub}
+                              </p>
+                              <p className={cn("text-xs font-semibold", isSelected ? "text-white" : "text-zinc-200")}>
+                                {option.example}
+                              </p>
+                            </div>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+
+                  {/* Primary Anime Server & Target Resolution */}
+                  <div className="space-y-4 pb-8 border-b border-white/[0.06]">
+                    <h4 className="text-xs font-black uppercase tracking-wider text-zinc-300">
+                      Primary Stream Server & Quality
+                    </h4>
+                    
+                    <div className="space-y-2">
+                      <label className="text-[11px] font-bold uppercase tracking-wider text-zinc-400 block">
+                        Default Server Route
+                      </label>
+                      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                        {[
+                          { id: 'hd-1', label: 'MegaCloud', sub: 'HD-1 Primary' },
+                          { id: 'hd-2', label: 'Vidcloud', sub: 'HD-2 Mirror' },
+                          { id: 'mirror-1', label: 'StreamSB', sub: 'Mirror 1' },
+                          { id: 'mirror-2', label: 'StreamTape', sub: 'Mirror 2' },
+                        ].map((srv) => {
+                          const isSelected = (settings.defaultServer || 'hd-1') === srv.id;
+                          return (
+                            <button
+                              key={srv.id}
+                              type="button"
+                              onClick={() => {
+                                playSquishyJelly(0.2);
+                                updateSetting('defaultServer', srv.id as any);
+                              }}
+                              className={cn(
+                                "p-3 rounded-xl text-left transition-all flex flex-col justify-between gap-1 cursor-pointer select-none border-0 ring-0",
+                                isSelected
+                                  ? "bg-[#7c3aed] text-white shadow-none"
+                                  : "bg-white/[0.03] hover:bg-white/[0.06] text-zinc-400 hover:text-white"
+                              )}
+                            >
+                              <span className="text-xs font-bold">{srv.label}</span>
+                              <span className={cn("text-[10px]", isSelected ? "text-purple-100" : "text-zinc-500")}>{srv.sub}</span>
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2">
+                      <div>
+                        <label className="text-[11px] font-bold uppercase tracking-wider text-zinc-400 block mb-1.5">
+                          Preferred Audio Language
+                        </label>
+                        <select
+                          value={settings.defaultAudio || 'jp'}
+                          onChange={(e) => updateSetting('defaultAudio', e.target.value as any)}
+                          className="w-full h-9 px-3 rounded-xl bg-white/[0.04] text-white text-xs outline-none cursor-pointer border-0"
+                        >
+                          <option value="jp" className="bg-zinc-900">Japanese (Original Sub - Recommended)</option>
+                          <option value="en" className="bg-zinc-900">English (Dubbed)</option>
+                          <option value="hi" className="bg-zinc-900">Hindi (Official Dub)</option>
+                        </select>
+                      </div>
+
+                      <div>
+                        <label className="text-[11px] font-bold uppercase tracking-wider text-zinc-400 block mb-1.5">
+                          Target Video Resolution
+                        </label>
+                        <select
+                          value={settings.defaultQuality || '1080p'}
+                          onChange={(e) => updateSetting('defaultQuality', e.target.value as any)}
+                          className="w-full h-9 px-3 rounded-xl bg-white/[0.04] text-white text-xs outline-none cursor-pointer border-0"
+                        >
+                          <option value="1080p" className="bg-zinc-900">1080p Full HD</option>
+                          <option value="720p" className="bg-zinc-900">720p HD</option>
+                          <option value="480p" className="bg-zinc-900">480p SD</option>
+                          <option value="Auto" className="bg-zinc-900">Adaptive (Auto)</option>
+                        </select>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Playback Automations */}
+                  <div className="space-y-4 pb-8 border-b border-white/[0.06]">
+                    <h4 className="text-xs font-black uppercase tracking-wider text-zinc-300">
+                      Anime Playback Automations
+                    </h4>
+                    <div className="divide-y divide-white/[0.04]">
+                      <ToggleItem
+                        title="Auto-Skip Intro (OP)"
+                        desc="Automatically skip opening sequence and theme music when markers are detected."
+                        checked={settings.autoSkipOpEd ?? true}
+                        onChange={(v) => updateSetting('autoSkipOpEd', v)}
+                      />
+                      <ToggleItem
+                        title="Auto-Skip Outro (ED)"
+                        desc="Automatically jump past ending credits straight to the next episode preview."
+                        checked={settings.autoSkipOutro ?? true}
+                        onChange={(v) => updateSetting('autoSkipOutro', v)}
+                      />
+                      <ToggleItem
+                        title="Auto-Play Next Episode"
+                        desc="Automatically advance to the next anime episode when the current one concludes."
+                        checked={settings.autoNext ?? true}
+                        onChange={(v) => updateSetting('autoNext', v)}
+                      />
+                      <ToggleItem
+                        title="Resume Playback"
+                        desc="Save and remember your exact watched timestamp across all anime episodes."
+                        checked={settings.resumePlayback ?? true}
+                        onChange={(v) => updateSetting('resumePlayback', v)}
+                      />
+                      <ToggleItem
+                        title="Theater Dim Mode"
+                        desc="Dim surrounding page lights when anime player is active."
+                        checked={settings.dimMode ?? false}
+                        onChange={(v) => updateSetting('dimMode', v)}
+                      />
+                      <ToggleItem
+                        title="Center Tap Play / Pause"
+                        desc="Tapping the center of the anime player toggles playback."
+                        checked={settings.tapPlayPauseWithControls ?? true}
+                        onChange={(v) => updateSetting('tapPlayPauseWithControls', v)}
+                      />
+                    </div>
+                  </div>
+
+                  {/* Captions & Subtitles Customization */}
+                  <div className="space-y-4 pb-8 border-b border-white/[0.06]">
+                    <h4 className="text-xs font-black uppercase tracking-wider text-zinc-300">
+                      Subtitles & Captions
+                    </h4>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
+                      <div>
+                        <label className="text-[11px] font-bold uppercase tracking-wider text-zinc-400 block mb-1.5">
+                          Text Size
+                        </label>
+                        <div className="flex gap-1.5">
+                          {(['small', 'medium', 'large', 'x-large'] as const).map(sz => {
+                            const cur = settings.playerPrefs?.captionSize || 'medium';
+                            return (
+                              <button
+                                key={sz}
+                                type="button"
+                                onClick={() => updateSetting('playerPrefs', { ...settings.playerPrefs, captionSize: sz })}
+                                className={cn(
+                                  "flex-1 py-1.5 rounded-lg text-[10px] font-bold uppercase transition-all border-0",
+                                  cur === sz ? "bg-[#7c3aed] text-white" : "bg-white/[0.05] text-zinc-400 hover:text-white"
+                                )}
+                              >
+                                {sz === 'x-large' ? 'XL' : sz[0].toUpperCase()}
+                              </button>
+                            );
+                          })}
+                        </div>
+                      </div>
+
+                      <div>
+                        <label className="text-[11px] font-bold uppercase tracking-wider text-zinc-400 block mb-1.5">
+                          Text Color
+                        </label>
+                        <div className="flex gap-1.5 items-center">
+                          {[
+                            { label: 'White', color: '#ffffff' },
+                            { label: 'Gold', color: '#fbbf24' },
+                            { label: 'Cyan', color: '#22d3ee' },
+                            { label: 'Green', color: '#4ade80' }
+                          ].map(c => {
+                            const cur = settings.playerPrefs?.captionColor || '#ffffff';
+                            return (
+                              <button
+                                key={c.color}
+                                type="button"
+                                onClick={() => updateSetting('playerPrefs', { ...settings.playerPrefs, captionColor: c.color })}
+                                className={cn(
+                                  "w-7 h-7 rounded-full transition-transform border-0",
+                                  cur === c.color ? "scale-110 ring-2 ring-purple-400 shadow-md" : "hover:scale-105 opacity-70 hover:opacity-100"
+                                )}
+                                style={{ backgroundColor: c.color }}
+                                title={c.label}
+                              />
+                            );
+                          })}
+                        </div>
+                      </div>
+
+                      <div>
+                        <label className="text-[11px] font-bold uppercase tracking-wider text-zinc-400 block mb-1.5">
+                          Background Style
+                        </label>
+                        <select
+                          value={settings.playerPrefs?.captionBg || 'semi-black'}
+                          onChange={(e) => updateSetting('playerPrefs', { ...settings.playerPrefs, captionBg: e.target.value })}
+                          className="w-full h-8 px-2 rounded-lg bg-white/[0.05] text-white text-xs outline-none cursor-pointer border-0"
+                        >
+                          <option value="transparent" className="bg-zinc-900">None (Outline Only)</option>
+                          <option value="semi-black" className="bg-zinc-900">Semi-Black Box</option>
+                          <option value="solid-black" className="bg-zinc-900">Solid Black Box</option>
+                          <option value="blur" className="bg-zinc-900">Frosted Glass Blur</option>
+                        </select>
+                      </div>
+
+                      <div>
+                        <label className="text-[11px] font-bold uppercase tracking-wider text-zinc-400 block mb-1.5">
+                          Subtitle Font
+                        </label>
+                        <select
+                          value={settings.playerPrefs?.captionFont || 'sans'}
+                          onChange={(e) => updateSetting('playerPrefs', { ...settings.playerPrefs, captionFont: e.target.value })}
+                          className="w-full h-8 px-2 rounded-lg bg-white/[0.05] text-white text-xs outline-none cursor-pointer border-0"
+                        >
+                          <option value="sans" className="bg-zinc-900">Sans-Serif (Modern)</option>
+                          <option value="serif" className="bg-zinc-900">Serif (Literary)</option>
+                          <option value="mono" className="bg-zinc-900">Monospace (Terminal)</option>
+                        </select>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Interactive Omni Studio Link Banner */}
+                  <div className="pt-2 flex items-center justify-between gap-4 p-4 rounded-2xl bg-white/[0.02]">
+                    <div>
+                      <h5 className="text-xs font-bold text-white uppercase tracking-wider">
+                        Omni Player Studio
+                      </h5>
+                      <p className="text-[11px] text-zinc-400 mt-0.5">
+                        Test live skip detection, responsive aspect ratios, and subtitle typography on the calibration stage.
+                      </p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        playSquishyJelly(0.25);
+                        setActiveTab('player');
+                      }}
+                      className="px-4 py-2 rounded-xl bg-purple-600 hover:bg-purple-500 text-white font-bold text-xs uppercase tracking-wider shrink-0 transition-all border-0 ring-0 flex items-center gap-1.5 cursor-pointer"
                     >
-                      <option value="original" className="bg-zinc-900">Original (Lossless Clarity)</option>
-                      <option value="compressed" className="bg-zinc-900">Adaptive WebP (Balanced)</option>
-                      <option value="data-saver" className="bg-zinc-900">Data Saver (Metered Mobile)</option>
-                    </select>
+                      <Play size={12} fill="currentColor" />
+                      <span>Open Live Studio</span>
+                    </button>
+                  </div>
+                </div>
+
+                {/* ── 2. DONGHUA ── */}
+                <div id="media-sec-donghua" className="space-y-6 pt-8 border-t border-white/[0.08] scroll-mt-20">
+                  <div className="flex items-center gap-2.5 pb-2.5 border-b border-white/[0.08]">
+                    <div className="p-1.5 rounded-xl bg-emerald-500/15 text-emerald-400">
+                      <Flame size={16} />
+                    </div>
+                    <div>
+                      <h3 className="text-sm font-black uppercase tracking-wider text-white">Donghua Cultivation</h3>
+                      <p className="text-[11px] text-zinc-400">Voice priorities, multi-CDN routes, and theater ambient lighting.</p>
+                    </div>
+                  </div>
+
+                  <div className="space-y-3">
+                    <label className="text-[11px] font-bold uppercase tracking-wider text-zinc-400 block">
+                      Preferred Voice Priority
+                    </label>
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                      {[
+                        { id: 'mandarin', label: 'Mandarin (Original)', desc: 'Authentic Chinese cultivation & wuxia voice acting' },
+                        { id: 'english', label: 'English Dub Priority', desc: 'English localized voice track when released by studio' },
+                        { id: 'hindi', label: 'Hindi Dub Priority', desc: 'Hindi localized voice track when released by studio' },
+                      ].map((track) => {
+                        const isSelected = mediaPrefs.donghua.audioPriority === track.id;
+                        return (
+                          <button
+                            key={track.id}
+                            type="button"
+                            onClick={() => updateMediaPref('donghua', 'audioPriority', track.id as any)}
+                            className={cn(
+                              "p-3 rounded-xl text-left transition-all flex flex-col justify-between gap-1.5 cursor-pointer select-none border-0 ring-0",
+                              isSelected
+                                ? "bg-[#7c3aed] text-white shadow-none"
+                                : "bg-white/[0.03] hover:bg-white/[0.06] text-zinc-400 hover:text-white"
+                            )}
+                          >
+                            <span className="text-xs font-bold">{track.label}</span>
+                            <p className={cn("text-[10px] leading-relaxed", isSelected ? "text-purple-100" : "text-zinc-500")}>{track.desc}</p>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+
+                  <div className="pt-2 divide-y divide-white/[0.04]">
+                    <ToggleItem
+                      title="Auto-Next Episode"
+                      desc="Automatically load the next Donghua episode upon concluding current episode."
+                      checked={settings.autoNext ?? true}
+                      onChange={(v) => updateSetting('autoNext', v)}
+                    />
+                    <ToggleItem
+                      title="Resume Playback"
+                      desc="Preserve timestamp memory for continue watching on Donghua series."
+                      checked={settings.resumePlayback ?? true}
+                      onChange={(v) => updateSetting('resumePlayback', v)}
+                    />
+                    <ToggleItem
+                      title="Ambient Theater Lighting"
+                      desc="Project soft luminous background around the Donghua player."
+                      checked={mediaPrefs.flixverse.ambientTheaterMode}
+                      onChange={(v) => updateMediaPref('flixverse', 'ambientTheaterMode', v)}
+                    />
+                  </div>
+
+                  <p className="text-[11px] text-zinc-500 leading-relaxed pt-2">
+                    Note: Donghua streams utilize direct multi-source CDN pipes. Audio tracks and embedded subtitles are automatically streamed according to availability.
+                  </p>
+                </div>
+
+                {/* ── 3. CINEMA & FLIXVERSE ── */}
+                <div id="media-sec-cinema" className="space-y-6 pt-8 border-t border-white/[0.08] scroll-mt-20">
+                  <div className="flex items-center gap-2.5 pb-2.5 border-b border-white/[0.08]">
+                    <div className="p-1.5 rounded-xl bg-indigo-500/15 text-indigo-400">
+                      <Film size={16} />
+                    </div>
+                    <div>
+                      <h3 className="text-sm font-black uppercase tracking-wider text-white">Cinema & Hollywood</h3>
+                      <p className="text-[11px] text-zinc-400">Default audio tracks, ultrawide aspect ratios, and theater aura.</p>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                      <label className="text-[11px] font-bold uppercase tracking-wider text-zinc-400 block mb-1.5">
+                        Default Audio Track
+                      </label>
+                      <select
+                        value={mediaPrefs.flixverse.audioTrackLanguage}
+                        onChange={(e) => updateMediaPref('flixverse', 'audioTrackLanguage', e.target.value)}
+                        className="w-full h-9 px-3 rounded-xl bg-white/[0.04] text-white text-xs outline-none cursor-pointer border-0"
+                      >
+                        <option value="en" className="bg-zinc-900">English (Original / Dub)</option>
+                        <option value="hi" className="bg-zinc-900">Hindi (Cinematic Dub)</option>
+                        <option value="es" className="bg-zinc-900">Spanish (Español)</option>
+                        <option value="fr" className="bg-zinc-900">French (Français)</option>
+                        <option value="multi" className="bg-zinc-900">Multi-Audio (Prompt per Film)</option>
+                      </select>
+                    </div>
+
+                    <div>
+                      <label className="text-[11px] font-bold uppercase tracking-wider text-zinc-400 block mb-1.5">
+                        Display Aspect Ratio
+                      </label>
+                      <div className="flex flex-wrap items-center gap-1.5">
+                        {[
+                          { id: '16:9', label: '16:9 Standard' },
+                          { id: '21:9', label: '21:9 Ultrawide' },
+                          { id: 'fill', label: 'Fill Screen' },
+                        ].map((ar) => {
+                          const isSelected = mediaPrefs.flixverse.aspectRatio === ar.id;
+                          return (
+                            <button
+                              key={ar.id}
+                              type="button"
+                              onClick={() => updateMediaPref('flixverse', 'aspectRatio', ar.id as any)}
+                              className={cn(
+                                "px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer select-none border-0 ring-0",
+                                isSelected ? "bg-[#7c3aed] text-white shadow-none" : "bg-white/[0.03] text-zinc-400 hover:text-white hover:bg-white/[0.06]"
+                              )}
+                            >
+                              {ar.label}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="pt-2 divide-y divide-white/[0.04]">
+                    <ToggleItem
+                      title="Ambient Theater Lighting"
+                      desc="Project soft reactive luminous aura around the cinema stage."
+                      checked={mediaPrefs.flixverse.ambientTheaterMode}
+                      onChange={(v) => updateMediaPref('flixverse', 'ambientTheaterMode', v)}
+                    />
+                    <ToggleItem
+                      title="Auto-Next Episode"
+                      desc="Automatically advance to the next drama or series episode."
+                      checked={settings.autoNext ?? true}
+                      onChange={(v) => updateSetting('autoNext', v)}
+                    />
+                    <ToggleItem
+                      title="Resume Playback"
+                      desc="Remember your watched timestamp across all cinema and drama titles."
+                      checked={settings.resumePlayback ?? true}
+                      onChange={(v) => updateSetting('resumePlayback', v)}
+                    />
+                  </div>
+
+                  <p className="text-[11px] text-zinc-500 leading-relaxed pt-2">
+                    Note: Cinema and Hollywood productions stream via high-speed external multi-CDN providers.
+                  </p>
+                </div>
+
+                {/* ── 4. MANGA & NOVELS READER ── */}
+                <div id="media-sec-manga" className="space-y-6 pt-8 border-t border-white/[0.08] scroll-mt-20">
+                  <div className="flex items-center gap-2.5 pb-2.5 border-b border-white/[0.08]">
+                    <div className="p-1.5 rounded-xl bg-purple-500/15 text-purple-400">
+                      <BookOpen size={16} />
+                    </div>
+                    <div>
+                      <h3 className="text-sm font-black uppercase tracking-wider text-white">Manga & Novels</h3>
+                      <p className="text-[11px] text-zinc-400">Reading orientations (Webtoon, RTL, LTR), reading themes, and volume button turn.</p>
+                    </div>
+                  </div>
+
+                  <div className="space-y-3">
+                    <label className="text-[11px] font-bold uppercase tracking-wider text-zinc-400 block">
+                      Reading Mode & Orientation
+                    </label>
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                      {[
+                        { id: 'webtoon', label: 'Vertical Webtoon', desc: 'Continuous vertical scroll for Manhwa & Webtoons' },
+                        { id: 'rtl', label: 'Right-to-Left (RTL)', desc: 'Standard manga format, flips right to left' },
+                        { id: 'ltr', label: 'Left-to-Right (LTR)', desc: 'Western comic book orientation, flips left to right' },
+                      ].map((mode) => {
+                        const isSelected = mediaPrefs.mangvels.readingDirection === mode.id;
+                        return (
+                          <button
+                            key={mode.id}
+                            type="button"
+                            onClick={() => updateMediaPref('mangvels', 'readingDirection', mode.id as any)}
+                            className={cn(
+                              "p-3 rounded-xl text-left transition-all flex flex-col justify-between gap-1.5 cursor-pointer select-none border-0 ring-0",
+                              isSelected
+                                ? "bg-[#7c3aed] text-white shadow-none"
+                                : "bg-white/[0.03] hover:bg-white/[0.06] text-zinc-400 hover:text-white"
+                            )}
+                          >
+                            <span className="text-xs font-bold">{mode.label}</span>
+                            <p className={cn("text-[10px] leading-relaxed", isSelected ? "text-purple-100" : "text-zinc-500")}>{mode.desc}</p>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+
+                  <div className="space-y-3">
+                    <label className="text-[11px] font-bold uppercase tracking-wider text-zinc-400 block">
+                      Reader Palette
+                    </label>
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                      {[
+                        { id: 'oled-black', label: 'OLED Pure Black', bg: '#000000', text: '#ffffff' },
+                        { id: 'dark-slate', label: 'Deep Slate', bg: '#0f172a', text: '#cbd5e1' },
+                        { id: 'sepia', label: 'Warm Sepia', bg: '#fbf0d9', text: '#5f4b32' },
+                        { id: 'paper', label: 'Soft Paper', bg: '#f4f4f0', text: '#18181b' },
+                      ].map((theme) => {
+                        const isSelected = mediaPrefs.mangvels.readerTheme === theme.id;
+                        return (
+                          <button
+                            key={theme.id}
+                            type="button"
+                            onClick={() => updateMediaPref('mangvels', 'readerTheme', theme.id as any)}
+                            className={cn(
+                              "p-2.5 rounded-xl flex items-center gap-2 transition-all cursor-pointer select-none border-0 ring-0",
+                              isSelected ? "bg-[#7c3aed] text-white shadow-none" : "hover:bg-white/[0.06]"
+                            )}
+                            style={{ backgroundColor: isSelected ? undefined : theme.bg }}
+                          >
+                            <div className="w-3 h-3 rounded-full shrink-0" style={{ backgroundColor: isSelected ? '#ffffff' : theme.text }} />
+                            <span className="text-xs font-bold truncate" style={{ color: isSelected ? '#ffffff' : theme.text }}>{theme.label}</span>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+
+                  <div className="pt-2 divide-y divide-white/[0.04]">
+                    <ToggleItem
+                      title="Volume Rocker Page Turn"
+                      desc="Use device physical volume buttons to turn manga pages on mobile and tablet."
+                      checked={mediaPrefs.mangvels.volumePageTurn}
+                      onChange={(v) => updateMediaPref('mangvels', 'volumePageTurn', v)}
+                    />
                   </div>
                 </div>
               </div>
             </SectionBlock>
           )}
 
-          {activeTab === 'flixverse' && (
-            <SectionBlock title="Flixverse & Cinema" desc="Tune high-bandwidth streaming pipes, surround audio virtualization, and cinema presets.">
+          {activeTab === 'shorts' && (
+            <SectionBlock title="Shorts & Reels" desc="Configure vertical short-form playback, default audio, gesture controls, and subtitles.">
+              {/* Playback & Sound */}
               <div className="pb-8 border-b border-white/[0.06] space-y-4">
                 <h4 className="text-xs font-black uppercase tracking-wider text-zinc-300">
-                  Cinema Stream Architecture
-                </h4>
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                  {[
-                    { id: 'auto', label: 'Multi-CDN Auto', desc: 'Fastest latency route selected automatically per session' },
-                    { id: 'vip-stream', label: 'VIP Stream Direct', desc: 'High-bitrate unthrottled pipe for 4K and 1080p movies' },
-                    { id: 'p2p-mirror', label: 'Edge Global Mirror', desc: 'Decentralized caching mirror with failover redundancy' },
-                  ].map((server) => {
-                    const isSelected = mediaPrefs.flixverse.defaultCinemaServer === server.id;
-                    return (
-                      <motion.button
-                        key={server.id}
-                        whileTap={{ scale: 0.96 }}
-                        onClick={() => updateMediaPref('flixverse', 'defaultCinemaServer', server.id)}
-                        className={cn(
-                          "p-3.5 rounded-xl border text-left transition-all flex flex-col justify-between gap-2 cursor-pointer",
-                          isSelected
-                            ? "bg-primary/10 border-primary text-white"
-                            : "bg-white/[0.03] border-white/[0.06] hover:bg-white/[0.06] text-zinc-400"
-                        )}
-                      >
-                        <span className="text-xs font-bold text-white">{server.label}</span>
-                        <p className="text-[10px] text-zinc-500 leading-relaxed">{server.desc}</p>
-                      </motion.button>
-                    );
-                  })}
-                </div>
-              </div>
-
-              <div className="pt-8 pb-8 border-b border-white/[0.06] space-y-4">
-                <h4 className="text-xs font-black uppercase tracking-wider text-zinc-300">
-                  Cinema Audio & Aspect Ratio
-                </h4>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <div>
-                    <label className="text-[11px] font-bold uppercase tracking-wider text-zinc-400 block mb-1.5">
-                      Default Audio Language
-                    </label>
-                    <select
-                      value={mediaPrefs.flixverse.audioTrackLanguage}
-                      onChange={(e) => updateMediaPref('flixverse', 'audioTrackLanguage', e.target.value)}
-                      className="w-full h-9 px-3 rounded-xl bg-white/[0.04] border border-white/10 text-white text-xs outline-none cursor-pointer"
-                    >
-                      <option value="en" className="bg-zinc-900">English (Original / Dub)</option>
-                      <option value="hi" className="bg-zinc-900">Hindi (Cinematic Dub)</option>
-                      <option value="es" className="bg-zinc-900">Spanish (Español)</option>
-                      <option value="fr" className="bg-zinc-900">French (Français)</option>
-                      <option value="multi" className="bg-zinc-900">Multi-Audio (Prompt per Film)</option>
-                    </select>
-                  </div>
-
-                  <div>
-                    <label className="text-[11px] font-bold uppercase tracking-wider text-zinc-400 block mb-1.5">
-                      Display Aspect Ratio
-                    </label>
-                    <select
-                      value={mediaPrefs.flixverse.aspectRatio}
-                      onChange={(e) => updateMediaPref('flixverse', 'aspectRatio', e.target.value as any)}
-                      className="w-full h-9 px-3 rounded-xl bg-white/[0.04] border border-white/10 text-white text-xs outline-none cursor-pointer"
-                    >
-                      <option value="16:9" className="bg-zinc-900">16:9 Standard Television</option>
-                      <option value="21:9" className="bg-zinc-900">21:9 Ultrawide CinemaScope</option>
-                      <option value="fill" className="bg-zinc-900">Fill Screen (Crop Black Bars)</option>
-                    </select>
-                  </div>
-                </div>
-              </div>
-
-              <div className="pt-8 space-y-4">
-                <h4 className="text-xs font-black uppercase tracking-wider text-zinc-300">
-                  Playback Automations
+                  Playback & Sound
                 </h4>
                 <div className="divide-y divide-white/[0.04]">
                   <ToggleItem
-                    title="Ambient Theater Lighting"
-                    desc="Project soft reactive luminous aura around the video stage."
-                    checked={mediaPrefs.flixverse.ambientTheaterMode}
-                    onChange={(v) => updateMediaPref('flixverse', 'ambientTheaterMode', v)}
+                    title="Start Shorts Muted"
+                    desc="Mute audio by default when launching or opening the shorts feed."
+                    checked={settings.shortsMuted ?? false}
+                    onChange={(v) => updateSetting('shortsMuted', v)}
                   />
                   <ToggleItem
-                    title="Auto-Skip Studio Logos & Recaps"
-                    desc="Automatically skip past introductory production cards and previous episode summaries."
-                    checked={mediaPrefs.flixverse.autoSkipRecap}
-                    onChange={(v) => updateMediaPref('flixverse', 'autoSkipRecap', v)}
+                    title="Continuous Feed Auto-Advance"
+                    desc="Automatically slide to the next short when current video ends instead of looping."
+                    checked={settings.shortsAutoAdvance ?? false}
+                    onChange={(v) => updateSetting('shortsAutoAdvance', v)}
+                  />
+                </div>
+              </div>
+
+              {/* Display & Gestures */}
+              <div className="pt-8 pb-8 border-b border-white/[0.06] space-y-4">
+                <h4 className="text-xs font-black uppercase tracking-wider text-zinc-300">
+                  Display & Gestures
+                </h4>
+                <div className="divide-y divide-white/[0.04]">
+                  <ToggleItem
+                    title="Immersive Clear Mode"
+                    desc="Auto-hide screen metadata, buttons, and badges after 3 seconds of inactivity."
+                    checked={settings.shortsClearMode ?? false}
+                    onChange={(v) => updateSetting('shortsClearMode', v)}
                   />
                   <ToggleItem
-                    title="Dolby 5.1 Virtualization"
-                    desc="Simulate multi-channel spatial audio field when using standard stereo headphones."
-                    checked={mediaPrefs.flixverse.surroundSound}
-                    onChange={(v) => updateMediaPref('flixverse', 'surroundSound', v)}
+                    title="Single-Tap Screen Play / Pause"
+                    desc="Tapping screen toggles video pause. When off, single tap toggles UI and double tap likes."
+                    checked={settings.shortsTapPlayPause ?? true}
+                    onChange={(v) => updateSetting('shortsTapPlayPause', v)}
                   />
+                </div>
+
+                <div className="pt-3 space-y-2">
+                  <label className="text-[11px] font-bold uppercase tracking-wider text-zinc-400 block">
+                    Screen Fill Mode
+                  </label>
+                  <div className="flex flex-wrap items-center gap-2">
+                    {[
+                      { id: false, label: 'Cover (Fill Screen)' },
+                      { id: true, label: 'Fit Video (No Cropping)' }
+                    ].map((mode) => {
+                      const isSelected = (settings.shortsAspectFit ?? false) === mode.id;
+                      return (
+                        <button
+                          key={String(mode.id)}
+                          type="button"
+                          onClick={() => updateSetting('shortsAspectFit', mode.id)}
+                          className={cn(
+                            "px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer select-none",
+                            isSelected ? "bg-purple-600 text-white shadow-none" : "bg-white/[0.03] text-zinc-400 hover:text-white hover:bg-white/[0.06]"
+                          )}
+                        >
+                          {mode.label}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              </div>
+
+              {/* Subtitles & Captions */}
+              <div className="pt-8 space-y-4">
+                <h4 className="text-xs font-black uppercase tracking-wider text-zinc-300">
+                  Subtitles & Overlay
+                </h4>
+                <div className="divide-y divide-white/[0.04]">
+                  <ToggleItem
+                    title="Subtitles Background Pill"
+                    desc="Render subtle dark backing behind vertical subtitles for high contrast."
+                    checked={settings.shortsCcBg !== 'none'}
+                    onChange={(v) => updateSetting('shortsCcBg', v ? 'blur' : 'none')}
+                  />
+                </div>
+
+                <div className="pt-3">
+                  <Link
+                    href="/shorts"
+                    className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-purple-600 hover:bg-purple-500 text-white font-bold text-xs uppercase tracking-wider transition-all select-none"
+                  >
+                    <Smartphone size={13} />
+                    <span>Open Shorts Feed</span>
+                  </Link>
                 </div>
               </div>
             </SectionBlock>
           )}
 
-          {activeTab === 'donghua' && (
-            <SectionBlock title="Donghua Sanctuary" desc="Dedicated Chinese animation playback controls, Mandarin voice priority, and Hanzi/Pinyin subtitle layers.">
-              <div className="pb-8 border-b border-white/[0.06] space-y-4">
-                <h4 className="text-xs font-black uppercase tracking-wider text-zinc-300">
-                  Voice Track Priority
-                </h4>
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                  {[
-                    { id: 'mandarin', label: 'Mandarin Chinese (Original)', desc: 'Original voice acting for authentic cultivation and wuxia experience' },
-                    { id: 'english', label: 'English Dub Priority', desc: 'English localized voice track when available from studio' },
-                    { id: 'hindi', label: 'Hindi Dub Priority', desc: 'Hindi localized voice track when available from studio' },
-                  ].map((track) => {
-                    const isSelected = mediaPrefs.donghua.audioPriority === track.id;
-                    return (
-                      <motion.button
-                        key={track.id}
-                        whileTap={{ scale: 0.96 }}
-                        onClick={() => updateMediaPref('donghua', 'audioPriority', track.id as any)}
-                        className={cn(
-                          "p-3.5 rounded-xl border text-left transition-all flex flex-col justify-between gap-2 cursor-pointer",
-                          isSelected
-                            ? "bg-primary/10 border-primary text-white"
-                            : "bg-white/[0.03] border-white/[0.06] hover:bg-white/[0.06] text-zinc-400"
-                        )}
-                      >
-                        <span className="text-xs font-bold text-white">{track.label}</span>
-                        <p className="text-[10px] text-zinc-500 leading-relaxed">{track.desc}</p>
-                      </motion.button>
-                    );
-                  })}
-                </div>
-              </div>
-
-              <div className="pt-8 pb-8 border-b border-white/[0.06] space-y-4">
-                <h4 className="text-xs font-black uppercase tracking-wider text-zinc-300">
-                  Donghua Subtitle Layers
-                </h4>
-                <div className="divide-y divide-white/[0.04]">
-                  <ToggleItem
-                    title="Dual Subtitles (Hanzi + English)"
-                    desc="Display simplified Chinese Hanzi characters above English translated captions."
-                    checked={mediaPrefs.donghua.hanziSubtitles}
-                    onChange={(v) => updateMediaPref('donghua', 'hanziSubtitles', v)}
-                  />
-                  <ToggleItem
-                    title="Pinyin Pronunciation Overlay"
-                    desc="Include romanized phonetic pinyin spelling above Chinese cultivation martial arts techniques."
-                    checked={mediaPrefs.donghua.pinyinGuide}
-                    onChange={(v) => updateMediaPref('donghua', 'pinyinGuide', v)}
-                  />
-                </div>
-              </div>
-
-              <div className="pt-8 space-y-4">
-                <h4 className="text-xs font-black uppercase tracking-wider text-zinc-300">
-                  Opening Jump Offset
-                </h4>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <div>
-                    <label className="text-[11px] font-bold uppercase tracking-wider text-zinc-400 block mb-1.5">
-                      Cultivation Intro Skip Offset
-                    </label>
-                    <select
-                      value={mediaPrefs.donghua.introSkipOffset}
-                      onChange={(e) => updateMediaPref('donghua', 'introSkipOffset', parseInt(e.target.value))}
-                      className="w-full h-9 px-3 rounded-xl bg-white/[0.04] border border-white/10 text-white text-xs outline-none cursor-pointer"
-                    >
-                      <option value={90} className="bg-zinc-900">90 Seconds (Standard Donghua Opening)</option>
-                      <option value={100} className="bg-zinc-900">100 Seconds (Extended Theme)</option>
-                      <option value={120} className="bg-zinc-900">120 Seconds (Full Recap + Song)</option>
-                    </select>
-                  </div>
-
-                  <div>
-                    <label className="text-[11px] font-bold uppercase tracking-wider text-zinc-400 block mb-1.5">
-                      Edge Network Pipe
-                    </label>
-                    <select
-                      value={mediaPrefs.donghua.serverRegion}
-                      onChange={(e) => updateMediaPref('donghua', 'serverRegion', e.target.value)}
-                      className="w-full h-9 px-3 rounded-xl bg-white/[0.04] border border-white/10 text-white text-xs outline-none cursor-pointer"
-                    >
-                      <option value="asia-pacific" className="bg-zinc-900">Asia-Pacific Direct Edge (Lowest Latency)</option>
-                      <option value="global-cdn" className="bg-zinc-900">Global Cloud CDN</option>
-                    </select>
-                  </div>
-                </div>
-              </div>
-            </SectionBlock>
-          )}
-
-          {activeTab === 'whisper' && (
+                    {activeTab === 'whisper' && (
             <SectionBlock title="Telepathy & Voice Packs" desc="Choose your personal companion spirit, listen to preview greetings, and calibrate volume.">
               {/* Telepathy Controls */}
               <div className="pb-8 border-b border-white/[0.06] space-y-4">
@@ -2328,6 +2808,9 @@ export default function Settings() {
                             size="sm"
                             onClick={() => {
                               updateSetting('whisperVoice', char.id);
+                              if (user?.id) {
+                                saveAccountVoice(user.id, { pack: char.id, language: voiceLanguageTab });
+                              }
                               toast.success(`${char.name} is now your active companion`);
                             }}
                             className={cn(
@@ -2835,7 +3318,7 @@ export default function Settings() {
           )}
 
           {activeTab === 'guide' && (
-            <SectionBlock title="Sanctuary Manual & Documentation" desc="Comprehensive guide for every setting, automation, and engine option across Kagemi.">
+            <SectionBlock title="User Guide & Documentation" desc="Comprehensive guide for every setting, automation, and engine option across Kagemi.">
               {/* Search & Category Filter Toolbar */}
               <div className="pb-6 border-b border-white/[0.06] space-y-3">
                 <div className="relative">
@@ -2943,11 +3426,11 @@ export default function Settings() {
   const CurrentIcon = currentMenuItem.icon;
 
   return (
-    <div className="w-full px-2 sm:px-4 md:px-6 py-4 md:py-6 text-white min-h-screen">
+    <div className="w-full px-2 sm:px-4 md:px-6 pt-1 pb-3 md:pt-1.5 md:pb-4 text-white min-h-screen">
       {/* ── MOBILE EXPERIENCE (< md): Permanent Top-Left Menu & Section Navigation ── */}
-      <div className="block md:hidden w-full mb-6">
+      <div className="block md:hidden w-full mb-3">
         {/* Sticky Compact Top-Left Toolbar Bar (2D Monet UI, Unboxed) */}
-        <div className="sticky top-14 z-30 -mx-2 px-3 py-1.5 bg-[#070b14]/95 backdrop-blur-xl border-b border-white/[0.06] flex items-center justify-between gap-2 mb-3">
+        <div className="sticky top-14 z-30 -mx-2 px-3 py-1.5 bg-[#070b14]/95 backdrop-blur-xl border-b border-white/[0.06] flex items-center justify-between gap-2 mb-2">
           <motion.button
             whileTap={{ scale: 0.94 }}
             transition={{ type: "spring", stiffness: 450, damping: 18 }}
@@ -2985,7 +3468,7 @@ export default function Settings() {
           animate={{ width: isSidebarCollapsed ? 76 : 288 }}
           transition={{ type: "spring", stiffness: 360, damping: 28, mass: 0.8 }}
           className={cn(
-            "shrink-0 sticky top-20 max-h-[calc(100vh-theme(spacing.24))] overflow-y-auto overscroll-contain no-scrollbar rounded-2xl bg-[#090d16]/85 border border-white/[0.08] p-3 backdrop-blur-md space-y-3 select-none",
+            "shrink-0 sticky top-16 max-h-[calc(100vh-theme(spacing.20))] overflow-y-auto overscroll-contain no-scrollbar rounded-2xl bg-[#090d16]/85 border border-white/[0.08] p-3 backdrop-blur-md space-y-3 select-none",
             isSidebarCollapsed && "px-2 py-3"
           )}
         >
@@ -3083,19 +3566,6 @@ export default function Settings() {
                               {item.label}
                             </motion.span>
                           </div>
-                          {!isActive && (
-                            <motion.span 
-                              initial={false}
-                              animate={{ 
-                                opacity: isSidebarCollapsed ? 0 : 1, 
-                                width: isSidebarCollapsed ? 0 : "auto" 
-                              }}
-                              transition={{ duration: 0.18 }}
-                              className="text-[10px] text-zinc-500 font-medium truncate max-w-[75px] text-right overflow-hidden whitespace-nowrap"
-                            >
-                              {valueSnippet}
-                            </motion.span>
-                          )}
                         </motion.button>
                       );
                     })}
@@ -3111,6 +3581,18 @@ export default function Settings() {
           {renderSectionContent()}
         </main>
       </div>
+
+      {/* ── UNIFIED FULL-WIDTH FOOTER ── */}
+      <footer className="w-full mt-6 pt-3 border-t border-white/[0.06] flex flex-col sm:flex-row items-center justify-between gap-3 text-zinc-500 text-xs select-none">
+        <div className="flex items-center gap-2">
+          <span className="font-lemon text-xs font-black tracking-wider text-zinc-300 uppercase">KAGEMI</span>
+          <span className="text-zinc-600">•</span>
+          <span className="font-mono text-xs text-zinc-400 font-bold">v4.0</span>
+        </div>
+        <div className="text-[11px] text-zinc-500 font-medium">
+          All preferences saved
+        </div>
+      </footer>
 
       {/* Mobile OtakuVerse-Style Slide-Out Drawer Menu (2D Monet UI) */}
       {mounted && typeof window !== 'undefined' && createPortal(
@@ -3145,7 +3627,7 @@ export default function Settings() {
                         <span className="font-black text-sm text-white uppercase tracking-wider block font-lemon leading-tight">
                           Settings
                         </span>
-                        <span className="text-[10px] text-zinc-400 font-mono">Core v2.4</span>
+                        
                       </div>
                     </div>
                     <motion.button
@@ -3202,11 +3684,6 @@ export default function Settings() {
                                     </div>
                                     <span className="truncate">{item.label}</span>
                                   </div>
-                                  {valueSnippet && !isActive && (
-                                    <span className="text-[10px] text-zinc-400 font-medium truncate max-w-[85px] text-right">
-                                      {valueSnippet}
-                                    </span>
-                                  )}
                                 </motion.button>
                               );
                             })}
@@ -3217,12 +3694,7 @@ export default function Settings() {
                   </div>
                 </div>
 
-                {/* Footer branding */}
-                <div className="pt-4 border-t border-white/10 text-center">
-                  <p className="text-[10px] text-zinc-500 font-mono uppercase tracking-wider">
-                    Shadow Garden Sanctuary
-                  </p>
-                </div>
+
               </motion.div>
             </div>
           )}

@@ -15,7 +15,7 @@ import { AppUser, UserAPI } from '@/lib/api';
 import { supabase } from '@/lib/supabase'; 
 import { motion, AnimatePresence } from 'framer-motion';
  
-import { playVoice, syncVoiceProfile } from '@/lib/voice'; 
+import { playVoice, unlockAudio, saveTravellerVoiceSettings, loadAccountVoice, restoreTravellerVoice, getVoiceSettings } from '@/lib/voice'; 
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/context/AuthContext'; 
 
@@ -41,9 +41,9 @@ const YinYangIcon = () => (
         `}</style>
         <svg viewBox="0 0 24 24" className="w-10 h-10 animate-[spin_6s_linear_infinite]" style={{ animation: 'breath-glow 4s ease-in-out infinite, spin 6s linear infinite' }}>
             <path d="M12 22c5.523 0 10-4.477 10-10S17.523 2 12 2c-2.761 0-5.261 1.119-7.071 2.929A9.969 9.969 0 0 0 2 12c0 5.523 4.477 10 10 10Z" fill="white"/>
-            <path d="M12 2a10 10 0 0 0 0 20 5 5 0 0 1 0-10 5 5 0 0 0 0-10Z" fill="#dc2626"/>
+            <path d="M12 2a10 10 0 0 0 0 20 5 5 0 0 1 0-10 5 5 0 0 0 0-10Z" fill="#8b5cf6"/>
             <circle cx="12" cy="7" r="1.5" fill="white" />
-            <circle cx="12" cy="17" r="1.5" fill="#dc2626" />
+            <circle cx="12" cy="17" r="1.5" fill="#8b5cf6" />
         </svg>
     </div>
 );
@@ -128,20 +128,23 @@ export default function AuthModal({ isOpen, onClose, onAuthSuccess, initialView 
   // --- SIGN OUT ---
   const handleSignOut = async () => {
     setIsLoading(true);
+    unlockAudio();
+    sessionStorage.setItem('shadow_just_signed_out', 'true');
+    sessionStorage.setItem('shadow_welcome_shown', 'true');
     const role = currentProfile?.role;
-    const isMaster = role === 'admin' || role === 'moderator';
-    playVoice(isMaster ? 'BYE_MASTER' : 'BYE_ADVENTURER');
-    notifyIsland('Guild Receptionist', isMaster
-      ? 'See you again, Master. Have a nice day. Goodbye.'
-      : 'See you again, Adventurer. Have a nice day. Goodbye.'
-    );
+    const isMaster = role === 'admin' || role === 'moderator' || role === 'owner';
+    const currentAccountVoice = getVoiceSettings();
+    playVoice(isMaster ? 'BYE_MASTER' : 'BYE_ADVENTURER', undefined, currentAccountVoice);
+    restoreTravellerVoice();
     onClose();
     await signOut();
+    setIsLoading(false);
   };
 
   // --- SIGN IN ---
   const handleEnter = async (e: React.FormEvent) => {
     e.preventDefault();
+    unlockAudio();
     setIsLoading(true);
 
     try {
@@ -153,20 +156,17 @@ export default function AuthModal({ isOpen, onClose, onAuthSuccess, initialView 
       if (error) throw error;
 
       if (data?.user) {
-        syncVoiceProfile(data.user.id).catch(() => {});
-        const { data: profileData } = await supabase.from('profiles').select('role').eq('id', data.user.id).single();
+        sessionStorage.setItem('shadow_welcome_shown', 'true');
+        saveTravellerVoiceSettings(getVoiceSettings());
+        
+        const { data: profileData } = await supabase.from('profiles').select('role, voice_pack, settings').eq('id', data.user.id).single();
         const role = profileData?.role || 'user';
-        const isMaster = role === 'admin' || role === 'moderator';
+        const isMaster = role === 'admin' || role === 'moderator' || role === 'owner';
 
-        playVoice(isMaster ? 'GREET_MASTER' : 'GREET_ADVENTURER');
-        notifyIsland('Guild Receptionist', isMaster 
-            ? `Welcome back Master, it is good to see you again.` 
-            : `Welcome back Adventurer, it is good to see you again.`
-        );
-
+        const accountVoice = await loadAccountVoice(data.user.id, profileData);
+        playVoice(isMaster ? 'GREET_MASTER' : 'GREET_ADVENTURER', undefined, accountVoice);
         onAuthSuccess({ id: data.user.id, email: data.user.email });
         onClose();
-        router.push('/home');
       }
     } catch (error: any) {
         notifyIsland('Guild Manager Alpha', error.message || "Access Denied.", 'error');

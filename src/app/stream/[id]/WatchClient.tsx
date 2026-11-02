@@ -102,9 +102,9 @@ const EpisodeButton = memo(({ ep, isCurrent, isPlayed, viewMode, onClick }: Epis
             ? "h-7 sm:h-8 w-full aspect-square rounded-full flex items-center justify-center text-[9px] font-bold" 
             : "w-full h-8 sm:h-9 rounded-2xl flex items-center px-3 sm:px-4 text-[10px] sm:text-[11px] font-bold text-left justify-start",
         isCurrent 
-          ? "bg-emerald-500/20 backdrop-blur-md border-emerald-400/60 text-emerald-300 shadow-[0_0_15px_rgba(16,185,129,0.3)] z-10" 
+          ? "bg-slate-900/60 backdrop-blur-md border-0 text-white z-20 shadow-[0_0_15px_rgba(168,85,247,0.25)]" 
           : isPlayed 
-            ? "bg-rose-500/15 backdrop-blur-md border-rose-400/30 text-rose-300 hover:border-rose-400/60" 
+            ? "bg-purple-950/30 backdrop-blur-md border-purple-800/40 text-purple-300 hover:border-purple-600/60" 
             : "bg-white/[0.03] backdrop-blur-md border-white/[0.06] text-zinc-400 hover:border-cyan-400/40 hover:bg-white/[0.08] hover:text-white"
       )}
     >
@@ -113,14 +113,21 @@ const EpisodeButton = memo(({ ep, isCurrent, isPlayed, viewMode, onClick }: Epis
           <span className="shrink-0 font-bold">{ep.number}</span>
           {viewMode === 'list' && (
             <span className="truncate text-[11px] font-sans font-medium text-zinc-300 transition-opacity duration-200">
-              {ep.title && !ep.title.toLowerCase().startsWith(`episode ${ep.number}`) ? `• ${ep.title}` : ''}
+              {getEpisodeSubtitleOnly(ep.number, ep.title)?.trim() || `Episode ${ep.number}`}
             </span>
           )}
         </div>
         {isCurrent && viewMode === 'list' && (
-          <span className="ml-2 inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-emerald-500/20 border border-emerald-400/50 text-[8px] font-black uppercase text-emerald-300 shadow-[0_0_10px_rgba(52,211,153,0.3)] shrink-0 transition-transform duration-200">
-            <span>PLAYING</span>
-          </span>
+          <div className="ml-2 inline-flex items-center gap-1.5 text-purple-300 shrink-0 select-none">
+            <span className="inline-flex items-end gap-[1.5px] h-2.5">
+              <span className="w-[1.5px] bg-purple-300 rounded-full animate-[audio-bar-1_0.8s_ease-in-out_infinite]" />
+              <span className="w-[1.5px] bg-purple-400 rounded-full animate-[audio-bar-2_0.8s_ease-in-out_infinite]" />
+              <span className="w-[1.5px] bg-purple-300 rounded-full animate-[audio-bar-3_0.8s_ease-in-out_infinite]" />
+            </span>
+            <span className="text-[8.5px] font-black uppercase tracking-wider text-purple-300">
+              PLAYING
+            </span>
+          </div>
         )}
       </div>
     </button>
@@ -1385,7 +1392,7 @@ export function DramaWatchContent() {
                     ref={playerRef}
                     url={activeHlsUrl}
                     iframeUrl={activeIframe}
-                    title={currentEp?.title || drama.title}
+                    title={currentEp ? getCleanEpisodeTitle(currentEp.number || 1, currentEp.title) : drama.title}
                     poster={drama.banner || drama.image}
                     autoPlay
                     onProgress={(s) => { progressRef.current = s.playedSeconds; }}
@@ -1844,17 +1851,17 @@ export function DramaWatchContent() {
 
               {/* Episode Chunk Switcher (> 50 episodes) */}
               {episodeChunks.length > 1 && (
-                <div className="w-full border-b border-white/[0.06] bg-black/20 py-2.5 px-3">
+                <div className="w-full border-b border-white/[0.06] bg-black/25 py-2.5 px-3">
                   <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar">
                     {episodeChunks.map((_, idx) => (
                       <button
                         key={idx}
                         onClick={() => setEpChunkIndex(idx)}
                         className={cn(
-                          "flex-shrink-0 px-3 py-1 text-[10px] font-black rounded-lg transition-all border uppercase tracking-wider active:scale-95",
+                          "flex-shrink-0 px-4 py-1.5 rounded-full text-sm sm:text-base font-black tracking-tight transition-all select-none border-0",
                           epChunkIndex === idx 
-                            ? "bg-cyan-400 text-black border-cyan-300 shadow-sm" 
-                            : "bg-white/[0.03] border-white/[0.06] text-zinc-400 hover:text-white"
+                            ? "bg-[#7c3aed] text-white shadow-none" 
+                            : "bg-white/[0.05] text-zinc-400 hover:text-zinc-100 hover:bg-white/[0.08]"
                         )}
                       >
                         {idx * chunkSize + 1}–{Math.min((idx + 1) * chunkSize, drama.episodes.length)}

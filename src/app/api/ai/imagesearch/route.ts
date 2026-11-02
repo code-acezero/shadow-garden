@@ -57,7 +57,7 @@ async function callTraceMoe(
 ): Promise<Response> {
     const targetUrl = `${endpoint}/search?${params.toString()}`;
     const headers: Record<string, string> = {
-        'User-Agent': 'ShadowGarden-ImageSearch/4.0'
+        'User-Agent': 'Kagemi-ImageSearch/4.0'
     };
     if (contentType) headers['Content-Type'] = contentType;
     if (apiKey) headers['x-trace-secret'] = apiKey;
@@ -151,7 +151,7 @@ export async function GET(request: NextRequest) {
     if (action === 'quota' || action === 'me') {
         try {
             const res = await fetch('https://api.trace.moe/me', {
-                headers: { 'User-Agent': 'ShadowGarden-ImageSearch/4.0' }
+                headers: { 'User-Agent': 'Kagemi-ImageSearch/4.0' }
             });
             if (res.ok) {
                 const data = await res.json();

@@ -21,7 +21,8 @@ export type ShortDramaSource =
   | 'dramabox' 
   | 'shortmax'
   | 'curated'
-  | 'curated_hindi';
+  | 'curated_hindi'
+  | 'curated_english';
 
 export interface ShortDramaItem {
   id: string;                      // Unique ID, e.g. "ffzy_49257" or "db_4100012"

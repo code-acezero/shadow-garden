@@ -21,6 +21,7 @@ import { supabase } from '@/lib/supabase';
 import { cn, getSimilarity, isRelatedAnime, getChunkLabel, sanitizeContinueWatchingEntry, getSafeImageUrl, slugifyTitle, getCleanEpisodeTitle, getEpisodeSubtitleOnly } from '@/lib/utils';
 import { toast } from '@/lib/toast';
 import { useAuth } from '@/context/AuthContext';
+import { useSettings } from '@/hooks/useSettings';
 import { sfx } from '@/lib/audioManager';
 import { triggerTelepathy } from '@/lib/voice';
 import PostShareModal from '@/components/Social/PostShareModal';
@@ -100,61 +101,54 @@ const useDraggable = () => {
 }
 
 const useWatchSettings = () => {
-    const { user } = useAuth();
-    const [isLoaded, setIsLoaded] = useState(false);
-    const [settings, setSettings] = useState({
-        autoPlay: true, autoNext: true, autoSkip: false, autoSkipOutro: false, dimMode: false,
-        server: 'MegaCloud', 
-        category: 'sub' as 'sub' | 'dub' | 'raw',
-        audio: 'jp' as 'jp' | 'en' | 'hi' | 'cn' | 'kr' | 'raw',
-        volume: 1
-    });
+    const { settings: globalSettings, updateSetting: updateGlobalSetting, isLoaded } = useSettings();
 
-    useEffect(() => {
-        if (typeof window !== 'undefined') {
-            const saved = localStorage.getItem('shadow_watch_settings_anime');
-            if (saved) {
-                try {
-                    const parsed = JSON.parse(saved);
-                    if (!parsed.audio && parsed.category) {
-                        parsed.audio = parsed.category === 'dub' ? 'en' : 'jp';
-                    }
-                    if (parsed.audio && !parsed.category) {
-                        parsed.category = (parsed.audio === 'en' || parsed.audio === 'hi') ? 'dub' : 'sub';
-                    }
-                    setSettings((prev: any) => ({ ...prev, ...parsed }));
-                } catch (e) { }
-            }
-            setIsLoaded(true);
-        }
-    }, []);
+    const settings = useMemo(() => {
+        const audioVal = (globalSettings.audio || globalSettings.defaultAudio || 'jp') as 'jp' | 'en' | 'hi' | 'cn' | 'kr' | 'raw';
+        const catVal = (globalSettings.category || ((audioVal === 'en' || audioVal === 'hi') ? 'dub' : 'sub')) as 'sub' | 'dub' | 'raw';
+        return {
+            autoPlay: globalSettings.autoPlay ?? true,
+            autoNext: globalSettings.autoNext ?? true,
+            autoSkip: globalSettings.autoSkip ?? globalSettings.autoSkipOpEd ?? false,
+            autoSkipOutro: globalSettings.autoSkipOutro ?? false,
+            dimMode: globalSettings.dimMode ?? false,
+            server: globalSettings.server || (globalSettings.defaultServer === 'hd-1' ? 'MegaCloud' : globalSettings.defaultServer) || 'MegaCloud',
+            category: catVal,
+            audio: audioVal,
+            volume: globalSettings.defaultVolume ? globalSettings.defaultVolume / 100 : 1
+        };
+    }, [globalSettings]);
 
     const updateSetting = useCallback((key: string, value: any) => {
-        setSettings((prev: any) => {
-            const newSettings = { ...prev, [key]: value };
-            if (key === 'audio') {
-                newSettings.category = (value === 'en' || value === 'hi') ? 'dub' : 'sub';
-            } else if (key === 'category') {
-                if (!newSettings.audio || newSettings.audio === 'jp' || newSettings.audio === 'en') {
-                    newSettings.audio = value === 'dub' ? 'en' : 'jp';
-                }
-            }
-            localStorage.setItem('shadow_watch_settings_anime', JSON.stringify(newSettings));
-            return newSettings;
-        });
-
-        // Synchronize player preferences across video player and page controls
-        if (key === 'autoSkip' || key === 'autoSkipOutro' || key === 'autoPlay') {
-            try {
-                const currentPrefs = JSON.parse(localStorage.getItem('shadow_player_prefs') || '{}');
-                const updatedPrefs = { ...currentPrefs, [key]: value };
-                localStorage.setItem('shadow_player_prefs', JSON.stringify(updatedPrefs));
-                if (typeof window !== 'undefined') {
-                    window.dispatchEvent(new CustomEvent('update_player_prefs', { detail: { playerPrefs: updatedPrefs } }));
-                }
-            } catch (e) {}
+        if (key === 'autoSkip') {
+            updateGlobalSetting('autoSkip', value);
+            updateGlobalSetting('autoSkipOpEd', value);
+        } else if (key === 'autoSkipOutro') {
+            updateGlobalSetting('autoSkipOutro', value);
+        } else if (key === 'autoPlay') {
+            updateGlobalSetting('autoPlay', value);
+        } else if (key === 'autoNext') {
+            updateGlobalSetting('autoNext', value);
+        } else if (key === 'dimMode') {
+            updateGlobalSetting('dimMode', value);
+        } else if (key === 'server') {
+            updateGlobalSetting('server', value);
+            updateGlobalSetting('defaultServer', value as any);
+        } else if (key === 'audio') {
+            updateGlobalSetting('audio', value);
+            updateGlobalSetting('defaultAudio', value as any);
+            const cat = (value === 'en' || value === 'hi') ? 'dub' : 'sub';
+            updateGlobalSetting('category', cat as any);
+        } else if (key === 'category') {
+            updateGlobalSetting('category', value);
+            const aud = value === 'dub' ? 'en' : 'jp';
+            updateGlobalSetting('audio', aud as any);
+            updateGlobalSetting('defaultAudio', aud as any);
+        } else {
+            updateGlobalSetting(key as any, value);
         }
-    }, []);
+    }, [updateGlobalSetting]);
+
     return { settings, updateSetting, isSettingsLoaded: isLoaded };
 };
 
@@ -217,11 +211,13 @@ const EpisodeButton = memo(({ ep, isCurrent, isFullyPlayed, percent, viewMode, o
         let animationFrameId: number;
         const updateProgress = () => {
             if (progressRef?.current !== undefined) {
-                const duration = (playerRef?.current?.getDuration && playerRef.current.getDuration() > 0)
-                    ? playerRef.current.getDuration()
+                const rawD = playerRef?.current?.getDuration ? playerRef.current.getDuration() : null;
+                const duration = (typeof rawD === 'number' && !isNaN(rawD) && isFinite(rawD) && rawD > 0)
+                    ? rawD
                     : 1440; // 24-minute fallback for embed streams
-                const p = Math.min(100, Math.max(0, (progressRef.current / duration) * 100));
-                setRealPercent(p);
+                const cur = typeof progressRef.current === 'number' && !isNaN(progressRef.current) ? progressRef.current : 0;
+                const p = Math.min(100, Math.max(0, (cur / duration) * 100));
+                setRealPercent(isNaN(p) ? 0 : p);
             }
             animationFrameId = requestAnimationFrame(updateProgress);
         };
@@ -241,12 +237,12 @@ const EpisodeButton = memo(({ ep, isCurrent, isFullyPlayed, percent, viewMode, o
                 viewMode === 'grid' ? "h-8 sm:h-9 w-full rounded-full flex items-center justify-center text-[10px] sm:text-[11px] font-black" :
                     viewMode === 'compact' ? "h-7 sm:h-8 w-full aspect-square rounded-full flex items-center justify-center text-[9px] font-bold" :
                         "w-full h-8 sm:h-9 rounded-2xl flex items-center px-3 sm:px-4 text-[10px] sm:text-[11px] font-bold text-left",
-                isCurrent ? "bg-slate-900/60 backdrop-blur-md border-0 text-white z-20 shadow-[0_0_15px_rgba(16,185,129,0.2)]" :
+                isCurrent ? "bg-slate-900/60 backdrop-blur-md border-0 text-white z-20 shadow-[0_0_15px_rgba(168,85,247,0.25)]" :
                     isFullyPlayed ? "bg-[#101726]/80 border border-white/10 text-zinc-400 hover:border-white/25 hover:text-white hover:bg-white/[0.08]" :
                         "bg-white/5 backdrop-blur-xl border border-white/10 text-zinc-400 hover:border-white/30 hover:bg-white/10 hover:text-white hover:shadow-[0_0_15px_rgba(255,255,255,0.15)]"
             )}
             style={{
-                ...((!isCurrent && !isFullyPlayed && displayPercent > 0) ? { background: `linear-gradient(to right, rgba(16, 185, 129, 0.35) ${displayPercent}%, rgba(255, 255, 255, 0.05) ${displayPercent}%)` } : {}),
+                ...((!isCurrent && !isFullyPlayed && displayPercent > 0) ? { background: `linear-gradient(to right, rgba(139, 92, 246, 0.35) ${displayPercent}%, rgba(255, 255, 255, 0.05) ${displayPercent}%)` } : {}),
                 ...(isFullyPlayed && !isCurrent ? {
                     background: 'linear-gradient(135deg, rgba(255, 255, 255, 0.05), rgba(255, 255, 255, 0.02))',
                     backdropFilter: 'blur(8px)'
@@ -254,18 +250,29 @@ const EpisodeButton = memo(({ ep, isCurrent, isFullyPlayed, percent, viewMode, o
             }}
         >
             <div className="absolute inset-x-0 top-0 h-[40%] bg-gradient-to-b from-white/15 to-transparent pointer-events-none rounded-t-full" />
+            
+            {/* Playing equalizer indicator for grid and compact modes */}
+            {isCurrent && (viewMode === 'grid' || viewMode === 'compact') && (
+                <span className="absolute top-1 right-1.5 flex items-end gap-[1.5px] h-2 pointer-events-none z-20" aria-label="Now Playing">
+                    <span className="w-[1.5px] bg-purple-300 rounded-full animate-[audio-bar-1_0.8s_ease-in-out_infinite]" />
+                    <span className="w-[1.5px] bg-purple-300 rounded-full animate-[audio-bar-2_0.8s_ease-in-out_infinite]" />
+                    <span className="w-[1.5px] bg-purple-300 rounded-full animate-[audio-bar-3_0.8s_ease-in-out_infinite]" />
+                </span>
+            )}
 
             {!isCurrent && !isFullyPlayed && displayPercent > 0 && <div className="absolute inset-0 bg-primary-600/10 animate-liquid pointer-events-none" />}
 
-            {isCurrent && (
+            {isCurrent && displayPercent > 0 && (
                 <div
-                    className="absolute inset-y-0 left-0 overflow-hidden pointer-events-none rounded-r-full backdrop-blur-sm transition-all duration-150"
-                    style={{ width: `${Math.max(6, displayPercent)}%` }}
+                    className="absolute inset-y-0.5 left-0.5 overflow-hidden pointer-events-none rounded-full transition-all duration-300 ease-out"
+                    style={{ width: `calc(${Math.min(100, Math.max(3, displayPercent))}% - 4px)` }}
                 >
-                    {/* Seamless Metallic Liquid Fill: No stroke, pure metallic fluid sheen */}
-                    <div className="absolute inset-0 bg-gradient-to-r from-emerald-600/40 via-teal-500/35 to-emerald-400/35" />
-                    <div className="absolute inset-0 bg-gradient-to-b from-white/20 via-transparent to-black/25" />
-                    <div className="absolute top-0 right-0 bottom-0 w-4 bg-gradient-to-l from-white/20 to-transparent" />
+                    {/* Translucent Green Liquid Base (looks like liquid filling a glass container) */}
+                    <div className="absolute inset-0 bg-gradient-to-r from-emerald-500/20 via-emerald-400/30 to-emerald-400/35 backdrop-blur-[1px]" />
+                    {/* Top glass specular reflection */}
+                    <div className="absolute inset-x-0 top-0 h-[38%] bg-gradient-to-b from-white/25 via-white/5 to-transparent pointer-events-none" />
+                    {/* Bottom liquid depth shading */}
+                    <div className="absolute inset-x-0 bottom-0 h-[30%] bg-gradient-to-t from-emerald-950/30 to-transparent pointer-events-none" />
                 </div>
             )}
 
@@ -281,16 +288,23 @@ const EpisodeButton = memo(({ ep, isCurrent, isFullyPlayed, percent, viewMode, o
                     </span>
                     {viewMode === 'list' && (
                         <span className="truncate text-[11px] font-sans font-medium text-zinc-300 transition-opacity duration-200">
-                            {getEpisodeSubtitleOnly(ep.number, ep.title) ? `• ${getEpisodeSubtitleOnly(ep.number, ep.title)}` : ''}
+                            {getEpisodeSubtitleOnly(ep.number, ep.title)?.trim() || `Episode ${ep.number}`}
                         </span>
                     )}
                 </div>
 
-                {/* Active Playing Badge for List Mode */}
+                {/* Active Playing Badge for List Mode (no container bg, animated equalizer) */}
                 {isCurrent && viewMode === 'list' && (
-                    <span className="ml-2 inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-emerald-500/20 border border-emerald-400/40 text-[8px] font-black uppercase text-emerald-300 shadow-[0_0_10px_rgba(52,211,153,0.3)] shrink-0 transition-transform duration-200">
-                        <span>PLAYING</span>
-                    </span>
+                    <div className="ml-2 inline-flex items-center gap-1.5 text-purple-300 shrink-0 select-none">
+                        <span className="inline-flex items-end gap-[1.5px] h-2.5">
+                            <span className="w-[1.5px] bg-purple-300 rounded-full animate-[audio-bar-1_0.8s_ease-in-out_infinite]" />
+                            <span className="w-[1.5px] bg-purple-400 rounded-full animate-[audio-bar-2_0.8s_ease-in-out_infinite]" />
+                            <span className="w-[1.5px] bg-purple-300 rounded-full animate-[audio-bar-3_0.8s_ease-in-out_infinite]" />
+                        </span>
+                        <span className="text-[8.5px] font-black uppercase tracking-wider text-purple-300">
+                            PLAYING
+                        </span>
+                    </div>
                 )}
             </div>
         </button>
@@ -435,6 +449,48 @@ const NextEpisodeTimer = ({ schedule, status }: { schedule: any, status?: string
     );
 };
 
+const NextEpisodeTextHint: React.FC<{ schedule?: any; status?: string; className?: string }> = ({ schedule, status = '', className }) => {
+    const [hintText, setHintText] = useState<string | null>(null);
+
+    useEffect(() => {
+        const rawTimestamp = schedule?.airingISOTimestamp 
+            ? new Date(schedule.airingISOTimestamp).getTime()
+            : (schedule?.airingAt ? Number(schedule.airingAt) * 1000 : (schedule?.airingTimestamp ? Number(schedule.airingTimestamp) * 1000 : null));
+
+        if (!rawTimestamp || isNaN(rawTimestamp)) return;
+
+        const update = () => {
+            const diff = rawTimestamp - Date.now();
+            if (diff <= 0) {
+                setHintText(null);
+                return;
+            }
+            const days = Math.floor(diff / 86400000);
+            const hours = Math.floor((diff % 86400000) / 3600000);
+            const minutes = Math.floor((diff % 3600000) / 60000);
+            const seconds = Math.floor((diff % 60000) / 1000);
+
+            const timeStr = days > 0
+                ? `${days}d ${hours}h ${minutes}m`
+                : `${hours}h ${minutes}m ${seconds}s`;
+            setHintText(timeStr);
+        };
+
+        update();
+        const iv = setInterval(update, 1000);
+        return () => clearInterval(iv);
+    }, [schedule, status]);
+
+    if (!hintText) return null;
+
+    return (
+        <p className={cn("text-[11px] sm:text-xs text-zinc-400/80 font-mono tracking-wider mt-1.5 flex items-center gap-1.5", className)}>
+            <Clock size={11} className="text-primary-400 shrink-0" />
+            <span>Next episode premieres in <span className="text-zinc-200 font-semibold">{hintText}</span></span>
+        </p>
+    );
+};
+
 const TrailerSection = ({ videos }: { videos: any[] }) => {
     const [mounted, setMounted] = useState(false);
     useEffect(() => { setMounted(true); }, []);
@@ -460,7 +516,7 @@ const TrailerSection = ({ videos }: { videos: any[] }) => {
             <DialogTrigger asChild>
                 {triggerEl}
             </DialogTrigger>
-            <DialogContent className="bg-black/95 border-primary-500/40 w-[90vw] lg:max-w-2xl max-h-[70vh] p-0 overflow-hidden rounded-3xl shadow-[0_0_100px_-20px_rgba(220,38,38,0.5)] animate-in zoom-in-95 duration-300 flex flex-col">
+            <DialogContent className="bg-black/95 border-primary-500/40 w-[90vw] lg:max-w-2xl max-h-[70vh] p-0 overflow-hidden rounded-3xl shadow-[0_0_100px_-20px_rgba(139, 92, 246, 0.5)] animate-in zoom-in-95 duration-300 flex flex-col">
                 <DialogTitle className="sr-only">Trailers</DialogTitle>
                 <div className="flex-1 flex flex-col min-h-0">
                     <div className="aspect-video w-full bg-zinc-900 shrink-0">
@@ -725,7 +781,7 @@ const VoiceActorDetailsDialog = ({
         <Dialog open={isOpen} onOpenChange={(v) => !v && onClose()}>
             <DialogContent className="w-[95vw] h-[65vh] md:h-[550px] p-0 border-0 bg-transparent shadow-none overflow-hidden sm:rounded-[30px] z-[60] [&>button]:hidden">
                 <DialogTitle className="sr-only">Actor Details</DialogTitle>
-                <div className="w-full h-full relative backdrop-blur-2xl bg-[#050505]/95 border border-white/10 rounded-[30px] shadow-[0_0_80px_rgba(220,38,38,0.3)] overflow-hidden flex flex-col md:flex-row">
+                <div className="w-full h-full relative backdrop-blur-2xl bg-[#050505]/95 border border-white/10 rounded-[30px] shadow-[0_0_80px_rgba(139, 92, 246, 0.3)] overflow-hidden flex flex-col md:flex-row">
                     <div className="absolute top-0 left-0 w-full h-full bg-gradient-to-br from-primary-600/10 via-transparent to-primary-600/5 pointer-events-none" />
 
                     <div className="absolute top-1 right-1 z-[100] flex gap-2 pointer-events-auto">
@@ -1046,10 +1102,13 @@ function WatchContent({ initialAnime }: { initialAnime?: UniversalAnime | null }
     const initialSettingsMount = useRef(true);
     const embedDurationRef = useRef<number>(1440);
     const lastAutoSkippedIntroRef = useRef<boolean>(false);
+    const lastProgressSyncTimeRef = useRef<number>(0);
     const lastAutoSkippedOutroRef = useRef<boolean>(false);
     const lastAutoNextTriggeredRef = useRef<boolean>(false);
     const hasHindiDiscoveredRef = useRef<boolean>(false);
     const episodeSubtitlesRef = useRef<any[]>([]);
+    const lastSavedSecondRef = useRef<number>(-1);
+    const lastLocalStorageSaveRef = useRef<number>(0);
 
     const seasonsRef = useDraggable();
     const relatedRef = useDraggable();
@@ -1148,6 +1207,154 @@ function WatchContent({ initialAnime }: { initialAnime?: UniversalAnime | null }
             isBufferDirty.current = true;
         }
     }, [user, animeId]);
+
+    const getEpisodeSavedTime = useCallback((targetEpId?: string | null, targetEpNum?: number | string | null): number => {
+        if (!targetEpId && !targetEpNum) return 0;
+        const sTargetId = targetEpId ? String(targetEpId) : '';
+        const sTargetNum = targetEpNum ? String(targetEpNum) : '';
+
+        // 1. In-memory buffer check
+        if (sTargetId && progressBuffer.current[sTargetId]) {
+            const rec = progressBuffer.current[sTargetId];
+            if (rec.is_completed) return 0;
+            const p = Number(rec.progress || 0);
+            if (p > 5) return p;
+        }
+        if (sTargetNum && progressBuffer.current[sTargetNum]) {
+            const rec = progressBuffer.current[sTargetNum];
+            if (rec.is_completed) return 0;
+            const p = Number(rec.progress || 0);
+            if (p > 5) return p;
+        }
+
+        // 2. localStorage shadow_ep_progress_${animeId} check
+        if (typeof window !== 'undefined') {
+            try {
+                const raw = localStorage.getItem(`shadow_ep_progress_${animeId}`);
+                if (raw) {
+                    const epData = JSON.parse(raw);
+                    const rec = (sTargetId && epData[sTargetId]) || (sTargetNum && epData[sTargetNum]);
+                    if (rec) {
+                        if (sTargetId) progressBuffer.current[sTargetId] = rec;
+                        if (sTargetNum) progressBuffer.current[sTargetNum] = rec;
+                        if (rec.is_completed) return 0;
+                        const p = Number(rec.progress || 0);
+                        if (p > 5) return p;
+                    }
+                }
+            } catch {}
+
+            // 3. localStorage shadow_continue_watching check
+            try {
+                const cwRaw = localStorage.getItem('shadow_continue_watching');
+                if (cwRaw) {
+                    const cwData = JSON.parse(cwRaw);
+                    const entry = cwData[animeId];
+                    if (entry) {
+                        const isMatch = (sTargetId && String(entry.episodeId) === sTargetId) ||
+                                        (sTargetNum && String(entry.episodeNumber) === sTargetNum);
+                        if (isMatch) {
+                            if (entry.is_completed) return 0;
+                            const p = Number(entry.progress || 0);
+                            if (p > 5) return p;
+                        }
+                    }
+                }
+            } catch {}
+        }
+
+        return 0;
+    }, [animeId]);
+
+    const markEpisodeAsWatched = useCallback((targetEpId: string) => {
+        if (!targetEpId || !anime) return;
+        const ep = anime.episodes?.find((e: any) =>
+            e.id === targetEpId ||
+            String(e.number) === String(targetEpId) ||
+            Number(e.number) === Number(targetEpId)
+        );
+        if (!ep) return;
+        const duration = progressBuffer.current[targetEpId]?.duration || embedDurationRef.current || 1440;
+
+        // 1. Immediately reflect 100% in UI state
+        setEpProgress((prev: any) => ({
+            ...prev,
+            [ep.number]: 100,
+            [ep.id]: 100
+        }));
+
+        // 2. Persist in progressBuffer
+        const epEntry = {
+            episode_id: ep.id,
+            episode_number: ep.number,
+            progress: duration,
+            duration: duration,
+            is_completed: true,
+            last_updated: new Date().toISOString()
+        };
+        progressBuffer.current[ep.id] = epEntry;
+        progressBuffer.current[String(ep.number)] = epEntry;
+
+        // 3. Persist in localStorage
+        try {
+            const epData = JSON.parse(localStorage.getItem(`shadow_ep_progress_${animeId}`) || '{}');
+            epData[ep.id] = epEntry;
+            epData[String(ep.number)] = epEntry;
+            localStorage.setItem(`shadow_ep_progress_${animeId}`, JSON.stringify(epData));
+
+            const episodeImage = (ep as any).image || (ep as any).poster || anime.poster;
+            const animeTitle = anime.title || (anime as any).name || 'Anime';
+            const animeImage = anime.poster || (anime as any).image || episodeImage;
+            const animeType = (anime as any).type || 'TV';
+
+            const genresList = Array.isArray((anime as any).genres) ? (anime as any).genres.map((g: any) => String(g).toLowerCase()) : [];
+            const hasAdultGenre = genresList.some((g: string) => ['ecchi', 'erotica', 'hentai', 'adult'].includes(g));
+            const isAdultVal = (anime as any).isAdult === true || hasAdultGenre || ["RX", "HENTAI", "18"].some((t: string) => ((anime as any).rating || "").toUpperCase().includes(t));
+            const ageRatingVal = (anime as any).rating || (anime as any).ageRating || (isAdultVal ? '18+' : null);
+
+            const localData = JSON.parse(localStorage.getItem('shadow_continue_watching') || '{}');
+            localData[animeId] = {
+                animeId,
+                title: animeTitle,
+                poster: animeImage,
+                episodeId: ep.id,
+                episodeNumber: ep.number,
+                progress: duration,
+                duration,
+                is_completed: true,
+                type: animeType,
+                ageRating: ageRatingVal,
+                isAdult: isAdultVal,
+                lastUpdated: Date.now()
+            };
+            localStorage.setItem('shadow_continue_watching', JSON.stringify(localData));
+
+            if (typeof window !== 'undefined') {
+                window.dispatchEvent(new CustomEvent('shadow-continue-updated'));
+                window.dispatchEvent(new Event('shadow_continue_watching_updated'));
+            }
+        } catch (e) {}
+
+        // 4. Flush to Supabase if user is logged in
+        if (user && supabase) {
+            const entry = {
+                user_id: user.id,
+                anime_id: animeId,
+                title: anime.title || 'Anime',
+                banner_image: anime.poster || '',
+                episode_id: ep.id,
+                episode_number: ep.number,
+                progress: duration,
+                duration: duration,
+                is_completed: true,
+                last_updated: new Date().toISOString()
+            };
+            const sanitized = sanitizeContinueWatchingEntry(entry, user.id);
+            if (sanitized) {
+                (supabase.from('user_continue_watching') as any).upsert(sanitized, { onConflict: 'user_id,anime_id' }).catch(() => {});
+            }
+        }
+    }, [anime, animeId, user, supabase]);
     const saveProgress = useCallback(async (forceFlush = false, overrideEpId?: string) => {
         const targetEpId = overrideEpId || currentEpId;
         if (!targetEpId || !anime) return;
@@ -1155,19 +1362,29 @@ function WatchContent({ initialAnime }: { initialAnime?: UniversalAnime | null }
         const currentSavedProgress = progressBuffer.current[targetEpId]?.progress || 0;
 
         let progress = Math.max(playerTime, progressRef.current);
-        if (progress <= 1 && currentSavedProgress > 5) {
+        if (progress <= 5 && currentSavedProgress > 10) {
             progress = currentSavedProgress;
         }
         if (progress <= 0) return;
 
-        const ep = anime.episodes.find((e: any) => e.id === targetEpId || String(e.number) === targetEpId);
+        const ep = anime.episodes.find((e: any) => 
+            e.id === targetEpId || 
+            String(e.number) === String(targetEpId) ||
+            Number(e.number) === Number(targetEpId) ||
+            String(e.id).endsWith(`::${targetEpId}`) ||
+            String(targetEpId).endsWith(`::${e.id}`) ||
+            String(e.id).endsWith(`-${targetEpId}`) ||
+            String(targetEpId).endsWith(`-${e.id}`) ||
+            String(e.id).endsWith(`=${targetEpId}`) ||
+            String(targetEpId).endsWith(`=${e.id}`)
+        );
         if (!ep) return;
 
         const rawDuration = playerRef.current?.getDuration();
-        const duration = (rawDuration && !isNaN(rawDuration) && rawDuration > 0) ? rawDuration : (progressBuffer.current[targetEpId]?.duration || embedDurationRef.current || 1440);
+        const duration = (typeof rawDuration === 'number' && !isNaN(rawDuration) && isFinite(rawDuration) && rawDuration > 0) ? rawDuration : (progressBuffer.current[targetEpId]?.duration || embedDurationRef.current || 1440);
 
         const percent = Math.min(100, Math.round((progress / duration) * 100));
-        const isCompleted = forceFlush || percent >= 90;
+        const isCompleted = percent >= 90;
 
         setEpProgress((prev: any) => ({
             ...prev,
@@ -1180,12 +1397,49 @@ function WatchContent({ initialAnime }: { initialAnime?: UniversalAnime | null }
         const animeImage = anime.poster || (anime as any).image || episodeImage;
         const animeType = (anime as any).type || 'TV';
 
-        if (user) {
-            const genresList = Array.isArray((anime as any).genres) ? (anime as any).genres.map((g: any) => String(g).toLowerCase()) : [];
-            const hasAdultGenre = genresList.some((g: string) => ['ecchi', 'erotica', 'hentai', 'adult'].includes(g));
-            const isAdultVal = (anime as any).isAdult === true || hasAdultGenre || ["RX", "HENTAI", "18"].some((t: string) => ((anime as any).rating || "").toUpperCase().includes(t));
-            const ageRatingVal = (anime as any).rating || (anime as any).ageRating || (isAdultVal ? '18+' : null);
+        const genresList = Array.isArray((anime as any).genres) ? (anime as any).genres.map((g: any) => String(g).toLowerCase()) : [];
+        const hasAdultGenre = genresList.some((g: string) => ['ecchi', 'erotica', 'hentai', 'adult'].includes(g));
+        const isAdultVal = (anime as any).isAdult === true || hasAdultGenre || ["RX", "HENTAI", "18"].some((t: string) => ((anime as any).rating || "").toUpperCase().includes(t));
+        const ageRatingVal = (anime as any).rating || (anime as any).ageRating || (isAdultVal ? '18+' : null);
 
+        // Always write to local storage cache immediately for instant UI response and persistence across reloads
+        const localData = JSON.parse(localStorage.getItem('shadow_continue_watching') || '{}');
+        localData[animeId] = {
+            animeId,
+            title: animeTitle,
+            poster: animeImage,
+            episodeId: ep.id,
+            episodeNumber: ep.number,
+            progress,
+            duration,
+            type: animeType,
+            ageRating: ageRatingVal,
+            isAdult: isAdultVal,
+            lastUpdated: Date.now()
+        };
+        localStorage.setItem('shadow_continue_watching', JSON.stringify(localData));
+
+        const epData = JSON.parse(localStorage.getItem(`shadow_ep_progress_${animeId}`) || '{}');
+        const epEntry = {
+            episode_id: ep.id,
+            episode_number: ep.number,
+            progress,
+            duration,
+            is_completed: isCompleted,
+            last_updated: new Date().toISOString()
+        };
+        epData[ep.id] = epEntry;
+        epData[String(ep.number)] = epEntry;
+        localStorage.setItem(`shadow_ep_progress_${animeId}`, JSON.stringify(epData));
+        progressBuffer.current[ep.id] = epEntry;
+        progressBuffer.current[String(ep.number)] = epEntry;
+
+        if (typeof window !== 'undefined') {
+            window.dispatchEvent(new CustomEvent('shadow-continue-updated'));
+            window.dispatchEvent(new Event('shadow_continue_watching_updated'));
+        }
+
+        if (user) {
             const entry = {
                 user_id: user.id,
                 anime_id: animeId,
@@ -1208,41 +1462,11 @@ function WatchContent({ initialAnime }: { initialAnime?: UniversalAnime | null }
             progressBuffer.current[ep.id] = entry;
             isBufferDirty.current = true;
             localStorage.setItem(`shadow_sync_buffer_${animeId}`, JSON.stringify(progressBuffer.current));
-            if (forceFlush || isCompleted) flushSyncBuffer();
-        } else {
-            const genresList = Array.isArray((anime as any).genres) ? (anime as any).genres.map((g: any) => String(g).toLowerCase()) : [];
-            const hasAdultGenre = genresList.some((g: string) => ['ecchi', 'erotica', 'hentai', 'adult'].includes(g));
-            const isAdultVal = (anime as any).isAdult === true || hasAdultGenre || ["RX", "HENTAI", "18"].some((t: string) => ((anime as any).rating || "").toUpperCase().includes(t));
-            const ageRatingVal = (anime as any).rating || (anime as any).ageRating || (isAdultVal ? '18+' : null);
-            const localData = JSON.parse(localStorage.getItem('shadow_continue_watching') || '{}');
-            localData[animeId] = {
-                animeId,
-                title: animeTitle,
-                poster: animeImage,
-                episodeId: ep.id,
-                episodeNumber: ep.number,
-                progress,
-                duration,
-                type: 'anime',
-                ageRating: ageRatingVal,
-                isAdult: isAdultVal,
-                lastUpdated: Date.now()
-            };
-            localStorage.setItem('shadow_continue_watching', JSON.stringify(localData));
-
-            const epData = JSON.parse(localStorage.getItem(`shadow_ep_progress_${animeId}`) || '{}');
-            epData[ep.id] = {
-                episode_id: ep.id,
-                episode_number: ep.number,
-                progress,
-                duration,
-                is_completed: isCompleted,
-                last_updated: new Date().toISOString()
-            };
-            localStorage.setItem(`shadow_ep_progress_${animeId}`, JSON.stringify(epData));
-            progressBuffer.current[ep.id] = epData[ep.id];
-
-            if (typeof window !== 'undefined') window.dispatchEvent(new CustomEvent('shadow-continue-updated'));
+            const now = Date.now();
+            if (forceFlush || isCompleted || (now - lastProgressSyncTimeRef.current >= 15000)) {
+                lastProgressSyncTimeRef.current = now;
+                flushSyncBuffer();
+            }
         }
 
         // Auto sync with watchlist and completed detection
@@ -1330,15 +1554,11 @@ function WatchContent({ initialAnime }: { initialAnime?: UniversalAnime | null }
             String(e.id).endsWith(`-${id}`)
         );
         const targetId = ep ? ep.id : id;
+        const targetNum = ep ? ep.number : null;
 
-        const savedRecord = progressBuffer.current[targetId];
-        if (savedRecord && !savedRecord.is_completed && savedRecord.progress > 5) {
-            progressRef.current = savedRecord.progress;
-            setResumeTime(savedRecord.progress);
-        } else {
-            progressRef.current = 0;
-            setResumeTime(0);
-        }
+        const savedTime = getEpisodeSavedTime(targetId, targetNum);
+        progressRef.current = savedTime;
+        setResumeTime(savedTime);
 
         isSwitchingEpisode.current = true;
         setCurrentEpId(targetId);
@@ -1350,7 +1570,7 @@ function WatchContent({ initialAnime }: { initialAnime?: UniversalAnime | null }
             url.searchParams.set('ep', targetParam);
             window.history.replaceState({}, '', url.toString());
         }
-    }, [animeId, currentEpId, saveProgress, anime]);
+    }, [animeId, currentEpId, saveProgress, anime, getEpisodeSavedTime]);
 
     const resetInterfaceTimer = useCallback(() => { }, []);
 
@@ -1469,7 +1689,7 @@ function WatchContent({ initialAnime }: { initialAnime?: UniversalAnime | null }
         let isMounted = true;
         const init = async () => {
             // Immediately hydrate from initialAnime if available
-            if (initialAnime && (initialAnime.id === cleanAnimeId || initialAnime.id === rawAnimeId || !anime)) {
+            if (initialAnime && (initialAnime.id === cleanAnimeId || initialAnime.id === rawAnimeId || (initialAnime as any).blakiteId === cleanAnimeId || !anime)) {
                 setAnime(initialAnime);
                 setIsLoadingInfo(false);
             } else if (!anime) {
@@ -1566,6 +1786,29 @@ function WatchContent({ initialAnime }: { initialAnime?: UniversalAnime | null }
     // Sync History
     useEffect(() => {
         if (!anime) return;
+
+        // Synchronous instantaneous local storage preload to eliminate race conditions
+        try {
+            const epRaw = localStorage.getItem(`shadow_ep_progress_${animeId}`);
+            if (epRaw) {
+                const epParsed = JSON.parse(epRaw);
+                const quickMap: EpisodeProgress = {};
+                Object.values(epParsed).forEach((p: any) => {
+                    if (!p) return;
+                    const targetId = p.episode_id;
+                    const epNum = p.episode_number || p.episode;
+                    if (targetId) progressBuffer.current[targetId] = p;
+                    if (epNum) progressBuffer.current[String(epNum)] = p;
+                    const dur = p.duration || 1350;
+                    const pVal = Number(p.progress || 0);
+                    const pct = p.is_completed ? 100 : Math.min(100, Math.max(1, Math.round((pVal / dur) * 100)));
+                    if (epNum) quickMap[epNum] = pct;
+                    if (targetId) quickMap[targetId] = pct;
+                });
+                setEpProgress((prev: any) => ({ ...quickMap, ...prev }));
+            }
+        } catch {}
+
         const syncHistory = async () => {
             let progressMap: EpisodeProgress = {};
             let savedServer = null;
@@ -1616,6 +1859,9 @@ function WatchContent({ initialAnime }: { initialAnime?: UniversalAnime | null }
                     progressBuffer.current[epId] = final;
                     const dur = final.duration || 1350;
                     const epNum = final.episode_number || final.episode;
+                    if (epNum) {
+                        progressBuffer.current[String(epNum)] = final;
+                    }
                     const pVal = Number(final.progress || 0);
                     const pct = final.is_completed ? 100 : Math.min(100, Math.max(1, Math.round((pVal / dur) * 100)));
 
@@ -1708,6 +1954,8 @@ function WatchContent({ initialAnime }: { initialAnime?: UniversalAnime | null }
                 setResumeTime(Number(urlTime));
             } else if (targetEpId && progressBuffer.current[targetEpId] && !progressBuffer.current[targetEpId].is_completed) {
                 setResumeTime(progressBuffer.current[targetEpId].progress || 0);
+            } else if (paramEp && progressBuffer.current[String(paramEp)] && !progressBuffer.current[String(paramEp)].is_completed) {
+                setResumeTime(progressBuffer.current[String(paramEp)].progress || 0);
             } else {
                 setResumeTime(0);
             }
@@ -1757,14 +2005,9 @@ function WatchContent({ initialAnime }: { initialAnime?: UniversalAnime | null }
         }
 
         if (match && match.id !== currentEpIdRef.current) {
-            const savedRecord = progressBuffer.current[match.id];
-            if (savedRecord && !savedRecord.is_completed && savedRecord.progress > 5) {
-                progressRef.current = savedRecord.progress;
-                setResumeTime(savedRecord.progress);
-            } else {
-                progressRef.current = 0;
-                setResumeTime(0);
-            }
+            const savedTime = getEpisodeSavedTime(match.id, match.number);
+            progressRef.current = savedTime;
+            setResumeTime(savedTime);
             setCurrentEpId(match.id);
         }
         // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -1796,20 +2039,20 @@ function WatchContent({ initialAnime }: { initialAnime?: UniversalAnime | null }
                 }
                 const activePlayerTime = (!isEpSwitch && playerRef.current) ? playerRef.current.getCurrentTime() : 0;
 
-                if (activePlayerTime > 1) {
+                if (activePlayerTime > 5) {
                     time = activePlayerTime;
-                } else if (progressBuffer.current[currentEpId]) {
-                    const epRec = progressBuffer.current[currentEpId];
-                    time = epRec.is_completed ? 0 : (epRec.progress || 0);
-                } else if (!user) {
-                    const localData = JSON.parse(localStorage.getItem('shadow_continue_watching') || '{}');
-                    if (localData[animeId] && localData[animeId].episodeId === currentEpId) {
-                        const epRec = localData[animeId];
-                        time = epRec.is_completed ? 0 : (epRec.progress || 0);
-                    }
+                } else {
+                    const currentEp = anime?.episodes?.find((e: any) => e.id === currentEpId || String(e.number) === currentEpId);
+                    time = getEpisodeSavedTime(currentEpId, currentEp?.number);
                 }
             }
             setResumeTime(time); progressRef.current = time; setIsResumeLoaded(true);
+            if (time > 15) {
+                const mins = Math.floor(time / 60);
+                const secs = Math.floor(time % 60);
+                const formatted = `${mins}:${secs < 10 ? '0' : ''}${secs}`;
+                toast.info(`Resumed from ${formatted}`, { id: `resume-${currentEpId}`, duration: 2500 });
+            }
             try {
                 let targetCategory = settings.category;
                 let targetAudio = settings.audio;
@@ -2070,7 +2313,7 @@ function WatchContent({ initialAnime }: { initialAnime?: UniversalAnime | null }
 
     // Interval & Visibility: Local storage save every 15s, DB flush every 60s
     useEffect(() => {
-        const localTimer = setInterval(() => saveProgress(false), 15000);
+        const localTimer = setInterval(() => saveProgress(false), 5000);
         const dbTimer = setInterval(() => flushSyncBuffer(), 60000);
         return () => { clearInterval(localTimer); clearInterval(dbTimer); };
     }, [saveProgress, flushSyncBuffer]);
@@ -2079,7 +2322,26 @@ function WatchContent({ initialAnime }: { initialAnime?: UniversalAnime | null }
         const handleScroll = () => { if (!ticking) { window.requestAnimationFrame(() => { if (window.scrollY > 100) { setHideInterface(false); if (interfaceTimeoutRef.current) clearTimeout(interfaceTimeoutRef.current); } else { resetInterfaceTimer(); } ticking = false; }); ticking = true; } };
         window.addEventListener('scroll', handleScroll); handleScroll(); return () => window.removeEventListener('scroll', handleScroll);
     }, [resetInterfaceTimer]);
-    useEffect(() => { const handleVisibilityChange = () => { if (document.visibilityState === 'hidden') flushSyncBuffer(); }; document.addEventListener('visibilitychange', handleVisibilityChange); return () => document.removeEventListener('visibilitychange', handleVisibilityChange); }, [flushSyncBuffer]);
+    useEffect(() => { 
+        const handleVisibilityChange = () => { 
+            if (document.visibilityState === 'hidden') {
+                saveProgress(false);
+                flushSyncBuffer(); 
+            }
+        }; 
+        const handlePageExit = () => {
+            saveProgress(true);
+            flushSyncBuffer();
+        };
+        document.addEventListener('visibilitychange', handleVisibilityChange); 
+        window.addEventListener('beforeunload', handlePageExit);
+        window.addEventListener('pagehide', handlePageExit);
+        return () => { 
+            document.removeEventListener('visibilitychange', handleVisibilityChange); 
+            window.removeEventListener('beforeunload', handlePageExit);
+            window.removeEventListener('pagehide', handlePageExit);
+        }; 
+    }, [saveProgress, flushSyncBuffer]);
 
     const episodeChunks = useMemo(() => {
         if (!anime) return [];
@@ -2099,11 +2361,14 @@ function WatchContent({ initialAnime }: { initialAnime?: UniversalAnime | null }
         return epIndex === -1 ? 0 : Math.floor(epIndex / chunkSize);
     }, [currentEpId, anime, chunkSize]);
 
-    // Active Embed Tracking: postMessage listener + 1-second playback heartbeat timer for iframe streams
+    // Active Embed Tracking: Directly mark the episode as watched for embed streams
     useEffect(() => {
         if (!streamUrl || !currentEpId) return;
         const isEmbed = !streamUrl.includes('.m3u8') && !streamUrl.includes('.mp4') && !streamUrl.includes('/api/proxy');
         if (!isEmbed) return;
+
+        // Directly mark episode as watched on embed stream start
+        markEpisodeAsWatched(currentEpId);
 
         const handleMessage = (e: MessageEvent) => {
             try {
@@ -2113,25 +2378,8 @@ function WatchContent({ initialAnime }: { initialAnime?: UniversalAnime | null }
                 }
                 if (!data || typeof data !== 'object') return;
 
-                const time = data.time ?? data.currentTime ?? data.seconds ?? data.value;
-                const dur = data.duration ?? data.total;
-
-                if (typeof dur === 'number' && dur > 0) {
-                    embedDurationRef.current = dur;
-                }
-
-                if (typeof time === 'number' && time >= 0) {
-                    progressRef.current = time;
-                    const ep = anime?.episodes.find((epItem: any) => epItem.id === currentEpId);
-                    const epDur = embedDurationRef.current || 1440;
-                    const pct = Math.min(100, Math.round((time / epDur) * 100));
-                    if (ep) {
-                        setEpProgress((prev: any) => ({ ...prev, [ep.number]: pct, [ep.id]: pct }));
-                    }
-                }
-
                 if (data.event === 'ended' || data.type === 'ended') {
-                    saveProgress(true);
+                    markEpisodeAsWatched(currentEpId);
                     if (settings.autoNext && nextEpisode) {
                         handleEpisodeClick(nextEpisode.id);
                     }
@@ -2140,63 +2388,30 @@ function WatchContent({ initialAnime }: { initialAnime?: UniversalAnime | null }
         };
 
         window.addEventListener('message', handleMessage);
-
-        const timer = setInterval(() => {
-            if (document.visibilityState !== 'visible') return;
-
-            progressRef.current += 1;
-            const currentPos = progressRef.current;
-            const epDur = embedDurationRef.current || 1440;
-            const pct = Math.min(100, Math.round((currentPos / epDur) * 100));
-
-            const ep = anime?.episodes.find((epItem: any) => epItem.id === currentEpId);
-            if (ep) {
-                setEpProgress((prev: any) => ({
-                    ...prev,
-                    [ep.number]: pct >= 98 ? 100 : pct,
-                    [ep.id]: pct >= 98 ? 100 : pct
-                }));
-            }
-
-            // Auto-skip intro if markers exist
-            if ((settings.autoSkip) && intro?.start && intro?.end) {
-                if (currentPos >= intro.start && currentPos < intro.end && !lastAutoSkippedIntroRef.current) {
-                    lastAutoSkippedIntroRef.current = true;
-                    progressRef.current = intro.end;
-                    handleSkipIntro();
-                    playerRef.current?.seekTo(intro.end);
-                }
-            }
-
-            // Auto-skip outro if markers exist
-            if ((settings.autoSkipOutro ?? settings.autoSkip) && outro?.start !== undefined) {
-                const epOutroEnd = outro.end || epDur;
-                if (currentPos >= outro.start && currentPos <= epOutroEnd && !lastAutoSkippedOutroRef.current) {
-                    lastAutoSkippedOutroRef.current = true;
-                    progressRef.current = epOutroEnd;
-                    handleSkipOutro();
-                    playerRef.current?.seekTo(epOutroEnd);
-                    if (settings.autoNext && nextEpisode) {
-                        handleEpisodeClick(nextEpisode.id);
-                    }
-                }
-            }
-
-            // Auto-next episode near completion
-            if (settings.autoNext && nextEpisode && !lastAutoNextTriggeredRef.current) {
-                if (currentPos >= epDur - 15 || pct >= 98) {
-                    lastAutoNextTriggeredRef.current = true;
-                    saveProgress(true);
-                    handleEpisodeClick(nextEpisode.id);
-                }
-            }
-        }, 1000);
-
         return () => {
             window.removeEventListener('message', handleMessage);
-            clearInterval(timer);
         };
-    }, [streamUrl, currentEpId, anime?.episodes, settings.autoSkip, settings.autoSkipOutro, settings.autoNext, intro, outro, nextEpisode, saveProgress, handleEpisodeClick, handleSkipIntro, handleSkipOutro]);
+    }, [streamUrl, currentEpId, settings.autoNext, nextEpisode, markEpisodeAsWatched, handleEpisodeClick]);
+
+    // Flush progress immediately when tab loses visibility or page unloads
+    useEffect(() => {
+        const handleVisibilityChange = () => {
+            if (document.visibilityState === 'hidden' && progressRef.current > 5) {
+                saveProgress(true);
+            }
+        };
+        const handleBeforeUnload = () => {
+            if (progressRef.current > 5) {
+                saveProgress(true);
+            }
+        };
+        document.addEventListener('visibilitychange', handleVisibilityChange);
+        window.addEventListener('beforeunload', handleBeforeUnload);
+        return () => {
+            document.removeEventListener('visibilitychange', handleVisibilityChange);
+            window.removeEventListener('beforeunload', handleBeforeUnload);
+        };
+    }, [saveProgress]);
 
     useEffect(() => {
         if (!currentEpId || !anime?.episodes?.length) return;
@@ -2299,8 +2514,8 @@ function WatchContent({ initialAnime }: { initialAnime?: UniversalAnime | null }
             <style>{`
           .custom-scrollbar::-webkit-scrollbar { width: 6px; height: 6px; display: block; }
           .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
-          .custom-scrollbar::-webkit-scrollbar-thumb { background: #dc2626; border-radius: 10px; opacity: 0.8; }
-          .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: #ef4444; }
+          .custom-scrollbar::-webkit-scrollbar-thumb { background: #8b5cf6; border-radius: 10px; opacity: 0.8; }
+          .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: #7c3aed; }
           body { overflow-y: auto; } ::-webkit-scrollbar { width: 0px; display: none; } .no-scrollbar::-webkit-scrollbar { display: none; } .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
           @keyframes liquid { 0% { background-position: 0% 50%; } 50% { background-position: 100% 50%; } 100% { background-position: 0% 50%; } } .animate-liquid { background-size: 200% 200%; animation: liquid 4s ease infinite; } .will-change-transform { will-change: transform; }
           @keyframes shimmer { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } } .animate-shimmer { animation: shimmer 3s infinite linear; }
@@ -2330,8 +2545,18 @@ function WatchContent({ initialAnime }: { initialAnime?: UniversalAnime | null }
                         >
                             <AnimatePresence>
                                 {showSkipNotification && (
-                                    <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 10 }} className="absolute bottom-32 lg:bottom-24 left-1/2 -translate-x-1/2 z-[70] bg-black/60 backdrop-blur-md border border-white/10 text-white px-3 py-1 rounded-full flex items-center gap-2 shadow-[0_0_15px_rgba(0,0,0,0.5)] pointer-events-none">
-                                        <div className="w-3 h-3 bg-white rounded-full flex items-center justify-center"><Check size={8} className="text-black stroke-[4]" /></div><span className="text-[9px] font-bold uppercase tracking-wider">{skipNotificationText}</span>
+                                    <motion.div 
+                                        initial={{ opacity: 0, x: skipNotificationText === 'Skipped Intro' ? -20 : 20, y: 0 }} 
+                                        animate={{ opacity: 1, x: 0, y: 0 }} 
+                                        exit={{ opacity: 0, x: skipNotificationText === 'Skipped Intro' ? -20 : 20, y: 0 }} 
+                                        transition={{ type: 'spring', stiffness: 400, damping: 28 }}
+                                        className={cn(
+                                            "absolute bottom-24 sm:bottom-28 lg:bottom-20 z-[70] bg-black/70 backdrop-blur-md border border-white/10 text-white px-3.5 py-1.5 rounded-full flex items-center gap-2 shadow-[0_4px_20px_rgba(0,0,0,0.6)] pointer-events-none",
+                                            skipNotificationText === 'Skipped Intro' ? "left-4 sm:left-6 md:left-8" : "right-4 sm:right-6 md:right-8"
+                                        )}
+                                    >
+                                        <div className="w-3.5 h-3.5 bg-white rounded-full flex items-center justify-center shrink-0"><Check size={8} className="text-black stroke-[4]" /></div>
+                                        <span className="text-[10px] font-bold uppercase tracking-wider">{skipNotificationText}</span>
                                     </motion.div>
                                 )}
                             </AnimatePresence>
@@ -2348,12 +2573,34 @@ function WatchContent({ initialAnime }: { initialAnime?: UniversalAnime | null }
                                     intro={intro} 
                                     outro={outro} 
                                     title={currentEpisode ? getCleanEpisodeTitle(currentEpisode.number, currentEpisode.title) : anime.title} 
+                                    animeTitle={anime?.title || (anime as any)?.name || (anime as any)?.info?.name}
                                     startTime={progressRef.current > 0 ? progressRef.current : resumeTime} 
                                     autoPlay={settings.autoPlay} 
                                     autoSkip={settings.autoSkip} 
                                     autoSkipOutro={settings.autoSkipOutro ?? settings.autoSkip}
                                     initialVolume={settings.volume} 
-                                    onProgress={(s: any) => progressRef.current = s.playedSeconds} 
+                                    onProgress={(s: any) => {
+                                        progressRef.current = s.playedSeconds;
+                                        const curDur = (s.duration && s.duration > 0) ? s.duration : (embedDurationRef.current || 1440);
+                                        if (s.duration && s.duration > 0 && (!embedDurationRef.current || embedDurationRef.current === 1440)) {
+                                            embedDurationRef.current = s.duration;
+                                        }
+                                        const ep = anime?.episodes.find((epItem: any) => epItem.id === currentEpId || String(epItem.number) === String(currentEpId));
+                                        if (ep && curDur > 0 && s.playedSeconds > 0) {
+                                            const pct = Math.min(100, Math.round((s.playedSeconds / curDur) * 100));
+                                            setEpProgress((prev: any) => {
+                                                if (prev[ep.number] === pct && prev[ep.id] === pct) return prev;
+                                                return { ...prev, [ep.number]: pct, [ep.id]: pct };
+                                            });
+                                        }
+                                        if (s.playedSeconds > 0) {
+                                            const now = Date.now();
+                                            if (now - lastLocalStorageSaveRef.current > 1500) {
+                                                lastLocalStorageSaveRef.current = now;
+                                                saveProgress(false);
+                                            }
+                                        }
+                                    }} 
                                     onSeek={(seekTime: number) => { progressRef.current = seekTime; saveProgress(true); }} 
                                     onEnded={() => { 
                                         saveProgress(true); 
@@ -2361,7 +2608,15 @@ function WatchContent({ initialAnime }: { initialAnime?: UniversalAnime | null }
                                         if (settings.autoNext && nextEpisode) handleEpisodeClick(nextEpisode.id); 
                                     }} 
                                     onNext={nextEpisode ? () => handleEpisodeClick(nextEpisode.id) : undefined}
-                                     hasNext={!!nextEpisode}
+                                    hasNext={!!nextEpisode}
+                                    status={anime?.info?.status || (anime as any)?.status}
+                                    nextAiringEpisode={(anime as any)?.nextAiringEpisode || (anime as any)?.info?.nextAiringEpisode || nextEpSchedule}
+                                    totalEpisodes={anime?.episodes?.length}
+                                    currentEpisodeNumber={currentEpisode?.number}
+                                    onReplay={() => {
+                                        progressRef.current = 0;
+                                        saveProgress(true);
+                                    }}
                                     onInteract={() => { if (!hideInterface) resetInterfaceTimer(); }} 
                                     onPlay={handlePlaybackStart} 
                                     onPause={handlePause} 
@@ -2497,8 +2752,8 @@ function WatchContent({ initialAnime }: { initialAnime?: UniversalAnime | null }
                                                         )}
                                                         {track.available && !isCurrent && (
                                                             <span className="inline-flex items-end gap-[1.5px] h-2.5 ml-0.5 opacity-60 group-hover:opacity-100 transition-opacity" title="Audio track available">
-                                                                <span className="w-[1.5px] bg-emerald-400 rounded-full animate-[available-wave-1_1.4s_ease-in-out_infinite]" />
-                                                                <span className="w-[1.5px] bg-emerald-400 rounded-full animate-[available-wave-2_1.4s_ease-in-out_infinite]" />
+                                                                <span className="w-[1.5px] bg-purple-400 rounded-full animate-[available-wave-1_1.4s_ease-in-out_infinite]" />
+                                                                <span className="w-[1.5px] bg-purple-400 rounded-full animate-[available-wave-2_1.4s_ease-in-out_infinite]" />
                                                             </span>
                                                         )}
                                                     </button>
@@ -2715,28 +2970,28 @@ function WatchContent({ initialAnime }: { initialAnime?: UniversalAnime | null }
                                     {currentEpisode?.id && (
                                         <Link
                                             href={`/download/anime/${anime.id}?ep=${currentEpisode.id}`}
-                                            className="flex-1 min-w-0 h-8 rounded-full border-0 bg-white/[0.06] hover:bg-white/10 text-zinc-300 hover:text-white flex items-center justify-center gap-1 text-[9px] font-black uppercase tracking-wider transition-all active:scale-95 px-2 atrax-bubbly-btn atrax-squish-tap"
+                                            className="flex-1 min-w-8 h-8 rounded-full border-0 bg-white/[0.06] hover:bg-white/10 text-zinc-300 hover:text-white flex items-center justify-center gap-1 text-[9px] font-black uppercase tracking-wider transition-all active:scale-95 px-2 atrax-bubbly-btn atrax-squish-tap"
                                             title="Download Episode"
                                         >
                                             <Download size={12} className="shrink-0" />
-                                            <span className="truncate inline">Download</span>
+                                            <span className="truncate hidden min-[480px]:inline">Download</span>
                                         </Link>
                                     )}
                                     <button
                                         onClick={() => setShowShareModal(true)}
-                                        className="flex-1 min-w-0 h-8 rounded-full border-0 bg-white/[0.06] hover:bg-white/10 text-zinc-300 hover:text-white flex items-center justify-center gap-1 text-[9px] font-black uppercase tracking-wider transition-all active:scale-95 px-2 atrax-bubbly-btn atrax-squish-tap"
+                                        className="flex-1 min-w-8 h-8 rounded-full border-0 bg-white/[0.06] hover:bg-white/10 text-zinc-300 hover:text-white flex items-center justify-center gap-1 text-[9px] font-black uppercase tracking-wider transition-all active:scale-95 px-2 atrax-bubbly-btn atrax-squish-tap"
                                         title="Share Episode"
                                     >
                                         <Share2 size={12} className="shrink-0" />
-                                        <span className="truncate inline">Share</span>
+                                        <span className="truncate hidden min-[420px]:inline">Share</span>
                                     </button>
                                     <button
                                         onClick={handleCreateWatchRoom}
-                                        className="flex-1 min-w-0 h-8 rounded-full border-0 bg-white/[0.06] hover:bg-white/10 text-zinc-300 hover:text-white flex items-center justify-center gap-1 text-[9px] font-black uppercase tracking-wider transition-all active:scale-95 px-2 atrax-bubbly-btn atrax-squish-tap"
+                                        className="flex-1 min-w-8 h-8 rounded-full border-0 bg-white/[0.06] hover:bg-white/10 text-zinc-300 hover:text-white flex items-center justify-center gap-1 text-[9px] font-black uppercase tracking-wider transition-all active:scale-95 px-2 atrax-bubbly-btn atrax-squish-tap"
                                         title="Create Watch Room"
                                     >
                                         <Users size={12} className="shrink-0" />
-                                        <span className="truncate hidden min-[400px]:inline">Room</span>
+                                        <span className="truncate hidden min-[540px]:inline">Room</span>
                                     </button>
                                     <Button
                                         onClick={() => updateSetting('dimMode', !settings.dimMode)}
@@ -2783,7 +3038,7 @@ function WatchContent({ initialAnime }: { initialAnime?: UniversalAnime | null }
                                         {epViewMode === mode && (
                                             <motion.div
                                                 layoutId="epViewModeActivePill"
-                                                className="absolute inset-0 bg-primary-600 rounded-lg shadow-[0_0_12px_rgba(220,38,38,0.5)] z-[-1]"
+                                                className="absolute inset-0 bg-primary-600 rounded-lg shadow-[0_0_12px_rgba(139, 92, 246, 0.5)] z-[-1]"
                                                 transition={{ type: "spring", stiffness: 400, damping: 30 }}
                                             />
                                         )}
@@ -2792,11 +3047,25 @@ function WatchContent({ initialAnime }: { initialAnime?: UniversalAnime | null }
                                 ))}
                             </div>
                         </div>
-                        <div className="w-full border-b border-white/10 bg-white/5 backdrop-blur-md flex-shrink-0 py-3 relative group/chunks">
-                            <div ref={chunksRef} className="flex items-center gap-2 w-full overflow-x-auto no-scrollbar cursor-grab active:cursor-grabbing px-4">
-                                {episodeChunks.map((chunk: any[], idx: number) => (
-                                    <button key={idx} onClick={() => setEpChunkIndex(idx)} className={cn("flex-shrink-0 px-4 py-1.5 text-[10px] font-black rounded-full transition-all border shadow-sm uppercase tracking-wider backdrop-blur-md", epChunkIndex === idx ? "bg-primary-600 text-white border-primary-500 shadow-primary-900/20" : "bg-white/5 border-white/10 text-zinc-400 hover:text-white hover:bg-white/10")}>{getChunkLabel(chunk, (idx * chunkSize) + 1, Math.min((idx + 1) * chunkSize, anime.episodes.length))}</button>
-                                ))}
+                        <div className="w-full border-b border-white/[0.06] bg-black/25 flex-shrink-0 py-2.5 relative group/chunks">
+                            <div ref={chunksRef} className="flex items-center gap-1.5 w-full overflow-x-auto no-scrollbar cursor-grab active:cursor-grabbing px-3">
+                                {episodeChunks.map((chunk: any[], idx: number) => {
+                                    const isSelected = epChunkIndex === idx;
+                                    return (
+                                        <button 
+                                            key={idx} 
+                                            onClick={() => setEpChunkIndex(idx)} 
+                                            className={cn(
+                                                "flex-shrink-0 px-4 py-1.5 rounded-full text-sm sm:text-base font-black tracking-tight transition-all select-none border-0",
+                                                isSelected 
+                                                    ? "bg-[#7c3aed] text-white shadow-none" 
+                                                    : "bg-white/[0.05] text-zinc-400 hover:text-zinc-100 hover:bg-white/[0.08]"
+                                            )}
+                                        >
+                                            {getChunkLabel(chunk, (idx * chunkSize) + 1, Math.min((idx + 1) * chunkSize, anime.episodes.length))}
+                                        </button>
+                                    );
+                                })}
                             </div>
                         </div>
                         <div className="flex-1 min-h-0 overflow-y-auto p-2 custom-scrollbar overflow-x-hidden">
@@ -2865,6 +3134,7 @@ function WatchContent({ initialAnime }: { initialAnime?: UniversalAnime | null }
                                     <h1 className="text-2xl font-black text-white font-lemon leading-none tracking-tighter drop-shadow-2xl shadow-black scale-[0.85] origin-center">
                                         <span>{anime.title}</span>
                                     </h1>
+                                    <NextEpisodeTextHint schedule={(anime as any)?.nextAiringEpisode || (anime as any)?.info?.nextAiringEpisode || nextEpSchedule} status={anime.info.status} className="justify-center" />
                                     {(anime as any)?.hindiDub?.available && (
                                         <span className="text-xs font-semibold tracking-wide text-amber-400/90 font-sans">
                                             {formatHindiDubType((anime as any).hindiDub.dubType)}
@@ -2886,13 +3156,13 @@ function WatchContent({ initialAnime }: { initialAnime?: UniversalAnime | null }
                                                 </>
                                             )}
                                             {/airing|releasing|ongoing/i.test(anime.info.status || '') ? (
-                                                <span className="inline-flex items-center gap-1.5 text-emerald-400 font-black tracking-wider text-[11px]">
-                                                    <PlayCircle size={12} className="text-emerald-400" />
+                                                <span className="inline-flex items-center gap-1.5 text-purple-400 font-black tracking-wider text-[11px]">
+                                                    <PlayCircle size={12} className="text-purple-400" />
                                                     RELEASING
                                                 </span>
                                             ) : /finished|completed|ended/i.test(anime.info.status || '') ? (
-                                                <span className="inline-flex items-center gap-1 text-blue-400 font-black tracking-wider text-[11px]">
-                                                    <CheckCircle size={12} className="text-blue-400" />
+                                                <span className="inline-flex items-center gap-1 text-purple-400 font-black tracking-wider text-[11px]">
+                                                    <CheckCircle size={12} className="text-purple-400" />
                                                     FINISHED
                                                 </span>
                                             ) : (
@@ -2912,6 +3182,7 @@ function WatchContent({ initialAnime }: { initialAnime?: UniversalAnime | null }
                                 <h1 className="text-3xl md:text-5xl font-black text-white font-lemon leading-none tracking-tighter drop-shadow-2xl shadow-black scale-[0.85] origin-left">
                                     <span>{anime.title}</span>
                                 </h1>
+                                <NextEpisodeTextHint schedule={(anime as any)?.nextAiringEpisode || (anime as any)?.info?.nextAiringEpisode || nextEpSchedule} status={anime.info.status} />
                                 {(anime as any)?.hindiDub?.available && (
                                     <div className="mt-1.5 mb-1">
                                         <span className="text-xs md:text-sm font-semibold tracking-wide text-amber-400/90 font-sans">
@@ -2989,7 +3260,7 @@ function WatchContent({ initialAnime }: { initialAnime?: UniversalAnime | null }
                                                 <span className="text-[9px] font-bold text-zinc-300 truncate w-full text-center flex items-center justify-center gap-1">{anime.info.studios?.[0] || '?'} <ChevronDown size={8} /></span>
                                             </div>
                                         </DropdownMenuTrigger>
-                                        <DropdownMenuContent className="bg-[#0a0a0a] border border-white/10 text-zinc-300 text-[10px] rounded-xl shadow-lg"><ScrollArea className="h-20"><div className="flex flex-col p-1">{anime.info.studios.map((s: string) => <DropdownMenuItem key={s} className="hover:bg-white/10 cursor-pointer rounded-lg">{s}</DropdownMenuItem>)}</div></ScrollArea></DropdownMenuContent>
+                                        <DropdownMenuContent className="bg-[#0c0d18]/95 backdrop-blur-2xl border border-white/10 text-zinc-300 text-[10px] rounded-2xl shadow-2xl p-1.5"><ScrollArea className="h-20"><div className="flex flex-col p-1">{anime.info.studios.map((s: string) => <DropdownMenuItem key={s} className="hover:bg-white/10 cursor-pointer rounded-lg">{s}</DropdownMenuItem>)}</div></ScrollArea></DropdownMenuContent>
                                     </DropdownMenu>
                                 ) : (
                                     <div className="bg-white/5 p-2 rounded-xl border border-white/5 flex flex-col items-center justify-center">
@@ -3005,7 +3276,7 @@ function WatchContent({ initialAnime }: { initialAnime?: UniversalAnime | null }
                                                 <span className="text-[9px] font-bold text-zinc-300 truncate w-full text-center flex items-center justify-center gap-1">{anime.info.producers?.[0] || '?'} <ChevronDown size={8} /></span>
                                             </div>
                                         </DropdownMenuTrigger>
-                                        <DropdownMenuContent className="bg-[#0a0a0a] border border-white/10 text-zinc-300 text-[10px] rounded-xl shadow-lg"><ScrollArea className="h-20"><div className="flex flex-col p-1">{anime.info.producers.map((p: string) => <DropdownMenuItem key={p} className="hover:bg-white/10 cursor-pointer rounded-lg">{p}</DropdownMenuItem>)}</div></ScrollArea></DropdownMenuContent>
+                                        <DropdownMenuContent className="bg-[#0c0d18]/95 backdrop-blur-2xl border border-white/10 text-zinc-300 text-[10px] rounded-2xl shadow-2xl p-1.5"><ScrollArea className="h-20"><div className="flex flex-col p-1">{anime.info.producers.map((p: string) => <DropdownMenuItem key={p} className="hover:bg-white/10 cursor-pointer rounded-lg">{p}</DropdownMenuItem>)}</div></ScrollArea></DropdownMenuContent>
                                     </DropdownMenu>
                                 ) : (
                                     <div className="bg-white/5 p-2 rounded-xl border border-white/5 flex flex-col items-center justify-center">

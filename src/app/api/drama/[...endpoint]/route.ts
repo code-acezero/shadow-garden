@@ -50,7 +50,7 @@ async function fetchTmdb(endpoint: string, params: Record<string, string | numbe
       signal: controller.signal,
       headers: {
         'Accept': 'application/json',
-        'User-Agent': 'ShadowGarden/2.0'
+        'User-Agent': 'Kagemi/4.0'
       },
       next: { revalidate: 600 }
     });
