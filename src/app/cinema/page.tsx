@@ -200,6 +200,26 @@ const HeroSlider = ({ items }: { items: DramaCard[] }) => {
   );
 };
 
+// ── Section Title Helpers ─────────────────────────────────────────────────────
+
+function getShortSectionTitle(fullTitle: string): string {
+  const t = fullTitle.toLowerCase();
+  if (t.includes('hindi')) return 'HINDI DUB';
+  if (t.includes('korean') || t.includes('k-drama')) return 'K-DRAMAS';
+  if (t.includes('chinese') || t.includes('c-drama')) return 'C-DRAMAS';
+  if (t.includes('japanese') || t.includes('j-drama')) return 'J-DRAMAS';
+  if (t.includes('turkish') || t.includes('dizi')) return 'TURKISH';
+  if (t.includes('bollywood')) return 'BOLLYWOOD';
+  if (t.includes('hollywood')) return 'HOLLYWOOD';
+  if (t.includes('series') || t.includes('binge')) return 'SERIES';
+  if (t.includes('trending')) return 'TRENDING';
+  if (t.includes('top rated') || t.includes('critically') || t.includes('masterpiece') || t.includes('blockbuster')) return 'TOP RATED';
+  if (t.includes('movie') || t.includes('cinema')) return 'MOVIES';
+  if (t.includes('recent') || t.includes('latest') || t.includes('update') || t.includes('airing')) return 'LATEST';
+  const words = fullTitle.trim().split(/\s+/);
+  return words.length > 2 ? `${words[0]} ${words[1]}` : fullTitle;
+}
+
 // ── Horizontal Scroll Row (Netflix Carousel with Android Monet Glass UI) ───────
 
 const ContentRow = ({ 
@@ -244,12 +264,13 @@ const ContentRow = ({
       style={{ contentVisibility: 'auto', containIntrinsicSize: '1px 360px' }}
     >
       <div className="flex items-center justify-between mb-3.5">
-        <div className="flex items-center gap-2.5">
-          <div className={cn("p-2 rounded-2xl bg-[#0e1629]/90 border border-white/[0.08] shadow-sm", accentColor)}>
+        <div className="flex items-center gap-2.5 min-w-0">
+          <div className={cn("p-2 rounded-2xl bg-[#0e1629]/90 border border-white/[0.08] shadow-sm shrink-0", accentColor)}>
             <Icon size={18} />
           </div>
-          <h2 className="text-base sm:text-lg md:text-xl font-black text-white uppercase tracking-wider font-lemon drop-shadow-sm">
-            {section.title}
+          <h2 className="text-sm sm:text-base md:text-xl font-black text-white uppercase tracking-wider font-lemon drop-shadow-sm truncate">
+            <span className="md:hidden">{getShortSectionTitle(section.title)}</span>
+            <span className="hidden md:inline">{section.title}</span>
           </h2>
         </div>
 

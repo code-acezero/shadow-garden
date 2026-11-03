@@ -354,14 +354,11 @@ const MobileActionCockpit = memo(function MobileActionCockpit({
     }, []);
 
     // Compaction Calculation:
-    // Fixed widths: Watchlist (~135-145px) + Lightbulb (32px) + gaps (4 * 6px = 24px) = ~195px.
-    // Compact icon buttons: 32px each.
-    // Base space when ALL buttons are compact:
-    // Watchlist + Bulb + (hasDownload ? 32 : 0) + 32 (Share) + 32 (Room) + gaps = ~290px.
-    // Generous minimum space needed for each button to show full text without letter clipping:
-    // + Download text needs +100px (13px icon + 6px gap + 72px text + 24px padding)
-    // + Share text needs +70px (13px icon + 6px gap + 48px text + 24px padding)
-    // + Room text needs +60px (13px icon + 6px gap + 40px text + 24px padding)
+    // When buttons are compact: 32px each.
+    // Minimum space needed for each button to show full text without ANY clipping:
+    // + Download text needs +85px
+    // + Share text needs +60px
+    // + Room text needs +55px
     useEffect(() => {
         if (rowWidth <= 0) return;
         const baseNeeded = (watchlistWidth || 135) + 32 + (hasDownload ? 32 : 0) + 32 + 32 + 28;
@@ -369,19 +366,19 @@ const MobileActionCockpit = memo(function MobileActionCockpit({
 
         let calculatedStage = 3;
         if (hasDownload) {
-            if (free >= 235) {
-                calculatedStage = 0; // All 3 fit with generous margin
-            } else if (free >= 175) {
+            if (free >= 200) {
+                calculatedStage = 0; // All 3 fit with generous clearance
+            } else if (free >= 145) {
                 calculatedStage = 1; // 1. Room compacts
-            } else if (free >= 105) {
+            } else if (free >= 85) {
                 calculatedStage = 2; // 2. Share compacts
             } else {
                 calculatedStage = 3; // 3. Download compacts (all compact)
             }
         } else {
-            if (free >= 135) {
+            if (free >= 115) {
                 calculatedStage = 0;
-            } else if (free >= 75) {
+            } else if (free >= 60) {
                 calculatedStage = 1;
             } else {
                 calculatedStage = 2;
@@ -391,15 +388,15 @@ const MobileActionCockpit = memo(function MobileActionCockpit({
         setStage(calculatedStage);
     }, [rowWidth, watchlistWidth, hasDownload]);
 
-    // Active Overflow Guard: If any browser zoom, custom font scaling, or DPI
+    // Active Overflow Guard: If any custom font scale, bold text, or zoom
     // causes rowRef to overflow (scrollWidth > clientWidth), step down compaction stage
     // so no button text is EVER cut off or clipped with ellipsis!
     useEffect(() => {
         if (!rowRef.current) return;
-        if (rowRef.current.scrollWidth > rowRef.current.clientWidth) {
+        if (rowRef.current.scrollWidth > rowRef.current.clientWidth + 1) {
             setStage(prev => (prev < 3 ? prev + 1 : prev));
         }
-    }, [stage, rowWidth, watchlistWidth]);
+    });
 
     const showDownloadText = hasDownload && stage < 3;
     const showShareText = stage < 2;
@@ -424,7 +421,7 @@ const MobileActionCockpit = memo(function MobileActionCockpit({
                     className={cn(
                         "h-8 rounded-full border-0 bg-white/[0.06] hover:bg-white/10 text-zinc-300 hover:text-white flex items-center justify-center transition-all active:scale-95 atrax-bubbly-btn atrax-squish-tap shrink-0",
                         showDownloadText
-                            ? "flex-1 min-w-max px-3 gap-1.5"
+                            ? "px-3 gap-1.5"
                             : "w-8 p-0"
                     )}
                     title="Download Episode"
@@ -444,7 +441,7 @@ const MobileActionCockpit = memo(function MobileActionCockpit({
                 className={cn(
                     "h-8 rounded-full border-0 bg-white/[0.06] hover:bg-white/10 text-zinc-300 hover:text-white flex items-center justify-center transition-all active:scale-95 atrax-bubbly-btn atrax-squish-tap shrink-0",
                     showShareText
-                        ? "flex-1 min-w-max px-3 gap-1.5"
+                        ? "px-3 gap-1.5"
                         : "w-8 p-0"
                 )}
                 title="Share Episode"
@@ -463,7 +460,7 @@ const MobileActionCockpit = memo(function MobileActionCockpit({
                 className={cn(
                     "h-8 rounded-full border-0 bg-white/[0.06] hover:bg-white/10 text-zinc-300 hover:text-white flex items-center justify-center transition-all active:scale-95 atrax-bubbly-btn atrax-squish-tap shrink-0",
                     showRoomText
-                        ? "flex-1 min-w-max px-3 gap-1.5"
+                        ? "px-3 gap-1.5"
                         : "w-8 p-0"
                 )}
                 title="Create Watch Room"

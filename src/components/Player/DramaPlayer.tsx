@@ -305,20 +305,7 @@ const DramaPlayer = forwardRef<DramaPlayerRef, DramaPlayerProps>(({
           </div>
         )}
 
-        {/* In-player Fast Server Switch Button */}
-        {servers && servers.length > 1 && onServerSelect && (
-          <div className="absolute top-3 right-3 z-40 opacity-80 hover:opacity-100 transition-opacity">
-            <button
-              onClick={() => switchNextServer()}
-              disabled={autoSwitching}
-              className="flex items-center gap-1.5 px-3 py-1 bg-black/80 hover:bg-cyan-500 hover:text-black border border-white/20 hover:border-cyan-400 rounded-full text-[10px] font-black uppercase text-zinc-300 transition-all shadow-xl active:scale-95 group/btn"
-              title="Switch to next streaming server"
-            >
-              <RotateCw size={11} className={cn("transition-transform", autoSwitching ? "animate-spin text-cyan-400" : "group-hover/btn:rotate-180")} />
-              <span>Switch Server ({activeServerIdx + 1}/{servers.length})</span>
-            </button>
-          </div>
-        )}
+
 
         <IframeAdShield
           className="absolute inset-0 w-full h-full"
