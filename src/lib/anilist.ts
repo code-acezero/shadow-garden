@@ -77,6 +77,7 @@ const MEDIA_CARD_FIELDS = `
   bannerImage
   format
   status
+  updatedAt
   episodes
   duration
   genres
@@ -130,6 +131,8 @@ function mapMediaToCard(media: any, overrideEp?: number): UniversalAnimeBase {
     title,
     jname,
     poster,
+    status: media.status,
+    updatedAt: media.updatedAt ? media.updatedAt * 1000 : undefined,
     type: media.format || 'TV',
     duration: media.duration ? `${media.duration}m` : undefined,
     totalEpisodes: media.episodes || null,
@@ -426,7 +429,7 @@ export class AniListService {
   }
 
   /**
-   * 8c. CHINESE DONGHUA
+   * 8c. CHINESE DONGHUA (Recent Releases & Ongoing)
    */
   static async getDonghua(page = 1, perPage = 24): Promise<UniversalAnimeBase[]> {
     const query = `
@@ -435,6 +438,45 @@ export class AniListService {
           media(
             type: ANIME, 
             countryOfOrigin: "CN", 
+            status: RELEASING,
+            sort: [UPDATED_AT_DESC, TRENDING_DESC]
+          ) {
+            ${MEDIA_CARD_FIELDS}
+          }
+        }
+      }
+    `;
+    const data = await queryAniList<any>(query, { page, perPage });
+    return (data?.Page?.media || []).map((m: any) => {
+      const card = mapMediaToCard(m);
+      const currentEp = m.nextAiringEpisode?.episode 
+        ? Math.max(1, m.nextAiringEpisode.episode - 1) 
+        : (card.episodes?.sub || m.episodes || 1);
+      const nowSec = Math.floor(Date.now() / 1000);
+      const airingAt = m.nextAiringEpisode?.airingAt 
+        ? (m.nextAiringEpisode.airingAt - (7 * 86400)) 
+        : (m.updatedAt || nowSec);
+
+      (card as any).isDonghua = true;
+      (card as any).category = 'chinese';
+      (card as any).episode = currentEp;
+      (card as any).airingAt = airingAt;
+      (card as any).targetRoute = `/donghua-watch/${m.id}`;
+      return card;
+    });
+  }
+
+  /**
+   * 8d. ENGLISH DUBBED RECENT ANIME (Actively Releasing Simul-Dubs)
+   */
+  static async getEnglishDubbed(page = 1, perPage = 24): Promise<UniversalAnimeBase[]> {
+    const query = `
+      query ($page: Int, $perPage: Int) {
+        Page(page: $page, perPage: $perPage) {
+          media(
+            type: ANIME, 
+            countryOfOrigin: "JP", 
+            status: RELEASING,
             sort: [TRENDING_DESC, POPULARITY_DESC]
           ) {
             ${MEDIA_CARD_FIELDS}
@@ -445,36 +487,20 @@ export class AniListService {
     const data = await queryAniList<any>(query, { page, perPage });
     return (data?.Page?.media || []).map((m: any) => {
       const card = mapMediaToCard(m);
-      (card as any).isDonghua = true;
-      (card as any).targetRoute = `/donghua-watch/${m.id}`;
-      return card;
-    });
-  }
+      const currentEp = m.nextAiringEpisode?.episode 
+        ? Math.max(1, m.nextAiringEpisode.episode - 1) 
+        : (card.episodes?.sub || m.episodes || 1);
+      const nowSec = Math.floor(Date.now() / 1000);
+      const airingAt = m.nextAiringEpisode?.airingAt 
+        ? (m.nextAiringEpisode.airingAt - (7 * 86400)) 
+        : (m.updatedAt || nowSec);
 
-  /**
-   * 8d. ENGLISH DUBBED RECENT ANIME
-   */
-  static async getEnglishDubbed(page = 1, perPage = 24): Promise<UniversalAnimeBase[]> {
-    const query = `
-      query ($page: Int, $perPage: Int) {
-        Page(page: $page, perPage: $perPage) {
-          media(
-            type: ANIME, 
-            countryOfOrigin: "JP", 
-            sort: [TRENDING_DESC, POPULARITY_DESC],
-            status_in: [RELEASING, FINISHED]
-          ) {
-            ${MEDIA_CARD_FIELDS}
-          }
-        }
-      }
-    `;
-    const data = await queryAniList<any>(query, { page, perPage });
-    return (data?.Page?.media || []).map((m: any) => {
-      const card = mapMediaToCard(m);
-      const epNum = card.episodes?.sub || m.episodes || 1;
       (card as any).isDub = true;
-      (card as any).targetRoute = `/watch/${m.id}?ep=${epNum}&type=dub`;
+      (card as any).isEnglish = true;
+      (card as any).category = 'english';
+      (card as any).airingAt = airingAt;
+      (card as any).episode = currentEp;
+      (card as any).targetRoute = `/watch/${m.id}?ep=${currentEp}&audio=en&type=dub`;
       return card;
     });
   }

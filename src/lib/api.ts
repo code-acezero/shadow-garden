@@ -255,6 +255,8 @@ export interface UniversalAnimeBase {
     type: string;
     relationType?: string;
     status?: string;
+    airingAt?: number;
+    updatedAt?: number | string;
     year?: number | string;
     seasonYear?: number;
     episodesCount?: number;

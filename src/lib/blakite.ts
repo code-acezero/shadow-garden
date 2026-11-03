@@ -58,6 +58,12 @@ export interface BlakiteAnimeCard {
   href: string;
   type: string;
   date: string;
+  status?: string;
+  dateToUse?: number;
+  updatedAt?: string | null;
+  isHindi?: boolean;
+  isEnglish?: boolean;
+  audio?: string;
   score: number;
   totalEpisodes?: number | null;
   total_episodes?: number | null;
@@ -131,6 +137,10 @@ export function normalizeBlakiteCard(item: BlakiteRawItem, id: string): BlakiteA
   const isSub = (item.language || '').toLowerCase().includes('sub');
   const isDub = (item.language || '').toLowerCase().includes('dub') || item.language === 'ORG' || item.language === 'FanDub';
 
+  const rawTitleLower = (item.title || '').toLowerCase();
+  const rawLangLower = (item.language || '').toLowerCase();
+  const isEnglishDub = rawTitleLower.includes('english dubbed') || rawTitleLower.includes('eng dub') || rawLangLower.includes('english');
+
   const posterUrl = item.IMAGES?.poster || item.IMAGES?.backdrop || '';
   const backdropUrl = item.IMAGES?.backdrop || item.IMAGES?.poster || '';
 
@@ -146,7 +156,13 @@ export function normalizeBlakiteCard(item: BlakiteRawItem, id: string): BlakiteA
     description: item.TMDB_DATA?.synopsis || '',
     href: `/api/blakite/anime/${id}`,
     type: item.type || 'TV',
+    status: item.status || 'Ongoing',
     date: item.TMDB_DATA?.releaseDate?.split('-')[0] || '?',
+    dateToUse: getBlakiteItemDate(item),
+    updatedAt: (item as any).updatedAt || null,
+    isHindi: !isEnglishDub,
+    isEnglish: isEnglishDub,
+    audio: isEnglishDub ? 'English Dub' : (item.language === 'FanDub' ? 'Hindi Fan Dub' : 'Hindi Official Dub'),
     score: Number(item.TMDB_DATA?.rating) || 0,
     totalEpisodes: totalEps > 0 ? totalEps : null,
     total_episodes: totalEps > 0 ? totalEps : null,
@@ -230,6 +246,10 @@ export function mapBlakiteToDramaCard(item: BlakiteRawItem, id: string): any {
     category = 'series';
   }
 
+  const rawTitleLower = (item.title || '').toLowerCase();
+  const rawLangLower = (item.language || '').toLowerCase();
+  const isEnglishDub = rawTitleLower.includes('english dubbed') || rawTitleLower.includes('eng dub') || rawLangLower.includes('english');
+
   return {
     id,
     slug: id,
@@ -243,12 +263,16 @@ export function mapBlakiteToDramaCard(item: BlakiteRawItem, id: string): any {
     category,
     year,
     country,
+    status: item.status || 'Ongoing',
     episode: totalEps > 1 ? `${totalEps} EPS` : (isMovie ? 'Movie' : 'Series'),
     score: rating,
-    isHindi: true,
+    isHindi: !isEnglishDub,
+    isEnglish: isEnglishDub,
     isMovie,
-    audio: item.language === 'FanDub' ? 'Hindi Fan Dub' : 'Hindi Official Dub',
-    source: 'blakite'
+    audio: isEnglishDub ? 'English Dub' : (item.language === 'FanDub' ? 'Hindi Fan Dub' : 'Hindi Official Dub'),
+    source: 'blakite',
+    dateToUse: getBlakiteItemDate(item),
+    updatedAt: (item as any).updatedAt || null
   };
 }
 

@@ -78,16 +78,19 @@ function sanitizeCard(item: any, category: 'sub' | 'english' | 'hindi' | 'chines
         targetRoute = targetRoute.replace(/^\/watch\/([^?&#]+)/, (_: string, rawId: string) => `/watch/${rawId}-${slug}`);
     }
 
+    const isFinished = String(item.status || '').toUpperCase() === 'FINISHED' || String(item.status || '').toUpperCase() === 'COMPLETED';
+
     let timestamp = 0;
     if (item.airingAt) {
         timestamp = item.airingAt * 1000;
     } else if (item.dateToUse) {
         timestamp = item.dateToUse;
-    } else if (item.updatedAt || item.createdAt || item.date) {
-        timestamp = new Date(item.updatedAt || item.createdAt || item.date).getTime();
+    } else if (item.updatedAt || item.createdAt) {
+        const parsed = new Date(item.updatedAt || item.createdAt).getTime();
+        if (!isNaN(parsed) && parsed > 0) timestamp = parsed;
     }
     if (isNaN(timestamp) || timestamp <= 0) {
-        timestamp = Date.now();
+        timestamp = isFinished ? 0 : Date.now();
     }
 
     const finalDubCount = rawDub > 0 ? rawDub : (isHindiItem || isEngItem ? (epValue || rawTotal || 1) : null);
@@ -126,6 +129,21 @@ function sanitizeCard(item: any, category: 'sub' | 'english' | 'hindi' | 'chines
     };
 }
 
+function isLegitimateRecentItem(item: any): boolean {
+    if (!item) return false;
+    const rawStatus = String(item.status || '').toUpperCase();
+    const isFinished = rawStatus === 'FINISHED' || rawStatus === 'COMPLETED';
+
+    // If series is finished/completed, only legit if released/updated within the last 30 days
+    if (isFinished) {
+        const ts = item.airingAt ? item.airingAt * 1000 : (item.dateToUse || (item.updatedAt ? new Date(item.updatedAt).getTime() : 0));
+        if (!ts || isNaN(ts) || (Date.now() - ts > 30 * 86400 * 1000)) {
+            return false;
+        }
+    }
+    return true;
+}
+
 function blendUnifiedFeeds(
     subList: any[],
     dubList: any[],
@@ -141,7 +159,7 @@ function blendUnifiedFeeds(
     const seenIds = new Set<string>();
 
     const pushUnique = (item: any) => {
-        if (!item) return;
+        if (!item || !isLegitimateRecentItem(item)) return;
         const key = `${item.category}-${item.id}`;
         if (!seenIds.has(key)) {
             seenIds.add(key);
@@ -173,7 +191,7 @@ const FILTER_OPTIONS = [
 type FilterType = typeof FILTER_OPTIONS[number]['id'];
 
 export default function RecentUpdatesSection({ initialData }: { initialData: any[] }) {
-    const [data, setData] = useState<any[]>(initialData || []);
+    const [data, setData] = useState<any[]>(() => (initialData || []).filter(isLegitimateRecentItem));
     const [loading, setLoading] = useState(false);
     const [isMounted, setIsMounted] = useState(false);
     const [page, setPage] = useState(1);
@@ -196,10 +214,7 @@ export default function RecentUpdatesSection({ initialData }: { initialData: any
 
     useEffect(() => {
         setIsMounted(true);
-        if (initialData && initialData.length > 0) {
-            cache.current['all_1'] = { data: initialData, timestamp: Date.now() };
-        }
-    }, [initialData]);
+    }, []);
 
     const handlePageChange = (newPage: number) => {
         if (newPage === page || newPage < 1) return;
@@ -249,14 +264,25 @@ export default function RecentUpdatesSection({ initialData }: { initialData: any
                         AnimeService.getDonghua(page)
                     ]);
 
-                    const rawSub = subRes.status === 'fulfilled' && Array.isArray(subRes.value) ? subRes.value : (page === 1 ? (initialData || []) : []);
-                    const rawDub = dubRes.status === 'fulfilled' && Array.isArray(dubRes.value) ? dubRes.value : [];
-                    const rawHindi = hindiRes.status === 'fulfilled' && Array.isArray(hindiRes.value) ? hindiRes.value : [];
-                    const rawDonghua = donghuaRes.status === 'fulfilled' && Array.isArray(donghuaRes.value) ? donghuaRes.value : [];
+                    const rawSub = (subRes.status === 'fulfilled' && Array.isArray(subRes.value) ? subRes.value : (page === 1 ? (initialData || []) : [])).filter(isLegitimateRecentItem);
+                    const rawDub = (dubRes.status === 'fulfilled' && Array.isArray(dubRes.value) ? dubRes.value : []).filter(isLegitimateRecentItem);
+                    const rawHindi = (hindiRes.status === 'fulfilled' && Array.isArray(hindiRes.value) ? hindiRes.value : []).filter(isLegitimateRecentItem);
+                    const rawDonghua = (donghuaRes.status === 'fulfilled' && Array.isArray(donghuaRes.value) ? donghuaRes.value : []).filter(isLegitimateRecentItem);
+
+                    const blakiteEng = rawHindi.filter((i: any) => {
+                        const t = (i.title || i.name || '').toLowerCase();
+                        const a = (i.audio || '').toLowerCase();
+                        return t.includes('english') || a.includes('english') || i.isEnglish === true;
+                    });
+                    const blakiteHindi = rawHindi.filter((i: any) => {
+                        const t = (i.title || i.name || '').toLowerCase();
+                        const a = (i.audio || '').toLowerCase();
+                        return !t.includes('english') && !a.includes('english') && i.isEnglish !== true;
+                    });
 
                     const cleanSub = rawSub.map(item => sanitizeCard(item, 'sub'));
-                    const cleanDub = rawDub.map(item => sanitizeCard(item, 'english'));
-                    const cleanHindi = rawHindi.map(item => sanitizeCard(item, 'hindi'));
+                    const cleanDub = [...rawDub, ...blakiteEng].map(item => sanitizeCard(item, 'english'));
+                    const cleanHindi = blakiteHindi.map(item => sanitizeCard(item, 'hindi'));
                     const cleanDonghua = rawDonghua.map(item => sanitizeCard(item, 'chinese'));
 
                     const finalResults = blendUnifiedFeeds(cleanSub, cleanDub, cleanHindi, cleanDonghua);
@@ -265,22 +291,38 @@ export default function RecentUpdatesSection({ initialData }: { initialData: any
                     cache.current[cacheKey] = { data: finalResults, timestamp: Date.now() };
                 } else if (filter === 'sub') {
                     const res = await AnimeService.getSubbedAnime(page);
-                    const items = (Array.isArray(res) ? res : []).map(i => sanitizeCard(i, 'sub'));
+                    const items = (Array.isArray(res) ? res : []).filter(isLegitimateRecentItem).map(i => sanitizeCard(i, 'sub'));
                     setData(items);
                     cache.current[cacheKey] = { data: items, timestamp: Date.now() };
                 } else if (filter === 'dub') {
-                    const res = await AnimeService.getDubbedAnime(page);
-                    const items = (Array.isArray(res) ? res : []).map(i => sanitizeCard(i, 'english'));
+                    const [res, blakiteRes] = await Promise.allSettled([
+                        AnimeService.getDubbedAnime(page),
+                        fetch(`/api/blakite/latest?page=${page}`).then(r => r.json()).then(d => d?.results || d?.data?.results || []).catch(() => [])
+                    ]);
+                    const rawAniList = (res.status === 'fulfilled' && Array.isArray(res.value) ? res.value : []).filter(isLegitimateRecentItem);
+                    const rawBlakite = (blakiteRes.status === 'fulfilled' && Array.isArray(blakiteRes.value) ? blakiteRes.value : []).filter(isLegitimateRecentItem);
+                    const blakiteEng = rawBlakite.filter((i: any) => {
+                        const t = (i.title || i.name || '').toLowerCase();
+                        const a = (i.audio || '').toLowerCase();
+                        return t.includes('english') || a.includes('english') || i.isEnglish === true;
+                    });
+                    const combined = [...rawAniList, ...blakiteEng];
+                    const items = combined.map(i => sanitizeCard(i, 'english'));
                     setData(items);
                     cache.current[cacheKey] = { data: items, timestamp: Date.now() };
                 } else if (filter === 'hindi') {
                     const res = await fetch(`/api/blakite/latest?page=${page}`).then(r => r.json()).then(d => d?.results || d?.data?.results || []).catch(() => []);
-                    const items = (Array.isArray(res) ? res : []).map(i => sanitizeCard(i, 'hindi'));
+                    const hindiOnly = (Array.isArray(res) ? res : []).filter((i: any) => {
+                        const t = (i.title || i.name || '').toLowerCase();
+                        const a = (i.audio || '').toLowerCase();
+                        return !t.includes('english dubbed') && !a.includes('english') && i.isEnglish !== true;
+                    }).filter(isLegitimateRecentItem);
+                    const items = hindiOnly.map(i => sanitizeCard(i, 'hindi'));
                     setData(items);
                     cache.current[cacheKey] = { data: items, timestamp: Date.now() };
                 } else if (filter === 'chinese') {
                     const res = await AnimeService.getDonghua(page);
-                    const items = (Array.isArray(res) ? res : []).map(i => sanitizeCard(i, 'chinese'));
+                    const items = (Array.isArray(res) ? res : []).filter(isLegitimateRecentItem).map(i => sanitizeCard(i, 'chinese'));
                     setData(items);
                     cache.current[cacheKey] = { data: items, timestamp: Date.now() };
                 }
