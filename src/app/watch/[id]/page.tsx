@@ -15,11 +15,10 @@ export async function generateMetadata(
   const params = await props.params;
   const searchParams = await props.searchParams;
   const rawId = params.id;
-  const cleanId = rawId ? (rawId.match(/^(\d+)/)?.[1] || rawId) : '';
   const ep = searchParams?.ep ? String(searchParams.ep) : null;
   
-  // Fetch anime metadata
-  const data = await AnimeService.getAnimeInfo(cleanId || rawId).catch(() => null);
+  // Fetch anime metadata (pass rawId to preserve text slug for AniList ID collision protection)
+  const data = await AnimeService.getAnimeInfo(rawId).catch(() => null);
 
   if (!data) {
     return {
@@ -105,10 +104,9 @@ export default async function Page(props: Props) {
   const params = await props.params;
   const searchParams = await props.searchParams;
   const rawId = params.id;
-  const cleanId = rawId ? (rawId.match(/^(\d+)/)?.[1] || rawId) : '';
   const ep = searchParams?.ep ? String(searchParams.ep) : null;
 
-  const data = await AnimeService.getAnimeInfo(cleanId || rawId).catch(() => null);
+  const data = await AnimeService.getAnimeInfo(rawId).catch(() => null);
 
   const cleanTitle = data?.title || 'Anime';
   const cleanDesc = (data?.description || `Watch ${cleanTitle} online in HD on Kagemi.`)

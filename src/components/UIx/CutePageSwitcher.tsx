@@ -83,19 +83,19 @@ export default function CutePageSwitcher({
   size = 'md',
   className,
   showPageLabel = false,
-  fullWidthOnMobile = false
+  fullWidthOnMobile = true
 }: CutePageSwitcherProps) {
   const activePage = currentPage ?? page ?? 1;
 
   const isPrevDisabled = canPrev !== undefined 
     ? !canPrev 
-    : (activePage <= 1 || loading);
+    : (activePage <= 1);
 
   const isNextDisabled = canNext !== undefined
     ? !canNext
     : (hasNextPage !== undefined 
-        ? (!hasNextPage || loading)
-        : ((maxPage !== undefined && activePage >= maxPage) || loading));
+        ? !hasNextPage
+        : (maxPage !== undefined && activePage >= maxPage));
 
   const colors = VARIANT_STYLES[variant] || VARIANT_STYLES.primary;
   const isSm = size === 'sm';

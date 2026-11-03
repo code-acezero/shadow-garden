@@ -1,33 +1,16 @@
 // src/app/api/anime/anilist/route.ts
 import { NextRequest, NextResponse } from 'next/server';
+import { 
+  getCachedAniList, 
+  setCachedAniList, 
+  isAniListRateLimited, 
+  setAniListRateLimit 
+} from '@/lib/anilistDiskCache';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
 const ANILIST_GRAPHQL_ENDPOINT = 'https://graphql.anilist.co';
-
-interface CacheEntry {
-  data: any;
-  status: number;
-  expires: number;
-  staleUntil: number;
-}
-
-// In-memory server cache for AniList GraphQL responses (prevents hitting the 30 req/min rate limit)
-const serverCache = new Map<string, CacheEntry>();
-const CACHE_TTL_MS = 10 * 60 * 1000; // 10 minutes fresh
-const STALE_TTL_MS = 2 * 60 * 60 * 1000; // 2 hours stale fallback
-
-function cleanCache() {
-  if (serverCache.size > 1000) {
-    const now = Date.now();
-    for (const [k, v] of serverCache.entries()) {
-      if (v.staleUntil < now) {
-        serverCache.delete(k);
-      }
-    }
-  }
-}
 
 async function executeAniListFetch(bodyString: string, authHeader?: string | null, attempt = 1): Promise<{ status: number; json: any }> {
   const controller = new AbortController();
@@ -36,7 +19,7 @@ async function executeAniListFetch(bodyString: string, authHeader?: string | nul
   const headers: Record<string, string> = {
     'Content-Type': 'application/json',
     'Accept': 'application/json',
-    'User-Agent': 'Kagemi/4.0 (Anime Streamer)',
+    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36 Kagemi/4.0',
   };
 
   if (authHeader) {
@@ -54,11 +37,10 @@ async function executeAniListFetch(bodyString: string, authHeader?: string | nul
 
     const json = await res.json().catch(() => null);
 
-    if (res.status === 429 && attempt < 2) {
-      const retryAfter = parseInt(res.headers.get('retry-after') || '1', 10);
-      const waitMs = Math.min(Math.max(retryAfter * 1000, 1000), 1500);
-      await new Promise(r => setTimeout(r, waitMs));
-      return executeAniListFetch(bodyString, authHeader, attempt + 1);
+    if (res.status === 429) {
+      const retryAfter = parseInt(res.headers.get('retry-after') || '60', 10);
+      setAniListRateLimit(retryAfter);
+      return { status: 429, json };
     }
 
     return { status: res.status, json };
@@ -87,39 +69,50 @@ export async function POST(req: NextRequest) {
     }
 
     const cacheKey = bodyString;
-    const cached = serverCache.get(cacheKey);
-    const now = Date.now();
+    const cached = getCachedAniList(cacheKey);
 
-    // If cache is fresh, return immediately
-    if (cached && now < cached.expires) {
+    // If cache is fresh, return immediately (0ms latency, zero upstream request!)
+    if (cached && !cached.isStale) {
       return NextResponse.json(cached.data, {
-        status: cached.status,
+        status: 200,
         headers: {
           'X-Cache': 'HIT',
-          'Cache-Control': 'public, max-age=300, stale-while-revalidate=1800'
+          'Cache-Control': 'public, max-age=3600, stale-while-revalidate=86400'
         }
       });
+    }
+
+    // If currently rate limited by upstream, serve stale cache immediately!
+    if (isAniListRateLimited()) {
+      if (cached && cached.data) {
+        console.warn(`[AniList Proxy] Serving stale cache during upstream rate-limit`);
+        return NextResponse.json(cached.data, {
+          status: 200,
+          headers: { 'X-Cache': 'STALE' }
+        });
+      }
+      return NextResponse.json(
+        { errors: [{ message: 'AniList upstream rate limited. Retrying shortly.' }] },
+        { status: 429 }
+      );
     }
 
     try {
       const { status, json } = await executeAniListFetch(bodyString, null);
 
       if (status === 200 && json && !json.errors) {
-        cleanCache();
-        serverCache.set(cacheKey, {
-          data: json,
-          status,
-          expires: now + CACHE_TTL_MS,
-          staleUntil: now + STALE_TTL_MS,
-        });
+        setCachedAniList(cacheKey, json);
         return NextResponse.json(json, {
           status: 200,
-          headers: { 'X-Cache': 'MISS' }
+          headers: { 
+            'X-Cache': 'MISS',
+            'Cache-Control': 'public, max-age=3600, stale-while-revalidate=86400'
+          }
         });
       }
 
       // If rate limited or error, but we have a stale entry, serve stale!
-      if (cached && now < cached.staleUntil) {
+      if (cached && cached.data) {
         console.warn(`[AniList Proxy] Serving stale cache due to upstream status ${status}`);
         return NextResponse.json(cached.data, {
           status: 200,
@@ -129,7 +122,7 @@ export async function POST(req: NextRequest) {
 
       return NextResponse.json(json || { errors: [{ message: `AniList error status ${status}` }] }, { status });
     } catch (fetchErr: any) {
-      if (cached && now < cached.staleUntil) {
+      if (cached && cached.data) {
         console.warn(`[AniList Proxy] Serving stale cache due to fetch error: ${fetchErr.message}`);
         return NextResponse.json(cached.data, {
           status: 200,

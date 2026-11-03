@@ -408,6 +408,7 @@ const OmniPlayer = forwardRef<OmniPlayerRef, OmniPlayerProps>(({
     }, 2500);
   }, []);
   const [isScrubbing, setIsScrubbing] = useState(false);
+  const [isDirectlyInteractingSeekbar, setIsDirectlyInteractingSeekbar] = useState(false);
   const [hoverTime, setHoverTime] = useState<number | null>(null);
   const [hoverPos, setHoverPos] = useState<number>(0);
   const [isTitleOverflowing, setIsTitleOverflowing] = useState(false);
@@ -1568,6 +1569,7 @@ const OmniPlayer = forwardRef<OmniPlayerRef, OmniPlayerProps>(({
       setHoverTime(null);
       setIsHoveringSeek(false);
       setIsScrubbing(false);
+      setIsDirectlyInteractingSeekbar(false);
       touchSeekTargetRef.current = null;
 
       const target = e.target as HTMLElement;
@@ -1648,6 +1650,7 @@ const OmniPlayer = forwardRef<OmniPlayerRef, OmniPlayerProps>(({
       setHoverTime(null);
       setIsHoveringSeek(false);
       setIsScrubbing(false);
+      setIsDirectlyInteractingSeekbar(false);
 
       if (!touchStartRef.current) return;
       
@@ -1732,6 +1735,7 @@ const OmniPlayer = forwardRef<OmniPlayerRef, OmniPlayerProps>(({
   };
 
   const handleSeekStart = (e: React.MouseEvent<HTMLInputElement> | React.TouchEvent<HTMLInputElement>) => { 
+    setIsDirectlyInteractingSeekbar(true);
     setIsScrubbing(true); 
     updateBuffering(false); 
     const rect = e.currentTarget.getBoundingClientRect();
@@ -1770,6 +1774,7 @@ const OmniPlayer = forwardRef<OmniPlayerRef, OmniPlayerProps>(({
         seekTargetRef.current = null; 
     }
     setIsScrubbing(false); 
+    setIsDirectlyInteractingSeekbar(false);
     // On touch devices or touch events, ALWAYS clear hoverTime and isHoveringSeek immediately
     const isTouch = 'changedTouches' in e || 'touches' in e || (typeof window !== 'undefined' && !window.matchMedia('(hover: hover) and (pointer: fine)').matches);
     if (isTouch || !isHoveringSeek) {
@@ -1804,6 +1809,7 @@ const OmniPlayer = forwardRef<OmniPlayerRef, OmniPlayerProps>(({
       const clampedX = Math.max(0, Math.min(rect.width, touch.clientX - rect.left));
       const percent = rect.width > 0 ? (clampedX / rect.width) * 100 : 0;
       const time = (percent / 100) * (duration || 0);
+      setIsDirectlyInteractingSeekbar(true);
       setIsScrubbing(true);
       setHoverTime(time);
       setHoverPos(percent);
@@ -2257,7 +2263,7 @@ const OmniPlayer = forwardRef<OmniPlayerRef, OmniPlayerProps>(({
           // Seek preview should ONLY show when directly interacting with the seekbar:
           // - On mobile / touch devices: ONLY while actively touching & scrubbing the seekbar (isScrubbing === true)
           // - On desktop with mouse: while scrubbing OR while actively hovering over the seekbar with mouse (isHoveringSeek && hoverTime !== null)
-          const showPreview = duration > 0 && (
+          const showPreview = duration > 0 && isDirectlyInteractingSeekbar && (
             isTouchOnly 
               ? isScrubbing 
               : (isScrubbing || (hoverTime !== null && isHoveringSeek))
@@ -2324,10 +2330,11 @@ const OmniPlayer = forwardRef<OmniPlayerRef, OmniPlayerProps>(({
               onMouseEnter={(e) => {
                 if (typeof window !== 'undefined' && !window.matchMedia('(hover: hover) and (pointer: fine)').matches) return;
                 setIsHoveringSeek(true);
+                setIsDirectlyInteractingSeekbar(true);
                 const rect = e.currentTarget.getBoundingClientRect();
                 if (rect.width > 0) setSeekbarWidth(rect.width);
               }}
-              onMouseLeave={() => { setHoverTime(null); setIsHoveringSeek(false); }}
+              onMouseLeave={() => { setHoverTime(null); setIsHoveringSeek(false); setIsDirectlyInteractingSeekbar(false); }}
             >
               {/* Seek Preview Tooltip / Card (Strictly centered with cursor, Gummy Jelly Motion Pop) */}
               <div 

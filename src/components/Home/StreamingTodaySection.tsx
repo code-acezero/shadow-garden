@@ -226,7 +226,7 @@ export default function StreamingTodaySection({ initialItems = [] }: StreamingTo
             onNext={() => handlePageChange(page + 1)}
             loading={loading}
             variant="emerald"
-            className="flex-1 md:flex-initial justify-between md:justify-center"
+            className="w-full flex-1 md:flex-initial justify-between md:justify-center"
           />
 
           {/* Desktop Only: Full Schedule Link */}
@@ -363,6 +363,7 @@ export default function StreamingTodaySection({ initialItems = [] }: StreamingTo
           onNext={() => handlePageChange(page + 1)}
           loading={loading}
           variant="emerald"
+          className="w-full sm:w-auto justify-between sm:justify-center"
         />
       </div>
     </section>

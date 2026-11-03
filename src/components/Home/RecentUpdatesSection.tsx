@@ -429,11 +429,11 @@ export default function RecentUpdatesSection({ initialData }: { initialData: any
                     <CutePageSwitcher
                         page={page}
                         loading={loading}
-                        canPrev={page > 1 && !loading}
-                        canNext={!loading && data.length >= 12}
+                        canPrev={page > 1}
+                        canNext={data.length >= 12}
                         onPageChange={handlePageChange}
                         variant="purple"
-                        className="flex-1 md:flex-initial justify-between md:justify-center"
+                        className="w-full flex-1 md:flex-initial justify-between md:justify-center"
                     />
 
                     {/* Desktop Only: View All Link */}
@@ -481,10 +481,11 @@ export default function RecentUpdatesSection({ initialData }: { initialData: any
                 <CutePageSwitcher
                     page={page}
                     loading={loading}
-                    canPrev={page > 1 && !loading}
-                    canNext={!loading && data.length >= 12}
+                    canPrev={page > 1}
+                    canNext={data.length >= 12}
                     onPageChange={handlePageChange}
                     variant="rose"
+                    className="w-full sm:w-auto justify-between sm:justify-center"
                 />
             </div>
         </section>

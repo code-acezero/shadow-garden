@@ -679,6 +679,7 @@ export class AnimeService {
         try {
             const rawId = (slugOrId || '').trim();
             const cleanId = rawId.match(/^(\d+)/)?.[1] || rawId;
+            const slugTitle = rawId.replace(/^(\d+)-?/, '').replace(/-?(\d+)$/, '').replace(/-/g, ' ').trim();
             let blakiteDetail: any = null;
 
             if (typeof window !== 'undefined') {
@@ -700,13 +701,17 @@ export class AnimeService {
                     .trim();
 
                 let anilistMatch: UniversalAnime | null = null;
-                if (cleanTitle) {
-                    anilistMatch = await AniListService.getAnimeInfo(cleanTitle).catch(() => null);
-                    if (!anilistMatch) {
-                        const searchResults = await AniListService.search(cleanTitle, 1, 1).catch(() => null);
-                        if (searchResults?.results?.[0]?.id) {
-                            anilistMatch = await AniListService.getAnimeInfo(String(searchResults.results[0].id)).catch(() => null);
-                        }
+                const searchCandidates = [cleanTitle, slugTitle, blakiteDetail.englishTitle, blakiteDetail.nativeTitle].filter(Boolean);
+
+                for (const candidate of searchCandidates) {
+                    if (!candidate || candidate.length < 3) continue;
+                    anilistMatch = await AniListService.getAnimeInfo(candidate).catch(() => null);
+                    if (anilistMatch && anilistMatch.episodes?.length) break;
+
+                    const searchResults = await AniListService.search(candidate, 1, 1).catch(() => null);
+                    if (searchResults?.results?.[0]?.id) {
+                        anilistMatch = await AniListService.getAnimeInfo(String(searchResults.results[0].id)).catch(() => null);
+                        if (anilistMatch && anilistMatch.episodes?.length) break;
                     }
                 }
 
@@ -733,7 +738,7 @@ export class AnimeService {
                     return anilistMatch;
                 }
 
-                const eps: UniversalEpisode[] = Array.isArray(blakiteDetail.episodes)
+                const eps: UniversalEpisode[] = Array.isArray(blakiteDetail.episodes) && blakiteDetail.episodes.length > 0
                     ? blakiteDetail.episodes.map((e: any, idx: number) => ({
                         id: e.id || `${blakiteDetail.id}::${e.number || (idx + 1)}`,
                         number: parseInt(e.number, 10) || (idx + 1),
@@ -744,7 +749,16 @@ export class AnimeService {
                         hasDub: true,
                         hasSub: true,
                     }))
-                    : [];
+                    : [{
+                        id: `${blakiteDetail.id}::1`,
+                        number: 1,
+                        title: 'Episode 1',
+                        isFiller: false,
+                        isDub: true,
+                        isSub: true,
+                        hasDub: true,
+                        hasSub: true,
+                    }];
 
                 const uAnime: UniversalAnime = {
                     id: String(blakiteDetail.id),

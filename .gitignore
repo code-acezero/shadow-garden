@@ -18,6 +18,7 @@
 
 # scratch & test scripts
 /scratch/
+/.cache/
 
 # production
 /build

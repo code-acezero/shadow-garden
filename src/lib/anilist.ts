@@ -8,21 +8,49 @@ import {
   UniversalEpisode, 
   UniversalCharacter 
 } from '@/lib/api';
+import { 
+  getCachedAniList, 
+  setCachedAniList, 
+  isAniListRateLimited, 
+  setAniListRateLimit 
+} from '@/lib/anilistDiskCache';
 
 const ANILIST_GRAPHQL_ENDPOINT = 'https://graphql.anilist.co';
 
-// In-memory cache for fast repeat lookups (TTL 5 mins)
+// In-memory cache for fast repeat lookups (TTL 2 hours)
 const cache = new Map<string, { data: any; expires: number }>();
-const CACHE_TTL_MS = 5 * 60 * 1000;
+const CACHE_TTL_MS = 2 * 60 * 60 * 1000;
 
 async function queryAniList<T = any>(query: string, variables: Record<string, any> = {}): Promise<T | null> {
   const cacheKey = JSON.stringify({ query, variables });
+  const now = Date.now();
+
+  // 1. Fast in-memory check
   const cached = cache.get(cacheKey);
-  if (cached && Date.now() < cached.expires) {
+  if (cached && now < cached.expires) {
     return cached.data as T;
   }
 
   const isBrowser = typeof window !== 'undefined';
+
+  // 2. Persistent disk cache check on server
+  if (!isBrowser) {
+    const diskCached = getCachedAniList(cacheKey);
+    if (diskCached && !diskCached.isStale) {
+      cache.set(cacheKey, { data: diskCached.data, expires: now + CACHE_TTL_MS });
+      return diskCached.data as T;
+    }
+
+    // If currently rate limited by AniList, serve stale cache immediately!
+    if (isAniListRateLimited()) {
+      if (diskCached && diskCached.data) {
+        console.warn('[AniList] Upstream rate-limited. Serving stale disk cache.');
+        return diskCached.data as T;
+      }
+      return null;
+    }
+  }
+
   const targetUrl = isBrowser ? '/api/anime/anilist' : ANILIST_GRAPHQL_ENDPOINT;
 
   const controller = new AbortController();
@@ -32,6 +60,7 @@ async function queryAniList<T = any>(query: string, variables: Record<string, an
     headers: {
       'Content-Type': 'application/json',
       'Accept': 'application/json',
+      'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36 Kagemi/4.0',
     },
     body: JSON.stringify({ query, variables }),
     signal: controller.signal,
@@ -40,19 +69,51 @@ async function queryAniList<T = any>(query: string, variables: Record<string, an
   try {
     const res = await fetch(targetUrl, fetchOptions);
     clearTimeout(timer);
-    if (!res.ok) {
-      console.warn(`[AniList] GraphQL request failed with status: ${res.status}`);
+
+    if (res.status === 429) {
+      const retryAfter = parseInt(res.headers.get('retry-after') || '60', 10);
+      setAniListRateLimit(retryAfter);
+      if (!isBrowser) {
+        const diskCached = getCachedAniList(cacheKey);
+        if (diskCached && diskCached.data) {
+          console.warn('[AniList] Upstream 429 received. Responding with stale disk cache.');
+          return diskCached.data as T;
+        }
+      }
       return null;
     }
+
+    if (!res.ok) {
+      console.warn(`[AniList] GraphQL request failed with status: ${res.status}`);
+      if (!isBrowser) {
+        const diskCached = getCachedAniList(cacheKey);
+        if (diskCached && diskCached.data) return diskCached.data as T;
+      }
+      return null;
+    }
+
     const json = await res.json();
     if (json.errors) {
       console.warn('[AniList] GraphQL errors:', json.errors);
+      if (!isBrowser) {
+        const diskCached = getCachedAniList(cacheKey);
+        if (diskCached && diskCached.data) return diskCached.data as T;
+      }
       return null;
     }
+
     const data = json.data as T;
-    cache.set(cacheKey, { data, expires: Date.now() + CACHE_TTL_MS });
+    cache.set(cacheKey, { data, expires: now + CACHE_TTL_MS });
+    if (!isBrowser) {
+      setCachedAniList(cacheKey, data);
+    }
     return data;
   } catch (err: any) {
+    clearTimeout(timer);
+    if (!isBrowser) {
+      const diskCached = getCachedAniList(cacheKey);
+      if (diskCached && diskCached.data) return diskCached.data as T;
+    }
     if (err?.name !== 'AbortError') {
       console.warn('[AniList] Query notice:', err?.message || err);
     }
@@ -827,8 +888,12 @@ export class AniListService {
                 title {
                   english
                   romaji
+                  userPreferred
+                  native
                 }
                 coverImage {
+                  extraLarge
+                  large
                   medium
                 }
                 averageScore
@@ -855,6 +920,23 @@ export class AniListService {
 
     let data = await queryAniList<any>(query, variables);
     let media = data?.Media;
+
+    // Validate that the returned media matches the text slug if a slug is present
+    const textSlug = raw.replace(/^(\d+)-?/, '').replace(/-?(\d+)$/, '').replace(/-/g, ' ').trim();
+    if (media && isNumeric && textSlug && textSlug.length > 3) {
+      const slugWords = textSlug.toLowerCase().split(/\s+/).filter(w => w.length > 2 && !['the', 'and', 'from', 'with', 'part', 'season'].includes(w));
+      const mediaTitleEng = (media.title?.english || '').toLowerCase();
+      const mediaTitleRom = (media.title?.romaji || '').toLowerCase();
+      const mediaSynonyms = (media.synonyms || []).map((s: string) => String(s).toLowerCase()).join(' ');
+      const fullMediaText = `${mediaTitleEng} ${mediaTitleRom} ${mediaSynonyms}`;
+
+      const matchedWords = slugWords.filter(w => fullMediaText.includes(w));
+      // If none of the substantial slug words match, this numeric ID was from a different database (e.g. TMDB/Blakite)
+      if (slugWords.length > 1 && matchedWords.length === 0) {
+        console.warn(`[AniListService] ID collision: Numeric ID ${numericId} returned "${mediaTitleEng || mediaTitleRom}", but slug is "${textSlug}". Treating as slug search.`);
+        media = null;
+      }
+    }
 
     if (!media && isNumeric) {
       const textSlug = raw.replace(/^(\d+)-?/, '').replace(/-?(\d+)$/, '').replace(/-/g, ' ').trim();
@@ -971,8 +1053,12 @@ export class AniListService {
                     title {
                       english
                       romaji
+                      userPreferred
+                      native
                     }
                     coverImage {
+                      extraLarge
+                      large
                       medium
                     }
                     averageScore
@@ -1111,9 +1197,10 @@ export class AniListService {
         if (recMedia) {
           recommendations.push({
             id: String(recMedia.id),
-            title: recMedia.title?.english || recMedia.title?.romaji || 'Unknown',
-            poster: recMedia.coverImage?.medium || '',
+            title: recMedia.title?.userPreferred || recMedia.title?.english || recMedia.title?.romaji || recMedia.title?.native || 'Unknown',
+            poster: recMedia.coverImage?.extraLarge || recMedia.coverImage?.large || recMedia.coverImage?.medium || '',
             type: recMedia.format || 'TV',
+            duration: '24m',
             rank: recMedia.averageScore
           });
         }

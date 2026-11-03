@@ -11,7 +11,7 @@ import {
     ChevronDown, Heart, CheckCircle, XCircle,
     FastForward, Star, Info, MessageSquare, User, Users,
     Loader2, Globe, Flame, Calendar, Copyright, Check, Mic, X,
-    ChevronLeft, ChevronRight, Pause, ArrowLeft, ArrowRight, Download, Wand2,
+    ChevronLeft, ChevronRight, Pause, ArrowLeft, ArrowRight, Download, Compass,
     Zap, PlayCircle, RotateCw, StepForward, Share2, ArrowRightToLine, Forward
 } from 'lucide-react';
 
@@ -1099,6 +1099,15 @@ function WatchContent({ initialAnime }: { initialAnime?: UniversalAnime | null }
     const activeFetchRef = useRef(0);
     const failedServersRef = useRef<string[]>([]);
     const programmaticServerRef = useRef<string | null>(null);
+    const isProgrammaticSettingUpdate = useRef(false);
+    const programmaticSettingTimer = useRef<NodeJS.Timeout | null>(null);
+    const markProgrammaticSettingUpdate = useCallback(() => {
+        isProgrammaticSettingUpdate.current = true;
+        if (programmaticSettingTimer.current) clearTimeout(programmaticSettingTimer.current);
+        programmaticSettingTimer.current = setTimeout(() => {
+            isProgrammaticSettingUpdate.current = false;
+        }, 500);
+    }, []);
     const initialSettingsMount = useRef(true);
     const embedDurationRef = useRef<number>(1440);
     const lastAutoSkippedIntroRef = useRef<boolean>(false);
@@ -1367,7 +1376,8 @@ function WatchContent({ initialAnime }: { initialAnime?: UniversalAnime | null }
         }
         if (progress <= 0) return;
 
-        const ep = anime.episodes.find((e: any) => 
+        const episodes = Array.isArray(anime.episodes) ? anime.episodes : [];
+        const ep = episodes.find((e: any) => 
             e.id === targetEpId || 
             String(e.number) === String(targetEpId) ||
             Number(e.number) === Number(targetEpId) ||
@@ -1677,60 +1687,73 @@ function WatchContent({ initialAnime }: { initialAnime?: UniversalAnime | null }
     const chunkSize = 50;
     useEffect(() => {
         if (!currentEpId || !anime) return;
-        const index = anime.episodes.findIndex((e: any) => e.id === currentEpId);
+        const episodes = Array.isArray(anime.episodes) ? anime.episodes : [];
+        const index = episodes.findIndex((e: any) => e.id === currentEpId || String(e.number) === currentEpId);
         if (index !== -1) {
             const targetChunk = Math.floor(index / chunkSize);
             setEpChunkIndex(targetChunk);
         }
-    }, [currentEpId, anime, chunkSize]);
+    }, [currentEpId, anime?.episodes, chunkSize]);
 
     // Initial Load
     useEffect(() => {
         let isMounted = true;
         const init = async () => {
-            // Immediately hydrate from initialAnime if available
-            if (initialAnime && (initialAnime.id === cleanAnimeId || initialAnime.id === rawAnimeId || (initialAnime as any).blakiteId === cleanAnimeId || !anime)) {
-                setAnime(initialAnime);
-                setIsLoadingInfo(false);
-            } else if (!anime) {
-                setIsLoadingInfo(true);
-            }
-
             try {
-                const universalData = await AnimeService.getAnimeInfo(cleanAnimeId || rawAnimeId).catch(() => null);
-                if (!isMounted) return;
-
-                const baseData = universalData || initialAnime || anime;
-                if (!baseData) {
-                    console.warn(`[WatchClient] Anime data not found for ${animeId}`);
+                // Immediately hydrate from initialAnime if available to prevent redundant AniList calls
+                let baseData: UniversalAnime | null = (initialAnime && (initialAnime.title || initialAnime.id)) ? initialAnime : anime;
+                if (baseData) {
+                    setAnime(baseData);
                     setIsLoadingInfo(false);
-                    return;
-                }
-
-                if (!baseData.episodes || baseData.episodes.length === 0) {
-                    const epData = await AnimeService.getEpisodes(animeId).catch(() => []);
-                    if (epData && Array.isArray(epData) && epData.length > 0) {
-                        baseData.episodes = epData;
+                } else {
+                    setIsLoadingInfo(true);
+                    baseData = await AnimeService.getAnimeInfo(rawAnimeId).catch(() => null);
+                    if (isMounted && baseData) {
+                        setAnime(baseData);
                     }
                 }
 
-                if ((!baseData.recommendations || baseData.recommendations.length === 0) && baseData.info?.genres && baseData.info.genres.length > 0) {
-                    try {
-                        const homeData = await AnimeService.getHomeSections();
-                        if (homeData && homeData.recent) {
-                            baseData.recommendations = homeData.recent
-                                .filter((s: any) => s.id !== baseData.id)
-                                .slice(0, 10)
-                                .map((r: any) => ({
-                                    id: r.id,
-                                    title: r.name,
-                                    poster: r.poster,
-                                    type: typeof r.type === 'string' ? r.type : 'TV',
-                                    date: ''
-                                }));
-                        }
-                    } catch (e) { }
+                if (!baseData) {
+                    console.warn(`[WatchClient] Anime data not found for ${animeId}`);
+                    return;
                 }
+
+                if (!Array.isArray(baseData.episodes) || baseData.episodes.length === 0) {
+                    const epData = await AnimeService.getEpisodes(animeId).catch(() => []);
+                    if (epData && Array.isArray(epData) && epData.length > 0) {
+                        baseData.episodes = epData;
+                    } else {
+                        baseData.episodes = [{
+                            id: `${baseData.id}::1`,
+                            number: 1,
+                            title: 'Episode 1',
+                            isFiller: false,
+                            isDub: true,
+                            isSub: true,
+                            hasDub: true,
+                            hasSub: true,
+                        }];
+                    }
+                }
+
+            if ((!baseData.recommendations || baseData.recommendations.length === 0) && baseData.info?.genres && baseData.info.genres.length > 0) {
+                try {
+                    const popList = await AnimeService.getMostPopular(1).catch(() => []);
+                    if (popList && Array.isArray(popList) && popList.length > 0) {
+                        baseData.recommendations = popList
+                            .filter((s: any) => String(s.id) !== String(baseData!.id))
+                            .slice(0, 10)
+                            .map((r: any) => ({
+                                id: String(r.id),
+                                title: r.title || r.name || 'Recommended Anime',
+                                poster: r.poster || r.image || '',
+                                type: typeof r.type === 'string' ? r.type : 'TV',
+                                duration: r.duration || '24m',
+                                date: ''
+                            }));
+                    }
+                } catch (e) { }
+            }
 
                 // Advanced Family Lineage matching
                 if (!baseData.related || baseData.related.length === 0) {
@@ -1882,11 +1905,12 @@ function WatchContent({ initialAnime }: { initialAnime?: UniversalAnime | null }
             // Robust URL Episode Resolution
             const paramEp = urlEpId || urlEpNumber;
             let targetEpId: string | null = null;
+            const episodes = Array.isArray(anime?.episodes) ? anime.episodes : [];
 
-            if (paramEp && anime.episodes) {
+            if (paramEp && episodes.length > 0) {
                 const paramStr = String(paramEp).trim();
                 const paramNum = Number(paramStr);
-                let urlMatch = anime.episodes.find((e: any) =>
+                let urlMatch = episodes.find((e: any) =>
                     String(e.id) === paramStr ||
                     (!isNaN(paramNum) && Number(e.number) === paramNum) ||
                     String(e.number) === paramStr ||
@@ -1897,7 +1921,7 @@ function WatchContent({ initialAnime }: { initialAnime?: UniversalAnime | null }
                 );
                 if (!urlMatch && !isNaN(paramNum) && paramNum > 0) {
                     const synthEp = {
-                        id: `${anime.id}::${paramNum}`,
+                        id: `${anime?.id}::${paramNum}`,
                         number: paramNum,
                         title: `Episode ${paramNum}`,
                         isFiller: false,
@@ -1905,9 +1929,12 @@ function WatchContent({ initialAnime }: { initialAnime?: UniversalAnime | null }
                         isSub: true,
                         hasDub: true,
                         hasSub: true,
-                        malId: anime.malId
+                        malId: anime?.malId
                     };
-                    anime.episodes.push(synthEp);
+                    if (anime) {
+                        if (!Array.isArray(anime.episodes)) anime.episodes = [];
+                        anime.episodes.push(synthEp);
+                    }
                     urlMatch = synthEp;
                 }
                 if (urlMatch) targetEpId = urlMatch.id;
@@ -1922,27 +1949,27 @@ function WatchContent({ initialAnime }: { initialAnime?: UniversalAnime | null }
             }
 
             // If found from history and completed, advance to next episode if user didn't specify ?ep= in URL
-            if (targetEpId && !paramEp && progressBuffer.current[targetEpId]?.is_completed && anime.episodes?.length > 0) {
-                const curIdx = anime.episodes.findIndex((e: any) => e.id === targetEpId || String(e.number) === targetEpId);
-                if (curIdx !== -1 && curIdx < anime.episodes.length - 1) {
-                    targetEpId = anime.episodes[curIdx + 1].id;
+            if (targetEpId && !paramEp && progressBuffer.current[targetEpId]?.is_completed && episodes.length > 0) {
+                const curIdx = episodes.findIndex((e: any) => e.id === targetEpId || String(e.number) === targetEpId);
+                if (curIdx !== -1 && curIdx < episodes.length - 1) {
+                    targetEpId = episodes[curIdx + 1].id;
                 }
             }
 
             // Safety Check: Prevent older format 'episodeId' cache from failing lookup
-            if (targetEpId && anime.episodes?.length > 0) {
-                const epExists = anime.episodes.find((e: any) => e.id === targetEpId);
+            if (targetEpId && episodes.length > 0) {
+                const epExists = episodes.find((e: any) => e.id === targetEpId);
                 if (!epExists) {
                     const oldData = Object.values(progressBuffer.current).find((p: any) => p.episode_id === targetEpId) as any;
                     if (oldData && oldData.episode_number) {
-                        const match = anime.episodes.find((e: any) => Number(e.number) === Number(oldData.episode_number));
-                        targetEpId = match ? match.id : anime.episodes[0].id;
+                        const match = episodes.find((e: any) => Number(e.number) === Number(oldData.episode_number));
+                        targetEpId = match ? match.id : episodes[0].id;
                     } else {
-                        targetEpId = anime.episodes[0].id;
+                        targetEpId = episodes[0].id;
                     }
                 }
-            } else if (!targetEpId && anime.episodes?.length > 0) {
-                targetEpId = anime.episodes[0].id;
+            } else if (!targetEpId && episodes.length > 0) {
+                targetEpId = episodes[0].id;
             }
 
             if (targetEpId && !currentEpId) setCurrentEpId(targetEpId);
@@ -1971,14 +1998,15 @@ function WatchContent({ initialAnime }: { initialAnime?: UniversalAnime | null }
     useEffect(() => { currentEpIdRef.current = currentEpId; }, [currentEpId]);
 
     useEffect(() => {
-        if (!anime?.episodes) return;
+        const episodes = Array.isArray(anime?.episodes) ? anime.episodes : [];
+        if (episodes.length === 0) return;
         const paramEp = urlEpId || urlEpNumber;
         if (!paramEp) return;
 
         const paramStr = String(paramEp).trim();
         const paramNum = Number(paramStr);
 
-        let match = anime.episodes.find((e: any) =>
+        let match = episodes.find((e: any) =>
             String(e.id) === paramStr ||
             (!isNaN(paramNum) && Number(e.number) === paramNum) ||
             String(e.number) === paramStr ||
@@ -1990,7 +2018,7 @@ function WatchContent({ initialAnime }: { initialAnime?: UniversalAnime | null }
 
         if (!match && !isNaN(paramNum) && paramNum > 0) {
             const synthEp = {
-                id: `${anime.id}::${paramNum}`,
+                id: `${anime?.id}::${paramNum}`,
                 number: paramNum,
                 title: `Episode ${paramNum}`,
                 isFiller: false,
@@ -1998,9 +2026,12 @@ function WatchContent({ initialAnime }: { initialAnime?: UniversalAnime | null }
                 isSub: true,
                 hasDub: true,
                 hasSub: true,
-                malId: anime.malId
+                malId: anime?.malId
             };
-            anime.episodes.push(synthEp);
+            if (anime) {
+                if (!Array.isArray(anime.episodes)) anime.episodes = [];
+                anime.episodes.push(synthEp);
+            }
             match = synthEp;
         }
 
@@ -2026,8 +2057,9 @@ function WatchContent({ initialAnime }: { initialAnime?: UniversalAnime | null }
             setStreamError(null);
 
             let time = 0; let isUrlOverride = false;
-            if (urlTimestamp && urlEpNumber && anime) {
-                const requestedEp = anime.episodes.find((e: any) => e.number === Number(urlEpNumber));
+            const episodes = Array.isArray(anime?.episodes) ? anime.episodes : [];
+            if (urlTimestamp && urlEpNumber && episodes.length > 0) {
+                const requestedEp = episodes.find((e: any) => e.number === Number(urlEpNumber));
                 if (requestedEp && requestedEp.id === currentEpId) { time = Number(urlTimestamp); isUrlOverride = true; }
             }
             if (!isUrlOverride) {
@@ -2101,25 +2133,41 @@ function WatchContent({ initialAnime }: { initialAnime?: UniversalAnime | null }
                         targetAudio = nativeAudio;
                         targetCategory = 'sub';
                     }
-                    if (currentFetch === activeFetchRef.current) {
+                    if (currentFetch === activeFetchRef.current && (settings.audio !== targetAudio || settings.category !== targetCategory)) {
+                        markProgrammaticSettingUpdate();
                         updateSetting('audio', targetAudio);
-                        updateSetting('category', targetCategory);
                     }
-                } else if (targetAudio === 'en' && anime && anime.episodes?.length > 0 && !hasEnDub) {
+                    if (typeof window !== 'undefined') {
+                        try {
+                            const curUrl = new URL(window.location.href);
+                            curUrl.searchParams.set('audio', targetAudio);
+                            curUrl.searchParams.set('type', targetCategory);
+                            window.history.replaceState({}, '', curUrl.toString());
+                        } catch (e) {}
+                    }
+                } else if (targetAudio === 'en' && anime && Array.isArray(anime.episodes) && anime.episodes.length > 0 && !hasEnDub) {
                     console.log(`[WatchClient] English dub not available for this anime. Falling back to Sub.`);
                     toast.info("English Dub not available for this anime. Switched to Sub.");
                     targetAudio = nativeAudio;
                     targetCategory = 'sub';
-                    if (currentFetch === activeFetchRef.current) {
+                    if (currentFetch === activeFetchRef.current && (settings.audio !== targetAudio || settings.category !== targetCategory)) {
+                        markProgrammaticSettingUpdate();
                         updateSetting('audio', targetAudio);
-                        updateSetting('category', targetCategory);
+                    }
+                    if (typeof window !== 'undefined') {
+                        try {
+                            const curUrl = new URL(window.location.href);
+                            curUrl.searchParams.set('audio', targetAudio);
+                            curUrl.searchParams.set('type', targetCategory);
+                            window.history.replaceState({}, '', curUrl.toString());
+                        } catch (e) {}
                     }
                 } else if (targetCategory === 'sub' || ['jp', 'cn', 'kr'].includes(targetAudio)) {
                     targetAudio = nativeAudio;
                     targetCategory = 'sub';
-                    if (currentFetch === activeFetchRef.current && settings.audio !== nativeAudio) {
+                    if (currentFetch === activeFetchRef.current && (settings.audio !== nativeAudio || settings.category !== 'sub')) {
+                        markProgrammaticSettingUpdate();
                         updateSetting('audio', nativeAudio);
-                        updateSetting('category', 'sub');
                     }
                 }
 
@@ -2191,8 +2239,8 @@ function WatchContent({ initialAnime }: { initialAnime?: UniversalAnime | null }
                                 if (streamData?.url) {
                                     targetAudio = nextFallback;
                                     targetCategory = nextCat;
+                                    markProgrammaticSettingUpdate();
                                     updateSetting('audio', nextFallback);
-                                    updateSetting('category', nextCat);
                                     break;
                                 }
                             } catch (e) { console.warn(`Fallback ${srv} failed`); }
@@ -2211,8 +2259,8 @@ function WatchContent({ initialAnime }: { initialAnime?: UniversalAnime | null }
                                     if (streamData?.url) {
                                         targetAudio = nativeAudio;
                                         targetCategory = 'sub';
+                                        markProgrammaticSettingUpdate();
                                         updateSetting('audio', nativeAudio);
-                                        updateSetting('category', 'sub');
                                         break;
                                     }
                                 } catch (e) {}
@@ -2230,8 +2278,8 @@ function WatchContent({ initialAnime }: { initialAnime?: UniversalAnime | null }
                                 if (streamData?.url) {
                                     targetAudio = nativeAudio;
                                     targetCategory = 'sub';
+                                    markProgrammaticSettingUpdate();
                                     updateSetting('audio', nativeAudio);
-                                    updateSetting('category', 'sub');
                                     break;
                                 }
                             } catch (e) { console.warn(`Sub Server ${srv} failed`); }
@@ -2277,6 +2325,7 @@ function WatchContent({ initialAnime }: { initialAnime?: UniversalAnime | null }
                         setOutro(streamData.outro);
 
                         if (streamData.server && streamData.server.toLowerCase() !== settings.server.toLowerCase()) {
+                            markProgrammaticSettingUpdate();
                             programmaticServerRef.current = streamData.server.toLowerCase();
                             updateSetting('server', streamData.server);
                         }
@@ -2299,6 +2348,9 @@ function WatchContent({ initialAnime }: { initialAnime?: UniversalAnime | null }
     useEffect(() => {
         if (initialSettingsMount.current) {
             initialSettingsMount.current = false;
+            return;
+        }
+        if (isProgrammaticSettingUpdate.current) {
             return;
         }
         if (programmaticServerRef.current && settings.server.toLowerCase() === programmaticServerRef.current) {
@@ -2344,22 +2396,24 @@ function WatchContent({ initialAnime }: { initialAnime?: UniversalAnime | null }
     }, [saveProgress, flushSyncBuffer]);
 
     const episodeChunks = useMemo(() => {
-        if (!anime) return [];
+        const episodes = Array.isArray(anime?.episodes) ? anime.episodes : [];
+        if (episodes.length === 0) return [];
         const chunks = [];
-        for (let i = 0; i < anime.episodes.length; i += chunkSize) chunks.push(anime.episodes.slice(i, i + chunkSize));
+        for (let i = 0; i < episodes.length; i += chunkSize) chunks.push(episodes.slice(i, i + chunkSize));
         return chunks;
     }, [anime?.episodes, chunkSize]);
 
-    const currentEpIndex = anime?.episodes ? anime.episodes.findIndex((e: any) => e.id === currentEpId) : -1;
-    const currentEpisode = (anime && currentEpIndex >= 0) ? anime.episodes[currentEpIndex] : null;
-    const nextEpisode = (anime && currentEpIndex >= 0 && currentEpIndex < anime.episodes.length - 1) ? anime.episodes[currentEpIndex + 1] : null;
-    const prevEpisode = (anime && currentEpIndex > 0) ? anime.episodes[currentEpIndex - 1] : null;
+    const currentEpIndex = anime?.episodes && Array.isArray(anime.episodes) ? anime.episodes.findIndex((e: any) => e.id === currentEpId || String(e.number) === currentEpId) : -1;
+    const currentEpisode = (anime && currentEpIndex >= 0 && Array.isArray(anime.episodes)) ? anime.episodes[currentEpIndex] : null;
+    const nextEpisode = (anime && currentEpIndex >= 0 && Array.isArray(anime.episodes) && currentEpIndex < anime.episodes.length - 1) ? anime.episodes[currentEpIndex + 1] : null;
+    const prevEpisode = (anime && currentEpIndex > 0 && Array.isArray(anime.episodes)) ? anime.episodes[currentEpIndex - 1] : null;
 
     const currentChunkIndex = useMemo(() => {
-        if (!currentEpId || !anime) return 0;
-        const epIndex = anime.episodes.findIndex((e: any) => e.id === currentEpId);
+        const episodes = Array.isArray(anime?.episodes) ? anime.episodes : [];
+        if (!currentEpId || episodes.length === 0) return 0;
+        const epIndex = episodes.findIndex((e: any) => e.id === currentEpId || String(e.number) === currentEpId);
         return epIndex === -1 ? 0 : Math.floor(epIndex / chunkSize);
-    }, [currentEpId, anime, chunkSize]);
+    }, [currentEpId, anime?.episodes, chunkSize]);
 
     // Active Embed Tracking: Directly mark the episode as watched for embed streams
     useEffect(() => {
@@ -2970,28 +3024,28 @@ function WatchContent({ initialAnime }: { initialAnime?: UniversalAnime | null }
                                     {currentEpisode?.id && (
                                         <Link
                                             href={`/download/anime/${anime.id}?ep=${currentEpisode.id}`}
-                                            className="flex-1 min-w-8 h-8 rounded-full border-0 bg-white/[0.06] hover:bg-white/10 text-zinc-300 hover:text-white flex items-center justify-center gap-1 text-[9px] font-black uppercase tracking-wider transition-all active:scale-95 px-2 atrax-bubbly-btn atrax-squish-tap"
+                                            className="flex-1 min-w-8 h-8 rounded-full border-0 bg-white/[0.06] hover:bg-white/10 text-zinc-300 hover:text-white flex items-center justify-center gap-1.5 text-[9px] font-black uppercase tracking-wider transition-all active:scale-95 px-2.5 atrax-bubbly-btn atrax-squish-tap"
                                             title="Download Episode"
                                         >
-                                            <Download size={12} className="shrink-0" />
-                                            <span className="truncate hidden min-[480px]:inline">Download</span>
+                                            <Download size={13} className="shrink-0" />
+                                            <span className="truncate hidden min-[460px]:inline">Download</span>
                                         </Link>
                                     )}
                                     <button
                                         onClick={() => setShowShareModal(true)}
-                                        className="flex-1 min-w-8 h-8 rounded-full border-0 bg-white/[0.06] hover:bg-white/10 text-zinc-300 hover:text-white flex items-center justify-center gap-1 text-[9px] font-black uppercase tracking-wider transition-all active:scale-95 px-2 atrax-bubbly-btn atrax-squish-tap"
+                                        className="flex-1 min-w-8 h-8 rounded-full border-0 bg-white/[0.06] hover:bg-white/10 text-zinc-300 hover:text-white flex items-center justify-center gap-1.5 text-[9px] font-black uppercase tracking-wider transition-all active:scale-95 px-2.5 atrax-bubbly-btn atrax-squish-tap"
                                         title="Share Episode"
                                     >
-                                        <Share2 size={12} className="shrink-0" />
-                                        <span className="truncate hidden min-[420px]:inline">Share</span>
+                                        <Share2 size={13} className="shrink-0" />
+                                        <span className="truncate hidden min-[360px]:inline">Share</span>
                                     </button>
                                     <button
                                         onClick={handleCreateWatchRoom}
-                                        className="flex-1 min-w-8 h-8 rounded-full border-0 bg-white/[0.06] hover:bg-white/10 text-zinc-300 hover:text-white flex items-center justify-center gap-1 text-[9px] font-black uppercase tracking-wider transition-all active:scale-95 px-2 atrax-bubbly-btn atrax-squish-tap"
+                                        className="flex-1 min-w-8 h-8 rounded-full border-0 bg-white/[0.06] hover:bg-white/10 text-zinc-300 hover:text-white flex items-center justify-center gap-1.5 text-[9px] font-black uppercase tracking-wider transition-all active:scale-95 px-2.5 atrax-bubbly-btn atrax-squish-tap"
                                         title="Create Watch Room"
                                     >
-                                        <Users size={12} className="shrink-0" />
-                                        <span className="truncate hidden min-[540px]:inline">Room</span>
+                                        <Users size={13} className="shrink-0" />
+                                        <span className="truncate hidden min-[400px]:inline">Room</span>
                                     </button>
                                     <Button
                                         onClick={() => updateSetting('dimMode', !settings.dimMode)}
@@ -3020,7 +3074,7 @@ function WatchContent({ initialAnime }: { initialAnime?: UniversalAnime | null }
                     <div className="xl:col-span-4 w-full h-[460px] sm:h-[520px] xl:h-auto xl:relative xl:self-stretch order-2">
                         <div className="w-full h-full xl:absolute xl:inset-0 bg-[#0c1322] rounded-[32px] border border-white/[0.12] shadow-[0_16px_45px_rgba(0,0,0,0.7),inset_0_1px_1px_rgba(255,255,255,0.12)] overflow-hidden flex flex-col relative z-20">
                         <div className="p-5 bg-[#0e1628] border-b border-white/[0.08] flex justify-between items-center shrink-0">
-                            <div className="flex items-center gap-3"><h3 className="font-black text-white flex items-center gap-2 uppercase text-sm font-lemon tracking-widest"><Layers size={18} className="text-primary-600" /> Episodes</h3><span className="bg-[#162138] border border-white/15 text-white font-black text-[10px] px-3 h-5 rounded-full flex items-center shadow-sm">{anime.episodes.length}</span></div>
+                            <div className="flex items-center gap-3"><h3 className="font-black text-white flex items-center gap-2 uppercase text-sm font-lemon tracking-widest"><Layers size={18} className="text-primary-600" /> Episodes</h3><span className="bg-[#162138] border border-white/15 text-white font-black text-[10px] px-3 h-5 rounded-full flex items-center shadow-sm">{Array.isArray(anime.episodes) ? anime.episodes.length : 0}</span></div>
                             <div className="flex items-center gap-1 bg-[#090e18] p-1 rounded-full border border-white/[0.08] relative">
                                 {[
                                     { mode: 'compact', icon: Grid, label: 'Compact' },
@@ -3062,7 +3116,7 @@ function WatchContent({ initialAnime }: { initialAnime?: UniversalAnime | null }
                                                     : "bg-white/[0.05] text-zinc-400 hover:text-zinc-100 hover:bg-white/[0.08]"
                                             )}
                                         >
-                                            {getChunkLabel(chunk, (idx * chunkSize) + 1, Math.min((idx + 1) * chunkSize, anime.episodes.length))}
+                                            {getChunkLabel(chunk, (idx * chunkSize) + 1, Math.min((idx + 1) * chunkSize, Array.isArray(anime.episodes) ? anime.episodes.length : 0))}
                                         </button>
                                     );
                                 })}
@@ -3290,20 +3344,22 @@ function WatchContent({ initialAnime }: { initialAnime?: UniversalAnime | null }
 
                     <div className="xl:col-span-4 w-full h-[500px] xl:h-auto xl:relative xl:self-stretch order-5">
                         <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} transition={{ duration: 0.6, delay: 0.5 }} className="w-full h-full xl:absolute xl:inset-0 bg-[#0a0a0a] rounded-[40px] border border-white/5 overflow-hidden flex flex-col shadow-2xl shadow-primary-900/10">
-                            <div className="p-6 bg-white/5 border-b border-white/5 flex items-center gap-3 shrink-0"><Wand2 size={18} className="text-primary-600" /><h3 className="font-black text-white text-sm font-lemon tracking-widest uppercase">Suggestions</h3></div>
+                            <div className="p-6 bg-white/5 border-b border-white/5 flex items-center gap-3 shrink-0"><Compass size={18} className="text-primary-600" /><h3 className="font-black text-white text-sm font-lemon tracking-widest uppercase">Suggestions</h3></div>
                             <ScrollArea className="flex-1 custom-scrollbar">
                                 <div className="p-4 flex flex-col gap-3">
                                     {anime.recommendations && anime.recommendations.length > 0 ? (
                                         anime.recommendations.slice(0, 10).map((rec: any) => {
-                                            const recSlug = slugifyTitle(rec.title);
+                                            const recTitle = rec.title || rec.name || 'Recommended Anime';
+                                            const recSlug = slugifyTitle(recTitle);
                                             const recRouteId = (recSlug && !String(rec.id).includes('-')) ? `${rec.id}-${recSlug}` : rec.id;
+                                            const recDuration = rec.duration ? (String(rec.duration).includes('m') ? rec.duration : `${rec.duration}m`) : '24m';
                                             return (
                                                 <Link key={rec.id} href={`/watch/${recRouteId}`} className="flex gap-4 bg-white/5 border border-white/5 rounded-2xl p-2 hover:bg-white/10 hover:border-white/10 transition-colors group shadow-sm">
-                                                <div className="w-16 h-24 sm:w-20 sm:h-28 shrink-0 rounded-xl overflow-hidden relative shadow-md shadow-black/40"><img src={getSafeImageUrl(rec.poster)} onError={(e) => { if (e.currentTarget.src.startsWith('/api/proxy')) { e.currentTarget.src = '/images/placeholder-no-img.jpg'; } else if (e.currentTarget.src.startsWith('http')) { e.currentTarget.src = `/api/proxy?url=${encodeURIComponent(e.currentTarget.src)}`; } else { e.currentTarget.src = '/images/placeholder-no-img.jpg'; } }} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" alt={rec.title} loading="lazy" decoding="async" /><div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center"><Play size={20} className="text-white" /></div></div>
+                                                <div className="w-16 h-24 sm:w-20 sm:h-28 shrink-0 rounded-xl overflow-hidden relative shadow-md shadow-black/40"><img src={getSafeImageUrl(rec.poster)} onError={(e) => { if (e.currentTarget.src.startsWith('/api/proxy')) { e.currentTarget.src = '/images/placeholder-no-img.jpg'; } else if (e.currentTarget.src.startsWith('http')) { e.currentTarget.src = `/api/proxy?url=${encodeURIComponent(e.currentTarget.src)}`; } else { e.currentTarget.src = '/images/placeholder-no-img.jpg'; } }} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" alt={recTitle} loading="lazy" decoding="async" /><div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center"><Play size={20} className="text-white" /></div></div>
                                                 <div className="flex-1 min-w-0 py-1 flex flex-col justify-center gap-1">
-                                                    <h4 className="text-xs sm:text-sm font-black text-white line-clamp-2 leading-tight group-hover:text-primary-500 transition-colors">{rec.title}</h4>
+                                                    <h4 className="text-xs sm:text-sm font-black text-white line-clamp-2 leading-tight group-hover:text-primary-500 transition-colors">{recTitle}</h4>
                                                     {rec.jname && <p className="text-[9px] text-zinc-500 truncate uppercase font-bold tracking-wider">{rec.jname}</p>}
-                                                    <div className="flex items-center gap-2 mt-auto text-[9px] sm:text-[10px] text-zinc-400 font-black uppercase tracking-wider"><span className="text-primary-500 px-2 py-0.5 bg-primary-900/20 rounded-md border border-primary-900/30">{rec.type || 'TV'}</span><span className="w-1 h-1 bg-zinc-600 rounded-full" /><div className="flex items-center gap-1"><Clock size={10} className="text-primary-600" />{rec.duration || '?'}</div></div>
+                                                    <div className="flex items-center gap-2 mt-auto text-[9px] sm:text-[10px] text-zinc-400 font-black uppercase tracking-wider"><span className="text-primary-500 px-2 py-0.5 bg-primary-900/20 rounded-md border border-primary-900/30">{rec.type || 'TV'}</span><span className="w-1 h-1 bg-zinc-600 rounded-full" /><div className="flex items-center gap-1"><Clock size={10} className="text-primary-600" />{recDuration}</div></div>
                                                 </div>
                                                 </Link>
                                             );

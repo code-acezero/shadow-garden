@@ -371,9 +371,9 @@ const SearchBarContent: React.FC<SearchBarContentProps> = ({
             transition={JELLY_SPRING}
             className={cn(
               "flex items-center gap-1 sm:gap-2 select-none min-w-0 overflow-hidden",
-              // Width dynamically driven by content; never excessively push search
-              "shrink-0 max-w-[220px] sm:max-w-[300px] md:max-w-[380px] lg:max-w-[460px]",
-              "border-r border-white/10 pr-2 sm:pr-2.5"
+              // Width dynamically driven by content; flexible on mobile to never push search out
+              "flex-1 min-w-0 max-w-[calc(100%-34px)] sm:max-w-[300px] md:max-w-[380px] lg:max-w-[460px]",
+              "border-r border-white/10 pr-1.5 sm:pr-2.5"
             )}
           >
             {/* Sliding Message Presence: old message slides right and kicks out; new message slides in from pet mascot */}
@@ -2095,7 +2095,7 @@ function WhisperIslandContent() {
                         }} 
                         className={cn(
                             `relative liquid-glass rounded-[30px] ${ISLAND_HEIGHT} flex items-center flex-1 w-full min-w-0`,
-                            (isMobile && !isMobileSearchExpanded && !petSpeech) ? "overflow-hidden" : "!overflow-visible"
+                            (isMobile && !isMobileSearchExpanded) ? "overflow-hidden" : "!overflow-visible"
                         )}
                     >
                         <SearchBarContent 
