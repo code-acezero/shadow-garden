@@ -5,6 +5,7 @@ import { supabase } from '@/lib/supabase';
 import { X, Search, Globe, User, Shield, Compass, Radio } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { isGuildMaster } from '@/lib/userTitles';
+import ProfileAvatar from '@/components/User/ProfileAvatar';
 
 export interface PresenceUser {
   key: string;
@@ -13,6 +14,9 @@ export interface PresenceUser {
   role?: string;
   admin_title?: string | null;
   avatar_url?: string | null;
+  frame_id?: string | null;
+  level?: number;
+  show_level?: boolean;
   current_page?: string;
   is_traveller?: boolean;
   online_at?: string;
@@ -217,15 +221,22 @@ export const RealtimePresenceModal: React.FC<RealtimePresenceModalProps> = ({
                 <div key={u.key} className="py-2.5 px-3 flex items-center justify-between gap-3 hover:bg-white/[0.02] rounded-xl transition-colors">
                   {/* Left: Avatar & Identity */}
                   <div className="flex items-center gap-3 min-w-0">
-                    <div className="w-8 h-8 rounded-full bg-white/[0.06] border border-white/[0.08] flex items-center justify-center shrink-0 overflow-hidden">
-                      {u.avatar_url ? (
-                        <img src={u.avatar_url} alt={u.username} className="w-full h-full object-cover" />
-                      ) : u.is_traveller ? (
-                        <Compass size={14} className="text-zinc-400" />
-                      ) : (
-                        <User size={14} className="text-zinc-400" />
-                      )}
-                    </div>
+                    <ProfileAvatar
+                      profile={u.is_traveller ? null : {
+                        id: u.user_id || undefined,
+                        username: u.username,
+                        avatar_url: u.avatar_url,
+                        frame_id: u.frame_id,
+                        level: u.level,
+                        show_level: u.show_level,
+                        role: u.role,
+                        admin_title: u.admin_title
+                      }}
+                      travellerAvatar={u.is_traveller ? (u.avatar_url || undefined) : undefined}
+                      className="w-8 h-8"
+                      showLevel={u.show_level !== false}
+                      animate="always"
+                    />
 
                     <div className="min-w-0">
                       <div className="flex items-center gap-2">

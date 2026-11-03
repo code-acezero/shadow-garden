@@ -32,6 +32,7 @@ import PageMascot from '@/components/Mascot/PageMascot';
 import Footer from '@/components/Anime/Footer';
 import { refreshVoiceCache, getVoiceSettings, dispatchTelepathy, getCharacterLine, triggerTelepathy, playVoiceSample, saveAccountVoice, CHARACTER_META, CHARACTER_SCRIPTS } from '@/lib/voice';
 import AvatarSelectorModal, { getRandomAvatar } from '@/components/User/AvatarSelectorModal';
+import ProfileAvatar from '@/components/User/ProfileAvatar';
 import { playTapSound, playGummyTap, playSquishyJelly } from '@/lib/audioManager';
 import { pullFromAniList, twoWaySync } from '@/lib/anilistSync';
 import { PuffedAnilist, PuffedRefresh, PuffedBookmark, PuffedPlay, PuffedCheck } from '@/components/Watchlist/PuffedIcons';
@@ -1288,15 +1289,15 @@ export default function Settings() {
               <div className="grid grid-cols-1 md:grid-cols-3 gap-6 items-start pb-8 border-b border-white/[0.06]">
                 <div className="flex flex-col items-center text-center gap-3">
                   <div className="relative group cursor-pointer" onClick={() => setAvatarModalOpen(true)}>
-                    <div className="w-24 h-24 rounded-full overflow-hidden border-2 border-primary/50 group-hover:border-primary shadow-xl shadow-black/60 relative">
-                      <img
-                        src={isAuthenticated ? (avatarUrl || '/images/default-avatar.png') : (travellerAvatar || '/images/default-avatar.png')}
-                        alt="Avatar"
-                        className="w-full h-full object-cover group-hover:scale-105 transition-transform"
-                      />
-                      <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity text-white text-[10px] font-bold uppercase tracking-wider">
-                        Change
-                      </div>
+                    <ProfileAvatar
+                      profile={isAuthenticated ? (profile ? { ...profile, avatar_url: avatarUrl || profile.avatar_url } : { avatar_url: avatarUrl }) : null}
+                      travellerAvatar={travellerAvatar || undefined}
+                      className="w-24 h-24"
+                      showLevel={profile?.show_level !== false}
+                      animate="always"
+                    />
+                    <div className="absolute inset-0 rounded-full bg-black/40 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity text-white text-[10px] font-bold uppercase tracking-wider z-40 pointer-events-none">
+                      Change
                     </div>
                   </div>
                   <div className="flex gap-2">

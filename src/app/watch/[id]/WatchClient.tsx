@@ -326,13 +326,17 @@ const MobileActionCockpit = memo(function MobileActionCockpit({
 }) {
     const rowRef = useRef<HTMLDivElement>(null);
     const watchlistRef = useRef<HTMLDivElement>(null);
-    const [rowWidth, setRowWidth] = useState<number>(0);
-    const [watchlistWidth, setWatchlistWidth] = useState<number>(135);
+    const downloadRef = useRef<HTMLAnchorElement>(null);
+    const shareRef = useRef<HTMLButtonElement>(null);
+    const roomRef = useRef<HTMLButtonElement>(null);
 
-    // Compaction Stage:
+    const [rowWidth, setRowWidth] = useState<number>(0);
+    const [watchlistWidth, setWatchlistWidth] = useState<number>(140);
+
+    // Compaction Stage (Right-to-Left priority: 1. Room -> 2. Share -> 3. Download):
     // Stage 0: All expanded (Download, Share, Room all show text)
-    // Stage 1: Room compacts first (Share, Download show text)
-    // Stage 2: Share compacts second (Download shows text)
+    // Stage 1: Room compacts first (Share, Download show text; Room is icon-only)
+    // Stage 2: Share compacts second (Download shows text; Share & Room are icon-only)
     // Stage 3: Download compacts third (All are compact icon-only)
     const [stage, setStage] = useState<number>(3);
 
@@ -344,7 +348,7 @@ const MobileActionCockpit = memo(function MobileActionCockpit({
             if (!rowRef.current) return;
             setRowWidth(rowRef.current.clientWidth);
             if (watchlistRef.current) {
-                setWatchlistWidth(watchlistRef.current.offsetWidth || 135);
+                setWatchlistWidth(watchlistRef.current.offsetWidth || 140);
             }
         };
         measure();
@@ -354,31 +358,30 @@ const MobileActionCockpit = memo(function MobileActionCockpit({
     }, []);
 
     // Compaction Calculation:
-    // When buttons are compact: 32px each.
-    // Minimum space needed for each button to show full text without ANY clipping:
-    // + Download text needs +85px
-    // + Share text needs +60px
-    // + Room text needs +55px
+    // Minimum clearance needed for each button to show full text without ANY letter clipping:
+    // + Download text needs ~95px
+    // + Share text needs ~66px
+    // + Room text needs ~64px
     useEffect(() => {
         if (rowWidth <= 0) return;
-        const baseNeeded = (watchlistWidth || 135) + 32 + (hasDownload ? 32 : 0) + 32 + 32 + 28;
+        const baseNeeded = (watchlistWidth || 140) + 32 + (hasDownload ? 32 : 0) + 32 + 32 + 28;
         const free = rowWidth - baseNeeded;
 
         let calculatedStage = 3;
         if (hasDownload) {
-            if (free >= 200) {
+            if (free >= 250) {
                 calculatedStage = 0; // All 3 fit with generous clearance
-            } else if (free >= 145) {
-                calculatedStage = 1; // 1. Room compacts
-            } else if (free >= 85) {
-                calculatedStage = 2; // 2. Share compacts
+            } else if (free >= 175) {
+                calculatedStage = 1; // 1. Room compacts first
+            } else if (free >= 105) {
+                calculatedStage = 2; // 2. Share compacts second
             } else {
-                calculatedStage = 3; // 3. Download compacts (all compact)
+                calculatedStage = 3; // 3. Download compacts third (all compact)
             }
         } else {
-            if (free >= 115) {
+            if (free >= 140) {
                 calculatedStage = 0;
-            } else if (free >= 60) {
+            } else if (free >= 70) {
                 calculatedStage = 1;
             } else {
                 calculatedStage = 2;
@@ -389,11 +392,16 @@ const MobileActionCockpit = memo(function MobileActionCockpit({
     }, [rowWidth, watchlistWidth, hasDownload]);
 
     // Active Overflow Guard: If any custom font scale, bold text, or zoom
-    // causes rowRef to overflow (scrollWidth > clientWidth), step down compaction stage
+    // causes rowRef or any button to overflow its visible width, step down compaction stage
     // so no button text is EVER cut off or clipped with ellipsis!
     useEffect(() => {
         if (!rowRef.current) return;
-        if (rowRef.current.scrollWidth > rowRef.current.clientWidth + 1) {
+        const rowOverflows = rowRef.current.scrollWidth > rowRef.current.clientWidth + 1;
+        const downloadOverflows = downloadRef.current && (downloadRef.current.scrollWidth > downloadRef.current.clientWidth + 1);
+        const shareOverflows = shareRef.current && (shareRef.current.scrollWidth > shareRef.current.clientWidth + 1);
+        const roomOverflows = roomRef.current && (roomRef.current.scrollWidth > roomRef.current.clientWidth + 1);
+
+        if (rowOverflows || downloadOverflows || shareOverflows || roomOverflows) {
             setStage(prev => (prev < 3 ? prev + 1 : prev));
         }
     });
@@ -417,6 +425,7 @@ const MobileActionCockpit = memo(function MobileActionCockpit({
 
             {hasDownload && (
                 <Link
+                    ref={downloadRef}
                     href={`/download/anime/${anime.id}?ep=${currentEpisode.id}`}
                     className={cn(
                         "h-8 rounded-full border-0 bg-white/[0.06] hover:bg-white/10 text-zinc-300 hover:text-white flex items-center justify-center transition-all active:scale-95 atrax-bubbly-btn atrax-squish-tap shrink-0",
@@ -436,6 +445,7 @@ const MobileActionCockpit = memo(function MobileActionCockpit({
             )}
 
             <button
+                ref={shareRef}
                 type="button"
                 onClick={onShare}
                 className={cn(
@@ -455,6 +465,7 @@ const MobileActionCockpit = memo(function MobileActionCockpit({
             </button>
 
             <button
+                ref={roomRef}
                 type="button"
                 onClick={onCreateRoom}
                 className={cn(

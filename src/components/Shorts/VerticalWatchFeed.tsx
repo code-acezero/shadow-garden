@@ -1607,24 +1607,6 @@ export default function VerticalWatchFeed({
             )}
           </AnimatePresence>
 
-          {/* 16:9 Floating Landscape Fullscreen Pill Button */}
-          {isLandscapeVideo && !isFullscreen && (
-            <motion.button
-              initial={{ scale: 0.9, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              whileTap={{ scale: 0.95 }}
-              onClick={(e) => {
-                e.stopPropagation();
-                resetMobileInactivityTimer();
-                toggleLandscapeFullscreen();
-              }}
-              className="absolute top-20 left-1/2 -translate-x-1/2 z-30 px-3.5 py-1.5 rounded-full bg-black/80 backdrop-blur-md border border-cyan-500/40 text-cyan-300 text-[11px] font-black uppercase tracking-wider flex items-center gap-1.5 shadow-xl hover:bg-black/95 active:scale-95 pointer-events-auto"
-            >
-              <Maximize className="w-3.5 h-3.5 text-cyan-400" />
-              <span>Watch 16:9 Fullscreen</span>
-            </motion.button>
-          )}
-
           {/* Mobile Loading Spinner */}
           {isLoadingVideo && !videoError && (
             <div className="absolute inset-0 flex items-center justify-center bg-black/40 backdrop-blur-sm z-30 pointer-events-none">
@@ -1739,30 +1721,6 @@ export default function VerticalWatchFeed({
 
                 {/* Top Right Controls: 16:9 Fullscreen Toggle (when video is landscape) + Sound Mute Toggle */}
                 <div className="flex items-center gap-1.5">
-                  {isLandscapeVideo && (
-                    <motion.button 
-                      variants={atraxSquishTapVariants}
-                      initial="initial"
-                      whileTap="tap"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        resetMobileInactivityTimer();
-                        toggleLandscapeFullscreen();
-                      }}
-                      className={cn(
-                        "h-9 px-3 rounded-full flex items-center gap-1.5 backdrop-blur-md border text-[10px] font-black uppercase tracking-wider transition-all active:scale-95 shadow-lg",
-                        isFullscreen
-                          ? "bg-cyan-500 text-black border-cyan-400 font-black"
-                          : "bg-cyan-950/70 border-cyan-500/40 text-cyan-300 hover:bg-cyan-900/80"
-                      )}
-                      aria-label="16:9 Fullscreen"
-                      title="16:9 Fullscreen Mode"
-                    >
-                      {isFullscreen ? <Minimize className="w-3.5 h-3.5" /> : <Maximize className="w-3.5 h-3.5" />}
-                      <span>{isFullscreen ? "Exit" : "16:9 Full"}</span>
-                    </motion.button>
-                  )}
-
                   {/* Quick Sound / Mute Toggle Button in Top Right */}
                   <motion.button 
                     variants={atraxSquishTapVariants}
@@ -1943,6 +1901,39 @@ export default function VerticalWatchFeed({
                     Share
                   </span>
                 </div>
+
+                {/* 5b. 16:9 Landscape Fullscreen Toggle (Directly above More 3-dot Menu) */}
+                {isLandscapeVideo && (
+                  <div className="flex flex-col items-center group">
+                    <motion.button
+                      variants={atraxSquishTapVariants}
+                      initial="initial"
+                      whileTap="tap"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        resetMobileInactivityTimer();
+                        toggleLandscapeFullscreen();
+                      }}
+                      className={cn(
+                        "w-11 h-11 sm:w-12 sm:h-12 rounded-full flex items-center justify-center backdrop-blur-md shadow-lg transition-all active:scale-90",
+                        isFullscreen
+                          ? "bg-cyan-500 text-black border border-cyan-400"
+                          : "bg-black/40 hover:bg-black/60 text-white border border-white/10"
+                      )}
+                      title={isFullscreen ? "Exit Fullscreen" : "16:9 Fullscreen"}
+                      aria-label="16:9 Fullscreen"
+                    >
+                      {isFullscreen ? (
+                        <Minimize className="w-5 h-5 sm:w-6 sm:h-6 text-current drop-shadow-[0_1px_2px_rgba(0,0,0,0.8)]" />
+                      ) : (
+                        <Maximize className="w-5 h-5 sm:w-6 sm:h-6 text-current drop-shadow-[0_1px_2px_rgba(0,0,0,0.8)]" />
+                      )}
+                    </motion.button>
+                    <span className="text-[11px] font-medium text-white drop-shadow-[0_1px_3px_rgba(0,0,0,0.9)] text-center mt-1 select-none tracking-tight">
+                      {isFullscreen ? "Exit" : "16:9"}
+                    </span>
+                  </div>
+                )}
 
                 {/* 6. YouTube Shorts Style More Menu (...) Trigger */}
                 <div className="flex flex-col items-center group">

@@ -111,10 +111,14 @@ const FlixverseMobileCockpit = memo(function FlixverseMobileCockpit({
 }: FlixverseMobileCockpitProps) {
   const rowRef = useRef<HTMLDivElement>(null);
   const watchlistRef = useRef<HTMLDivElement>(null);
-  const [rowWidth, setRowWidth] = useState<number>(0);
-  const [watchlistWidth, setWatchlistWidth] = useState<number>(135);
+  const downloadRef = useRef<HTMLAnchorElement>(null);
+  const shareRef = useRef<HTMLButtonElement>(null);
+  const roomRef = useRef<HTMLButtonElement>(null);
 
-  // Compaction Stage:
+  const [rowWidth, setRowWidth] = useState<number>(0);
+  const [watchlistWidth, setWatchlistWidth] = useState<number>(140);
+
+  // Compaction Stage (Right-to-Left priority: 1. Room -> 2. Share -> 3. Download):
   // Stage 0: All expanded (Download, Share, Room all show text)
   // Stage 1: Room compacts first (Share, Download show text; Room is icon-only)
   // Stage 2: Share compacts second (Download shows text; Share & Room are icon-only)
@@ -130,7 +134,7 @@ const FlixverseMobileCockpit = memo(function FlixverseMobileCockpit({
       if (!rowRef.current) return;
       setRowWidth(rowRef.current.clientWidth);
       if (watchlistRef.current) {
-        setWatchlistWidth(watchlistRef.current.offsetWidth || 135);
+        setWatchlistWidth(watchlistRef.current.offsetWidth || 140);
       }
     };
     measure();
@@ -143,24 +147,24 @@ const FlixverseMobileCockpit = memo(function FlixverseMobileCockpit({
     if (rowWidth <= 0) return;
     const serverWidth = hasServer ? 82 : 0;
     const bulbWidth = onToggleDimMode ? 32 : 0;
-    const baseNeeded = (watchlistWidth || 135) + serverWidth + bulbWidth + (hasDownload ? 32 : 0) + 32 + 32 + 24;
+    const baseNeeded = (watchlistWidth || 140) + serverWidth + bulbWidth + (hasDownload ? 32 : 0) + 32 + 32 + 24;
     const free = rowWidth - baseNeeded;
 
     let calculatedStage = 3;
     if (hasDownload) {
-      if (free >= 200) {
-        calculatedStage = 0; // All 3 fit
-      } else if (free >= 145) {
-        calculatedStage = 1; // 1. Room compacts
-      } else if (free >= 85) {
-        calculatedStage = 2; // 2. Share compacts
+      if (free >= 250) {
+        calculatedStage = 0; // All 3 fit with generous clearance
+      } else if (free >= 175) {
+        calculatedStage = 1; // 1. Room compacts first
+      } else if (free >= 105) {
+        calculatedStage = 2; // 2. Share compacts second
       } else {
-        calculatedStage = 3; // 3. Download compacts
+        calculatedStage = 3; // 3. Download compacts third (all compact)
       }
     } else {
-      if (free >= 115) {
+      if (free >= 140) {
         calculatedStage = 0;
-      } else if (free >= 60) {
+      } else if (free >= 70) {
         calculatedStage = 1;
       } else {
         calculatedStage = 2;
@@ -169,9 +173,16 @@ const FlixverseMobileCockpit = memo(function FlixverseMobileCockpit({
     setStage(calculatedStage);
   }, [rowWidth, watchlistWidth, hasDownload, hasServer, onToggleDimMode]);
 
+  // Active Multi-Ref Overflow Guard: If any button text or the container overflows,
+  // immediately step down compaction stage from right to left so no text is EVER cut off!
   useEffect(() => {
     if (!rowRef.current) return;
-    if (rowRef.current.scrollWidth > rowRef.current.clientWidth + 1) {
+    const rowOverflows = rowRef.current.scrollWidth > rowRef.current.clientWidth + 1;
+    const downloadOverflows = downloadRef.current && (downloadRef.current.scrollWidth > downloadRef.current.clientWidth + 1);
+    const shareOverflows = shareRef.current && (shareRef.current.scrollWidth > shareRef.current.clientWidth + 1);
+    const roomOverflows = roomRef.current && (roomRef.current.scrollWidth > roomRef.current.clientWidth + 1);
+
+    if (rowOverflows || downloadOverflows || shareOverflows || roomOverflows) {
       setStage(prev => (prev < 3 ? prev + 1 : prev));
     }
   });
@@ -227,6 +238,7 @@ const FlixverseMobileCockpit = memo(function FlixverseMobileCockpit({
 
       {hasDownload && (
         <Link
+          ref={downloadRef}
           href={`/download/drama/${slug}?ep=${currentEpId}`}
           className={cn(
             "h-8 rounded-full border border-white/[0.08] bg-[#141d30] hover:bg-cyan-500 hover:border-cyan-400 hover:text-black text-zinc-300 flex items-center justify-center transition-all active:scale-95 atrax-bubbly-btn atrax-squish-tap shrink-0 shadow-sm",
@@ -257,6 +269,7 @@ const FlixverseMobileCockpit = memo(function FlixverseMobileCockpit({
         }}
         trigger={
           <button
+            ref={shareRef}
             type="button"
             className={cn(
               "h-8 rounded-full border border-white/[0.08] bg-[#141d30] text-zinc-300 hover:text-white hover:bg-cyan-500/20 hover:border-cyan-400/40 flex items-center justify-center transition-all active:scale-95 atrax-bubbly-btn atrax-squish-tap shrink-0 shadow-sm",
@@ -275,6 +288,7 @@ const FlixverseMobileCockpit = memo(function FlixverseMobileCockpit({
       />
 
       <button
+        ref={roomRef}
         type="button"
         onClick={handleCreateWatchRoom}
         className={cn(

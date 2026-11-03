@@ -19,7 +19,8 @@ import { RoleTitleBadge } from '@/components/ui/RoleTitleBadge';
 import {
     DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import Link from 'next/link'; 
+import Link from 'next/link';
+import ProfileAvatar from '@/components/User/ProfileAvatar'; 
 import { usePathname, useSearchParams } from 'next/navigation';
 import { formatDistanceToNow } from 'date-fns';
 import { RenderMentions, processMentionsAndNotify } from '@/lib/mentions';
@@ -32,6 +33,10 @@ export interface CommentProfile {
     full_name: string | null;
     role?: string;
     admin_title?: string;
+    frame_id?: string | null;
+    level?: number;
+    show_level?: boolean;
+    title?: string | null;
 }
 
 export interface Comment {
@@ -938,6 +943,7 @@ const YouTubeMediaTray = ({
 interface CommentInputProps {
     episodeId: string;
     currentUserAvatar?: string | null;
+    currentUserProfile?: any;
     currentDisplayName?: string | null;
     isTraveler?: boolean;
     focusOnMount?: boolean;
@@ -954,6 +960,7 @@ interface CommentInputProps {
 
 const YouTubeCommentInput = ({
     currentUserAvatar,
+    currentUserProfile,
     currentDisplayName,
     isTraveler = false,
     focusOnMount = false,
@@ -1104,14 +1111,12 @@ const YouTubeCommentInput = ({
                     )}
                     title={isTraveler ? `Click to customize avatar (@${currentDisplayName})` : `@${currentDisplayName}`}
                 >
-                    <img
-                        src={currentUserAvatar || DEFAULT_AVATAR}
-                        alt={currentDisplayName || "You"}
-                        className={cn(
-                            "rounded-full object-cover bg-zinc-800 ring-1 ring-white/10 group-hover/av:ring-white/30 transition-all",
-                            isReply ? "w-6 h-6 md:w-7 md:h-7" : "w-9 h-9 md:w-10 md:h-10"
-                        )}
-                        onError={(e) => { (e.target as HTMLImageElement).src = DEFAULT_AVATAR; }}
+                    <ProfileAvatar
+                        profile={isTraveler ? null : (currentUserProfile || null)}
+                        travellerAvatar={currentUserAvatar || undefined}
+                        className={isReply ? "w-7 h-7 md:w-8 md:h-8" : "w-9 h-9 md:w-10 md:h-10"}
+                        showLevel={!isTraveler && currentUserProfile?.show_level !== false}
+                        animate="always"
                     />
                     {isTraveler && !isReply && (
                         <div className="absolute -bottom-1 -right-1 w-4 h-4 rounded-full bg-[#202020] border border-zinc-700 flex items-center justify-center text-zinc-400 group-hover/av:text-white group-hover/av:bg-[#303030] transition-colors shadow-sm">
@@ -1357,6 +1362,7 @@ interface CommentItemProps {
     comment: Comment;
     currentUserId: string | null;
     currentUserAvatar?: string | null;
+    currentUserProfile?: any;
     currentDisplayName?: string | null;
     isTraveler?: boolean;
     onReply: (text: string, isSpoiler: boolean, parentId: string) => void;
@@ -1378,6 +1384,7 @@ const YouTubeCommentItem = ({
     comment,
     currentUserId,
     currentUserAvatar,
+    currentUserProfile,
     currentDisplayName,
     isTraveler,
     onReply,
@@ -1471,33 +1478,38 @@ const YouTubeCommentItem = ({
     return (
         <div id={`comment-${comment.id}`} className="group/comment font-sans animate-in fade-in duration-200">
             <div className={cn("flex gap-3 md:gap-4", isReply ? "mt-3" : "mt-4")}>
-                {/* Avatar */}
+                {/* Avatar with Fantasy Frame and Level Badge */}
                 {parsed.isTraveler ? (
                     <div className="shrink-0 pt-0.5">
-                        <img
-                            src={avatarUrl}
-                            alt={displayName}
-                            className={cn(
-                                "rounded-full object-cover bg-zinc-800 ring-1 ring-white/10",
-                                isReply ? "w-6 h-6 md:w-7 md:h-7" : "w-9 h-9 md:w-10 md:h-10"
-                            )}
-                            onError={(e) => { (e.target as HTMLImageElement).src = DEFAULT_AVATAR; }}
+                        <ProfileAvatar
+                            profile={null}
+                            travellerAvatar={avatarUrl}
+                            className={isReply ? "w-7 h-7 md:w-8 md:h-8" : "w-9 h-9 md:w-10 md:h-10"}
+                            showLevel={false}
+                            animate="always"
                         />
                     </div>
                 ) : (
                     <Link 
                         href={`/profile/${comment.profiles?.username || comment.user_id}`} 
                         onClick={(e) => e.stopPropagation()} 
-                        className="shrink-0 pt-0.5"
+                        className="shrink-0 pt-0.5 transition-transform hover:scale-105 active:scale-95"
                     >
-                        <img
-                            src={avatarUrl}
-                            alt={displayName}
-                            className={cn(
-                                "rounded-full object-cover bg-zinc-800 transition-opacity hover:opacity-90 ring-1 ring-white/10",
-                                isReply ? "w-6 h-6 md:w-7 md:h-7" : "w-9 h-9 md:w-10 md:h-10"
-                            )}
-                            onError={(e) => { (e.target as HTMLImageElement).src = DEFAULT_AVATAR; }}
+                        <ProfileAvatar
+                            profile={comment.profiles ? {
+                                id: comment.profiles.id || comment.user_id,
+                                username: comment.profiles.username,
+                                avatar_url: comment.profiles.avatar_url,
+                                frame_id: comment.profiles.frame_id,
+                                level: comment.profiles.level,
+                                show_level: comment.profiles.show_level,
+                                admin_title: comment.profiles.admin_title,
+                                title: comment.profiles.title,
+                                role: comment.profiles.role,
+                            } : null}
+                            className={isReply ? "w-7 h-7 md:w-8 md:h-8" : "w-9 h-9 md:w-10 md:h-10"}
+                            showLevel={comment.profiles?.show_level !== false}
+                            animate="always"
                         />
                     </Link>
                 )}
@@ -1669,6 +1681,7 @@ const YouTubeCommentItem = ({
                             <YouTubeCommentInput
                                 episodeId=""
                                 currentUserAvatar={currentUserAvatar}
+                                currentUserProfile={currentUserProfile}
                                 currentDisplayName={currentDisplayName}
                                 isTraveler={isTraveler}
                                 focusOnMount={true}
@@ -1712,6 +1725,7 @@ const YouTubeCommentItem = ({
                                             comment={{ ...reply, replies: [] }}
                                             currentUserId={currentUserId}
                                             currentUserAvatar={currentUserAvatar}
+                                            currentUserProfile={currentUserProfile}
                                             currentDisplayName={currentDisplayName}
                                             isTraveler={isTraveler}
                                             onReply={onReply}
@@ -1846,7 +1860,11 @@ export default function ShadowComments({
                         avatar_url,
                         full_name,
                         role,
-                        admin_title
+                        admin_title,
+                        frame_id,
+                        level,
+                        show_level,
+                        title
                     )
                 `)
                 .eq('episode_id', episodeId)
@@ -2218,6 +2236,7 @@ export default function ShadowComments({
                     <YouTubeCommentInput
                         episodeId={episodeId}
                         currentUserAvatar={currentUserAvatar}
+                        currentUserProfile={profile}
                         currentDisplayName={currentDisplayName}
                         isTraveler={isTraveler}
                         onPost={handlePost}
@@ -2242,6 +2261,7 @@ export default function ShadowComments({
                                 comment={c}
                                 currentUserId={currentUserId}
                                 currentUserAvatar={currentUserAvatar}
+                                currentUserProfile={profile}
                                 currentDisplayName={currentDisplayName}
                                 isTraveler={isTraveler}
                                 onReply={handlePost}
@@ -2370,6 +2390,7 @@ export default function ShadowComments({
                 <YouTubeCommentInput
                     episodeId={episodeId}
                     currentUserAvatar={currentUserAvatar}
+                    currentUserProfile={profile}
                     currentDisplayName={currentDisplayName}
                     isTraveler={isTraveler}
                     onPost={handlePost}
@@ -2394,6 +2415,7 @@ export default function ShadowComments({
                             comment={c}
                             currentUserId={currentUserId}
                             currentUserAvatar={currentUserAvatar}
+                            currentUserProfile={profile}
                             currentDisplayName={currentDisplayName}
                             isTraveler={isTraveler}
                             onReply={handlePost}
