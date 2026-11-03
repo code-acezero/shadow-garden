@@ -3,11 +3,11 @@
 import React, { useEffect, useRef, useState, useCallback, useMemo, forwardRef, useImperativeHandle } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import Hls from 'hls.js';
-import { 
-  Play, Pause, Volume2, VolumeX, 
-  Settings, Maximize, Minimize, Subtitles, 
+import {
+  Play, Pause, Volume2, VolumeX,
+  Settings, Maximize, Minimize, Subtitles,
   Wand2, AudioWaveform, PictureInPicture, Gauge,
-  ChevronRight, ChevronLeft, MousePointerClick, 
+  ChevronRight, ChevronLeft, MousePointerClick,
   ChevronsLeft, ChevronsRight, Sun, MoveHorizontal, MoveVertical, RotateCcw, RotateCw,
   Loader2, Cast, Radio, FastForward, SkipForward, Check
 } from 'lucide-react';
@@ -19,154 +19,154 @@ import PlayerAdBreakOverlay from './PlayerAdBreakOverlay';
 import PlayerEndingOverlay from './PlayerEndingOverlay';
 
 // --- 1. CONFIGURATION CONSTANTS ---
-const SUB_COLORS = { 
-    White: '#ffffff', Yellow: '#fbbf24', Cyan: '#22d3ee', Red: '#f87171', 
-    Green: '#4ade80', Purple: '#c084fc', Black: '#000000' 
+const SUB_COLORS = {
+  White: '#ffffff', Yellow: '#fbbf24', Cyan: '#22d3ee', Red: '#f87171',
+  Green: '#4ade80', Purple: '#c084fc', Black: '#000000'
 };
 const SUB_SIZES = { Small: '0.8em', Medium: '1.15em', Large: '1.5em', Huge: '2.0em' };
-const SUB_FONTS = { 
-    Sans: '"Inter", sans-serif', Serif: '"Merriweather", serif', 
-    Mono: '"JetBrains Mono", monospace', Hand: '"BadUnicorn", sans-serif', Anime: '"Monas", sans-serif' 
+const SUB_FONTS = {
+  Sans: '"Inter", sans-serif', Serif: '"Merriweather", serif',
+  Mono: '"JetBrains Mono", monospace', Hand: '"BadUnicorn", sans-serif', Anime: '"Monas", sans-serif'
 };
-const SUB_LIFTS = { Bottom: '0px', Middle: '-5vh', High: '-12vh' }; 
+const SUB_LIFTS = { Bottom: '0px', Middle: '-5vh', High: '-12vh' };
 const SUB_BACKGROUNDS = { None: 'transparent', Outline: 'text-shadow', Box: 'smart', Blur: 'smart-blur', Bar: 'bar' };
 
 const DEFAULT_SUB_STYLE = { color: 'White', size: 'Medium', bg: 'Outline', font: 'Sans', lift: 'Middle', opacity: 75 };
 
 // --- WHISPER HELPER ---
 const notifyWhisper = (message: string, type: 'success' | 'error' | 'info' = 'success') => {
-    if (typeof window !== 'undefined') {
-        const event = new CustomEvent('shadow-whisper', { 
-            detail: { id: Date.now(), type, title: "Player", message } 
-        });
-        window.dispatchEvent(event);
-    }
+  if (typeof window !== 'undefined') {
+    const event = new CustomEvent('shadow-whisper', {
+      detail: { id: Date.now(), type, title: "Player", message }
+    });
+    window.dispatchEvent(event);
+  }
 };
 
 interface ParsedCue {
-    start: number;
-    end: number;
-    text: string;
+  start: number;
+  end: number;
+  text: string;
 }
 
 interface ThumbnailCue {
-    start: number;
-    end: number;
-    url: string;
-    x?: number;
-    y?: number;
-    w?: number;
-    h?: number;
+  start: number;
+  end: number;
+  url: string;
+  x?: number;
+  y?: number;
+  w?: number;
+  h?: number;
 }
 
 const getProxiedSubUrl = (rawUrl?: string, ref?: string | null) => {
-    if (!rawUrl) return '';
-    if (rawUrl.startsWith('/api/proxy') || rawUrl.startsWith('blob:') || rawUrl.startsWith('data:')) return rawUrl;
-    if (rawUrl.startsWith('http://') || rawUrl.startsWith('https://')) {
-        const refParam = ref ? `&referer=${encodeURIComponent(ref)}` : '';
-        return `/api/proxy?url=${encodeURIComponent(rawUrl)}${refParam}`;
-    }
-    return rawUrl;
+  if (!rawUrl) return '';
+  if (rawUrl.startsWith('/api/proxy') || rawUrl.startsWith('blob:') || rawUrl.startsWith('data:')) return rawUrl;
+  if (rawUrl.startsWith('http://') || rawUrl.startsWith('https://')) {
+    const refParam = ref ? `&referer=${encodeURIComponent(ref)}` : '';
+    return `/api/proxy?url=${encodeURIComponent(rawUrl)}${refParam}`;
+  }
+  return rawUrl;
 };
 
 const parseVtt = (vttText: string): ParsedCue[] => {
-    const cues: ParsedCue[] = [];
-    const lines = vttText.replace(/\r\n/g, '\n').replace(/\r/g, '\n').split('\n');
-    let i = 0;
-    
-    const parseTimestamp = (ts: string): number | null => {
-        const parts = ts.trim().split(':');
-        let secs = 0;
-        if (parts.length === 3) {
-            secs = parseFloat(parts[0]) * 3600 + parseFloat(parts[1]) * 60 + parseFloat(parts[2]);
-        } else if (parts.length === 2) {
-            secs = parseFloat(parts[0]) * 60 + parseFloat(parts[1]);
-        } else {
-            return null;
-        }
-        return isNaN(secs) ? null : secs;
-    };
+  const cues: ParsedCue[] = [];
+  const lines = vttText.replace(/\r\n/g, '\n').replace(/\r/g, '\n').split('\n');
+  let i = 0;
 
-    while (i < lines.length) {
-        const line = lines[i].trim();
-        if (line.includes('-->')) {
-            const timeParts = line.split('-->');
-            const start = parseTimestamp(timeParts[0]);
-            const endPart = timeParts[1].trim().split(/\s+/)[0];
-            const end = parseTimestamp(endPart);
-            
-            i++;
-            const textLines: string[] = [];
-            while (i < lines.length && lines[i].trim() !== '') {
-                textLines.push(lines[i].trim());
-                i++;
-            }
-            if (start !== null && end !== null && textLines.length > 0) {
-                cues.push({
-                    start,
-                    end,
-                    text: textLines.join('\n')
-                });
-            }
-        } else {
-            i++;
-        }
+  const parseTimestamp = (ts: string): number | null => {
+    const parts = ts.trim().split(':');
+    let secs = 0;
+    if (parts.length === 3) {
+      secs = parseFloat(parts[0]) * 3600 + parseFloat(parts[1]) * 60 + parseFloat(parts[2]);
+    } else if (parts.length === 2) {
+      secs = parseFloat(parts[0]) * 60 + parseFloat(parts[1]);
+    } else {
+      return null;
     }
-    return cues;
+    return isNaN(secs) ? null : secs;
+  };
+
+  while (i < lines.length) {
+    const line = lines[i].trim();
+    if (line.includes('-->')) {
+      const timeParts = line.split('-->');
+      const start = parseTimestamp(timeParts[0]);
+      const endPart = timeParts[1].trim().split(/\s+/)[0];
+      const end = parseTimestamp(endPart);
+
+      i++;
+      const textLines: string[] = [];
+      while (i < lines.length && lines[i].trim() !== '') {
+        textLines.push(lines[i].trim());
+        i++;
+      }
+      if (start !== null && end !== null && textLines.length > 0) {
+        cues.push({
+          start,
+          end,
+          text: textLines.join('\n')
+        });
+      }
+    } else {
+      i++;
+    }
+  }
+  return cues;
 };
 
 const parseThumbnailVtt = (vttText: string, baseUrl: string): ThumbnailCue[] => {
-    const cues: ThumbnailCue[] = [];
-    const lines = vttText.replace(/\r\n/g, '\n').replace(/\r/g, '\n').split('\n');
-    let i = 0;
-    
-    const parseTimestamp = (ts: string): number | null => {
-        const parts = ts.trim().split(':');
-        let secs = 0;
-        if (parts.length === 3) {
-            secs = parseFloat(parts[0]) * 3600 + parseFloat(parts[1]) * 60 + parseFloat(parts[2]);
-        } else if (parts.length === 2) {
-            secs = parseFloat(parts[0]) * 60 + parseFloat(parts[1]);
-        } else {
-            return null;
-        }
-        return isNaN(secs) ? null : secs;
-    };
+  const cues: ThumbnailCue[] = [];
+  const lines = vttText.replace(/\r\n/g, '\n').replace(/\r/g, '\n').split('\n');
+  let i = 0;
 
-    while (i < lines.length) {
-        const line = lines[i].trim();
-        if (line.includes('-->')) {
-            const timeParts = line.split('-->');
-            const start = parseTimestamp(timeParts[0]);
-            const endPart = timeParts[1].trim().split(/\s+/)[0];
-            const end = parseTimestamp(endPart);
-            i++;
-            if (i < lines.length && lines[i].trim()) {
-                const payload = lines[i].trim();
-                const [imgPath, hash] = payload.split('#');
-                let fullUrl = imgPath;
-                if (!fullUrl.startsWith('http://') && !fullUrl.startsWith('https://') && !fullUrl.startsWith('/')) {
-                    const lastSlash = baseUrl.lastIndexOf('/');
-                    fullUrl = lastSlash !== -1 ? baseUrl.slice(0, lastSlash + 1) + imgPath : imgPath;
-                }
-                let x: number | undefined;
-                let y: number | undefined;
-                let w: number | undefined;
-                let h: number | undefined;
-                if (hash && hash.startsWith('xywh=')) {
-                    const coords = hash.replace('xywh=', '').split(',').map(Number);
-                    if (coords.length === 4) {
-                        [x, y, w, h] = coords;
-                    }
-                }
-                if (start !== null && end !== null) {
-                    cues.push({ start, end, url: fullUrl, x, y, w, h });
-                }
-            }
-        }
-        i++;
+  const parseTimestamp = (ts: string): number | null => {
+    const parts = ts.trim().split(':');
+    let secs = 0;
+    if (parts.length === 3) {
+      secs = parseFloat(parts[0]) * 3600 + parseFloat(parts[1]) * 60 + parseFloat(parts[2]);
+    } else if (parts.length === 2) {
+      secs = parseFloat(parts[0]) * 60 + parseFloat(parts[1]);
+    } else {
+      return null;
     }
-    return cues;
+    return isNaN(secs) ? null : secs;
+  };
+
+  while (i < lines.length) {
+    const line = lines[i].trim();
+    if (line.includes('-->')) {
+      const timeParts = line.split('-->');
+      const start = parseTimestamp(timeParts[0]);
+      const endPart = timeParts[1].trim().split(/\s+/)[0];
+      const end = parseTimestamp(endPart);
+      i++;
+      if (i < lines.length && lines[i].trim()) {
+        const payload = lines[i].trim();
+        const [imgPath, hash] = payload.split('#');
+        let fullUrl = imgPath;
+        if (!fullUrl.startsWith('http://') && !fullUrl.startsWith('https://') && !fullUrl.startsWith('/')) {
+          const lastSlash = baseUrl.lastIndexOf('/');
+          fullUrl = lastSlash !== -1 ? baseUrl.slice(0, lastSlash + 1) + imgPath : imgPath;
+        }
+        let x: number | undefined;
+        let y: number | undefined;
+        let w: number | undefined;
+        let h: number | undefined;
+        if (hash && hash.startsWith('xywh=')) {
+          const coords = hash.replace('xywh=', '').split(',').map(Number);
+          if (coords.length === 4) {
+            [x, y, w, h] = coords;
+          }
+        }
+        if (start !== null && end !== null) {
+          cues.push({ start, end, url: fullUrl, x, y, w, h });
+        }
+      }
+    }
+    i++;
+  }
+  return cues;
 };
 
 export interface OmniPlayerProps {
@@ -174,7 +174,7 @@ export interface OmniPlayerProps {
   episodeId?: string | null;
   title?: string;
   poster?: string;
-  subtitles?: any[]; 
+  subtitles?: any[];
   intro?: { start: number; end: number };
   outro?: { start: number; end: number };
   // The upstream CDN behind `url` may require this exact Referer header or
@@ -185,8 +185,8 @@ export interface OmniPlayerProps {
   isM3U8?: boolean;
   autoSkip?: boolean;
   autoSkipOutro?: boolean;
-  autoPlay?: boolean; 
-  startTime?: number; 
+  autoPlay?: boolean;
+  startTime?: number;
   onEnded?: () => void;
   onNext?: () => void;
   hasNext?: boolean;
@@ -195,10 +195,10 @@ export interface OmniPlayerProps {
   onSkipOutro?: () => void;
   onProgress?: (state: { playedSeconds: number; loadedSeconds: number; duration?: number }) => void;
   onSeek?: (seconds: number) => void;
-  onInteract?: () => void; 
+  onInteract?: () => void;
   onPause?: () => void;
   onBuffer?: () => void;
-  controlsTimeout?: number; 
+  controlsTimeout?: number;
   onControlsChange?: (visible: boolean) => void;
   initialVolume?: number;
   initialSpeed?: number;
@@ -231,9 +231,9 @@ export type AnimePlayerRef = OmniPlayerRef;
 
 const EMPTY_SUBTITLES: any[] = [];
 
-const OmniPlayer = forwardRef<OmniPlayerRef, OmniPlayerProps>(({ 
+const OmniPlayer = forwardRef<OmniPlayerRef, OmniPlayerProps>(({
   url, iframeUrl, isEmbed, episodeId, title, poster, intro, outro, referer, isM3U8, autoSkip = false, autoSkipOutro = false, autoPlay = true, startTime = 0, subtitles = EMPTY_SUBTITLES,
-  onEnded, onNext, hasNext, onPlay, onSkipIntro, onSkipOutro, onProgress, onSeek, onInteract, onPause, onBuffer, 
+  onEnded, onNext, hasNext, onPlay, onSkipIntro, onSkipOutro, onProgress, onSeek, onInteract, onPause, onBuffer,
   controlsTimeout = 3000, onControlsChange, initialVolume = 1, initialSpeed = 1, onSettingsChange, onError, onAspectRatioChange,
   nextAiringEpisode, status, animeTitle, totalEpisodes, currentEpisodeNumber, onReplay
 }, ref) => {
@@ -244,23 +244,23 @@ const OmniPlayer = forwardRef<OmniPlayerRef, OmniPlayerProps>(({
   const hlsRef = useRef<Hls | null>(null);
   const titleContainerRef = useRef<HTMLDivElement>(null);
   const titleTextRef = useRef<HTMLSpanElement>(null);
-  
+
   // Timers
   const clickTimerRef = useRef<NodeJS.Timeout | null>(null);
   const controlsTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const seekOverlayTimerRef = useRef<NodeJS.Timeout | null>(null);
   const bufferDebounceRef = useRef<NodeJS.Timeout | null>(null);
   const seekAccumulatorRef = useRef(0);
-  const longPressTimerRef = useRef<NodeJS.Timeout | null>(null); 
-  
+  const longPressTimerRef = useRef<NodeJS.Timeout | null>(null);
+
   // Logic Refs
-  const seekTargetRef = useRef<number | null>(null); 
-  const hasInitializedRef = useRef(false); 
+  const seekTargetRef = useRef<number | null>(null);
+  const hasInitializedRef = useRef(false);
   const hasSeekedStartTimeRef = useRef(false);
   const hasSkippedIntroRef = useRef(false);
   const hasSkippedOutroRef = useRef(false);
-  const originalSpeedRef = useRef(initialSpeed); 
-  
+  const originalSpeedRef = useRef(initialSpeed);
+
   // Secondary Preview Video Refs for instant thumbnail generation & zero-lag frame caching
   const previewVideoRef = useRef<HTMLVideoElement>(null);
   const previewHlsRef = useRef<Hls | null>(null);
@@ -314,7 +314,7 @@ const OmniPlayer = forwardRef<OmniPlayerRef, OmniPlayerProps>(({
       try {
         const p = JSON.parse(localStorage.getItem('shadow_player_prefs') || '{}');
         if (typeof p.autoSkip === 'boolean') return p.autoSkip;
-      } catch {}
+      } catch { }
     }
     return autoSkip;
   });
@@ -323,7 +323,7 @@ const OmniPlayer = forwardRef<OmniPlayerRef, OmniPlayerProps>(({
       try {
         const p = JSON.parse(localStorage.getItem('shadow_player_prefs') || '{}');
         if (typeof p.autoSkipOutro === 'boolean') return p.autoSkipOutro;
-      } catch {}
+      } catch { }
     }
     return autoSkipOutro;
   });
@@ -332,7 +332,7 @@ const OmniPlayer = forwardRef<OmniPlayerRef, OmniPlayerProps>(({
       try {
         const p = JSON.parse(localStorage.getItem('shadow_player_prefs') || '{}');
         if (typeof p.autoPlay === 'boolean') return p.autoPlay;
-      } catch {}
+      } catch { }
     }
     return autoPlay;
   });
@@ -358,13 +358,13 @@ const OmniPlayer = forwardRef<OmniPlayerRef, OmniPlayerProps>(({
   // Gesture Refs
   const touchStartRef = useRef<{ x: number, y: number, time: number, val: number, bright: number, curTime: number } | null>(null);
   const touchSeekTargetRef = useRef<number | null>(null);
-  const gestureLockRef = useRef<'vertical' | 'horizontal' | null>(null); 
+  const gestureLockRef = useRef<'vertical' | 'horizontal' | null>(null);
   const lastTapTimeRef = useRef(0);
 
   // Playback State
   const [isPlaying, setIsPlaying] = useState(false);
-  const [hasStarted, setHasStarted] = useState(false); 
-  const [isBuffering, setIsBuffering] = useState(false); 
+  const [hasStarted, setHasStarted] = useState(false);
+  const [isBuffering, setIsBuffering] = useState(false);
 
   // Series Finale / Next Episode Digital Countdown Overlay State
   const [showEndingOverlay, setShowEndingOverlay] = useState(false);
@@ -378,21 +378,21 @@ const OmniPlayer = forwardRef<OmniPlayerRef, OmniPlayerProps>(({
     setShowEndingOverlay(false);
     if (videoRef.current) {
       videoRef.current.currentTime = 0;
-      videoRef.current.play().then(() => setIsPlaying(true)).catch(() => {});
+      videoRef.current.play().then(() => setIsPlaying(true)).catch(() => { });
     }
     onReplay?.();
-  }, [onReplay]); 
+  }, [onReplay]);
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(0);
   const [volume, setVolume] = useState(initialVolume);
   const [isMuted, setIsMuted] = useState(false);
   const [brightness, setBrightness] = useState(1);
-  const [isLongPressing, setIsLongPressing] = useState(false); 
-  const [castAvailable, setCastAvailable] = useState(false); 
+  const [isLongPressing, setIsLongPressing] = useState(false);
+  const [castAvailable, setCastAvailable] = useState(false);
   const [isPiPActive, setIsPiPActive] = useState(false);
-  
+
   const [videoAspectRatio, setVideoAspectRatio] = useState<number | null>(null);
-  
+
   // UI State
   const [showControls, setShowControls] = useState(true);
   const [showSkipIntro, setShowSkipIntro] = useState(false);
@@ -427,9 +427,9 @@ const OmniPlayer = forwardRef<OmniPlayerRef, OmniPlayerProps>(({
         try {
           const imgData = ctx.getImageData(0, 0, canvas.width, canvas.height);
           frameCacheRef.current.set(key, imgData);
-        } catch {}
+        } catch { }
       }
-    } catch {}
+    } catch { }
   }, []);
 
   const requestPreviewSeek = useCallback((time: number) => {
@@ -449,7 +449,7 @@ const OmniPlayer = forwardRef<OmniPlayerRef, OmniPlayerProps>(({
             ctx.drawImage(videoRef.current, 0, 0, canvas.width, canvas.height);
             setHasEverLoadedFrame(true);
             return;
-          } catch {}
+          } catch { }
         }
       }
     }
@@ -462,7 +462,7 @@ const OmniPlayer = forwardRef<OmniPlayerRef, OmniPlayerProps>(({
           ctx.putImageData(frameCacheRef.current.get(key)!, 0, 0);
           setHasEverLoadedFrame(true);
           return;
-        } catch {}
+        } catch { }
       }
     }
 
@@ -512,7 +512,7 @@ const OmniPlayer = forwardRef<OmniPlayerRef, OmniPlayerProps>(({
       requestPreviewSeek(nextTime);
     }
   }, [drawPreviewToCanvas, requestPreviewSeek]);
-  
+
   const [seekOverlay, setSeekOverlay] = useState<string | null>(null);
   const [gestureOverlay, setGestureOverlay] = useState<{ icon: React.ReactNode, text: string } | null>(null);
 
@@ -540,23 +540,23 @@ const OmniPlayer = forwardRef<OmniPlayerRef, OmniPlayerProps>(({
   const [autoResolutionText, setAutoResolutionText] = useState('Auto');
   const [audioTracks, setAudioTracks] = useState<any[]>([]);
   const [currentAudio, setCurrentAudio] = useState(-1);
-  const [currentSubtitle, setCurrentSubtitle] = useState(-1); 
+  const [currentSubtitle, setCurrentSubtitle] = useState(-1);
   const [trackSubtitles, setTrackSubtitles] = useState<any[]>([]);
   const [bufferedEnd, setBufferedEnd] = useState(0);
   const [isHoveringSeek, setIsHoveringSeek] = useState(false);
   const parsedCuesRef = useRef<ParsedCue[]>([]);
   const thumbnailCuesRef = useRef<ThumbnailCue[]>([]);
   const [thumbnailTrack, setThumbnailTrack] = useState<any | null>(null);
-  
+
   // Preferences
   const [subStyle, setSubStyle] = useState(DEFAULT_SUB_STYLE);
   const [isMobile, setIsMobile] = useState(false);
 
   useEffect(() => {
-      const checkMobile = () => setIsMobile(window.innerWidth < 768);
-      checkMobile();
-      window.addEventListener('resize', checkMobile);
-      return () => window.removeEventListener('resize', checkMobile);
+    const checkMobile = () => setIsMobile(window.innerWidth < 768);
+    checkMobile();
+    window.addEventListener('resize', checkMobile);
+    return () => window.removeEventListener('resize', checkMobile);
   }, []);
 
   const [doubleTapMode, setDoubleTapMode] = useState<'seek' | 'playpause' | 'fullscreen'>('seek');
@@ -564,7 +564,7 @@ const OmniPlayer = forwardRef<OmniPlayerRef, OmniPlayerProps>(({
   const [horizontalGesture, setHorizontalGesture] = useState<'seek' | 'nav' | 'volume' | 'none'>('seek');
   const [activeMenu, setActiveMenu] = useState<'none' | 'main' | 'quality' | 'speed' | 'audio' | 'subs' | 'subSettings' | 'gestures' | 'vGesture' | 'hGesture'>('none');
 
-  const canSaveRef = useRef(false); 
+  const canSaveRef = useRef(false);
   const lastProgressTimeRef = useRef(0);
   const [hlsFailed, setHlsFailed] = useState(false);
   const useIframe = isEmbed || hlsFailed || !url;
@@ -582,32 +582,32 @@ const OmniPlayer = forwardRef<OmniPlayerRef, OmniPlayerProps>(({
   useImperativeHandle(ref, () => ({
     getCurrentTime: () => (useIframe ? iframeTimeRef.current : (videoRef.current?.currentTime || 0)),
     getDuration: () => {
-        if (useIframe) return iframeDurationRef.current || 1440;
-        const d = videoRef.current?.duration;
-        return (typeof d === 'number' && !isNaN(d) && isFinite(d) && d > 0) ? d : (duration > 0 ? duration : 1440);
+      if (useIframe) return iframeDurationRef.current || 1440;
+      const d = videoRef.current?.duration;
+      return (typeof d === 'number' && !isNaN(d) && isFinite(d) && d > 0) ? d : (duration > 0 ? duration : 1440);
     },
-    seekTo: (time: number) => { 
-        if (useIframe) {
-            iframeTimeRef.current = time;
-            setCurrentTime(time);
-            try {
-                const ifr = containerRef.current?.querySelector('iframe');
-                if (ifr && ifr.contentWindow) {
-                    ifr.contentWindow.postMessage(JSON.stringify({ event: 'seek', time }), '*');
-                    ifr.contentWindow.postMessage({ command: 'seek', time }, '*');
-                    ifr.contentWindow.postMessage({ event: 'command', func: 'seekTo', args: [time, true] }, '*');
-                }
-            } catch {}
-            if (canSaveRef.current) onInteract?.();
-        } else if (videoRef.current) {
-            seekTargetRef.current = time;
-            videoRef.current.currentTime = time;
-            setCurrentTime(time);
-            if (seekAccumulatorRef.current) clearTimeout(seekAccumulatorRef.current);
-            // @ts-ignore
-            seekAccumulatorRef.current = setTimeout(() => { seekTargetRef.current = null; }, 800);
-            if (canSaveRef.current) onInteract?.();
-        }
+    seekTo: (time: number) => {
+      if (useIframe) {
+        iframeTimeRef.current = time;
+        setCurrentTime(time);
+        try {
+          const ifr = containerRef.current?.querySelector('iframe');
+          if (ifr && ifr.contentWindow) {
+            ifr.contentWindow.postMessage(JSON.stringify({ event: 'seek', time }), '*');
+            ifr.contentWindow.postMessage({ command: 'seek', time }, '*');
+            ifr.contentWindow.postMessage({ event: 'command', func: 'seekTo', args: [time, true] }, '*');
+          }
+        } catch { }
+        if (canSaveRef.current) onInteract?.();
+      } else if (videoRef.current) {
+        seekTargetRef.current = time;
+        videoRef.current.currentTime = time;
+        setCurrentTime(time);
+        if (seekAccumulatorRef.current) clearTimeout(seekAccumulatorRef.current);
+        // @ts-ignore
+        seekAccumulatorRef.current = setTimeout(() => { seekTargetRef.current = null; }, 800);
+        if (canSaveRef.current) onInteract?.();
+      }
     },
     focus: () => containerRef.current?.focus()
   }));
@@ -617,161 +617,161 @@ const OmniPlayer = forwardRef<OmniPlayerRef, OmniPlayerProps>(({
     if (!useIframe) return;
 
     const handleMessage = (e: MessageEvent) => {
-        try {
-            let data = e.data;
-            if (typeof data === 'string') {
-                try { data = JSON.parse(data); } catch { return; }
-            }
-            if (!data || typeof data !== 'object') return;
-            const time = data.time ?? data.currentTime ?? data.seconds ?? data.value;
-            const dur = data.duration ?? data.total;
-            if (typeof dur === 'number' && dur > 0) {
-                iframeDurationRef.current = dur;
-                setDuration(dur);
-            }
-            if (typeof time === 'number' && time >= 0) {
-                iframeTimeRef.current = time;
-                setCurrentTime(time);
-                onProgress?.({ playedSeconds: time, loadedSeconds: time });
-            }
-            if (data.event === 'ended' || data.type === 'ended') {
-                onEnded?.();
-                if (canGoNext) {
-                    onNext?.();
-                } else {
-                    setShowEndingOverlay(true);
-                }
-            }
-        } catch {}
+      try {
+        let data = e.data;
+        if (typeof data === 'string') {
+          try { data = JSON.parse(data); } catch { return; }
+        }
+        if (!data || typeof data !== 'object') return;
+        const time = data.time ?? data.currentTime ?? data.seconds ?? data.value;
+        const dur = data.duration ?? data.total;
+        if (typeof dur === 'number' && dur > 0) {
+          iframeDurationRef.current = dur;
+          setDuration(dur);
+        }
+        if (typeof time === 'number' && time >= 0) {
+          iframeTimeRef.current = time;
+          setCurrentTime(time);
+          onProgress?.({ playedSeconds: time, loadedSeconds: time });
+        }
+        if (data.event === 'ended' || data.type === 'ended') {
+          onEnded?.();
+          if (canGoNext) {
+            onNext?.();
+          } else {
+            setShowEndingOverlay(true);
+          }
+        }
+      } catch { }
     };
 
     window.addEventListener('message', handleMessage);
 
     const timer = setInterval(() => {
-        if (document.visibilityState !== 'visible') return;
-        iframeTimeRef.current += 1;
-        const cur = iframeTimeRef.current;
-        const dur = iframeDurationRef.current || 1440;
-        setCurrentTime(cur);
-        setDuration(dur);
-        onProgress?.({ playedSeconds: cur, loadedSeconds: cur });
+      if (document.visibilityState !== 'visible') return;
+      iframeTimeRef.current += 1;
+      const cur = iframeTimeRef.current;
+      const dur = iframeDurationRef.current || 1440;
+      setCurrentTime(cur);
+      setDuration(dur);
+      onProgress?.({ playedSeconds: cur, loadedSeconds: cur });
 
-        const introStart = intro ? Number(intro.start) : NaN;
-        const introEnd = intro ? Number(intro.end) : NaN;
-        const hasValidIntro = !isNaN(introStart) && !isNaN(introEnd) && introEnd > introStart + 5 && introStart >= 0;
+      const introStart = intro ? Number(intro.start) : NaN;
+      const introEnd = intro ? Number(intro.end) : NaN;
+      const hasValidIntro = !isNaN(introStart) && !isNaN(introEnd) && introEnd > introStart + 5 && introStart >= 0;
 
-        const outroStart = outro ? Number(outro.start) : NaN;
-        const outroEnd = outro ? Number(outro.end) : NaN;
-        const hasValidOutro = !isNaN(outroStart) && outroStart >= 45 && (!hasValidIntro || outroStart > introEnd);
+      const outroStart = outro ? Number(outro.start) : NaN;
+      const outroEnd = outro ? Number(outro.end) : NaN;
+      const hasValidOutro = !isNaN(outroStart) && outroStart >= 45 && (!hasValidIntro || outroStart > introEnd);
 
-        // Rewind reset: If playback seeks backward before intro/outro, reset skip flags
-        if (hasValidIntro && cur < introStart - 2) {
-            hasSkippedIntroRef.current = false;
+      // Rewind reset: If playback seeks backward before intro/outro, reset skip flags
+      if (hasValidIntro && cur < introStart - 2) {
+        hasSkippedIntroRef.current = false;
+      }
+      if (hasValidOutro && cur < outroStart - 2) {
+        hasSkippedOutroRef.current = false;
+      }
+
+      // Mutual exclusivity: only intro OR outro can ever trigger
+      if (hasValidIntro && cur >= introStart && cur < introEnd) {
+        setShowSkipOutro(false);
+        if (localAutoSkip && !hasSkippedIntroRef.current) {
+          executeSkipIntro();
+        } else if (!localAutoSkip && !hasSkippedIntroRef.current) {
+          setShowSkipIntro(true);
         }
-        if (hasValidOutro && cur < outroStart - 2) {
-            hasSkippedOutroRef.current = false;
+      } else if (hasValidOutro && cur >= outroStart && cur <= ((!isNaN(outroEnd) && outroEnd > 0) ? outroEnd : dur)) {
+        setShowSkipIntro(false);
+        if (localAutoSkipOutro && !hasSkippedOutroRef.current) {
+          executeSkipOutro();
+        } else if (!localAutoSkipOutro && !hasSkippedOutroRef.current) {
+          setShowSkipOutro(true);
         }
+      } else {
+        setShowSkipIntro(false);
+        setShowSkipOutro(false);
+      }
 
-        // Mutual exclusivity: only intro OR outro can ever trigger
-        if (hasValidIntro && cur >= introStart && cur < introEnd) {
-            setShowSkipOutro(false);
-            if (localAutoSkip && !hasSkippedIntroRef.current) {
-                executeSkipIntro();
-            } else if (!localAutoSkip && !hasSkippedIntroRef.current) {
-                setShowSkipIntro(true);
-            }
-        } else if (hasValidOutro && cur >= outroStart && cur <= ((!isNaN(outroEnd) && outroEnd > 0) ? outroEnd : dur)) {
-            setShowSkipIntro(false);
-            if (localAutoSkipOutro && !hasSkippedOutroRef.current) {
-                executeSkipOutro();
-            } else if (!localAutoSkipOutro && !hasSkippedOutroRef.current) {
-                setShowSkipOutro(true);
-            }
+      if (cur >= dur - 15) {
+        onEnded?.();
+        if (canGoNext) {
+          onNext?.();
         } else {
-            setShowSkipIntro(false);
-            setShowSkipOutro(false);
+          setShowEndingOverlay(true);
         }
-
-        if (cur >= dur - 15) {
-            onEnded?.();
-            if (canGoNext) {
-                onNext?.();
-            } else {
-                setShowEndingOverlay(true);
-            }
-        }
+      }
     }, 1000);
 
     return () => {
-        window.removeEventListener('message', handleMessage);
-        clearInterval(timer);
+      window.removeEventListener('message', handleMessage);
+      clearInterval(timer);
     };
   }, [useIframe, localAutoSkip, localAutoSkipOutro, intro, outro, onProgress, onEnded, onNext, onSkipIntro, onSkipOutro]);
 
   // --- PREFERENCE LOADING (Runs once on mount) ---
   useEffect(() => {
-      if (typeof window !== 'undefined') {
-          const savedPrefs = localStorage.getItem('shadow_player_prefs');
-          if (savedPrefs) {
-              try {
-                  const parsed = JSON.parse(savedPrefs);
-                  if (parsed.subStyle) {
-                      setSubStyle(prev => ({
-                          ...prev,
-                          ...parsed.subStyle
-                      }));
-                  }
-                  if (parsed.doubleTapMode) setDoubleTapMode(parsed.doubleTapMode);
-                  if (parsed.verticalGesture) setVerticalGesture(parsed.verticalGesture);
-                  if (parsed.horizontalGesture) setHorizontalGesture(parsed.horizontalGesture);
-                  if (typeof parsed.autoSkip === 'boolean') setLocalAutoSkip(parsed.autoSkip);
-                  if (typeof parsed.autoSkipOutro === 'boolean') setLocalAutoSkipOutro(parsed.autoSkipOutro);
-                  if (typeof parsed.autoPlay === 'boolean') setLocalAutoPlay(parsed.autoPlay);
-              } catch (_) {}
+    if (typeof window !== 'undefined') {
+      const savedPrefs = localStorage.getItem('shadow_player_prefs');
+      if (savedPrefs) {
+        try {
+          const parsed = JSON.parse(savedPrefs);
+          if (parsed.subStyle) {
+            setSubStyle(prev => ({
+              ...prev,
+              ...parsed.subStyle
+            }));
           }
+          if (parsed.doubleTapMode) setDoubleTapMode(parsed.doubleTapMode);
+          if (parsed.verticalGesture) setVerticalGesture(parsed.verticalGesture);
+          if (parsed.horizontalGesture) setHorizontalGesture(parsed.horizontalGesture);
+          if (typeof parsed.autoSkip === 'boolean') setLocalAutoSkip(parsed.autoSkip);
+          if (typeof parsed.autoSkipOutro === 'boolean') setLocalAutoSkipOutro(parsed.autoSkipOutro);
+          if (typeof parsed.autoPlay === 'boolean') setLocalAutoPlay(parsed.autoPlay);
+        } catch (_) { }
       }
+    }
   }, []);
 
   // --- SUBTITLES TRACK PROCESSING ---
   useEffect(() => {
-      const validSubs = subtitles?.filter(s => {
-          const label = s.label?.toLowerCase() || '';
-          const isThumb = label.includes('thumb') || s.kind === 'thumbnails' || label.includes('sprite');
-          const hasUrl = !!(s.url || s.file || s.src);
-          return !isThumb && hasUrl;
-      }) || [];
-      setTrackSubtitles(validSubs);
+    const validSubs = subtitles?.filter(s => {
+      const label = s.label?.toLowerCase() || '';
+      const isThumb = label.includes('thumb') || s.kind === 'thumbnails' || label.includes('sprite');
+      const hasUrl = !!(s.url || s.file || s.src);
+      return !isThumb && hasUrl;
+    }) || [];
+    setTrackSubtitles(validSubs);
 
-      const thumb = subtitles?.find(s => {
-          const label = s.label?.toLowerCase() || '';
-          const isThumb = label.includes('thumb') || s.kind === 'thumbnails' || label.includes('sprite');
-          return isThumb && !!(s.url || s.file);
-      });
-      setThumbnailTrack(thumb || null);
+    const thumb = subtitles?.find(s => {
+      const label = s.label?.toLowerCase() || '';
+      const isThumb = label.includes('thumb') || s.kind === 'thumbnails' || label.includes('sprite');
+      return isThumb && !!(s.url || s.file);
+    });
+    setThumbnailTrack(thumb || null);
   }, [subtitles]);
 
   const updateLocalPrefs = (updates: any) => {
-      if (updates.subStyle) setSubStyle(prev => ({...prev, ...updates.subStyle}));
-      if (updates.doubleTapMode) setDoubleTapMode(updates.doubleTapMode);
-      if (updates.verticalGesture) setVerticalGesture(updates.verticalGesture);
-      if (updates.horizontalGesture) setHorizontalGesture(updates.horizontalGesture);
-      if (typeof updates.autoSkip === 'boolean') setLocalAutoSkip(updates.autoSkip);
-      if (typeof updates.autoSkipOutro === 'boolean') setLocalAutoSkipOutro(updates.autoSkipOutro);
-      if (typeof updates.autoPlay === 'boolean') setLocalAutoPlay(updates.autoPlay);
-      
-      const current = JSON.parse(localStorage.getItem('shadow_player_prefs') || '{}');
-      const newState = { ...current, ...updates };
-      if (updates.subStyle) {
-          newState.subStyle = { 
-              ...DEFAULT_SUB_STYLE,
-              ...(current.subStyle || {}), 
-              ...updates.subStyle 
-          };
-      }
-      localStorage.setItem('shadow_player_prefs', JSON.stringify(newState));
-      if (typeof window !== 'undefined') {
-          window.dispatchEvent(new CustomEvent('update_player_prefs', { detail: { playerPrefs: newState } }));
-      }
+    if (updates.subStyle) setSubStyle(prev => ({ ...prev, ...updates.subStyle }));
+    if (updates.doubleTapMode) setDoubleTapMode(updates.doubleTapMode);
+    if (updates.verticalGesture) setVerticalGesture(updates.verticalGesture);
+    if (updates.horizontalGesture) setHorizontalGesture(updates.horizontalGesture);
+    if (typeof updates.autoSkip === 'boolean') setLocalAutoSkip(updates.autoSkip);
+    if (typeof updates.autoSkipOutro === 'boolean') setLocalAutoSkipOutro(updates.autoSkipOutro);
+    if (typeof updates.autoPlay === 'boolean') setLocalAutoPlay(updates.autoPlay);
+
+    const current = JSON.parse(localStorage.getItem('shadow_player_prefs') || '{}');
+    const newState = { ...current, ...updates };
+    if (updates.subStyle) {
+      newState.subStyle = {
+        ...DEFAULT_SUB_STYLE,
+        ...(current.subStyle || {}),
+        ...updates.subStyle
+      };
+    }
+    localStorage.setItem('shadow_player_prefs', JSON.stringify(newState));
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('update_player_prefs', { detail: { playerPrefs: newState } }));
+    }
   };
 
   // --- DYNAMIC CSS ---
@@ -779,9 +779,9 @@ const OmniPlayer = forwardRef<OmniPlayerRef, OmniPlayerProps>(({
     const styleId = 'shadow-player-subs';
     let styleTag = document.getElementById(styleId);
     if (!styleTag) {
-        styleTag = document.createElement('style');
-        styleTag.id = styleId;
-        document.head.appendChild(styleTag);
+      styleTag = document.createElement('style');
+      styleTag.id = styleId;
+      document.head.appendChild(styleTag);
     }
     styleTag.textContent = `
         @font-face { font-family: 'BadUnicorn'; src: '/fonts/BadUnicornDemoRegular.ttf' format('truetype'); }
@@ -791,107 +791,107 @@ const OmniPlayer = forwardRef<OmniPlayerRef, OmniPlayerProps>(({
 
   // --- PLAYER SETUP ---
   useEffect(() => {
-    if(videoRef.current) {
-        videoRef.current.volume = initialVolume;
-        videoRef.current.playbackRate = initialSpeed;
-        
-        const checkForCast = () => {
-            const v = videoRef.current;
-            if (typeof window !== 'undefined') {
-                const hasCastFramework = !!(window as any).cast?.framework || !!(window as any).chrome?.cast;
-                const hasRemote = v && typeof (v as any).remote !== 'undefined';
-                const hasAirPlay = v && typeof (v as any).webkitShowPlaybackTargetPicker === 'function';
-                const hasPresentation = 'PresentationRequest' in window || (typeof navigator !== 'undefined' && 'presentation' in navigator);
-                if (hasCastFramework || hasRemote || hasAirPlay || hasPresentation) {
-                    setCastAvailable(true);
-                }
-                if (v && typeof (v as any).addEventListener === 'function') {
-                    (v as any).addEventListener('webkitplaybacktargetavailabilitychanged', (e: any) => {
-                        if (e.availability === 'available') setCastAvailable(true);
-                    });
-                }
+    if (videoRef.current) {
+      videoRef.current.volume = initialVolume;
+      videoRef.current.playbackRate = initialSpeed;
 
-                // Dynamically inject Google Cast SDK for Chrome / Edge
-                if (!(window as any).__googleCastLoaded) {
-                    (window as any).__googleCastLoaded = true;
-                    (window as any)['__onGCastApiAvailable'] = (isAvailable: boolean) => {
-                        if (isAvailable && (window as any).cast?.framework) {
-                            try {
-                                const castContext = (window as any).cast.framework.CastContext.getInstance();
-                                castContext.setOptions({
-                                    receiverApplicationId: (window as any).chrome?.cast?.media?.DEFAULT_MEDIA_RECEIVER_APP_ID || 'CC1AD845',
-                                    autoJoinPolicy: (window as any).chrome?.cast?.AutoJoinPolicy?.ORIGIN_SCOPED || 'origin_scoped',
-                                });
-                                setCastAvailable(true);
-                            } catch {}
-                        }
-                    };
-                    const s = document.createElement('script');
-                    s.src = 'https://www.gstatic.com/cv/js/sender/v1/cast_sender.js?loadCastFramework=1';
-                    s.async = true;
-                    document.head.appendChild(s);
-                }
-            }
-        };
-        checkForCast();
-        setTimeout(checkForCast, 1000);
+      const checkForCast = () => {
+        const v = videoRef.current;
+        if (typeof window !== 'undefined') {
+          const hasCastFramework = !!(window as any).cast?.framework || !!(window as any).chrome?.cast;
+          const hasRemote = v && typeof (v as any).remote !== 'undefined';
+          const hasAirPlay = v && typeof (v as any).webkitShowPlaybackTargetPicker === 'function';
+          const hasPresentation = 'PresentationRequest' in window || (typeof navigator !== 'undefined' && 'presentation' in navigator);
+          if (hasCastFramework || hasRemote || hasAirPlay || hasPresentation) {
+            setCastAvailable(true);
+          }
+          if (v && typeof (v as any).addEventListener === 'function') {
+            (v as any).addEventListener('webkitplaybacktargetavailabilitychanged', (e: any) => {
+              if (e.availability === 'available') setCastAvailable(true);
+            });
+          }
+
+          // Dynamically inject Google Cast SDK for Chrome / Edge
+          if (!(window as any).__googleCastLoaded) {
+            (window as any).__googleCastLoaded = true;
+            (window as any)['__onGCastApiAvailable'] = (isAvailable: boolean) => {
+              if (isAvailable && (window as any).cast?.framework) {
+                try {
+                  const castContext = (window as any).cast.framework.CastContext.getInstance();
+                  castContext.setOptions({
+                    receiverApplicationId: (window as any).chrome?.cast?.media?.DEFAULT_MEDIA_RECEIVER_APP_ID || 'CC1AD845',
+                    autoJoinPolicy: (window as any).chrome?.cast?.AutoJoinPolicy?.ORIGIN_SCOPED || 'origin_scoped',
+                  });
+                  setCastAvailable(true);
+                } catch { }
+              }
+            };
+            const s = document.createElement('script');
+            s.src = 'https://www.gstatic.com/cv/js/sender/v1/cast_sender.js?loadCastFramework=1';
+            s.async = true;
+            document.head.appendChild(s);
+          }
+        }
+      };
+      checkForCast();
+      setTimeout(checkForCast, 1000);
     }
     setVolume(initialVolume);
     setSpeed(initialSpeed);
-    originalSpeedRef.current = initialSpeed; 
+    originalSpeedRef.current = initialSpeed;
   }, [initialVolume, initialSpeed]);
 
   useEffect(() => { onControlsChange?.(showControls); }, [showControls, onControlsChange]);
 
   useEffect(() => {
     if (titleContainerRef.current && titleTextRef.current) {
-        setIsTitleOverflowing(titleTextRef.current.scrollWidth > titleContainerRef.current.clientWidth);
+      setIsTitleOverflowing(titleTextRef.current.scrollWidth > titleContainerRef.current.clientWidth);
     }
   }, [title]);
 
   const updateBuffering = (status: boolean) => {
-      if (bufferDebounceRef.current) clearTimeout(bufferDebounceRef.current);
-      if (status) {
-          bufferDebounceRef.current = setTimeout(() => setIsBuffering(true), 300);
-      } else {
-          setIsBuffering(false);
-      }
+    if (bufferDebounceRef.current) clearTimeout(bufferDebounceRef.current);
+    if (status) {
+      bufferDebounceRef.current = setTimeout(() => setIsBuffering(true), 300);
+    } else {
+      setIsBuffering(false);
+    }
   };
 
   useEffect(() => {
     const video = videoRef.current;
     if (!video || !url) return;
 
-    setHasStarted(false); 
-    hasInitializedRef.current = false; 
+    setHasStarted(false);
+    hasInitializedRef.current = false;
     hasSeekedStartTimeRef.current = false;
-    setIsBuffering(true); 
+    setIsBuffering(true);
     if (hlsRef.current) hlsRef.current.destroy();
 
     const isAlreadyProxied = url.includes('/api/proxy') || url.includes('anikoto') || url.includes('satoru');
     const isMp4 = url.toLowerCase().includes('.mp4');
     const finalUrl = (url.startsWith('http') && !isAlreadyProxied)
-        ? `/api/proxy?url=${encodeURIComponent(url)}${referer ? `&referer=${encodeURIComponent(referer)}` : ''}`
-        : url;
+      ? `/api/proxy?url=${encodeURIComponent(url)}${referer ? `&referer=${encodeURIComponent(referer)}` : ''}`
+      : url;
 
     canSaveRef.current = false;
     const timer = setTimeout(() => { canSaveRef.current = true; }, 500);
 
     const onLevelLoaded = () => {
-        setIsBuffering(false);
-        if (startTime > 0 && !hasSeekedStartTimeRef.current) { 
-            try {
-                video.currentTime = startTime; 
-                setCurrentTime(startTime);
-                hasSeekedStartTimeRef.current = true;
-            } catch (e) {}
-        }
-        hasInitializedRef.current = true;
-        canSaveRef.current = true;
+      setIsBuffering(false);
+      if (startTime > 0 && !hasSeekedStartTimeRef.current) {
+        try {
+          video.currentTime = startTime;
+          setCurrentTime(startTime);
+          hasSeekedStartTimeRef.current = true;
+        } catch (e) { }
+      }
+      hasInitializedRef.current = true;
+      canSaveRef.current = true;
     };
 
     const shouldUseNative = isMp4 || isM3U8 === false;
-    
+
     let nativeLoadedHandler: (() => void) | null = null;
     let nativeErrorHandler: ((e: any) => void) | null = null;
 
@@ -902,62 +902,62 @@ const OmniPlayer = forwardRef<OmniPlayerRef, OmniPlayerProps>(({
       hls.on(Hls.Events.MANIFEST_PARSED, (_, data) => {
         const levels = data.levels.map((l, i) => ({ height: l.height, index: i })).sort((a, b) => b.height - a.height);
         setQualities(levels);
-        
+
         // Ensure direct HLS accurately seeks to saved progress on startup
         if (startTime > 0 && !hasSeekedStartTimeRef.current) {
-            try {
-                video.currentTime = startTime;
-                setCurrentTime(startTime);
-                hasSeekedStartTimeRef.current = true;
-            } catch (e) {}
+          try {
+            video.currentTime = startTime;
+            setCurrentTime(startTime);
+            hasSeekedStartTimeRef.current = true;
+          } catch (e) { }
         }
         hasInitializedRef.current = true;
         canSaveRef.current = true;
 
         if (autoPlay) {
-            const playPromise = video.play();
-            if (playPromise !== undefined) {
-                playPromise.then(() => setIsPlaying(true)).catch((err) => {
-                    console.warn("Autoplay policy restriction, attempting muted play", err);
-                    video.muted = true;
-                    setIsMuted(true);
-                    video.play().then(() => setIsPlaying(true)).catch(() => setIsPlaying(false));
-                });
-            }
+          const playPromise = video.play();
+          if (playPromise !== undefined) {
+            playPromise.then(() => setIsPlaying(true)).catch((err) => {
+              console.warn("Autoplay policy restriction, attempting muted play", err);
+              video.muted = true;
+              setIsMuted(true);
+              video.play().then(() => setIsPlaying(true)).catch(() => setIsPlaying(false));
+            });
+          }
         }
       });
       hls.on(Hls.Events.LEVEL_LOADED, (_, data) => {
-          if (startTime > 0 && !hasSeekedStartTimeRef.current && data.details && !data.details.live) {
-              try {
-                  video.currentTime = startTime;
-                  setCurrentTime(startTime);
-                  hasSeekedStartTimeRef.current = true;
-              } catch (e) {}
-          }
-          hasInitializedRef.current = true;
-          canSaveRef.current = true;
+        if (startTime > 0 && !hasSeekedStartTimeRef.current && data.details && !data.details.live) {
+          try {
+            video.currentTime = startTime;
+            setCurrentTime(startTime);
+            hasSeekedStartTimeRef.current = true;
+          } catch (e) { }
+        }
+        hasInitializedRef.current = true;
+        canSaveRef.current = true;
       });
       hls.on(Hls.Events.LEVEL_SWITCHED, (_, data) => {
-          const height = hls.levels[data.level]?.height;
-          if (hls.autoLevelEnabled) { setCurrentQuality(-1); setAutoResolutionText(`Auto (${height}p)`); } else { setCurrentQuality(data.level); setAutoResolutionText('Auto'); }
+        const height = hls.levels[data.level]?.height;
+        if (hls.autoLevelEnabled) { setCurrentQuality(-1); setAutoResolutionText(`Auto (${height}p)`); } else { setCurrentQuality(data.level); setAutoResolutionText('Auto'); }
       });
       hls.on(Hls.Events.AUDIO_TRACKS_UPDATED, (_, data) => { setAudioTracks(data.audioTracks); setCurrentAudio(data.audioTracks.findIndex(t => t.default)); });
-      hls.on(Hls.Events.FRAG_BUFFERED, onLevelLoaded); 
+      hls.on(Hls.Events.FRAG_BUFFERED, onLevelLoaded);
       hls.on(Hls.Events.ERROR, (e, data) => {
-          if (data.fatal) {
-              setIsBuffering(false);
-              if (onError) onError(data);
-              else if (iframeUrl) setHlsFailed(true);
-          }
+        if (data.fatal) {
+          setIsBuffering(false);
+          if (onError) onError(data);
+          else if (iframeUrl) setHlsFailed(true);
+        }
       });
       hlsRef.current = hls;
 
       // Attach secondary preview video to decode thumbnail frames smoothly
       if (previewVideoRef.current) {
         if (previewHlsRef.current) previewHlsRef.current.destroy();
-        const prevHls = new Hls({ 
-          autoStartLoad: true, 
-          startLevel: 0, 
+        const prevHls = new Hls({
+          autoStartLoad: true,
+          startLevel: 0,
           capLevelToPlayerSize: true,
           maxBufferLength: 8,
           maxMaxBufferLength: 15,
@@ -985,39 +985,39 @@ const OmniPlayer = forwardRef<OmniPlayerRef, OmniPlayerProps>(({
         frameCacheRef.current.clear();
         setHasEverLoadedFrame(false);
       }
-      
-      nativeLoadedHandler = () => { 
-          if (startTime > 0 && !hasSeekedStartTimeRef.current) { 
-              try {
-                  video.currentTime = startTime; 
-                  setCurrentTime(startTime);
-                  hasSeekedStartTimeRef.current = true;
-              } catch (e) {}
+
+      nativeLoadedHandler = () => {
+        if (startTime > 0 && !hasSeekedStartTimeRef.current) {
+          try {
+            video.currentTime = startTime;
+            setCurrentTime(startTime);
+            hasSeekedStartTimeRef.current = true;
+          } catch (e) { }
+        }
+        hasInitializedRef.current = true;
+        canSaveRef.current = true;
+        if (autoPlay) {
+          const playPromise = video.play();
+          if (playPromise !== undefined) {
+            playPromise.then(() => setIsPlaying(true)).catch((err) => {
+              console.warn("Native autoplay restricted, trying muted play", err);
+              video.muted = true;
+              setIsMuted(true);
+              video.play().then(() => setIsPlaying(true)).catch(() => setIsPlaying(false));
+            });
           }
-          hasInitializedRef.current = true;
-          canSaveRef.current = true;
-          if (autoPlay) {
-              const playPromise = video.play();
-              if (playPromise !== undefined) {
-                  playPromise.then(() => setIsPlaying(true)).catch((err) => {
-                      console.warn("Native autoplay restricted, trying muted play", err);
-                      video.muted = true;
-                      setIsMuted(true);
-                      video.play().then(() => setIsPlaying(true)).catch(() => setIsPlaying(false));
-                  });
-              }
-          }
+        }
       };
-      
+
       nativeErrorHandler = (error: any) => {
-          if (onError) onError(error);
-          else if (iframeUrl) setHlsFailed(true);
+        if (onError) onError(error);
+        else if (iframeUrl) setHlsFailed(true);
       };
-      
+
       video.addEventListener('loadedmetadata', nativeLoadedHandler);
       video.addEventListener('error', nativeErrorHandler);
     } else {
-        if (iframeUrl) setHlsFailed(true);
+      if (iframeUrl) setHlsFailed(true);
     }
 
     const onEnterPiP = () => setIsPiPActive(true);
@@ -1042,7 +1042,7 @@ const OmniPlayer = forwardRef<OmniPlayerRef, OmniPlayerProps>(({
   // A. Auto-select English or default subtitle track
   useEffect(() => {
     if (trackSubtitles.length > 0) {
-      const engIndex = trackSubtitles.findIndex(t => 
+      const engIndex = trackSubtitles.findIndex(t =>
         t.label?.toLowerCase().includes('eng') || t.lang?.toLowerCase().includes('eng')
       );
       const defaultIndex = trackSubtitles.findIndex(t => t.default);
@@ -1192,12 +1192,12 @@ const OmniPlayer = forwardRef<OmniPlayerRef, OmniPlayerProps>(({
   // --- HANDLERS ---
   const togglePlay = useCallback(() => {
     if (!videoRef.current) return;
-    if (videoRef.current.paused) { 
+    if (videoRef.current.paused) {
       adManager.triggerFirstPlay(episodeId || title || 'episode');
-      videoRef.current.play(); 
-    } else { 
-      videoRef.current.pause(); 
-      if(canSaveRef.current) onInteract?.(); 
+      videoRef.current.play();
+    } else {
+      videoRef.current.pause();
+      if (canSaveRef.current) onInteract?.();
     }
   }, [episodeId, title, onInteract]);
 
@@ -1218,7 +1218,7 @@ const OmniPlayer = forwardRef<OmniPlayerRef, OmniPlayerProps>(({
         ifr?.contentWindow?.postMessage(JSON.stringify({ event: 'seek', time: introEnd }), '*');
         ifr?.contentWindow?.postMessage({ command: 'seek', time: introEnd }, '*');
         ifr?.contentWindow?.postMessage({ event: 'command', func: 'seekTo', args: [introEnd, true] }, '*');
-      } catch {}
+      } catch { }
     } else if (videoRef.current) {
       seekTargetRef.current = introEnd;
       videoRef.current.currentTime = introEnd;
@@ -1250,7 +1250,7 @@ const OmniPlayer = forwardRef<OmniPlayerRef, OmniPlayerProps>(({
           ifr?.contentWindow?.postMessage(JSON.stringify({ event: 'seek', time: epOutroEnd }), '*');
           ifr?.contentWindow?.postMessage({ command: 'seek', time: epOutroEnd }, '*');
           ifr?.contentWindow?.postMessage({ event: 'command', func: 'seekTo', args: [epOutroEnd, true] }, '*');
-        } catch {}
+        } catch { }
       } else if (videoRef.current) {
         seekTargetRef.current = epOutroEnd;
         videoRef.current.currentTime = epOutroEnd;
@@ -1264,32 +1264,32 @@ const OmniPlayer = forwardRef<OmniPlayerRef, OmniPlayerProps>(({
   }, [canGoNext, onNext, outro, duration, useIframe, onSkipOutro, onInteract]);
 
   const seek = (amount: number) => {
-    if (videoRef.current) { 
-        const basisTime = seekTargetRef.current !== null ? seekTargetRef.current : videoRef.current.currentTime;
-        let target = basisTime + amount;
-        target = Math.max(0, Math.min(target, duration || 100000));
-        seekTargetRef.current = target;
-        videoRef.current.currentTime = target;
-        setCurrentTime(target);
-        if(canSaveRef.current) onInteract?.(); 
-        showUI();
-        if (seekAccumulatorRef.current) clearTimeout(seekAccumulatorRef.current);
-        // @ts-ignore
-        seekAccumulatorRef.current = setTimeout(() => { seekTargetRef.current = null; }, 500);
+    if (videoRef.current) {
+      const basisTime = seekTargetRef.current !== null ? seekTargetRef.current : videoRef.current.currentTime;
+      let target = basisTime + amount;
+      target = Math.max(0, Math.min(target, duration || 100000));
+      seekTargetRef.current = target;
+      videoRef.current.currentTime = target;
+      setCurrentTime(target);
+      if (canSaveRef.current) onInteract?.();
+      showUI();
+      if (seekAccumulatorRef.current) clearTimeout(seekAccumulatorRef.current);
+      // @ts-ignore
+      seekAccumulatorRef.current = setTimeout(() => { seekTargetRef.current = null; }, 500);
     }
   };
 
   const toggleFullscreen = async () => {
     if (!document.fullscreenElement) {
-        if(containerRef.current) {
-            await containerRef.current.requestFullscreen();
-            // @ts-ignore
-            if (screen.orientation && 'lock' in screen.orientation) { screen.orientation.lock('landscape').catch(() => {}); }
-        }
-    } else {
-        await document.exitFullscreen();
+      if (containerRef.current) {
+        await containerRef.current.requestFullscreen();
         // @ts-ignore
-        if (screen.orientation && 'unlock' in screen.orientation) { screen.orientation.unlock(); }
+        if (screen.orientation && 'lock' in screen.orientation) { screen.orientation.lock('landscape').catch(() => { }); }
+      }
+    } else {
+      await document.exitFullscreen();
+      // @ts-ignore
+      if (screen.orientation && 'unlock' in screen.orientation) { screen.orientation.unlock(); }
     }
   };
 
@@ -1299,126 +1299,126 @@ const OmniPlayer = forwardRef<OmniPlayerRef, OmniPlayerProps>(({
   };
 
   const handleCast = async () => {
-      // 1. Google Cast Framework (Chromecast, Google TV, Android TV, Smart TVs)
-      if (typeof window !== 'undefined') {
-          try {
-              const castContext = (window as any).cast?.framework?.CastContext?.getInstance?.();
-              if (castContext) {
-                  await castContext.requestSession();
-                  notifyWhisper("Casting connected", "success");
-                  return;
-              }
-          } catch (e: any) {
-              if (e?.name === 'Cancel' || e?.errorCode === 'cancel' || e?.message?.includes('cancel')) {
-                  return; // User cancelled
-              }
-              console.warn("Google Cast request error", e);
-          }
+    // 1. Google Cast Framework (Chromecast, Google TV, Android TV, Smart TVs)
+    if (typeof window !== 'undefined') {
+      try {
+        const castContext = (window as any).cast?.framework?.CastContext?.getInstance?.();
+        if (castContext) {
+          await castContext.requestSession();
+          notifyWhisper("Casting connected", "success");
+          return;
+        }
+      } catch (e: any) {
+        if (e?.name === 'Cancel' || e?.errorCode === 'cancel' || e?.message?.includes('cancel')) {
+          return; // User cancelled
+        }
+        console.warn("Google Cast request error", e);
       }
+    }
 
-      const v = videoRef.current;
+    const v = videoRef.current;
 
-      // 2. Apple Safari AirPlay
-      if (v && typeof (v as any).webkitShowPlaybackTargetPicker === 'function') {
-          try {
-              (v as any).webkitShowPlaybackTargetPicker();
-              return;
-          } catch (e: any) {
-              console.warn("AirPlay prompt failed", e);
-          }
+    // 2. Apple Safari AirPlay
+    if (v && typeof (v as any).webkitShowPlaybackTargetPicker === 'function') {
+      try {
+        (v as any).webkitShowPlaybackTargetPicker();
+        return;
+      } catch (e: any) {
+        console.warn("AirPlay prompt failed", e);
       }
+    }
 
-      // 3. Chromium Remote Playback API
-      if (v && 'remote' in v && typeof (v as any).remote?.prompt === 'function') {
-          try {
-              await (v as any).remote.prompt();
-              return;
-          } catch (e: any) {
-              if (e.name === 'NotAllowedError' || e.name === 'AbortError') {
-                  return; // User dismissed picker
-              }
-              console.warn("Remote Playback failed, trying Presentation API fallback", e);
-          }
+    // 3. Chromium Remote Playback API
+    if (v && 'remote' in v && typeof (v as any).remote?.prompt === 'function') {
+      try {
+        await (v as any).remote.prompt();
+        return;
+      } catch (e: any) {
+        if (e.name === 'NotAllowedError' || e.name === 'AbortError') {
+          return; // User dismissed picker
+        }
+        console.warn("Remote Playback failed, trying Presentation API fallback", e);
       }
+    }
 
-      // 4. Presentation API Fallback (Supported on Chrome/Edge/Smart TVs)
-      if (typeof window !== 'undefined' && 'PresentationRequest' in window) {
-          try {
-              const targetUrl = (url && url.startsWith('http')) ? url : window.location.href;
-              const request = new (window as any).PresentationRequest([targetUrl]);
-              await request.start();
-              notifyWhisper("Cast connection initiated", "success");
-              return;
-          } catch (e: any) {
-              if (e.name === 'NotAllowedError' || e.name === 'AbortError') {
-                  return; // User cancelled
-              }
-              console.warn("Presentation API error", e);
-          }
+    // 4. Presentation API Fallback (Supported on Chrome/Edge/Smart TVs)
+    if (typeof window !== 'undefined' && 'PresentationRequest' in window) {
+      try {
+        const targetUrl = (url && url.startsWith('http')) ? url : window.location.href;
+        const request = new (window as any).PresentationRequest([targetUrl]);
+        await request.start();
+        notifyWhisper("Cast connection initiated", "success");
+        return;
+      } catch (e: any) {
+        if (e.name === 'NotAllowedError' || e.name === 'AbortError') {
+          return; // User cancelled
+        }
+        console.warn("Presentation API error", e);
       }
+    }
 
-      notifyWhisper("Casting initiated or use browser menu (⋮ > Cast)", "info");
+    notifyWhisper("Casting initiated or use browser menu (⋮ > Cast)", "info");
   };
 
   const toggleMute = () => {
-      const newMuted = !isMuted;
-      setIsMuted(newMuted);
-      if (videoRef.current) {
-          videoRef.current.muted = newMuted;
-          if (newMuted) {
-              setVolume(0);
-          } else {
-              setVolume(1); 
-              videoRef.current.volume = 1;
-          }
+    const newMuted = !isMuted;
+    setIsMuted(newMuted);
+    if (videoRef.current) {
+      videoRef.current.muted = newMuted;
+      if (newMuted) {
+        setVolume(0);
+      } else {
+        setVolume(1);
+        videoRef.current.volume = 1;
       }
+    }
   };
 
   const handleVolumeChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-      const newVol = parseFloat(e.target.value);
-      setVolume(newVol);
-      if (videoRef.current) {
-          videoRef.current.volume = newVol;
-          const shouldMute = newVol === 0;
-          setIsMuted(shouldMute);
-          videoRef.current.muted = shouldMute;
-      }
-      onSettingsChange?.('volume', newVol);
+    const newVol = parseFloat(e.target.value);
+    setVolume(newVol);
+    if (videoRef.current) {
+      videoRef.current.volume = newVol;
+      const shouldMute = newVol === 0;
+      setIsMuted(shouldMute);
+      videoRef.current.muted = shouldMute;
+    }
+    onSettingsChange?.('volume', newVol);
   };
 
   const handleTimeUpdate = () => {
     const video = videoRef.current;
     if (!video || isScrubbing) return;
-    
+
     if (seekTargetRef.current === null) {
-        setCurrentTime(video.currentTime);
+      setCurrentTime(video.currentTime);
     }
 
     if (video.buffered.length > 0) {
-        setBufferedEnd(video.buffered.end(video.buffered.length - 1));
+      setBufferedEnd(video.buffered.end(video.buffered.length - 1));
     }
     syncSubtitlesAtTime(video.currentTime);
 
-    if (!hasStarted && video.currentTime > 0) setHasStarted(true); 
-    
+    if (!hasStarted && video.currentTime > 0) setHasStarted(true);
+
     // Do not report 0s progress if we are supposed to resume from startTime > 0
     if (startTime > 5 && video.currentTime < 2 && !hasSeekedStartTimeRef.current) {
-        return;
+      return;
     }
 
-    if (onProgress && (canSaveRef.current || video.currentTime > 0)) { 
-        canSaveRef.current = true;
-        const now = Date.now();
-        if (now - lastProgressTimeRef.current > 350) {
-            onProgress({ 
-                playedSeconds: video.currentTime, 
-                loadedSeconds: video.buffered.length ? video.buffered.end(video.buffered.length - 1) : 0,
-                duration: video.duration || 0
-            });
-            lastProgressTimeRef.current = now;
-        }
+    if (onProgress && (canSaveRef.current || video.currentTime > 0)) {
+      canSaveRef.current = true;
+      const now = Date.now();
+      if (now - lastProgressTimeRef.current > 350) {
+        onProgress({
+          playedSeconds: video.currentTime,
+          loadedSeconds: video.buffered.length ? video.buffered.end(video.buffered.length - 1) : 0,
+          duration: video.duration || 0
+        });
+        lastProgressTimeRef.current = now;
+      }
     }
-    
+
     const introStart = intro ? Number(intro.start) : NaN;
     const introEnd = intro ? Number(intro.end) : NaN;
     const hasValidIntro = !isNaN(introStart) && !isNaN(introEnd) && introEnd > introStart + 5 && introStart >= 0;
@@ -1434,14 +1434,14 @@ const OmniPlayer = forwardRef<OmniPlayerRef, OmniPlayerProps>(({
     if (hasValidOutro && video.currentTime < outroStart - 2) {
       hasSkippedOutroRef.current = false;
     }
-    
+
     // Mutual exclusivity: only intro OR outro can ever trigger
     if (hasValidIntro && video.currentTime >= introStart && video.currentTime < introEnd) {
       setShowSkipOutro(false);
-      if (localAutoSkip && !hasSkippedIntroRef.current) { 
+      if (localAutoSkip && !hasSkippedIntroRef.current) {
         executeSkipIntro();
-      } else if (!localAutoSkip && !hasSkippedIntroRef.current) { 
-        setShowSkipIntro(true); 
+      } else if (!localAutoSkip && !hasSkippedIntroRef.current) {
+        setShowSkipIntro(true);
       }
     } else if (hasValidOutro && video.currentTime >= outroStart && video.currentTime <= ((!isNaN(outroEnd) && outroEnd > 0) ? outroEnd : (video.duration || 1440))) {
       setShowSkipIntro(false);
@@ -1476,219 +1476,219 @@ const OmniPlayer = forwardRef<OmniPlayerRef, OmniPlayerProps>(({
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
-      if (['Space', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'KeyF', 'KeyM', 'KeyS', 'KeyN'].includes(e.code)) {
-          e.preventDefault();
-      }
+    if (['Space', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'KeyF', 'KeyM', 'KeyS', 'KeyN'].includes(e.code)) {
+      e.preventDefault();
+    }
 
-      if (e.code === 'Space') togglePlay();
-      if (e.code === 'ArrowRight') seek(10);
-      if (e.code === 'ArrowLeft') seek(-10);
-      if (e.code === 'KeyF') toggleFullscreen();
-      if (e.code === 'KeyM') toggleMute();
-      if (e.code === 'KeyS') {
-        if (showSkipIntro && intro) {
-          if (useIframe) {
-            iframeTimeRef.current = intro.end;
-            setCurrentTime(intro.end);
-          } else if (videoRef.current) {
-            videoRef.current.currentTime = intro.end;
-            setCurrentTime(intro.end);
-          }
-          setShowSkipIntro(false);
-          notifyWhisper("Skipped Intro", "success");
-          onSkipIntro?.();
-        } else if (showSkipOutro) {
-          setShowSkipOutro(false);
-          notifyWhisper("Skipped Outro", "success");
-          onSkipOutro?.();
-          if (onNext) onNext();
+    if (e.code === 'Space') togglePlay();
+    if (e.code === 'ArrowRight') seek(10);
+    if (e.code === 'ArrowLeft') seek(-10);
+    if (e.code === 'KeyF') toggleFullscreen();
+    if (e.code === 'KeyM') toggleMute();
+    if (e.code === 'KeyS') {
+      if (showSkipIntro && intro) {
+        if (useIframe) {
+          iframeTimeRef.current = intro.end;
+          setCurrentTime(intro.end);
+        } else if (videoRef.current) {
+          videoRef.current.currentTime = intro.end;
+          setCurrentTime(intro.end);
         }
+        setShowSkipIntro(false);
+        notifyWhisper("Skipped Intro", "success");
+        onSkipIntro?.();
+      } else if (showSkipOutro) {
+        setShowSkipOutro(false);
+        notifyWhisper("Skipped Outro", "success");
+        onSkipOutro?.();
+        if (onNext) onNext();
       }
-      if (e.code === 'KeyN' && onNext) onNext();
-      showUI();
+    }
+    if (e.code === 'KeyN' && onNext) onNext();
+    showUI();
   };
 
   const handleContainerClick = (e: React.MouseEvent) => {
-      containerRef.current?.focus();
-      handleGesture(e);
+    containerRef.current?.focus();
+    handleGesture(e);
   };
 
-  const changeQuality = (index: number) => { 
-      if (hlsRef.current) { hlsRef.current.currentLevel = index; if (index === -1) setAutoResolutionText("Auto"); }
-      setCurrentQuality(index); 
-      if(canSaveRef.current) onInteract?.(); onSettingsChange?.('quality', index); 
+  const changeQuality = (index: number) => {
+    if (hlsRef.current) { hlsRef.current.currentLevel = index; if (index === -1) setAutoResolutionText("Auto"); }
+    setCurrentQuality(index);
+    if (canSaveRef.current) onInteract?.(); onSettingsChange?.('quality', index);
   };
-  const changeSpeed = (rate: number) => { 
-      if (videoRef.current) videoRef.current.playbackRate = rate; 
-      setSpeed(rate); 
-      originalSpeedRef.current = rate; 
-      if(canSaveRef.current) onInteract?.(); onSettingsChange?.('speed', rate); 
+  const changeSpeed = (rate: number) => {
+    if (videoRef.current) videoRef.current.playbackRate = rate;
+    setSpeed(rate);
+    originalSpeedRef.current = rate;
+    if (canSaveRef.current) onInteract?.(); onSettingsChange?.('speed', rate);
   };
-  const changeAudio = (index: number) => { 
-      if (hlsRef.current) hlsRef.current.audioTrack = index; 
-      setCurrentAudio(index); if(canSaveRef.current) onInteract?.(); 
+  const changeAudio = (index: number) => {
+    if (hlsRef.current) hlsRef.current.audioTrack = index;
+    setCurrentAudio(index); if (canSaveRef.current) onInteract?.();
   };
   const changeSubtitle = (index: number) => {
-      setCurrentSubtitle(index);
-      if (index === -1) {
-          parsedCuesRef.current = [];
-          setActiveCueText(null);
+    setCurrentSubtitle(index);
+    if (index === -1) {
+      parsedCuesRef.current = [];
+      setActiveCueText(null);
+    }
+    if (videoRef.current) {
+      const tracks = videoRef.current.textTracks;
+      for (let i = 0; i < tracks.length; i++) {
+        tracks[i].mode = 'disabled';
       }
-      if (videoRef.current) {
-          const tracks = videoRef.current.textTracks;
-          for (let i = 0; i < tracks.length; i++) {
-              tracks[i].mode = 'disabled';
-          }
-          if (index !== -1 && tracks[index]) {
-              tracks[index].mode = 'hidden';
-          }
+      if (index !== -1 && tracks[index]) {
+        tracks[index].mode = 'hidden';
       }
-      setActiveMenu('none');
-      if(canSaveRef.current) onInteract?.(); 
+    }
+    setActiveMenu('none');
+    if (canSaveRef.current) onInteract?.();
   };
 
   // --- TOUCH & GESTURE LOGIC ---
   const startLongPress = () => {
-      if (longPressTimerRef.current) clearTimeout(longPressTimerRef.current);
-      longPressTimerRef.current = setTimeout(() => {
-          setIsLongPressing(true);
-          if (videoRef.current) videoRef.current.playbackRate = 2.0;
-      }, 500); 
+    if (longPressTimerRef.current) clearTimeout(longPressTimerRef.current);
+    longPressTimerRef.current = setTimeout(() => {
+      setIsLongPressing(true);
+      if (videoRef.current) videoRef.current.playbackRate = 2.0;
+    }, 500);
   };
 
   const endLongPress = () => {
-      if (longPressTimerRef.current) clearTimeout(longPressTimerRef.current);
-      if (isLongPressing) {
-          setIsLongPressing(false);
-          if (videoRef.current) videoRef.current.playbackRate = originalSpeedRef.current;
-      }
+    if (longPressTimerRef.current) clearTimeout(longPressTimerRef.current);
+    if (isLongPressing) {
+      setIsLongPressing(false);
+      if (videoRef.current) videoRef.current.playbackRate = originalSpeedRef.current;
+    }
   };
 
   const handleTouchStart = (e: React.TouchEvent) => {
-      // Seekbar preview must NEVER show or get stuck during player video touch / gestures
-      setHoverTime(null);
-      setIsHoveringSeek(false);
-      setIsScrubbing(false);
-      setIsDirectlyInteractingSeekbar(false);
-      touchSeekTargetRef.current = null;
+    // Seekbar preview must NEVER show or get stuck during player video touch / gestures
+    setHoverTime(null);
+    setIsHoveringSeek(false);
+    setIsScrubbing(false);
+    setIsDirectlyInteractingSeekbar(false);
+    touchSeekTargetRef.current = null;
 
-      const target = e.target as HTMLElement;
-      if (target.closest('button') || target.closest('input') || target.closest('[role="menu"]') || target.closest('[data-player-menu="true"]') || target.closest('.absolute.bottom-12') || target.closest('.absolute.bottom-16') || target.closest('[class*="group/seek"]') || target.closest('[class*="bg-black/60"]')) return;
-      if (!videoRef.current || !containerRef.current) return;
-      const rect = containerRef.current.getBoundingClientRect();
-      touchStartRef.current = { 
-          x: e.touches[0].clientX, 
-          y: e.touches[0].clientY,
-          time: Date.now(),
-          val: volume,
-          bright: brightness,
-          curTime: videoRef.current.currentTime
-      };
-      gestureLockRef.current = null; 
-      startLongPress();
+    const target = e.target as HTMLElement;
+    if (target.closest('button') || target.closest('input') || target.closest('[role="menu"]') || target.closest('[data-player-menu="true"]') || target.closest('.absolute.bottom-12') || target.closest('.absolute.bottom-16') || target.closest('[class*="group/seek"]') || target.closest('[class*="bg-black/60"]')) return;
+    if (!videoRef.current || !containerRef.current) return;
+    const rect = containerRef.current.getBoundingClientRect();
+    touchStartRef.current = {
+      x: e.touches[0].clientX,
+      y: e.touches[0].clientY,
+      time: Date.now(),
+      val: volume,
+      bright: brightness,
+      curTime: videoRef.current.currentTime
+    };
+    gestureLockRef.current = null;
+    startLongPress();
   };
 
   const handleTouchMove = (e: React.TouchEvent) => {
-      if (!touchStartRef.current || !containerRef.current || !videoRef.current) return;
-      
-      const deltaX = e.touches[0].clientX - touchStartRef.current.x;
-      const deltaY = touchStartRef.current.y - e.touches[0].clientY; 
-      
-      if (Math.abs(deltaX) > 10 || Math.abs(deltaY) > 10) {
-          endLongPress();
+    if (!touchStartRef.current || !containerRef.current || !videoRef.current) return;
+
+    const deltaX = e.touches[0].clientX - touchStartRef.current.x;
+    const deltaY = touchStartRef.current.y - e.touches[0].clientY;
+
+    if (Math.abs(deltaX) > 10 || Math.abs(deltaY) > 10) {
+      endLongPress();
+    }
+
+    if (!gestureLockRef.current) {
+      if (Math.abs(deltaX) > Math.abs(deltaY) && Math.abs(deltaX) > 10) {
+        gestureLockRef.current = 'horizontal';
+      } else if (Math.abs(deltaY) > Math.abs(deltaX) && Math.abs(deltaY) > 10) {
+        gestureLockRef.current = 'vertical';
       }
+    }
 
-      if (!gestureLockRef.current) {
-          if (Math.abs(deltaX) > Math.abs(deltaY) && Math.abs(deltaX) > 10) {
-              gestureLockRef.current = 'horizontal';
-          } else if (Math.abs(deltaY) > Math.abs(deltaX) && Math.abs(deltaY) > 10) {
-              gestureLockRef.current = 'vertical';
-          }
+    if (!gestureLockRef.current) return;
+
+    const rect = containerRef.current.getBoundingClientRect();
+
+    if (gestureLockRef.current === 'horizontal') {
+      if (horizontalGesture === 'seek') {
+        const seekTime = Math.max(0, Math.min(duration, touchStartRef.current.curTime + (deltaX / rect.width) * 90));
+        touchSeekTargetRef.current = seekTime;
+        setCurrentTime(seekTime);
+        const deltaSeconds = Math.round(seekTime - touchStartRef.current.curTime);
+        const deltaSign = deltaSeconds > 0 ? '+' : '';
+        const seekIcon = deltaX > 0 ? <ChevronsRight size={32} /> : <ChevronsLeft size={32} />;
+        setGestureOverlay({
+          icon: seekIcon,
+          text: `${deltaSign}${deltaSeconds}s (${formatTime(seekTime)})`
+        });
+      } else if (horizontalGesture === 'volume') {
+        const newVol = Math.max(0, Math.min(1, touchStartRef.current.val + (deltaX / 200)));
+        setVolume(newVol);
+        if (videoRef.current) videoRef.current.volume = newVol;
+        setGestureOverlay({ icon: <Volume2 size={32} />, text: `${Math.round(newVol * 100)}%` });
       }
-
-      if (!gestureLockRef.current) return;
-
-      const rect = containerRef.current.getBoundingClientRect();
-
-      if (gestureLockRef.current === 'horizontal') {
-          if (horizontalGesture === 'seek') {
-              const seekTime = Math.max(0, Math.min(duration, touchStartRef.current.curTime + (deltaX / rect.width) * 90)); 
-              touchSeekTargetRef.current = seekTime;
-              setCurrentTime(seekTime);
-              const deltaSeconds = Math.round(seekTime - touchStartRef.current.curTime);
-              const deltaSign = deltaSeconds > 0 ? '+' : '';
-              const seekIcon = deltaX > 0 ? <ChevronsRight size={32}/> : <ChevronsLeft size={32}/>;
-              setGestureOverlay({ 
-                  icon: seekIcon, 
-                  text: `${deltaSign}${deltaSeconds}s (${formatTime(seekTime)})` 
-              });
-          } else if (horizontalGesture === 'volume') {
-              const newVol = Math.max(0, Math.min(1, touchStartRef.current.val + (deltaX / 200)));
-              setVolume(newVol);
-              if (videoRef.current) videoRef.current.volume = newVol;
-              setGestureOverlay({ icon: <Volume2 size={32}/>, text: `${Math.round(newVol * 100)}%` });
-          }
-      } else if (gestureLockRef.current === 'vertical') {
-          if (verticalGesture === 'vol_bright') {
-              if (touchStartRef.current.x > rect.width / 2) {
-                  const newVol = Math.max(0, Math.min(1, touchStartRef.current.val + (deltaY / 200)));
-                  setVolume(newVol);
-                  if (videoRef.current) videoRef.current.volume = newVol;
-                  setGestureOverlay({ icon: <Volume2 size={32}/>, text: `${Math.round(newVol * 100)}%` });
-              } else {
-                  const newBright = Math.max(0.2, Math.min(1.5, touchStartRef.current.bright + (deltaY / 300)));
-                  setBrightness(newBright);
-                  setGestureOverlay({ icon: <Sun size={32}/>, text: `${Math.round(newBright * 100)}%` });
-              }
-          }
+    } else if (gestureLockRef.current === 'vertical') {
+      if (verticalGesture === 'vol_bright') {
+        if (touchStartRef.current.x > rect.width / 2) {
+          const newVol = Math.max(0, Math.min(1, touchStartRef.current.val + (deltaY / 200)));
+          setVolume(newVol);
+          if (videoRef.current) videoRef.current.volume = newVol;
+          setGestureOverlay({ icon: <Volume2 size={32} />, text: `${Math.round(newVol * 100)}%` });
+        } else {
+          const newBright = Math.max(0.2, Math.min(1.5, touchStartRef.current.bright + (deltaY / 300)));
+          setBrightness(newBright);
+          setGestureOverlay({ icon: <Sun size={32} />, text: `${Math.round(newBright * 100)}%` });
+        }
       }
+    }
   };
 
   const handleTouchEnd = (e: React.TouchEvent) => {
-      endLongPress(); 
-      setGestureOverlay(null); 
-      setHoverTime(null);
-      setIsHoveringSeek(false);
-      setIsScrubbing(false);
-      setIsDirectlyInteractingSeekbar(false);
+    endLongPress();
+    setGestureOverlay(null);
+    setHoverTime(null);
+    setIsHoveringSeek(false);
+    setIsScrubbing(false);
+    setIsDirectlyInteractingSeekbar(false);
 
-      if (!touchStartRef.current) return;
-      
-      // If horizontal seek gesture was performed, commit the target seek position cleanly on touch release
-      if (gestureLockRef.current === 'horizontal' && horizontalGesture === 'seek' && touchSeekTargetRef.current !== null) {
-          const finalSeekTime = touchSeekTargetRef.current;
-          if (videoRef.current) {
-              videoRef.current.currentTime = finalSeekTime;
-              setCurrentTime(finalSeekTime);
-          }
-          syncSubtitlesAtTime(finalSeekTime);
-          if (onSeek) onSeek(finalSeekTime);
-          if (canSaveRef.current) onInteract?.();
-          touchSeekTargetRef.current = null;
-      }
-      
-      const deltaX = e.changedTouches[0].clientX - touchStartRef.current.x;
-      const deltaY = touchStartRef.current.y - e.changedTouches[0].clientY;
-      const timeDiff = Date.now() - touchStartRef.current.time;
+    if (!touchStartRef.current) return;
 
-      if (timeDiff < 300 && (Math.abs(deltaX) > 50 || Math.abs(deltaY) > 50)) {
-          if (Math.abs(deltaX) > Math.abs(deltaY)) {
-              if (horizontalGesture === 'nav' && onNext) {
-                  if (deltaX < -50) onNext(); 
-                  if (deltaX > 50 && videoRef.current) videoRef.current.currentTime = 0; 
-              }
-          } else {
-              if (verticalGesture === 'fullscreen') toggleFullscreen();
-          }
+    // If horizontal seek gesture was performed, commit the target seek position cleanly on touch release
+    if (gestureLockRef.current === 'horizontal' && horizontalGesture === 'seek' && touchSeekTargetRef.current !== null) {
+      const finalSeekTime = touchSeekTargetRef.current;
+      if (videoRef.current) {
+        videoRef.current.currentTime = finalSeekTime;
+        setCurrentTime(finalSeekTime);
       }
-      touchStartRef.current = null;
-      gestureLockRef.current = null;
+      syncSubtitlesAtTime(finalSeekTime);
+      if (onSeek) onSeek(finalSeekTime);
+      if (canSaveRef.current) onInteract?.();
       touchSeekTargetRef.current = null;
+    }
+
+    const deltaX = e.changedTouches[0].clientX - touchStartRef.current.x;
+    const deltaY = touchStartRef.current.y - e.changedTouches[0].clientY;
+    const timeDiff = Date.now() - touchStartRef.current.time;
+
+    if (timeDiff < 300 && (Math.abs(deltaX) > 50 || Math.abs(deltaY) > 50)) {
+      if (Math.abs(deltaX) > Math.abs(deltaY)) {
+        if (horizontalGesture === 'nav' && onNext) {
+          if (deltaX < -50) onNext();
+          if (deltaX > 50 && videoRef.current) videoRef.current.currentTime = 0;
+        }
+      } else {
+        if (verticalGesture === 'fullscreen') toggleFullscreen();
+      }
+    }
+    touchStartRef.current = null;
+    gestureLockRef.current = null;
+    touchSeekTargetRef.current = null;
   };
 
   const handleMouseDown = (e: React.MouseEvent) => {
-      if ((e.target as HTMLElement).closest('button') || (e.target as HTMLElement).closest('input')) return;
-      startLongPress();
+    if ((e.target as HTMLElement).closest('button') || (e.target as HTMLElement).closest('input')) return;
+    startLongPress();
   };
   const handleMouseUp = () => endLongPress();
 
@@ -1699,45 +1699,45 @@ const OmniPlayer = forwardRef<OmniPlayerRef, OmniPlayerProps>(({
     const now = Date.now();
     const timeDiff = now - lastTapTimeRef.current;
     const isDoubleClick = (timeDiff > 0 && timeDiff < 450) || e.detail === 2;
-    
-    if (isDoubleClick) {
-        if (clickTimerRef.current) clearTimeout(clickTimerRef.current);
-        
-        if (doubleTapMode === 'seek') {
-            const rect = containerRef.current?.getBoundingClientRect();
-            if (!rect) return;
-            const x = e.clientX - rect.left;
-            const delta = x > rect.width * 0.5 ? 10 : -10;
-            
-            const currentAccumulator = parseInt(seekOverlay?.replace(/[^0-9-]/g, '') || '0');
-            const newAccumulator = (timeDiff < 700 ? currentAccumulator : 0) + delta;
-            setSeekOverlay(`${newAccumulator > 0 ? '+' : ''}${newAccumulator}s`);
-            
-            seek(delta);
-            
-            if (seekOverlayTimerRef.current) clearTimeout(seekOverlayTimerRef.current);
-            seekOverlayTimerRef.current = setTimeout(() => { setSeekOverlay(null); }, 800);
-        } else if (doubleTapMode === 'playpause') {
-            togglePlay();
-        } else if (doubleTapMode === 'fullscreen') {
-            toggleFullscreen();
-        }
 
-        lastTapTimeRef.current = now;
-        return;
+    if (isDoubleClick) {
+      if (clickTimerRef.current) clearTimeout(clickTimerRef.current);
+
+      if (doubleTapMode === 'seek') {
+        const rect = containerRef.current?.getBoundingClientRect();
+        if (!rect) return;
+        const x = e.clientX - rect.left;
+        const delta = x > rect.width * 0.5 ? 10 : -10;
+
+        const currentAccumulator = parseInt(seekOverlay?.replace(/[^0-9-]/g, '') || '0');
+        const newAccumulator = (timeDiff < 700 ? currentAccumulator : 0) + delta;
+        setSeekOverlay(`${newAccumulator > 0 ? '+' : ''}${newAccumulator}s`);
+
+        seek(delta);
+
+        if (seekOverlayTimerRef.current) clearTimeout(seekOverlayTimerRef.current);
+        seekOverlayTimerRef.current = setTimeout(() => { setSeekOverlay(null); }, 800);
+      } else if (doubleTapMode === 'playpause') {
+        togglePlay();
+      } else if (doubleTapMode === 'fullscreen') {
+        toggleFullscreen();
+      }
+
+      lastTapTimeRef.current = now;
+      return;
     }
 
     lastTapTimeRef.current = now;
-    clickTimerRef.current = setTimeout(() => { 
-        if (showControls) { setShowControls(false); } else { showUI(); }
-        clickTimerRef.current = null; 
+    clickTimerRef.current = setTimeout(() => {
+      if (showControls) { setShowControls(false); } else { showUI(); }
+      clickTimerRef.current = null;
     }, 250);
   };
 
-  const handleSeekStart = (e: React.MouseEvent<HTMLInputElement> | React.TouchEvent<HTMLInputElement>) => { 
+  const handleSeekStart = (e: React.MouseEvent<HTMLInputElement> | React.TouchEvent<HTMLInputElement>) => {
     setIsDirectlyInteractingSeekbar(true);
-    setIsScrubbing(true); 
-    updateBuffering(false); 
+    setIsScrubbing(true);
+    updateBuffering(false);
     const rect = e.currentTarget.getBoundingClientRect();
     if (rect.width > 0) {
       setSeekbarWidth(rect.width);
@@ -1768,12 +1768,12 @@ const OmniPlayer = forwardRef<OmniPlayerRef, OmniPlayerProps>(({
 
   const handleSeekEnd = (e: React.MouseEvent<HTMLInputElement> | React.TouchEvent<HTMLInputElement>) => {
     const time = parseFloat(e.currentTarget.value);
-    if (videoRef.current) { 
-        videoRef.current.currentTime = time; 
-        setCurrentTime(time); 
-        seekTargetRef.current = null; 
+    if (videoRef.current) {
+      videoRef.current.currentTime = time;
+      setCurrentTime(time);
+      seekTargetRef.current = null;
     }
-    setIsScrubbing(false); 
+    setIsScrubbing(false);
     setIsDirectlyInteractingSeekbar(false);
     // On touch devices or touch events, ALWAYS clear hoverTime and isHoveringSeek immediately
     const isTouch = 'changedTouches' in e || 'touches' in e || (typeof window !== 'undefined' && !window.matchMedia('(hover: hover) and (pointer: fine)').matches);
@@ -1783,7 +1783,7 @@ const OmniPlayer = forwardRef<OmniPlayerRef, OmniPlayerProps>(({
     }
     syncSubtitlesAtTime(time);
     if (onSeek) onSeek(time);
-    if (canSaveRef.current) onInteract?.(); 
+    if (canSaveRef.current) onInteract?.();
   };
 
   const handleSeekHover = (e: React.MouseEvent<HTMLDivElement>) => {
@@ -1847,21 +1847,21 @@ const OmniPlayer = forwardRef<OmniPlayerRef, OmniPlayerProps>(({
 
   // --- ASYNC START TIME RECOVERY ---
   useEffect(() => {
-      if (startTime > 0 && videoRef.current && !hasSeekedStartTimeRef.current) {
-          try {
-              if (videoRef.current.readyState >= 1) {
-                  videoRef.current.currentTime = startTime;
-                  setCurrentTime(startTime);
-                  hasSeekedStartTimeRef.current = true;
-              }
-          } catch (e) {}
-      }
+    if (startTime > 0 && videoRef.current && !hasSeekedStartTimeRef.current) {
+      try {
+        if (videoRef.current.readyState >= 1) {
+          videoRef.current.currentTime = startTime;
+          setCurrentTime(startTime);
+          hasSeekedStartTimeRef.current = true;
+        }
+      } catch (e) { }
+    }
   }, [startTime]);
 
   if (useIframe && (iframeUrl || url)) {
     const activeIframeSrc = iframeUrl || url;
     return (
-      <div 
+      <div
         ref={containerRef}
         tabIndex={0}
         onKeyDown={handleKeyDown}
@@ -1886,12 +1886,12 @@ const OmniPlayer = forwardRef<OmniPlayerRef, OmniPlayerProps>(({
 
         {/* Floating Skip Intro over iframe (Left positioned, hover isolated) */}
         {showSkipIntro && (
-          <button 
+          <button
             type="button"
-            onClick={(e) => { 
-              e.stopPropagation(); 
+            onClick={(e) => {
+              e.stopPropagation();
               executeSkipIntro();
-            }} 
+            }}
             onMouseMove={(e) => e.stopPropagation()}
             onMouseEnter={(e) => e.stopPropagation()}
             onMouseOver={(e) => e.stopPropagation()}
@@ -1910,12 +1910,12 @@ const OmniPlayer = forwardRef<OmniPlayerRef, OmniPlayerProps>(({
 
         {/* Floating Skip Outro over iframe (Right positioned, hover isolated) */}
         {showSkipOutro && (
-          <button 
+          <button
             type="button"
-            onClick={(e) => { 
-              e.stopPropagation(); 
+            onClick={(e) => {
+              e.stopPropagation();
               executeSkipOutro();
-            }} 
+            }}
             onMouseMove={(e) => e.stopPropagation()}
             onMouseEnter={(e) => e.stopPropagation()}
             onMouseOver={(e) => e.stopPropagation()}
@@ -1934,11 +1934,11 @@ const OmniPlayer = forwardRef<OmniPlayerRef, OmniPlayerProps>(({
 
         {/* Next Episode prompt near end over iframe */}
         {canGoNext && onNext && currentTime >= (duration > 0 ? duration - 25 : 1415) && (
-          <button 
-            onClick={(e) => { e.stopPropagation(); onNext(); }} 
+          <button
+            onClick={(e) => { e.stopPropagation(); onNext(); }}
             className="absolute bottom-16 sm:bottom-20 right-4 sm:right-6 bg-zinc-900/90 hover:bg-zinc-800 text-white px-4 sm:px-5 py-2 rounded-full font-black text-[10px] sm:text-xs uppercase tracking-widest flex items-center gap-2 shadow-[0_8px_30px_rgba(0,0,0,0.6)] border border-white/20 transition-all animate-bounce z-50 atrax-bubbly-btn atrax-squish-tap cursor-pointer"
           >
-            Next Episode <ChevronRight size={14}/>
+            Next Episode <ChevronRight size={14} />
           </button>
         )}
       </div>
@@ -1949,22 +1949,22 @@ const OmniPlayer = forwardRef<OmniPlayerRef, OmniPlayerProps>(({
     return (
       <div className="w-full aspect-video bg-black rounded-[30px] flex items-center justify-center ring-1 ring-white/10 shadow-2xl">
         <div className="text-zinc-500 text-sm font-bold uppercase tracking-widest flex items-center gap-3">
-            <Loader2 className="w-5 h-5 animate-spin" /> No stream available
+          <Loader2 className="w-5 h-5 animate-spin" /> No stream available
         </div>
       </div>
     );
   }
 
   return (
-    <div 
+    <div
       ref={containerRef}
-      tabIndex={0} 
+      tabIndex={0}
       className={cn(
         "group relative w-full h-full bg-black overflow-hidden font-sans select-none rounded-[inherit] shadow-2xl ring-1 ring-white/10 outline-none focus:outline-none focus-visible:ring-0",
         showControls ? "cursor-auto" : "cursor-none"
       )}
-      style={{ touchAction: 'none' }} 
-      onClick={handleContainerClick} 
+      style={{ touchAction: 'none' }}
+      onClick={handleContainerClick}
       onKeyDown={handleKeyDown}
       onMouseDown={handleMouseDown}
       onMouseUp={handleMouseUp}
@@ -1974,16 +1974,16 @@ const OmniPlayer = forwardRef<OmniPlayerRef, OmniPlayerProps>(({
       onTouchMove={handleTouchMove}
       onTouchEnd={handleTouchEnd}
       onTouchCancel={handleTouchEnd}
-      onContextMenu={(e) => e.preventDefault()} 
+      onContextMenu={(e) => e.preventDefault()}
     >
       <video
         ref={videoRef}
         poster={poster}
         className="w-full h-full object-contain transition-all duration-100 outline-none focus:outline-none"
-        style={{ filter: isPiPActive ? 'none' : `brightness(${brightness})` }} 
+        style={{ filter: isPiPActive ? 'none' : `brightness(${brightness})` }}
         onPlay={() => { setIsPlaying(true); updateBuffering(false); onPlay?.(); showUI(); }}
-        onPause={() => { 
-          setIsPlaying(false); 
+        onPause={() => {
+          setIsPlaying(false);
           if (videoRef.current) {
             onProgress?.({
               playedSeconds: videoRef.current.currentTime,
@@ -1991,9 +1991,9 @@ const OmniPlayer = forwardRef<OmniPlayerRef, OmniPlayerProps>(({
               duration: videoRef.current.duration || 0
             });
           }
-          onPause?.(); 
-          if(canSaveRef.current) onInteract?.(); 
-          showUI(); 
+          onPause?.();
+          if (canSaveRef.current) onInteract?.();
+          showUI();
         }}
         onSeeked={() => {
           if (videoRef.current) {
@@ -2005,7 +2005,7 @@ const OmniPlayer = forwardRef<OmniPlayerRef, OmniPlayerProps>(({
             });
           }
         }}
-        onWaiting={() => { if(!seekOverlay) updateBuffering(true); }}
+        onWaiting={() => { if (!seekOverlay) updateBuffering(true); }}
         onPlaying={() => { updateBuffering(false); setHasStarted(true); }}
         onCanPlay={() => {
           updateBuffering(false);
@@ -2016,41 +2016,41 @@ const OmniPlayer = forwardRef<OmniPlayerRef, OmniPlayerProps>(({
                 setCurrentTime(startTime);
               }
               hasSeekedStartTimeRef.current = true;
-            } catch (err) {}
+            } catch (err) { }
           }
         }}
         onTimeUpdate={handleTimeUpdate}
         onLoadedMetadata={() => {
-            if (videoRef.current) {
-                setDuration(videoRef.current.duration || 0);
-                if (videoRef.current.videoWidth && videoRef.current.videoHeight) {
-                    const r = videoRef.current.videoWidth / videoRef.current.videoHeight;
-                    if (r > 0.3 && r < 3) {
-                        setVideoAspectRatio(r);
-                        onAspectRatioChange?.(r);
-                    }
-                }
-                if (startTime > 0 && !hasSeekedStartTimeRef.current) {
-                    try {
-                        videoRef.current.currentTime = startTime;
-                        setCurrentTime(startTime);
-                        hasSeekedStartTimeRef.current = true;
-                    } catch (err) {}
-                }
-                if (autoPlay) {
-                    videoRef.current.play().then(() => setIsPlaying(true)).catch(() => {
-                        if (videoRef.current) {
-                            videoRef.current.muted = true;
-                            setIsMuted(true);
-                            videoRef.current.play().then(() => setIsPlaying(true)).catch(() => setIsPlaying(false));
-                        }
-                    });
-                }
+          if (videoRef.current) {
+            setDuration(videoRef.current.duration || 0);
+            if (videoRef.current.videoWidth && videoRef.current.videoHeight) {
+              const r = videoRef.current.videoWidth / videoRef.current.videoHeight;
+              if (r > 0.3 && r < 3) {
+                setVideoAspectRatio(r);
+                onAspectRatioChange?.(r);
+              }
             }
+            if (startTime > 0 && !hasSeekedStartTimeRef.current) {
+              try {
+                videoRef.current.currentTime = startTime;
+                setCurrentTime(startTime);
+                hasSeekedStartTimeRef.current = true;
+              } catch (err) { }
+            }
+            if (autoPlay) {
+              videoRef.current.play().then(() => setIsPlaying(true)).catch(() => {
+                if (videoRef.current) {
+                  videoRef.current.muted = true;
+                  setIsMuted(true);
+                  videoRef.current.play().then(() => setIsPlaying(true)).catch(() => setIsPlaying(false));
+                }
+              });
+            }
+          }
         }}
-        onEnded={() => { 
-          if(canSaveRef.current) onInteract?.(); 
-          onEnded?.(); 
+        onEnded={() => {
+          if (canSaveRef.current) onInteract?.();
+          onEnded?.();
           if (!canGoNext) {
             setShowEndingOverlay(true);
           }
@@ -2059,7 +2059,7 @@ const OmniPlayer = forwardRef<OmniPlayerRef, OmniPlayerProps>(({
         {...(trackSubtitles.length > 0 ? { crossOrigin: "anonymous" } : {})}
       >
         {trackSubtitles.map((sub, i) => (
-            <track key={i} kind="captions" src={getProxiedSubUrl(sub.url || sub.file, referer)} label={sub.label} srcLang={sub.lang} default={i === currentSubtitle} />
+          <track key={i} kind="captions" src={getProxiedSubUrl(sub.url || sub.file, referer)} label={sub.label} srcLang={sub.lang} default={i === currentSubtitle} />
         ))}
       </video>
 
@@ -2085,70 +2085,70 @@ const OmniPlayer = forwardRef<OmniPlayerRef, OmniPlayerProps>(({
       />
 
       {activeCueText && currentSubtitle !== -1 && (
-          <div 
+        <div
+          className={cn(
+            "absolute z-30 pointer-events-none text-center select-none whitespace-pre-line transition-all duration-300",
+            subStyle.bg === 'Bar' ? "left-0 right-0 w-full" : "left-1/2 -translate-x-1/2 w-[92%] sm:w-[85%] max-w-4xl"
+          )}
+          style={{
+            bottom: showControls
+              ? (isMobile ? '76px' : '70px')
+              : (isMobile ? '18px' : '30px'),
+            transform: subStyle.bg === 'Bar'
+              ? `translateY(${subStyle.lift === 'High' ? (isMobile ? '-60px' : '-100px') : subStyle.lift === 'Middle' ? (isMobile ? '-28px' : '-40px') : '0px'})`
+              : `translateX(-50%) translateY(${subStyle.lift === 'High' ? (isMobile ? '-60px' : '-100px') : subStyle.lift === 'Middle' ? (isMobile ? '-28px' : '-40px') : '0px'})`,
+            transition: 'bottom 0.3s ease-in-out, transform 0.3s ease-in-out',
+            backgroundColor: subStyle.bg === 'Bar' ? `rgba(0,0,0, ${(subStyle.opacity ?? 75) / 100})` : 'transparent',
+            padding: subStyle.bg === 'Bar' ? '6px 0' : '0',
+          }}
+        >
+          <span
             className={cn(
-                "absolute z-30 pointer-events-none text-center select-none whitespace-pre-line transition-all duration-300",
-                subStyle.bg === 'Bar' ? "left-0 right-0 w-full" : "left-1/2 -translate-x-1/2 w-[92%] sm:w-[85%] max-w-4xl"
+              "px-3 py-1 sm:px-4 sm:py-1.5 rounded-lg inline-block leading-snug tracking-normal max-w-full break-words"
             )}
             style={{
-                bottom: showControls 
-                    ? (isMobile ? '76px' : '70px') 
-                    : (isMobile ? '18px' : '30px'),
-                transform: subStyle.bg === 'Bar' 
-                    ? `translateY(${subStyle.lift === 'High' ? (isMobile ? '-60px' : '-100px') : subStyle.lift === 'Middle' ? (isMobile ? '-28px' : '-40px') : '0px'})`
-                    : `translateX(-50%) translateY(${subStyle.lift === 'High' ? (isMobile ? '-60px' : '-100px') : subStyle.lift === 'Middle' ? (isMobile ? '-28px' : '-40px') : '0px'})`,
-                transition: 'bottom 0.3s ease-in-out, transform 0.3s ease-in-out',
-                backgroundColor: subStyle.bg === 'Bar' ? `rgba(0,0,0, ${(subStyle.opacity ?? 75) / 100})` : 'transparent',
-                padding: subStyle.bg === 'Bar' ? '6px 0' : '0',
+              color: SUB_COLORS[subStyle.color as keyof typeof SUB_COLORS] || '#ffffff',
+              fontSize: subStyle.size === 'Small'
+                ? (isMobile ? '12px' : 'calc(10px + 0.8vw)')
+                : subStyle.size === 'Medium'
+                  ? (isMobile ? '14px' : 'calc(14px + 1.2vw)')
+                  : subStyle.size === 'Large'
+                    ? (isMobile ? '17px' : 'calc(18px + 1.6vw)')
+                    : (isMobile ? '20px' : 'calc(22px + 2vw)'),
+              fontFamily: SUB_FONTS[subStyle.font as keyof typeof SUB_FONTS],
+              backgroundColor: subStyle.bg === 'Box' ? `rgba(0,0,0, ${(subStyle.opacity ?? 75) / 100})` : subStyle.bg === 'Blur' ? `rgba(0,0,0, ${(subStyle.opacity ?? 45) / 100})` : 'transparent',
+              backdropFilter: subStyle.bg === 'Blur' ? 'blur(8px)' : 'none',
+              textShadow: (subStyle.bg === 'Outline' || subStyle.bg === 'None' || !subStyle.bg)
+                ? `2px 2px 0px #000, -2px -2px 0px #000, 2px -2px 0px #000, -2px 2px 0px #000, 0px 2px 0px #000, 0px -2px 0px #000, 2px 0px 0px #000, -2px 0px 0px #000, 0px 0px 8px rgba(0,0,0,0.9)`
+                : 'none',
+              border: subStyle.bg === 'Blur' ? '1px solid rgba(255,255,255,0.05)' : 'none',
             }}
           >
-              <span
-                className={cn(
-                    "px-3 py-1 sm:px-4 sm:py-1.5 rounded-lg inline-block leading-snug tracking-normal max-w-full break-words"
-                )}
-                style={{
-                    color: SUB_COLORS[subStyle.color as keyof typeof SUB_COLORS] || '#ffffff',
-                    fontSize: subStyle.size === 'Small' 
-                        ? (isMobile ? '12px' : 'calc(10px + 0.8vw)') 
-                        : subStyle.size === 'Medium' 
-                        ? (isMobile ? '14px' : 'calc(14px + 1.2vw)') 
-                        : subStyle.size === 'Large' 
-                        ? (isMobile ? '17px' : 'calc(18px + 1.6vw)') 
-                        : (isMobile ? '20px' : 'calc(22px + 2vw)'),
-                    fontFamily: SUB_FONTS[subStyle.font as keyof typeof SUB_FONTS],
-                    backgroundColor: subStyle.bg === 'Box' ? `rgba(0,0,0, ${(subStyle.opacity ?? 75) / 100})` : subStyle.bg === 'Blur' ? `rgba(0,0,0, ${(subStyle.opacity ?? 45) / 100})` : 'transparent',
-                    backdropFilter: subStyle.bg === 'Blur' ? 'blur(8px)' : 'none',
-                    textShadow: (subStyle.bg === 'Outline' || subStyle.bg === 'None' || !subStyle.bg)
-                        ? `2px 2px 0px #000, -2px -2px 0px #000, 2px -2px 0px #000, -2px 2px 0px #000, 0px 2px 0px #000, 0px -2px 0px #000, 2px 0px 0px #000, -2px 0px 0px #000, 0px 0px 8px rgba(0,0,0,0.9)` 
-                        : 'none',
-                    border: subStyle.bg === 'Blur' ? '1px solid rgba(255,255,255,0.05)' : 'none',
-                }}
-              >
-                  {activeCueText.replace(/<[^>]+>/g, '')}
-              </span>
-          </div>
+            {activeCueText.replace(/<[^>]+>/g, '')}
+          </span>
+        </div>
       )}
-      
+
       {isLongPressing && (
-          <div className="absolute top-8 left-1/2 -translate-x-1/2 bg-black/60 backdrop-blur-md px-4 py-1.5 rounded-full flex items-center gap-2 text-white z-50 animate-in fade-in zoom-in-95">
-              <span className="text-[10px] font-black uppercase tracking-widest">2X Speed</span>
-              <ChevronsRight size={14} className="animate-pulse" />
-          </div>
+        <div className="absolute top-8 left-1/2 -translate-x-1/2 bg-black/60 backdrop-blur-md px-4 py-1.5 rounded-full flex items-center gap-2 text-white z-50 animate-in fade-in zoom-in-95">
+          <span className="text-[10px] font-black uppercase tracking-widest">2X Speed</span>
+          <ChevronsRight size={14} className="animate-pulse" />
+        </div>
       )}
 
       {seekOverlay && (<div className="absolute inset-0 z-50 flex items-center justify-center pointer-events-none animate-in fade-in zoom-in-50 duration-200"><div className="bg-black/50 backdrop-blur-md py-4 rounded-full text-white font-black text-3xl tracking-widest border border-white/10 shadow-2xl">{seekOverlay}</div></div>)}
       {gestureOverlay && (<div className="absolute inset-0 z-50 flex flex-col items-center justify-center pointer-events-none animate-in fade-in zoom-in-50 duration-200"><div className="bg-black/60 backdrop-blur-md p-6 rounded-full text-white border border-white/10 shadow-2xl mb-4">{gestureOverlay.icon}</div><span className="text-xl font-bold text-white text-shadow">{gestureOverlay.text}</span></div>)}
 
       {!hasStarted && !seekOverlay && !gestureOverlay && (
-          <div className="absolute inset-0 z-50 flex flex-col items-center justify-center bg-black/80 backdrop-blur-md overflow-hidden">
-              <RunHappyPlayerLoader text="LOADING STREAM..." />
-          </div>
+        <div className="absolute inset-0 z-50 flex flex-col items-center justify-center bg-black/80 backdrop-blur-md overflow-hidden">
+          <RunHappyPlayerLoader text="LOADING STREAM..." />
+        </div>
       )}
 
       {hasStarted && isBuffering && !seekOverlay && !gestureOverlay && (
-          <div className="absolute inset-0 z-50 flex flex-col items-center justify-center bg-transparent backdrop-blur-none overflow-hidden pointer-events-none">
-              <RunHappyPlayerLoader text="LOADING CRYSTALS..." transparent />
-          </div>
+        <div className="absolute inset-0 z-50 flex flex-col items-center justify-center bg-transparent backdrop-blur-none overflow-hidden pointer-events-none">
+          <RunHappyPlayerLoader text="LOADING CRYSTALS..." transparent />
+        </div>
       )}
 
       {/* Mid-Roll Sponsored Intermission Prompt */}
@@ -2158,11 +2158,11 @@ const OmniPlayer = forwardRef<OmniPlayerRef, OmniPlayerProps>(({
         onResume={() => {
           adManager.triggerMidRoll(episodeId || title || 'episode');
           setShowMidRollPrompt(false);
-          videoRef.current?.play().then(() => setIsPlaying(true)).catch(() => {});
+          videoRef.current?.play().then(() => setIsPlaying(true)).catch(() => { });
         }}
         onSkip={() => {
           setShowMidRollPrompt(false);
-          videoRef.current?.play().then(() => setIsPlaying(true)).catch(() => {});
+          videoRef.current?.play().then(() => setIsPlaying(true)).catch(() => { });
         }}
       />
 
@@ -2177,26 +2177,26 @@ const OmniPlayer = forwardRef<OmniPlayerRef, OmniPlayerProps>(({
         status={status}
         nextAiringEpisode={nextAiringEpisode}
       />
-      
+
       {/* Title Island with Cast */}
       <div className={cn("absolute top-2 md:top-4 left-1/2 -translate-x-1/2 z-40 transition-all duration-500 max-w-[90%] w-auto", (showControls && !showEndingOverlay) ? "opacity-100 translate-y-0" : "opacity-0 -translate-y-10 pointer-events-none")}>
-          <div ref={titleContainerRef} className="bg-black/60 md:bg-black/80 border border-white/10 rounded-full px-4 py-1.5 md:py-2 shadow-2xl backdrop-blur-md flex items-center gap-3 overflow-hidden pointer-events-auto">
-              
-              
-              <div className="overflow-hidden w-full relative h-4 flex items-center">
-                  <span ref={titleTextRef} className={cn("text-[9px] md:text-[10px] font-black text-gray-200 uppercase tracking-widest whitespace-nowrap", isTitleOverflowing && "animate-marquee-slow")}>{title || "OmniPlayer"}</span>
-              </div>
+        <div ref={titleContainerRef} className="bg-black/60 md:bg-black/80 border border-white/10 rounded-full px-4 py-1.5 md:py-2 shadow-2xl backdrop-blur-md flex items-center gap-3 overflow-hidden pointer-events-auto">
 
-              {castAvailable && (
-                  <button onClick={(e)=>{e.stopPropagation(); handleCast()}} className="text-primary-500 hover:text-white transition-colors hover:animate-pulse shrink-0">
-                      <Cast size={12} />
-                  </button>
-              )}
+
+          <div className="overflow-hidden w-full relative h-4 flex items-center">
+            <span ref={titleTextRef} className={cn("text-[9px] md:text-[10px] font-black text-gray-200 uppercase tracking-widest whitespace-nowrap", isTitleOverflowing && "animate-marquee-slow")}>{title || "OmniPlayer"}</span>
           </div>
+
+          {castAvailable && (
+            <button onClick={(e) => { e.stopPropagation(); handleCast() }} className="text-primary-500 hover:text-white transition-colors hover:animate-pulse shrink-0">
+              <Cast size={12} />
+            </button>
+          )}
+        </div>
       </div>
-      
+
       {/* Center Controls Cluster (Play/Pause flanked by Mobile Quick Seek -10s / +10s) */}
-      <div 
+      <div
         className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 pointer-events-none z-40 flex items-center justify-center gap-6 sm:gap-8 md:gap-0"
         style={{
           top: '50%',
@@ -2204,57 +2204,57 @@ const OmniPlayer = forwardRef<OmniPlayerRef, OmniPlayerProps>(({
           transform: 'translate(-50%, -50%)',
         }}
       >
-          {!isBuffering && !seekOverlay && !gestureOverlay && !showEndingOverlay && (
-            <>
-              {/* Mobile Quick Rewind 10s (Hidden on desktop to preserve desktop UI) */}
-              <button
-                type="button"
-                onClick={(e) => { e.stopPropagation(); seek(-10); }}
-                className={cn(
-                  "md:hidden pointer-events-auto flex flex-col items-center justify-center w-11 h-11 sm:w-12 sm:h-12 rounded-full bg-black/45 border border-white/20 backdrop-blur-xl active:scale-90 active:bg-white/20 transition-all duration-200 text-white shadow-[0_4px_16px_rgba(0,0,0,0.5)] select-none",
-                  showControls ? "opacity-100 scale-100" : "opacity-0 scale-75 pointer-events-none"
-                )}
-                title="Rewind 10s"
-              >
-                <RotateCcw size={18} className="text-white drop-shadow" />
-                <span className="text-[9px] font-black tracking-tight leading-none text-white mt-0.5">10</span>
-              </button>
+        {!isBuffering && !seekOverlay && !gestureOverlay && !showEndingOverlay && (
+          <>
+            {/* Mobile Quick Rewind 10s (Hidden on desktop to preserve desktop UI) */}
+            <button
+              type="button"
+              onClick={(e) => { e.stopPropagation(); seek(-10); }}
+              className={cn(
+                "md:hidden pointer-events-auto flex flex-col items-center justify-center w-11 h-11 sm:w-12 sm:h-12 rounded-full bg-black/45 border border-white/20 backdrop-blur-xl active:scale-90 active:bg-white/20 transition-all duration-200 text-white shadow-[0_4px_16px_rgba(0,0,0,0.5)] select-none",
+                showControls ? "opacity-100 scale-100" : "opacity-0 scale-75 pointer-events-none"
+              )}
+              title="Rewind 10s"
+            >
+              <RotateCcw size={18} className="text-white drop-shadow" />
+              <span className="text-[9px] font-black tracking-tight leading-none text-white mt-0.5">10</span>
+            </button>
 
-              <div 
-                onClick={(e) => { e.stopPropagation(); togglePlay(); }} 
-                style={{
-                  width: `${playBtnSize}px`,
-                  height: `${playBtnSize}px`,
-                }}
-                className={cn("group/playbtn relative aspect-square rounded-full shrink-0 flex items-center justify-center pointer-events-auto cursor-pointer active:scale-95 transition-all duration-300", showControls ? "opacity-100 scale-100 hover:scale-110" : "opacity-0 scale-150 pointer-events-none")}
-              >
-                  {/* Glowing Liquid Glass Background */}
-                  <div className="absolute inset-0 rounded-full bg-white/25 backdrop-blur-2xl border border-white/40 shadow-[0_0_30px_rgba(255,255,255,0.3),inset_0_2px_4px_rgba(255,255,255,0.6)] group-hover/playbtn:bg-white/40 group-hover/playbtn:border-white/60 group-hover/playbtn:shadow-[0_0_45px_rgba(255,255,255,0.6)] transition-all duration-500 overflow-hidden">
-                      {/* Glass Shine */}
-                      <div className="absolute inset-0 bg-gradient-to-b from-white/70 to-transparent opacity-50 -translate-y-[40%] rounded-[100%] pointer-events-none" />
-                  </div>
-                  {isPlaying ? (
-                    <Pause fill="white" className="w-[44%] h-[44%] relative z-10 text-white drop-shadow-[0_2px_8px_rgba(0,0,0,0.8)] transition-transform duration-300 group-hover/playbtn:scale-110" />
-                  ) : (
-                    <Play fill="white" className="ml-1 w-[44%] h-[44%] relative z-10 text-white drop-shadow-[0_2px_8px_rgba(0,0,0,0.8)] transition-transform duration-300 group-hover/playbtn:scale-110" />
-                  )}
+            <div
+              onClick={(e) => { e.stopPropagation(); togglePlay(); }}
+              style={{
+                width: `${playBtnSize}px`,
+                height: `${playBtnSize}px`,
+              }}
+              className={cn("group/playbtn relative aspect-square rounded-full shrink-0 flex items-center justify-center pointer-events-auto cursor-pointer active:scale-95 transition-all duration-300", showControls ? "opacity-100 scale-100 hover:scale-110" : "opacity-0 scale-150 pointer-events-none")}
+            >
+              {/* Glowing Liquid Glass Background */}
+              <div className="absolute inset-0 rounded-full bg-white/25 backdrop-blur-2xl border border-white/40 shadow-[0_0_30px_rgba(255,255,255,0.3),inset_0_2px_4px_rgba(255,255,255,0.6)] group-hover/playbtn:bg-white/40 group-hover/playbtn:border-white/60 group-hover/playbtn:shadow-[0_0_45px_rgba(255,255,255,0.6)] transition-all duration-500 overflow-hidden">
+                {/* Glass Shine */}
+                <div className="absolute inset-0 bg-gradient-to-b from-white/70 to-transparent opacity-50 -translate-y-[40%] rounded-[100%] pointer-events-none" />
               </div>
+              {isPlaying ? (
+                <Pause fill="white" className="w-[44%] h-[44%] relative z-10 text-white drop-shadow-[0_2px_8px_rgba(0,0,0,0.8)] transition-transform duration-300 group-hover/playbtn:scale-110" />
+              ) : (
+                <Play fill="white" className="ml-1 w-[44%] h-[44%] relative z-10 text-white drop-shadow-[0_2px_8px_rgba(0,0,0,0.8)] transition-transform duration-300 group-hover/playbtn:scale-110" />
+              )}
+            </div>
 
-              {/* Mobile Quick Fast-Forward 10s (Hidden on desktop to preserve desktop UI) */}
-              <button
-                type="button"
-                onClick={(e) => { e.stopPropagation(); seek(10); }}
-                className={cn(
-                  "md:hidden pointer-events-auto flex flex-col items-center justify-center w-11 h-11 sm:w-12 sm:h-12 rounded-full bg-black/45 border border-white/20 backdrop-blur-xl active:scale-90 active:bg-white/20 transition-all duration-200 text-white shadow-[0_4px_16px_rgba(0,0,0,0.5)] select-none",
-                  showControls ? "opacity-100 scale-100" : "opacity-0 scale-75 pointer-events-none"
-                )}
-                title="Forward 10s"
-              >
-                <RotateCw size={18} className="text-white drop-shadow" />
-                <span className="text-[9px] font-black tracking-tight leading-none text-white mt-0.5">10</span>
-              </button>
-            </>
-          )}
+            {/* Mobile Quick Fast-Forward 10s (Hidden on desktop to preserve desktop UI) */}
+            <button
+              type="button"
+              onClick={(e) => { e.stopPropagation(); seek(10); }}
+              className={cn(
+                "md:hidden pointer-events-auto flex flex-col items-center justify-center w-11 h-11 sm:w-12 sm:h-12 rounded-full bg-black/45 border border-white/20 backdrop-blur-xl active:scale-90 active:bg-white/20 transition-all duration-200 text-white shadow-[0_4px_16px_rgba(0,0,0,0.5)] select-none",
+                showControls ? "opacity-100 scale-100" : "opacity-0 scale-75 pointer-events-none"
+              )}
+              title="Forward 10s"
+            >
+              <RotateCw size={18} className="text-white drop-shadow" />
+              <span className="text-[9px] font-black tracking-tight leading-none text-white mt-0.5">10</span>
+            </button>
+          </>
+        )}
       </div>
 
       <div className={cn("absolute inset-0 bg-gradient-to-t from-black/90 via-transparent to-transparent flex flex-col justify-end px-3 pb-2 md:px-5 md:pb-3 transition-opacity duration-300 z-[60] pointer-events-none", (showControls && !showEndingOverlay) ? "opacity-100" : "opacity-0 pointer-events-none")}>
@@ -2264,29 +2264,29 @@ const OmniPlayer = forwardRef<OmniPlayerRef, OmniPlayerProps>(({
           // - On mobile / touch devices: ONLY while actively touching & scrubbing the seekbar (isScrubbing === true)
           // - On desktop with mouse: while scrubbing OR while actively hovering over the seekbar with mouse (isHoveringSeek && hoverTime !== null)
           const showPreview = duration > 0 && isDirectlyInteractingSeekbar && (
-            isTouchOnly 
-              ? isScrubbing 
+            isTouchOnly
+              ? isScrubbing
               : (isScrubbing || (hoverTime !== null && isHoveringSeek))
           );
           const previewTime = isScrubbing ? (hoverTime ?? currentTime) : (hoverTime ?? 0);
           const previewPos = duration > 0 ? (previewTime / duration) * 100 : 0;
           const currentVideoTime = useIframe ? iframeTimeRef.current : (videoRef.current?.currentTime || 0);
           const seekDeltaSeconds = Math.round(previewTime - currentVideoTime);
-          const seekDelta = seekDeltaSeconds > 0 
-            ? `+${formatTime(seekDeltaSeconds)}` 
-            : seekDeltaSeconds < 0 
-            ? `-${formatTime(Math.abs(seekDeltaSeconds))}` 
-            : '0s';
+          const seekDelta = seekDeltaSeconds > 0
+            ? `+${formatTime(seekDeltaSeconds)}`
+            : seekDeltaSeconds < 0
+              ? `-${formatTime(Math.abs(seekDeltaSeconds))}`
+              : '0s';
 
           const activeThumbnail = thumbnailCuesRef.current.find(c => previewTime >= c.start && previewTime <= c.end);
 
           // Card centering & Arrow precision calculations
           const cardHalfWidth = 88; // 176px total card width / 2
           const hasMeasuredWidth = seekbarWidth > 0;
-          const cardLeftPx = hasMeasuredWidth 
-            ? Math.max(cardHalfWidth, Math.min(seekbarWidth - cardHalfWidth, hoverPixelX)) 
+          const cardLeftPx = hasMeasuredWidth
+            ? Math.max(cardHalfWidth, Math.min(seekbarWidth - cardHalfWidth, hoverPixelX))
             : null;
-          
+
           // Down Arrow offset from card center to directly pinpoint the cursor
           const rawArrowDiff = (cardLeftPx !== null) ? hoverPixelX - cardLeftPx : 0;
           const arrowOffsetPx = Math.max(-cardHalfWidth + 14, Math.min(cardHalfWidth - 14, rawArrowDiff));
@@ -2324,9 +2324,9 @@ const OmniPlayer = forwardRef<OmniPlayerRef, OmniPlayerProps>(({
           }
 
           return (
-            <div 
-              className="group/seek relative w-full h-4 sm:h-5 flex items-center cursor-pointer mb-1.5 md:mb-2 pointer-events-auto select-none" 
-              onMouseMove={handleSeekHover} 
+            <div
+              className="group/seek relative w-full h-4 sm:h-5 flex items-center cursor-pointer mb-1.5 md:mb-2 pointer-events-auto select-none"
+              onMouseMove={handleSeekHover}
               onMouseEnter={(e) => {
                 if (typeof window !== 'undefined' && !window.matchMedia('(hover: hover) and (pointer: fine)').matches) return;
                 setIsHoveringSeek(true);
@@ -2337,20 +2337,20 @@ const OmniPlayer = forwardRef<OmniPlayerRef, OmniPlayerProps>(({
               onMouseLeave={() => { setHoverTime(null); setIsHoveringSeek(false); setIsDirectlyInteractingSeekbar(false); }}
             >
               {/* Seek Preview Tooltip / Card (Strictly centered with cursor, Gummy Jelly Motion Pop) */}
-              <div 
-                style={{ 
+              <div
+                style={{
                   left: cardLeftPx !== null ? `${cardLeftPx}px` : `clamp(90px, ${previewPos}%, calc(100% - 90px))`,
                 }}
                 className="absolute bottom-5 md:bottom-6.5 -translate-x-1/2 z-[75] pointer-events-none select-none flex flex-col items-center"
               >
                 <AnimatePresence>
                   {showPreview && duration > 0 && (
-                    <motion.div 
+                    <motion.div
                       key="omni-seekbar-preview"
                       initial={{ opacity: 0, scale: 0.7, y: 12 }}
-                      animate={{ 
-                        opacity: 1, 
-                        scale: 1, 
+                      animate={{
+                        opacity: 1,
+                        scale: 1,
                         y: 0,
                         transition: {
                           type: "spring",
@@ -2359,9 +2359,9 @@ const OmniPlayer = forwardRef<OmniPlayerRef, OmniPlayerProps>(({
                           mass: 0.7
                         }
                       }}
-                      exit={{ 
-                        opacity: 0, 
-                        scale: 0.7, 
+                      exit={{
+                        opacity: 0,
+                        scale: 0.7,
                         y: 8,
                         transition: {
                           duration: 0.12,
@@ -2373,7 +2373,7 @@ const OmniPlayer = forwardRef<OmniPlayerRef, OmniPlayerProps>(({
                       <div className="bg-zinc-950/95 backdrop-blur-2xl border border-white/20 rounded-2xl shadow-[0_12px_40px_rgba(0,0,0,0.9)] p-2 flex flex-col items-center gap-1.5 min-w-[120px]">
                         {/* Thumbnail Preview Frame */}
                         {activeThumbnail ? (
-                          <div 
+                          <div
                             className="w-[140px] h-[79px] sm:w-[160px] sm:h-[90px] rounded-xl overflow-hidden border border-white/10 relative bg-black shrink-0"
                             style={activeThumbnail.w ? {
                               backgroundImage: `url(${getProxiedSubUrl(activeThumbnail.url, referer)})`,
@@ -2382,16 +2382,16 @@ const OmniPlayer = forwardRef<OmniPlayerRef, OmniPlayerProps>(({
                             } : {}}
                           >
                             {!activeThumbnail.w && (
-                              <img 
-                                src={getProxiedSubUrl(activeThumbnail.url, referer)} 
-                                alt="preview" 
-                                className="w-full h-full object-cover" 
+                              <img
+                                src={getProxiedSubUrl(activeThumbnail.url, referer)}
+                                alt="preview"
+                                className="w-full h-full object-cover"
                               />
                             )}
                           </div>
                         ) : (
                           <div className="w-[140px] h-[79px] sm:w-[160px] sm:h-[90px] rounded-xl overflow-hidden border border-white/10 relative bg-zinc-950 shrink-0 flex items-center justify-center">
-                            <canvas 
+                            <canvas
                               ref={previewCanvasRef}
                               width={160}
                               height={90}
@@ -2441,7 +2441,7 @@ const OmniPlayer = forwardRef<OmniPlayerRef, OmniPlayerProps>(({
                       </div>
 
                       {/* Tooltip Down Arrow (Accurately points directly to cursor across entire timeline) */}
-                      <div 
+                      <div
                         style={{
                           transform: `translateX(${arrowOffsetPx}px) rotate(45deg)`,
                         }}
@@ -2453,13 +2453,13 @@ const OmniPlayer = forwardRef<OmniPlayerRef, OmniPlayerProps>(({
               </div>
 
               {/* Track Bar with Buffer, Chapter Segments & Complete 100% Transparent Cuts */}
-              <div 
+              <div
                 className="absolute top-1/2 -translate-y-1/2 w-full h-1 group-hover/seek:h-2 bg-white/20 rounded-full overflow-hidden transition-all duration-200"
                 style={cutMask ? { maskImage: cutMask, WebkitMaskImage: cutMask } : undefined}
               >
                 {/* Buffered Progress */}
                 {duration > 0 && bufferedEnd > 0 && (
-                  <div 
+                  <div
                     className="absolute inset-y-0 left-0 bg-white/25 transition-all duration-300 pointer-events-none"
                     style={{ width: `${Math.min(100, (bufferedEnd / duration) * 100)}%` }}
                   />
@@ -2467,7 +2467,7 @@ const OmniPlayer = forwardRef<OmniPlayerRef, OmniPlayerProps>(({
 
                 {/* Skip Intro Zone Highlight */}
                 {hasIntro && (
-                  <div 
+                  <div
                     className="absolute inset-y-0 bg-amber-400/80 shadow-[0_0_8px_rgba(251,191,36,0.6)] z-[2] pointer-events-none transition-opacity"
                     style={{ left: `${introStartPct}%`, width: `${introWidthPct}%` }}
                   />
@@ -2475,237 +2475,237 @@ const OmniPlayer = forwardRef<OmniPlayerRef, OmniPlayerProps>(({
 
                 {/* Skip Outro Zone Highlight */}
                 {hasOutro && (
-                  <div 
+                  <div
                     className="absolute inset-y-0 bg-indigo-400/80 shadow-[0_0_8px_rgba(129,140,248,0.6)] z-[2] pointer-events-none transition-opacity"
                     style={{ left: `${outroStartPct}%`, width: `${outroWidthPct}%` }}
                   />
                 )}
 
                 {/* Played Progress Bar */}
-                <div 
-                  className="h-full bg-gradient-to-r from-primary-600 to-primary-500 relative z-[3]" 
-                  style={{ width: `${Math.min(100, Math.max(0, (currentTime / (duration || 1)) * 100))}%` }} 
+                <div
+                  className="h-full bg-gradient-to-r from-primary-600 to-primary-500 relative z-[3]"
+                  style={{ width: `${Math.min(100, Math.max(0, (currentTime / (duration || 1)) * 100))}%` }}
                 />
               </div>
 
               {/* Seek Thumb */}
-              <div 
-                className="absolute top-1/2 -translate-y-1/2 w-3.5 h-3.5 md:w-4 md:h-4 bg-white border-2 border-primary-500 rounded-full shadow-[0_0_12px_rgba(255,255,255,0.9)] scale-0 group-hover/seek:scale-100 transition-transform pointer-events-none z-[5]" 
-                style={{ left: `calc(${Math.min(Math.max((currentTime / (duration || 1)) * 100, 0), 100)}% - 8px)` }} 
+              <div
+                className="absolute top-1/2 -translate-y-1/2 w-3.5 h-3.5 md:w-4 md:h-4 bg-white border-2 border-primary-500 rounded-full shadow-[0_0_12px_rgba(255,255,255,0.9)] scale-0 group-hover/seek:scale-100 transition-transform pointer-events-none z-[5]"
+                style={{ left: `calc(${Math.min(Math.max((currentTime / (duration || 1)) * 100, 0), 100)}% - 8px)` }}
               />
 
               {/* Range input for scrubbing and dragging */}
-              <input 
-                type="range" 
-                min={0} 
-                max={duration || 100} 
-                step="0.1" 
-                value={currentTime} 
-                onMouseDown={handleSeekStart} 
-                onTouchStart={handleSeekStart} 
-                onChange={handleSeekChange} 
+              <input
+                type="range"
+                min={0}
+                max={duration || 100}
+                step="0.1"
+                value={currentTime}
+                onMouseDown={handleSeekStart}
+                onTouchStart={handleSeekStart}
+                onChange={handleSeekChange}
                 onTouchMove={handleTouchSeek}
-                onMouseUp={handleSeekEnd} 
-                onTouchEnd={handleSeekEnd} 
-                onTouchCancel={handleSeekEnd} 
-                className="absolute inset-0 w-full h-full opacity-0 cursor-pointer pointer-events-auto z-10" 
-                onClick={(e) => e.stopPropagation()} 
+                onMouseUp={handleSeekEnd}
+                onTouchEnd={handleSeekEnd}
+                onTouchCancel={handleSeekEnd}
+                className="absolute inset-0 w-full h-full opacity-0 cursor-pointer pointer-events-auto z-10"
+                onClick={(e) => e.stopPropagation()}
               />
             </div>
           );
         })()}
 
         <div className="flex items-center justify-between pointer-events-auto">
-           {/* Left Controls */}
-           <div className="flex items-center gap-1.5 sm:gap-2 md:gap-3.5">
-              <button 
-                onClick={(e) => { e.stopPropagation(); togglePlay(); }} 
-                className="hover:text-primary-500 transition-colors active:scale-90 w-9 h-9 sm:w-10 sm:h-10 md:w-auto md:h-auto flex items-center justify-center p-1 md:p-0 text-white"
-                title={isPlaying ? "Pause" : "Play"}
+          {/* Left Controls */}
+          <div className="flex items-center gap-1.5 sm:gap-2 md:gap-3.5">
+            <button
+              onClick={(e) => { e.stopPropagation(); togglePlay(); }}
+              className="hover:text-primary-500 transition-colors active:scale-90 w-9 h-9 sm:w-10 sm:h-10 md:w-auto md:h-auto flex items-center justify-center p-1 md:p-0 text-white"
+              title={isPlaying ? "Pause" : "Play"}
+            >
+              {isPlaying ? <Pause size={19} className="md:w-5 md:h-5" /> : <Play size={19} className="md:w-5 md:h-5" />}
+            </button>
+
+            {/* Next Episode Button on Mobile (Only when onNext is available) */}
+            {canGoNext && onNext && (
+              <button
+                type="button"
+                onClick={(e) => { e.stopPropagation(); onNext(); }}
+                className="md:hidden flex items-center justify-center w-8 h-8 rounded-full text-zinc-300 hover:text-white active:scale-90 transition-all"
+                title="Next Episode"
               >
-                {isPlaying ? <Pause size={19} className="md:w-5 md:h-5" /> : <Play size={19} className="md:w-5 md:h-5" />}
+                <SkipForward size={16} />
               </button>
+            )}
 
-              {/* Next Episode Button on Mobile (Only when onNext is available) */}
-              {canGoNext && onNext && (
-                <button
-                  type="button"
-                  onClick={(e) => { e.stopPropagation(); onNext(); }}
-                  className="md:hidden flex items-center justify-center w-8 h-8 rounded-full text-zinc-300 hover:text-white active:scale-90 transition-all"
-                  title="Next Episode"
-                >
-                  <SkipForward size={16} />
-                </button>
-              )}
-              
-              {/* Video Timestamp directly to the right of Play/Pause button */}
-              <div className="text-[10.5px] sm:text-[11px] md:text-[10px] font-bold text-zinc-400 font-mono shrink-0 select-none flex items-center gap-1">
-                <span className="text-white font-black">{formatTime(currentTime)}</span>
-                <span className="text-zinc-600">/</span>
-                <span>{formatTime(duration)}</span>
+            {/* Video Timestamp directly to the right of Play/Pause button */}
+            <div className="text-[10.5px] sm:text-[11px] md:text-[10px] font-bold text-zinc-400 font-mono shrink-0 select-none flex items-center gap-1">
+              <span className="text-white font-black">{formatTime(currentTime)}</span>
+              <span className="text-zinc-600">/</span>
+              <span>{formatTime(duration)}</span>
+            </div>
+
+            {/* Desktop-only -10s / +10s seek buttons */}
+            <div className="hidden md:flex items-center gap-1 md:gap-2.5">
+              <button onClick={(e) => { e.stopPropagation(); seek(-10); }} className="flex items-center gap-0.5 group/btn px-1.5 py-0.5 md:px-2 md:py-0.5 rounded-full border border-white/20 hover:border-primary-500 hover:bg-primary-500/10 transition-all active:scale-95"><ChevronsLeft size={11} className="md:w-3 text-white group-hover/btn:text-primary-500 transition-colors" /><span className="text-[8px] md:text-[9px] font-black text-white group-hover/btn:text-primary-500 transition-colors">10</span></button>
+              <button onClick={(e) => { e.stopPropagation(); seek(10); }} className="flex items-center gap-0.5 group/btn px-1.5 py-0.5 md:px-2 md:py-0.5 rounded-full border border-white/20 hover:border-primary-500 hover:bg-primary-500/10 transition-all active:scale-95"><span className="text-[8px] md:text-[9px] font-black text-white group-hover/btn:text-primary-500 transition-colors">10</span><ChevronsRight size={11} className="md:w-3 text-white group-hover/btn:text-primary-500 transition-colors" /></button>
+            </div>
+
+            {/* Volume Slider: Hidden on mobile (uses hardware buttons), full on desktop */}
+            <div className="hidden md:flex items-center gap-1 md:gap-2 group/vol">
+              <button onClick={(e) => { e.stopPropagation(); toggleMute(); }} className="p-1.5 md:p-0">
+                {isMuted || volume === 0 ? <VolumeX size={18} className="md:w-4.5 md:h-4.5" /> : <Volume2 size={18} className="md:w-4.5 md:h-4.5" />}
+              </button>
+              <div className="w-0 overflow-hidden md:group-hover/vol:w-20 active:w-20 transition-all duration-300 flex items-center">
+                <input
+                  type="range"
+                  min="0"
+                  max="1"
+                  step="0.05"
+                  value={isMuted ? 0 : volume}
+                  onChange={handleVolumeChange}
+                  className="w-16 md:w-full h-1 accent-red-600 cursor-pointer bg-white/20 rounded-full pointer-events-auto"
+                  onClick={(e) => e.stopPropagation()}
+                  onTouchStart={(e) => e.stopPropagation()}
+                  onTouchMove={(e) => e.stopPropagation()}
+                />
               </div>
+            </div>
+          </div>
 
-              {/* Desktop-only -10s / +10s seek buttons */}
-              <div className="hidden md:flex items-center gap-1 md:gap-2.5">
-                  <button onClick={(e) => { e.stopPropagation(); seek(-10); }} className="flex items-center gap-0.5 group/btn px-1.5 py-0.5 md:px-2 md:py-0.5 rounded-full border border-white/20 hover:border-primary-500 hover:bg-primary-500/10 transition-all active:scale-95"><ChevronsLeft size={11} className="md:w-3 text-white group-hover/btn:text-primary-500 transition-colors"/><span className="text-[8px] md:text-[9px] font-black text-white group-hover/btn:text-primary-500 transition-colors">10</span></button>
-                  <button onClick={(e) => { e.stopPropagation(); seek(10); }} className="flex items-center gap-0.5 group/btn px-1.5 py-0.5 md:px-2 md:py-0.5 rounded-full border border-white/20 hover:border-primary-500 hover:bg-primary-500/10 transition-all active:scale-95"><span className="text-[8px] md:text-[9px] font-black text-white group-hover/btn:text-primary-500 transition-colors">10</span><ChevronsRight size={11} className="md:w-3 text-white group-hover/btn:text-primary-500 transition-colors"/></button>
-              </div>
+          {/* Right Controls */}
+          <div className="flex items-center gap-1 sm:gap-2 md:gap-4 relative">
+            <div className="relative">
+              <button onClick={(e) => { e.stopPropagation(); setActiveMenu(activeMenu === 'main' ? 'none' : 'main'); }} className={cn("hover:text-primary-500 transition-colors active:scale-90 group w-9 h-9 sm:w-10 sm:h-10 md:w-auto md:h-auto flex items-center justify-center p-1 md:p-0", activeMenu !== 'none' && activeMenu !== 'audio' && activeMenu !== 'subs' && "text-primary-500")}><Settings size={18} className={cn("md:w-4.5 md:h-4.5 transition-transform duration-300", (activeMenu !== 'none' && activeMenu !== 'audio' && activeMenu !== 'subs') ? "rotate-90 text-primary-500" : "rotate-0")} /></button>
 
-              {/* Volume Slider: Hidden on mobile (uses hardware buttons), full on desktop */}
-              <div className="hidden md:flex items-center gap-1 md:gap-2 group/vol">
-                <button onClick={(e) => { e.stopPropagation(); toggleMute(); }} className="p-1.5 md:p-0">
-                  {isMuted || volume === 0 ? <VolumeX size={18} className="md:w-4.5 md:h-4.5"/> : <Volume2 size={18} className="md:w-4.5 md:h-4.5"/>}
-                </button>
-                <div className="w-0 overflow-hidden md:group-hover/vol:w-20 active:w-20 transition-all duration-300 flex items-center">
-                  <input 
-                    type="range" 
-                    min="0" 
-                    max="1" 
-                    step="0.05" 
-                    value={isMuted ? 0 : volume} 
-                    onChange={handleVolumeChange} 
-                    className="w-16 md:w-full h-1 accent-red-600 cursor-pointer bg-white/20 rounded-full pointer-events-auto" 
-                    onClick={(e) => e.stopPropagation()} 
-                    onTouchStart={(e) => e.stopPropagation()} 
-                    onTouchMove={(e) => e.stopPropagation()} 
-                  />
+              {activeMenu === 'main' && (
+                <div data-player-menu="true" role="menu" onClick={(e) => e.stopPropagation()} onTouchStart={(e) => e.stopPropagation()} onTouchMove={(e) => e.stopPropagation()} onTouchEnd={(e) => e.stopPropagation()} className="absolute bottom-11 sm:bottom-12 right-0 bg-zinc-950/95 backdrop-blur-3xl border border-white/10 ring-1 ring-white/10 rounded-2xl shadow-[0_8px_40px_rgba(0,0,0,0.85)] p-2 w-48 sm:w-56 max-w-[calc(100vw-24px)] max-h-[calc(100%-52px)] sm:max-h-[min(70vh,280px)] md:max-h-[380px] overflow-y-auto overscroll-contain z-[75] flex flex-col gap-1 animate-in slide-in-from-bottom-2">
+                  <button onClick={(e) => { e.stopPropagation(); setActiveMenu('quality') }} className="flex items-center justify-between w-full px-2.5 py-1.5 rounded-xl hover:bg-white/10 hover:shadow-inner text-left text-[10px] sm:text-xs font-bold transition-all"><div className="flex items-center gap-1.5"><Settings size={13} /> Quality</div><span className="text-zinc-400 text-[9px] sm:text-[10px] truncate ml-2">{currentQuality === -1 ? autoResolutionText : `${qualities.find(q => q.index === currentQuality)?.height}p`}</span></button>
+                  <button onClick={(e) => { e.stopPropagation(); setActiveMenu('speed') }} className="flex items-center justify-between w-full px-2.5 py-1.5 rounded-xl hover:bg-white/10 hover:shadow-inner text-left text-[10px] sm:text-xs font-bold transition-all"><div className="flex items-center gap-1.5"><Gauge size={13} /> Speed</div><span className="text-zinc-400 text-[9px] sm:text-[10px]">{speed}x</span></button>
+                  <button onClick={(e) => { e.stopPropagation(); setActiveMenu('gestures') }} className="flex items-center justify-between w-full px-2.5 py-1.5 rounded-xl hover:bg-white/10 hover:shadow-inner text-left text-[10px] sm:text-xs font-bold transition-all"><div className="flex items-center gap-1.5"><MousePointerClick size={13} /> Gestures</div><span className="text-zinc-400 uppercase text-[9px] sm:text-[10px]">{doubleTapMode}</span></button>
+
+                  {castAvailable && (
+                    <button onClick={(e) => { e.stopPropagation(); handleCast(); setActiveMenu('none') }} className="lg:hidden flex items-center justify-between w-full px-2.5 py-1.5 rounded-xl hover:bg-white/10 hover:shadow-inner text-left text-[10px] sm:text-xs font-bold transition-all"><div className="flex items-center gap-1.5"><Cast size={13} /> Cast</div></button>
+                  )}
+                  <div className="lg:hidden border-t border-white/10 mt-1 pt-1">
+                    <button onClick={(e) => { e.stopPropagation(); setActiveMenu('vGesture') }} className="flex items-center justify-between w-full px-2.5 py-1.5 rounded-xl hover:bg-white/10 hover:shadow-inner text-left text-[10px] sm:text-xs font-bold transition-all"><div className="flex items-center gap-1.5"><MoveVertical size={13} /> V-Swipe</div><span className="text-zinc-400 text-[9px] uppercase">{verticalGesture === 'vol_bright' ? 'Vol/Bri' : verticalGesture}</span></button>
+                    <button onClick={(e) => { e.stopPropagation(); setActiveMenu('hGesture') }} className="flex items-center justify-between w-full px-2.5 py-1.5 rounded-xl hover:bg-white/10 hover:shadow-inner text-left text-[10px] sm:text-xs font-bold transition-all"><div className="flex items-center gap-1.5"><MoveHorizontal size={13} /> H-Swipe</div><span className="text-zinc-400 text-[9px] uppercase">{horizontalGesture === 'nav' ? 'Next/Prev' : horizontalGesture}</span></button>
+                  </div>
                 </div>
-              </div>
-           </div>
+              )}
+              {activeMenu === 'vGesture' && (
+                <div data-player-menu="true" role="menu" onClick={(e) => e.stopPropagation()} onTouchStart={(e) => e.stopPropagation()} onTouchMove={(e) => e.stopPropagation()} onTouchEnd={(e) => e.stopPropagation()} className="absolute bottom-11 sm:bottom-12 right-0 bg-zinc-950/95 backdrop-blur-3xl border border-white/10 ring-1 ring-white/10 rounded-2xl shadow-[0_8px_40px_rgba(0,0,0,0.85)] p-2 w-44 sm:w-52 max-w-[calc(100vw-24px)] max-h-[calc(100%-52px)] sm:max-h-[min(70vh,280px)] md:max-h-[360px] overflow-y-auto overscroll-contain z-[75] flex flex-col gap-1 animate-in slide-in-from-bottom-2">
+                  <button onClick={(e) => { e.stopPropagation(); setActiveMenu('main') }} className="flex items-center gap-1.5 text-[10px] px-2 py-1 font-black text-zinc-400 border-b border-white/10 mb-0.5"><ChevronLeft size={13} /> BACK</button>
+                  {['vol_bright', 'fullscreen', 'none'].map(m => (<button key={m} onClick={(e) => { e.stopPropagation(); updateLocalPrefs({ verticalGesture: m }); setActiveMenu('main') }} className={cn("text-[10px] px-2.5 py-1.5 rounded-xl text-left font-bold uppercase transition-all", verticalGesture === m ? "bg-gradient-to-r from-primary-600 to-primary-500 text-white shadow-md shadow-primary-500/25 border border-primary-500/50" : "hover:bg-white/10 hover:shadow-inner text-zinc-400")}>{m === 'vol_bright' ? 'Vol/Bri' : m}</button>))}
+                </div>
+              )}
+              {activeMenu === 'hGesture' && (
+                <div data-player-menu="true" role="menu" onClick={(e) => e.stopPropagation()} onTouchStart={(e) => e.stopPropagation()} onTouchMove={(e) => e.stopPropagation()} onTouchEnd={(e) => e.stopPropagation()} className="absolute bottom-11 sm:bottom-12 right-0 bg-zinc-950/95 backdrop-blur-3xl border border-white/10 ring-1 ring-white/10 rounded-2xl shadow-[0_8px_40px_rgba(0,0,0,0.85)] p-2 w-44 sm:w-52 max-w-[calc(100vw-24px)] max-h-[calc(100%-52px)] sm:max-h-[min(70vh,280px)] md:max-h-[360px] overflow-y-auto overscroll-contain z-[75] flex flex-col gap-1 animate-in slide-in-from-bottom-2">
+                  <button onClick={(e) => { e.stopPropagation(); setActiveMenu('main') }} className="flex items-center gap-1.5 text-[10px] px-2 py-1 font-black text-zinc-400 border-b border-white/10 mb-0.5"><ChevronLeft size={13} /> BACK</button>
+                  {['seek', 'nav', 'volume', 'none'].map(m => (<button key={m} onClick={(e) => { e.stopPropagation(); updateLocalPrefs({ horizontalGesture: m }); setActiveMenu('main') }} className={cn("text-[10px] px-2.5 py-1.5 rounded-xl text-left font-bold uppercase transition-all", horizontalGesture === m ? "bg-gradient-to-r from-primary-600 to-primary-500 text-white shadow-md shadow-primary-500/25 border border-primary-500/50" : "hover:bg-white/10 hover:shadow-inner text-zinc-400")}>{m === 'nav' ? 'Next / Prev' : m}</button>))}
+                </div>
+              )}
 
-           {/* Right Controls */}
-           <div className="flex items-center gap-1 sm:gap-2 md:gap-4 relative">
+              {activeMenu === 'quality' && (
+                <div data-player-menu="true" role="menu" onClick={(e) => e.stopPropagation()} onTouchStart={(e) => e.stopPropagation()} onTouchMove={(e) => e.stopPropagation()} onTouchEnd={(e) => e.stopPropagation()} className="absolute bottom-11 sm:bottom-12 right-0 bg-zinc-950/90 backdrop-blur-3xl border border-white/10 ring-1 ring-white/10 rounded-2xl shadow-[0_8px_40px_rgba(0,0,0,0.85)] p-2 w-36 sm:w-40 max-w-[calc(100vw-24px)] max-h-[calc(100%-52px)] sm:max-h-[min(70vh,280px)] md:max-h-[360px] overflow-y-auto overscroll-contain z-[75] flex flex-col gap-1 animate-in slide-in-from-bottom-2">
+                  <button onClick={(e) => { e.stopPropagation(); setActiveMenu('main') }} className="flex items-center gap-1.5 text-[10px] px-2 py-1 font-black text-zinc-400 border-b border-white/10 mb-0.5"><ChevronLeft size={13} /> BACK</button>
+                  <button onClick={(e) => { e.stopPropagation(); changeQuality(-1) }} className={cn("text-[10px] px-2.5 py-1.5 rounded-xl text-left font-bold transition-all", currentQuality === -1 ? "bg-gradient-to-r from-primary-600 to-primary-500 text-white shadow-md shadow-primary-500/25 border border-primary-500/50" : "hover:bg-white/10 hover:shadow-inner text-zinc-400")}>Auto</button>
+                  {qualities.map(q => (<button key={q.index} onClick={(e) => { e.stopPropagation(); changeQuality(q.index) }} className={cn("text-[10px] px-2.5 py-1.5 rounded-xl text-left font-bold transition-all", currentQuality === q.index ? "bg-gradient-to-r from-primary-600 to-primary-500 text-white shadow-md shadow-primary-500/25 border border-primary-500/50" : "hover:bg-white/10 hover:shadow-inner text-zinc-400")}>{q.height}p</button>))}
+                </div>
+              )}
+              {activeMenu === 'speed' && (
+                <div data-player-menu="true" role="menu" onClick={(e) => e.stopPropagation()} onTouchStart={(e) => e.stopPropagation()} onTouchMove={(e) => e.stopPropagation()} onTouchEnd={(e) => e.stopPropagation()} className="absolute bottom-11 sm:bottom-12 right-0 bg-zinc-950/90 backdrop-blur-3xl border border-white/10 ring-1 ring-white/10 rounded-2xl shadow-[0_8px_40px_rgba(0,0,0,0.85)] p-2 w-32 sm:w-36 max-w-[calc(100vw-24px)] max-h-[calc(100%-52px)] sm:max-h-[min(70vh,280px)] md:max-h-[360px] overflow-y-auto overscroll-contain z-[75] flex flex-col gap-1 animate-in slide-in-from-bottom-2">
+                  <button onClick={(e) => { e.stopPropagation(); setActiveMenu('main') }} className="flex items-center gap-1.5 text-[10px] px-2 py-1 font-black text-zinc-400 border-b border-white/10 mb-0.5"><ChevronLeft size={13} /> BACK</button>
+                  {[0.5, 1, 1.25, 1.5, 2].map(r => (<button key={r} onClick={(e) => { e.stopPropagation(); changeSpeed(r) }} className={cn("text-[10px] px-2.5 py-1.5 rounded-xl text-left font-bold transition-all", speed === r ? "bg-gradient-to-r from-primary-600 to-primary-500 text-white shadow-md shadow-primary-500/25 border border-primary-500/50" : "hover:bg-white/10 hover:shadow-inner text-zinc-400")}>{r}x</button>))}
+                </div>
+              )}
+              {activeMenu === 'gestures' && (
+                <div data-player-menu="true" role="menu" onClick={(e) => e.stopPropagation()} onTouchStart={(e) => e.stopPropagation()} onTouchMove={(e) => e.stopPropagation()} onTouchEnd={(e) => e.stopPropagation()} className="absolute bottom-11 sm:bottom-12 right-0 bg-zinc-950/95 backdrop-blur-3xl border border-white/10 ring-1 ring-white/10 rounded-2xl shadow-[0_8px_40px_rgba(0,0,0,0.85)] p-2 w-44 sm:w-52 max-w-[calc(100vw-24px)] max-h-[calc(100%-52px)] sm:max-h-[min(70vh,280px)] md:max-h-[360px] overflow-y-auto overscroll-contain z-[75] flex flex-col gap-1 animate-in slide-in-from-bottom-2">
+                  <button onClick={(e) => { e.stopPropagation(); setActiveMenu('main') }} className="flex items-center gap-1.5 text-[10px] px-2 py-1 font-black text-zinc-400 border-b border-white/10 mb-0.5"><ChevronLeft size={13} /> BACK</button>
+                  {['seek', 'playpause', 'fullscreen'].map(m => (<button key={m} onClick={(e) => { e.stopPropagation(); updateLocalPrefs({ doubleTapMode: m }); setActiveMenu('none') }} className={cn("text-[10px] px-2.5 py-1.5 rounded-xl text-left font-bold uppercase transition-all", doubleTapMode === m ? "bg-gradient-to-r from-primary-600 to-primary-500 text-white shadow-md shadow-primary-500/25 border border-primary-500/50" : "hover:bg-white/10 hover:shadow-inner text-zinc-400")}>{m}</button>))}
+                </div>
+              )}
+            </div>
+
+            {audioTracks.length > 1 && (<div className="relative"><button onClick={(e) => { e.stopPropagation(); setActiveMenu(activeMenu === 'audio' ? 'none' : 'audio'); }} className={cn("hover:text-primary-500 transition-colors active:scale-90 w-9 h-9 sm:w-10 sm:h-10 md:w-auto md:h-auto flex items-center justify-center p-1 md:p-0", activeMenu === 'audio' && "text-primary-500")}><AudioWaveform size={18} className="md:w-4.5 md:h-4.5" /></button>{activeMenu === 'audio' && (<div data-player-menu="true" role="menu" onClick={(e) => e.stopPropagation()} onTouchStart={(e) => e.stopPropagation()} onTouchMove={(e) => e.stopPropagation()} onTouchEnd={(e) => e.stopPropagation()} className="absolute bottom-11 sm:bottom-12 right-0 bg-zinc-950/95 backdrop-blur-3xl border border-white/10 ring-1 ring-white/10 rounded-2xl shadow-[0_8px_40px_rgba(0,0,0,0.85)] p-2 w-44 sm:w-52 max-w-[calc(100vw-24px)] max-h-[calc(100%-52px)] sm:max-h-[min(70vh,280px)] md:max-h-[360px] overflow-y-auto overscroll-contain z-[75] flex flex-col gap-1 animate-in slide-in-from-bottom-2">{audioTracks.map((t, i) => (<button key={i} onClick={(e) => { e.stopPropagation(); changeAudio(i); }} className={cn("text-[10px] px-2.5 py-1.5 rounded-xl text-left font-bold transition-all truncate active:scale-95", currentAudio === i ? "bg-gradient-to-r from-primary-600 to-primary-500 text-white shadow-md shadow-primary-500/25 border border-primary-500/50" : "hover:bg-white/10 hover:shadow-inner text-zinc-400")}>{t.name || `Audio ${i + 1}`}</button>))}</div>)}</div>)}
+
+            {trackSubtitles.length > 0 && (
               <div className="relative">
-                  <button onClick={(e) => { e.stopPropagation(); setActiveMenu(activeMenu === 'main' ? 'none' : 'main'); }} className={cn("hover:text-primary-500 transition-colors active:scale-90 group w-9 h-9 sm:w-10 sm:h-10 md:w-auto md:h-auto flex items-center justify-center p-1 md:p-0", activeMenu !== 'none' && activeMenu !== 'audio' && activeMenu !== 'subs' && "text-primary-500")}><Settings size={18} className={cn("md:w-4.5 md:h-4.5 transition-transform duration-300", (activeMenu !== 'none' && activeMenu !== 'audio' && activeMenu !== 'subs') ? "rotate-90 text-primary-500" : "rotate-0")} /></button>
-                  
-                     {activeMenu === 'main' && (
-                        <div data-player-menu="true" role="menu" onClick={(e) => e.stopPropagation()} onTouchStart={(e) => e.stopPropagation()} onTouchMove={(e) => e.stopPropagation()} onTouchEnd={(e) => e.stopPropagation()} className="absolute bottom-11 sm:bottom-12 right-0 bg-zinc-950/95 backdrop-blur-3xl border border-white/10 ring-1 ring-white/10 rounded-2xl shadow-[0_8px_40px_rgba(0,0,0,0.85)] p-2 w-48 sm:w-56 max-w-[calc(100vw-24px)] max-h-[calc(100%-52px)] sm:max-h-[min(70vh,280px)] md:max-h-[380px] overflow-y-auto overscroll-contain z-[75] flex flex-col gap-1 animate-in slide-in-from-bottom-2">
-                           <button onClick={(e)=>{e.stopPropagation(); setActiveMenu('quality')}} className="flex items-center justify-between w-full px-2.5 py-1.5 rounded-xl hover:bg-white/10 hover:shadow-inner text-left text-[10px] sm:text-xs font-bold transition-all"><div className="flex items-center gap-1.5"><Settings size={13}/> Quality</div><span className="text-zinc-400 text-[9px] sm:text-[10px] truncate ml-2">{currentQuality === -1 ? autoResolutionText : `${qualities.find(q => q.index === currentQuality)?.height}p`}</span></button>
-                           <button onClick={(e)=>{e.stopPropagation(); setActiveMenu('speed')}} className="flex items-center justify-between w-full px-2.5 py-1.5 rounded-xl hover:bg-white/10 hover:shadow-inner text-left text-[10px] sm:text-xs font-bold transition-all"><div className="flex items-center gap-1.5"><Gauge size={13}/> Speed</div><span className="text-zinc-400 text-[9px] sm:text-[10px]">{speed}x</span></button>
-                           <button onClick={(e)=>{e.stopPropagation(); setActiveMenu('gestures')}} className="flex items-center justify-between w-full px-2.5 py-1.5 rounded-xl hover:bg-white/10 hover:shadow-inner text-left text-[10px] sm:text-xs font-bold transition-all"><div className="flex items-center gap-1.5"><MousePointerClick size={13}/> Gestures</div><span className="text-zinc-400 uppercase text-[9px] sm:text-[10px]">{doubleTapMode}</span></button>
-
-                           {castAvailable && (
-                              <button onClick={(e)=>{e.stopPropagation(); handleCast(); setActiveMenu('none')}} className="lg:hidden flex items-center justify-between w-full px-2.5 py-1.5 rounded-xl hover:bg-white/10 hover:shadow-inner text-left text-[10px] sm:text-xs font-bold transition-all"><div className="flex items-center gap-1.5"><Cast size={13}/> Cast</div></button>
-                           )}
-                           <div className="lg:hidden border-t border-white/10 mt-1 pt-1">
-                              <button onClick={(e)=>{e.stopPropagation(); setActiveMenu('vGesture')}} className="flex items-center justify-between w-full px-2.5 py-1.5 rounded-xl hover:bg-white/10 hover:shadow-inner text-left text-[10px] sm:text-xs font-bold transition-all"><div className="flex items-center gap-1.5"><MoveVertical size={13}/> V-Swipe</div><span className="text-zinc-400 text-[9px] uppercase">{verticalGesture === 'vol_bright' ? 'Vol/Bri' : verticalGesture}</span></button>
-                              <button onClick={(e)=>{e.stopPropagation(); setActiveMenu('hGesture')}} className="flex items-center justify-between w-full px-2.5 py-1.5 rounded-xl hover:bg-white/10 hover:shadow-inner text-left text-[10px] sm:text-xs font-bold transition-all"><div className="flex items-center gap-1.5"><MoveHorizontal size={13}/> H-Swipe</div><span className="text-zinc-400 text-[9px] uppercase">{horizontalGesture === 'nav' ? 'Next/Prev' : horizontalGesture}</span></button>
-                           </div>
-                        </div>
-                     )}
-                     {activeMenu === 'vGesture' && (
-                        <div data-player-menu="true" role="menu" onClick={(e) => e.stopPropagation()} onTouchStart={(e) => e.stopPropagation()} onTouchMove={(e) => e.stopPropagation()} onTouchEnd={(e) => e.stopPropagation()} className="absolute bottom-11 sm:bottom-12 right-0 bg-zinc-950/95 backdrop-blur-3xl border border-white/10 ring-1 ring-white/10 rounded-2xl shadow-[0_8px_40px_rgba(0,0,0,0.85)] p-2 w-44 sm:w-52 max-w-[calc(100vw-24px)] max-h-[calc(100%-52px)] sm:max-h-[min(70vh,280px)] md:max-h-[360px] overflow-y-auto overscroll-contain z-[75] flex flex-col gap-1 animate-in slide-in-from-bottom-2">
-                            <button onClick={(e)=>{e.stopPropagation(); setActiveMenu('main')}} className="flex items-center gap-1.5 text-[10px] px-2 py-1 font-black text-zinc-400 border-b border-white/10 mb-0.5"><ChevronLeft size={13}/> BACK</button>
-                            {['vol_bright', 'fullscreen', 'none'].map(m=>(<button key={m} onClick={(e)=>{e.stopPropagation(); updateLocalPrefs({verticalGesture: m}); setActiveMenu('main')}} className={cn("text-[10px] px-2.5 py-1.5 rounded-xl text-left font-bold uppercase transition-all", verticalGesture===m?"bg-gradient-to-r from-primary-600 to-primary-500 text-white shadow-md shadow-primary-500/25 border border-primary-500/50":"hover:bg-white/10 hover:shadow-inner text-zinc-400")}>{m === 'vol_bright' ? 'Vol/Bri' : m}</button>))}
-                        </div>
-                     )}
-                     {activeMenu === 'hGesture' && (
-                        <div data-player-menu="true" role="menu" onClick={(e) => e.stopPropagation()} onTouchStart={(e) => e.stopPropagation()} onTouchMove={(e) => e.stopPropagation()} onTouchEnd={(e) => e.stopPropagation()} className="absolute bottom-11 sm:bottom-12 right-0 bg-zinc-950/95 backdrop-blur-3xl border border-white/10 ring-1 ring-white/10 rounded-2xl shadow-[0_8px_40px_rgba(0,0,0,0.85)] p-2 w-44 sm:w-52 max-w-[calc(100vw-24px)] max-h-[calc(100%-52px)] sm:max-h-[min(70vh,280px)] md:max-h-[360px] overflow-y-auto overscroll-contain z-[75] flex flex-col gap-1 animate-in slide-in-from-bottom-2">
-                            <button onClick={(e)=>{e.stopPropagation(); setActiveMenu('main')}} className="flex items-center gap-1.5 text-[10px] px-2 py-1 font-black text-zinc-400 border-b border-white/10 mb-0.5"><ChevronLeft size={13}/> BACK</button>
-                            {['seek', 'nav', 'volume', 'none'].map(m=>(<button key={m} onClick={(e)=>{e.stopPropagation(); updateLocalPrefs({horizontalGesture: m}); setActiveMenu('main')}} className={cn("text-[10px] px-2.5 py-1.5 rounded-xl text-left font-bold uppercase transition-all", horizontalGesture===m?"bg-gradient-to-r from-primary-600 to-primary-500 text-white shadow-md shadow-primary-500/25 border border-primary-500/50":"hover:bg-white/10 hover:shadow-inner text-zinc-400")}>{m === 'nav' ? 'Next / Prev' : m}</button>))}
-                        </div>
-                     )}
-                    
-                     {activeMenu === 'quality' && (
-                        <div data-player-menu="true" role="menu" onClick={(e) => e.stopPropagation()} onTouchStart={(e) => e.stopPropagation()} onTouchMove={(e) => e.stopPropagation()} onTouchEnd={(e) => e.stopPropagation()} className="absolute bottom-11 sm:bottom-12 right-0 bg-zinc-950/90 backdrop-blur-3xl border border-white/10 ring-1 ring-white/10 rounded-2xl shadow-[0_8px_40px_rgba(0,0,0,0.85)] p-2 w-36 sm:w-40 max-w-[calc(100vw-24px)] max-h-[calc(100%-52px)] sm:max-h-[min(70vh,280px)] md:max-h-[360px] overflow-y-auto overscroll-contain z-[75] flex flex-col gap-1 animate-in slide-in-from-bottom-2">
-                            <button onClick={(e)=>{e.stopPropagation(); setActiveMenu('main')}} className="flex items-center gap-1.5 text-[10px] px-2 py-1 font-black text-zinc-400 border-b border-white/10 mb-0.5"><ChevronLeft size={13}/> BACK</button>
-                            <button onClick={(e)=>{e.stopPropagation(); changeQuality(-1)}} className={cn("text-[10px] px-2.5 py-1.5 rounded-xl text-left font-bold transition-all", currentQuality===-1?"bg-gradient-to-r from-primary-600 to-primary-500 text-white shadow-md shadow-primary-500/25 border border-primary-500/50":"hover:bg-white/10 hover:shadow-inner text-zinc-400")}>Auto</button>
-                            {qualities.map(q=>(<button key={q.index} onClick={(e)=>{e.stopPropagation(); changeQuality(q.index)}} className={cn("text-[10px] px-2.5 py-1.5 rounded-xl text-left font-bold transition-all", currentQuality===q.index?"bg-gradient-to-r from-primary-600 to-primary-500 text-white shadow-md shadow-primary-500/25 border border-primary-500/50":"hover:bg-white/10 hover:shadow-inner text-zinc-400")}>{q.height}p</button>))}
-                        </div>
-                     )}
-                     {activeMenu === 'speed' && (
-                        <div data-player-menu="true" role="menu" onClick={(e) => e.stopPropagation()} onTouchStart={(e) => e.stopPropagation()} onTouchMove={(e) => e.stopPropagation()} onTouchEnd={(e) => e.stopPropagation()} className="absolute bottom-11 sm:bottom-12 right-0 bg-zinc-950/90 backdrop-blur-3xl border border-white/10 ring-1 ring-white/10 rounded-2xl shadow-[0_8px_40px_rgba(0,0,0,0.85)] p-2 w-32 sm:w-36 max-w-[calc(100vw-24px)] max-h-[calc(100%-52px)] sm:max-h-[min(70vh,280px)] md:max-h-[360px] overflow-y-auto overscroll-contain z-[75] flex flex-col gap-1 animate-in slide-in-from-bottom-2">
-                            <button onClick={(e)=>{e.stopPropagation(); setActiveMenu('main')}} className="flex items-center gap-1.5 text-[10px] px-2 py-1 font-black text-zinc-400 border-b border-white/10 mb-0.5"><ChevronLeft size={13}/> BACK</button>
-                            {[0.5, 1, 1.25, 1.5, 2].map(r=>(<button key={r} onClick={(e)=>{e.stopPropagation(); changeSpeed(r)}} className={cn("text-[10px] px-2.5 py-1.5 rounded-xl text-left font-bold transition-all", speed===r?"bg-gradient-to-r from-primary-600 to-primary-500 text-white shadow-md shadow-primary-500/25 border border-primary-500/50":"hover:bg-white/10 hover:shadow-inner text-zinc-400")}>{r}x</button>))}
-                        </div>
-                     )}
-                     {activeMenu === 'gestures' && (
-                        <div data-player-menu="true" role="menu" onClick={(e) => e.stopPropagation()} onTouchStart={(e) => e.stopPropagation()} onTouchMove={(e) => e.stopPropagation()} onTouchEnd={(e) => e.stopPropagation()} className="absolute bottom-11 sm:bottom-12 right-0 bg-zinc-950/95 backdrop-blur-3xl border border-white/10 ring-1 ring-white/10 rounded-2xl shadow-[0_8px_40px_rgba(0,0,0,0.85)] p-2 w-44 sm:w-52 max-w-[calc(100vw-24px)] max-h-[calc(100%-52px)] sm:max-h-[min(70vh,280px)] md:max-h-[360px] overflow-y-auto overscroll-contain z-[75] flex flex-col gap-1 animate-in slide-in-from-bottom-2">
-                            <button onClick={(e)=>{e.stopPropagation(); setActiveMenu('main')}} className="flex items-center gap-1.5 text-[10px] px-2 py-1 font-black text-zinc-400 border-b border-white/10 mb-0.5"><ChevronLeft size={13}/> BACK</button>
-                            {['seek', 'playpause', 'fullscreen'].map(m=>(<button key={m} onClick={(e)=>{e.stopPropagation(); updateLocalPrefs({doubleTapMode: m}); setActiveMenu('none')}} className={cn("text-[10px] px-2.5 py-1.5 rounded-xl text-left font-bold uppercase transition-all", doubleTapMode===m?"bg-gradient-to-r from-primary-600 to-primary-500 text-white shadow-md shadow-primary-500/25 border border-primary-500/50":"hover:bg-white/10 hover:shadow-inner text-zinc-400")}>{m}</button>))}
-                        </div>
-                     )}
-                </div>
-
-                {audioTracks.length > 1 && (<div className="relative"><button onClick={(e) => { e.stopPropagation(); setActiveMenu(activeMenu === 'audio' ? 'none' : 'audio'); }} className={cn("hover:text-primary-500 transition-colors active:scale-90 w-9 h-9 sm:w-10 sm:h-10 md:w-auto md:h-auto flex items-center justify-center p-1 md:p-0", activeMenu === 'audio' && "text-primary-500")}><AudioWaveform size={18} className="md:w-4.5 md:h-4.5" /></button>{activeMenu === 'audio' && (<div data-player-menu="true" role="menu" onClick={(e) => e.stopPropagation()} onTouchStart={(e) => e.stopPropagation()} onTouchMove={(e) => e.stopPropagation()} onTouchEnd={(e) => e.stopPropagation()} className="absolute bottom-11 sm:bottom-12 right-0 bg-zinc-950/95 backdrop-blur-3xl border border-white/10 ring-1 ring-white/10 rounded-2xl shadow-[0_8px_40px_rgba(0,0,0,0.85)] p-2 w-44 sm:w-52 max-w-[calc(100vw-24px)] max-h-[calc(100%-52px)] sm:max-h-[min(70vh,280px)] md:max-h-[360px] overflow-y-auto overscroll-contain z-[75] flex flex-col gap-1 animate-in slide-in-from-bottom-2">{audioTracks.map((t, i) => (<button key={i} onClick={(e) => { e.stopPropagation(); changeAudio(i); }} className={cn("text-[10px] px-2.5 py-1.5 rounded-xl text-left font-bold transition-all truncate active:scale-95", currentAudio === i ? "bg-gradient-to-r from-primary-600 to-primary-500 text-white shadow-md shadow-primary-500/25 border border-primary-500/50" : "hover:bg-white/10 hover:shadow-inner text-zinc-400")}>{t.name || `Audio ${i+1}`}</button>))}</div>)}</div>)}
-
-                {trackSubtitles.length > 0 && (
-                 <div className="relative">
-                     <button onClick={(e) => { e.stopPropagation(); setActiveMenu(activeMenu === 'subs' ? 'none' : 'subs'); }} className={cn("hover:text-primary-500 transition-colors active:scale-90 w-9 h-9 sm:w-10 sm:h-10 md:w-auto md:h-auto flex items-center justify-center p-1 md:p-0", (activeMenu === 'subs' || currentSubtitle !== -1) ? "text-primary-500" : "text-white")}><Subtitles size={18} className="md:w-4.5 md:h-4.5" /></button>
-                     {activeMenu === 'subs' && (
-                         <div data-player-menu="true" role="menu" onClick={(e) => e.stopPropagation()} onTouchStart={(e) => e.stopPropagation()} onTouchMove={(e) => e.stopPropagation()} onTouchEnd={(e) => e.stopPropagation()} className="absolute bottom-11 sm:bottom-12 right-0 bg-zinc-950/95 backdrop-blur-3xl border border-white/10 ring-1 ring-white/10 rounded-2xl shadow-[0_8px_40px_rgba(0,0,0,0.85)] p-2 w-48 sm:w-56 max-w-[calc(100vw-24px)] max-h-[calc(100%-52px)] sm:max-h-[min(70vh,280px)] md:max-h-[360px] overflow-y-auto overscroll-contain custom-scrollbar z-[75] flex flex-col animate-in slide-in-from-bottom-2">
-                              <button onClick={(e) => { e.stopPropagation(); setActiveMenu('subSettings'); }} className="flex items-center gap-1.5 text-[10px] px-2 py-1 rounded-xl text-left font-black text-primary-500 hover:bg-white/5 transition-all mb-1 border-b border-white/10 shrink-0"><Settings size={12}/> CAPTION SETTINGS</button>
-                              <div className="overflow-y-auto flex-1 flex flex-col gap-1 scrollbar-hide">
-                                <button onClick={(e) => { e.stopPropagation(); changeSubtitle(-1); }} className={cn("text-[10px] px-2.5 py-1.5 rounded-xl text-left font-bold transition-all active:scale-95 shrink-0", currentSubtitle === -1 ? "bg-gradient-to-r from-primary-600 to-primary-500 text-white shadow-md shadow-primary-500/25 border border-primary-500/50" : "hover:bg-white/10 hover:shadow-inner text-zinc-400")}>Off</button>
-                                {trackSubtitles.map((t, i) => (
-                                    <button key={i} onClick={(e) => { e.stopPropagation(); changeSubtitle(i); }} className={cn("text-[10px] px-2.5 py-1.5 rounded-xl text-left font-bold transition-all truncate active:scale-95 shrink-0", currentSubtitle === i ? "bg-gradient-to-r from-primary-600 to-primary-500 text-white shadow-md shadow-primary-500/25 border border-primary-500/50" : "hover:bg-white/10 hover:shadow-inner text-zinc-400")}>{t.label || t.name || t.lang}</button>
-                                ))}
-                              </div>
-                         </div>
-                     )}
-                     {activeMenu === 'subSettings' && (
-                         <div data-player-menu="true" role="menu" onClick={(e) => e.stopPropagation()} onTouchStart={(e) => e.stopPropagation()} onTouchMove={(e) => e.stopPropagation()} onTouchEnd={(e) => e.stopPropagation()} className="absolute bottom-11 sm:bottom-12 right-0 bg-zinc-950/95 backdrop-blur-3xl border border-white/10 ring-1 ring-white/10 rounded-2xl shadow-[0_8px_40px_rgba(0,0,0,0.9)] p-3 w-[260px] sm:w-64 max-w-[calc(100vw-24px)] max-h-[calc(100%-52px)] sm:max-h-[min(75vh,280px)] md:max-h-[380px] overflow-y-auto overscroll-contain z-[75] flex flex-col gap-2.5 animate-in slide-in-from-bottom-2">
-                             <div className="flex items-center gap-1.5 text-[10px] sm:text-xs font-black text-zinc-400 border-b border-white/10 pb-1.5"><button onClick={(e)=>{e.stopPropagation(); setActiveMenu('subs')}} className="hover:text-white"><ChevronLeft size={13}/></button> CAPTION STYLE</div>
-                             <div className="space-y-1"><span className="text-[9px] sm:text-[10px] font-bold text-zinc-400 uppercase">Color</span><div className="flex gap-1.5 flex-wrap">{Object.keys(SUB_COLORS).map((c) => (<button key={c} onClick={(e) => {e.stopPropagation(); updateLocalPrefs({subStyle: { color: c }})}} className={cn("w-5 h-5 sm:w-6 sm:h-6 rounded-full border transition-all active:scale-90 shrink-0", subStyle.color === c ? "border-white scale-110 shadow-md" : "border-transparent opacity-60")} style={{background: SUB_COLORS[c as keyof typeof SUB_COLORS]}} />))}</div></div>
-                             <div className="space-y-1"><span className="text-[9px] sm:text-[10px] font-bold text-zinc-400 uppercase">Size</span><div className="flex gap-1 bg-white/5 rounded-xl p-1">{Object.keys(SUB_SIZES).map((s) => (<button key={s} onClick={(e) => {e.stopPropagation(); updateLocalPrefs({subStyle: { size: s }})}} className={cn("flex-1 py-1 rounded-lg text-[9px] sm:text-[10px] font-bold transition-all active:scale-90 shrink-0", subStyle.size === s ? "bg-white text-black shadow-sm" : "text-zinc-400 hover:text-zinc-200")}>{s}</button>))}</div></div>
-                             <div className="space-y-1"><span className="text-[9px] sm:text-[10px] font-bold text-zinc-400 uppercase">Background</span><div className="flex gap-1 bg-white/5 rounded-xl p-1 overflow-x-auto scrollbar-hide">{Object.keys(SUB_BACKGROUNDS).map((b) => (<button key={b} onClick={(e) => {e.stopPropagation(); updateLocalPrefs({subStyle: { bg: b }})}} className={cn("px-2 py-1 rounded-lg text-[9px] sm:text-[10px] font-bold transition-all active:scale-90 whitespace-nowrap shrink-0", subStyle.bg === b ? "bg-white text-black shadow-sm" : "text-zinc-400 hover:text-zinc-200")}>{b}</button>))}</div></div>
-                             
-                             {/* Opacity Slider */}
-                             <div className="space-y-1 mt-0.5">
-                                 <span className="text-[9px] sm:text-[10px] font-bold text-zinc-400 uppercase flex justify-between">Opacity <span>{subStyle.opacity ?? 75}%</span></span>
-                                 <input 
-                                     type="range" 
-                                     min="10" 
-                                     max="100" 
-                                     value={subStyle.opacity ?? 75} 
-                                     onChange={(e) => { e.stopPropagation(); updateLocalPrefs({subStyle: { opacity: parseInt(e.target.value) }}) }}
-                                     className="w-full accent-primary-500 bg-white/10 rounded-full h-1 cursor-pointer pointer-events-auto"
-                                     onClick={(e) => e.stopPropagation()}
-                                     onTouchStart={(e) => e.stopPropagation()}
-                                     onTouchMove={(e) => e.stopPropagation()}
-                                 />
-                             </div>
-
-                             <div className="space-y-1"><span className="text-[9px] sm:text-[10px] font-bold text-zinc-400 uppercase">Position</span><div className="flex gap-1 bg-white/5 rounded-xl p-1">{Object.keys(SUB_LIFTS).map((l) => (<button key={l} onClick={(e) => {e.stopPropagation(); updateLocalPrefs({subStyle: { lift: l }})}} className={cn("flex-1 py-1 rounded-lg text-[9px] sm:text-[10px] font-bold transition-all active:scale-90 shrink-0", subStyle.lift === l ? "bg-white text-black shadow-sm" : "text-zinc-400 hover:text-zinc-200")}>{l}</button>))}</div></div>
-                             <div className="space-y-1"><span className="text-[9px] sm:text-[10px] font-bold text-zinc-400 uppercase">Font</span><div className="flex gap-1 bg-white/5 rounded-xl p-1 overflow-x-auto scrollbar-hide">{Object.keys(SUB_FONTS).map((f) => (<button key={f} onClick={(e) => {e.stopPropagation(); updateLocalPrefs({subStyle: { font: f }})}} className={cn("px-2 py-1 rounded-lg text-[9px] sm:text-[10px] font-bold transition-all active:scale-90 whitespace-nowrap shrink-0", subStyle.font === f ? "bg-white text-black shadow-sm" : "text-zinc-400 hover:text-zinc-200")}>{f}</button>))}</div></div>
-                         </div>
-                     )}
-                 </div>
+                <button onClick={(e) => { e.stopPropagation(); setActiveMenu(activeMenu === 'subs' ? 'none' : 'subs'); }} className={cn("hover:text-primary-500 transition-colors active:scale-90 w-9 h-9 sm:w-10 sm:h-10 md:w-auto md:h-auto flex items-center justify-center p-1 md:p-0", (activeMenu === 'subs' || currentSubtitle !== -1) ? "text-primary-500" : "text-white")}><Subtitles size={18} className="md:w-4.5 md:h-4.5" /></button>
+                {activeMenu === 'subs' && (
+                  <div data-player-menu="true" role="menu" onClick={(e) => e.stopPropagation()} onTouchStart={(e) => e.stopPropagation()} onTouchMove={(e) => e.stopPropagation()} onTouchEnd={(e) => e.stopPropagation()} className="absolute bottom-11 sm:bottom-12 right-0 bg-zinc-950/95 backdrop-blur-3xl border border-white/10 ring-1 ring-white/10 rounded-2xl shadow-[0_8px_40px_rgba(0,0,0,0.85)] p-2 w-48 sm:w-56 max-w-[calc(100vw-24px)] max-h-[calc(100%-52px)] sm:max-h-[min(70vh,280px)] md:max-h-[360px] overflow-y-auto overscroll-contain custom-scrollbar z-[75] flex flex-col animate-in slide-in-from-bottom-2">
+                    <button onClick={(e) => { e.stopPropagation(); setActiveMenu('subSettings'); }} className="flex items-center gap-1.5 text-[10px] px-2 py-1 rounded-xl text-left font-black text-primary-500 hover:bg-white/5 transition-all mb-1 border-b border-white/10 shrink-0"><Settings size={12} /> CAPTION SETTINGS</button>
+                    <div className="overflow-y-auto flex-1 flex flex-col gap-1 scrollbar-hide">
+                      <button onClick={(e) => { e.stopPropagation(); changeSubtitle(-1); }} className={cn("text-[10px] px-2.5 py-1.5 rounded-xl text-left font-bold transition-all active:scale-95 shrink-0", currentSubtitle === -1 ? "bg-gradient-to-r from-primary-600 to-primary-500 text-white shadow-md shadow-primary-500/25 border border-primary-500/50" : "hover:bg-white/10 hover:shadow-inner text-zinc-400")}>Off</button>
+                      {trackSubtitles.map((t, i) => (
+                        <button key={i} onClick={(e) => { e.stopPropagation(); changeSubtitle(i); }} className={cn("text-[10px] px-2.5 py-1.5 rounded-xl text-left font-bold transition-all truncate active:scale-95 shrink-0", currentSubtitle === i ? "bg-gradient-to-r from-primary-600 to-primary-500 text-white shadow-md shadow-primary-500/25 border border-primary-500/50" : "hover:bg-white/10 hover:shadow-inner text-zinc-400")}>{t.label || t.name || t.lang}</button>
+                      ))}
+                    </div>
+                  </div>
                 )}
+                {activeMenu === 'subSettings' && (
+                  <div data-player-menu="true" role="menu" onClick={(e) => e.stopPropagation()} onTouchStart={(e) => e.stopPropagation()} onTouchMove={(e) => e.stopPropagation()} onTouchEnd={(e) => e.stopPropagation()} className="absolute bottom-11 sm:bottom-12 right-0 bg-zinc-950/95 backdrop-blur-3xl border border-white/10 ring-1 ring-white/10 rounded-2xl shadow-[0_8px_40px_rgba(0,0,0,0.9)] p-3 w-[260px] sm:w-64 max-w-[calc(100vw-24px)] max-h-[calc(100%-52px)] sm:max-h-[min(75vh,280px)] md:max-h-[380px] overflow-y-auto overscroll-contain z-[75] flex flex-col gap-2.5 animate-in slide-in-from-bottom-2">
+                    <div className="flex items-center gap-1.5 text-[10px] sm:text-xs font-black text-zinc-400 border-b border-white/10 pb-1.5"><button onClick={(e) => { e.stopPropagation(); setActiveMenu('subs') }} className="hover:text-white"><ChevronLeft size={13} /></button> CAPTION STYLE</div>
+                    <div className="space-y-1"><span className="text-[9px] sm:text-[10px] font-bold text-zinc-400 uppercase">Color</span><div className="flex gap-1.5 flex-wrap">{Object.keys(SUB_COLORS).map((c) => (<button key={c} onClick={(e) => { e.stopPropagation(); updateLocalPrefs({ subStyle: { color: c } }) }} className={cn("w-5 h-5 sm:w-6 sm:h-6 rounded-full border transition-all active:scale-90 shrink-0", subStyle.color === c ? "border-white scale-110 shadow-md" : "border-transparent opacity-60")} style={{ background: SUB_COLORS[c as keyof typeof SUB_COLORS] }} />))}</div></div>
+                    <div className="space-y-1"><span className="text-[9px] sm:text-[10px] font-bold text-zinc-400 uppercase">Size</span><div className="flex gap-1 bg-white/5 rounded-xl p-1">{Object.keys(SUB_SIZES).map((s) => (<button key={s} onClick={(e) => { e.stopPropagation(); updateLocalPrefs({ subStyle: { size: s } }) }} className={cn("flex-1 py-1 rounded-lg text-[9px] sm:text-[10px] font-bold transition-all active:scale-90 shrink-0", subStyle.size === s ? "bg-white text-black shadow-sm" : "text-zinc-400 hover:text-zinc-200")}>{s}</button>))}</div></div>
+                    <div className="space-y-1"><span className="text-[9px] sm:text-[10px] font-bold text-zinc-400 uppercase">Background</span><div className="flex gap-1 bg-white/5 rounded-xl p-1 overflow-x-auto scrollbar-hide">{Object.keys(SUB_BACKGROUNDS).map((b) => (<button key={b} onClick={(e) => { e.stopPropagation(); updateLocalPrefs({ subStyle: { bg: b } }) }} className={cn("px-2 py-1 rounded-lg text-[9px] sm:text-[10px] font-bold transition-all active:scale-90 whitespace-nowrap shrink-0", subStyle.bg === b ? "bg-white text-black shadow-sm" : "text-zinc-400 hover:text-zinc-200")}>{b}</button>))}</div></div>
 
-              {castAvailable && (
-                <button 
-                  onClick={(e) => { e.stopPropagation(); handleCast(); }} 
-                  className="hidden sm:flex hover:text-primary-500 transition-colors active:scale-90 w-9 h-9 sm:w-10 sm:h-10 md:w-auto md:h-auto items-center justify-center p-1 md:p-0 text-white"
-                  title="Cast / AirPlay"
-                >
-                  <Cast size={18} className="md:w-4.5 md:h-4.5"/>
-                </button>
-              )}
-              <button 
-                onClick={(e) => { e.stopPropagation(); togglePiP(); }} 
+                    {/* Opacity Slider */}
+                    <div className="space-y-1 mt-0.5">
+                      <span className="text-[9px] sm:text-[10px] font-bold text-zinc-400 uppercase flex justify-between">Opacity <span>{subStyle.opacity ?? 75}%</span></span>
+                      <input
+                        type="range"
+                        min="10"
+                        max="100"
+                        value={subStyle.opacity ?? 75}
+                        onChange={(e) => { e.stopPropagation(); updateLocalPrefs({ subStyle: { opacity: parseInt(e.target.value) } }) }}
+                        className="w-full accent-primary-500 bg-white/10 rounded-full h-1 cursor-pointer pointer-events-auto"
+                        onClick={(e) => e.stopPropagation()}
+                        onTouchStart={(e) => e.stopPropagation()}
+                        onTouchMove={(e) => e.stopPropagation()}
+                      />
+                    </div>
+
+                    <div className="space-y-1"><span className="text-[9px] sm:text-[10px] font-bold text-zinc-400 uppercase">Position</span><div className="flex gap-1 bg-white/5 rounded-xl p-1">{Object.keys(SUB_LIFTS).map((l) => (<button key={l} onClick={(e) => { e.stopPropagation(); updateLocalPrefs({ subStyle: { lift: l } }) }} className={cn("flex-1 py-1 rounded-lg text-[9px] sm:text-[10px] font-bold transition-all active:scale-90 shrink-0", subStyle.lift === l ? "bg-white text-black shadow-sm" : "text-zinc-400 hover:text-zinc-200")}>{l}</button>))}</div></div>
+                    <div className="space-y-1"><span className="text-[9px] sm:text-[10px] font-bold text-zinc-400 uppercase">Font</span><div className="flex gap-1 bg-white/5 rounded-xl p-1 overflow-x-auto scrollbar-hide">{Object.keys(SUB_FONTS).map((f) => (<button key={f} onClick={(e) => { e.stopPropagation(); updateLocalPrefs({ subStyle: { font: f } }) }} className={cn("px-2 py-1 rounded-lg text-[9px] sm:text-[10px] font-bold transition-all active:scale-90 whitespace-nowrap shrink-0", subStyle.font === f ? "bg-white text-black shadow-sm" : "text-zinc-400 hover:text-zinc-200")}>{f}</button>))}</div></div>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {castAvailable && (
+              <button
+                onClick={(e) => { e.stopPropagation(); handleCast(); }}
                 className="hidden sm:flex hover:text-primary-500 transition-colors active:scale-90 w-9 h-9 sm:w-10 sm:h-10 md:w-auto md:h-auto items-center justify-center p-1 md:p-0 text-white"
-                title="Picture-in-Picture"
+                title="Cast / AirPlay"
               >
-                <PictureInPicture size={18} className="md:w-4.5 md:h-4.5"/>
+                <Cast size={18} className="md:w-4.5 md:h-4.5" />
               </button>
-              <button 
-                onClick={(e) => { e.stopPropagation(); toggleFullscreen(); }} 
-                className="hover:text-primary-500 transition-colors active:scale-90 w-10 h-10 sm:w-10 sm:h-10 md:w-auto md:h-auto flex items-center justify-center p-1 md:p-0 text-white"
-                title="Fullscreen"
-              >
-                <Maximize size={19} className="md:w-4.5 md:h-4.5"/>
-              </button>
-           </div>
+            )}
+            <button
+              onClick={(e) => { e.stopPropagation(); togglePiP(); }}
+              className="hidden sm:flex hover:text-primary-500 transition-colors active:scale-90 w-9 h-9 sm:w-10 sm:h-10 md:w-auto md:h-auto items-center justify-center p-1 md:p-0 text-white"
+              title="Picture-in-Picture"
+            >
+              <PictureInPicture size={18} className="md:w-4.5 md:h-4.5" />
+            </button>
+            <button
+              onClick={(e) => { e.stopPropagation(); toggleFullscreen(); }}
+              className="hover:text-primary-500 transition-colors active:scale-90 w-10 h-10 sm:w-10 sm:h-10 md:w-auto md:h-auto flex items-center justify-center p-1 md:p-0 text-white"
+              title="Fullscreen"
+            >
+              <Maximize size={19} className="md:w-4.5 md:h-4.5" />
+            </button>
+          </div>
         </div>
       </div>
       {showSkipIntro && (
-        <button 
+        <button
           type="button"
-          onClick={(e) => { 
-            e.stopPropagation(); 
+          onClick={(e) => {
+            e.stopPropagation();
             executeSkipIntro();
-          }} 
+          }}
           onMouseMove={(e) => e.stopPropagation()}
           onMouseEnter={(e) => e.stopPropagation()}
           onMouseOver={(e) => e.stopPropagation()}
@@ -2722,12 +2722,12 @@ const OmniPlayer = forwardRef<OmniPlayerRef, OmniPlayerProps>(({
         </button>
       )}
       {showSkipOutro && (
-        <button 
+        <button
           type="button"
-          onClick={(e) => { 
-            e.stopPropagation(); 
+          onClick={(e) => {
+            e.stopPropagation();
             executeSkipOutro();
-          }} 
+          }}
           onMouseMove={(e) => e.stopPropagation()}
           onMouseEnter={(e) => e.stopPropagation()}
           onMouseOver={(e) => e.stopPropagation()}
@@ -2786,9 +2786,9 @@ const OmniPlayer = forwardRef<OmniPlayerRef, OmniPlayerProps>(({
       </AnimatePresence>
 
       {!isPlaying && duration > 0 && Math.abs(currentTime - duration) < 1 && canGoNext && onNext && (
-        <button 
+        <button
           type="button"
-          onClick={(e) => { e.stopPropagation(); onNext(); }} 
+          onClick={(e) => { e.stopPropagation(); onNext(); }}
           onMouseMove={(e) => e.stopPropagation()}
           onMouseEnter={(e) => e.stopPropagation()}
           onMouseOver={(e) => e.stopPropagation()}
@@ -2798,7 +2798,7 @@ const OmniPlayer = forwardRef<OmniPlayerRef, OmniPlayerProps>(({
           }}
           className="absolute right-6 bg-zinc-900/90 hover:bg-zinc-800 text-white py-3 px-5 rounded-full font-black text-xs uppercase tracking-widest hover:scale-105 flex items-center gap-2 shadow-[0_8px_30px_rgba(0,0,0,0.6)] border border-white/20 z-50 animate-bounce atrax-bubbly-btn atrax-squish-tap cursor-pointer pointer-events-auto"
         >
-          Next Episode <ChevronRight size={14}/>
+          Next Episode <ChevronRight size={14} />
         </button>
       )}
       <style jsx>{` @keyframes slide-fast { from { transform: translateX(-100%); } to { transform: translateX(100%); } } .animate-slide-fast { animation: slide-fast 1.5s infinite linear; } .animate-marquee-slow { animation: marquee 10s linear infinite; } @keyframes marquee { 0% { transform: translateX(100%); } 100% { transform: translateX(-100%); } } `}</style>

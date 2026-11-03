@@ -5,9 +5,9 @@ import { ChevronRight, ChevronLeft, Zap, Radio, Loader2, ChevronDown, Layers, Ca
 import { motion, AnimatePresence } from 'framer-motion';
 import { cn, slugifyTitle } from '@/lib/utils';
 import AnimeCard from '@/components/Anime/AnimeCard';
-import HindiAnimeCard from '@/components/Anime/HindiAnimeCard'; 
+import HindiAnimeCard from '@/components/Anime/HindiAnimeCard';
 import { AnimeService } from '@/lib/api';
-import { hpi } from '@/lib/hpi'; 
+import { hpi } from '@/lib/hpi';
 import { dpi } from '@/lib/dpi';
 import Link from 'next/link';
 import { SimpleGridSkeleton } from '@/components/UIx/SkeletonLoaders';
@@ -28,14 +28,14 @@ const CACHE_DURATION = 60000; // 1 min
 function sanitizeCard(item: any, category: 'sub' | 'english' | 'hindi' | 'chinese') {
     let rawUrl: string = item.poster || item.image || "";
     let finalUrl = rawUrl;
-    
+
     if (rawUrl.includes('image.tmdb.org')) {
         const match = rawUrl.match(/\/t\/p\/.*/);
         if (match) finalUrl = `https://image.tmdb.org${match[0]}`;
     } else if (rawUrl.includes('watchanimeworld')) {
         finalUrl = rawUrl.replace(/([^:]\/)\/+/g, "$1");
     }
-    
+
     if (finalUrl.startsWith('//')) finalUrl = `https:${finalUrl}`;
     const proxiedUrl = finalUrl ? `/api/proxy?url=${encodeURIComponent(finalUrl)}` : "/images/no-poster.png";
 
@@ -197,7 +197,7 @@ export default function RecentUpdatesSection({ initialData }: { initialData: any
     const [page, setPage] = useState(1);
     const [filter, setFilter] = useState<FilterType>('all');
     const [isFilterOpen, setIsFilterOpen] = useState(false);
-    
+
     const filterRef = useRef<HTMLDivElement>(null);
     const cache = useRef<CacheData>({});
 
@@ -339,7 +339,7 @@ export default function RecentUpdatesSection({ initialData }: { initialData: any
 
     return (
         <section className="w-full relative z-10 animate-in fade-in duration-700 mt-2 md:mt-8 mb-6 md:mb-12">
-            
+
             {/* --- HEADER (Clean, Professional Responsive Two-Row on Mobile) --- */}
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-2.5 md:gap-3 mb-4 md:mb-6">
                 {/* Row 1: Title (left) & Mobile View All Button (right) */}
@@ -352,7 +352,7 @@ export default function RecentUpdatesSection({ initialData }: { initialData: any
                     </div>
 
                     {/* Mobile Only: Symmetrical View All Button */}
-                    <Link 
+                    <Link
                         href="/explore?category=recent"
                         onClick={() => playGummyTap()}
                         className="md:hidden text-[10px] font-black uppercase tracking-wider text-zinc-300 hover:text-white px-3 py-1.5 rounded-full bg-white/5 border border-white/10 hover:border-primary-500/30 transition-all inline-flex items-center gap-1 whitespace-nowrap select-none shrink-0 active:scale-95"
@@ -382,9 +382,9 @@ export default function RecentUpdatesSection({ initialData }: { initialData: any
                             <span className="text-zinc-200 group-hover:text-white">
                                 {FILTER_OPTIONS.find(f => f.id === filter)?.label || 'All'}
                             </span>
-                            <ChevronDown 
-                                size={12} 
-                                className={cn("text-zinc-500 group-hover:text-zinc-300 transition-transform duration-200", isFilterOpen && "rotate-180")} 
+                            <ChevronDown
+                                size={12}
+                                className={cn("text-zinc-500 group-hover:text-zinc-300 transition-transform duration-200", isFilterOpen && "rotate-180")}
                             />
                         </motion.button>
 
@@ -437,7 +437,7 @@ export default function RecentUpdatesSection({ initialData }: { initialData: any
                     />
 
                     {/* Desktop Only: View All Link */}
-                    <Link 
+                    <Link
                         href="/explore?category=recent"
                         onClick={() => playGummyTap()}
                         className="group flex-shrink-0 hidden md:inline-flex items-center gap-1 text-[11px] font-black text-zinc-400 hover:text-white transition-all uppercase tracking-wider whitespace-nowrap px-3.5 py-1.5 rounded-full bg-white/5 border border-white/5 hover:border-primary-500/30 active:scale-95"
@@ -457,7 +457,7 @@ export default function RecentUpdatesSection({ initialData }: { initialData: any
             >
                 {data.length > 0 ? (
                     data.slice(0, 24).map((anime, idx) => (
-                        <div 
+                        <div
                             key={`${anime.id}-${anime.category || 'all'}-${idx}`}
                             className="group relative z-10 transform-gpu will-change-transform transition-transform duration-300 hover:scale-[1.03] hover:z-50"
                         >
@@ -475,7 +475,7 @@ export default function RecentUpdatesSection({ initialData }: { initialData: any
                     </div>
                 )}
             </CylinderPageSlider>
-            
+
             {/* --- BOTTOM CENTERED PAGE SWITCHER --- */}
             <div className="w-full flex items-center justify-center mt-6 md:mt-8 px-2 sm:px-0">
                 <CutePageSwitcher

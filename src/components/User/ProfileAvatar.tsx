@@ -31,7 +31,7 @@ const GUILD_MASTER_GOOGLE_AVATAR = 'https://lh3.googleusercontent.com/a/ACg8ocLn
 const ANIME_FALLBACK = 'https://cdn.myanimelist.net/images/characters/9/310307.jpg';
 const ALPHA_AVATAR = '/images/alpha/alpha-av.png';
 
-function ProfileAvatar({ profile, travellerAvatar, className = "w-10 h-10", showLevel, animate, parallax }: ProfileAvatarProps) {
+function ProfileAvatar({ profile, travellerAvatar, className = "w-10 h-10", showLevel, animate = 'inview', parallax }: ProfileAvatarProps) {
   const travellerProfile = useTravellerProfile();
   const isGM = isGuildMaster(profile);
   const isAlpha = profile?.username?.toLowerCase() === 'alpha' || 

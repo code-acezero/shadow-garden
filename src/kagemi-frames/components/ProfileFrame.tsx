@@ -21,10 +21,10 @@ export interface ProfileFrameProps {
 const FALLBACK_AVATAR = 'https://lh3.googleusercontent.com/a/ACg8ocLnpRFtv4bK_qXzuqBG4vBF6UzrdAwPBOCPYofJ0tSYCc5RyKz4=s96-c';
 const ANIME_FALLBACK = 'https://cdn.myanimelist.net/images/characters/9/310307.jpg';
 
-export default function ProfileFrame({ frame, src, size = 96, animate = 'hover', parallax = false, className = '', style, label }: ProfileFrameProps) {
+export default function ProfileFrame({ frame, src, size = 96, animate = 'inview', parallax = false, className = '', style, label }: ProfileFrameProps) {
   const uid = useId().replace(/[^a-zA-Z0-9]/g, '');
   const host = useRef<HTMLDivElement>(null);
-  const [near, setNear] = useState(animate === 'always');
+  const [near, setNear] = useState(animate === 'always' || animate === 'inview');
   const [hover, setHover] = useState(false);
   const posed = useRef<string>('');
 
@@ -39,6 +39,10 @@ export default function ProfileFrame({ frame, src, size = 96, animate = 'hover',
   // Build the SVG only when the frame is near the viewport (keeps long lists light).
   useEffect(() => {
     if (animate === 'always') {
+      setNear(true);
+      return;
+    }
+    if (typeof IntersectionObserver === 'undefined') {
       setNear(true);
       return;
     }

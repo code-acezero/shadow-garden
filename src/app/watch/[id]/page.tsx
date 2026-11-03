@@ -114,7 +114,7 @@ export default async function Page(props: Props) {
     .slice(0, 250);
   const posterUrl = data?.poster || 'https://kagemi.site/og-image.png';
   const slug = slugifyTitle(cleanTitle);
-  const canonicalId = slug ? `${data?.id || cleanId}-${slug}` : String(data?.id || cleanId);
+  const canonicalId = slug ? `${data?.id || rawId}-${slug}` : String(data?.id || rawId);
   const pageUrl = `https://kagemi.site/watch/${encodeURIComponent(canonicalId)}`;
 
   const jsonLd = {

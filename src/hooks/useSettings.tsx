@@ -1,7 +1,7 @@
 "use client";
 
 import React, { createContext, useContext, useState, useEffect, useCallback, useRef, useMemo } from 'react';
-import { supabase } from '@/lib/supabase'; 
+import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/context/AuthContext';
 import { applyColorPalette, DEFAULT_THEME_ID, COLOR_PALETTES } from '@/lib/theme';
 import { toast } from '@/lib/toast';
@@ -13,7 +13,7 @@ export interface AppSettings {
   incognito: boolean;
   publicActivity: boolean;
   allowRequests: boolean;
-  
+
   // Player
   autoPlay: boolean;
   autoSkip?: boolean;
@@ -22,11 +22,11 @@ export interface AppSettings {
   autoNext?: boolean;
   dimMode?: boolean;
   resumePlayback: boolean;
-  volumeBoost: boolean; 
+  volumeBoost: boolean;
   defaultServer: 'hd-1' | 'hd-2' | 'mirror-1' | 'mirror-2';
   server?: string;
   defaultQuality?: '1080p' | '720p' | '480p' | 'Auto';
-  defaultAudio: 'jp' | 'en' | 'hi' | 'cn' | 'es' | 'pt'; 
+  defaultAudio: 'jp' | 'en' | 'hi' | 'cn' | 'es' | 'pt';
   audio?: string;
   category?: 'sub' | 'dub' | 'raw';
   preferredAudio?: 'jp' | 'en' | 'hi' | 'cn';
@@ -59,11 +59,11 @@ export interface AppSettings {
   particles: boolean;
   reducedMotion: boolean;
   roundedUI: boolean;
-  uiGlow: boolean; 
+  uiGlow: boolean;
   uiBorders: 'thin' | 'normal' | 'thick';
   cardVariant: 'default' | 'compact' | 'minimal';
   fontFamily: 'hunters' | 'badUnicorn' | 'demoness' | 'horrorshow' | 'kareudon' | 'monas' | 'nyctophobia' | 'onePiece' | 'inter';
-  
+
   // Whisper
   whisperEnabled: boolean;
   whisperVoice: string;
@@ -103,22 +103,22 @@ export interface AppSettings {
 
 export const DEFAULT_SETTINGS: AppSettings = {
   twoFactor: false, loginAlerts: true, incognito: false, publicActivity: true, allowRequests: true,
-  autoPlay: true, autoSkip: true, autoSkipOpEd: true, autoSkipOutro: true, autoNext: true, dimMode: false, resumePlayback: true, volumeBoost: false, 
+  autoPlay: true, autoSkip: true, autoSkipOpEd: true, autoSkipOutro: true, autoNext: true, dimMode: false, resumePlayback: true, volumeBoost: false,
   defaultServer: 'hd-1', server: 'MegaCloud', defaultQuality: '1080p', defaultAudio: 'jp', audio: 'jp', category: 'sub', subLanguage: 'en', defaultVolume: 100, haptics: true, pipMode: true, clearMode: true, tapPlayPauseWithControls: true,
   tapSound: true, tapSoundEffect: 'jelly', tapSoundVolume: 0.35,
   themeMode: 'dark',
   accentColor: 'violet', glassEffect: true, particles: true, reducedMotion: false, roundedUI: true, uiGlow: true, uiBorders: 'normal', cardVariant: 'default', fontFamily: 'inter',
-  
+
   // ✅ ENABLED BY DEFAULT + SET TO ALPHA (ENGLISH)
-  whisperEnabled: true, 
+  whisperEnabled: true,
   whisperVoice: 'alpha',
   whisperVolume: 0.8,
 
   homeLayout: 'trending', listView: 'grid', showNSFW: false, blurSpoilers: true, hideFillers: true, useJapaneseTitle: false, animeTitleLanguage: 'en',
-  pushNotifs: true, emailNotifs: false, newEpAlerts: true, communityAlerts: true, systemAlerts: true, 
-  
+  pushNotifs: true, emailNotifs: false, newEpAlerts: true, communityAlerts: true, systemAlerts: true,
+
   // ✅ ENABLED BY DEFAULT
-  enableWhisper: true, 
+  enableWhisper: true,
 
   // Shorts & Reels
   shortsMuted: false,
@@ -131,7 +131,7 @@ export const DEFAULT_SETTINGS: AppSettings = {
   shortsCcPosY: 20,
 
   autoBackup: true, bandwidthSaver: false,
-  
+
   hideOnlineStatus: false,
   hideLevelBadge: false,
   autoSyncAnilist: true,
@@ -142,7 +142,7 @@ interface SettingsContextType {
   updateSetting: (key: keyof AppSettings, value: any) => void;
   resetSettings: () => void;
   isLoaded: boolean;
-  storageUsage: string; 
+  storageUsage: string;
   clearCache: () => void;
 }
 
@@ -154,7 +154,7 @@ let effectRunCount = 0;
 export function SettingsProvider({ children }: { children: React.ReactNode }) {
   const mountId = useRef(++providerMountCount);
   const { user, profile } = useAuth();
-  
+
   const [settings, setSettings] = useState<AppSettings>(DEFAULT_SETTINGS);
   const [isLoaded, setIsLoaded] = useState(false);
   const [storageUsage, setStorageUsage] = useState("0 KB");
@@ -170,7 +170,7 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
     // Apply color palette from central theme engine
     let paletteId = DEFAULT_THEME_ID;
     const savedPalette = localStorage.getItem('shadow_color_palette');
-    
+
     // Prioritize saved color palette if valid
     if (savedPalette && COLOR_PALETTES.some(p => p.id === savedPalette)) {
       paletteId = savedPalette;
@@ -204,22 +204,22 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
     applyColorPalette(paletteId, savedMode);
 
     const fontMap: Record<string, string> = {
-        'inter': 'var(--font-sans)',
-        'badUnicorn': 'var(--font-bad-unicorn)',
-        'demoness': 'var(--font-gradvis)',
-        'horrorshow': 'var(--font-above)',
-        'hunters': 'var(--font-minomu)',
-        'kareudon': 'var(--font-kareudon)',
-        'monas': 'var(--font-monas)',
-        'nyctophobia': 'var(--font-above)',
-        'onePiece': 'var(--font-one-piece)',
+      'inter': 'var(--font-sans)',
+      'badUnicorn': 'var(--font-bad-unicorn)',
+      'demoness': 'var(--font-gradvis)',
+      'horrorshow': 'var(--font-above)',
+      'hunters': 'var(--font-minomu)',
+      'kareudon': 'var(--font-kareudon)',
+      'monas': 'var(--font-monas)',
+      'nyctophobia': 'var(--font-above)',
+      'onePiece': 'var(--font-one-piece)',
     };
 
     const selectedFont = fontMap[s.fontFamily] || 'var(--font-sans)';
 
     root.style.setProperty('--font-primary', selectedFont);
     root.style.setProperty('--font-sans', selectedFont);
-    
+
     root.style.setProperty('--radius', s.roundedUI ? '0.75rem' : '0rem');
     root.style.setProperty('--border-width', s.uiBorders === 'thick' ? '2px' : '1px');
     root.style.setProperty('--glow-opacity', s.uiGlow ? '1' : '0');
@@ -228,7 +228,7 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     const currentUserId = user?.id || 'guest';
     const runId = ++effectRunCount;
-    
+
     if (hasInitialized.current && userIdRef.current === currentUserId) return;
 
     hasInitialized.current = true;
@@ -236,14 +236,14 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
 
     const key = user?.id ? `shadow_settings_${user.id}` : `shadow_settings_guest`;
     let currentSettings = { ...DEFAULT_SETTINGS };
-    
+
     // 1. Local Storage
     const localData = localStorage.getItem(key);
     if (localData) {
       try {
         currentSettings = { ...DEFAULT_SETTINGS, ...JSON.parse(localData) };
-      } catch (e) { 
-        console.error("Settings parse error"); 
+      } catch (e) {
+        console.error("Settings parse error");
       }
     }
 
@@ -258,18 +258,18 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
     // 2. Profile Sync
     if (user && profile?.settings) {
       currentSettings = { ...currentSettings, ...profile.settings };
-      
+
       // Preserve active local color palette if specifically chosen
       const activeLocalPalette = localStorage.getItem('shadow_color_palette');
       if (activeLocalPalette && COLOR_PALETTES.some(p => p.id === activeLocalPalette)) {
         currentSettings.accentColor = activeLocalPalette as any;
       }
-      
+
       localStorage.setItem(key, JSON.stringify(currentSettings));
-      
+
       // Override local shadow_player_prefs if DB has newer playerPrefs
       if (currentSettings.playerPrefs) {
-          localStorage.setItem('shadow_player_prefs', JSON.stringify(currentSettings.playerPrefs));
+        localStorage.setItem('shadow_player_prefs', JSON.stringify(currentSettings.playerPrefs));
       }
     }
 
@@ -292,7 +292,7 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
       if (typeof window !== 'undefined') {
         window.dispatchEvent(new CustomEvent('update_player_prefs', { detail: { playerPrefs: syncPlayer } }));
       }
-    } catch (e) {}
+    } catch (e) { }
 
     // --- ✅ FORCE-ACTIVATE DEFAULT VOICE (ALPHA - EN) IF MISSING ---
     const voiceConfig = localStorage.getItem('shadow_voice_settings');
@@ -307,7 +307,7 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
         enabled: true
       };
       localStorage.setItem('shadow_voice_settings', JSON.stringify(defaultVoice));
-      
+
       // Also sync it to our settings state just in case
       currentSettings.whisperVoice = 'alpha';
       currentSettings.whisperEnabled = true;
@@ -316,8 +316,8 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
 
     setSettings(currentSettings);
     applyThemeRef.current(currentSettings);
-    setIsLoaded(true); 
-    
+    setIsLoaded(true);
+
     let total = 0;
     for (let x in localStorage) {
       if (Object.prototype.hasOwnProperty.call(localStorage, x)) {
@@ -330,7 +330,7 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
   const updateSetting = useCallback((key: keyof AppSettings, value: any) => {
     setSettings((prev) => {
       const newSettings = { ...prev, [key]: value };
-      
+
       // Keep aliases in sync
       if (key === 'autoSkip') {
         newSettings.autoSkipOpEd = value;
@@ -353,16 +353,16 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
 
       const storageKey = user?.id ? `shadow_settings_${user.id}` : `shadow_settings_guest`;
       localStorage.setItem(storageKey, JSON.stringify(newSettings));
-      
+
       if (['accentColor', 'fontFamily', 'uiGlow', 'uiBorders', 'roundedUI', 'themeMode'].includes(key)) {
         applyThemeRef.current(newSettings);
         localStorage.setItem('shadow_theme_cache', JSON.stringify({
-            themeMode: newSettings.themeMode,
-            accentColor: newSettings.accentColor, 
-            fontFamily: newSettings.fontFamily,
-            uiGlow: newSettings.uiGlow,
-            uiBorders: newSettings.uiBorders,
-            roundedUI: newSettings.roundedUI
+          themeMode: newSettings.themeMode,
+          accentColor: newSettings.accentColor,
+          fontFamily: newSettings.fontFamily,
+          uiGlow: newSettings.uiGlow,
+          uiBorders: newSettings.uiBorders,
+          roundedUI: newSettings.roundedUI
         }));
         if (key === 'accentColor') {
           localStorage.setItem('shadow_color_palette', String(value));
@@ -442,7 +442,7 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
           if (typeof window !== 'undefined' && key !== 'playerPrefs') {
             window.dispatchEvent(new CustomEvent('update_player_prefs', { detail: { playerPrefs: updatedPlayerPrefs, source: 'SettingsProvider' } }));
           }
-        } catch (e) {}
+        } catch (e) { }
       }
 
       // Single source of truth in Supabase for authenticated users
@@ -454,7 +454,7 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
           } catch (err) {
             console.warn("Supabase player settings sync:", err);
           }
-        }, 500); 
+        }, 500);
       }
       return newSettings;
     });
@@ -472,7 +472,7 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
   const clearCache = useCallback(() => {
     const key = user?.id ? `shadow_settings_${user.id}` : `shadow_settings_guest`;
     Object.keys(localStorage).forEach((k) => {
-        if (k !== key && !k.includes('sb-') && !k.includes('auth')) localStorage.removeItem(k);
+      if (k !== key && !k.includes('sb-') && !k.includes('auth')) localStorage.removeItem(k);
     });
     toast.success("Cache Cleared");
   }, [user]);
@@ -495,7 +495,7 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
         updateSetting('playerPrefs', e.detail.playerPrefs);
       }
     };
-    
+
     if (typeof window !== 'undefined') {
       window.addEventListener('update_player_prefs', handlePlayerPrefsUpdate);
       return () => window.removeEventListener('update_player_prefs', handlePlayerPrefsUpdate);

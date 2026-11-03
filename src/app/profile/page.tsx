@@ -2994,7 +2994,7 @@ export default function ProfilePage() {
                     {/* Current Avatar Mini Preview */}
                     <div className="px-6 py-3.5 flex items-center gap-4 bg-white/[0.02] border-b border-white/5">
                         <div className="relative shrink-0">
-                            <ProfileAvatar profile={{...profile, frame_id: activeFrame || profile?.frame_id}} className="w-12 h-12" />
+                            <ProfileAvatar profile={{...profile, frame_id: activeFrame || profile?.frame_id}} className="w-12 h-12" animate="always" />
                         </div>
                         <div className="flex-1 min-w-0">
                             <p className="text-[10px] font-bold text-zinc-500 uppercase tracking-wider">Current Identity</p>

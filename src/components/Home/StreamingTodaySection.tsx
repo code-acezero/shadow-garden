@@ -176,9 +176,9 @@ export default function StreamingTodaySection({ initialItems = [] }: StreamingTo
               <span className="text-zinc-200 group-hover:text-white">
                 {currentOption.label}
               </span>
-              <ChevronDown 
-                size={12} 
-                className={cn("text-zinc-500 group-hover:text-zinc-300 transition-transform duration-200", isFilterOpen && "rotate-180")} 
+              <ChevronDown
+                size={12}
+                className={cn("text-zinc-500 group-hover:text-zinc-300 transition-transform duration-200", isFilterOpen && "rotate-180")}
               />
             </motion.button>
 

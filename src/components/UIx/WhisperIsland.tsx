@@ -2256,6 +2256,7 @@ function WhisperIslandContent() {
                                                     travellerAvatar={!isAuthenticated ? travellerProfile.avatar : undefined} 
                                                     className="w-full h-full" 
                                                     showLevel={false}
+                                                    animate="always"
                                                 />
                                             </div>
                                         </button>
@@ -2320,6 +2321,7 @@ function WhisperIslandContent() {
                                                 travellerAvatar={!isAuthenticated ? travellerProfile.avatar : undefined} 
                                                 className="w-full h-full object-cover" 
                                                 showLevel={false}
+                                                animate="always"
                                             />
                                         </div>
                                     </button>

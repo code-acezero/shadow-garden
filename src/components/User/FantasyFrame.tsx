@@ -772,8 +772,8 @@ function FantasyFrame({
 
   const resolvedAnimate = useMemo(() => {
     if (animate) return animate;
-    if (previewMode) return isPlaying ? 'always' : 'hover';
-    return 'hover';
+    if (previewMode) return isPlaying ? 'always' : 'never';
+    return 'inview';
   }, [animate, previewMode, isPlaying]);
 
   // Standalone thumbnail mode (e.g. Frame Store / Vault previews)
