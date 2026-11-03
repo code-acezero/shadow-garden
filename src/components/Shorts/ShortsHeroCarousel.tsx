@@ -68,10 +68,9 @@ export default function ShortsHeroCarousel({
             className="absolute inset-0"
           >
             <img
-              src={current.banner || current.cover}
+              src={current.banner || current.poster || current.cover}
               alt={current.title}
               referrerPolicy="no-referrer"
-              crossOrigin="anonymous"
               className="w-full h-full object-cover object-center filter brightness-[0.45]"
             />
           </motion.div>
@@ -204,10 +203,9 @@ export default function ShortsHeroCarousel({
               >
                 <div className="relative w-24 sm:w-28 md:w-32 aspect-[9/16] rounded-2xl overflow-hidden border border-white/15 shadow-2xl transition-all duration-300 group-hover/poster:scale-105 group-hover/poster:border-white/30">
                   <img
-                    src={current.cover}
+                    src={current.poster || current.cover}
                     alt={current.title}
                     referrerPolicy="no-referrer"
-                    crossOrigin="anonymous"
                     className="w-full h-full object-cover"
                   />
                   <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent" />

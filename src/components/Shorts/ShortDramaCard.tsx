@@ -58,9 +58,10 @@ export default function ShortDramaCard({
   }, [drama.tags, drama.language]);
 
   // Fallback cover if image fails
-  const coverUrl = imgError || !drama.cover
+  const posterSrc = drama.poster || drama.cover;
+  const coverUrl = imgError || !posterSrc
     ? 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=600&auto=format&fit=crop'
-    : drama.cover;
+    : posterSrc;
 
   const handleCopyLink = (e: React.MouseEvent) => {
     e.preventDefault();
@@ -101,12 +102,11 @@ export default function ShortDramaCard({
           {/* 9:16 Portrait Thumbnail with Clean Rounded Styling */}
           <div className="relative aspect-[9/16] flex-1 min-w-0 overflow-hidden rounded-2xl bg-[#141414] border border-white/5 shadow-md shadow-black/50 transition-all duration-300 group-hover:border-white/20 group-hover:shadow-2xl group-hover:shadow-black/80">
             {/* Poster Image with smooth hover scale */}
-            {!imgError && drama.cover ? (
+            {!imgError && posterSrc ? (
               <img
-                src={drama.cover}
+                src={posterSrc}
                 alt={drama.title}
                 referrerPolicy="no-referrer"
-                crossOrigin="anonymous"
                 onError={() => setImgError(true)}
                 className="h-full w-full object-cover object-center transition-transform duration-500 ease-out group-hover:scale-[1.04] filter brightness-95 group-hover:brightness-105"
                 loading={priority ? 'eager' : 'lazy'}

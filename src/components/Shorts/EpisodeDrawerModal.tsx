@@ -143,7 +143,7 @@ export default function EpisodeDrawerModal({
                         {/* Watched Episode Marking: Card itself is marked with grayed out green (no corner green dot) */}
                         {isCurrent ? (
                           <div className="flex flex-col items-center gap-0.5">
-                            <Play className="w-3 h-3 fill-white animate-pulse" />
+                            <Play className="w-3 h-3 fill-white " />
                             <span className="text-[10px] font-mono leading-none">
                               {ep.episodeNumber}
                             </span>

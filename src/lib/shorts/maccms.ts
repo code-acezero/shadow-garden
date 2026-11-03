@@ -111,12 +111,16 @@ function normalizeItem(raw: any, source: MacCMSSource): ShortDramaItem {
   }
   if (tags.length === 0) tags.push('Mini-Drama', 'Shorts');
 
+  const posterUrl = raw.vod_pic || raw.vod_pic_thumb || raw.vod_pic_slide || 'https://fffgood.com/upload/vod/20261027-1/6180f6d31b5921bcf137d2bf7336bf20.jpg';
+
   return {
     id: `${prefix}${raw.vod_id}`,
     source,
     title: sanitizeRawChineseTitle(rawTitle),
     originalTitle: rawTitle,
-    cover: raw.vod_pic || 'https://fffgood.com/upload/vod/20261027-1/6180f6d31b5921bcf137d2bf7336bf20.jpg',
+    cover: posterUrl,
+    poster: posterUrl,
+    banner: raw.vod_pic_slide || posterUrl,
     description: desc,
     totalEpisodes: episodes.length > 0 ? episodes.length : 1,
     language: 'English Sub',

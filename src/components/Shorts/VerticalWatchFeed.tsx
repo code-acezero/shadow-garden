@@ -152,6 +152,15 @@ export default function VerticalWatchFeed({
   const [ccStyle, setCcStyle] = useState<'glass' | 'box' | 'outline'>('glass');
   const [showCcModal, setShowCcModal] = useState<boolean>(false);
   const [ccActiveTab, setCcActiveTab] = useState<'language' | 'config'>('language');
+  const [subtitleTracks, setSubtitleTracks] = useState<{ id: string; index: number; label: string; lang: string }[]>([]);
+  const [selectedSubtitleIndex, setSelectedSubtitleIndex] = useState<number>(-1);
+  const [activeCueText, setActiveCueText] = useState<string | null>(null);
+  const externalCuesRef = useRef<{ start: number; end: number; text: string }[]>([]);
+
+  // 16:9 Landscape Video Detection
+  const [isLandscapeVideo, setIsLandscapeVideo] = useState<boolean>(false);
+  const [videoAspectRatio, setVideoAspectRatio] = useState<number>(9 / 16);
+  const mobileContainerRef = useRef<HTMLDivElement>(null);
   const [ccBgEnabled, setCcBgEnabled] = useState<boolean>(() => {
     if (typeof window !== 'undefined') {
       const stored = localStorage.getItem('shadow_shorts_cc_bg');
@@ -374,6 +383,83 @@ export default function VerticalWatchFeed({
       type: 'hls'
     };
   }, [drama.episodes, currentEpNum]);
+
+  // Dynamic Poster URL (Prioritizes episode thumbnail, then drama poster, then drama cover)
+  const currentPoster = useMemo(() => {
+    return currentEpisode?.thumbnail || drama.poster || drama.cover || '';
+  }, [currentEpisode, drama.poster, drama.cover]);
+
+  // Extract active cues from active text track or external cues
+  const updateActiveCue = useCallback(() => {
+    const video = videoRef.current;
+    if (!video || !isCcActive) {
+      setActiveCueText(null);
+      return;
+    }
+
+    // 1. Check native HTML5 textTracks (including HLS injected tracks)
+    if (video.textTracks && video.textTracks.length > 0) {
+      for (let i = 0; i < video.textTracks.length; i++) {
+        const track = video.textTracks[i];
+        if (track.mode === 'showing' || track.mode === 'hidden') {
+          const cues = track.activeCues;
+          if (cues && cues.length > 0) {
+            const texts: string[] = [];
+            for (let j = 0; j < cues.length; j++) {
+              const cue = cues[j] as any;
+              if (cue.text) {
+                // Strip WebVTT tags
+                texts.push(cue.text.replace(/<[^>]*>/g, '').trim());
+              }
+            }
+            if (texts.length > 0) {
+              const joined = texts.filter(Boolean).join('\n');
+              if (joined) {
+                setActiveCueText(joined);
+                return;
+              }
+            }
+          }
+        }
+      }
+    }
+
+    // 2. Check external parsed cues (if provided)
+    if (externalCuesRef.current && externalCuesRef.current.length > 0) {
+      const curTime = video.currentTime;
+      const match = externalCuesRef.current.find(c => curTime >= c.start && curTime <= c.end);
+      if (match) {
+        setActiveCueText(match.text);
+        return;
+      }
+    }
+
+    setActiveCueText(null);
+  }, [isCcActive]);
+
+  const handleSelectSubtitleTrack = useCallback((index: number) => {
+    setSelectedSubtitleIndex(index);
+    if (index === -1) {
+      setIsCcActive(false);
+      setCcLanguage('off');
+      if (hlsRef.current) hlsRef.current.subtitleTrack = -1;
+      if (videoRef.current?.textTracks) {
+        for (let i = 0; i < videoRef.current.textTracks.length; i++) {
+          videoRef.current.textTracks[i].mode = 'disabled';
+        }
+      }
+      setActiveCueText(null);
+    } else {
+      setIsCcActive(true);
+      if (hlsRef.current) hlsRef.current.subtitleTrack = index;
+      if (videoRef.current?.textTracks && videoRef.current.textTracks[index]) {
+        for (let i = 0; i < videoRef.current.textTracks.length; i++) {
+          videoRef.current.textTracks[i].mode = i === index ? 'hidden' : 'disabled';
+        }
+      }
+      updateActiveCue();
+    }
+  }, [updateActiveCue]);
 
   // Filter episodes for right panel (All episodes in one tab, no chunk tabs)
   const displayedEpisodes = useMemo(() => {
@@ -852,9 +938,31 @@ export default function VerticalWatchFeed({
       setVideoError('Video stream unavailable. Tap Reload to retry.');
     };
 
+    const handleLoadedMetadata = () => {
+      const vw = video.videoWidth || 0;
+      const vh = video.videoHeight || 0;
+      if (vw > 0 && vh > 0) {
+        const ratio = vw / vh;
+        setVideoAspectRatio(ratio);
+        // Standard 16:9 is ~1.777. Any ratio >= 1.25 is landscape!
+        setIsLandscapeVideo(ratio >= 1.25);
+      }
+    };
+
+    const handleCueChange = () => {
+      updateActiveCue();
+    };
+
     video.addEventListener('loadeddata', handleLoadedData);
     video.addEventListener('canplay', handleLoadedData);
+    video.addEventListener('loadedmetadata', handleLoadedMetadata);
     video.addEventListener('error', handleNativeError);
+
+    if (video.textTracks) {
+      for (let i = 0; i < video.textTracks.length; i++) {
+        video.textTracks[i].addEventListener('cuechange', handleCueChange);
+      }
+    }
 
     if (isHls && Hls.isSupported()) {
       const hls = new Hls({
@@ -882,6 +990,27 @@ export default function VerticalWatchFeed({
             setIsPlaying(false);
           }
         });
+      });
+
+      hls.on(Hls.Events.SUBTITLE_TRACKS_UPDATED, (_event, data) => {
+        const tracks = data.subtitleTracks || [];
+        const items = tracks.map((t, idx) => ({
+          id: String(idx),
+          index: idx,
+          label: t.name || t.lang || `Track ${idx + 1}`,
+          lang: (t.lang || 'en').toLowerCase()
+        }));
+        setSubtitleTracks(items);
+        if (items.length > 0 && isCcActive) {
+          const enIdx = items.findIndex(t => t.lang.startsWith('en'));
+          const defaultIdx = enIdx >= 0 ? enIdx : 0;
+          setSelectedSubtitleIndex(defaultIdx);
+          hls.subtitleTrack = defaultIdx;
+        }
+      });
+
+      hls.on(Hls.Events.CUES_PARSED, () => {
+        updateActiveCue();
       });
 
       hls.on(Hls.Events.ERROR, (_event, data) => {
@@ -934,7 +1063,13 @@ export default function VerticalWatchFeed({
     return () => {
       video.removeEventListener('loadeddata', handleLoadedData);
       video.removeEventListener('canplay', handleLoadedData);
+      video.removeEventListener('loadedmetadata', handleLoadedMetadata);
       video.removeEventListener('error', handleNativeError);
+      if (video.textTracks) {
+        for (let i = 0; i < video.textTracks.length; i++) {
+          video.textTracks[i].removeEventListener('cuechange', handleCueChange);
+        }
+      }
       if (hlsRef.current) {
         hlsRef.current.destroy();
         hlsRef.current = null;
@@ -1098,21 +1233,74 @@ export default function VerticalWatchFeed({
     setIsMuted(newVol === 0);
   };
 
-  // Fullscreen toggle
+  // Fullscreen toggle (works reliably across desktop and mobile containers)
   const toggleFullscreen = () => {
-    const el = playerFrameRef.current;
+    const isFs = !!(document.fullscreenElement || (document as any).webkitFullscreenElement);
+    const el = (typeof window !== 'undefined' && window.innerWidth < 1024)
+      ? (mobileContainerRef.current || videoRef.current)
+      : (playerFrameRef.current || videoRef.current);
+
     if (!el) return;
-    if (!document.fullscreenElement && !(document as any).webkitFullscreenElement) {
+
+    if (!isFs) {
       if (el.requestFullscreen) {
         el.requestFullscreen().catch(() => {});
       } else if ((el as any).webkitRequestFullscreen) {
         (el as any).webkitRequestFullscreen();
+      } else if (videoRef.current && (videoRef.current as any).webkitEnterFullscreen) {
+        (videoRef.current as any).webkitEnterFullscreen();
       }
     } else {
       if (document.exitFullscreen) {
         document.exitFullscreen().catch(() => {});
       } else if ((document as any).webkitExitFullscreen) {
         (document as any).webkitExitFullscreen();
+      }
+    }
+  };
+
+  // Dedicated 16:9 Landscape Fullscreen Toggle
+  const toggleLandscapeFullscreen = () => {
+    const isFs = !!(document.fullscreenElement || (document as any).webkitFullscreenElement);
+    const el = (typeof window !== 'undefined' && window.innerWidth < 1024)
+      ? (mobileContainerRef.current || videoRef.current)
+      : (playerFrameRef.current || videoRef.current);
+
+    if (!el) return;
+
+    if (!isFs) {
+      if (el.requestFullscreen) {
+        el.requestFullscreen().then(() => {
+          setIsFullscreen(true);
+          try {
+            if (screen.orientation && (screen.orientation as any).lock) {
+              (screen.orientation as any).lock('landscape').catch(() => {});
+            }
+          } catch {}
+        }).catch(() => {
+          if (videoRef.current && (videoRef.current as any).webkitEnterFullscreen) {
+            (videoRef.current as any).webkitEnterFullscreen();
+          }
+        });
+      } else if ((el as any).webkitRequestFullscreen) {
+        (el as any).webkitRequestFullscreen();
+        setIsFullscreen(true);
+      } else if (videoRef.current && (videoRef.current as any).webkitEnterFullscreen) {
+        (videoRef.current as any).webkitEnterFullscreen();
+      }
+    } else {
+      if (document.exitFullscreen) {
+        document.exitFullscreen().then(() => {
+          setIsFullscreen(false);
+          try {
+            if (screen.orientation && (screen.orientation as any).unlock) {
+              (screen.orientation as any).unlock();
+            }
+          } catch {}
+        }).catch(() => {});
+      } else if ((document as any).webkitExitFullscreen) {
+        (document as any).webkitExitFullscreen();
+        setIsFullscreen(false);
       }
     }
   };
@@ -1262,68 +1450,11 @@ export default function VerticalWatchFeed({
     return `${mins}:${secs < 10 ? '0' : ''}${secs}`;
   };
 
-  // Dynamic contextually synced subtitle cues
+  // Active cue extracted dynamically from stream HLS WebVTT / native textTracks
   const currentSubtitleCue = useMemo(() => {
     if (!isCcActive || ccLanguage === 'off') return null;
-
-    const cycleTime = Math.floor(progress) % 60;
-
-    const cuesEn = [
-      { start: 0, end: 5, text: `You thought you could walk away from here unscathed?` },
-      { start: 5, end: 11, text: `I owe nothing to your family. The truth will be told!` },
-      { start: 11, end: 17, text: `Is she really the true heir of the court?` },
-      { start: 17, end: 24, text: `Whoever dares lay a finger on her answers to me.` },
-      { start: 24, end: 31, text: `Look! The ancestral seal has finally resurfaced!` },
-      { start: 31, end: 38, text: `Three years ago you promised justice. Where is it now?` },
-      { start: 38, end: 45, text: `Guards! Secure the courtyard and seal every gate!` },
-      { start: 45, end: 52, text: `Touch her, and your entire empire crumbles by midnight.` },
-      { start: 52, end: 60, text: `Today, every hidden secret in this palace will be known.` },
-    ];
-
-    const cuesHi = [
-      { start: 0, end: 5, text: `क्या तुम्हें लगा था कि तुम यहाँ से इतनी आसानी से बच निकलोगी?` },
-      { start: 5, end: 11, text: `मैंने कोई गुनाह नहीं किया, आज सारा सच सबके सामने आएगा!` },
-      { start: 11, end: 17, text: `क्या यही वो खोई हुई वारिस है?` },
-      { start: 17, end: 24, text: `जो भी इसे हाथ लगाएगा, उसे पहले मुझसे निपटना होगा!` },
-      { start: 24, end: 31, text: `देखो! खानदान की असली शाही मोहर मिल गई है!` },
-      { start: 31, end: 38, text: `तीन साल पहले तुमने न्याय का वादा किया था, वो कहाँ है?` },
-      { start: 38, end: 45, text: `सुरक्षाकर्मियों! सारे दरवाज़े तुरंत बंद कर दो!` },
-      { start: 45, end: 52, text: `अगर इसे खरोंच भी आई, तो तुम्हारा साम्राज्य ढह जाएगा!` },
-      { start: 52, end: 60, text: `आज इस महल का हर छुपा हुआ राज़ बेनकाब होगा!` },
-    ];
-
-    const cuesZh = [
-      { start: 0, end: 5, text: `你以为你真能瞒天过海，全身而退？` },
-      { start: 5, end: 11, text: `我宋家清白坦荡，今日便让这京城看个明白！` },
-      { start: 11, end: 17, text: `此女绝非等闲之辈，莫非真是当年的真千金？` },
-      { start: 17, end: 24, text: `今日谁敢动她半根毫毛，便是与我顾氏为敌。` },
-      { start: 24, end: 31, text: `真正的相府金令现世了！` },
-      { start: 31, end: 38, text: `三年前欠下的血债，如今该一并清算了！` },
-      { start: 38, end: 45, text: `左右何在！给我将大门彻底封锁！` },
-      { start: 45, end: 52, text: `敢动她一下，我让你整个家族今夜灰飞烟灭。` },
-      { start: 52, end: 60, text: `今日所有深埋的真相，都将大白于天下！` },
-    ];
-
-    const cuesEs = [
-      { start: 0, end: 5, text: `¿Creías que podías escapar de aquí sin pagar el precio?` },
-      { start: 5, end: 11, text: `¡No les debo nada! ¡La verdad saldrá a la luz hoy!` },
-      { start: 11, end: 17, text: `¿Acaso es ella la verdadera heredera desaparecida?` },
-      { start: 17, end: 24, text: `Quien se atreva a tocarla, responderá ante mí.` },
-      { start: 24, end: 31, text: `¡Miren! ¡El sello ancestral ha reaparecido!` },
-      { start: 31, end: 38, text: `Hace tres años hicieron una promesa. ¡Cumplan su palabra!` },
-      { start: 38, end: 45, text: `¡Guardias! ¡Cierren todas las salidas de inmediato!` },
-      { start: 45, end: 52, text: `Tócala, y tu imperio caerá antes de la medianoche.` },
-      { start: 52, end: 60, text: `Hoy, cada secreto oculto en este palacio será revelado.` },
-    ];
-
-    let targetArray = cuesEn;
-    if (ccLanguage === 'hi') targetArray = cuesHi;
-    else if (ccLanguage === 'zh') targetArray = cuesZh;
-    else if (ccLanguage === 'es') targetArray = cuesEs;
-
-    const matched = targetArray.find(c => cycleTime >= c.start && cycleTime < c.end);
-    return matched ? matched.text : targetArray[0].text;
-  }, [isCcActive, ccLanguage, progress, currentEpNum]);
+    return activeCueText;
+  }, [isCcActive, ccLanguage, activeCueText]);
 
   return (
     <div className="w-full h-full min-h-screen lg:min-h-0 lg:h-screen lg:max-h-screen bg-black text-white flex flex-col relative overflow-hidden selection:bg-primary/30">
@@ -1332,7 +1463,7 @@ export default function VerticalWatchFeed({
       {/* MOBILE NATIVE REEL SYSTEM (Visible only on < lg screens)                   */}
       {/* ========================================================================= */}
       {!isDesktop && (
-        <div className="lg:hidden fixed inset-0 z-40 bg-black flex flex-col justify-between overflow-hidden select-none">
+        <div ref={mobileContainerRef} className="lg:hidden fixed inset-0 z-40 bg-black flex flex-col justify-between overflow-hidden select-none">
         
         {/* Fullscreen Reel Video Viewport (Stays full-bleed in background, like YouTube Shorts) */}
         <div 
@@ -1355,13 +1486,23 @@ export default function VerticalWatchFeed({
             ref={videoRef}
             playsInline
             muted={isMuted}
+            poster={currentPoster}
             onTimeUpdate={() => {
               if (videoRef.current) {
                 const cur = videoRef.current.currentTime;
                 const dur = videoRef.current.duration || 0;
                 setProgress(cur);
                 setDuration(dur);
+                updateActiveCue();
                 syncContinueWatching(cur, dur > 0 && cur >= dur * 0.9);
+              }
+            }}
+            onLoadedMetadata={() => {
+              const video = videoRef.current;
+              if (video && video.videoWidth > 0 && video.videoHeight > 0) {
+                const ratio = video.videoWidth / video.videoHeight;
+                setVideoAspectRatio(ratio);
+                setIsLandscapeVideo(ratio >= 1.25);
               }
             }}
             onEnded={() => {
@@ -1397,6 +1538,19 @@ export default function VerticalWatchFeed({
               aspectFit === 'cover' ? "object-cover" : "object-contain"
             )}
           />
+
+          {/* Poster image preview backdrop while video is loading/buffering */}
+          {currentPoster && isLoadingVideo && (
+            <div className="absolute inset-0 z-10 pointer-events-none overflow-hidden flex items-center justify-center bg-black">
+              <img
+                src={currentPoster}
+                alt={drama.title}
+                referrerPolicy="no-referrer"
+                className="w-full h-full object-cover filter blur-sm opacity-60 scale-105 transition-opacity duration-300"
+              />
+              <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-black/30" />
+            </div>
+          )}
 
           {/* Double Tap Burst Heart Animation */}
           <AnimatePresence>
@@ -1453,6 +1607,24 @@ export default function VerticalWatchFeed({
             )}
           </AnimatePresence>
 
+          {/* 16:9 Floating Landscape Fullscreen Pill Button */}
+          {isLandscapeVideo && !isFullscreen && (
+            <motion.button
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              whileTap={{ scale: 0.95 }}
+              onClick={(e) => {
+                e.stopPropagation();
+                resetMobileInactivityTimer();
+                toggleLandscapeFullscreen();
+              }}
+              className="absolute top-20 left-1/2 -translate-x-1/2 z-30 px-3.5 py-1.5 rounded-full bg-black/80 backdrop-blur-md border border-cyan-500/40 text-cyan-300 text-[11px] font-black uppercase tracking-wider flex items-center gap-1.5 shadow-xl hover:bg-black/95 active:scale-95 pointer-events-auto"
+            >
+              <Maximize className="w-3.5 h-3.5 text-cyan-400" />
+              <span>Watch 16:9 Fullscreen</span>
+            </motion.button>
+          )}
+
           {/* Mobile Loading Spinner */}
           {isLoadingVideo && !videoError && (
             <div className="absolute inset-0 flex items-center justify-center bg-black/40 backdrop-blur-sm z-30 pointer-events-none">
@@ -1494,11 +1666,11 @@ export default function VerticalWatchFeed({
             )}
           </AnimatePresence>
 
-          {/* Subtitles Overlay on Mobile (Respects CC BG Enabled & Opacity Controls) */}
+          {/* Subtitles Overlay on Mobile (Golden Ratio phi ~ 1.618 Position & Sizing) */}
           {isCcActive && currentSubtitleCue && (
             <div 
-              className="absolute bottom-28 left-4 right-16 flex justify-center text-center pointer-events-none z-30 transition-all duration-150"
-              style={{ transform: `translateY(${-ccPositionY}px)` }}
+              className="absolute left-0 right-0 flex justify-center text-center pointer-events-none z-30 transition-all duration-150 px-4"
+              style={{ bottom: `calc(34% + ${-ccPositionY}px)` }}
             >
               <motion.div
                 key={currentSubtitleCue}
@@ -1514,11 +1686,11 @@ export default function VerticalWatchFeed({
                   boxShadow: ccBgEnabled && ccBgOpacity > 0.1 ? '0 4px 24px rgba(0,0,0,0.45)' : 'none',
                 }}
                 className={cn(
-                  "px-3.5 py-1.5 rounded-2xl max-w-full font-medium tracking-wide leading-snug text-xs transition-all",
+                  "py-2 px-[14px] rounded-2xl max-w-[76%] font-medium tracking-wide leading-[1.618] transition-all",
                   ccBgEnabled && ccBgOpacity > 0 && "border",
-                  ccSize === 'sm' && "text-[11px]",
-                  ccSize === 'base' && "text-xs",
-                  ccSize === 'lg' && "text-sm font-bold",
+                  ccSize === 'sm' && "text-[13px] leading-[1.618]",
+                  ccSize === 'base' && "text-[15px] leading-[1.618]",
+                  ccSize === 'lg' && "text-[18px] leading-[1.618] font-bold",
                   (!ccBgEnabled || ccBgOpacity === 0)
                     ? "text-white [text-shadow:0_2px_4px_rgba(0,0,0,0.95),0_0_2px_#000,-1px_-1px_0_#000,1px_-1px_0_#000,-1px_1px_0_#000,1px_1px_0_#000]"
                     : ccStyle === 'glass'
@@ -1565,31 +1737,58 @@ export default function VerticalWatchFeed({
                   </span>
                 </div>
 
-                {/* Quick Sound / Mute Toggle Button in Top Right */}
-                <motion.button 
-                  variants={atraxSquishTapVariants}
-                  initial="initial"
-                  whileTap="tap"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    resetMobileInactivityTimer();
-                    toggleMute();
-                  }}
-                  className={cn(
-                    "w-9 h-9 rounded-full flex items-center justify-center backdrop-blur-md border transition-all active:scale-95",
-                    isMuted 
-                      ? "bg-amber-500/20 border-amber-500/40 text-amber-300" 
-                      : "bg-black/60 border-white/20 text-white hover:bg-black/80"
+                {/* Top Right Controls: 16:9 Fullscreen Toggle (when video is landscape) + Sound Mute Toggle */}
+                <div className="flex items-center gap-1.5">
+                  {isLandscapeVideo && (
+                    <motion.button 
+                      variants={atraxSquishTapVariants}
+                      initial="initial"
+                      whileTap="tap"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        resetMobileInactivityTimer();
+                        toggleLandscapeFullscreen();
+                      }}
+                      className={cn(
+                        "h-9 px-3 rounded-full flex items-center gap-1.5 backdrop-blur-md border text-[10px] font-black uppercase tracking-wider transition-all active:scale-95 shadow-lg",
+                        isFullscreen
+                          ? "bg-cyan-500 text-black border-cyan-400 font-black"
+                          : "bg-cyan-950/70 border-cyan-500/40 text-cyan-300 hover:bg-cyan-900/80"
+                      )}
+                      aria-label="16:9 Fullscreen"
+                      title="16:9 Fullscreen Mode"
+                    >
+                      {isFullscreen ? <Minimize className="w-3.5 h-3.5" /> : <Maximize className="w-3.5 h-3.5" />}
+                      <span>{isFullscreen ? "Exit" : "16:9 Full"}</span>
+                    </motion.button>
                   )}
-                  aria-label={isMuted ? "Unmute audio" : "Mute audio"}
-                  title={isMuted ? "Unmute audio" : "Mute audio"}
-                >
-                  {isMuted ? (
-                    <VolumeX className="w-4 h-4 text-amber-400" />
-                  ) : (
-                    <Volume2 className="w-4 h-4 text-white" />
-                  )}
-                </motion.button>
+
+                  {/* Quick Sound / Mute Toggle Button in Top Right */}
+                  <motion.button 
+                    variants={atraxSquishTapVariants}
+                    initial="initial"
+                    whileTap="tap"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      resetMobileInactivityTimer();
+                      toggleMute();
+                    }}
+                    className={cn(
+                      "w-9 h-9 rounded-full flex items-center justify-center backdrop-blur-md border transition-all active:scale-95",
+                      isMuted 
+                        ? "bg-amber-500/20 border-amber-500/40 text-amber-300" 
+                        : "bg-black/60 border-white/20 text-white hover:bg-black/80"
+                    )}
+                    aria-label={isMuted ? "Unmute audio" : "Mute audio"}
+                    title={isMuted ? "Unmute audio" : "Mute audio"}
+                  >
+                    {isMuted ? (
+                      <VolumeX className="w-4 h-4 text-amber-400" />
+                    ) : (
+                      <Volume2 className="w-4 h-4 text-white" />
+                    )}
+                  </motion.button>
+                </div>
               </motion.div>
 
               {/* Mobile Right Floating Action Stack (100% YouTube Shorts faithful sizing & typography) */}
@@ -2105,7 +2304,9 @@ export default function VerticalWatchFeed({
                   "relative bg-black flex flex-col select-none mx-auto transition-all duration-150",
                   isFullscreen
                     ? "fixed inset-0 w-screen h-screen max-w-none max-h-none rounded-none border-none aspect-auto overflow-hidden z-[9999]"
-                    : "h-full aspect-[9/16] w-auto max-h-full rounded-xl border border-zinc-800 overflow-hidden group"
+                    : isLandscapeVideo
+                      ? "h-full max-h-[82vh] aspect-video w-auto rounded-xl border border-zinc-800 overflow-hidden group shadow-2xl"
+                      : "h-full aspect-[9/16] w-auto max-h-full rounded-xl border border-zinc-800 overflow-hidden group"
                 )}
               >
                 {/* Top Video Badges (Hover Only) */}
@@ -2139,13 +2340,23 @@ export default function VerticalWatchFeed({
                     ref={videoRef}
                     playsInline
                     muted={isMuted}
+                    poster={currentPoster}
                     onTimeUpdate={() => {
                       if (videoRef.current) {
                         const ct = videoRef.current.currentTime;
                         const dur = videoRef.current.duration || 0;
                         setProgress(ct);
                         setDuration(dur);
+                        updateActiveCue();
                         syncContinueWatching(ct, dur > 0 && ct >= dur * 0.9);
+                      }
+                    }}
+                    onLoadedMetadata={() => {
+                      const video = videoRef.current;
+                      if (video && video.videoWidth > 0 && video.videoHeight > 0) {
+                        const ratio = video.videoWidth / video.videoHeight;
+                        setVideoAspectRatio(ratio);
+                        setIsLandscapeVideo(ratio >= 1.25);
                       }
                     }}
                     onEnded={() => {
@@ -2186,14 +2397,28 @@ export default function VerticalWatchFeed({
                     )}
                   />
 
-                  {/* Subtitles Overlay (Standard Shorts Position ~22% from bottom, Respects CC BG Enabled & Opacity) */}
+                  {/* Poster image preview backdrop while video is loading/buffering */}
+                  {currentPoster && isLoadingVideo && (
+                    <div className="absolute inset-0 z-10 pointer-events-none overflow-hidden flex items-center justify-center bg-black">
+                      <img
+                        src={currentPoster}
+                        alt={drama.title}
+                        referrerPolicy="no-referrer"
+                        className="w-full h-full object-cover filter blur-sm opacity-60 scale-105 transition-opacity duration-300"
+                      />
+                      <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-black/30" />
+                    </div>
+                  )}
+
+                  {/* Subtitles Overlay (Golden Ratio phi ~ 1.618 Focal Placement: 38.2% from bottom, leading-1.618) */}
                   {isCcActive && currentSubtitleCue && (
                     <div 
-                      className={cn(
-                        "absolute inset-x-4 flex justify-center text-center pointer-events-none z-20 transition-all duration-150",
-                        isFullscreen ? "bottom-[14%] sm:bottom-[16%]" : "bottom-[22%]"
-                      )}
-                      style={{ transform: `translateY(${-ccPositionY}px)` }}
+                      className="absolute inset-x-0 flex justify-center text-center pointer-events-none z-20 transition-all duration-150 px-4"
+                      style={{ 
+                        bottom: isFullscreen 
+                          ? `calc(23.6% + ${-ccPositionY}px)` 
+                          : `calc(38.2% + ${-ccPositionY}px)` 
+                      }}
                     >
                       <motion.div
                         key={currentSubtitleCue}
@@ -2209,11 +2434,11 @@ export default function VerticalWatchFeed({
                           boxShadow: ccBgEnabled && ccBgOpacity > 0.1 ? '0 4px 24px rgba(0,0,0,0.45)' : 'none',
                         }}
                         className={cn(
-                          "px-4 py-2 rounded-2xl max-w-[88%] font-medium tracking-wide leading-snug transition-all",
+                          "py-2 px-[14px] rounded-2xl max-w-[76%] font-medium tracking-wide leading-[1.618] transition-all",
                           ccBgEnabled && ccBgOpacity > 0 && "border",
-                          ccSize === 'sm' && "text-xs",
-                          ccSize === 'base' && "text-xs sm:text-sm",
-                          ccSize === 'lg' && "text-sm sm:text-base font-bold",
+                          ccSize === 'sm' && "text-[13px] leading-[1.618]",
+                          ccSize === 'base' && "text-[15px] leading-[1.618]",
+                          ccSize === 'lg' && "text-[18px] leading-[1.618] font-bold",
                           (!ccBgEnabled || ccBgOpacity === 0)
                             ? "text-white [text-shadow:0_2px_4px_rgba(0,0,0,0.95),0_0_2px_#000,-1px_-1px_0_#000,1px_-1px_0_#000,-1px_1px_0_#000,1px_1px_0_#000]"
                             : ccStyle === 'glass'
@@ -2389,6 +2614,23 @@ export default function VerticalWatchFeed({
                     <Settings className="w-4 h-4" />
                   </button>
 
+                  {/* 16:9 Landscape Fullscreen Pill Button */}
+                  {isLandscapeVideo && (
+                    <button
+                      onClick={toggleLandscapeFullscreen}
+                      className={cn(
+                        "h-8 px-2.5 rounded-lg border flex items-center gap-1.5 transition-all shadow-md text-[10px] font-black uppercase tracking-wider active:scale-95",
+                        isFullscreen
+                          ? "bg-cyan-500 text-black border-cyan-400 font-black"
+                          : "bg-cyan-950/80 border-cyan-500/40 text-cyan-300 hover:bg-cyan-900/90 hover:text-white"
+                      )}
+                      title="16:9 Fullscreen Mode"
+                    >
+                      <Maximize className="w-3.5 h-3.5" />
+                      <span>16:9</span>
+                    </button>
+                  )}
+
                   {/* Fullscreen */}
                   <button
                     onClick={toggleFullscreen}
@@ -2524,46 +2766,45 @@ export default function VerticalWatchFeed({
                       {ccActiveTab === 'language' && (
                         <div className="flex flex-col gap-2 pt-0.5">
                           <div className="flex items-center justify-between">
-                            <span className="text-[9px] text-zinc-400 font-bold uppercase tracking-wider font-mono">Select Language</span>
-                            {isCcActive && ccLanguage !== 'off' && (
-                              <span className="text-[9px] text-emerald-400 font-mono font-semibold">Active</span>
+                            <span className="text-[9px] text-zinc-400 font-bold uppercase tracking-wider font-mono">Stream Captions</span>
+                            {isCcActive && (
+                              <span className="text-[9px] text-cyan-400 font-mono font-semibold">Active</span>
                             )}
                           </div>
 
-                          <div className="grid grid-cols-2 gap-1.5 font-medium">
-                            {[
-                              { id: 'en', label: 'English 🇺🇸' },
-                              { id: 'hi', label: 'Hindi 🇮🇳' },
-                              { id: 'zh', label: 'Chinese 🇨🇳' },
-                              { id: 'es', label: 'Spanish 🇪🇸' },
-                            ].map((lang) => (
-                              <button
-                                key={lang.id}
-                                onClick={() => {
-                                  setCcLanguage(lang.id as any);
-                                  setIsCcActive(true);
-                                }}
-                                className={cn(
-                                  "px-2.5 py-1.5 rounded-lg text-[10px] text-left transition-colors flex items-center justify-between border",
-                                  ccLanguage === lang.id && isCcActive
-                                    ? "bg-primary text-white font-bold border-primary shadow-sm"
-                                    : "bg-zinc-900/60 border-zinc-800 text-zinc-300 hover:bg-zinc-800 hover:text-white"
-                                )}
-                              >
-                                <span>{lang.label}</span>
-                                {ccLanguage === lang.id && isCcActive && <Check className="w-3 h-3 text-white" />}
-                              </button>
-                            ))}
-                          </div>
+                          {subtitleTracks.length > 0 ? (
+                            <div className="flex flex-col gap-1.5 max-h-48 overflow-y-auto custom-scrollbar font-medium">
+                              {subtitleTracks.map((track) => {
+                                const isSelected = isCcActive && selectedSubtitleIndex === track.index;
+                                return (
+                                  <button
+                                    key={track.id}
+                                    onClick={() => handleSelectSubtitleTrack(track.index)}
+                                    className={cn(
+                                      "px-3 py-2 rounded-xl text-[10px] text-left transition-colors flex items-center justify-between border",
+                                      isSelected
+                                        ? "bg-cyan-500/20 text-cyan-300 font-bold border-cyan-500/40 shadow-sm"
+                                        : "bg-zinc-900/60 border-zinc-800 text-zinc-300 hover:bg-zinc-800 hover:text-white"
+                                    )}
+                                  >
+                                    <span>{track.label}</span>
+                                    {isSelected && <Check className="w-3.5 h-3.5 text-cyan-400" />}
+                                  </button>
+                                );
+                              })}
+                            </div>
+                          ) : (
+                            <div className="py-3 px-3 rounded-xl bg-white/[0.04] border border-white/10 text-center">
+                              <p className="text-[11px] text-zinc-300 font-medium">No embedded subtitle tracks</p>
+                              <p className="text-[10px] text-zinc-500 mt-0.5">Stream contains native dialogue audio or burned-in captions.</p>
+                            </div>
+                          )}
 
                           <button
-                            onClick={() => {
-                              setCcLanguage('off');
-                              setIsCcActive(false);
-                            }}
+                            onClick={() => handleSelectSubtitleTrack(-1)}
                             className={cn(
                               "w-full py-1.5 rounded-lg text-[10px] font-bold text-center transition-colors border",
-                              !isCcActive || ccLanguage === 'off'
+                              !isCcActive
                                 ? "bg-red-500/10 text-red-400 border-red-500/30"
                                 : "bg-zinc-900/60 border-zinc-800 text-zinc-400 hover:text-white hover:bg-zinc-800"
                             )}
@@ -3260,6 +3501,30 @@ export default function VerticalWatchFeed({
 
               {/* Scrollable Options Body */}
               <div className="flex-1 overflow-y-auto custom-scrollbar p-4 space-y-4">
+                {/* 16:9 Landscape Fullscreen Action Banner */}
+                {isLandscapeVideo && (
+                  <button
+                    onClick={() => {
+                      setIsMoreMenuOpen(false);
+                      toggleLandscapeFullscreen();
+                    }}
+                    className="w-full flex items-center justify-between p-3 rounded-2xl bg-cyan-950/60 border border-cyan-500/40 text-cyan-300 hover:bg-cyan-900/80 transition-all text-left shadow-lg active:scale-98"
+                  >
+                    <div className="flex items-center gap-2.5">
+                      <div className="w-8 h-8 rounded-xl bg-cyan-500/20 flex items-center justify-center shrink-0">
+                        <Maximize className="w-4 h-4 text-cyan-400" />
+                      </div>
+                      <div className="flex flex-col">
+                        <span className="text-xs font-bold text-white">16:9 Landscape Fullscreen</span>
+                        <span className="text-[10px] text-cyan-400/80">Rotate and expand to true 16:9 view</span>
+                      </div>
+                    </div>
+                    <span className="text-[10px] font-black uppercase tracking-wider px-2.5 py-1 rounded-full bg-cyan-500 text-black">
+                      Expand
+                    </span>
+                  </button>
+                )}
+
                 {/* Quick Action Grid: Watchlist & Aspect Ratio */}
                 <div className="grid grid-cols-2 gap-2.5">
                   {/* Save to Watchlist */}
@@ -3360,38 +3625,44 @@ export default function VerticalWatchFeed({
                       Style & Position
                     </button>
                   </div>
-                  <div className="grid grid-cols-5 gap-1.5 text-center text-xs">
-                    {[
-                      { id: 'off', label: 'Off' },
-                      { id: 'en', label: 'English' },
-                      { id: 'hi', label: 'Hindi' },
-                      { id: 'zh', label: 'Chinese' },
-                      { id: 'es', label: 'Spanish' },
-                    ].map((item) => {
-                      const isActive = (!isCcActive && item.id === 'off') || (isCcActive && ccLanguage === item.id);
-                      return (
+                  <div className="flex flex-col gap-1.5 text-center text-xs">
+                    {subtitleTracks.length > 0 ? (
+                      <div className="grid grid-cols-2 gap-1.5">
                         <button
-                          key={item.id}
-                          onClick={() => {
-                            if (item.id === 'off') {
-                              setIsCcActive(false);
-                              setCcLanguage('off');
-                            } else {
-                              setIsCcActive(true);
-                              setCcLanguage(item.id as any);
-                            }
-                          }}
+                          onClick={() => handleSelectSubtitleTrack(-1)}
                           className={cn(
-                            "py-2 rounded-xl font-medium border transition-all active:scale-95 truncate px-1",
-                            isActive
-                              ? "bg-primary text-white border-primary font-bold shadow-[0_0_12px_rgba(139, 92, 246, 0.4)]"
+                            "py-2 rounded-xl font-medium border transition-all active:scale-95 truncate px-2 text-xs",
+                            !isCcActive
+                              ? "bg-red-500/20 text-red-300 border-red-500/40 font-bold"
                               : "bg-zinc-950/80 text-zinc-400 border-zinc-800/80 hover:bg-zinc-800 hover:text-white"
                           )}
                         >
-                          {item.label}
+                          Off
                         </button>
-                      );
-                    })}
+                        {subtitleTracks.map((track) => {
+                          const isSelected = isCcActive && selectedSubtitleIndex === track.index;
+                          return (
+                            <button
+                              key={track.id}
+                              onClick={() => handleSelectSubtitleTrack(track.index)}
+                              className={cn(
+                                "py-2 rounded-xl font-medium border transition-all active:scale-95 truncate px-2 text-xs",
+                                isSelected
+                                  ? "bg-cyan-500/20 text-cyan-300 border-cyan-500/40 font-bold"
+                                  : "bg-zinc-950/80 text-zinc-400 border-zinc-800/80 hover:bg-zinc-800 hover:text-white"
+                              )}
+                            >
+                              {track.label}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    ) : (
+                      <div className="py-2.5 px-3 rounded-xl bg-white/[0.04] border border-white/10 text-center">
+                        <p className="text-[11px] text-zinc-300 font-medium">No embedded subtitle tracks</p>
+                        <p className="text-[10px] text-zinc-500 mt-0.5">Dialogue is native audio or hardcoded captions.</p>
+                      </div>
+                    )}
                   </div>
                 </div>
 
