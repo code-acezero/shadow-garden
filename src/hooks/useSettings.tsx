@@ -36,6 +36,7 @@ export interface AppSettings {
   pipMode: boolean;
   clearMode: boolean;
   tapPlayPauseWithControls: boolean;
+  autoWatchlistTracking?: boolean;
 
   // Shorts & Reels
   shortsMuted?: boolean;
@@ -135,6 +136,7 @@ export const DEFAULT_SETTINGS: AppSettings = {
   hideOnlineStatus: false,
   hideLevelBadge: false,
   autoSyncAnilist: true,
+  autoWatchlistTracking: true,
 };
 
 interface SettingsContextType {

@@ -86,8 +86,9 @@ export default function HindiAnimeCard({ anime }: { anime: any }) {
       return null;
     })();
 
-    // Estimated total episodes set to premier (never fall back to released episodes)
+    // Estimated total episodes set to premier (prefer AniList estimated total episodes over uploaded count)
     const totalEp = (() => {
+      if (anime.estimatedTotalEpisodes) return anime.estimatedTotalEpisodes;
       if (anime.totalEpisodes !== undefined && anime.totalEpisodes !== null && anime.totalEpisodes !== '') return anime.totalEpisodes;
       if (anime.total_episodes !== undefined && anime.total_episodes !== null && anime.total_episodes !== '') return anime.total_episodes;
       if (typeof anime.episodes === 'object' && anime.episodes !== null) {
@@ -203,8 +204,8 @@ export default function HindiAnimeCard({ anime }: { anime: any }) {
 
   return (
     <HoverCard
-      openDelay={140}
-      closeDelay={100}
+      openDelay={350}
+      closeDelay={120}
       onOpenChange={(open) => {
         setIsHovered(open);
         if (open && !qtip) fetchDataNow();
@@ -249,12 +250,12 @@ export default function HindiAnimeCard({ anime }: { anime: any }) {
             </span>
           </div>
 
-          {/* Top-Right: Clean Rating & Info Button (Miruro Clean Realignment) */}
+          {/* Top-Right: Clean Rating & Info Button (Miruro Clean Realignment - Responsive Score Tag) */}
           <div className="absolute top-2.5 right-2.5 md:top-3 md:right-3 z-30 flex items-center gap-1.5 pointer-events-auto">
             {anime.score && Number(anime.score) > 0 && (
-              <span className="h-[22px] px-2.5 flex items-center justify-center gap-1.5 rounded-[6px] bg-black/80 border border-[#2e51a2]/40 text-white font-mono backdrop-blur-md shadow-sm select-none pointer-events-none">
-                <span className="text-[#4e85ff] font-black text-[11px] sm:text-[11.5px] tracking-wider">MAL</span>
-                <span className="font-bold text-zinc-100 text-[11px] sm:text-[11.5px]">{Number(anime.score).toFixed(1)}</span>
+              <span className="h-4.5 sm:h-5 px-1.5 sm:px-2 flex items-center justify-center gap-1 rounded-[5px] bg-black/80 border border-[#2e51a2]/40 text-white font-mono backdrop-blur-md shadow-sm select-none pointer-events-none opacity-0 md:opacity-0 group-hover:opacity-100 group-active:opacity-100 active:opacity-100 transition-opacity duration-200">
+                <span className="text-[#4e85ff] font-black text-[8.5px] sm:text-[9px] tracking-wider">MAL</span>
+                <span className="font-bold text-zinc-100 text-[8.5px] sm:text-[9px]">{Number(anime.score).toFixed(1)}</span>
               </span>
             )}
             <AgeTag rating={qtip?.rating || anime.rating || anime.ageRating} />
@@ -292,7 +293,7 @@ export default function HindiAnimeCard({ anime }: { anime: any }) {
                 {/* Right: Estimated Total Episodes to Premier */}
                 <div className="flex items-center gap-1 text-[9px] font-mono font-medium text-zinc-300 shrink-0">
                     <ListVideo size={9.5} className="text-zinc-400 shrink-0" />
-                    <span>{(normalized.totalEp || (qtip as any)?.totalEpisodes) ? `${normalized.totalEp || (qtip as any)?.totalEpisodes} EPS` : (normalized.releaseYear || 'ANIME')}</span>
+                    <span>{(anime.estimatedTotalEpisodes || (qtip as any)?.totalEpisodes || normalized.totalEp) ? `${anime.estimatedTotalEpisodes || (qtip as any)?.totalEpisodes || normalized.totalEp} EPS` : (normalized.releaseYear || 'ANIME')}</span>
                 </div>
             </div>
           </div>

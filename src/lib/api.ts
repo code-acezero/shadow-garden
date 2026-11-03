@@ -263,7 +263,7 @@ export interface UniversalAnimeBase {
     duration?: string;
     totalEpisodes?: number | null;
     total_episodes?: number | null;
-    episodes?: { sub: number; dub: number; eps?: number | null; total?: number | null };
+    episodes?: { sub?: number | null; dub?: number | null; eps?: number | null; total?: number | null };
     rank?: number;
     isAdult?: boolean;
     rating?: string;

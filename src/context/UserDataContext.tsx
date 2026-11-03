@@ -523,19 +523,34 @@ export const UserDataProvider = ({ children }: { children: React.ReactNode }) =>
         const mediaType = item.media_type || (item.type?.toLowerCase() === 'movie' ? 'movie' : 'anime');
 
         const isMovie = mediaType === 'movie' || item.type?.toLowerCase() === 'movie' || totalEps === 1;
-        const isSeriesFinished = !!(item.is_completed && (isMovie || (totalEps && epNum >= totalEps)));
+        const isStatusFinished = String((item as any).status || (item as any).anime_status || '').toUpperCase() === 'FINISHED' || String((item as any).status || (item as any).anime_status || '').toUpperCase() === 'COMPLETED';
+        const isSeriesFinished = Boolean((item as any).is_series_completed || (isStatusFinished && item.is_completed && (isMovie || (totalEps && epNum >= totalEps))));
 
         const existing = library.find(i => (i.anime_id === animeId || i.id === animeId));
         const prevEp = Number(existing?.last_episode_number || existing?.progress || 0);
         const newEp = Math.max(epNum, prevEp);
 
+        // Check if user disabled auto watchlist tracking in settings
+        let autoWatchlist = true;
+        if (typeof window !== 'undefined') {
+            try {
+                const raw = localStorage.getItem('shadow_settings');
+                if (raw) {
+                    const parsed = JSON.parse(raw);
+                    if (parsed.autoWatchlistTracking === false) autoWatchlist = false;
+                }
+            } catch (_) {}
+        }
+
         let newStatus = existing?.status || 'watching';
-        if (isSeriesFinished) {
-            newStatus = 'completed';
-        } else if (!existing) {
-            newStatus = 'watching';
-        } else if (existing.status === 'plan_to_watch') {
-            newStatus = 'watching';
+        if (autoWatchlist) {
+            if (isSeriesFinished) {
+                newStatus = 'completed';
+            } else if (!existing) {
+                newStatus = 'watching';
+            } else if (existing.status === 'plan_to_watch' || existing.status === 'on_hold') {
+                newStatus = 'watching';
+            }
         }
 
         // Avoid re-writing to Supabase/localStorage if unchanged

@@ -254,7 +254,7 @@ function AnimeCardComponent({
       (typeof anime.type === 'string' && anime.type.toLowerCase() === 'donghua') ||
       (typeof anime.targetRoute === 'string' && anime.targetRoute.includes('/donghua-watch/'))
     ) {
-      return 'DONGHUA';
+      return 'MAL';
     }
 
     // Cinema / Movie / Drama / Western Series Source (TMDB / IMDb)
@@ -462,8 +462,8 @@ function AnimeCardComponent({
 
   return (
     <HoverCard
-      openDelay={140}
-      closeDelay={100}
+      openDelay={350}
+      closeDelay={120}
       onOpenChange={(open) => {
         setIsHovered(open);
         if (open && !qtip) fetchDataNow();
@@ -537,9 +537,9 @@ function AnimeCardComponent({
               <div className="absolute top-2.5 right-2.5 z-20 flex items-center gap-1.5 pointer-events-auto">
                 {/* Branded Source Rating Badge (e.g. MAL 8.4) */}
                 {!hideRating && score && (
-                  <span className="h-[22px] px-2.5 flex items-center gap-1.5 rounded-[6px] bg-black/80 border border-[#2e51a2]/40 text-white font-mono backdrop-blur-md shadow-sm select-none pointer-events-none">
-                    <span className="text-[#4e85ff] font-black text-[11px] sm:text-[11.5px] tracking-wider">{ratingSource}</span>
-                    <span className="font-bold text-zinc-100 text-[11px] sm:text-[11.5px]">{score}</span>
+                  <span className="h-4.5 sm:h-5 px-1.5 sm:px-2 flex items-center gap-1 rounded-[5px] bg-black/80 border border-[#2e51a2]/40 text-white font-mono backdrop-blur-md shadow-sm select-none pointer-events-none opacity-0 md:opacity-0 group-hover:opacity-100 group-active:opacity-100 active:opacity-100 transition-opacity duration-200">
+                    <span className="text-[#4e85ff] font-black text-[8.5px] sm:text-[9px] tracking-wider">{ratingSource}</span>
+                    <span className="font-bold text-zinc-100 text-[8.5px] sm:text-[9px]">{score}</span>
                   </span>
                 )}
 

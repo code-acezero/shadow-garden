@@ -1732,6 +1732,7 @@ const OmniPlayer = forwardRef<OmniPlayerRef, OmniPlayerProps>(({
     touchStartRef.current = null;
     gestureLockRef.current = null;
     touchSeekTargetRef.current = null;
+    showUI();
   };
 
   const handleMouseDown = (e: React.MouseEvent) => {
@@ -1873,8 +1874,33 @@ const OmniPlayer = forwardRef<OmniPlayerRef, OmniPlayerProps>(({
   const showUI = () => {
     setShowControls(true);
     if (controlsTimeoutRef.current) clearTimeout(controlsTimeoutRef.current);
-    if (isPlaying && activeMenu === 'none') { controlsTimeoutRef.current = setTimeout(() => setShowControls(false), controlsTimeout); }
+    if (isPlaying && activeMenu === 'none' && !isScrubbing && !isDirectlyInteractingSeekbar) {
+      controlsTimeoutRef.current = setTimeout(() => setShowControls(false), controlsTimeout || 3500);
+    }
   };
+
+  // Auto-hide controls effect: ensures player UI reliably auto-hides after grace time
+  useEffect(() => {
+    if (!showControls) {
+      if (controlsTimeoutRef.current) clearTimeout(controlsTimeoutRef.current);
+      return;
+    }
+
+    // Keep controls visible if paused, in a menu, or actively scrubbing/seeking
+    if (!isPlaying || activeMenu !== 'none' || isScrubbing || isDirectlyInteractingSeekbar) {
+      if (controlsTimeoutRef.current) clearTimeout(controlsTimeoutRef.current);
+      return;
+    }
+
+    if (controlsTimeoutRef.current) clearTimeout(controlsTimeoutRef.current);
+    controlsTimeoutRef.current = setTimeout(() => {
+      setShowControls(false);
+    }, controlsTimeout || 3500);
+
+    return () => {
+      if (controlsTimeoutRef.current) clearTimeout(controlsTimeoutRef.current);
+    };
+  }, [showControls, isPlaying, activeMenu, isScrubbing, isDirectlyInteractingSeekbar, controlsTimeout]);
 
   const handleContainerMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
     if (showSkipIntro || showSkipOutro) {

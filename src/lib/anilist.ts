@@ -160,7 +160,7 @@ function cleanHtml(html?: string | null): string {
     .trim();
 }
 
-function mapMediaToCard(media: any, overrideEp?: number): UniversalAnimeBase {
+function mapMediaToCard(media: any, overrideEp?: number, isDubEvent?: boolean): UniversalAnimeBase {
   const title = media.title?.english || media.title?.romaji || media.title?.native || 'Unknown Title';
   const jname = media.title?.romaji || media.title?.native || '';
   const poster = media.coverImage?.extraLarge || media.coverImage?.large || media.coverImage?.medium || '';
@@ -187,6 +187,10 @@ function mapMediaToCard(media: any, overrideEp?: number): UniversalAnimeBase {
   const ageRating = isAdult ? '18+' : (isEcchi ? 'R-17' : 'PG-13');
   const score = media.averageScore ? (media.averageScore / 10).toFixed(1) : undefined;
 
+  const isAiringEvent = overrideEp !== undefined && overrideEp !== null;
+  const eventSub = isDubEvent ? null : currentEp;
+  const eventDub = isDubEvent ? currentEp : null;
+
   return {
     id: String(media.id),
     title,
@@ -199,8 +203,8 @@ function mapMediaToCard(media: any, overrideEp?: number): UniversalAnimeBase {
     totalEpisodes: media.episodes || null,
     total_episodes: media.episodes || null,
     episodes: {
-      sub: currentEp,
-      dub: currentEp,
+      sub: isAiringEvent ? eventSub : currentEp,
+      dub: isAiringEvent ? eventDub : null,
       eps: media.episodes || currentEp,
       total: media.episodes || null
     },
@@ -256,10 +260,13 @@ export class AniListService {
       if (seenMediaIds.has(media.id)) continue;
       seenMediaIds.add(media.id);
 
-      const card = mapMediaToCard(media, item.episode);
-      // Attach airing episode number
+      const card = mapMediaToCard(media, item.episode, false);
+      // Attach airing episode number and direct watch target
       (card as any).episode = item.episode;
+      (card as any).sub = item.episode;
+      (card as any).dub = null;
       (card as any).airingAt = item.airingAt;
+      (card as any).targetRoute = `/watch/${media.id}?ep=${item.episode}&type=sub`;
       results.push(card);
 
       if (results.length >= perPage) break;
@@ -509,10 +516,10 @@ export class AniListService {
     `;
     const data = await queryAniList<any>(query, { page, perPage });
     return (data?.Page?.media || []).map((m: any) => {
-      const card = mapMediaToCard(m);
       const currentEp = m.nextAiringEpisode?.episode 
         ? Math.max(1, m.nextAiringEpisode.episode - 1) 
-        : (card.episodes?.sub || m.episodes || 1);
+        : (m.episodes || 1);
+      const card = mapMediaToCard(m, currentEp, true);
       const nowSec = Math.floor(Date.now() / 1000);
       const airingAt = m.nextAiringEpisode?.airingAt 
         ? (m.nextAiringEpisode.airingAt - (7 * 86400)) 
@@ -547,10 +554,10 @@ export class AniListService {
     `;
     const data = await queryAniList<any>(query, { page, perPage });
     return (data?.Page?.media || []).map((m: any) => {
-      const card = mapMediaToCard(m);
       const currentEp = m.nextAiringEpisode?.episode 
         ? Math.max(1, m.nextAiringEpisode.episode - 1) 
-        : (card.episodes?.sub || m.episodes || 1);
+        : (m.episodes || 1);
+      const card = mapMediaToCard(m, currentEp, true);
       const nowSec = Math.floor(Date.now() / 1000);
       const airingAt = m.nextAiringEpisode?.airingAt 
         ? (m.nextAiringEpisode.airingAt - (7 * 86400)) 

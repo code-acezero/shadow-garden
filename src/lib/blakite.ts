@@ -67,11 +67,32 @@ export interface BlakiteAnimeCard {
   score: number;
   totalEpisodes?: number | null;
   total_episodes?: number | null;
+  estimatedTotalEpisodes?: number | null;
   episodes: {
     sub: number;
     dub: number;
     total: number;
   };
+}
+
+const anilistTotalEpCache = new Map<string, number | null>();
+
+export async function getAniListEstimatedTotalEpisodes(title: string): Promise<number | null> {
+  const clean = cleanHindiTitle(title).replace(/season\s*\d+/i, '').trim();
+  if (!clean || clean.length < 2) return null;
+  if (anilistTotalEpCache.has(clean)) return anilistTotalEpCache.get(clean) || null;
+
+  try {
+    const { AniListService } = await import('@/lib/anilist');
+    const res = await AniListService.search(clean, 1, 1);
+    const first = res?.results?.[0];
+    const total = first?.totalEpisodes || (first as any)?.episodes?.total || null;
+    anilistTotalEpCache.set(clean, total);
+    return total;
+  } catch {
+    anilistTotalEpCache.set(clean, null);
+    return null;
+  }
 }
 
 export interface BlakiteEpisode {
@@ -388,6 +409,21 @@ export async function getBlakiteLatest(type: string = 'updated-all', page: numbe
   const totalResults = filteredItems.length;
   const maxPage = Math.ceil(totalResults / 24) || 1;
   const pagedResults = filteredItems.slice((page - 1) * 24, page * 24).map(x => normalizeBlakiteCard(x.item, x.id));
+
+  // Enrich with AniList estimated total episodes for anime (never drama/live-action/movie)
+  await Promise.all(
+    pagedResults.map(async (card) => {
+      if (card && card.type !== 'Movie' && card.type !== 'Drama') {
+        const estTotal = await getAniListEstimatedTotalEpisodes(card.title);
+        if (estTotal && estTotal > (card.totalEpisodes || 0)) {
+          card.estimatedTotalEpisodes = estTotal;
+          card.totalEpisodes = estTotal;
+          card.total_episodes = estTotal;
+          if (card.episodes) card.episodes.total = estTotal;
+        }
+      }
+    })
+  );
 
   return {
     totalResults,
@@ -916,6 +952,17 @@ export async function getBlakiteDetail(id: string) {
   if (!item) return null;
 
   const card = normalizeBlakiteCard(item, matchedId);
+  if (!isBlakiteLiveAction(item) && item.type !== 'Movie') {
+    try {
+      const estTotal = await getAniListEstimatedTotalEpisodes(item.title);
+      if (estTotal && estTotal > (card.totalEpisodes || 0)) {
+        card.estimatedTotalEpisodes = estTotal;
+        card.totalEpisodes = estTotal;
+        card.total_episodes = estTotal;
+        if (card.episodes) card.episodes.total = estTotal;
+      }
+    } catch (_) {}
+  }
   const episodes = generateBlakiteEpisodes(item, matchedId);
 
   return {

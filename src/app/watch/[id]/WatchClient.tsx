@@ -327,7 +327,7 @@ const MobileActionCockpit = memo(function MobileActionCockpit({
     const rowRef = useRef<HTMLDivElement>(null);
     const watchlistRef = useRef<HTMLDivElement>(null);
     const [rowWidth, setRowWidth] = useState<number>(0);
-    const [watchlistWidth, setWatchlistWidth] = useState<number>(120);
+    const [watchlistWidth, setWatchlistWidth] = useState<number>(135);
 
     // Compaction Stage:
     // Stage 0: All expanded (Download, Share, Room all show text)
@@ -344,7 +344,7 @@ const MobileActionCockpit = memo(function MobileActionCockpit({
             if (!rowRef.current) return;
             setRowWidth(rowRef.current.clientWidth);
             if (watchlistRef.current) {
-                setWatchlistWidth(watchlistRef.current.offsetWidth || 120);
+                setWatchlistWidth(watchlistRef.current.offsetWidth || 135);
             }
         };
         measure();
@@ -354,28 +354,38 @@ const MobileActionCockpit = memo(function MobileActionCockpit({
     }, []);
 
     // Compaction Calculation:
-    // Fixed widths: Watchlist (~120px) + Lightbulb (32px) + gaps (4 * 6px = 24px) = ~176px.
+    // Fixed widths: Watchlist (~135-145px) + Lightbulb (32px) + gaps (4 * 6px = 24px) = ~195px.
     // Compact icon buttons: 32px each.
-    // Base space when ALL 3 buttons are compact (icon-only):
-    // 176px + (hasDownload ? 32 : 0) + 32 (Share) + 32 (Room) = ~272px.
-    // Extra space needed to expand text with comfortable margin:
-    // + Download text needs +72px
-    // + Share text needs +50px
-    // + Room text needs +46px
+    // Base space when ALL buttons are compact:
+    // Watchlist + Bulb + (hasDownload ? 32 : 0) + 32 (Share) + 32 (Room) + gaps = ~290px.
+    // Generous minimum space needed for each button to show full text without letter clipping:
+    // + Download text needs +100px (13px icon + 6px gap + 72px text + 24px padding)
+    // + Share text needs +70px (13px icon + 6px gap + 48px text + 24px padding)
+    // + Room text needs +60px (13px icon + 6px gap + 40px text + 24px padding)
     useEffect(() => {
         if (rowWidth <= 0) return;
-        const baseNeeded = (watchlistWidth || 120) + 32 + (hasDownload ? 32 : 0) + 32 + 32 + 24;
+        const baseNeeded = (watchlistWidth || 135) + 32 + (hasDownload ? 32 : 0) + 32 + 32 + 28;
         const free = rowWidth - baseNeeded;
 
         let calculatedStage = 3;
-        if (free >= 170) {
-            calculatedStage = 0; // All 3 fit with generous clearance
-        } else if (free >= 124) {
-            calculatedStage = 1; // 1. Room compacts
-        } else if (free >= 72) {
-            calculatedStage = 2; // 2. Share compacts
+        if (hasDownload) {
+            if (free >= 235) {
+                calculatedStage = 0; // All 3 fit with generous margin
+            } else if (free >= 175) {
+                calculatedStage = 1; // 1. Room compacts
+            } else if (free >= 105) {
+                calculatedStage = 2; // 2. Share compacts
+            } else {
+                calculatedStage = 3; // 3. Download compacts (all compact)
+            }
         } else {
-            calculatedStage = 3; // 3. Download compacts
+            if (free >= 135) {
+                calculatedStage = 0;
+            } else if (free >= 75) {
+                calculatedStage = 1;
+            } else {
+                calculatedStage = 2;
+            }
         }
 
         setStage(calculatedStage);
@@ -386,17 +396,17 @@ const MobileActionCockpit = memo(function MobileActionCockpit({
     // so no button text is EVER cut off or clipped with ellipsis!
     useEffect(() => {
         if (!rowRef.current) return;
-        if (rowRef.current.scrollWidth > rowRef.current.clientWidth + 1) {
+        if (rowRef.current.scrollWidth > rowRef.current.clientWidth) {
             setStage(prev => (prev < 3 ? prev + 1 : prev));
         }
-    }, [rowWidth, stage]);
+    }, [stage, rowWidth, watchlistWidth]);
 
     const showDownloadText = hasDownload && stage < 3;
     const showShareText = stage < 2;
     const showRoomText = stage < 1;
 
     return (
-        <div ref={rowRef} className="flex w-full items-center gap-1.5 sm:gap-2">
+        <div ref={rowRef} className="flex w-full items-center gap-1.5 sm:gap-2 overflow-hidden">
             <div ref={watchlistRef} className="shrink-0">
                 <WatchListButton
                     animeId={anime.id}
@@ -412,16 +422,16 @@ const MobileActionCockpit = memo(function MobileActionCockpit({
                 <Link
                     href={`/download/anime/${anime.id}?ep=${currentEpisode.id}`}
                     className={cn(
-                        "h-8 rounded-full border-0 bg-white/[0.06] hover:bg-white/10 text-zinc-300 hover:text-white flex items-center justify-center transition-all active:scale-95 atrax-bubbly-btn atrax-squish-tap",
+                        "h-8 rounded-full border-0 bg-white/[0.06] hover:bg-white/10 text-zinc-300 hover:text-white flex items-center justify-center transition-all active:scale-95 atrax-bubbly-btn atrax-squish-tap shrink-0",
                         showDownloadText
-                            ? "flex-auto min-w-fit px-3 gap-1.5"
-                            : "w-8 p-0 shrink-0"
+                            ? "flex-1 min-w-max px-3 gap-1.5"
+                            : "w-8 p-0"
                     )}
                     title="Download Episode"
                 >
                     <Download size={13} className="shrink-0" />
                     {showDownloadText && (
-                        <span className="whitespace-nowrap select-none font-black uppercase tracking-wider text-[9px]">
+                        <span className="whitespace-nowrap select-none font-black uppercase tracking-wider text-[9px] shrink-0">
                             Download
                         </span>
                     )}
@@ -432,16 +442,16 @@ const MobileActionCockpit = memo(function MobileActionCockpit({
                 type="button"
                 onClick={onShare}
                 className={cn(
-                    "h-8 rounded-full border-0 bg-white/[0.06] hover:bg-white/10 text-zinc-300 hover:text-white flex items-center justify-center transition-all active:scale-95 atrax-bubbly-btn atrax-squish-tap",
+                    "h-8 rounded-full border-0 bg-white/[0.06] hover:bg-white/10 text-zinc-300 hover:text-white flex items-center justify-center transition-all active:scale-95 atrax-bubbly-btn atrax-squish-tap shrink-0",
                     showShareText
-                        ? "flex-auto min-w-fit px-3 gap-1.5"
-                        : "w-8 p-0 shrink-0"
+                        ? "flex-1 min-w-max px-3 gap-1.5"
+                        : "w-8 p-0"
                 )}
                 title="Share Episode"
             >
                 <Share2 size={13} className="shrink-0" />
                 {showShareText && (
-                    <span className="whitespace-nowrap select-none font-black uppercase tracking-wider text-[9px]">
+                    <span className="whitespace-nowrap select-none font-black uppercase tracking-wider text-[9px] shrink-0">
                         Share
                     </span>
                 )}
@@ -451,16 +461,16 @@ const MobileActionCockpit = memo(function MobileActionCockpit({
                 type="button"
                 onClick={onCreateRoom}
                 className={cn(
-                    "h-8 rounded-full border-0 bg-white/[0.06] hover:bg-white/10 text-zinc-300 hover:text-white flex items-center justify-center transition-all active:scale-95 atrax-bubbly-btn atrax-squish-tap",
+                    "h-8 rounded-full border-0 bg-white/[0.06] hover:bg-white/10 text-zinc-300 hover:text-white flex items-center justify-center transition-all active:scale-95 atrax-bubbly-btn atrax-squish-tap shrink-0",
                     showRoomText
-                        ? "flex-auto min-w-fit px-3 gap-1.5"
-                        : "w-8 p-0 shrink-0"
+                        ? "flex-1 min-w-max px-3 gap-1.5"
+                        : "w-8 p-0"
                 )}
                 title="Create Watch Room"
             >
                 <Users size={13} className="shrink-0" />
                 {showRoomText && (
-                    <span className="whitespace-nowrap select-none font-black uppercase tracking-wider text-[9px]">
+                    <span className="whitespace-nowrap select-none font-black uppercase tracking-wider text-[9px] shrink-0">
                         Room
                     </span>
                 )}
@@ -1308,9 +1318,15 @@ function WatchContent({ initialAnime }: { initialAnime?: UniversalAnime | null }
     const primaryAudioId: 'jp' | 'cn' | 'kr' = isChinese ? 'cn' : (isKorean ? 'kr' : 'jp');
     const primaryAudioLabel = isChinese ? 'CN • Sub' : (isKorean ? 'KR • Sub' : 'JP • Sub');
 
-    const currentAudio = (settings.category === 'dub' || settings.audio === 'en' || settings.audio === 'hi')
-        ? (settings.audio === 'hi' ? 'hi' : 'en')
-        : primaryAudioId;
+    const effectiveAudioTrack = (urlAudio && ['jp', 'en', 'hi', 'cn', 'kr'].includes(urlAudio.toLowerCase()))
+        ? urlAudio.toLowerCase()
+        : settings.audio;
+
+    const currentAudio = (effectiveAudioTrack === 'hi' || settings.audio === 'hi')
+        ? 'hi'
+        : (settings.category === 'dub' || effectiveAudioTrack === 'en' || settings.audio === 'en')
+            ? 'en'
+            : primaryAudioId;
 
     const currentAudioServers = useMemo(() => {
         if (!servers) return [];
@@ -1675,6 +1691,12 @@ function WatchContent({ initialAnime }: { initialAnime?: UniversalAnime | null }
 
         // Auto sync with watchlist and completed detection
         if (typeof window !== 'undefined') {
+            const rawStatus = String(anime?.info?.status || (anime as any)?.status || '').toUpperCase();
+            const isFinishedAiring = rawStatus === 'FINISHED' || rawStatus === 'COMPLETED';
+            const totalEps = Number((anime as any)?.totalEpisodes || (anime as any)?.total_episodes || anime?.episodes?.length || 1);
+            const isFinalEp = Number(ep.number) >= totalEps;
+            const isSeriesComplete = Boolean(isCompleted && isFinishedAiring && isFinalEp);
+
             window.dispatchEvent(new CustomEvent('shadow-sync-watching', {
                 detail: {
                     anime_id: animeId,
@@ -1682,8 +1704,10 @@ function WatchContent({ initialAnime }: { initialAnime?: UniversalAnime | null }
                     poster: animeImage,
                     episode_number: ep.number,
                     episode_id: ep.id,
-                    total_episodes: anime.episodes?.length || (anime as any).totalEpisodes || 1,
+                    total_episodes: totalEps,
                     is_completed: isCompleted,
+                    is_series_completed: isSeriesComplete,
+                    status: rawStatus,
                     type: animeType,
                     media_type: 'anime'
                 }
@@ -2319,6 +2343,14 @@ function WatchContent({ initialAnime }: { initialAnime?: UniversalAnime | null }
                     urlAudioHandledRef.current = true;
                     targetCategory = urlType;
                     targetAudio = urlType === 'dub' ? (hasEnDub ? 'en' : nativeAudio) : nativeAudio;
+                }
+
+                if (targetAudio === 'hi' && isHindiForEpisode) {
+                    if (settings.audio !== 'hi' || settings.category !== 'dub') {
+                        markProgrammaticSettingUpdate();
+                        updateSetting('audio', 'hi');
+                        updateSetting('category', 'dub');
+                    }
                 }
 
                 // --- INTELLIGENT PRE-FLIGHT AUDIO FALLBACK ---

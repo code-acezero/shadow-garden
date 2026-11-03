@@ -1956,6 +1956,12 @@ export default function Settings() {
                     checked={settings.dimMode ?? false}
                     onChange={(v) => updateSetting('dimMode', v)}
                   />
+                  <ToggleItem
+                    title="Auto-Track Watchlist"
+                    desc="Automatically update your watchlist: mark series as Watching when you finish an episode, and mark as Completed only after finishing the final episode of an aired series."
+                    checked={settings.autoWatchlistTracking ?? true}
+                    onChange={(v) => updateSetting('autoWatchlistTracking', v)}
+                  />
                 </div>
               </div>
 
@@ -2259,6 +2265,12 @@ export default function Settings() {
                         desc="Tapping the center of the anime player toggles playback."
                         checked={settings.tapPlayPauseWithControls ?? true}
                         onChange={(v) => updateSetting('tapPlayPauseWithControls', v)}
+                      />
+                      <ToggleItem
+                        title="Auto-Track Watchlist"
+                        desc="Automatically update your watchlist: mark series as Watching when you finish an episode, and mark as Completed only after finishing the final episode of an aired series."
+                        checked={settings.autoWatchlistTracking ?? true}
+                        onChange={(v) => updateSetting('autoWatchlistTracking', v)}
                       />
                     </div>
                   </div>
