@@ -208,21 +208,18 @@ const EpisodeButton = memo(({ ep, isCurrent, isFullyPlayed, percent, viewMode, o
 
     useEffect(() => {
         if (!isCurrent) return;
-        let animationFrameId: number;
-        const updateProgress = () => {
+        const intervalId = setInterval(() => {
             if (progressRef?.current !== undefined) {
                 const rawD = playerRef?.current?.getDuration ? playerRef.current.getDuration() : null;
                 const duration = (typeof rawD === 'number' && !isNaN(rawD) && isFinite(rawD) && rawD > 0)
                     ? rawD
                     : 1440; // 24-minute fallback for embed streams
                 const cur = typeof progressRef.current === 'number' && !isNaN(progressRef.current) ? progressRef.current : 0;
-                const p = Math.min(100, Math.max(0, (cur / duration) * 100));
-                setRealPercent(isNaN(p) ? 0 : p);
+                const p = Math.min(100, Math.max(0, Math.round((cur / duration) * 100)));
+                setRealPercent((prev: number) => (prev === p ? prev : p));
             }
-            animationFrameId = requestAnimationFrame(updateProgress);
-        };
-        animationFrameId = requestAnimationFrame(updateProgress);
-        return () => cancelAnimationFrame(animationFrameId);
+        }, 2000);
+        return () => clearInterval(intervalId);
     }, [isCurrent, progressRef, playerRef]);
 
     const displayPercent = isCurrent ? realPercent : percent;
@@ -330,7 +327,16 @@ const MobileActionCockpit = memo(function MobileActionCockpit({
     const rowRef = useRef<HTMLDivElement>(null);
     const watchlistRef = useRef<HTMLDivElement>(null);
     const [rowWidth, setRowWidth] = useState<number>(0);
-    const [watchlistWidth, setWatchlistWidth] = useState<number>(115);
+    const [watchlistWidth, setWatchlistWidth] = useState<number>(120);
+
+    // Compaction Stage:
+    // Stage 0: All expanded (Download, Share, Room all show text)
+    // Stage 1: Room compacts first (Share, Download show text)
+    // Stage 2: Share compacts second (Download shows text)
+    // Stage 3: Download compacts third (All are compact icon-only)
+    const [stage, setStage] = useState<number>(3);
+
+    const hasDownload = Boolean(currentEpisode?.id);
 
     useEffect(() => {
         if (!rowRef.current) return;
@@ -338,7 +344,7 @@ const MobileActionCockpit = memo(function MobileActionCockpit({
             if (!rowRef.current) return;
             setRowWidth(rowRef.current.clientWidth);
             if (watchlistRef.current) {
-                setWatchlistWidth(watchlistRef.current.offsetWidth || 115);
+                setWatchlistWidth(watchlistRef.current.offsetWidth || 120);
             }
         };
         measure();
@@ -347,60 +353,47 @@ const MobileActionCockpit = memo(function MobileActionCockpit({
         return () => ro.disconnect();
     }, []);
 
-    const hasDownload = Boolean(currentEpisode?.id);
-    const bulbWidth = 32;
-    // 4 gaps of 6px (gap-1.5) = 24px
-    const gaps = 24;
-    const freeWidth = Math.max(0, rowWidth - (watchlistWidth || 115) - bulbWidth - gaps);
+    // Compaction Calculation:
+    // Fixed widths: Watchlist (~120px) + Lightbulb (32px) + gaps (4 * 6px = 24px) = ~176px.
+    // Compact icon buttons: 32px each.
+    // Base space when ALL 3 buttons are compact (icon-only):
+    // 176px + (hasDownload ? 32 : 0) + 32 (Share) + 32 (Room) = ~272px.
+    // Extra space needed to expand text with comfortable margin:
+    // + Download text needs +72px
+    // + Share text needs +50px
+    // + Room text needs +46px
+    useEffect(() => {
+        if (rowWidth <= 0) return;
+        const baseNeeded = (watchlistWidth || 120) + 32 + (hasDownload ? 32 : 0) + 32 + 32 + 24;
+        const free = rowWidth - baseNeeded;
 
-    // Dynamic label visibility without letter clipping:
-    // Compaction order starts from the right side as space reduces:
-    // 1. Room compacts first
-    // 2. Share compacts second
-    // 3. Download compacts third
-    // Natural widths needed: Download ~100px, Share ~78px, Room ~70px. Compact: 32px
-    let showDownloadText = false;
-    let showShareText = false;
-    let showRoomText = false;
-
-    if (rowWidth > 0) {
-        if (hasDownload) {
-            if (freeWidth >= 248) {
-                // All fit with generous room
-                showDownloadText = true;
-                showShareText = true;
-                showRoomText = true;
-            } else if (freeWidth >= 210) {
-                // 1. Room compacts from right side
-                showDownloadText = true;
-                showShareText = true;
-                showRoomText = false;
-            } else if (freeWidth >= 164) {
-                // 2. Share compacts next
-                showDownloadText = true;
-                showShareText = false;
-                showRoomText = false;
-            } else {
-                // 3. Download compacts last
-                showDownloadText = false;
-                showShareText = false;
-                showRoomText = false;
-            }
+        let calculatedStage = 3;
+        if (free >= 170) {
+            calculatedStage = 0; // All 3 fit with generous clearance
+        } else if (free >= 124) {
+            calculatedStage = 1; // 1. Room compacts
+        } else if (free >= 72) {
+            calculatedStage = 2; // 2. Share compacts
         } else {
-            if (freeWidth >= 148) {
-                showShareText = true;
-                showRoomText = true;
-            } else if (freeWidth >= 110) {
-                // 1. Room compacts from right side
-                showShareText = true;
-                showRoomText = false;
-            } else {
-                // 2. Share compacts
-                showShareText = false;
-                showRoomText = false;
-            }
+            calculatedStage = 3; // 3. Download compacts
         }
-    }
+
+        setStage(calculatedStage);
+    }, [rowWidth, watchlistWidth, hasDownload]);
+
+    // Active Overflow Guard: If any browser zoom, custom font scaling, or DPI
+    // causes rowRef to overflow (scrollWidth > clientWidth), step down compaction stage
+    // so no button text is EVER cut off or clipped with ellipsis!
+    useEffect(() => {
+        if (!rowRef.current) return;
+        if (rowRef.current.scrollWidth > rowRef.current.clientWidth + 1) {
+            setStage(prev => (prev < 3 ? prev + 1 : prev));
+        }
+    }, [rowWidth, stage]);
+
+    const showDownloadText = hasDownload && stage < 3;
+    const showShareText = stage < 2;
+    const showRoomText = stage < 1;
 
     return (
         <div ref={rowRef} className="flex w-full items-center gap-1.5 sm:gap-2">
@@ -1276,6 +1269,7 @@ function WatchContent({ initialAnime }: { initialAnime?: UniversalAnime | null }
     const urlAudioHandledRef = useRef(false);
     const activeFetchRef = useRef(0);
     const failedServersRef = useRef<string[]>([]);
+    const autoSwitchCountRef = useRef<number>(0);
     const programmaticServerRef = useRef<string | null>(null);
     const isProgrammaticSettingUpdate = useRef(false);
     const programmaticSettingTimer = useRef<NodeJS.Timeout | null>(null);
@@ -1331,6 +1325,8 @@ function WatchContent({ initialAnime }: { initialAnime?: UniversalAnime | null }
     const handleServerChange = useCallback((srvName: string, isManual = false) => {
         if (isManual) {
             failedServersRef.current = [];
+        autoSwitchCountRef.current = 0;
+            autoSwitchCountRef.current = 0;
         }
         const pool: any[] = currentAudioServers || [];
         const srv = pool.find((s: any) => (s.serverName || '').toLowerCase() === srvName.toLowerCase());
@@ -1365,6 +1361,13 @@ function WatchContent({ initialAnime }: { initialAnime?: UniversalAnime | null }
             failedServersRef.current.push(failing);
         }
 
+        autoSwitchCountRef.current += 1;
+        if (autoSwitchCountRef.current > 3) {
+            console.warn(`[AutoFailover] Auto-switch limit reached (${autoSwitchCountRef.current}). Stopping retry loop to prevent render churn.`);
+            setStreamError("Portal Unstable. Please choose another server or reload.");
+            return;
+        }
+
         const pool: any[] = currentAudioServers || [];
         const next = pool.find((s: any) => !failedServersRef.current.includes((s.serverName || '').trim().toLowerCase()));
 
@@ -1374,9 +1377,7 @@ function WatchContent({ initialAnime }: { initialAnime?: UniversalAnime | null }
             handleServerChange(next.serverName, false);
         } else {
             console.warn(`[AutoFailover] All servers exhausted for track ${currentAudio}`);
-            toast.error(`Portals unstable for ${currentAudio.toUpperCase()} track. Resetting and retrying...`);
-            failedServersRef.current = [];
-            setFetchTrigger((prev: number) => prev + 1);
+            setStreamError(`Portals unstable for ${currentAudio.toUpperCase()} track. Please select another server.`);
         }
     }, [settings.server, currentAudioServers, currentAudio, handleServerChange]);
 
@@ -1387,11 +1388,19 @@ function WatchContent({ initialAnime }: { initialAnime?: UniversalAnime | null }
         isBufferDirty.current = false;
         const sanitizedPayload = payload.map(p => sanitizeContinueWatchingEntry(p, user.id)).filter(Boolean);
         try {
-            // ✅ Shared Client Used Here
-            await (supabase.from('user_continue_watching') as any).upsert(sanitizedPayload, { onConflict: 'user_id,episode_id' });
+            // ✅ Shared Client Used Here with constraint fallback
+            const { error } = await (supabase.from('user_continue_watching') as any).upsert(sanitizedPayload, { onConflict: 'user_id,episode_id' });
+            if (error) {
+                await (supabase.from('user_continue_watching') as any).upsert(sanitizedPayload, { onConflict: 'user_id,anime_id' });
+            }
             if (typeof window !== 'undefined') window.dispatchEvent(new CustomEvent('shadow-continue-updated'));
         } catch (e) {
-            isBufferDirty.current = true;
+            try {
+                await (supabase.from('user_continue_watching') as any).upsert(sanitizedPayload, { onConflict: 'user_id,anime_id' });
+                if (typeof window !== 'undefined') window.dispatchEvent(new CustomEvent('shadow-continue-updated'));
+            } catch (_) {
+                isBufferDirty.current = true;
+            }
         }
     }, [user, animeId]);
 
@@ -1555,7 +1564,7 @@ function WatchContent({ initialAnime }: { initialAnime?: UniversalAnime | null }
         if (progress <= 0) return;
 
         const episodes = Array.isArray(anime.episodes) ? anime.episodes : [];
-        const ep = episodes.find((e: any) => 
+        const matchedEp = episodes.find((e: any) => 
             e.id === targetEpId || 
             String(e.number) === String(targetEpId) ||
             Number(e.number) === Number(targetEpId) ||
@@ -1566,7 +1575,14 @@ function WatchContent({ initialAnime }: { initialAnime?: UniversalAnime | null }
             String(e.id).endsWith(`=${targetEpId}`) ||
             String(targetEpId).endsWith(`=${e.id}`)
         );
-        if (!ep) return;
+
+        // Fallback: Never drop progress if matchedEp is not yet in anime.episodes!
+        const fallbackEpNumber = Number(currentEpisode?.number || (typeof targetEpId === 'string' && targetEpId.match(/\d+/) ? targetEpId.match(/\d+/)![0] : 1));
+        const ep = matchedEp || currentEpisode || {
+            id: targetEpId,
+            number: fallbackEpNumber,
+            title: `Episode ${fallbackEpNumber}`
+        };
 
         const rawDuration = playerRef.current?.getDuration();
         const duration = (typeof rawDuration === 'number' && !isNaN(rawDuration) && isFinite(rawDuration) && rawDuration > 0) ? rawDuration : (progressBuffer.current[targetEpId]?.duration || embedDurationRef.current || 1440);
@@ -1730,6 +1746,7 @@ function WatchContent({ initialAnime }: { initialAnime?: UniversalAnime | null }
             saveProgress(true);
         }
         failedServersRef.current = [];
+        autoSwitchCountRef.current = 0;
 
         // Trigger episode switch ad (debounced)
         adManager.triggerEpisodeSwitch(id);
@@ -1864,12 +1881,18 @@ function WatchContent({ initialAnime }: { initialAnime?: UniversalAnime | null }
     // Chunk Auto-Select
     const chunkSize = 50;
     useEffect(() => {
-        if (!currentEpId || !anime) return;
+        if (!currentEpId || !anime?.episodes?.length) return;
         const episodes = Array.isArray(anime.episodes) ? anime.episodes : [];
-        const index = episodes.findIndex((e: any) => e.id === currentEpId || String(e.number) === currentEpId);
-        if (index !== -1) {
-            const targetChunk = Math.floor(index / chunkSize);
-            setEpChunkIndex(targetChunk);
+        const epIndex = episodes.findIndex((e: any) =>
+            e.id === currentEpId ||
+            String(e.id) === String(currentEpId) ||
+            String(e.number) === String(currentEpId) ||
+            String(e.id).endsWith(`::${currentEpId}`) ||
+            String(e.id).endsWith(`-${currentEpId}`)
+        );
+        if (epIndex !== -1) {
+            const targetChunk = Math.floor(epIndex / chunkSize);
+            setEpChunkIndex(prev => (prev === targetChunk ? prev : targetChunk));
         }
     }, [currentEpId, anime?.episodes, chunkSize]);
 
@@ -1914,7 +1937,7 @@ function WatchContent({ initialAnime }: { initialAnime?: UniversalAnime | null }
                     }
                 }
 
-            if ((!baseData.recommendations || baseData.recommendations.length === 0) && baseData.info?.genres && baseData.info.genres.length > 0) {
+            if (!baseData.recommendations || baseData.recommendations.length === 0) {
                 try {
                     const popList = await AnimeService.getMostPopular(1).catch(() => []);
                     if (popList && Array.isArray(popList) && popList.length > 0) {
@@ -1923,7 +1946,7 @@ function WatchContent({ initialAnime }: { initialAnime?: UniversalAnime | null }
                             .slice(0, 10)
                             .map((r: any) => ({
                                 id: String(r.id),
-                                title: r.title || r.name || 'Recommended Anime',
+                                title: typeof r.title === 'string' ? r.title : (r.title?.userPreferred || r.title?.english || r.title?.romaji || r.name || 'Recommended Anime'),
                                 poster: r.poster || r.image || '',
                                 type: typeof r.type === 'string' ? r.type : 'TV',
                                 duration: r.duration || '24m',
@@ -2376,6 +2399,7 @@ function WatchContent({ initialAnime }: { initialAnime?: UniversalAnime | null }
                     }
                 } else {
                     failedServersRef.current = [];
+        autoSwitchCountRef.current = 0;
                 }
 
                 for (let srv of attemptList) {
@@ -2463,7 +2487,6 @@ function WatchContent({ initialAnime }: { initialAnime?: UniversalAnime | null }
                             } catch (e) { console.warn(`Sub Server ${srv} failed`); }
                         }
                     }
-                    failedServersRef.current = [];
                 }
 
                 if (streamData) {
@@ -2645,19 +2668,7 @@ function WatchContent({ initialAnime }: { initialAnime?: UniversalAnime | null }
         };
     }, [saveProgress]);
 
-    useEffect(() => {
-        if (!currentEpId || !anime?.episodes?.length) return;
-        const epIndex = anime.episodes.findIndex((e: any) =>
-            e.id === currentEpId ||
-            String(e.id) === String(currentEpId) ||
-            String(e.number) === String(currentEpId) ||
-            String(e.id).endsWith(`::${currentEpId}`) ||
-            String(e.id).endsWith(`-${currentEpId}`)
-        );
-        if (epIndex !== -1) {
-            setEpChunkIndex(Math.floor(epIndex / chunkSize));
-        }
-    }, [currentEpId, anime?.episodes, chunkSize]);
+
 
     const activeChunk = episodeChunks[epChunkIndex] || episodeChunks[currentChunkIndex] || [];
 
@@ -2698,6 +2709,7 @@ function WatchContent({ initialAnime }: { initialAnime?: UniversalAnime | null }
         }
 
         failedServersRef.current = [];
+        autoSwitchCountRef.current = 0;
         if (typeof window !== 'undefined') {
             const url = new URL(window.location.href);
             url.searchParams.set('audio', trackId);
@@ -3491,17 +3503,21 @@ function WatchContent({ initialAnime }: { initialAnime?: UniversalAnime | null }
                                 <div className="p-4 flex flex-col gap-3">
                                     {anime.recommendations && anime.recommendations.length > 0 ? (
                                         anime.recommendations.slice(0, 10).map((rec: any) => {
-                                            const recTitle = rec.title || rec.name || 'Recommended Anime';
+                                            const rawTitle = rec.title || rec.name || '';
+                                            const recTitle = typeof rawTitle === 'string'
+                                                ? rawTitle
+                                                : (rawTitle?.userPreferred || rawTitle?.english || rawTitle?.romaji || rawTitle?.native || 'Recommended Anime');
                                             const recSlug = slugifyTitle(recTitle);
                                             const recRouteId = (recSlug && !String(rec.id).includes('-')) ? `${rec.id}-${recSlug}` : rec.id;
                                             const recDuration = rec.duration ? (String(rec.duration).includes('m') ? rec.duration : `${rec.duration}m`) : '24m';
+                                            const recType = (typeof rec.type === 'string' && rec.type) ? rec.type : 'TV';
                                             return (
                                                 <Link key={rec.id} href={`/watch/${recRouteId}`} className="flex gap-4 bg-white/5 border border-white/5 rounded-2xl p-2 hover:bg-white/10 hover:border-white/10 transition-colors group shadow-sm">
                                                 <div className="w-16 h-24 sm:w-20 sm:h-28 shrink-0 rounded-xl overflow-hidden relative shadow-md shadow-black/40"><img src={getSafeImageUrl(rec.poster)} onError={(e) => { if (e.currentTarget.src.startsWith('/api/proxy')) { e.currentTarget.src = '/images/placeholder-no-img.jpg'; } else if (e.currentTarget.src.startsWith('http')) { e.currentTarget.src = `/api/proxy?url=${encodeURIComponent(e.currentTarget.src)}`; } else { e.currentTarget.src = '/images/placeholder-no-img.jpg'; } }} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" alt={recTitle} loading="lazy" decoding="async" /><div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center"><Play size={20} className="text-white" /></div></div>
                                                 <div className="flex-1 min-w-0 py-1 flex flex-col justify-center gap-1">
                                                     <h4 className="text-xs sm:text-sm font-black text-white line-clamp-2 leading-tight group-hover:text-primary-500 transition-colors">{recTitle}</h4>
                                                     {rec.jname && <p className="text-[9px] text-zinc-500 truncate uppercase font-bold tracking-wider">{rec.jname}</p>}
-                                                    <div className="flex items-center gap-2 mt-auto text-[9px] sm:text-[10px] text-zinc-400 font-black uppercase tracking-wider"><span className="text-primary-500 px-2 py-0.5 bg-primary-900/20 rounded-md border border-primary-900/30">{rec.type || 'TV'}</span><span className="w-1 h-1 bg-zinc-600 rounded-full" /><div className="flex items-center gap-1"><Clock size={10} className="text-primary-600" />{recDuration}</div></div>
+                                                    <div className="flex items-center gap-2 mt-auto text-[9px] sm:text-[10px] text-zinc-400 font-black uppercase tracking-wider"><span className="text-primary-500 px-2 py-0.5 bg-primary-900/20 rounded-md border border-primary-900/30">{recType}</span><span className="w-1 h-1 bg-zinc-600 rounded-full" /><div className="flex items-center gap-1"><Clock size={10} className="text-primary-600" />{recDuration}</div></div>
                                                 </div>
                                                 </Link>
                                             );

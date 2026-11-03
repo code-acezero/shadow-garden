@@ -588,9 +588,28 @@ export class AniListService {
         }
       }
     `;
-    const data = await queryAniList<any>(query, { search: keyword, page, perPage });
-    const pInfo = data?.Page?.pageInfo;
-    const results = (data?.Page?.media || []).map((m: any) => mapMediaToCard(m));
+    let data = await queryAniList<any>(query, { search: keyword, page, perPage });
+    let pInfo = data?.Page?.pageInfo;
+    let results = (data?.Page?.media || []).map((m: any) => mapMediaToCard(m));
+
+    // Smart fallback if initial search yielded 0 results (handles missing apostrophes, plurals, long titles)
+    if (results.length === 0 && keyword && keyword.length > 3) {
+      const variants = [
+        keyword.replace(/\b(\w+)(s)\b/gi, "$1'$2"),
+        keyword.replace(/\b(\w+)s\b/gi, '$1'),
+        keyword.split(/\s+/).filter(w => !['the', 'and', 'from', 'with', 'to', 'a', 'in', 'of', 'i', 'part', 'season'].includes(w.toLowerCase())).slice(0, 3).join(' ')
+      ].filter((v, idx, arr) => v && v !== keyword && arr.indexOf(v) === idx);
+
+      for (const variant of variants) {
+        if (!variant || variant.length < 3) continue;
+        const vData = await queryAniList<any>(query, { search: variant, page, perPage });
+        if (vData?.Page?.media?.length) {
+          pInfo = vData.Page.pageInfo;
+          results = vData.Page.media.map((m: any) => mapMediaToCard(m));
+          break;
+        }
+      }
+    }
 
     return {
       results,
@@ -1075,7 +1094,28 @@ export class AniListService {
             }
           }
         `;
-        const fbData = await queryAniList<any>(fallbackQuery, { search: textSlug });
+        let fbData = await queryAniList<any>(fallbackQuery, { search: textSlug });
+        if (!fbData?.Media) {
+          // Smart variant 1: Restore possessive apostrophes (e.g. heros -> hero's)
+          const possessiveVariant = textSlug.replace(/\b(\w+)(s)\b/gi, "$1'$2");
+          if (possessiveVariant !== textSlug) {
+            fbData = await queryAniList<any>(fallbackQuery, { search: possessiveVariant });
+          }
+        }
+        if (!fbData?.Media) {
+          // Smart variant 2: Try singularizing words ending in 's' (e.g. heros -> hero)
+          const singularVariant = textSlug.replace(/\b(\w+)s\b/gi, '$1');
+          if (singularVariant !== textSlug) {
+            fbData = await queryAniList<any>(fallbackQuery, { search: singularVariant });
+          }
+        }
+        if (!fbData?.Media) {
+          // Smart variant 3: First 3-4 significant words
+          const sigWords = textSlug.split(/\s+/).filter(w => !['the', 'and', 'from', 'with', 'to', 'a', 'in', 'of', 'i', 'part', 'season'].includes(w.toLowerCase()));
+          if (sigWords.length >= 2) {
+            fbData = await queryAniList<any>(fallbackQuery, { search: sigWords.slice(0, 3).join(' ') });
+          }
+        }
         media = fbData?.Media;
       }
     }

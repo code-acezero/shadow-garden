@@ -31,7 +31,7 @@ const SUB_FONTS = {
 const SUB_LIFTS = { Bottom: '0px', Middle: '-5vh', High: '-12vh' };
 const SUB_BACKGROUNDS = { None: 'transparent', Outline: 'text-shadow', Box: 'smart', Blur: 'smart-blur', Bar: 'bar' };
 
-const DEFAULT_SUB_STYLE = { color: 'White', size: 'Medium', bg: 'Outline', font: 'Sans', lift: 'Middle', opacity: 75 };
+const DEFAULT_SUB_STYLE = { color: 'White', size: 'Medium', bg: 'Outline', font: 'Sans', lift: 'Bottom', opacity: 75 };
 
 // --- WHISPER HELPER ---
 const notifyWhisper = (message: string, type: 'success' | 'error' | 'info' = 'success') => {
@@ -551,13 +551,61 @@ const OmniPlayer = forwardRef<OmniPlayerRef, OmniPlayerProps>(({
   // Preferences
   const [subStyle, setSubStyle] = useState(DEFAULT_SUB_STYLE);
   const [isMobile, setIsMobile] = useState(false);
+  const [isFullscreen, setIsFullscreen] = useState(false);
+  const [playerHeight, setPlayerHeight] = useState(0);
 
   useEffect(() => {
     const checkMobile = () => setIsMobile(window.innerWidth < 768);
     checkMobile();
     window.addEventListener('resize', checkMobile);
-    return () => window.removeEventListener('resize', checkMobile);
+
+    const checkFs = () => {
+      setIsFullscreen(Boolean(document.fullscreenElement));
+    };
+    document.addEventListener('fullscreenchange', checkFs);
+    document.addEventListener('webkitfullscreenchange', checkFs);
+
+    const updateHeight = () => {
+      if (containerRef.current) {
+        setPlayerHeight(containerRef.current.clientHeight);
+      }
+    };
+    updateHeight();
+    const ro = typeof ResizeObserver !== 'undefined' ? new ResizeObserver(updateHeight) : null;
+    if (ro && containerRef.current) {
+      ro.observe(containerRef.current);
+    }
+    window.addEventListener('resize', updateHeight);
+
+    return () => {
+      window.removeEventListener('resize', checkMobile);
+      document.removeEventListener('fullscreenchange', checkFs);
+      document.removeEventListener('webkitfullscreenchange', checkFs);
+      window.removeEventListener('resize', updateHeight);
+      ro?.disconnect();
+    };
   }, []);
+
+  // Compute adaptive menu max-height so menus never collapse to a line in inline mobile
+  // and never overflow off-screen in fullscreen mobile landscape
+  const menuMaxHeight = useMemo(() => {
+    if (playerHeight <= 0) {
+      return isFullscreen ? 260 : 155;
+    }
+    if (!isFullscreen) {
+      // Normal mobile inline view: player height is ~180-230px, leave 48px clearance
+      if (isMobile) {
+        return Math.max(130, Math.min(170, playerHeight - 50));
+      }
+      return Math.max(200, Math.min(360, playerHeight - 64));
+    } else {
+      // Fullscreen view: on mobile landscape screen height is ~360-400px, cap at 260px
+      if (isMobile || playerHeight < 500) {
+        return Math.max(180, Math.min(260, playerHeight - 64));
+      }
+      return Math.max(260, Math.min(420, playerHeight - 80));
+    }
+  }, [playerHeight, isFullscreen, isMobile]);
 
   const [doubleTapMode, setDoubleTapMode] = useState<'seek' | 'playpause' | 'fullscreen'>('seek');
   const [verticalGesture, setVerticalGesture] = useState<'vol_bright' | 'fullscreen' | 'none'>('vol_bright');
@@ -2092,12 +2140,12 @@ const OmniPlayer = forwardRef<OmniPlayerRef, OmniPlayerProps>(({
           )}
           style={{
             bottom: showControls
-              ? (isMobile ? '76px' : '70px')
-              : (isMobile ? '18px' : '30px'),
+              ? (isMobile ? '50px' : '58px')
+              : (isMobile ? '8px' : '16px'),
             transform: subStyle.bg === 'Bar'
-              ? `translateY(${subStyle.lift === 'High' ? (isMobile ? '-60px' : '-100px') : subStyle.lift === 'Middle' ? (isMobile ? '-28px' : '-40px') : '0px'})`
-              : `translateX(-50%) translateY(${subStyle.lift === 'High' ? (isMobile ? '-60px' : '-100px') : subStyle.lift === 'Middle' ? (isMobile ? '-28px' : '-40px') : '0px'})`,
-            transition: 'bottom 0.3s ease-in-out, transform 0.3s ease-in-out',
+              ? `translateY(${subStyle.lift === 'High' ? (isMobile ? '-32px' : '-50px') : subStyle.lift === 'Middle' ? (isMobile ? '-14px' : '-24px') : '0px'})`
+              : `translateX(-50%) translateY(${subStyle.lift === 'High' ? (isMobile ? '-32px' : '-50px') : subStyle.lift === 'Middle' ? (isMobile ? '-14px' : '-24px') : '0px'})`,
+            transition: 'bottom 0.25s ease-out, transform 0.25s ease-out',
             backgroundColor: subStyle.bg === 'Bar' ? `rgba(0,0,0, ${(subStyle.opacity ?? 75) / 100})` : 'transparent',
             padding: subStyle.bg === 'Bar' ? '6px 0' : '0',
           }}
@@ -2587,7 +2635,16 @@ const OmniPlayer = forwardRef<OmniPlayerRef, OmniPlayerProps>(({
               <button onClick={(e) => { e.stopPropagation(); setActiveMenu(activeMenu === 'main' ? 'none' : 'main'); }} className={cn("hover:text-primary-500 transition-colors active:scale-90 group w-9 h-9 sm:w-10 sm:h-10 md:w-auto md:h-auto flex items-center justify-center p-1 md:p-0", activeMenu !== 'none' && activeMenu !== 'audio' && activeMenu !== 'subs' && "text-primary-500")}><Settings size={18} className={cn("md:w-4.5 md:h-4.5 transition-transform duration-300", (activeMenu !== 'none' && activeMenu !== 'audio' && activeMenu !== 'subs') ? "rotate-90 text-primary-500" : "rotate-0")} /></button>
 
               {activeMenu === 'main' && (
-                <div data-player-menu="true" role="menu" onClick={(e) => e.stopPropagation()} onTouchStart={(e) => e.stopPropagation()} onTouchMove={(e) => e.stopPropagation()} onTouchEnd={(e) => e.stopPropagation()} className="absolute bottom-11 sm:bottom-12 right-0 bg-zinc-950/95 backdrop-blur-3xl border border-white/10 ring-1 ring-white/10 rounded-2xl shadow-[0_8px_40px_rgba(0,0,0,0.85)] p-2 w-48 sm:w-56 max-w-[calc(100vw-24px)] max-h-[calc(100%-52px)] sm:max-h-[min(70vh,280px)] md:max-h-[380px] overflow-y-auto overscroll-contain z-[75] flex flex-col gap-1 animate-in slide-in-from-bottom-2">
+                <div
+                  data-player-menu="true"
+                  role="menu"
+                  onClick={(e) => e.stopPropagation()}
+                  onTouchStart={(e) => e.stopPropagation()}
+                  onTouchMove={(e) => e.stopPropagation()}
+                  onTouchEnd={(e) => e.stopPropagation()}
+                  style={{ maxHeight: `${menuMaxHeight}px` }}
+                  className="absolute bottom-11 sm:bottom-12 right-0 bg-zinc-950/95 backdrop-blur-3xl border border-white/10 ring-1 ring-white/10 rounded-2xl shadow-[0_8px_40px_rgba(0,0,0,0.85)] p-2 w-48 sm:w-56 max-w-[calc(100vw-24px)] overflow-y-auto overscroll-contain custom-scrollbar z-[75] flex flex-col gap-1 animate-in slide-in-from-bottom-2"
+                >
                   <button onClick={(e) => { e.stopPropagation(); setActiveMenu('quality') }} className="flex items-center justify-between w-full px-2.5 py-1.5 rounded-xl hover:bg-white/10 hover:shadow-inner text-left text-[10px] sm:text-xs font-bold transition-all"><div className="flex items-center gap-1.5"><Settings size={13} /> Quality</div><span className="text-zinc-400 text-[9px] sm:text-[10px] truncate ml-2">{currentQuality === -1 ? autoResolutionText : `${qualities.find(q => q.index === currentQuality)?.height}p`}</span></button>
                   <button onClick={(e) => { e.stopPropagation(); setActiveMenu('speed') }} className="flex items-center justify-between w-full px-2.5 py-1.5 rounded-xl hover:bg-white/10 hover:shadow-inner text-left text-[10px] sm:text-xs font-bold transition-all"><div className="flex items-center gap-1.5"><Gauge size={13} /> Speed</div><span className="text-zinc-400 text-[9px] sm:text-[10px]">{speed}x</span></button>
                   <button onClick={(e) => { e.stopPropagation(); setActiveMenu('gestures') }} className="flex items-center justify-between w-full px-2.5 py-1.5 rounded-xl hover:bg-white/10 hover:shadow-inner text-left text-[10px] sm:text-xs font-bold transition-all"><div className="flex items-center gap-1.5"><MousePointerClick size={13} /> Gestures</div><span className="text-zinc-400 uppercase text-[9px] sm:text-[10px]">{doubleTapMode}</span></button>
@@ -2602,48 +2659,122 @@ const OmniPlayer = forwardRef<OmniPlayerRef, OmniPlayerProps>(({
                 </div>
               )}
               {activeMenu === 'vGesture' && (
-                <div data-player-menu="true" role="menu" onClick={(e) => e.stopPropagation()} onTouchStart={(e) => e.stopPropagation()} onTouchMove={(e) => e.stopPropagation()} onTouchEnd={(e) => e.stopPropagation()} className="absolute bottom-11 sm:bottom-12 right-0 bg-zinc-950/95 backdrop-blur-3xl border border-white/10 ring-1 ring-white/10 rounded-2xl shadow-[0_8px_40px_rgba(0,0,0,0.85)] p-2 w-44 sm:w-52 max-w-[calc(100vw-24px)] max-h-[calc(100%-52px)] sm:max-h-[min(70vh,280px)] md:max-h-[360px] overflow-y-auto overscroll-contain z-[75] flex flex-col gap-1 animate-in slide-in-from-bottom-2">
+                <div
+                  data-player-menu="true"
+                  role="menu"
+                  onClick={(e) => e.stopPropagation()}
+                  onTouchStart={(e) => e.stopPropagation()}
+                  onTouchMove={(e) => e.stopPropagation()}
+                  onTouchEnd={(e) => e.stopPropagation()}
+                  style={{ maxHeight: `${menuMaxHeight}px` }}
+                  className="absolute bottom-11 sm:bottom-12 right-0 bg-zinc-950/95 backdrop-blur-3xl border border-white/10 ring-1 ring-white/10 rounded-2xl shadow-[0_8px_40px_rgba(0,0,0,0.85)] p-2 w-44 sm:w-52 max-w-[calc(100vw-24px)] overflow-y-auto overscroll-contain custom-scrollbar z-[75] flex flex-col gap-1 animate-in slide-in-from-bottom-2"
+                >
                   <button onClick={(e) => { e.stopPropagation(); setActiveMenu('main') }} className="flex items-center gap-1.5 text-[10px] px-2 py-1 font-black text-zinc-400 border-b border-white/10 mb-0.5"><ChevronLeft size={13} /> BACK</button>
                   {['vol_bright', 'fullscreen', 'none'].map(m => (<button key={m} onClick={(e) => { e.stopPropagation(); updateLocalPrefs({ verticalGesture: m }); setActiveMenu('main') }} className={cn("text-[10px] px-2.5 py-1.5 rounded-xl text-left font-bold uppercase transition-all", verticalGesture === m ? "bg-gradient-to-r from-primary-600 to-primary-500 text-white shadow-md shadow-primary-500/25 border border-primary-500/50" : "hover:bg-white/10 hover:shadow-inner text-zinc-400")}>{m === 'vol_bright' ? 'Vol/Bri' : m}</button>))}
                 </div>
               )}
               {activeMenu === 'hGesture' && (
-                <div data-player-menu="true" role="menu" onClick={(e) => e.stopPropagation()} onTouchStart={(e) => e.stopPropagation()} onTouchMove={(e) => e.stopPropagation()} onTouchEnd={(e) => e.stopPropagation()} className="absolute bottom-11 sm:bottom-12 right-0 bg-zinc-950/95 backdrop-blur-3xl border border-white/10 ring-1 ring-white/10 rounded-2xl shadow-[0_8px_40px_rgba(0,0,0,0.85)] p-2 w-44 sm:w-52 max-w-[calc(100vw-24px)] max-h-[calc(100%-52px)] sm:max-h-[min(70vh,280px)] md:max-h-[360px] overflow-y-auto overscroll-contain z-[75] flex flex-col gap-1 animate-in slide-in-from-bottom-2">
+                <div
+                  data-player-menu="true"
+                  role="menu"
+                  onClick={(e) => e.stopPropagation()}
+                  onTouchStart={(e) => e.stopPropagation()}
+                  onTouchMove={(e) => e.stopPropagation()}
+                  onTouchEnd={(e) => e.stopPropagation()}
+                  style={{ maxHeight: `${menuMaxHeight}px` }}
+                  className="absolute bottom-11 sm:bottom-12 right-0 bg-zinc-950/95 backdrop-blur-3xl border border-white/10 ring-1 ring-white/10 rounded-2xl shadow-[0_8px_40px_rgba(0,0,0,0.85)] p-2 w-44 sm:w-52 max-w-[calc(100vw-24px)] overflow-y-auto overscroll-contain custom-scrollbar z-[75] flex flex-col gap-1 animate-in slide-in-from-bottom-2"
+                >
                   <button onClick={(e) => { e.stopPropagation(); setActiveMenu('main') }} className="flex items-center gap-1.5 text-[10px] px-2 py-1 font-black text-zinc-400 border-b border-white/10 mb-0.5"><ChevronLeft size={13} /> BACK</button>
                   {['seek', 'nav', 'volume', 'none'].map(m => (<button key={m} onClick={(e) => { e.stopPropagation(); updateLocalPrefs({ horizontalGesture: m }); setActiveMenu('main') }} className={cn("text-[10px] px-2.5 py-1.5 rounded-xl text-left font-bold uppercase transition-all", horizontalGesture === m ? "bg-gradient-to-r from-primary-600 to-primary-500 text-white shadow-md shadow-primary-500/25 border border-primary-500/50" : "hover:bg-white/10 hover:shadow-inner text-zinc-400")}>{m === 'nav' ? 'Next / Prev' : m}</button>))}
                 </div>
               )}
 
               {activeMenu === 'quality' && (
-                <div data-player-menu="true" role="menu" onClick={(e) => e.stopPropagation()} onTouchStart={(e) => e.stopPropagation()} onTouchMove={(e) => e.stopPropagation()} onTouchEnd={(e) => e.stopPropagation()} className="absolute bottom-11 sm:bottom-12 right-0 bg-zinc-950/90 backdrop-blur-3xl border border-white/10 ring-1 ring-white/10 rounded-2xl shadow-[0_8px_40px_rgba(0,0,0,0.85)] p-2 w-36 sm:w-40 max-w-[calc(100vw-24px)] max-h-[calc(100%-52px)] sm:max-h-[min(70vh,280px)] md:max-h-[360px] overflow-y-auto overscroll-contain z-[75] flex flex-col gap-1 animate-in slide-in-from-bottom-2">
+                <div
+                  data-player-menu="true"
+                  role="menu"
+                  onClick={(e) => e.stopPropagation()}
+                  onTouchStart={(e) => e.stopPropagation()}
+                  onTouchMove={(e) => e.stopPropagation()}
+                  onTouchEnd={(e) => e.stopPropagation()}
+                  style={{ maxHeight: `${menuMaxHeight}px` }}
+                  className="absolute bottom-11 sm:bottom-12 right-0 bg-zinc-950/90 backdrop-blur-3xl border border-white/10 ring-1 ring-white/10 rounded-2xl shadow-[0_8px_40px_rgba(0,0,0,0.85)] p-2 w-36 sm:w-40 max-w-[calc(100vw-24px)] overflow-y-auto overscroll-contain custom-scrollbar z-[75] flex flex-col gap-1 animate-in slide-in-from-bottom-2"
+                >
                   <button onClick={(e) => { e.stopPropagation(); setActiveMenu('main') }} className="flex items-center gap-1.5 text-[10px] px-2 py-1 font-black text-zinc-400 border-b border-white/10 mb-0.5"><ChevronLeft size={13} /> BACK</button>
                   <button onClick={(e) => { e.stopPropagation(); changeQuality(-1) }} className={cn("text-[10px] px-2.5 py-1.5 rounded-xl text-left font-bold transition-all", currentQuality === -1 ? "bg-gradient-to-r from-primary-600 to-primary-500 text-white shadow-md shadow-primary-500/25 border border-primary-500/50" : "hover:bg-white/10 hover:shadow-inner text-zinc-400")}>Auto</button>
                   {qualities.map(q => (<button key={q.index} onClick={(e) => { e.stopPropagation(); changeQuality(q.index) }} className={cn("text-[10px] px-2.5 py-1.5 rounded-xl text-left font-bold transition-all", currentQuality === q.index ? "bg-gradient-to-r from-primary-600 to-primary-500 text-white shadow-md shadow-primary-500/25 border border-primary-500/50" : "hover:bg-white/10 hover:shadow-inner text-zinc-400")}>{q.height}p</button>))}
                 </div>
               )}
               {activeMenu === 'speed' && (
-                <div data-player-menu="true" role="menu" onClick={(e) => e.stopPropagation()} onTouchStart={(e) => e.stopPropagation()} onTouchMove={(e) => e.stopPropagation()} onTouchEnd={(e) => e.stopPropagation()} className="absolute bottom-11 sm:bottom-12 right-0 bg-zinc-950/90 backdrop-blur-3xl border border-white/10 ring-1 ring-white/10 rounded-2xl shadow-[0_8px_40px_rgba(0,0,0,0.85)] p-2 w-32 sm:w-36 max-w-[calc(100vw-24px)] max-h-[calc(100%-52px)] sm:max-h-[min(70vh,280px)] md:max-h-[360px] overflow-y-auto overscroll-contain z-[75] flex flex-col gap-1 animate-in slide-in-from-bottom-2">
+                <div
+                  data-player-menu="true"
+                  role="menu"
+                  onClick={(e) => e.stopPropagation()}
+                  onTouchStart={(e) => e.stopPropagation()}
+                  onTouchMove={(e) => e.stopPropagation()}
+                  onTouchEnd={(e) => e.stopPropagation()}
+                  style={{ maxHeight: `${menuMaxHeight}px` }}
+                  className="absolute bottom-11 sm:bottom-12 right-0 bg-zinc-950/90 backdrop-blur-3xl border border-white/10 ring-1 ring-white/10 rounded-2xl shadow-[0_8px_40px_rgba(0,0,0,0.85)] p-2 w-32 sm:w-36 max-w-[calc(100vw-24px)] overflow-y-auto overscroll-contain custom-scrollbar z-[75] flex flex-col gap-1 animate-in slide-in-from-bottom-2"
+                >
                   <button onClick={(e) => { e.stopPropagation(); setActiveMenu('main') }} className="flex items-center gap-1.5 text-[10px] px-2 py-1 font-black text-zinc-400 border-b border-white/10 mb-0.5"><ChevronLeft size={13} /> BACK</button>
                   {[0.5, 1, 1.25, 1.5, 2].map(r => (<button key={r} onClick={(e) => { e.stopPropagation(); changeSpeed(r) }} className={cn("text-[10px] px-2.5 py-1.5 rounded-xl text-left font-bold transition-all", speed === r ? "bg-gradient-to-r from-primary-600 to-primary-500 text-white shadow-md shadow-primary-500/25 border border-primary-500/50" : "hover:bg-white/10 hover:shadow-inner text-zinc-400")}>{r}x</button>))}
                 </div>
               )}
               {activeMenu === 'gestures' && (
-                <div data-player-menu="true" role="menu" onClick={(e) => e.stopPropagation()} onTouchStart={(e) => e.stopPropagation()} onTouchMove={(e) => e.stopPropagation()} onTouchEnd={(e) => e.stopPropagation()} className="absolute bottom-11 sm:bottom-12 right-0 bg-zinc-950/95 backdrop-blur-3xl border border-white/10 ring-1 ring-white/10 rounded-2xl shadow-[0_8px_40px_rgba(0,0,0,0.85)] p-2 w-44 sm:w-52 max-w-[calc(100vw-24px)] max-h-[calc(100%-52px)] sm:max-h-[min(70vh,280px)] md:max-h-[360px] overflow-y-auto overscroll-contain z-[75] flex flex-col gap-1 animate-in slide-in-from-bottom-2">
+                <div
+                  data-player-menu="true"
+                  role="menu"
+                  onClick={(e) => e.stopPropagation()}
+                  onTouchStart={(e) => e.stopPropagation()}
+                  onTouchMove={(e) => e.stopPropagation()}
+                  onTouchEnd={(e) => e.stopPropagation()}
+                  style={{ maxHeight: `${menuMaxHeight}px` }}
+                  className="absolute bottom-11 sm:bottom-12 right-0 bg-zinc-950/95 backdrop-blur-3xl border border-white/10 ring-1 ring-white/10 rounded-2xl shadow-[0_8px_40px_rgba(0,0,0,0.85)] p-2 w-44 sm:w-52 max-w-[calc(100vw-24px)] overflow-y-auto overscroll-contain custom-scrollbar z-[75] flex flex-col gap-1 animate-in slide-in-from-bottom-2"
+                >
                   <button onClick={(e) => { e.stopPropagation(); setActiveMenu('main') }} className="flex items-center gap-1.5 text-[10px] px-2 py-1 font-black text-zinc-400 border-b border-white/10 mb-0.5"><ChevronLeft size={13} /> BACK</button>
                   {['seek', 'playpause', 'fullscreen'].map(m => (<button key={m} onClick={(e) => { e.stopPropagation(); updateLocalPrefs({ doubleTapMode: m }); setActiveMenu('none') }} className={cn("text-[10px] px-2.5 py-1.5 rounded-xl text-left font-bold uppercase transition-all", doubleTapMode === m ? "bg-gradient-to-r from-primary-600 to-primary-500 text-white shadow-md shadow-primary-500/25 border border-primary-500/50" : "hover:bg-white/10 hover:shadow-inner text-zinc-400")}>{m}</button>))}
                 </div>
               )}
             </div>
 
-            {audioTracks.length > 1 && (<div className="relative"><button onClick={(e) => { e.stopPropagation(); setActiveMenu(activeMenu === 'audio' ? 'none' : 'audio'); }} className={cn("hover:text-primary-500 transition-colors active:scale-90 w-9 h-9 sm:w-10 sm:h-10 md:w-auto md:h-auto flex items-center justify-center p-1 md:p-0", activeMenu === 'audio' && "text-primary-500")}><AudioWaveform size={18} className="md:w-4.5 md:h-4.5" /></button>{activeMenu === 'audio' && (<div data-player-menu="true" role="menu" onClick={(e) => e.stopPropagation()} onTouchStart={(e) => e.stopPropagation()} onTouchMove={(e) => e.stopPropagation()} onTouchEnd={(e) => e.stopPropagation()} className="absolute bottom-11 sm:bottom-12 right-0 bg-zinc-950/95 backdrop-blur-3xl border border-white/10 ring-1 ring-white/10 rounded-2xl shadow-[0_8px_40px_rgba(0,0,0,0.85)] p-2 w-44 sm:w-52 max-w-[calc(100vw-24px)] max-h-[calc(100%-52px)] sm:max-h-[min(70vh,280px)] md:max-h-[360px] overflow-y-auto overscroll-contain z-[75] flex flex-col gap-1 animate-in slide-in-from-bottom-2">{audioTracks.map((t, i) => (<button key={i} onClick={(e) => { e.stopPropagation(); changeAudio(i); }} className={cn("text-[10px] px-2.5 py-1.5 rounded-xl text-left font-bold transition-all truncate active:scale-95", currentAudio === i ? "bg-gradient-to-r from-primary-600 to-primary-500 text-white shadow-md shadow-primary-500/25 border border-primary-500/50" : "hover:bg-white/10 hover:shadow-inner text-zinc-400")}>{t.name || `Audio ${i + 1}`}</button>))}</div>)}</div>)}
+            {audioTracks.length > 1 && (
+              <div className="relative">
+                <button onClick={(e) => { e.stopPropagation(); setActiveMenu(activeMenu === 'audio' ? 'none' : 'audio'); }} className={cn("hover:text-primary-500 transition-colors active:scale-90 w-9 h-9 sm:w-10 sm:h-10 md:w-auto md:h-auto flex items-center justify-center p-1 md:p-0", activeMenu === 'audio' && "text-primary-500")}><AudioWaveform size={18} className="md:w-4.5 md:h-4.5" /></button>
+                {activeMenu === 'audio' && (
+                  <div
+                    data-player-menu="true"
+                    role="menu"
+                    onClick={(e) => e.stopPropagation()}
+                    onTouchStart={(e) => e.stopPropagation()}
+                    onTouchMove={(e) => e.stopPropagation()}
+                    onTouchEnd={(e) => e.stopPropagation()}
+                    style={{ maxHeight: `${menuMaxHeight}px` }}
+                    className="absolute bottom-11 sm:bottom-12 right-0 bg-zinc-950/95 backdrop-blur-3xl border border-white/10 ring-1 ring-white/10 rounded-2xl shadow-[0_8px_40px_rgba(0,0,0,0.85)] p-2 w-44 sm:w-52 max-w-[calc(100vw-24px)] overflow-y-auto overscroll-contain custom-scrollbar z-[75] flex flex-col gap-1 animate-in slide-in-from-bottom-2"
+                  >
+                    {audioTracks.map((t, i) => (
+                      <button key={i} onClick={(e) => { e.stopPropagation(); changeAudio(i); }} className={cn("text-[10px] px-2.5 py-1.5 rounded-xl text-left font-bold transition-all truncate active:scale-95", currentAudio === i ? "bg-gradient-to-r from-primary-600 to-primary-500 text-white shadow-md shadow-primary-500/25 border border-primary-500/50" : "hover:bg-white/10 hover:shadow-inner text-zinc-400")}>{t.name || `Audio ${i + 1}`}</button>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
 
             {trackSubtitles.length > 0 && (
               <div className="relative">
                 <button onClick={(e) => { e.stopPropagation(); setActiveMenu(activeMenu === 'subs' ? 'none' : 'subs'); }} className={cn("hover:text-primary-500 transition-colors active:scale-90 w-9 h-9 sm:w-10 sm:h-10 md:w-auto md:h-auto flex items-center justify-center p-1 md:p-0", (activeMenu === 'subs' || currentSubtitle !== -1) ? "text-primary-500" : "text-white")}><Subtitles size={18} className="md:w-4.5 md:h-4.5" /></button>
                 {activeMenu === 'subs' && (
-                  <div data-player-menu="true" role="menu" onClick={(e) => e.stopPropagation()} onTouchStart={(e) => e.stopPropagation()} onTouchMove={(e) => e.stopPropagation()} onTouchEnd={(e) => e.stopPropagation()} className="absolute bottom-11 sm:bottom-12 right-0 bg-zinc-950/95 backdrop-blur-3xl border border-white/10 ring-1 ring-white/10 rounded-2xl shadow-[0_8px_40px_rgba(0,0,0,0.85)] p-2 w-48 sm:w-56 max-w-[calc(100vw-24px)] max-h-[calc(100%-52px)] sm:max-h-[min(70vh,280px)] md:max-h-[360px] overflow-y-auto overscroll-contain custom-scrollbar z-[75] flex flex-col animate-in slide-in-from-bottom-2">
+                  <div
+                    data-player-menu="true"
+                    role="menu"
+                    onClick={(e) => e.stopPropagation()}
+                    onTouchStart={(e) => e.stopPropagation()}
+                    onTouchMove={(e) => e.stopPropagation()}
+                    onTouchEnd={(e) => e.stopPropagation()}
+                    style={{ maxHeight: `${menuMaxHeight}px` }}
+                    className="absolute bottom-11 sm:bottom-12 right-0 bg-zinc-950/95 backdrop-blur-3xl border border-white/10 ring-1 ring-white/10 rounded-2xl shadow-[0_8px_40px_rgba(0,0,0,0.85)] p-2 w-48 sm:w-56 max-w-[calc(100vw-24px)] overflow-hidden overscroll-contain z-[75] flex flex-col animate-in slide-in-from-bottom-2"
+                  >
                     <button onClick={(e) => { e.stopPropagation(); setActiveMenu('subSettings'); }} className="flex items-center gap-1.5 text-[10px] px-2 py-1 rounded-xl text-left font-black text-primary-500 hover:bg-white/5 transition-all mb-1 border-b border-white/10 shrink-0"><Settings size={12} /> CAPTION SETTINGS</button>
-                    <div className="overflow-y-auto flex-1 flex flex-col gap-1 scrollbar-hide">
+                    <div className="overflow-y-auto flex-1 flex flex-col gap-1 custom-scrollbar">
                       <button onClick={(e) => { e.stopPropagation(); changeSubtitle(-1); }} className={cn("text-[10px] px-2.5 py-1.5 rounded-xl text-left font-bold transition-all active:scale-95 shrink-0", currentSubtitle === -1 ? "bg-gradient-to-r from-primary-600 to-primary-500 text-white shadow-md shadow-primary-500/25 border border-primary-500/50" : "hover:bg-white/10 hover:shadow-inner text-zinc-400")}>Off</button>
                       {trackSubtitles.map((t, i) => (
                         <button key={i} onClick={(e) => { e.stopPropagation(); changeSubtitle(i); }} className={cn("text-[10px] px-2.5 py-1.5 rounded-xl text-left font-bold transition-all truncate active:scale-95 shrink-0", currentSubtitle === i ? "bg-gradient-to-r from-primary-600 to-primary-500 text-white shadow-md shadow-primary-500/25 border border-primary-500/50" : "hover:bg-white/10 hover:shadow-inner text-zinc-400")}>{t.label || t.name || t.lang}</button>
@@ -2652,8 +2783,17 @@ const OmniPlayer = forwardRef<OmniPlayerRef, OmniPlayerProps>(({
                   </div>
                 )}
                 {activeMenu === 'subSettings' && (
-                  <div data-player-menu="true" role="menu" onClick={(e) => e.stopPropagation()} onTouchStart={(e) => e.stopPropagation()} onTouchMove={(e) => e.stopPropagation()} onTouchEnd={(e) => e.stopPropagation()} className="absolute bottom-11 sm:bottom-12 right-0 bg-zinc-950/95 backdrop-blur-3xl border border-white/10 ring-1 ring-white/10 rounded-2xl shadow-[0_8px_40px_rgba(0,0,0,0.9)] p-3 w-[260px] sm:w-64 max-w-[calc(100vw-24px)] max-h-[calc(100%-52px)] sm:max-h-[min(75vh,280px)] md:max-h-[380px] overflow-y-auto overscroll-contain z-[75] flex flex-col gap-2.5 animate-in slide-in-from-bottom-2">
-                    <div className="flex items-center gap-1.5 text-[10px] sm:text-xs font-black text-zinc-400 border-b border-white/10 pb-1.5"><button onClick={(e) => { e.stopPropagation(); setActiveMenu('subs') }} className="hover:text-white"><ChevronLeft size={13} /></button> CAPTION STYLE</div>
+                  <div
+                    data-player-menu="true"
+                    role="menu"
+                    onClick={(e) => e.stopPropagation()}
+                    onTouchStart={(e) => e.stopPropagation()}
+                    onTouchMove={(e) => e.stopPropagation()}
+                    onTouchEnd={(e) => e.stopPropagation()}
+                    style={{ maxHeight: `${menuMaxHeight}px` }}
+                    className="absolute bottom-11 sm:bottom-12 right-0 bg-zinc-950/95 backdrop-blur-3xl border border-white/10 ring-1 ring-white/10 rounded-2xl shadow-[0_8px_40px_rgba(0,0,0,0.9)] p-3 w-[260px] sm:w-64 max-w-[calc(100vw-24px)] overflow-y-auto overscroll-contain custom-scrollbar z-[75] flex flex-col gap-2.5 animate-in slide-in-from-bottom-2"
+                  >
+                    <div className="flex items-center gap-1.5 text-[10px] sm:text-xs font-black text-zinc-400 border-b border-white/10 pb-1.5 shrink-0"><button onClick={(e) => { e.stopPropagation(); setActiveMenu('subs') }} className="hover:text-white"><ChevronLeft size={13} /></button> CAPTION STYLE</div>
                     <div className="space-y-1"><span className="text-[9px] sm:text-[10px] font-bold text-zinc-400 uppercase">Color</span><div className="flex gap-1.5 flex-wrap">{Object.keys(SUB_COLORS).map((c) => (<button key={c} onClick={(e) => { e.stopPropagation(); updateLocalPrefs({ subStyle: { color: c } }) }} className={cn("w-5 h-5 sm:w-6 sm:h-6 rounded-full border transition-all active:scale-90 shrink-0", subStyle.color === c ? "border-white scale-110 shadow-md" : "border-transparent opacity-60")} style={{ background: SUB_COLORS[c as keyof typeof SUB_COLORS] }} />))}</div></div>
                     <div className="space-y-1"><span className="text-[9px] sm:text-[10px] font-bold text-zinc-400 uppercase">Size</span><div className="flex gap-1 bg-white/5 rounded-xl p-1">{Object.keys(SUB_SIZES).map((s) => (<button key={s} onClick={(e) => { e.stopPropagation(); updateLocalPrefs({ subStyle: { size: s } }) }} className={cn("flex-1 py-1 rounded-lg text-[9px] sm:text-[10px] font-bold transition-all active:scale-90 shrink-0", subStyle.size === s ? "bg-white text-black shadow-sm" : "text-zinc-400 hover:text-zinc-200")}>{s}</button>))}</div></div>
                     <div className="space-y-1"><span className="text-[9px] sm:text-[10px] font-bold text-zinc-400 uppercase">Background</span><div className="flex gap-1 bg-white/5 rounded-xl p-1 overflow-x-auto scrollbar-hide">{Object.keys(SUB_BACKGROUNDS).map((b) => (<button key={b} onClick={(e) => { e.stopPropagation(); updateLocalPrefs({ subStyle: { bg: b } }) }} className={cn("px-2 py-1 rounded-lg text-[9px] sm:text-[10px] font-bold transition-all active:scale-90 whitespace-nowrap shrink-0", subStyle.bg === b ? "bg-white text-black shadow-sm" : "text-zinc-400 hover:text-zinc-200")}>{b}</button>))}</div></div>
@@ -2700,9 +2840,9 @@ const OmniPlayer = forwardRef<OmniPlayerRef, OmniPlayerProps>(({
             <button
               onClick={(e) => { e.stopPropagation(); toggleFullscreen(); }}
               className="hover:text-primary-500 transition-colors active:scale-90 w-10 h-10 sm:w-10 sm:h-10 md:w-auto md:h-auto flex items-center justify-center p-1 md:p-0 text-white"
-              title="Fullscreen"
+              title={isFullscreen ? "Exit Fullscreen" : "Fullscreen"}
             >
-              <Maximize size={19} className="md:w-4.5 md:h-4.5" />
+              {isFullscreen ? <Minimize size={19} className="md:w-4.5 md:h-4.5" /> : <Maximize size={19} className="md:w-4.5 md:h-4.5" />}
             </button>
           </div>
         </div>

@@ -105,16 +105,16 @@ async function fetchAnikotoSSE(_endpoint: string, _params: Record<string, any> =
 }
 
 export const ANIKOTO_GENRE_MAP: Record<string, string> = {
-  "action": "1", "adventure": "2", "boys love": "2330", "cars": "538", "comedy": "8",
-  "dementia": "453", "demons": "119", "drama": "62", "ecchi": "214", "erotica": "2322",
-  "fantasy": "3", "game": "180", "girls love": "2328", "gourmet": "2326", "harem": "215",
-  "historical": "70", "horror": "222", "isekai": "74", "josei": "404", "kids": "46",
-  "magic": "203", "mahou shoujo": "2310", "martial arts": "114", "mecha": "123", "military": "125",
-  "music": "242", "mystery": "57", "parody": "162", "police": "136", "psychological": "73",
-  "romance": "28", "samurai": "163", "school": "14", "sci-fi": "12", "seinen": "50",
-  "shoujo": "252", "shoujo ai": "235", "shounen": "15", "shounen ai": "233", "slice of life": "35",
-  "space": "124", "sports": "29", "super power": "16", "supernatural": "9", "suspense": "2316",
-  "thriller": "54", "unknown": "32", "vampire": "58"
+    "action": "1", "adventure": "2", "boys love": "2330", "cars": "538", "comedy": "8",
+    "dementia": "453", "demons": "119", "drama": "62", "ecchi": "214", "erotica": "2322",
+    "fantasy": "3", "game": "180", "girls love": "2328", "gourmet": "2326", "harem": "215",
+    "historical": "70", "horror": "222", "isekai": "74", "josei": "404", "kids": "46",
+    "magic": "203", "mahou shoujo": "2310", "martial arts": "114", "mecha": "123", "military": "125",
+    "music": "242", "mystery": "57", "parody": "162", "police": "136", "psychological": "73",
+    "romance": "28", "samurai": "163", "school": "14", "sci-fi": "12", "seinen": "50",
+    "shoujo": "252", "shoujo ai": "235", "shounen": "15", "shounen ai": "233", "slice of life": "35",
+    "space": "124", "sports": "29", "super power": "16", "supernatural": "9", "suspense": "2316",
+    "thriller": "54", "unknown": "32", "vampire": "58"
 };
 
 /**
@@ -132,9 +132,9 @@ function extractPaged(data: any): {
 } {
     if (!data) return { results: [] };
     if (Array.isArray(data)) return { results: data, currentPage: 1, hasNextPage: false };
-    
-    const results = Array.isArray(data.results) 
-        ? data.results 
+
+    const results = Array.isArray(data.results)
+        ? data.results
         : (Array.isArray(data.items) ? data.items : (Array.isArray(data.data) ? data.data : []));
 
     const currentPage = data.currentPage ?? data.page ?? 1;
@@ -293,7 +293,7 @@ export class AnimeAPI_Anikoto {
         const { type, genres, genre, genre_exclude, genres_exclude, ...rest } = params;
         const query: Record<string, any> = { ...rest };
         if (type !== undefined) query['term_type[]'] = Array.isArray(type) ? type : [type];
-        
+
         const gList = genres || genre;
         if (gList !== undefined) {
             const rawG = Array.isArray(gList) ? gList : String(gList).split(',');
@@ -445,7 +445,7 @@ export class AnimeService {
         const genresList = normalizeList(data?.genres);
         const studiosList = normalizeList(data?.studios);
         const altTitles = Array.isArray(data?.alternativeTitles) ? data.alternativeTitles : [];
-        const hasChineseStudio = studiosList.some((s: string) => 
+        const hasChineseStudio = studiosList.some((s: string) =>
             ['original force', 'wonder cat', 'sparkly key', 'foch', 'b.cmay', 'haoliners', 'tencent', 'bilibili', 'kuang shang', 'l2studio', 'paper plane'].some(cs => s.toLowerCase().includes(cs))
         );
         const hasKoreanStudio = studiosList.some((s: string) =>
@@ -459,11 +459,11 @@ export class AnimeService {
         const hasChineseChars = altTitles.some((t: string) => /[\u4e00-\u9fa5]/.test(t)) || /[\u4e00-\u9fa5]/.test(data?.synopsis || '');
         const hasKoreanChars = altTitles.some((t: string) => /[\uac00-\ud7af]/.test(t)) || /[\uac00-\ud7af]/.test(data?.synopsis || '') || /[\uac00-\ud7af]/.test(data?.titleJp || '');
         const hasJapaneseKana = /[\u3040-\u30ff]/.test(data?.titleJp || '') || /[\u3040-\u30ff]/.test(data?.title || '');
-        const isDonghua = data?.type?.toLowerCase() === 'donghua' || 
+        const isDonghua = data?.type?.toLowerCase() === 'donghua' ||
             genresList.some((g: string) => g.toLowerCase().includes('donghua') || g.toLowerCase().includes('chinese')) ||
             hasChineseStudio ||
             (hasChineseChars && !hasJapaneseKana) ||
-            (!hasJapaneseKana && altTitles.concat([data?.title || '', data?.titleJp || '', data?.synopsis || '']).some((t: string) => 
+            (!hasJapaneseKana && altTitles.concat([data?.title || '', data?.titleJp || '', data?.synopsis || '']).some((t: string) =>
                 /(?:\b(?:douluo|dalu|xianxia|wuxia|cultivation|donghua|shiguang|dailiren|shenghuo|chuan|zhuan|xian|qian kun|wan jie|soul land|combat continent|immortal king)\b)/i.test(t)
             ));
         const isKorean = !hasJapaneseStudio && !isJapaneseAnimeTitle && (
@@ -701,7 +701,15 @@ export class AnimeService {
                     .trim();
 
                 let anilistMatch: UniversalAnime | null = null;
-                const searchCandidates = [cleanTitle, slugTitle, blakiteDetail.englishTitle, blakiteDetail.nativeTitle].filter(Boolean);
+                const searchCandidates = [
+                    cleanTitle,
+                    cleanTitle.replace(/\b(\w+)(s)\b/gi, "$1'$2"),
+                    cleanTitle.replace(/\b(\w+)s\b/gi, '$1'),
+                    slugTitle,
+                    slugTitle.replace(/\b(\w+)(s)\b/gi, "$1'$2"),
+                    blakiteDetail.englishTitle,
+                    blakiteDetail.nativeTitle
+                ].filter(Boolean);
 
                 for (const candidate of searchCandidates) {
                     if (!candidate || candidate.length < 3) continue;
@@ -760,6 +768,7 @@ export class AnimeService {
                         hasSub: true,
                     }];
 
+                const popRecs = await AniListService.getMostPopular(1, 10).catch(() => []);
                 const uAnime: UniversalAnime = {
                     id: String(blakiteDetail.id),
                     title: cleanTitle || blakiteDetail.title,
@@ -788,7 +797,14 @@ export class AnimeService {
                     },
                     episodes: eps,
                     characters: [],
-                    recommendations: [],
+                    recommendations: popRecs && popRecs.length > 0 ? popRecs.map((r: any) => ({
+                        id: String(r.id),
+                        title: typeof r.title === 'string' ? r.title : (r.title?.userPreferred || r.title?.english || r.title?.romaji || r.name || 'Anime'),
+                        poster: r.poster || r.image || '',
+                        type: typeof r.type === 'string' ? r.type : 'TV',
+                        duration: r.duration || '24m',
+                        date: ''
+                    })) : [],
                     related: [],
                     seasons: [],
                     trailers: []
@@ -827,8 +843,8 @@ export class AnimeService {
     }
 
     static async getStream(
-        episodeId: string, 
-        server = 'MegaCloud', 
+        episodeId: string,
+        server = 'MegaCloud',
         category: 'sub' | 'dub' | 'raw' | 'jp' | 'en' | 'hi' | 'cn' = 'sub',
         options?: { malId?: number; title?: string; countryOfOrigin?: string; hasDub?: boolean; excludeServers?: string[] }
     ) {
@@ -898,8 +914,8 @@ export class AnimeService {
                 const available: any[] = (unified.servers[effectiveAudio] || (isSubTrack ? (unified.servers[primarySubKey] || []) : [])) as any[];
                 const excluded = (options?.excludeServers || []).map(s => s.toLowerCase());
                 let matched = available.find((s: any) => s.serverName.toLowerCase() === server.toLowerCase() && !excluded.includes(s.serverName.toLowerCase()))
-                           || available.find((s: any) => !excluded.includes(s.serverName.toLowerCase()))
-                           || available[0];
+                    || available.find((s: any) => !excluded.includes(s.serverName.toLowerCase()))
+                    || available[0];
 
                 if (matched && matched.url) {
                     // Synthesize legacy server structure for backward compatibility
@@ -953,12 +969,12 @@ export class WatchlistAPI {
     }
 
     static async addToWatchlist(userId: string, animeId: string, status: WatchlistItem['status'], progress: number = 0, episodeId?: string, totalEpisodes?: number, type?: string): Promise<boolean> {
-        const item: any = { 
-            anime_id: animeId, 
-            status, 
-            total_episodes: Number(totalEpisodes) || 1, 
-            media_type: type || "anime", 
-            updated_at: new Date().toISOString() 
+        const item: any = {
+            anime_id: animeId,
+            status,
+            total_episodes: Number(totalEpisodes) || 1,
+            media_type: type || "anime",
+            updated_at: new Date().toISOString()
         };
         if (episodeId) item.last_episode_id = episodeId;
 

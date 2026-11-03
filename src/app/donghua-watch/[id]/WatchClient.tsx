@@ -12,7 +12,7 @@ import {
     ChevronDown, Heart, CheckCircle, XCircle,
     FastForward, Star, Info, MessageSquare, User, Users,
     Loader2, Globe, Flame, Calendar, Copyright, Check, Mic, X,
-    ChevronLeft, ChevronRight, Pause, ArrowLeft, ArrowRight, Download, Wand2,
+    ChevronLeft, ChevronRight, Pause, ArrowLeft, ArrowRight, Download, Compass,
     PlayCircle, StepForward, Share2
 } from 'lucide-react';
 
@@ -2246,20 +2246,28 @@ function WatchContent() {
 
                     <div className="xl:col-span-4 w-full h-[500px] xl:h-auto xl:relative xl:self-stretch mt-8 xl:mt-0 order-5">
                         <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} transition={{ duration: 0.6, delay: 0.5 }} className="w-full h-full xl:absolute xl:inset-0 bg-[#0a0a0a] rounded-[40px] border border-white/5 overflow-hidden flex flex-col shadow-2xl shadow-emerald-900/10">
-                            <div className="p-6 bg-white/5 border-b border-white/5 flex items-center gap-3 shrink-0"><Wand2 size={18} className="text-emerald-600" /><h3 className="font-black text-white text-sm font-lemon tracking-widest uppercase">Suggestions</h3></div>
+                            <div className="p-6 bg-white/5 border-b border-white/5 flex items-center gap-3 shrink-0"><Compass size={18} className="text-emerald-600" /><h3 className="font-black text-white text-sm font-lemon tracking-widest uppercase">Suggestions</h3></div>
                             <ScrollArea className="flex-1 custom-scrollbar">
                                 <div className="p-4 flex flex-col gap-3">
                                     {anime.recommendations && anime.recommendations.length > 0 ? (
-                                        anime.recommendations.slice(0, 10).map((rec: any) => (
-                                            <Link key={rec.id} href={`/donghua-watch/${rec.id}`} className="flex gap-4 bg-white/5 border border-white/5 rounded-2xl p-2 hover:bg-white/10 hover:border-white/10 transition-colors group shadow-sm">
-                                                <div className="w-16 h-24 sm:w-20 sm:h-28 shrink-0 rounded-xl overflow-hidden relative shadow-md shadow-black/40"><img src={getSafeImageUrl(rec.poster)} onError={(e) => { if (e.currentTarget.src.startsWith('/api/proxy')) { e.currentTarget.src = '/images/placeholder-no-img.jpg'; } else if (e.currentTarget.src.startsWith('http')) { e.currentTarget.src = `/api/proxy?url=${encodeURIComponent(e.currentTarget.src)}`; } else { e.currentTarget.src = '/images/placeholder-no-img.jpg'; } }} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" alt={rec.title} loading="lazy" decoding="async" /><div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center"><Play size={20} className="text-white" /></div></div>
-                                                <div className="flex-1 min-w-0 py-1 flex flex-col justify-center gap-1">
-                                                    <h4 className="text-xs sm:text-sm font-black text-white line-clamp-2 leading-tight group-hover:text-purple-400 transition-colors">{rec.title}</h4>
-                                                    {rec.jname && <p className="text-[9px] text-zinc-500 truncate uppercase font-bold tracking-wider">{rec.jname}</p>}
-                                                    <div className="flex items-center gap-2 mt-auto text-[9px] sm:text-[10px] text-zinc-400 font-black uppercase tracking-wider"><span className="text-purple-400 px-2 py-0.5 bg-emerald-900/20 rounded-md border border-emerald-900/30">{rec.type || 'TV'}</span><span className="w-1 h-1 bg-zinc-600 rounded-full" /><div className="flex items-center gap-1"><Clock size={10} className="text-emerald-600" />{rec.duration || '?'}</div></div>
-                                                </div>
-                                            </Link>
-                                        ))
+                                        anime.recommendations.slice(0, 10).map((rec: any) => {
+                                            const rawTitle = rec.title || rec.name || '';
+                                            const recTitle = typeof rawTitle === 'string'
+                                                ? rawTitle
+                                                : (rawTitle?.userPreferred || rawTitle?.english || rawTitle?.romaji || rawTitle?.native || 'Recommended Donghua');
+                                            const recDuration = rec.duration && rec.duration !== '?' ? (String(rec.duration).includes('m') ? rec.duration : `${rec.duration}m`) : '24m';
+                                            const recType = (typeof rec.type === 'string' && rec.type) ? rec.type : 'Donghua';
+                                            return (
+                                                <Link key={rec.id} href={`/donghua-watch/${rec.id}`} className="flex gap-4 bg-white/5 border border-white/5 rounded-2xl p-2 hover:bg-white/10 hover:border-white/10 transition-colors group shadow-sm">
+                                                    <div className="w-16 h-24 sm:w-20 sm:h-28 shrink-0 rounded-xl overflow-hidden relative shadow-md shadow-black/40"><img src={getSafeImageUrl(rec.poster)} onError={(e) => { if (e.currentTarget.src.startsWith('/api/proxy')) { e.currentTarget.src = '/images/placeholder-no-img.jpg'; } else if (e.currentTarget.src.startsWith('http')) { e.currentTarget.src = `/api/proxy?url=${encodeURIComponent(e.currentTarget.src)}`; } else { e.currentTarget.src = '/images/placeholder-no-img.jpg'; } }} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" alt={recTitle} loading="lazy" decoding="async" /><div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center"><Play size={20} className="text-white" /></div></div>
+                                                    <div className="flex-1 min-w-0 py-1 flex flex-col justify-center gap-1">
+                                                        <h4 className="text-xs sm:text-sm font-black text-white line-clamp-2 leading-tight group-hover:text-purple-400 transition-colors">{recTitle}</h4>
+                                                        {rec.jname && <p className="text-[9px] text-zinc-500 truncate uppercase font-bold tracking-wider">{rec.jname}</p>}
+                                                        <div className="flex items-center gap-2 mt-auto text-[9px] sm:text-[10px] text-zinc-400 font-black uppercase tracking-wider"><span className="text-purple-400 px-2 py-0.5 bg-emerald-900/20 rounded-md border border-emerald-900/30">{recType}</span><span className="w-1 h-1 bg-zinc-600 rounded-full" /><div className="flex items-center gap-1"><Clock size={10} className="text-emerald-600" />{recDuration}</div></div>
+                                                    </div>
+                                                </Link>
+                                            );
+                                        })
                                     ) : (
                                         <div className="py-16 flex flex-col items-center justify-center text-zinc-500 gap-3">
                                             <div className="w-12 h-12 rounded-full bg-white/5 flex items-center justify-center"><ServerIcon size={20} className="opacity-50" /></div>

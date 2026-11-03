@@ -129,7 +129,7 @@ export const HeroSliderSkeleton = () => (
 );
 
 export const MoviePageSkeleton = () => (
-  <div className="w-full px-2 sm:px-4 md:px-6 pt-1 sm:pt-2 pb-20 flex flex-col gap-8">
+  <div className="w-full px-2 sm:px-4 md:px-6 pt-0 pb-20 flex flex-col gap-8">
     <HeroSliderSkeleton />
     <div className="flex flex-col gap-4">
       <div className="w-48 h-7 bg-white/[0.06] rounded-xl relative overflow-hidden"><PulseLayer /></div>
@@ -141,7 +141,7 @@ export const MoviePageSkeleton = () => (
 );
 
 export const PageSkeleton = () => (
-  <div className="w-full px-2 sm:px-4 md:px-6 pt-1 sm:pt-2 pb-20 flex flex-col gap-6">
+  <div className="w-full px-2 sm:px-4 md:px-6 pt-0 pb-20 flex flex-col gap-6">
     <div className="w-1/3 h-9 bg-white/[0.06] rounded-2xl relative overflow-hidden"><PulseLayer /></div>
     <SimpleGridSkeleton />
   </div>
@@ -334,7 +334,7 @@ export const MovieWatchSkeleton = () => (
 // 3. LIBRARY / WATCHLIST SKELETON
 // =========================================================================
 export const LibraryPageSkeleton = () => (
-  <div className="w-full px-2 sm:px-4 md:px-6 pt-1 sm:pt-2 pb-20 select-none">
+  <div className="w-full px-2 sm:px-4 md:px-6 pt-0 pb-20 select-none">
     {/* Page Header */}
     <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
       <div className="space-y-2">
@@ -399,7 +399,7 @@ export const LibraryPageSkeleton = () => (
 // 4. SETTINGS PAGE SKELETON (Sidebar + Section Settings Stage)
 // =========================================================================
 export const SettingsPageSkeleton = () => (
-  <div className="w-full px-2 sm:px-4 md:px-6 pt-1 sm:pt-2 pb-20 select-none">
+  <div className="w-full px-2 sm:px-4 md:px-6 pt-0 pb-20 select-none">
     {/* Mobile Section Header Bar */}
     <div className="block md:hidden w-full h-10 rounded-xl bg-white/[0.04] border border-white/[0.06] mb-4 relative overflow-hidden">
       <PulseLayer />
@@ -490,7 +490,7 @@ export const SettingsPageSkeleton = () => (
 // 5. BROADCAST SCHEDULE SKELETON
 // =========================================================================
 export const SchedulePageSkeleton = () => (
-  <div className="w-full px-2 sm:px-4 md:px-6 pt-1 sm:pt-2 pb-20 select-none">
+  <div className="w-full px-2 sm:px-4 md:px-6 pt-0 pb-20 select-none">
     {/* Page Title & Controls */}
     <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
       <div className="space-y-1.5">
@@ -547,7 +547,7 @@ export const SchedulePageSkeleton = () => (
 // 6. PROFILE PAGE SKELETON
 // =========================================================================
 export const ProfilePageSkeleton = () => (
-  <div className="w-full px-2 sm:px-4 md:px-6 pt-1 sm:pt-2 pb-20 select-none">
+  <div className="w-full px-2 sm:px-4 md:px-6 pt-0 pb-20 select-none">
     {/* Cover Header Banner */}
     <div className="w-full aspect-[21/9] max-h-[300px] min-h-[160px] rounded-3xl bg-white/[0.03] border border-white/[0.06] relative overflow-hidden mb-6">
       <PulseLayer />
@@ -604,7 +604,7 @@ export const ProfilePageSkeleton = () => (
 // 7. MANGA DETAILS SKELETON
 // =========================================================================
 export const MangaDetailsSkeleton = () => (
-  <div className="w-full px-2 sm:px-4 md:px-6 pt-1 sm:pt-2 pb-20 select-none">
+  <div className="w-full px-2 sm:px-4 md:px-6 pt-0 pb-20 select-none">
     {/* Back Button */}
     <div className="h-8 w-24 bg-white/[0.05] rounded-full mb-6 relative overflow-hidden"><PulseLayer /></div>
 
@@ -698,7 +698,7 @@ export const MangaReaderSkeleton = () => (
 // 9. SEARCH & EXPLORE SKELETON
 // =========================================================================
 export const SearchPageSkeleton = () => (
-  <div className="w-full px-2 sm:px-4 md:px-6 pt-1 sm:pt-2 pb-20 select-none">
+  <div className="w-full px-2 sm:px-4 md:px-6 pt-0 pb-20 select-none">
     {/* Top Search Bar */}
     <div className="w-full h-12 rounded-2xl bg-white/[0.03] border border-white/[0.06] px-4 flex items-center gap-3 mb-6 relative overflow-hidden">
       <PulseLayer />
@@ -737,7 +737,7 @@ export const SearchPageSkeleton = () => (
 // 10. CINEMA & MOVIES DIRECTORY SKELETON
 // =========================================================================
 export const CinemaDirectorySkeleton = () => (
-  <div className="w-full px-2 sm:px-4 md:px-6 pt-1 sm:pt-2 pb-20 select-none space-y-8">
+  <div className="w-full px-2 sm:px-4 md:px-6 pt-0 pb-20 select-none space-y-8">
     <HeroSliderSkeleton />
 
     {/* Category Tabs */}
@@ -771,7 +771,7 @@ export const CinemaDirectorySkeleton = () => (
 // 11. HOME PAGE SKELETON (Anime, Donghua, Hindi Home)
 // =========================================================================
 export const HomePageSkeleton = () => (
-  <div className="w-full px-2 sm:px-4 md:px-6 pt-0 sm:pt-1 pb-20 select-none space-y-8">
+  <div className="w-full px-2 sm:px-4 md:px-6 pt-0 pb-20 select-none space-y-8">
     <HeroSliderSkeleton />
 
     {/* Quick Navigation Chips */}
@@ -811,7 +811,7 @@ export const HomePageSkeleton = () => (
 // 12. WATCH PARTY / ROOMS SKELETON
 // =========================================================================
 export const RoomsPageSkeleton = () => (
-  <div className="w-full px-2 sm:px-4 md:px-6 pt-1 sm:pt-2 pb-20 select-none">
+  <div className="w-full px-2 sm:px-4 md:px-6 pt-0 pb-20 select-none">
     <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8">
       <div className="space-y-2">
         <div className="h-8 w-52 bg-white/[0.08] rounded-xl relative overflow-hidden"><PulseLayer /></div>
