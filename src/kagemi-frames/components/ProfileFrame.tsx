@@ -18,7 +18,7 @@ export interface ProfileFrameProps {
   label?: string;
 }
 
-const FALLBACK_AVATAR = 'https://lh3.googleusercontent.com/a/ACg8ocLnpRFtv4bK_qXzuqBG4vBF6UzrdAwPBOCPYofJ0tSYCc5RyKz4=s96-c';
+const FALLBACK_AVATAR = 'https://cdn.myanimelist.net/images/characters/9/310307.jpg';
 const ANIME_FALLBACK = 'https://cdn.myanimelist.net/images/characters/9/310307.jpg';
 
 export default function ProfileFrame({ frame, src, size = 96, animate = 'inview', parallax = false, className = '', style, label }: ProfileFrameProps) {
