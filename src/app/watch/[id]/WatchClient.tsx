@@ -312,6 +312,184 @@ const EpisodeButton = memo(({ ep, isCurrent, isFullyPlayed, percent, viewMode, o
 });
 EpisodeButton.displayName = "EpisodeButton";
 
+const MobileActionCockpit = memo(function MobileActionCockpit({
+    anime,
+    currentEpisode,
+    onShare,
+    onCreateRoom,
+    dimMode,
+    onToggleDimMode,
+}: {
+    anime: any;
+    currentEpisode: any;
+    onShare: () => void;
+    onCreateRoom: () => void;
+    dimMode: boolean;
+    onToggleDimMode: () => void;
+}) {
+    const rowRef = useRef<HTMLDivElement>(null);
+    const watchlistRef = useRef<HTMLDivElement>(null);
+    const [rowWidth, setRowWidth] = useState<number>(0);
+    const [watchlistWidth, setWatchlistWidth] = useState<number>(115);
+
+    useEffect(() => {
+        if (!rowRef.current) return;
+        const measure = () => {
+            if (!rowRef.current) return;
+            setRowWidth(rowRef.current.clientWidth);
+            if (watchlistRef.current) {
+                setWatchlistWidth(watchlistRef.current.offsetWidth || 115);
+            }
+        };
+        measure();
+        const ro = new ResizeObserver(measure);
+        ro.observe(rowRef.current);
+        return () => ro.disconnect();
+    }, []);
+
+    const hasDownload = Boolean(currentEpisode?.id);
+    const bulbWidth = 32;
+    // 4 gaps of 6px (gap-1.5) = 24px
+    const gaps = 24;
+    const freeWidth = Math.max(0, rowWidth - (watchlistWidth || 115) - bulbWidth - gaps);
+
+    // Dynamic label visibility without letter clipping:
+    // Compaction order starts from the right side as space reduces:
+    // 1. Room compacts first
+    // 2. Share compacts second
+    // 3. Download compacts third
+    // Natural widths needed: Download ~100px, Share ~78px, Room ~70px. Compact: 32px
+    let showDownloadText = false;
+    let showShareText = false;
+    let showRoomText = false;
+
+    if (rowWidth > 0) {
+        if (hasDownload) {
+            if (freeWidth >= 248) {
+                // All fit with generous room
+                showDownloadText = true;
+                showShareText = true;
+                showRoomText = true;
+            } else if (freeWidth >= 210) {
+                // 1. Room compacts from right side
+                showDownloadText = true;
+                showShareText = true;
+                showRoomText = false;
+            } else if (freeWidth >= 164) {
+                // 2. Share compacts next
+                showDownloadText = true;
+                showShareText = false;
+                showRoomText = false;
+            } else {
+                // 3. Download compacts last
+                showDownloadText = false;
+                showShareText = false;
+                showRoomText = false;
+            }
+        } else {
+            if (freeWidth >= 148) {
+                showShareText = true;
+                showRoomText = true;
+            } else if (freeWidth >= 110) {
+                // 1. Room compacts from right side
+                showShareText = true;
+                showRoomText = false;
+            } else {
+                // 2. Share compacts
+                showShareText = false;
+                showRoomText = false;
+            }
+        }
+    }
+
+    return (
+        <div ref={rowRef} className="flex w-full items-center gap-1.5 sm:gap-2">
+            <div ref={watchlistRef} className="shrink-0">
+                <WatchListButton
+                    animeId={anime.id}
+                    animeTitle={anime.title}
+                    animeImage={anime.poster}
+                    currentEp={currentEpisode?.number}
+                    totalEpisodes={anime.episodes?.length || 1}
+                    type={(anime as any).type || (anime.info as any)?.stats?.type || "TV"}
+                />
+            </div>
+
+            {hasDownload && (
+                <Link
+                    href={`/download/anime/${anime.id}?ep=${currentEpisode.id}`}
+                    className={cn(
+                        "h-8 rounded-full border-0 bg-white/[0.06] hover:bg-white/10 text-zinc-300 hover:text-white flex items-center justify-center transition-all active:scale-95 atrax-bubbly-btn atrax-squish-tap",
+                        showDownloadText
+                            ? "flex-auto min-w-fit px-3 gap-1.5"
+                            : "w-8 p-0 shrink-0"
+                    )}
+                    title="Download Episode"
+                >
+                    <Download size={13} className="shrink-0" />
+                    {showDownloadText && (
+                        <span className="whitespace-nowrap select-none font-black uppercase tracking-wider text-[9px]">
+                            Download
+                        </span>
+                    )}
+                </Link>
+            )}
+
+            <button
+                type="button"
+                onClick={onShare}
+                className={cn(
+                    "h-8 rounded-full border-0 bg-white/[0.06] hover:bg-white/10 text-zinc-300 hover:text-white flex items-center justify-center transition-all active:scale-95 atrax-bubbly-btn atrax-squish-tap",
+                    showShareText
+                        ? "flex-auto min-w-fit px-3 gap-1.5"
+                        : "w-8 p-0 shrink-0"
+                )}
+                title="Share Episode"
+            >
+                <Share2 size={13} className="shrink-0" />
+                {showShareText && (
+                    <span className="whitespace-nowrap select-none font-black uppercase tracking-wider text-[9px]">
+                        Share
+                    </span>
+                )}
+            </button>
+
+            <button
+                type="button"
+                onClick={onCreateRoom}
+                className={cn(
+                    "h-8 rounded-full border-0 bg-white/[0.06] hover:bg-white/10 text-zinc-300 hover:text-white flex items-center justify-center transition-all active:scale-95 atrax-bubbly-btn atrax-squish-tap",
+                    showRoomText
+                        ? "flex-auto min-w-fit px-3 gap-1.5"
+                        : "w-8 p-0 shrink-0"
+                )}
+                title="Create Watch Room"
+            >
+                <Users size={13} className="shrink-0" />
+                {showRoomText && (
+                    <span className="whitespace-nowrap select-none font-black uppercase tracking-wider text-[9px]">
+                        Room
+                    </span>
+                )}
+            </button>
+
+            <Button
+                onClick={onToggleDimMode}
+                variant="ghost"
+                size="icon"
+                className={cn(
+                    "rounded-full w-8 h-8 shrink-0 border-0 atrax-bubbly-btn atrax-squish-tap",
+                    dimMode ? "text-yellow-300 bg-yellow-400/20" : "text-zinc-400 bg-white/[0.06] hover:bg-white/10 hover:text-zinc-200"
+                )}
+                title="Theater Dim Mode"
+            >
+                <Lightbulb size={13} />
+            </Button>
+        </div>
+    );
+});
+MobileActionCockpit.displayName = "MobileActionCockpit";
+
 // --- HELPERS ---
 
 interface V2EpisodeSchedule { airingISOTimestamp: string | null; airingTimestamp: number | null; secondsUntilAiring: number | null; }
@@ -3015,51 +3193,15 @@ function WatchContent({ initialAnime }: { initialAnime?: UniversalAnime | null }
                                     )}
                                 </div>
 
-                                {/* Row 3: Watchlist, Download, Share, Room & Theater Bulb Mode (Full width expanded, progressive right-to-left compaction) */}
-                                <div className="flex w-full items-center gap-1.5 sm:gap-2">
-                                    <div className="shrink-0">
-                                        <WatchListButton animeId={anime.id} animeTitle={anime.title} animeImage={anime.poster} currentEp={currentEpisode?.number} totalEpisodes={anime.episodes?.length || 1} type={(anime as any).type || (anime.info as any)?.stats?.type || "TV"} />
-                                    </div>
-
-                                    {currentEpisode?.id && (
-                                        <Link
-                                            href={`/download/anime/${anime.id}?ep=${currentEpisode.id}`}
-                                            className="flex-1 min-w-8 h-8 rounded-full border-0 bg-white/[0.06] hover:bg-white/10 text-zinc-300 hover:text-white flex items-center justify-center gap-1.5 text-[9px] font-black uppercase tracking-wider transition-all active:scale-95 px-2.5 atrax-bubbly-btn atrax-squish-tap"
-                                            title="Download Episode"
-                                        >
-                                            <Download size={13} className="shrink-0" />
-                                            <span className="truncate hidden min-[460px]:inline">Download</span>
-                                        </Link>
-                                    )}
-                                    <button
-                                        onClick={() => setShowShareModal(true)}
-                                        className="flex-1 min-w-8 h-8 rounded-full border-0 bg-white/[0.06] hover:bg-white/10 text-zinc-300 hover:text-white flex items-center justify-center gap-1.5 text-[9px] font-black uppercase tracking-wider transition-all active:scale-95 px-2.5 atrax-bubbly-btn atrax-squish-tap"
-                                        title="Share Episode"
-                                    >
-                                        <Share2 size={13} className="shrink-0" />
-                                        <span className="truncate hidden min-[360px]:inline">Share</span>
-                                    </button>
-                                    <button
-                                        onClick={handleCreateWatchRoom}
-                                        className="flex-1 min-w-8 h-8 rounded-full border-0 bg-white/[0.06] hover:bg-white/10 text-zinc-300 hover:text-white flex items-center justify-center gap-1.5 text-[9px] font-black uppercase tracking-wider transition-all active:scale-95 px-2.5 atrax-bubbly-btn atrax-squish-tap"
-                                        title="Create Watch Room"
-                                    >
-                                        <Users size={13} className="shrink-0" />
-                                        <span className="truncate hidden min-[400px]:inline">Room</span>
-                                    </button>
-                                    <Button
-                                        onClick={() => updateSetting('dimMode', !settings.dimMode)}
-                                        variant="ghost"
-                                        size="icon"
-                                        className={cn(
-                                            "rounded-full w-8 h-8 shrink-0 border-0 atrax-bubbly-btn atrax-squish-tap",
-                                            settings.dimMode ? "text-yellow-300 bg-yellow-400/20" : "text-zinc-400 bg-white/[0.06] hover:bg-white/10 hover:text-zinc-200"
-                                        )}
-                                        title="Theater Dim Mode"
-                                    >
-                                        <Lightbulb size={13} />
-                                    </Button>
-                                </div>
+                                {/* Row 3: Watchlist, Download, Share, Room & Theater Bulb Mode (Flexible adaptive action cockpit) */}
+                                <MobileActionCockpit
+                                    anime={anime}
+                                    currentEpisode={currentEpisode}
+                                    onShare={() => setShowShareModal(true)}
+                                    onCreateRoom={handleCreateWatchRoom}
+                                    dimMode={Boolean(settings.dimMode)}
+                                    onToggleDimMode={() => updateSetting('dimMode', !settings.dimMode)}
+                                />
 
                                 {/* Row 4: Now Playing Context & Schedule Timer */}
                                 <div className="flex w-full items-center justify-between gap-2 pt-1 border-t border-white/[0.06]">
