@@ -2211,13 +2211,17 @@ const OmniPlayer = forwardRef<OmniPlayerRef, OmniPlayerProps>(({
               type="button"
               onClick={(e) => { e.stopPropagation(); seek(-10); }}
               className={cn(
-                "md:hidden pointer-events-auto flex flex-col items-center justify-center w-11 h-11 sm:w-12 sm:h-12 rounded-full bg-black/45 border border-white/20 backdrop-blur-xl active:scale-90 active:bg-white/20 transition-all duration-200 text-white shadow-[0_4px_16px_rgba(0,0,0,0.5)] select-none",
+                "md:hidden pointer-events-auto flex items-center justify-center w-11 h-11 sm:w-12 sm:h-12 rounded-full bg-black/45 border border-white/20 backdrop-blur-xl active:scale-90 active:bg-white/20 transition-all duration-200 text-white shadow-[0_4px_16px_rgba(0,0,0,0.5)] select-none",
                 showControls ? "opacity-100 scale-100" : "opacity-0 scale-75 pointer-events-none"
               )}
               title="Rewind 10s"
             >
-              <RotateCcw size={18} className="text-white drop-shadow" />
-              <span className="text-[9px] font-black tracking-tight leading-none text-white mt-0.5">10</span>
+              <div className="relative flex items-center justify-center w-6 h-6">
+                <RotateCcw size={22} className="text-white drop-shadow" strokeWidth={1.75} />
+                <span className="absolute inset-0 flex items-center justify-center text-[7.5px] font-black tracking-tighter leading-none text-white select-none pointer-events-none pt-[0.5px]">
+                  10
+                </span>
+              </div>
             </button>
 
             <div
@@ -2245,13 +2249,17 @@ const OmniPlayer = forwardRef<OmniPlayerRef, OmniPlayerProps>(({
               type="button"
               onClick={(e) => { e.stopPropagation(); seek(10); }}
               className={cn(
-                "md:hidden pointer-events-auto flex flex-col items-center justify-center w-11 h-11 sm:w-12 sm:h-12 rounded-full bg-black/45 border border-white/20 backdrop-blur-xl active:scale-90 active:bg-white/20 transition-all duration-200 text-white shadow-[0_4px_16px_rgba(0,0,0,0.5)] select-none",
+                "md:hidden pointer-events-auto flex items-center justify-center w-11 h-11 sm:w-12 sm:h-12 rounded-full bg-black/45 border border-white/20 backdrop-blur-xl active:scale-90 active:bg-white/20 transition-all duration-200 text-white shadow-[0_4px_16px_rgba(0,0,0,0.5)] select-none",
                 showControls ? "opacity-100 scale-100" : "opacity-0 scale-75 pointer-events-none"
               )}
               title="Forward 10s"
             >
-              <RotateCw size={18} className="text-white drop-shadow" />
-              <span className="text-[9px] font-black tracking-tight leading-none text-white mt-0.5">10</span>
+              <div className="relative flex items-center justify-center w-6 h-6">
+                <RotateCw size={22} className="text-white drop-shadow" strokeWidth={1.75} />
+                <span className="absolute inset-0 flex items-center justify-center text-[7.5px] font-black tracking-tighter leading-none text-white select-none pointer-events-none pt-[0.5px]">
+                  10
+                </span>
+              </div>
             </button>
           </>
         )}
