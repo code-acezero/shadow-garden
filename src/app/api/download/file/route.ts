@@ -38,13 +38,17 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: `Upstream error ${upstream.status}` }, { status: upstream.status });
     }
 
-    const cleanBase = filename.replace(/\.mp4$/i, '').replace(/[^a-z0-9\-_. ]/gi, '_');
+    const cleanBase = filename.replace(/\.(mp4|mkv|webm|ts)$/i, '').replace(/[^a-z0-9\-_. ()]/gi, '_');
+
+    const contentType = upstream.headers.get('Content-Type') || 'video/mp4';
+    const ext = contentType.includes('webm') ? 'webm' : (contentType.includes('matroska') ? 'mkv' : 'mp4');
 
     const respHeaders: Record<string, string> = {
-      'Content-Type': upstream.headers.get('Content-Type') || 'video/mp4',
-      'Content-Disposition': `attachment; filename="${cleanBase}.mp4"`,
+      'Content-Type': contentType,
+      'Content-Disposition': `attachment; filename="${cleanBase}.${ext}"`,
       'Accept-Ranges': upstream.headers.get('Accept-Ranges') || 'bytes',
       'Cache-Control': 'no-store',
+      'Access-Control-Allow-Origin': '*',
       'Access-Control-Expose-Headers': 'Content-Length, Content-Range, Accept-Ranges',
     };
     const cl = upstream.headers.get('Content-Length');

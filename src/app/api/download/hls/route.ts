@@ -10,6 +10,21 @@ export const maxDuration = 300; // Vercel Hobby plan max; upgrade to Pro for 800
 
 const UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36';
 
+let ffmpegCheckPromise: Promise<boolean> | null = null;
+function isFFmpegAvailable(): Promise<boolean> {
+  if (ffmpegCheckPromise) return ffmpegCheckPromise;
+  ffmpegCheckPromise = new Promise((resolve) => {
+    try {
+      const proc = spawn('ffmpeg', ['-version']);
+      proc.on('error', () => resolve(false));
+      proc.on('close', (code) => resolve(code === 0));
+    } catch {
+      resolve(false);
+    }
+  });
+  return ffmpegCheckPromise;
+}
+
 function fetchUpstream(url: string, referer: string, range?: string) {
   let origin: string | undefined;
   try {
@@ -249,7 +264,8 @@ export async function GET(request: NextRequest) {
     const cleanBaseName = filename.replace(/\.(mp4|ts|mkv)$/i, '').replace(/[^a-z0-9\-_. ()]/gi, '_');
 
     // ── CASE 1: MP4 REMUXING / SUBTITLE INJECTION VIA FFMPEG ──
-    const shouldRemuxToMp4 = format === 'mp4' && (!isFmp4 || Boolean(decodedSubUrl));
+    const hasFFmpeg = await isFFmpegAvailable();
+    const shouldRemuxToMp4 = format === 'mp4' && (!isFmp4 || Boolean(decodedSubUrl)) && hasFFmpeg;
 
     if (shouldRemuxToMp4) {
       let tempVttPath: string | null = null;
@@ -276,7 +292,10 @@ export async function GET(request: NextRequest) {
       };
 
       const ffmpegArgs: string[] = [
-        '-loglevel', 'error',
+        '-loglevel', 'warning',
+        '-analyzeduration', '10000000',
+        '-probesize', '10000000',
+        '-f', 'mpegts',
         '-i', 'pipe:0',
       ];
 
@@ -290,7 +309,7 @@ export async function GET(request: NextRequest) {
       );
 
       if (tempVttPath) {
-        ffmpegArgs.push('-map', '1:0');
+        ffmpegArgs.push('-map', '1:0?');
       }
 
       ffmpegArgs.push(
@@ -308,6 +327,8 @@ export async function GET(request: NextRequest) {
       }
 
       ffmpegArgs.push(
+        '-fflags', '+genpts+discardcorrupt',
+        '-avoid_negative_ts', 'make_zero',
         '-f', 'mp4',
         '-movflags', 'frag_keyframe+empty_moov+default_base_moof',
         'pipe:1'
@@ -326,6 +347,9 @@ export async function GET(request: NextRequest) {
         const ffmpegIn = ffmpegProcess.stdin;
         const ffmpegOut = ffmpegProcess.stdout;
         proc.on('close', cleanup);
+        ffmpegIn.on('error', () => {
+          // Ignore EPIPE/EOF on stdin when ffmpeg closes or exits
+        });
         proc.stderr?.on('data', (d) => console.warn('[FFmpeg remux]', d.toString()));
 
         const stream = new ReadableStream<Uint8Array>({
@@ -345,7 +369,7 @@ export async function GET(request: NextRequest) {
                 const res = await fetchUpstream(mapUri, decodedReferer);
                 if (res.ok) {
                   const initBuf = Buffer.from(await res.arrayBuffer());
-                  ffmpegIn.write(initBuf);
+                  if (!ffmpegIn.destroyed) ffmpegIn.write(initBuf);
                 }
               }
 
@@ -356,7 +380,7 @@ export async function GET(request: NextRequest) {
                   await new Promise((r) => ffmpegIn.once('drain', r));
                 }
               }
-              ffmpegIn.end();
+              if (!ffmpegIn.destroyed) ffmpegIn.end();
             } catch (pumpErr) {
               try { proc.kill('SIGTERM'); } catch {}
               try { controller.error(pumpErr); } catch {}
@@ -374,6 +398,8 @@ export async function GET(request: NextRequest) {
             'Content-Type': 'video/mp4',
             'Content-Disposition': `attachment; filename="${cleanBaseName}.mp4"`,
             'Cache-Control': 'no-store',
+            'Accept-Ranges': 'bytes',
+            'Access-Control-Allow-Origin': '*',
             'X-Segment-Count': String(segments.length),
             'X-Format': 'mp4-remuxed',
           },
@@ -382,7 +408,7 @@ export async function GET(request: NextRequest) {
     }
 
     // ── CASE 2: DIRECT PASSTHROUGH STREAM (fMP4 or Raw TS) ──
-    const ext = (format === 'mp4' || isFmp4) ? 'mp4' : 'ts';
+    const ext = isFmp4 ? 'mp4' : (format === 'mp4' && !hasFFmpeg ? 'ts' : (format === 'mp4' ? 'mp4' : 'ts'));
     const contentType = ext === 'mp4' ? 'video/mp4' : 'video/mp2t';
 
     const stream = new ReadableStream<Uint8Array>({
