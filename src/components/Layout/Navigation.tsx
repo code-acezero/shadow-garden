@@ -71,7 +71,8 @@ export default function Navigation() {
   }, []);
 
   const isReader = pathname?.startsWith('/manga/read') || pathname?.startsWith('/novel/read');
-  if (pathname === '/' || pathname?.startsWith('/master') || pathname?.startsWith('/admin') || pathname?.startsWith('/manager') || isReader) return null;
+  const isExperiment = pathname?.startsWith('/experiments');
+  if (pathname === '/' || pathname?.startsWith('/master') || pathname?.startsWith('/admin') || pathname?.startsWith('/manager') || isReader || isExperiment) return null;
 
   const navItems = [
     { id: 'home', icon: Home, label: 'Home', path: '/home' },

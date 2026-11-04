@@ -2,8 +2,8 @@ import { Metadata } from 'next';
 import PortalExperimentClient from './PortalExperimentClient';
 
 export const metadata: Metadata = {
-  title: 'Portal Experiment Lab | Shadow Garden',
-  description: 'Interactive 3D portal and world experiment sandbox',
+  title: 'Floating Island – Shrine Gate to Mana Portal | Shadow Garden',
+  description: 'Interactive 3D celestial floating island and mana portal realm experiment',
 };
 
 export default function PortalExperimentPage() {
