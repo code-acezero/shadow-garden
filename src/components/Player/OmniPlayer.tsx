@@ -347,9 +347,11 @@ const OmniPlayer = forwardRef<OmniPlayerRef, OmniPlayerProps>(({
       const prefs = e.detail?.playerPrefs || (() => {
         try { return JSON.parse(localStorage.getItem('shadow_player_prefs') || '{}'); } catch { return {}; }
       })();
-      if (typeof prefs.autoSkip === 'boolean') setLocalAutoSkip(prefs.autoSkip);
-      if (typeof prefs.autoSkipOutro === 'boolean') setLocalAutoSkipOutro(prefs.autoSkipOutro);
-      if (typeof prefs.autoPlay === 'boolean') setLocalAutoPlay(prefs.autoPlay);
+      queueMicrotask(() => {
+        if (typeof prefs.autoSkip === 'boolean') setLocalAutoSkip(prefs.autoSkip);
+        if (typeof prefs.autoSkipOutro === 'boolean') setLocalAutoSkipOutro(prefs.autoSkipOutro);
+        if (typeof prefs.autoPlay === 'boolean') setLocalAutoPlay(prefs.autoPlay);
+      });
     };
     window.addEventListener('update_player_prefs', handlePrefsUpdate);
     return () => window.removeEventListener('update_player_prefs', handlePrefsUpdate);

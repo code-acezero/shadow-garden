@@ -442,7 +442,9 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
           localStorage.setItem('shadow_player_prefs', JSON.stringify(updatedPlayerPrefs));
           localStorage.setItem('shadow_watch_settings_anime', JSON.stringify(updatedPlayerPrefs));
           if (typeof window !== 'undefined' && key !== 'playerPrefs') {
-            window.dispatchEvent(new CustomEvent('update_player_prefs', { detail: { playerPrefs: updatedPlayerPrefs, source: 'SettingsProvider' } }));
+            queueMicrotask(() => {
+              window.dispatchEvent(new CustomEvent('update_player_prefs', { detail: { playerPrefs: updatedPlayerPrefs, source: 'SettingsProvider' } }));
+            });
           }
         } catch (e) { }
       }
