@@ -56,8 +56,8 @@ line.visible=false;line.renderOrder=9;scene.add(line);
 const ctl=new THREE.OrbitControls(cam,ren.domElement);ctl.target.copy(at(1000,300));ctl.enabled=false;
 // ---- modes: seq (scripted flight) | walk (first person) | orbit ----
 let mode='idle',PW=null,P0=cam.position.clone(),yaw=0,pitch=0,hold=false,dragX=null,cp,cl,mixer,T=40,t0=performance.now(),suc=0;
-let tunnelRoot=null,islandRoot=null,tunnelSegments=[],tunnelLight=null,tunnelTotalLength=28000,tunnelDist=0,tunnelVel=1500,tunnelT=0;
-let uRipple=0,uFlash=0,rippleTime=0,baseFov=55;
+let tunnelRoot=null,islandRoot=null,tunnelSegments=[],tunnelLight=null,tunnelTrailLight=null,tunnelTotalLength=28000,tunnelDist=0,tunnelVel=1500,tunnelT=0;
+let uRipple=0,uFlash=0,rippleTime=0,baseFov=55,rt=null,fxUniforms=null;
 const $=id=>document.getElementById(id),fxB=[],keys=new Set(),clock=new THREE.Clock(),Pp=V(-D.z,0,D.x).normalize();
 const ease=u=>u<.5?4*u*u*u:1-Math.pow(-2*u+2,3)/2,sm=(a,b,x)=>{const t=Math.min(1,Math.max(0,(x-a)/(b-a)));return t*t*(3-2*t)};
 function buildPath(){const tC=PW.tC;
@@ -88,16 +88,27 @@ function walk(d){d=Math.min(d,.05);const L=pl,k=r=>1-Math.exp(-r*d);if(!auto.on&
  // Portal Mana Gravitational Suction Physics
  if(PW){
   const toP=PW.c.clone().sub(cam.position),dist=toP.length(),dAlong=toP.dot(D);
-  if(dAlong>-180&&dist<2400){
-   const pullNorm=Math.pow(Math.max(0,1-(dist-40)/2200),2.2);
-   const pullForce=pullNorm*4500;
+  const perpOffset=toP.clone().addScaledVector(D,-dAlong).length();
+  if(dAlong>-250&&dist<2800){
+   const pullNorm=Math.pow(Math.max(0,1-dist/2800),1.8);
+   const closePull=Math.pow(Math.max(0,1-dist/1100),2.8)*14000;
+   const pullForce=pullNorm*1800+closePull;
    const pullDir=toP.clone().normalize();
    L.vel.x+=pullDir.x*pullForce*d;L.vel.z+=pullDir.z*pullForce*d;
-   if(keys.has('s')||keys.has('arrowdown')){if(dist<1000&&Math.random()<.25)S.scuff(.2+.35*suc)}
+   const resisting=keys.has('s')||keys.has('arrowdown')||keys.has('a')||keys.has('d');
+   if(resisting||dist<900){
+    if(dist<1400&&Math.random()<(0.15+0.3*suc)){
+     S.scuff(0.25+0.4*suc);
+     if(dist<900&&Math.random()<0.25)S.slip();
+    }
+   }
+   if(dist<900){
+    const turb=Math.pow(1-dist/900,2)*5.5;
+    cam.position.x+=rb()*turb;cam.position.y+=rb()*turb*.6;cam.position.z+=rb()*turb;
+   }
   }
   // Water wall breakthrough trigger: touching the mirror surface within portal aperture
-  const perpOffset=toP.clone().addScaledVector(D,-dAlong).length();
-  if(dAlong<=65&&dAlong>=-180&&perpOffset<PW.R*1.25){enterTunnel()}
+  if(dAlong<=50&&dAlong>=-150&&perpOffset<PW.R*1.18){enterTunnel()}
  }
  let gy=gnd(nx,nz,P0.y+900);if(gy===null){gy=gnd(P0.x,P0.z,P0.y+900);if(gy===null)gy=P0.y;nx=P0.x;nz=P0.z;L.vel.set(0,0,0)}
  P0.x=nx;P0.z=nz;
@@ -120,7 +131,7 @@ function walk(d){d=Math.min(d,.05);const L=pl,k=r=>1-Math.exp(-r*d);if(!auto.on&
  if(PW&&suc>.35){const tr=Math.pow(suc,2)*4.8;cam.position.x+=rb()*tr;cam.position.y+=rb()*tr*.55;}
  cam.rotation.set(clampv(L.pitchS+pitchB+breathP+pitchN+L.pT+.02*L.dizzy*Math.sin(ts*.7+1),-1.3,1.3),L.yawS+yawN+.05*L.dizzy*Math.sin(ts*.5),L.roll+rollB+.03*L.dizzy*Math.sin(ts*.9)+.02*L.limp*Math.sin(L.phase),'YXZ')}
 // ---- sound: everything is synthesised live, no audio files ----
-const lampPos=[],S={on:true,ac:null,step(){},land(){},jump(){},thunder(){},chirp(){},vox(){},bodyThud(){},slam(){},woodThud(){},cloth(){},pop(){},scuff(){},gasp(){},swallow(){},doorOpen(){},waterBreak(){},tunnelHum(){},tunnelExit(){},bm:{on:false,per:4,amp:.4,voice:0},hb:{on:false,bpm:60,g:.3},muf:20000,tinv:0};
+const lampPos=[],S={on:true,ac:null,step(){},land(){},jump(){},thunder(){},chirp(){},vox(){},bodyThud(){},slam(){},woodThud(){},cloth(){},pop(){},scuff(){},slip(){},gasp(){},swallow(){},doorOpen(){},waterBreak(){},tunnelHum(){},tunnelExit(){},vortex:null,bm:{on:false,per:4,amp:.4,voice:0},hb:{on:false,bpm:60,g:.3},muf:20000,tinv:0};
 function audioInit(){if(S.ac||!S.on)return;const AC=window.AudioContext||window.webkitAudioContext;if(!AC)return;const ac=S.ac=new AC();
  const comp=ac.createDynamicsCompressor(),mg=S.mg=ac.createGain(),lp0=S.lp=ac.createBiquadFilter();mg.gain.value=.8;lp0.type='lowpass';lp0.frequency.value=20000;mg.connect(lp0);lp0.connect(comp);comp.connect(ac.destination);
  {const cv=ac.createConvolver(),n=ac.sampleRate*2.4|0,ib=ac.createBuffer(2,n,ac.sampleRate);for(let c=0;c<2;c++){const dd=ib.getChannelData(c);for(let i=0;i<n;i++)dd[i]=(Math.random()*2-1)*Math.pow(1-i/n,2.8)}cv.buffer=ib;const rg=S.rg=ac.createGain();rg.gain.value=.05;rg.connect(cv);cv.connect(mg)}
@@ -156,14 +167,14 @@ function audioInit(){if(S.ac||!S.on)return;const AC=window.AudioContext||window.
   const f=ac.createBiquadFilter();f.type='lowpass';f.frequency.value=1400;
   o1.connect(f);o2.connect(f);o3.connect(f);f.connect(g);g.connect(mg);
   o1.start();o2.start();o3.start();S.tunnelOsc={o1,o2,o3,f,gain:g}}
- S.waterBreak=()=>{if(!S.ac)return;const t=ac.currentTime;
-  thud(38,1.4,.95);burst({f:1700,q:3.5,dur:.75,gain:.88,type:'bandpass'});burst({f:420,q:1.2,dur:.9,gain:.7,type:'lowpass'});
-  [2200,1600,2800,1100].forEach((f,i)=>{const o=ac.createOscillator(),g=ac.createGain(),t0=t+i*.045;o.type='sine';o.frequency.setValueAtTime(f,t0);o.frequency.exponentialRampToValueAtTime(f*.18,t0+.12);g.gain.setValueAtTime(0,t0);g.gain.linearRampToValueAtTime(.2,t0+.008);g.gain.exponentialRampToValueAtTime(.0001,t0+.14);o.connect(g);g.connect(mg);o.start(t0);o.stop(t0+.15)})};
- S.tunnelHum=(prog,vel)=>{if(!S.tunnelOsc)return;const t=ac.currentTime,fBase=65+prog*120;
+ {const vn=loopNoise(),vf=ac.createBiquadFilter(),vg=ac.createGain();vf.type='bandpass';vf.frequency.value=280;vf.Q.value=1.8;vg.gain.value=0;vn.connect(vf);vf.connect(vg);vg.connect(mg);S.vortex={b:vf,g:vg}}
+ S.slip=()=>{if(!S.on||!S.ac)return;burst({f:850+Math.random()*400,q:1.4,dur:.18,gain:.18+.25*suc,att:.02});burst({f:2200+Math.random()*800,q:2.2,dur:.12,gain:.12+.2*suc,att:.01})};
+ S.waterBreak=()=>{if(!S.ac)return;const t=ac.currentTime;thud(32,1.6,1.0);thud(65,.8,.85);burst({f:1800,q:2.5,dur:.85,gain:.92,type:'bandpass'});burst({f:380,q:1.,dur:1.1,gain:.78,type:'lowpass'});[3200,2400,1800,1200,600,320].forEach((f,i)=>{const o=ac.createOscillator(),g=ac.createGain(),t0=t+i*.038;o.type='sine';o.frequency.setValueAtTime(f,t0);o.frequency.exponentialRampToValueAtTime(f*.15,t0+.14);g.gain.setValueAtTime(0,t0);g.gain.linearRampToValueAtTime(.22,t0+.008);g.gain.exponentialRampToValueAtTime(.0001,t0+.16);o.connect(g);g.connect(mg);o.start(t0);o.stop(t0+.18)});if(S.lp){S.lp.frequency.setValueAtTime(1200,t);S.lp.frequency.exponentialRampToValueAtTime(20000,t+.45)}};
+ S.tunnelHum=(prog,vel)=>{if(!S.tunnelOsc)return;const t=ac.currentTime,fBase=65+prog*140;
   S.tunnelOsc.o1.frequency.setTargetAtTime(fBase,t,.1);S.tunnelOsc.o2.frequency.setTargetAtTime(fBase*1.5,t,.1);S.tunnelOsc.o3.frequency.setTargetAtTime(fBase*2,t,.1);
-  S.tunnelOsc.f.frequency.setTargetAtTime(900+prog*3500,t,.1);S.tunnelOsc.gain.gain.setTargetAtTime(.24+.3*prog,t,.08);
-  if(S.wind&&S.wind.b)S.wind.b.frequency.setTargetAtTime(600+prog*4500,t,.1);if(S.wind&&S.wind.g)S.wind.g.gain.setTargetAtTime(.08+prog*.4,t,.1)};
- S.tunnelExit=()=>{if(!S.ac)return;thud(42,1.6,.9);burst({f:3200,q:2,dur:1.2,gain:.6,type:'bandpass'});burst({f:200,q:.8,dur:2,gain:.8,type:'lowpass'});if(S.tunnelOsc)S.tunnelOsc.gain.gain.setTargetAtTime(0,ac.currentTime,.15)};
+  S.tunnelOsc.f.frequency.setTargetAtTime(900+prog*3800,t,.1);S.tunnelOsc.gain.gain.setTargetAtTime(.26+.35*prog,t,.08);
+  if(S.wind&&S.wind.b)S.wind.b.frequency.setTargetAtTime(600+prog*4800,t,.1);if(S.wind&&S.wind.g)S.wind.g.gain.setTargetAtTime(.08+prog*.45,t,.1)};
+ S.tunnelExit=()=>{if(!S.ac)return;thud(40,1.6,.95);burst({f:3400,q:2,dur:1.2,gain:.65,type:'bandpass'});burst({f:180,q:.8,dur:2.2,gain:.85,type:'lowpass'});if(S.tunnelOsc)S.tunnelOsc.gain.gain.setTargetAtTime(0,ac.currentTime,.15)};
  S.h={route,burst,thud,loopNoise,nb};voiceInit()}
 // teenage-boy voice: a pulsed glottal source through vowel formants (slightly raised for a younger voice), plus breath, heartbeat, tinnitus and body impacts
 function voiceInit(){const ac=S.ac,H=S.h,mg=S.mg;
@@ -200,7 +211,12 @@ function audioTick(){const ac=S.ac;if(!ac||!S.on)return;if(!S.hum)S.mkHum();cons
  S.wind.b.frequency.setTargetAtTime(300+250*(.5+.5*Math.sin(ts*.21+Math.sin(ts*.07)*2))+400*sm(0,5000,spd),t,.3);
  S.breath.g.gain.setTargetAtTime(mode==='walk'?Math.max(0,Math.sin(pl.bt))*(.008+.1*Math.pow(1-pl.stam,1.2)+.025*pl.sprint):0,t,.05);
  S.motor.g.gain.setTargetAtTime(mode==='fpv'?.03+.02*sm(0,5000,spd):0,t,.1);S.motor.o.frequency.setTargetAtTime(150+spd*.045,t,.08);
- if(S.hum){S.hum.g.gain.setTargetAtTime(.012+.07*suc,t,.2);S.hum.o1.frequency.setTargetAtTime(62+30*suc,t,.3);S.hum.o2.frequency.setTargetAtTime(93+45*suc,t,.3)}
+ if(S.hum){S.hum.g.gain.setTargetAtTime(.015+.2*suc,t,.2);S.hum.o1.frequency.setTargetAtTime(62+40*suc,t,.3);S.hum.o2.frequency.setTargetAtTime(93+60*suc,t,.3)}
+ if(S.vortex){S.vortex.g.gain.setTargetAtTime(mode==='walk'?Math.pow(suc,1.8)*.35:0,t,.1);S.vortex.b.frequency.setTargetAtTime(250+Math.pow(suc,2.)*1900,t,.1)}
+ if(mode==='walk'&&PW){
+  S.hb.on=suc>.2;if(S.hb.on){S.hb.bpm=65+75*Math.pow(suc,1.4);S.hb.g=.2+.5*suc}
+  S.bm.on=suc>.25;if(S.bm.on){S.bm.per=Math.max(1.2,4.-2.5*suc);S.bm.amp=.3+.6*suc}
+ }
  S.lp.frequency.setTargetAtTime(S.muf,t,.15);S.tin.gain.setTargetAtTime(S.tinv,t,.2);S.rg.gain.setTargetAtTime(.05,t,.6)}
 // ---- FPV drone: autonomous cinematic flight in random legs, with banking, dives, gate and portal runs and the odd barrel roll ----
 const drn={p:V(0,0,0),v:V(0,0,0),yaw:0,pitch:0,roll:0,yr:0,wps:[],wi:0,speed:2500,look:null,spin:-1,sdir:1,nextSpin:8,leg:''},tnz=x=>Math.sin(x*2.3)+.6*Math.sin(x*3.7+1.3)+.3*Math.sin(x*6.1+2.1);
@@ -231,7 +247,7 @@ function fpv(d){d=Math.min(d,.05);const D_=drn,k=r=>1-Math.exp(-r*d);if(D_.wi>=D
  cam.position.set(D_.p.x+Math.sin(ts*53)*1.2*tmx,D_.p.y+Math.sin(ts*47)*1.2*tmx,D_.p.z+Math.cos(ts*61)*1.2*tmx);
  cam.rotation.set(clampv(D_.pitch-clampv(aF*.00004,-.12,.12)+.09+Math.sin(ts*43)*vib,-1.4,1.4),D_.yaw+Math.sin(ts*39)*vib,D_.roll+rs+Math.sin(ts*37)*vib,'YXZ')}
 
-function setMode(m){mode=m;ctl.enabled=m==='orbit';$('fo').classList.toggle('on',m==='orbit');$('wk').classList.toggle('on',m==='walk');$('fl').classList.toggle('on',m==='seq');$('hw').hidden=m!=='walk';if(m!=='tunnel'&&tunnelRoot&&tunnelRoot.visible){tunnelRoot.visible=false;if(islandRoot)islandRoot.visible=true;if(tunnelLight)tunnelLight.intensity=0;}
+function setMode(m){mode=m;ctl.enabled=m==='orbit';$('fo').classList.toggle('on',m==='orbit');$('wk').classList.toggle('on',m==='walk');$('fl').classList.toggle('on',m==='seq');$('hw').hidden=m!=='walk';if(m!=='tunnel'&&tunnelRoot&&tunnelRoot.visible){tunnelRoot.visible=false;if(islandRoot)islandRoot.visible=true;if(tunnelLight)tunnelLight.intensity=0;if(tunnelTrailLight)tunnelTrailLight.intensity=0;}
  $('fp').classList.toggle('on',m==='fpv');$('hint').textContent=m==='walk'?'WASD walk · Shift sprint · C crouch · Space jump · drag to look · approach the portal to feel it pull':m==='fpv'?'FPV drone: autonomous cinematic flight · pick Walk, Free look or Replay to take control':'';if(m!=='walk'&&m!=='fpv'&&cam.fov!==55){cam.fov=55;cam.updateProjectionMatrix()}
  if(m==='fpv'){drn.p.copy(cam.position);const dv=cam.getWorldDirection(V(0,0,0));drn.v.copy(dv).multiplyScalar(1500);drn.yaw=Math.atan2(-dv.x,-dv.z);drn.pitch=Math.asin(dv.y);drn.roll=0;drn.yr=0;drn.spin=-1;drn.nextSpin=6+Math.random()*6;drn.wps=[];drn.wi=0}
  if(m==='walk'){const dr=cam.getWorldDirection(V(0,0,0));yaw=Math.atan2(-dr.x,-dr.z);pitch=Math.asin(dr.y);pl.yawS=yaw;pl.pitchS=pitch;
@@ -241,22 +257,38 @@ function setMode(m){mode=m;ctl.enabled=m==='orbit';$('fo').classList.toggle('on'
 function frame(d){ts+=d;if(mixer)mixer.update(d);for(const f of fxs)f(d);for(const f of fxB)f(d);
  if(mode==='seq')seqI();else if(mode==='walk')walk(d);else if(mode==='fpv')fpv(d);else if(mode==='orbit')ctl.update();else if(mode==='tunnel')tunnelTick(d);
  if(PW){
-  const tg=sm(4500,600,cam.position.distanceTo(PW.c));
-  suc+=(tg-suc)*(1-Math.exp(-d*2.2));
+  const dist=cam.position.distanceTo(PW.c);
+  const tg=sm(3200,300,dist);
+  suc+=(tg-suc)*(1-Math.exp(-d*3.0));
   baseFov=55+Math.pow(suc,1.25)*65;
  }
  try{audioTick()}catch(e){S.on=false}
 
  if(uRipple>0){uRipple=Math.max(0,uRipple-d*1.5);rippleTime+=d}
- if(uFlash>0){uFlash=Math.max(0,uFlash-d*1.8)}
+ if(uFlash>0){uFlash=Math.max(0,uFlash-d*1.7)}
 
+ if(!rt){rt=new THREE.WebGLRenderTarget(innerWidth*Math.min(devicePixelRatio,2),innerHeight*Math.min(devicePixelRatio,2),{minFilter:THREE.LinearFilter,magFilter:THREE.LinearFilter,format:THREE.RGBAFormat,encoding:THREE.sRGBEncoding});fxUniforms.tDiffuse.value=rt.texture}
+ ren.setRenderTarget(rt);
  ren.render(scene,cam);
- if(uRipple>0.005||uFlash>0.005||suc>.15){
-  ren.autoClear=false;
-  fxUniforms.uTime.value=ts;fxUniforms.uRipple.value=uRipple;fxUniforms.uSuction.value=suc;fxUniforms.uFlash.value=uFlash;
-  ren.render(fxScene,fxCam);
-  ren.autoClear=true;
+ ren.setRenderTarget(null);
+
+ let distortVal=0,chromaVal=0;
+ if(mode==='tunnel'){
+  const prog=Math.min(1,tunnelDist/tunnelTotalLength);
+  distortVal=.55+.85*Math.pow(prog,1.2);
+  chromaVal=.6+.9*Math.pow(prog,1.5);
+ }else if(PW){
+  distortVal=Math.pow(suc,1.8)*.72;
+  chromaVal=Math.pow(suc,1.6)*.65;
  }
+
+ fxUniforms.uTime.value=ts;
+ fxUniforms.uRipple.value=uRipple;
+ fxUniforms.uSuction.value=suc;
+ fxUniforms.uFlash.value=uFlash;
+ fxUniforms.uDistort.value=distortVal;
+ fxUniforms.uChroma.value=chromaVal;
+ ren.render(fxScene,fxCam);
 }
 $('fl').onclick=()=>{t0=performance.now();setMode('seq')};$('fo').onclick=()=>setMode(mode==='orbit'?'walk':'orbit');$('wk').onclick=()=>setMode('walk');$('fp').onclick=()=>setMode(mode==='fpv'?'orbit':'fpv');
 $('sn').onclick=()=>{S.on=!S.on;$('sn').textContent='Sound: '+(S.on?'on':'off');if(S.on){audioInit();if(S.mg)S.mg.gain.value=.8;if(S.ac&&S.ac.state==='suspended')S.ac.resume()}else if(S.mg)S.mg.gain.value=0};
@@ -266,7 +298,7 @@ $('hw').onpointerdown=()=>{hold=true};addEventListener('pointerup',()=>{hold=fal
 addEventListener('keydown',e=>{const kk=e.key.toLowerCase();if(mode==='walk'&&[' ','arrowup','arrowdown','arrowleft','arrowright'].includes(kk))e.preventDefault();keys.add(kk)});addEventListener('keyup',e=>keys.delete(e.key.toLowerCase()));
 ren.domElement.addEventListener('pointerdown',e=>{if(mode==='walk')dragX=[e.clientX,e.clientY]});
 ren.domElement.addEventListener('pointermove',e=>{if(mode==='walk'&&dragX){yaw-=(e.clientX-dragX[0])*.004;pitch=Math.max(-1.2,Math.min(1.2,pitch-(e.clientY-dragX[1])*.004));dragX=[e.clientX,e.clientY]}});
-function size(){ren.setSize(innerWidth,innerHeight);cam.aspect=innerWidth/innerHeight;cam.updateProjectionMatrix()}addEventListener('resize',size);size();
+function size(){const w=innerWidth,h=innerHeight;ren.setSize(w,h);cam.aspect=w/h;cam.updateProjectionMatrix();if(rt)rt.setSize(w*Math.min(devicePixelRatio,2),h*Math.min(devicePixelRatio,2));if(fxUniforms&&fxUniforms.uAspect)fxUniforms.uAspect.value=w/h}addEventListener('resize',size);size();
 const txt=document.getElementById('glb').textContent.trim(),bin=atob(txt),buf=new Uint8Array(bin.length);
 for(let i=0;i<bin.length;i++)buf[i]=bin.charCodeAt(i);
 
@@ -332,36 +364,71 @@ function blend(m){m.onBeforeCompile=sh=>{sh.uniforms.gc={value:new THREE.Vector3
  sh.vertexShader=sh.vertexShader.replace('#include <common>','#include <common>\nvarying vec3 vWP;').replace('#include <begin_vertex>','#include <begin_vertex>\nvWP=(modelMatrix*vec4(transformed,1.)).xyz;');
  sh.fragmentShader=sh.fragmentShader.replace('#include <common>','#include <common>\nvarying vec3 vWP;uniform vec3 gc;').replace('#include <map_fragment>','#include <map_fragment>\nfloat wy=vWP.y+60.*sin(vWP.x*.004)*sin(vWP.z*.005)+40.*sin(vWP.x*.011+vWP.z*.009);float kb=1.-smoothstep(-560.,-240.,wy);diffuseColor.rgb=mix(diffuseColor.rgb,gc*(.85+.3*sin(vWP.x*.02)*sin(vWP.z*.017)),kb);')}}
 
-// ---- Screen Post-Processing Quad: Water Wall Breach Ripples & Suction Distortion ----
+// ---- Full-Screen Post-Processing Quad: Ultrawide 360° Fisheye Barrel Distortion & Hollywood Water Wall Breach ----
 const fxScene=new THREE.Scene(),fxCam=new THREE.OrthographicCamera(-1,1,1,-1,0,1);
-const fxUniforms={uTime:{value:0},uRipple:{value:0},uSuction:{value:0},uFlash:{value:0},uAspect:{value:innerWidth/innerHeight}};
+fxUniforms={tDiffuse:{value:null},uTime:{value:0},uRipple:{value:0},uSuction:{value:0},uFlash:{value:0},uDistort:{value:0},uChroma:{value:0},uAspect:{value:innerWidth/innerHeight}};
 const fxVS='varying vec2 vUv;void main(){vUv=uv;gl_Position=vec4(position.xy,0.,1.);}';
-const fxFS=`uniform float uTime,uRipple,uSuction,uFlash,uAspect;varying vec2 vUv;
-void main(){vec2 p=(vUv-.5)*2.;p.x*=uAspect;float r=length(p);vec4 col=vec4(0.);
- if(uRipple>0.005){float wave=sin(r*28.-uTime*24.)*exp(-r*2.2)*uRipple;float drop=sin(r*58.-uTime*38.)*exp(-r*3.6)*uRipple*.5;float a=clamp((abs(wave)*1.8+abs(drop))*uRipple,0.,.85);vec3 wCol=mix(vec3(.35,.75,1.),vec3(.95,.6,1.),sin(r*12.-uTime*6.)*.5+.5);col+=vec4(wCol*a,a);}
- if(uFlash>0.005){vec3 fCol=mix(vec3(.9,.95,1.),vec3(.85,.7,1.),r*.4);col+=vec4(fCol*uFlash,uFlash*smoothstep(2.,.2,r));}
- if(uSuction>.15){float rim=smoothstep(.5,1.5,r)*(uSuction-.15)*.85;vec3 rCol=mix(vec3(.06,.03,.2),vec3(.2,.45,1.),sin(uTime*4.)*.5+.5);col+=vec4(rCol*rim,rim);}
- gl_FragColor=clamp(col,0.,1.);}`;
-const fxMat=new THREE.ShaderMaterial({uniforms:fxUniforms,vertexShader:fxVS,fragmentShader:fxFS,transparent:true,blending:THREE.AdditiveBlending,depthWrite:false,depthTest:false});
+const fxFS=`uniform sampler2D tDiffuse;
+uniform float uTime,uRipple,uSuction,uFlash,uDistort,uChroma,uAspect;
+varying vec2 vUv;
+void main(){
+ vec2 p=(vUv-.5)*2.;p.x*=uAspect;float r=length(p);
+ float k=uDistort*.38;float rd=r*(1.+k*r*r);
+ vec2 distP=(r>1e-4)?(p/r)*rd:p;distP.x/=uAspect;vec2 uv=distP*.5+.5;
+ if(uRipple>0.005){
+  float wave=sin(r*28.-uTime*24.)*exp(-r*1.8)*uRipple;
+  float micro=sin(r*60.-uTime*36.)*exp(-r*3.2)*uRipple*.5;
+  vec2 ripDir=(r>1e-4)?p/r:vec2(0.,1.);
+  uv+=ripDir*(wave+micro)*.04;
+ }
+ float ca=uChroma*.024*(r*r);
+ vec2 uvR=uv-(uv-.5)*ca,uvB=uv+(uv-.5)*ca;
+ vec4 col;
+ if(uv.x<0.||uv.x>1.||uv.y<0.||uv.y>1.){col=vec4(.015,.012,.03,1.);}
+ else{
+  float cr=texture2D(tDiffuse,clamp(uvR,0.,1.)).r;
+  float cg=texture2D(tDiffuse,clamp(uv,0.,1.)).g;
+  float cb=texture2D(tDiffuse,clamp(uvB,0.,1.)).b;
+  col=vec4(cr,cg,cb,1.);
+ }
+ if(uRipple>0.005){
+  float sheen=abs(sin(r*24.-uTime*20.))*exp(-r*1.6)*uRipple;
+  vec3 wCol=mix(vec3(.35,.75,1.),vec3(.9,.55,1.),sin(r*10.-uTime*5.)*.5+.5);
+  col.rgb+=wCol*sheen*.75;
+ }
+ if(uFlash>0.005){
+  vec3 fCol=mix(vec3(.95,.98,1.),vec3(.85,.65,1.),r*.4);
+  col.rgb=mix(col.rgb,fCol,uFlash*smoothstep(2.6,.15,r));
+ }
+ if(uSuction>.12){
+  float rim=smoothstep(.55,1.5,r)*(uSuction-.12)*.8;
+  vec3 rCol=mix(vec3(.04,.02,.16),vec3(.18,.42,.95),sin(uTime*3.5)*.5+.5);
+  col.rgb=mix(col.rgb,rCol,rim*.55);
+ }
+ gl_FragColor=col;
+}`;
+const fxMat=new THREE.ShaderMaterial({uniforms:fxUniforms,vertexShader:fxVS,fragmentShader:fxFS,depthWrite:false,depthTest:false});
 fxScene.add(new THREE.Mesh(new THREE.PlaneGeometry(2,2),fxMat));
 
 function enterTunnel(){
  if(mode==='tunnel')return;
  setMode('tunnel');
- uRipple=1.;uFlash=.95;rippleTime=0;
+ uRipple=1.;uFlash=1.;rippleTime=0;
  S.waterBreak();
  if(tunnelRoot)tunnelRoot.visible=true;
  if(islandRoot)islandRoot.visible=false;
- if(tunnelLight)tunnelLight.intensity=5e6;
- tunnelDist=0;tunnelVel=1500;tunnelT=0;
+ if(tunnelLight)tunnelLight.intensity=6e6;
+ if(tunnelTrailLight)tunnelTrailLight.intensity=3.5e6;
+ tunnelDist=0;tunnelVel=2200;tunnelT=0;
 }
 
 function exitTunnel(){
- uFlash=1.;uRipple=.4;
+ uFlash=1.;uRipple=.45;
  S.tunnelExit();
  if(islandRoot)islandRoot.visible=true;
  if(tunnelRoot)tunnelRoot.visible=false;
  if(tunnelLight)tunnelLight.intensity=0;
+ if(tunnelTrailLight)tunnelTrailLight.intensity=0;
  baseFov=55;cam.fov=baseFov;cam.updateProjectionMatrix();
  if(PW){
   cam.position.copy(at(-2500,700));
@@ -376,36 +443,57 @@ function exitTunnel(){
 
 function tunnelTick(d){
  d=Math.min(d,.05);tunnelT+=d;
- tunnelVel+=2200*d;tunnelDist+=tunnelVel*d;
+ tunnelVel=Math.min(13500,tunnelVel+3400*d);tunnelDist+=tunnelVel*d;
  const prog=Math.min(1,tunnelDist/tunnelTotalLength);
  if(PW){
-  const swirlR=Math.sin(tunnelT*2.5)*(PW.R*.08);
-  const pos=PW.c.clone().addScaledVector(D,tunnelDist).addScaledVector(Pp,swirlR).addScaledVector(U,Math.cos(tunnelT*2.0)*(PW.R*.05));
+  const swirlR=Math.sin(tunnelT*2.8)*(PW.R*.09);
+  const swirlY=Math.cos(tunnelT*2.2)*(PW.R*.06);
+  const pos=PW.c.clone().addScaledVector(D,tunnelDist).addScaledVector(Pp,swirlR).addScaledVector(U,swirlY);
   cam.position.copy(pos);
-  const target=pos.clone().addScaledVector(D,1400);cam.lookAt(target);
-  cam.rotateZ(Math.sin(tunnelT*2.5)*.025);
+  const target=pos.clone().addScaledVector(D,1800);cam.lookAt(target);
+  cam.rotateZ(Math.sin(tunnelT*2.4)*.035);
   if(tunnelLight)tunnelLight.position.copy(pos);
+  if(tunnelTrailLight)tunnelTrailLight.position.copy(pos.clone().addScaledVector(D,-700));
  }
- const tunnelFov=120+38*Math.pow(prog,1.4);cam.fov=tunnelFov;cam.updateProjectionMatrix();
+ const tunnelFov=120+36*Math.pow(prog,1.3);cam.fov=tunnelFov;cam.updateProjectionMatrix();
  S.tunnelHum(prog,tunnelVel);
- for(let i=0;i<tunnelSegments.length;i++){tunnelSegments[i].rotation.z+=(.2+i*.09)*d*(1+prog*2.8)}
+ for(let i=0;i<tunnelSegments.length;i++){tunnelSegments[i].rotation.z+=(.25+i*.08)*d*(1+prog*2.5)}
  if(prog>=1.)exitTunnel();
 }
 
 function buildTunnel(gltf){
  tunnelRoot=new THREE.Group();tunnelRoot.visible=false;scene.add(tunnelRoot);
- tunnelLight=new THREE.PointLight(0x00d0ff,0,0,2);scene.add(tunnelLight);
+ const tAmb=new THREE.AmbientLight(0x1a264a,1.2);tunnelRoot.add(tAmb);
+ tunnelLight=new THREE.PointLight(0x00e5ff,0,0,2);scene.add(tunnelLight);
+ tunnelTrailLight=new THREE.PointLight(0xa844ff,0,0,2);scene.add(tunnelTrailLight);
  const segLength=58.408,segRadius=3.281,tunnelScale=(PW?PW.R*1.08:500)/segRadius;
  if(PW){tunnelRoot.position.copy(PW.c);tunnelRoot.quaternion.setFromUnitVectors(V(0,0,1),D)}
  const scaleGroup=new THREE.Group();scaleGroup.scale.setScalar(tunnelScale);tunnelRoot.add(scaleGroup);
- const numSegs=5;tunnelTotalLength=numSegs*segLength*tunnelScale;
+ const numSegs=7;tunnelTotalLength=numSegs*segLength*tunnelScale;
+ tunnelSegments=[];
  for(let i=0;i<numSegs;i++){
   const seg=gltf.scene.clone(true);
-  seg.position.set(0,-4.2116,29.204+i*(segLength-.05));
-  seg.rotation.z=i*.45;scaleGroup.add(seg);tunnelSegments.push(seg);
-  seg.traverse(o=>{if(o.isMesh&&o.material){o.material=o.material.clone();o.material.side=THREE.DoubleSide;
-   if(o.material.name==='Material.002'){o.material.emissive=new THREE.Color(0x00d0ff);o.material.emissiveIntensity=2.6}
-   else if(o.material.name==='Material.004'){o.material.metalness=.98;o.material.roughness=.07}}});
+  seg.position.set(0,-4.2116,0);
+  const rotator=new THREE.Group();
+  rotator.rotation.z=i*.45;
+  rotator.add(seg);
+  const pivot=new THREE.Group();
+  pivot.position.set(0,0,29.204+i*(segLength-.05));
+  pivot.add(rotator);
+  scaleGroup.add(pivot);
+  tunnelSegments.push(rotator);
+  seg.traverse(o=>{if(o.isMesh&&o.material){
+   o.material=o.material.clone();o.material.side=THREE.DoubleSide;
+   if(o.material.name==='Material.002'){
+    const isViolet=(i%2===1);
+    o.material.emissive=new THREE.Color(isViolet?0xa832ff:0x00d8ff);
+    o.material.emissiveIntensity=3.2;
+   }else if(o.material.name==='Material.004'){
+    o.material.metalness=.98;o.material.roughness=.08;o.material.color=new THREE.Color(0xdde8ff);
+   }else if(o.material.name==='Material.003'){
+    o.material.metalness=.92;o.material.roughness=.22;o.material.color=new THREE.Color(0x181c2b);
+   }
+  }});
  }
 }
 
