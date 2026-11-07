@@ -395,6 +395,10 @@ const OmniPlayer = forwardRef<OmniPlayerRef, OmniPlayerProps>(({
 
   // UI State
   const [showControls, setShowControls] = useState(true);
+  const showControlsRef = useRef(showControls);
+  useEffect(() => {
+    showControlsRef.current = showControls;
+  }, [showControls]);
   const [showSkipIntro, setShowSkipIntro] = useState(false);
   const [showSkipOutro, setShowSkipOutro] = useState(false);
   const [skippedHudToast, setSkippedHudToast] = useState<'intro' | 'outro' | null>(null);
@@ -1729,10 +1733,15 @@ const OmniPlayer = forwardRef<OmniPlayerRef, OmniPlayerProps>(({
         if (verticalGesture === 'fullscreen') toggleFullscreen();
       }
     }
+    const hadActiveGesture = gestureLockRef.current !== null;
     touchStartRef.current = null;
     gestureLockRef.current = null;
     touchSeekTargetRef.current = null;
-    showUI();
+    // Only trigger showUI if there was an actual swipe gesture (dragged volume/brightness/seek).
+    // Simple taps are cleanly handled by handleGesture so controls don't double-toggle and vanish!
+    if (hadActiveGesture) {
+      showUI();
+    }
   };
 
   const handleMouseDown = (e: React.MouseEvent) => {
@@ -1778,7 +1787,11 @@ const OmniPlayer = forwardRef<OmniPlayerRef, OmniPlayerProps>(({
 
     lastTapTimeRef.current = now;
     clickTimerRef.current = setTimeout(() => {
-      if (showControls) { setShowControls(false); } else { showUI(); }
+      if (showControlsRef.current) {
+        setShowControls(false);
+      } else {
+        showUI();
+      }
       clickTimerRef.current = null;
     }, 250);
   };
@@ -2253,8 +2266,8 @@ const OmniPlayer = forwardRef<OmniPlayerRef, OmniPlayerProps>(({
       />
 
       {/* Title Island with Cast */}
-      <div className={cn("absolute top-2 md:top-4 left-1/2 -translate-x-1/2 z-40 transition-all duration-500 max-w-[90%] w-auto", (showControls && !showEndingOverlay) ? "opacity-100 translate-y-0" : "opacity-0 -translate-y-10 pointer-events-none")}>
-        <div ref={titleContainerRef} className="bg-black/60 md:bg-black/80 border border-white/10 rounded-full px-4 py-1.5 md:py-2 shadow-2xl backdrop-blur-md flex items-center gap-3 overflow-hidden pointer-events-auto">
+      <div className={cn("absolute top-2 md:top-4 left-1/2 -translate-x-1/2 z-40 transition-all duration-500 max-w-[90%] w-auto", (showControls && !showEndingOverlay) ? "opacity-100 translate-y-0 pointer-events-auto visible" : "opacity-0 -translate-y-10 pointer-events-none invisible")}>
+        <div ref={titleContainerRef} className={cn("bg-black/60 md:bg-black/80 border border-white/10 rounded-full px-4 py-1.5 md:py-2 shadow-2xl backdrop-blur-md flex items-center gap-3 overflow-hidden", (showControls && !showEndingOverlay) ? "pointer-events-auto" : "pointer-events-none")}>
 
 
           <div className="overflow-hidden w-full relative h-4 flex items-center">
@@ -2271,7 +2284,10 @@ const OmniPlayer = forwardRef<OmniPlayerRef, OmniPlayerProps>(({
 
       {/* Center Controls Cluster (Play/Pause flanked by Mobile Quick Seek -10s / +10s) */}
       <div
-        className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 pointer-events-none z-40 flex items-center justify-center gap-6 sm:gap-8 md:gap-0"
+        className={cn(
+          "absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-40 flex items-center justify-center gap-6 sm:gap-8 md:gap-0 transition-[opacity,visibility] duration-300",
+          (showControls && !showEndingOverlay) ? "opacity-100 pointer-events-auto visible" : "opacity-0 pointer-events-none invisible"
+        )}
         style={{
           top: '50%',
           left: '50%',
@@ -2285,8 +2301,8 @@ const OmniPlayer = forwardRef<OmniPlayerRef, OmniPlayerProps>(({
               type="button"
               onClick={(e) => { e.stopPropagation(); seek(-10); }}
               className={cn(
-                "md:hidden pointer-events-auto flex items-center justify-center w-11 h-11 sm:w-12 sm:h-12 rounded-full bg-black/45 border border-white/20 backdrop-blur-xl active:scale-90 active:bg-white/20 transition-all duration-200 text-white shadow-[0_4px_16px_rgba(0,0,0,0.5)] select-none",
-                showControls ? "opacity-100 scale-100" : "opacity-0 scale-75 pointer-events-none"
+                "md:hidden flex items-center justify-center w-11 h-11 sm:w-12 sm:h-12 rounded-full bg-black/45 border border-white/20 backdrop-blur-xl active:scale-90 active:bg-white/20 transition-all duration-200 text-white shadow-[0_4px_16px_rgba(0,0,0,0.5)] select-none",
+                showControls ? "opacity-100 scale-100 pointer-events-auto" : "opacity-0 scale-75 pointer-events-none"
               )}
               title="Rewind 10s"
             >
@@ -2304,7 +2320,7 @@ const OmniPlayer = forwardRef<OmniPlayerRef, OmniPlayerProps>(({
                 width: `${playBtnSize}px`,
                 height: `${playBtnSize}px`,
               }}
-              className={cn("group/playbtn relative aspect-square rounded-full shrink-0 flex items-center justify-center pointer-events-auto cursor-pointer active:scale-95 transition-all duration-300", showControls ? "opacity-100 scale-100 hover:scale-110" : "opacity-0 scale-150 pointer-events-none")}
+              className={cn("group/playbtn relative aspect-square rounded-full shrink-0 flex items-center justify-center cursor-pointer active:scale-95 transition-all duration-300", showControls ? "opacity-100 scale-100 hover:scale-110 pointer-events-auto" : "opacity-0 scale-150 pointer-events-none")}
             >
               {/* Glowing Liquid Glass Background */}
               <div className="absolute inset-0 rounded-full bg-white/25 backdrop-blur-2xl border border-white/40 shadow-[0_0_30px_rgba(255,255,255,0.3),inset_0_2px_4px_rgba(255,255,255,0.6)] group-hover/playbtn:bg-white/40 group-hover/playbtn:border-white/60 group-hover/playbtn:shadow-[0_0_45px_rgba(255,255,255,0.6)] transition-all duration-500 overflow-hidden">
@@ -2323,8 +2339,8 @@ const OmniPlayer = forwardRef<OmniPlayerRef, OmniPlayerProps>(({
               type="button"
               onClick={(e) => { e.stopPropagation(); seek(10); }}
               className={cn(
-                "md:hidden pointer-events-auto flex items-center justify-center w-11 h-11 sm:w-12 sm:h-12 rounded-full bg-black/45 border border-white/20 backdrop-blur-xl active:scale-90 active:bg-white/20 transition-all duration-200 text-white shadow-[0_4px_16px_rgba(0,0,0,0.5)] select-none",
-                showControls ? "opacity-100 scale-100" : "opacity-0 scale-75 pointer-events-none"
+                "md:hidden flex items-center justify-center w-11 h-11 sm:w-12 sm:h-12 rounded-full bg-black/45 border border-white/20 backdrop-blur-xl active:scale-90 active:bg-white/20 transition-all duration-200 text-white shadow-[0_4px_16px_rgba(0,0,0,0.5)] select-none",
+                showControls ? "opacity-100 scale-100 pointer-events-auto" : "opacity-0 scale-75 pointer-events-none"
               )}
               title="Forward 10s"
             >
@@ -2339,7 +2355,7 @@ const OmniPlayer = forwardRef<OmniPlayerRef, OmniPlayerProps>(({
         )}
       </div>
 
-      <div className={cn("absolute inset-0 bg-gradient-to-t from-black/90 via-transparent to-transparent flex flex-col justify-end px-3 pb-2 md:px-5 md:pb-3 transition-opacity duration-300 z-[60] pointer-events-none", (showControls && !showEndingOverlay) ? "opacity-100" : "opacity-0 pointer-events-none")}>
+      <div className={cn("absolute inset-0 bg-gradient-to-t from-black/90 via-transparent to-transparent flex flex-col justify-end px-3 pb-2 md:px-5 md:pb-3 transition-[opacity,visibility] duration-300 z-[60]", (showControls && !showEndingOverlay) ? "opacity-100 pointer-events-auto visible" : "opacity-0 pointer-events-none invisible")}>
         {(() => {
           const isTouchOnly = typeof window !== 'undefined' && !window.matchMedia('(hover: hover) and (pointer: fine)').matches;
           // Seek preview should ONLY show when directly interacting with the seekbar:
@@ -2407,7 +2423,7 @@ const OmniPlayer = forwardRef<OmniPlayerRef, OmniPlayerProps>(({
 
           return (
             <div
-              className="group/seek relative w-full h-4 sm:h-5 flex items-center cursor-pointer mb-1.5 md:mb-2 pointer-events-auto select-none"
+              className={cn("group/seek relative w-full h-4 sm:h-5 flex items-center cursor-pointer mb-1.5 md:mb-2 select-none", (showControls && !showEndingOverlay) ? "pointer-events-auto" : "pointer-events-none")}
               onMouseMove={handleSeekHover}
               onMouseEnter={(e) => {
                 if (typeof window !== 'undefined' && !window.matchMedia('(hover: hover) and (pointer: fine)').matches) return;
@@ -2590,14 +2606,14 @@ const OmniPlayer = forwardRef<OmniPlayerRef, OmniPlayerProps>(({
                 onMouseUp={handleSeekEnd}
                 onTouchEnd={handleSeekEnd}
                 onTouchCancel={handleSeekEnd}
-                className="absolute inset-0 w-full h-full opacity-0 cursor-pointer pointer-events-auto z-10"
+                className={cn("absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10", (showControls && !showEndingOverlay) ? "pointer-events-auto" : "pointer-events-none")}
                 onClick={(e) => e.stopPropagation()}
               />
             </div>
           );
         })()}
 
-        <div className="flex items-center justify-between pointer-events-auto">
+        <div className={cn("flex items-center justify-between", (showControls && !showEndingOverlay) ? "pointer-events-auto" : "pointer-events-none")}>
           {/* Left Controls */}
           <div className="flex items-center gap-1.5 sm:gap-2 md:gap-3.5">
             <button
@@ -2858,8 +2874,11 @@ const OmniPlayer = forwardRef<OmniPlayerRef, OmniPlayerProps>(({
             )}
             <button
               onClick={(e) => { e.stopPropagation(); togglePiP(); }}
-              className="hidden sm:flex hover:text-primary-500 transition-colors active:scale-90 w-9 h-9 sm:w-10 sm:h-10 md:w-auto md:h-auto items-center justify-center p-1 md:p-0 text-white"
-              title="Picture-in-Picture"
+              className={cn(
+                "flex hover:text-primary-500 transition-colors active:scale-90 w-9 h-9 sm:w-10 sm:h-10 md:w-auto md:h-auto items-center justify-center p-1 md:p-0",
+                isPiPActive ? "text-primary-500" : "text-white"
+              )}
+              title={isPiPActive ? "Exit Picture-in-Picture" : "Picture-in-Picture"}
             >
               <PictureInPicture size={18} className="md:w-4.5 md:h-4.5" />
             </button>

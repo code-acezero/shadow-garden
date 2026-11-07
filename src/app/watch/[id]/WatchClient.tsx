@@ -1330,17 +1330,37 @@ function WatchContent({ initialAnime }: { initialAnime?: UniversalAnime | null }
         ? urlAudio.toLowerCase()
         : settings.audio;
 
-    const currentAudio = (effectiveAudioTrack === 'hi' || settings.audio === 'hi')
-        ? 'hi'
-        : (settings.category === 'dub' || effectiveAudioTrack === 'en' || settings.audio === 'en')
-            ? 'en'
-            : primaryAudioId;
+    const currentAudio: 'jp' | 'en' | 'hi' | 'cn' | 'kr' = useMemo(() => {
+        const candidate = (settings.audio || effectiveAudioTrack || (settings.category === 'dub' ? 'en' : primaryAudioId)).toLowerCase();
+
+        // When episode servers have loaded, verify actual server pool availability
+        if (servers && typeof servers === 'object') {
+            if (candidate === 'hi') {
+                if ((servers.hi?.length || 0) > 0) return 'hi';
+                if ((servers.en?.length || 0) > 0 || (servers.dub?.length || 0) > 0) return 'en';
+                return primaryAudioId;
+            }
+            if (candidate === 'en') {
+                if ((servers.en?.length || 0) > 0 || (servers.dub?.length || 0) > 0) return 'en';
+                return primaryAudioId;
+            }
+            return primaryAudioId;
+        }
+
+        // Before servers load, use the candidate preference
+        if (candidate === 'hi') return 'hi';
+        if (candidate === 'en') return 'en';
+        if (candidate === 'cn') return 'cn';
+        if (candidate === 'kr') return 'kr';
+        return primaryAudioId;
+    }, [servers, settings.audio, effectiveAudioTrack, settings.category, primaryAudioId]);
 
     const currentAudioServers = useMemo(() => {
         if (!servers) return [];
         if (servers[currentAudio]?.length) return servers[currentAudio];
         if (currentAudio === 'jp' || currentAudio === 'cn' || currentAudio === 'kr') return servers[primaryAudioId] || servers['sub'] || [];
-        if (currentAudio === 'en') return servers['dub'] || [];
+        if (currentAudio === 'en') return servers['en'] || servers['dub'] || [];
+        if (currentAudio === 'hi') return servers['hi'] || [];
         return [];
     }, [servers, currentAudio, primaryAudioId]);
 
@@ -2377,6 +2397,7 @@ function WatchContent({ initialAnime }: { initialAnime?: UniversalAnime | null }
                     if (currentFetch === activeFetchRef.current && (settings.audio !== targetAudio || settings.category !== targetCategory)) {
                         markProgrammaticSettingUpdate();
                         updateSetting('audio', targetAudio);
+                        updateSetting('category', targetCategory);
                     }
                     if (typeof window !== 'undefined') {
                         try {
@@ -2394,6 +2415,7 @@ function WatchContent({ initialAnime }: { initialAnime?: UniversalAnime | null }
                     if (currentFetch === activeFetchRef.current && (settings.audio !== targetAudio || settings.category !== targetCategory)) {
                         markProgrammaticSettingUpdate();
                         updateSetting('audio', targetAudio);
+                        updateSetting('category', targetCategory);
                     }
                     if (typeof window !== 'undefined') {
                         try {
@@ -2409,6 +2431,7 @@ function WatchContent({ initialAnime }: { initialAnime?: UniversalAnime | null }
                     if (currentFetch === activeFetchRef.current && (settings.audio !== nativeAudio || settings.category !== 'sub')) {
                         markProgrammaticSettingUpdate();
                         updateSetting('audio', nativeAudio);
+                        updateSetting('category', 'sub');
                     }
                 }
 
@@ -2483,6 +2506,15 @@ function WatchContent({ initialAnime }: { initialAnime?: UniversalAnime | null }
                                     targetCategory = nextCat;
                                     markProgrammaticSettingUpdate();
                                     updateSetting('audio', nextFallback);
+                                    updateSetting('category', nextCat);
+                                    if (typeof window !== 'undefined') {
+                                        try {
+                                            const curUrl = new URL(window.location.href);
+                                            curUrl.searchParams.set('audio', nextFallback);
+                                            curUrl.searchParams.set('type', nextCat);
+                                            window.history.replaceState({}, '', curUrl.toString());
+                                        } catch (e) {}
+                                    }
                                     break;
                                 }
                             } catch (e) { console.warn(`Fallback ${srv} failed`); }
@@ -2503,6 +2535,15 @@ function WatchContent({ initialAnime }: { initialAnime?: UniversalAnime | null }
                                         targetCategory = 'sub';
                                         markProgrammaticSettingUpdate();
                                         updateSetting('audio', nativeAudio);
+                                        updateSetting('category', 'sub');
+                                        if (typeof window !== 'undefined') {
+                                            try {
+                                                const curUrl = new URL(window.location.href);
+                                                curUrl.searchParams.set('audio', nativeAudio);
+                                                curUrl.searchParams.set('type', 'sub');
+                                                window.history.replaceState({}, '', curUrl.toString());
+                                            } catch (e) {}
+                                        }
                                         break;
                                     }
                                 } catch (e) {}
@@ -2522,6 +2563,15 @@ function WatchContent({ initialAnime }: { initialAnime?: UniversalAnime | null }
                                     targetCategory = 'sub';
                                     markProgrammaticSettingUpdate();
                                     updateSetting('audio', nativeAudio);
+                                    updateSetting('category', 'sub');
+                                    if (typeof window !== 'undefined') {
+                                        try {
+                                            const curUrl = new URL(window.location.href);
+                                            curUrl.searchParams.set('audio', nativeAudio);
+                                            curUrl.searchParams.set('type', 'sub');
+                                            window.history.replaceState({}, '', curUrl.toString());
+                                        } catch (e) {}
+                                    }
                                     break;
                                 }
                             } catch (e) { console.warn(`Sub Server ${srv} failed`); }
@@ -2534,19 +2584,21 @@ function WatchContent({ initialAnime }: { initialAnime?: UniversalAnime | null }
                         if (streamData.servers.hi?.length > 0) {
                             hasHindiDiscoveredRef.current = true;
                         }
-                        setServers((prev: any) => {
-                            const next = { ...(prev || {}), ...(streamData.servers || {}) };
-                            next.hi = streamData.servers?.hi || [];
-                            if (prev?.en?.length && (!streamData.servers?.en || streamData.servers.en.length === 0)) {
-                                next.en = prev.en;
-                            }
-                            return next;
+                        setServers({
+                            ...(streamData.servers || {}),
+                            hi: streamData.servers?.hi || [],
+                            en: streamData.servers?.en || streamData.servers?.dub || [],
+                            dub: streamData.servers?.dub || streamData.servers?.en || [],
+                            sub: streamData.servers?.sub || streamData.servers?.[nativeAudio] || [],
                         });
                     }
 
                     if (streamData.url) {
                         setStreamUrl(streamData.url);
                         setStreamReferer(streamData.referer || null);
+                        if (streamData.server) {
+                            updateSetting('server', streamData.server);
+                        }
 
                         const incomingSubs = streamData.subtitles || [];
                         const hasCaptions = incomingSubs.some((s: any) => {
@@ -2713,20 +2765,25 @@ function WatchContent({ initialAnime }: { initialAnime?: UniversalAnime | null }
     const activeChunk = episodeChunks[epChunkIndex] || episodeChunks[currentChunkIndex] || [];
 
     const audioTrackOptions = useMemo(() => {
-        const hasSub = true;
-        const hasDub = !servers || (servers?.['en']?.length || servers?.['dub']?.length || 0) > 0 || !!currentEpisode?.hasDub || !!currentEpisode?.isDub || ((anime?.episodes as any)?.dub > 0);
-        
+        const hasLoadedServers = servers !== null && typeof servers === 'object';
         const currentEpNum = Number(currentEpisode?.number || 1);
         const hindiTotalEps = Number((anime as any)?.hindiDub?.totalEpisodes || 0);
         const isAnimeHindiAvailable = Boolean((anime as any)?.hindiDub?.available);
 
-        // Hindi is available if servers['hi'] is populated for this episode, OR
-        // if the anime has Hindi dub and this episode number is within the available Hindi episode count.
-        const hasHindiForEpisode = (servers?.['hi']?.length || 0) > 0 || (
-            isAnimeHindiAvailable && (
-                hindiTotalEps === 0 || currentEpNum <= hindiTotalEps
-            )
-        );
+        // Sub is always available
+        const hasSub = hasLoadedServers
+            ? ((servers?.[primaryAudioId]?.length || 0) > 0 || (servers?.['sub']?.length || 0) > 0)
+            : true;
+
+        // English Dub is strictly available if actual servers exist in servers.en or servers.dub
+        const hasDub = hasLoadedServers
+            ? ((servers?.['en']?.length || 0) > 0 || (servers?.['dub']?.length || 0) > 0)
+            : (!!currentEpisode?.hasDub || !!currentEpisode?.isDub || ((anime?.episodes as any)?.dub > 0) || (anime as any)?.hasDub);
+
+        // Hindi Dub is strictly available if actual servers exist in servers.hi
+        const hasHindiForEpisode = hasLoadedServers
+            ? ((servers?.['hi']?.length || 0) > 0)
+            : (isAnimeHindiAvailable && (hindiTotalEps === 0 || currentEpNum <= hindiTotalEps));
 
         return [
             { id: primaryAudioId as 'jp' | 'cn' | 'kr' | 'en' | 'hi' | 'raw', label: primaryAudioLabel, available: hasSub },
@@ -2736,33 +2793,46 @@ function WatchContent({ initialAnime }: { initialAnime?: UniversalAnime | null }
     }, [primaryAudioId, primaryAudioLabel, servers, currentEpisode, anime]);
 
     const handleAudioChange = useCallback((trackId: 'jp' | 'en' | 'hi' | 'cn' | 'kr' | 'raw') => {
+        const hasLoadedServers = servers !== null && typeof servers === 'object';
+        const currentEpNum = Number(currentEpisode?.number || 1);
+
         if (trackId === 'hi') {
-            const currentEpNum = Number(currentEpisode?.number || 1);
+            const hasHiServer = (servers?.['hi']?.length || 0) > 0;
             const hindiTotalEps = Number((anime as any)?.hindiDub?.totalEpisodes || 0);
             const isAnimeHindiAvailable = Boolean((anime as any)?.hindiDub?.available);
-            const hasHiServer = (servers?.['hi']?.length || 0) > 0;
-            const isEpAvailable = hasHiServer || (isAnimeHindiAvailable && (hindiTotalEps === 0 || currentEpNum <= hindiTotalEps));
+            const isEpAvailable = hasLoadedServers ? hasHiServer : (hasHiServer || (isAnimeHindiAvailable && (hindiTotalEps === 0 || currentEpNum <= hindiTotalEps)));
             if (!isEpAvailable) {
                 toast.info(`Hindi Dub is not available for Episode ${currentEpNum}.`);
                 return;
             }
         }
 
+        if (trackId === 'en') {
+            const hasEnServer = (servers?.['en']?.length || 0) > 0 || (servers?.['dub']?.length || 0) > 0;
+            const isEpAvailable = hasLoadedServers ? hasEnServer : (hasEnServer || !!currentEpisode?.hasDub || !!currentEpisode?.isDub || ((anime?.episodes as any)?.dub > 0));
+            if (!isEpAvailable) {
+                toast.info(`English Dub is not available for Episode ${currentEpNum}.`);
+                return;
+            }
+        }
+
         failedServersRef.current = [];
         autoSwitchCountRef.current = 0;
+        const targetCategory = (trackId === 'en' || trackId === 'hi') ? 'dub' : 'sub';
+
         if (typeof window !== 'undefined') {
             const url = new URL(window.location.href);
             url.searchParams.set('audio', trackId);
-            url.searchParams.set('type', (trackId === 'en' || trackId === 'hi') ? 'dub' : 'sub');
+            url.searchParams.set('type', targetCategory);
             window.history.replaceState({}, '', url.toString());
         }
 
-        const targetPool = servers?.[trackId] || (trackId === 'en' ? servers?.['dub'] : servers?.['sub']) || [];
+        const targetPool = servers?.[trackId] || (trackId === 'en' ? (servers?.['en'] || servers?.['dub']) : servers?.['sub']) || [];
         const serverExists = targetPool.some((s: any) => s.serverName?.toLowerCase() === settings.server?.toLowerCase());
         const targetServer = (serverExists ? settings.server : targetPool[0]?.serverName) || 'Vidstream';
 
         updateSetting('audio', trackId);
-        updateSetting('category', (trackId === 'en' || trackId === 'hi') ? 'dub' : 'sub');
+        updateSetting('category', targetCategory);
         if (targetServer !== settings.server) {
             updateSetting('server', targetServer);
         }
@@ -2787,7 +2857,7 @@ function WatchContent({ initialAnime }: { initialAnime?: UniversalAnime | null }
             programmaticServerRef.current = null;
             setFetchTrigger((prev: number) => prev + 1);
         }
-    }, [servers, settings.server, updateSetting]);
+    }, [servers, settings.server, currentEpisode, anime, updateSetting]);
 
     if (!anime) return (<div className="min-h-screen bg-[#050505] flex items-center justify-center"><div className="w-12 h-12 border-4 border-primary-600 border-t-transparent rounded-full animate-spin" /></div>);
 
