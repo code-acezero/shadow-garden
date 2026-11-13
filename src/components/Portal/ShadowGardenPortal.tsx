@@ -683,7 +683,7 @@ const CobblestoneRoad = React.memo(({ quality, whiteout }: { quality: Performanc
 CobblestoneRoad.displayName = 'CobblestoneRoad';
 
 const Fireflies = React.memo(({ quality }: { quality: PerformanceTier }) => { 
-    const ref = useRef<any>(); 
+    const ref = useRef<any>(null); 
     const count = quality === 'potato' ? 40 : quality === 'low' ? 60 : quality === 'medium' ? 100 : 140;
     
     useFrame((state) => { 

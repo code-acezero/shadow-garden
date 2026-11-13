@@ -12,7 +12,8 @@ import {
     FastForward, Star, Info, MessageSquare, User, Users,
     Loader2, Globe, Flame, Calendar, Copyright, Check, Mic, X,
     ChevronLeft, ChevronRight, Pause, ArrowLeft, ArrowRight, Download, Compass,
-    Zap, PlayCircle, RotateCw, StepForward, Share2, ArrowRightToLine, Forward
+    Zap, PlayCircle, RotateCw, Share2, ArrowRightToLine, ArrowRightCircle,
+    StepForward, ChevronsRight
 } from 'lucide-react';
 
 import { AnimeService, UniversalAnime } from '@/lib/api';
@@ -141,16 +142,6 @@ const useWatchSettings = () => {
             updateGlobalSetting('category', cat as any);
         } else if (key === 'category') {
             updateGlobalSetting('category', value);
-            const curAudio = (globalSettings.audio || globalSettings.defaultAudio || 'jp') as string;
-            const isCurDub = curAudio === 'en' || curAudio === 'hi';
-            const isCurSub = ['jp', 'cn', 'kr'].includes(curAudio);
-            if (value === 'dub' && !isCurDub) {
-                updateGlobalSetting('audio', 'en');
-                updateGlobalSetting('defaultAudio', 'en');
-            } else if (value === 'sub' && !isCurSub) {
-                updateGlobalSetting('audio', 'jp');
-                updateGlobalSetting('defaultAudio', 'jp');
-            }
         } else {
             updateGlobalSetting(key as any, value);
         }
@@ -365,33 +356,33 @@ const MobileActionCockpit = memo(function MobileActionCockpit({
     }, []);
 
     // Compaction Calculation:
-    // Minimum clearance needed for each button to show full text without ANY letter clipping:
-    // + Download text needs ~95px
-    // + Share text needs ~66px
-    // + Room text needs ~64px
+    // When there is sufficient space, show the full button text.
+    // If a single letter would be clipped or overflow, fall back to compact button icon.
     useEffect(() => {
         if (rowWidth <= 0) return;
-        const baseNeeded = (watchlistWidth || 140) + 32 + (hasDownload ? 32 : 0) + 32 + 32 + 28;
+        // Base width when all buttons are compact icons:
+        // Watchlist + 32 (Dim) + 32 (Room) + 32 (Share) + (hasDownload ? 32 : 0) + gaps (4 * 6px) + margin/padding clearance
+        const baseNeeded = (watchlistWidth || 140) + 32 + 32 + 32 + (hasDownload ? 32 : 0) + 36;
         const free = rowWidth - baseNeeded;
 
         let calculatedStage = 3;
         if (hasDownload) {
-            if (free >= 250) {
-                calculatedStage = 0; // All 3 fit with generous clearance
-            } else if (free >= 175) {
-                calculatedStage = 1; // 1. Room compacts first
-            } else if (free >= 105) {
-                calculatedStage = 2; // 2. Share compacts second
+            if (free >= 165) {
+                calculatedStage = 0; // Download, Share, Room all fit with clean clearance
+            } else if (free >= 115) {
+                calculatedStage = 1; // Download + Share fit; Room compacts
+            } else if (free >= 68) {
+                calculatedStage = 2; // Download fits; Share and Room compact
             } else {
-                calculatedStage = 3; // 3. Download compacts third (all compact)
+                calculatedStage = 3; // All compact icons
             }
         } else {
-            if (free >= 140) {
-                calculatedStage = 0;
-            } else if (free >= 70) {
-                calculatedStage = 1;
+            if (free >= 90) {
+                calculatedStage = 0; // Share + Room both fit
+            } else if (free >= 45) {
+                calculatedStage = 1; // Share fits; Room compacts
             } else {
-                calculatedStage = 2;
+                calculatedStage = 2; // All compact icons
             }
         }
 
@@ -418,7 +409,8 @@ const MobileActionCockpit = memo(function MobileActionCockpit({
     const showRoomText = stage < 1;
 
     return (
-        <div ref={rowRef} className="flex w-full items-center gap-1.5 sm:gap-2 overflow-hidden">
+        <div ref={rowRef} className="flex w-full items-center justify-between gap-1.5 overflow-hidden">
+            {/* Left: Watchlist option */}
             <div ref={watchlistRef} className="shrink-0">
                 <WatchListButton
                     animeId={anime.id}
@@ -430,79 +422,82 @@ const MobileActionCockpit = memo(function MobileActionCockpit({
                 />
             </div>
 
-            {hasDownload && (
-                <Link
-                    ref={downloadRef}
-                    href={`/download/anime/${anime.id}?ep=${currentEpisode.id}`}
+            {/* Right: All other action buttons grouped on the right */}
+            <div className="flex items-center gap-1.5 shrink-0 ml-auto">
+                {hasDownload && (
+                    <Link
+                        ref={downloadRef}
+                        href={`/download/anime/${anime.id}?ep=${currentEpisode.id}`}
+                        className={cn(
+                            "h-8 rounded-full border-0 bg-white/[0.06] hover:bg-white/10 text-zinc-300 hover:text-white flex items-center justify-center transition-all active:scale-95 atrax-bubbly-btn atrax-squish-tap shrink-0",
+                            showDownloadText
+                                ? "px-3 gap-1.5"
+                                : "w-8 p-0"
+                        )}
+                        title="Download Episode"
+                    >
+                        <Download size={13} className="shrink-0" />
+                        {showDownloadText && (
+                            <span className="whitespace-nowrap select-none font-black uppercase tracking-wider text-[9px] shrink-0">
+                                Download
+                            </span>
+                        )}
+                    </Link>
+                )}
+
+                <button
+                    ref={shareRef}
+                    type="button"
+                    onClick={onShare}
                     className={cn(
                         "h-8 rounded-full border-0 bg-white/[0.06] hover:bg-white/10 text-zinc-300 hover:text-white flex items-center justify-center transition-all active:scale-95 atrax-bubbly-btn atrax-squish-tap shrink-0",
-                        showDownloadText
+                        showShareText
                             ? "px-3 gap-1.5"
                             : "w-8 p-0"
                     )}
-                    title="Download Episode"
+                    title="Share Episode"
                 >
-                    <Download size={13} className="shrink-0" />
-                    {showDownloadText && (
+                    <Share2 size={13} className="shrink-0" />
+                    {showShareText && (
                         <span className="whitespace-nowrap select-none font-black uppercase tracking-wider text-[9px] shrink-0">
-                            Download
+                            Share
                         </span>
                     )}
-                </Link>
-            )}
+                </button>
 
-            <button
-                ref={shareRef}
-                type="button"
-                onClick={onShare}
-                className={cn(
-                    "h-8 rounded-full border-0 bg-white/[0.06] hover:bg-white/10 text-zinc-300 hover:text-white flex items-center justify-center transition-all active:scale-95 atrax-bubbly-btn atrax-squish-tap shrink-0",
-                    showShareText
-                        ? "px-3 gap-1.5"
-                        : "w-8 p-0"
-                )}
-                title="Share Episode"
-            >
-                <Share2 size={13} className="shrink-0" />
-                {showShareText && (
-                    <span className="whitespace-nowrap select-none font-black uppercase tracking-wider text-[9px] shrink-0">
-                        Share
-                    </span>
-                )}
-            </button>
+                <button
+                    ref={roomRef}
+                    type="button"
+                    onClick={onCreateRoom}
+                    className={cn(
+                        "h-8 rounded-full border-0 bg-white/[0.06] hover:bg-white/10 text-zinc-300 hover:text-white flex items-center justify-center transition-all active:scale-95 atrax-bubbly-btn atrax-squish-tap shrink-0",
+                        showRoomText
+                            ? "px-3 gap-1.5"
+                            : "w-8 p-0"
+                    )}
+                    title="Create Watch Room"
+                >
+                    <Users size={13} className="shrink-0" />
+                    {showRoomText && (
+                        <span className="whitespace-nowrap select-none font-black uppercase tracking-wider text-[9px] shrink-0">
+                            Room
+                        </span>
+                    )}
+                </button>
 
-            <button
-                ref={roomRef}
-                type="button"
-                onClick={onCreateRoom}
-                className={cn(
-                    "h-8 rounded-full border-0 bg-white/[0.06] hover:bg-white/10 text-zinc-300 hover:text-white flex items-center justify-center transition-all active:scale-95 atrax-bubbly-btn atrax-squish-tap shrink-0",
-                    showRoomText
-                        ? "px-3 gap-1.5"
-                        : "w-8 p-0"
-                )}
-                title="Create Watch Room"
-            >
-                <Users size={13} className="shrink-0" />
-                {showRoomText && (
-                    <span className="whitespace-nowrap select-none font-black uppercase tracking-wider text-[9px] shrink-0">
-                        Room
-                    </span>
-                )}
-            </button>
-
-            <Button
-                onClick={onToggleDimMode}
-                variant="ghost"
-                size="icon"
-                className={cn(
-                    "rounded-full w-8 h-8 shrink-0 border-0 atrax-bubbly-btn atrax-squish-tap",
-                    dimMode ? "text-yellow-300 bg-yellow-400/20" : "text-zinc-400 bg-white/[0.06] hover:bg-white/10 hover:text-zinc-200"
-                )}
-                title="Theater Dim Mode"
-            >
-                <Lightbulb size={13} />
-            </Button>
+                <Button
+                    onClick={onToggleDimMode}
+                    variant="ghost"
+                    size="icon"
+                    className={cn(
+                        "rounded-full w-8 h-8 shrink-0 border-0 atrax-bubbly-btn atrax-squish-tap",
+                        dimMode ? "text-yellow-300 bg-yellow-400/20" : "text-zinc-400 bg-white/[0.06] hover:bg-white/10 hover:text-zinc-200"
+                    )}
+                    title="Theater Dim Mode"
+                >
+                    <Lightbulb size={13} />
+                </Button>
+            </div>
         </div>
     );
 });
@@ -1216,7 +1211,7 @@ function WatchContent({ initialAnime }: { initialAnime?: UniversalAnime | null }
     const searchParams = useSearchParams();
     const rawAnimeId = (params?.id as string) || '';
     const cleanAnimeId = rawAnimeId ? (rawAnimeId.match(/^(\d+)/)?.[1] || rawAnimeId) : '';
-    const animeId = initialAnime?.id || cleanAnimeId || rawAnimeId;
+    const initialAnimeId = initialAnime?.id || cleanAnimeId || rawAnimeId;
     const urlEpId = searchParams.get('ep') || searchParams.get('episode');
     const urlEpNumber = searchParams.get('episode') || searchParams.get('ep');
     const urlTimestamp = searchParams.get('timestamp') || searchParams.get('t');
@@ -1256,6 +1251,7 @@ function WatchContent({ initialAnime }: { initialAnime?: UniversalAnime | null }
 
     // --- STATE ---
     const [anime, setAnime] = useState<UniversalAnime | null>(initialAnime || null);
+    const animeId = anime?.id || initialAnimeId;
     const [isLoadingInfo, setIsLoadingInfo] = useState(!initialAnime);
     const [currentEpId, setCurrentEpId] = useState<string | null>(null);
     const [playerAspectRatio, setPlayerAspectRatio] = useState<number | null>(null);
@@ -1333,34 +1329,26 @@ function WatchContent({ initialAnime }: { initialAnime?: UniversalAnime | null }
     const primaryAudioId: 'jp' | 'cn' | 'kr' = isChinese ? 'cn' : (isKorean ? 'kr' : 'jp');
     const primaryAudioLabel = isChinese ? 'CN • Sub' : (isKorean ? 'KR • Sub' : 'JP • Sub');
 
-    const effectiveAudioTrack = (urlAudio && ['jp', 'en', 'hi', 'cn', 'kr'].includes(urlAudio.toLowerCase()))
-        ? urlAudio.toLowerCase()
-        : settings.audio;
-
-    const currentAudio: 'jp' | 'en' | 'hi' | 'cn' | 'kr' = useMemo(() => {
-        const candidate = (settings.audio || effectiveAudioTrack || (settings.category === 'dub' ? 'en' : primaryAudioId)).toLowerCase();
-
-        // When episode servers have loaded, verify actual server pool availability
-        if (servers && typeof servers === 'object') {
-            if (candidate === 'hi') {
-                if ((servers.hi?.length || 0) > 0) return 'hi';
-                if ((servers.en?.length || 0) > 0 || (servers.dub?.length || 0) > 0) return 'en';
-                return primaryAudioId;
-            }
-            if (candidate === 'en') {
-                if ((servers.en?.length || 0) > 0 || (servers.dub?.length || 0) > 0) return 'en';
-                return primaryAudioId;
-            }
-            return primaryAudioId;
+    const [selectedAudioOverride, setSelectedAudioOverride] = useState<'jp' | 'en' | 'hi' | 'cn' | 'kr' | 'raw' | null>(() => {
+        if (urlAudio && ['jp', 'en', 'hi', 'cn', 'kr', 'raw'].includes(urlAudio.toLowerCase())) {
+            return urlAudio.toLowerCase() as any;
         }
+        return null;
+    });
 
-        // Before servers load, use the candidate preference
-        if (candidate === 'hi') return 'hi';
-        if (candidate === 'en') return 'en';
-        if (candidate === 'cn') return 'cn';
-        if (candidate === 'kr') return 'kr';
+    const currentAudio: 'jp' | 'en' | 'hi' | 'cn' | 'kr' | 'raw' = useMemo(() => {
+        if (selectedAudioOverride && ['jp', 'en', 'hi', 'cn', 'kr', 'raw'].includes(selectedAudioOverride)) {
+            return selectedAudioOverride;
+        }
+        const effectiveUrlAudio = (urlAudio && ['jp', 'en', 'hi', 'cn', 'kr', 'raw'].includes(urlAudio.toLowerCase()))
+            ? urlAudio.toLowerCase()
+            : null;
+        const candidate = (effectiveUrlAudio || settings.audio || (settings.category === 'dub' ? 'en' : primaryAudioId)).toLowerCase() as 'jp' | 'en' | 'hi' | 'cn' | 'kr' | 'raw';
+        if (['jp', 'en', 'hi', 'cn', 'kr', 'raw'].includes(candidate)) {
+            return candidate;
+        }
         return primaryAudioId;
-    }, [servers, settings.audio, effectiveAudioTrack, settings.category, primaryAudioId]);
+    }, [selectedAudioOverride, urlAudio, settings.audio, settings.category, primaryAudioId]);
 
     const currentAudioServers = useMemo(() => {
         if (!servers) return [];
@@ -1395,13 +1383,15 @@ function WatchContent({ initialAnime }: { initialAnime?: UniversalAnime | null }
         if (srv && srv.url) {
             setStreamUrl(srv.url);
             setStreamReferer(srv.referer || null);
-            if (srv.tracks && Array.isArray(srv.tracks)) {
+            if (srv.tracks && Array.isArray(srv.tracks) && srv.tracks.length > 0) {
                 setSubtitles(srv.tracks.map((t: any) => ({
                     file: t.file || t.url,
                     label: t.label || 'English',
                     kind: 'captions',
                     default: !!t.default
                 })));
+            } else if (episodeSubtitlesRef.current && episodeSubtitlesRef.current.length > 0) {
+                setSubtitles(episodeSubtitlesRef.current);
             }
             if (srv.intro) setIntro(srv.intro);
             if (srv.outro) setOutro(srv.outro);
@@ -1442,21 +1432,34 @@ function WatchContent({ initialAnime }: { initialAnime?: UniversalAnime | null }
         const payload = Object.values(progressBuffer.current);
         if (payload.length === 0) return;
         isBufferDirty.current = false;
-        const sanitizedPayload = payload.map(p => sanitizeContinueWatchingEntry(p, user.id)).filter(Boolean);
+        const sanitizedPayload = payload
+            .map(p => sanitizeContinueWatchingEntry({
+                ...p,
+                anime_id: p.anime_id || animeId
+            }, user.id))
+            .filter((p): p is NonNullable<typeof p> => Boolean(p && p.episode_id && p.anime_id));
+        if (sanitizedPayload.length === 0) return;
+
+        // Deduplicate by episode_id so Postgres ON CONFLICT (user_id, episode_id) never receives duplicate rows in a single batch
+        const deduplicatedMap = new Map<string, typeof sanitizedPayload[0]>();
+        for (const item of sanitizedPayload) {
+            deduplicatedMap.set(item.episode_id, item);
+        }
+        const uniquePayload = Array.from(deduplicatedMap.values());
+
         try {
-            // ✅ Shared Client Used Here with constraint fallback
-            const { error } = await (supabase.from('user_continue_watching') as any).upsert(sanitizedPayload, { onConflict: 'user_id,episode_id' });
+            const { error } = await (supabase.from('user_continue_watching') as any).upsert(uniquePayload, { onConflict: 'user_id,episode_id' });
             if (error) {
-                await (supabase.from('user_continue_watching') as any).upsert(sanitizedPayload, { onConflict: 'user_id,anime_id' });
+                console.error("user_continue_watching sync error:", error);
+            } else {
+                if (typeof window !== 'undefined') {
+                    window.dispatchEvent(new CustomEvent('shadow-continue-updated'));
+                    window.dispatchEvent(new Event('shadow_continue_watching_updated'));
+                }
             }
-            if (typeof window !== 'undefined') window.dispatchEvent(new CustomEvent('shadow-continue-updated'));
         } catch (e) {
-            try {
-                await (supabase.from('user_continue_watching') as any).upsert(sanitizedPayload, { onConflict: 'user_id,anime_id' });
-                if (typeof window !== 'undefined') window.dispatchEvent(new CustomEvent('shadow-continue-updated'));
-            } catch (_) {
-                isBufferDirty.current = true;
-            }
+            console.error("flushSyncBuffer caught error:", e);
+            isBufferDirty.current = true;
         }
     }, [user, animeId]);
 
@@ -1535,8 +1538,17 @@ function WatchContent({ initialAnime }: { initialAnime?: UniversalAnime | null }
             [ep.id]: 100
         }));
 
-        // 2. Persist in progressBuffer
+        const episodeImage = (ep as any).image || (ep as any).poster || anime.poster || '';
+        const animeTitle = anime.title || (anime as any).name || 'Anime';
+        const animeImage = anime.poster || (anime as any).image || episodeImage;
+        const animeType = (anime as any).type || 'TV';
+
+        // 2. Persist in progressBuffer (keyed solely by ep.id to prevent duplicate batch rows)
         const epEntry = {
+            user_id: user?.id,
+            anime_id: animeId,
+            title: animeTitle,
+            banner_image: animeImage,
             episode_id: ep.id,
             episode_number: ep.number,
             progress: duration,
@@ -1545,7 +1557,6 @@ function WatchContent({ initialAnime }: { initialAnime?: UniversalAnime | null }
             last_updated: new Date().toISOString()
         };
         progressBuffer.current[ep.id] = epEntry;
-        progressBuffer.current[String(ep.number)] = epEntry;
 
         // 3. Persist in localStorage
         try {
@@ -1553,9 +1564,6 @@ function WatchContent({ initialAnime }: { initialAnime?: UniversalAnime | null }
             epData[ep.id] = epEntry;
             epData[String(ep.number)] = epEntry;
             localStorage.setItem(`shadow_ep_progress_${animeId}`, JSON.stringify(epData));
-
-            const episodeImage = (ep as any).image || (ep as any).poster || anime.poster;
-            const animeTitle = anime.title || (anime as any).name || 'Anime';
             const animeImage = anime.poster || (anime as any).image || episodeImage;
             const animeType = (anime as any).type || 'TV';
 
@@ -1603,7 +1611,7 @@ function WatchContent({ initialAnime }: { initialAnime?: UniversalAnime | null }
             };
             const sanitized = sanitizeContinueWatchingEntry(entry, user.id);
             if (sanitized) {
-                (supabase.from('user_continue_watching') as any).upsert(sanitized, { onConflict: 'user_id,anime_id' }).catch(() => {});
+                (supabase.from('user_continue_watching') as any).upsert(sanitized, { onConflict: 'user_id,episode_id' }).catch(() => {});
             }
         }
     }, [anime, animeId, user, supabase]);
@@ -1681,6 +1689,9 @@ function WatchContent({ initialAnime }: { initialAnime?: UniversalAnime | null }
 
         const epData = JSON.parse(localStorage.getItem(`shadow_ep_progress_${animeId}`) || '{}');
         const epEntry = {
+            anime_id: animeId,
+            title: animeTitle,
+            banner_image: animeImage,
             episode_id: ep.id,
             episode_number: ep.number,
             progress,
@@ -1692,7 +1703,6 @@ function WatchContent({ initialAnime }: { initialAnime?: UniversalAnime | null }
         epData[String(ep.number)] = epEntry;
         localStorage.setItem(`shadow_ep_progress_${animeId}`, JSON.stringify(epData));
         progressBuffer.current[ep.id] = epEntry;
-        progressBuffer.current[String(ep.number)] = epEntry;
 
         if (typeof window !== 'undefined') {
             window.dispatchEvent(new CustomEvent('shadow-continue-updated'));
@@ -1762,6 +1772,27 @@ function WatchContent({ initialAnime }: { initialAnime?: UniversalAnime | null }
             if (ep && typeof window !== 'undefined') {
                 const animeTitle = anime.title || (anime as any).name || 'Anime';
                 const animeImage = anime.poster || (anime as any).image;
+
+                try {
+                    const localData = JSON.parse(localStorage.getItem('shadow_continue_watching') || '{}');
+                    const existing = localData[animeId];
+                    localData[animeId] = {
+                        animeId,
+                        title: animeTitle,
+                        poster: animeImage,
+                        episodeId: ep.id,
+                        episodeNumber: ep.number,
+                        progress: existing?.episodeId === ep.id ? existing.progress : 0,
+                        duration: existing?.episodeId === ep.id ? existing.duration : 1440,
+                        is_completed: false,
+                        type: (anime as any).type || 'TV',
+                        lastUpdated: Date.now()
+                    };
+                    localStorage.setItem('shadow_continue_watching', JSON.stringify(localData));
+                    window.dispatchEvent(new CustomEvent('shadow-continue-updated'));
+                    window.dispatchEvent(new Event('shadow_continue_watching_updated'));
+                } catch {}
+
                 window.dispatchEvent(new CustomEvent('shadow-sync-watching', {
                     detail: {
                         anime_id: animeId,
@@ -2163,8 +2194,15 @@ function WatchContent({ initialAnime }: { initialAnime?: UniversalAnime | null }
             if (savedServer && savedServer !== settings.server) updateSetting('server', savedServer);
             localStorage.setItem(tempStorageKey, JSON.stringify(progressBuffer.current));
             if (user && needsDbUpdate && bufferToFlush.length > 0) {
-                const sanitized = bufferToFlush.map(p => sanitizeContinueWatchingEntry(p, user.id)).filter(Boolean);
-                (supabase!.from('user_continue_watching') as any).upsert(sanitized, { onConflict: 'user_id,episode_id' });
+                const sanitized = bufferToFlush.map(p => sanitizeContinueWatchingEntry(p, user.id)).filter((p): p is NonNullable<typeof p> => Boolean(p && p.episode_id));
+                const deduplicatedMap = new Map<string, typeof sanitized[0]>();
+                for (const item of sanitized) {
+                    deduplicatedMap.set(item.episode_id, item);
+                }
+                const uniqueSanitized = Array.from(deduplicatedMap.values());
+                if (uniqueSanitized.length > 0) {
+                    (supabase!.from('user_continue_watching') as any).upsert(uniqueSanitized, { onConflict: 'user_id,episode_id' });
+                }
             }
 
             // Robust URL Episode Resolution
@@ -2380,13 +2418,23 @@ function WatchContent({ initialAnime }: { initialAnime?: UniversalAnime | null }
                     urlAudioHandledRef.current = true;
                     targetAudio = urlAudio.toLowerCase() as any;
                     targetCategory = (targetAudio === 'en' || targetAudio === 'hi') ? 'dub' : 'sub';
+                    setSelectedAudioOverride(targetAudio);
+                    if (settings.audio !== targetAudio) {
+                        markProgrammaticSettingUpdate();
+                        updateSetting('audio', targetAudio);
+                    }
                 } else if (!urlAudioHandledRef.current && (urlType === 'dub' || urlType === 'sub') && settings.category !== urlType) {
                     urlAudioHandledRef.current = true;
                     targetCategory = urlType;
                     targetAudio = urlType === 'dub' ? (hasEnDub ? 'en' : nativeAudio) : nativeAudio;
+                    setSelectedAudioOverride(targetAudio);
+                } else {
+                    targetCategory = (targetAudio === 'en' || targetAudio === 'hi') ? 'dub' : 'sub';
                 }
 
-                if (targetAudio === 'hi' && isHindiForEpisode) {
+                if (targetAudio === 'hi') {
+                    targetCategory = 'dub';
+                    setSelectedAudioOverride('hi');
                     if (settings.audio !== 'hi' || settings.category !== 'dub') {
                         markProgrammaticSettingUpdate();
                         updateSetting('audio', 'hi');
@@ -2395,7 +2443,7 @@ function WatchContent({ initialAnime }: { initialAnime?: UniversalAnime | null }
 
                 // --- INTELLIGENT PRE-FLIGHT AUDIO FALLBACK ---
                 // Only fallback if servers are loaded and definitely confirm language track is absent
-                if (targetAudio === 'hi' && !isHindiForEpisode && hasLoadedServers) {
+                if (targetAudio === 'hi' && !isHindiForEpisode && hasLoadedServers && servers && Object.keys(servers).length > 0) {
                     if (hasEnDub) {
                         console.log(`[WatchClient] Hindi dub not available for this anime. Falling back to English Dub.`);
                         toast.info("Hindi Dub not available for this anime. Switched to English Dub.");
@@ -2407,6 +2455,7 @@ function WatchContent({ initialAnime }: { initialAnime?: UniversalAnime | null }
                         targetAudio = nativeAudio;
                         targetCategory = 'sub';
                     }
+                    setSelectedAudioOverride(targetAudio);
                     if (currentFetch === activeFetchRef.current && (settings.audio !== targetAudio || settings.category !== targetCategory)) {
                         markProgrammaticSettingUpdate();
                         updateSetting('audio', targetAudio);
@@ -2419,11 +2468,12 @@ function WatchContent({ initialAnime }: { initialAnime?: UniversalAnime | null }
                             window.history.replaceState({}, '', curUrl.toString());
                         } catch (e) {}
                     }
-                } else if (targetAudio === 'en' && hasLoadedServers && !hasEnDub) {
+                } else if (targetAudio === 'en' && hasLoadedServers && !hasEnDub && servers && Object.keys(servers).length > 0) {
                     console.log(`[WatchClient] English dub not available for this anime. Falling back to Sub.`);
                     toast.info("English Dub not available for this anime. Switched to Sub.");
                     targetAudio = nativeAudio;
                     targetCategory = 'sub';
+                    setSelectedAudioOverride(targetAudio);
                     if (currentFetch === activeFetchRef.current && (settings.audio !== targetAudio || settings.category !== targetCategory)) {
                         markProgrammaticSettingUpdate();
                         updateSetting('audio', targetAudio);
@@ -2436,12 +2486,13 @@ function WatchContent({ initialAnime }: { initialAnime?: UniversalAnime | null }
                             window.history.replaceState({}, '', curUrl.toString());
                         } catch (e) {}
                     }
-                } else if (targetCategory === 'sub' || ['jp', 'cn', 'kr'].includes(targetAudio)) {
+                } else if (targetCategory === 'sub' && ['jp', 'cn', 'kr'].includes(targetAudio)) {
                     targetAudio = nativeAudio;
                     targetCategory = 'sub';
                     if (currentFetch === activeFetchRef.current && (settings.audio !== nativeAudio || settings.category !== 'sub')) {
                         markProgrammaticSettingUpdate();
                         updateSetting('audio', nativeAudio);
+                        updateSetting('category', 'sub');
                     }
                 }
 
@@ -2607,6 +2658,12 @@ function WatchContent({ initialAnime }: { initialAnime?: UniversalAnime | null }
                         setStreamUrl(streamData.url);
                         setStreamReferer(streamData.referer || null);
 
+                        if (targetAudio && settings.audio !== targetAudio) {
+                            markProgrammaticSettingUpdate();
+                            updateSetting('audio', targetAudio);
+                        }
+                        setSelectedAudioOverride(targetAudio);
+
                         const incomingSubs = streamData.subtitles || [];
                         const hasCaptions = incomingSubs.some((s: any) => {
                             const lbl = (s.label || '').toLowerCase();
@@ -2715,14 +2772,11 @@ function WatchContent({ initialAnime }: { initialAnime?: UniversalAnime | null }
         return epIndex === -1 ? 0 : Math.floor(epIndex / chunkSize);
     }, [currentEpId, anime?.episodes, chunkSize]);
 
-    // Active Embed Tracking: Directly mark the episode as watched for embed streams
+    // Active Embed Tracking: Listen for completion message from iframe embed
     useEffect(() => {
         if (!streamUrl || !currentEpId) return;
         const isEmbed = !streamUrl.includes('.m3u8') && !streamUrl.includes('.mp4') && !streamUrl.includes('/api/proxy');
         if (!isEmbed) return;
-
-        // Directly mark episode as watched on embed stream start
-        markEpisodeAsWatched(currentEpId);
 
         const handleMessage = (e: MessageEvent) => {
             try {
@@ -2772,42 +2826,41 @@ function WatchContent({ initialAnime }: { initialAnime?: UniversalAnime | null }
     const activeChunk = episodeChunks[epChunkIndex] || episodeChunks[currentChunkIndex] || [];
 
     const audioTrackOptions = useMemo(() => {
-        const hasLoadedServers = servers !== null && typeof servers === 'object';
         const currentEpNum = Number(currentEpisode?.number || 1);
         const hindiTotalEps = Number((anime as any)?.hindiDub?.totalEpisodes || 0);
         const isAnimeHindiAvailable = Boolean((anime as any)?.hindiDub?.available);
 
-        // Sub is always available
-        const hasSub = hasLoadedServers
-            ? ((servers?.[primaryAudioId]?.length || 0) > 0 || (servers?.['sub']?.length || 0) > 0)
-            : true;
+        // Sub is always available for all anime titles
+        const hasSub = true;
 
-        // English Dub is strictly available if actual servers exist in servers.en or servers.dub
-        const hasDub = hasLoadedServers
-            ? ((servers?.['en']?.length || 0) > 0 || (servers?.['dub']?.length || 0) > 0)
-            : (!!currentEpisode?.hasDub || !!currentEpisode?.isDub || ((anime?.episodes as any)?.dub > 0) || (anime as any)?.hasDub);
+        // English Dub is available if the episode or anime has dub, or if English servers exist, or if currently playing English
+        const isAnimeDubAvailable = Boolean(
+            currentEpisode?.hasDub ||
+            currentEpisode?.isDub ||
+            (anime as any)?.hasDub ||
+            ((anime?.episodes as any)?.dub > 0) ||
+            ((anime as any)?.stats?.episodes?.dub > 0)
+        );
+        const hasDub = (currentAudio === 'en') || ((servers?.['en']?.length || 0) > 0 || (servers?.['dub']?.length || 0) > 0) || isAnimeDubAvailable;
 
-        // Hindi Dub is strictly available if actual servers exist in servers.hi
-        const hasHindiForEpisode = hasLoadedServers
-            ? ((servers?.['hi']?.length || 0) > 0)
-            : (isAnimeHindiAvailable && (hindiTotalEps === 0 || currentEpNum <= hindiTotalEps));
+        // Hindi Dub is available if actual servers exist in servers.hi or if Hindi is available for this episode
+        const hasHindiForEpisode = (currentAudio === 'hi') || ((servers?.['hi']?.length || 0) > 0) || (isAnimeHindiAvailable && (hindiTotalEps === 0 || currentEpNum <= hindiTotalEps));
 
         return [
             { id: primaryAudioId as 'jp' | 'cn' | 'kr' | 'en' | 'hi' | 'raw', label: primaryAudioLabel, available: hasSub },
             { id: 'en' as const, label: 'EN • Dub', available: hasDub },
             { id: 'hi' as const, label: 'HI • Dub', available: hasHindiForEpisode }
         ];
-    }, [primaryAudioId, primaryAudioLabel, servers, currentEpisode, anime]);
+    }, [primaryAudioId, primaryAudioLabel, servers, currentEpisode, anime, currentAudio]);
 
     const handleAudioChange = useCallback((trackId: 'jp' | 'en' | 'hi' | 'cn' | 'kr' | 'raw') => {
-        const hasLoadedServers = servers !== null && typeof servers === 'object';
         const currentEpNum = Number(currentEpisode?.number || 1);
 
         if (trackId === 'hi') {
             const hasHiServer = (servers?.['hi']?.length || 0) > 0;
             const hindiTotalEps = Number((anime as any)?.hindiDub?.totalEpisodes || 0);
             const isAnimeHindiAvailable = Boolean((anime as any)?.hindiDub?.available);
-            const isEpAvailable = hasLoadedServers ? hasHiServer : (hasHiServer || (isAnimeHindiAvailable && (hindiTotalEps === 0 || currentEpNum <= hindiTotalEps)));
+            const isEpAvailable = hasHiServer || (isAnimeHindiAvailable && (hindiTotalEps === 0 || currentEpNum <= hindiTotalEps));
             if (!isEpAvailable) {
                 toast.info(`Hindi Dub is not available for Episode ${currentEpNum}.`);
                 return;
@@ -2816,7 +2869,7 @@ function WatchContent({ initialAnime }: { initialAnime?: UniversalAnime | null }
 
         if (trackId === 'en') {
             const hasEnServer = (servers?.['en']?.length || 0) > 0 || (servers?.['dub']?.length || 0) > 0;
-            const isEpAvailable = hasLoadedServers ? hasEnServer : (hasEnServer || !!currentEpisode?.hasDub || !!currentEpisode?.isDub || ((anime?.episodes as any)?.dub > 0));
+            const isEpAvailable = hasEnServer || !!currentEpisode?.hasDub || !!currentEpisode?.isDub || ((anime?.episodes as any)?.dub > 0) || (anime as any)?.hasDub;
             if (!isEpAvailable) {
                 toast.info(`English Dub is not available for Episode ${currentEpNum}.`);
                 return;
@@ -2836,9 +2889,11 @@ function WatchContent({ initialAnime }: { initialAnime?: UniversalAnime | null }
 
         const targetPool = servers?.[trackId] || (trackId === 'en' ? (servers?.['en'] || servers?.['dub']) : servers?.['sub']) || [];
         const serverExists = targetPool.some((s: any) => s.serverName?.toLowerCase() === settings.server?.toLowerCase());
-        const targetServer = (serverExists ? settings.server : targetPool[0]?.serverName) || 'Vidstream';
+        const defaultFallbackServer = trackId === 'hi' ? 'Rumble Cloud' : 'MegaCloud';
+        const targetServer = (serverExists ? settings.server : targetPool[0]?.serverName) || defaultFallbackServer;
 
         markProgrammaticSettingUpdate();
+        setSelectedAudioOverride(trackId);
         updateSetting('audio', trackId);
         if (targetServer !== settings.server) {
             updateSetting('server', targetServer);
@@ -2849,13 +2904,15 @@ function WatchContent({ initialAnime }: { initialAnime?: UniversalAnime | null }
             programmaticServerRef.current = (srv.serverName || targetServer).toLowerCase();
             setStreamUrl(srv.url);
             setStreamReferer(srv.referer || null);
-            if (srv.tracks && Array.isArray(srv.tracks)) {
+            if (srv.tracks && Array.isArray(srv.tracks) && srv.tracks.length > 0) {
                 setSubtitles(srv.tracks.map((t: any) => ({
                     file: t.file || t.url,
                     label: t.label || 'English',
                     kind: 'captions',
                     default: !!t.default
                 })));
+            } else if (episodeSubtitlesRef.current && episodeSubtitlesRef.current.length > 0) {
+                setSubtitles(episodeSubtitlesRef.current);
             }
             if (srv.intro) setIntro(srv.intro);
             if (srv.outro) setOutro(srv.outro);
@@ -2935,6 +2992,8 @@ function WatchContent({ initialAnime }: { initialAnime?: UniversalAnime | null }
                                     outro={outro} 
                                     title={currentEpisode ? getCleanEpisodeTitle(currentEpisode.number, currentEpisode.title) : anime.title} 
                                     animeTitle={anime?.title || (anime as any)?.name || (anime as any)?.info?.name}
+                                    audioTrack={currentAudio}
+                                    serverName={settings.server}
                                     startTime={progressRef.current > 0 ? progressRef.current : resumeTime} 
                                     autoPlay={settings.autoPlay} 
                                     autoSkip={settings.autoSkip} 
@@ -3025,7 +3084,7 @@ function WatchContent({ initialAnime }: { initialAnime?: UniversalAnime | null }
                                             className="flex items-center justify-center gap-1.5 px-3 h-8 rounded-full border border-white/10 bg-[#141d30] text-[10px] font-black uppercase tracking-tighter transition-all hover:bg-white/10 whitespace-nowrap atrax-bubbly-btn atrax-squish-tap"
                                             title="Auto Skip Outro"
                                         >
-                                            <Forward size={12} className={cn("transition-colors", (settings.autoSkipOutro ?? settings.autoSkip) ? "text-indigo-400" : "text-zinc-500")} />
+                                            <StepForward size={12} className={cn("transition-colors", (settings.autoSkipOutro ?? settings.autoSkip) ? "text-indigo-400" : "text-zinc-500")} />
                                             <span className={cn((settings.autoSkipOutro ?? settings.autoSkip) ? "text-white" : "text-zinc-500")}>SKIP OUTRO</span>
                                         </button>
                                         <button
@@ -3041,7 +3100,7 @@ function WatchContent({ initialAnime }: { initialAnime?: UniversalAnime | null }
                                             className="flex items-center justify-center gap-1.5 px-3 h-8 rounded-full border border-white/10 bg-[#141d30] text-[10px] font-black uppercase tracking-tighter transition-all hover:bg-white/10 whitespace-nowrap atrax-bubbly-btn atrax-squish-tap"
                                             title="Auto Next"
                                         >
-                                            <SkipForward size={12} className={cn("transition-colors", settings.autoNext ? "text-violet-400" : "text-zinc-500")} />
+                                            <ChevronsRight size={13} className={cn("transition-colors", settings.autoNext ? "text-violet-400" : "text-zinc-500")} />
                                             <span className={cn(settings.autoNext ? "text-white" : "text-zinc-500")}>NEXT</span>
                                         </button>
                                         {nextEpisode ? (
@@ -3234,13 +3293,13 @@ function WatchContent({ initialAnime }: { initialAnime?: UniversalAnime | null }
                                         <FastForward size={13} className={cn("transition-transform", settings.autoSkip && "scale-110")} />
                                     </button>
                                     <button onClick={() => updateSetting('autoSkipOutro', !(settings.autoSkipOutro ?? settings.autoSkip))} className={cn("flex-1 h-8 sm:h-9 rounded-full border-0 flex items-center justify-center transition-all active:scale-95 atrax-bubbly-btn atrax-squish-tap", (settings.autoSkipOutro ?? settings.autoSkip) ? "bg-indigo-400/20 text-indigo-300 shadow-sm" : "bg-white/[0.06] hover:bg-white/10 text-zinc-400 hover:text-zinc-200")} title={`Auto Skip Outro: ${(settings.autoSkipOutro ?? settings.autoSkip) ? 'ON' : 'OFF'}`}>
-                                        <Forward size={13} className={cn("transition-transform", (settings.autoSkipOutro ?? settings.autoSkip) && "scale-110")} />
+                                        <StepForward size={13} className={cn("transition-transform", (settings.autoSkipOutro ?? settings.autoSkip) && "scale-110")} />
                                     </button>
                                     <button onClick={() => updateSetting('autoPlay', !settings.autoPlay)} className={cn("flex-1 h-8 sm:h-9 rounded-full border-0 flex items-center justify-center transition-all active:scale-95 atrax-bubbly-btn atrax-squish-tap", settings.autoPlay ? "bg-primary-500/20 text-primary-300 shadow-sm" : "bg-white/[0.06] hover:bg-white/10 text-zinc-400 hover:text-zinc-200")} title={`Auto Play: ${settings.autoPlay ? 'ON' : 'OFF'}`}>
                                         <PlayCircle size={13} className={cn("transition-transform", settings.autoPlay && "scale-110")} />
                                     </button>
                                     <button onClick={() => updateSetting('autoNext', !settings.autoNext)} className={cn("flex-1 h-8 sm:h-9 rounded-full border-0 flex items-center justify-center transition-all active:scale-95 atrax-bubbly-btn atrax-squish-tap", settings.autoNext ? "bg-primary-500/20 text-primary-300 shadow-sm" : "bg-white/[0.06] hover:bg-white/10 text-zinc-400 hover:text-zinc-200")} title={`Auto Next Episode: ${settings.autoNext ? 'ON' : 'OFF'}`}>
-                                        <StepForward size={13} className={cn("transition-transform", settings.autoNext && "scale-110")} />
+                                        <ChevronsRight size={14} className={cn("transition-transform", settings.autoNext && "scale-110")} />
                                     </button>
                                     <button disabled={!nextEpisode} onClick={() => nextEpisode && handleEpisodeClick(nextEpisode.id)} className="flex-1 h-8 sm:h-9 rounded-full border-0 bg-white/[0.06] hover:bg-white/10 flex items-center justify-center text-zinc-300 hover:text-white active:scale-95 disabled:opacity-30 disabled:pointer-events-none transition-all atrax-bubbly-btn atrax-squish-tap" title="Next Episode"><SkipForward size={13} /></button>
                                 </div>

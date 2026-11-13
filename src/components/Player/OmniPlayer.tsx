@@ -6,10 +6,10 @@ import Hls from 'hls.js';
 import {
   Play, Pause, Volume2, VolumeX,
   Settings, Maximize, Minimize, Subtitles,
-  Wand2, AudioWaveform, PictureInPicture, Gauge,
+  Wand2, AudioWaveform, Gauge, Clock,
   ChevronRight, ChevronLeft, MousePointerClick,
   ChevronsLeft, ChevronsRight, Sun, MoveHorizontal, MoveVertical, RotateCcw, RotateCw,
-  Loader2, Cast, Radio, FastForward, SkipForward, Check
+  Loader2, Cast, Radio, FastForward, SkipForward, Check, PictureInPicture2
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { RunHappyPlayerLoader } from '@/components/UIx/SkeletonLoaders';
@@ -217,6 +217,8 @@ export interface OmniPlayerProps {
   totalEpisodes?: number;
   currentEpisodeNumber?: number | string;
   onReplay?: () => void;
+  audioTrack?: string;
+  serverName?: string;
 }
 
 export interface OmniPlayerRef {
@@ -224,6 +226,8 @@ export interface OmniPlayerRef {
   getDuration: () => number;
   seekTo: (time: number) => void;
   focus: () => void;
+  togglePiP?: () => void;
+  isPiPActive?: () => boolean;
 }
 
 export type AnimePlayerProps = OmniPlayerProps;
@@ -235,7 +239,8 @@ const OmniPlayer = forwardRef<OmniPlayerRef, OmniPlayerProps>(({
   url, iframeUrl, isEmbed, episodeId, title, poster, intro, outro, referer, isM3U8, autoSkip = false, autoSkipOutro = false, autoPlay = true, startTime = 0, subtitles = EMPTY_SUBTITLES,
   onEnded, onNext, hasNext, onPlay, onSkipIntro, onSkipOutro, onProgress, onSeek, onInteract, onPause, onBuffer,
   controlsTimeout = 3000, onControlsChange, initialVolume = 1, initialSpeed = 1, onSettingsChange, onError, onAspectRatioChange,
-  nextAiringEpisode, status, animeTitle, totalEpisodes, currentEpisodeNumber, onReplay
+  nextAiringEpisode, status, animeTitle, totalEpisodes, currentEpisodeNumber, onReplay,
+  audioTrack, serverName
 }, ref) => {
   // Refs
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -347,11 +352,11 @@ const OmniPlayer = forwardRef<OmniPlayerRef, OmniPlayerProps>(({
       const prefs = e.detail?.playerPrefs || (() => {
         try { return JSON.parse(localStorage.getItem('shadow_player_prefs') || '{}'); } catch { return {}; }
       })();
-      queueMicrotask(() => {
+      setTimeout(() => {
         if (typeof prefs.autoSkip === 'boolean') setLocalAutoSkip(prefs.autoSkip);
         if (typeof prefs.autoSkipOutro === 'boolean') setLocalAutoSkipOutro(prefs.autoSkipOutro);
         if (typeof prefs.autoPlay === 'boolean') setLocalAutoPlay(prefs.autoPlay);
-      });
+      }, 0);
     };
     window.addEventListener('update_player_prefs', handlePrefsUpdate);
     return () => window.removeEventListener('update_player_prefs', handlePrefsUpdate);
@@ -398,6 +403,8 @@ const OmniPlayer = forwardRef<OmniPlayerRef, OmniPlayerProps>(({
   // UI State
   const [showControls, setShowControls] = useState(true);
   const showControlsRef = useRef(showControls);
+  const controlsWereHiddenAtStartRef = useRef(false);
+  const touchInteractionActiveRef = useRef(false);
   useEffect(() => {
     showControlsRef.current = showControls;
   }, [showControls]);
@@ -554,6 +561,10 @@ const OmniPlayer = forwardRef<OmniPlayerRef, OmniPlayerProps>(({
   const thumbnailCuesRef = useRef<ThumbnailCue[]>([]);
   const [thumbnailTrack, setThumbnailTrack] = useState<any | null>(null);
 
+  // Subtitle Alignment & Sync State per Audio Track
+  const effectiveAudioTrack = (audioTrack || 'jp').toLowerCase();
+  const [subOffset, setSubOffset] = useState<number>(0);
+
   // Preferences
   const [subStyle, setSubStyle] = useState(DEFAULT_SUB_STYLE);
   const [isMobile, setIsMobile] = useState(false);
@@ -596,20 +607,20 @@ const OmniPlayer = forwardRef<OmniPlayerRef, OmniPlayerProps>(({
   // and never overflow off-screen in fullscreen mobile landscape
   const menuMaxHeight = useMemo(() => {
     if (playerHeight <= 0) {
-      return isFullscreen ? 260 : 155;
+      return isFullscreen ? 280 : 180;
     }
     if (!isFullscreen) {
-      // Normal mobile inline view: player height is ~180-230px, leave 48px clearance
+      // Normal mobile inline view: player height is ~180-230px, leave room for menus
       if (isMobile) {
-        return Math.max(130, Math.min(170, playerHeight - 50));
+        return Math.max(160, Math.min(240, playerHeight - 30));
       }
-      return Math.max(200, Math.min(360, playerHeight - 64));
+      return Math.max(220, Math.min(380, playerHeight - 50));
     } else {
-      // Fullscreen view: on mobile landscape screen height is ~360-400px, cap at 260px
+      // Fullscreen view: on mobile landscape screen height is ~360-400px
       if (isMobile || playerHeight < 500) {
-        return Math.max(180, Math.min(260, playerHeight - 64));
+        return Math.max(200, Math.min(300, playerHeight - 50));
       }
-      return Math.max(260, Math.min(420, playerHeight - 80));
+      return Math.max(280, Math.min(460, playerHeight - 80));
     }
   }, [playerHeight, isFullscreen, isMobile]);
 
@@ -663,7 +674,9 @@ const OmniPlayer = forwardRef<OmniPlayerRef, OmniPlayerProps>(({
         if (canSaveRef.current) onInteract?.();
       }
     },
-    focus: () => containerRef.current?.focus()
+    focus: () => containerRef.current?.focus(),
+    togglePiP: () => togglePiP(),
+    isPiPActive: () => isPiPActive
   }));
 
   // Embed Playback Tracking for iframes
@@ -1076,8 +1089,10 @@ const OmniPlayer = forwardRef<OmniPlayerRef, OmniPlayerProps>(({
 
     const onEnterPiP = () => setIsPiPActive(true);
     const onLeavePiP = () => setIsPiPActive(false);
+    const onWebkitPiP = () => setIsPiPActive((video as any).webkitPresentationMode === 'picture-in-picture');
     video.addEventListener('enterpictureinpicture', onEnterPiP);
     video.addEventListener('leavepictureinpicture', onLeavePiP);
+    video.addEventListener('webkitpresentationmodechanged', onWebkitPiP);
 
     return () => {
       clearTimeout(timer);
@@ -1085,6 +1100,7 @@ const OmniPlayer = forwardRef<OmniPlayerRef, OmniPlayerProps>(({
       if (previewHlsRef.current) previewHlsRef.current.destroy();
       video.removeEventListener('enterpictureinpicture', onEnterPiP);
       video.removeEventListener('leavepictureinpicture', onLeavePiP);
+      video.removeEventListener('webkitpresentationmodechanged', onWebkitPiP);
       if (nativeLoadedHandler) video.removeEventListener('loadedmetadata', nativeLoadedHandler);
       if (nativeErrorHandler) video.removeEventListener('error', nativeErrorHandler);
     };
@@ -1145,7 +1161,8 @@ const OmniPlayer = forwardRef<OmniPlayerRef, OmniPlayerProps>(({
           const parsed = parseVtt(text);
           parsedCuesRef.current = parsed;
           const curTime = videoRef.current ? videoRef.current.currentTime : currentTime;
-          const matches = parsed.filter(c => curTime >= c.start && curTime <= c.end);
+          const effectiveTime = curTime + subOffset;
+          const matches = parsed.filter(c => effectiveTime >= c.start && effectiveTime <= c.end);
           if (matches.length > 0) {
             setActiveCueText(matches.map(m => m.text).join('\n'));
           } else {
@@ -1160,19 +1177,51 @@ const OmniPlayer = forwardRef<OmniPlayerRef, OmniPlayerProps>(({
     return () => {
       isMounted = false;
     };
-  }, [currentSubtitle, trackSubtitles, referer]);
+  }, [currentSubtitle, trackSubtitles, referer, subOffset]);
 
-  // C. Sync Subtitle Cues at timestamp
-  const syncSubtitlesAtTime = useCallback((time: number) => {
+  // Load saved subtitle offset for this specific audio track (e.g. jp, en, hi)
+  useEffect(() => {
+    try {
+      const prefs = JSON.parse(localStorage.getItem('shadow_player_prefs') || '{}');
+      const offsets = prefs.subOffsets || {};
+      const saved = offsets[effectiveAudioTrack];
+      if (typeof saved === 'number' && !isNaN(saved)) {
+        setSubOffset(saved);
+      } else {
+        setSubOffset(0);
+      }
+    } catch {
+      setSubOffset(0);
+    }
+  }, [effectiveAudioTrack]);
+
+  // C. Sync Subtitle Cues at timestamp with offset
+  const syncSubtitlesAtTime = useCallback((time: number, customOffset?: number) => {
     if (currentSubtitle === -1) {
       setActiveCueText(null);
       return;
     }
 
+    const activeOffset = typeof customOffset === 'number' ? customOffset : subOffset;
+    const effectiveTime = time + activeOffset;
+
     // 1. Check parsed in-memory cues (fastest & most reliable)
-    const inMemory = parsedCuesRef.current;
+    let inMemory = parsedCuesRef.current;
+    if ((!inMemory || inMemory.length === 0) && videoRef.current?.textTracks?.[currentSubtitle]) {
+      const nativeTrack = videoRef.current.textTracks[currentSubtitle];
+      if (nativeTrack.cues && nativeTrack.cues.length > 0) {
+        const extracted = Array.from(nativeTrack.cues).map((c: any) => ({
+          start: c.startTime,
+          end: c.endTime,
+          text: c.text
+        }));
+        parsedCuesRef.current = extracted;
+        inMemory = extracted;
+      }
+    }
+
     if (inMemory && inMemory.length > 0) {
-      const matches = inMemory.filter(c => time >= c.start && time <= c.end);
+      const matches = inMemory.filter(c => effectiveTime >= c.start && effectiveTime <= c.end);
       if (matches.length > 0) {
         const text = matches.map(m => m.text).join('\n');
         setActiveCueText(prev => prev === text ? prev : text);
@@ -1201,7 +1250,63 @@ const OmniPlayer = forwardRef<OmniPlayerRef, OmniPlayerProps>(({
     }
 
     setActiveCueText(prev => prev === null ? null : null);
-  }, [currentSubtitle]);
+  }, [currentSubtitle, subOffset]);
+
+  // Update subtitle offset with persistence and instant re-sync
+  const updateSubOffset = useCallback((newOffsetOrUpdater: number | ((prev: number) => number), showToast = true) => {
+    setSubOffset(prev => {
+      const rawVal = typeof newOffsetOrUpdater === 'function' ? newOffsetOrUpdater(prev) : newOffsetOrUpdater;
+      const val = Math.max(-30, Math.min(30, Math.round(rawVal * 100) / 100));
+      try {
+        const prefs = JSON.parse(localStorage.getItem('shadow_player_prefs') || '{}');
+        const offsets = prefs.subOffsets || {};
+        offsets[effectiveAudioTrack] = val;
+        prefs.subOffsets = offsets;
+        localStorage.setItem('shadow_player_prefs', JSON.stringify(prefs));
+      } catch (e) {
+        console.warn("Could not save subOffset to localStorage", e);
+      }
+
+      if (showToast) {
+        if (val === 0) {
+          notifyWhisper("Sub Sync: Reset (0.00s)", "info");
+        } else {
+          const sign = val > 0 ? "+" : "";
+          notifyWhisper(`Sub Sync: ${sign}${val.toFixed(2)}s (${val > 0 ? 'Advance' : 'Delay'})`, "info");
+        }
+      }
+
+      const curTime = videoRef.current ? videoRef.current.currentTime : currentTime;
+      setTimeout(() => {
+        syncSubtitlesAtTime(curTime, val);
+      }, 0);
+
+      return val;
+    });
+  }, [effectiveAudioTrack, currentTime, syncSubtitlesAtTime]);
+
+  // Global hotkeys for Subtitle Sync ([ or Z to delay, ] or X to advance, \ or G to reset)
+  useEffect(() => {
+    const handleGlobalSubKey = (e: KeyboardEvent) => {
+      if (e.defaultPrevented) return;
+      const target = e.target as HTMLElement;
+      if (target && (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable)) {
+        return;
+      }
+      if (e.code === 'BracketLeft' || (e.key?.toLowerCase() === 'z' && !e.ctrlKey && !e.metaKey && !e.altKey)) {
+        const step = e.shiftKey ? -1.0 : -0.25;
+        updateSubOffset(prev => prev + step);
+      } else if (e.code === 'BracketRight' || (e.key?.toLowerCase() === 'x' && !e.ctrlKey && !e.metaKey && !e.altKey)) {
+        const step = e.shiftKey ? 1.0 : 0.25;
+        updateSubOffset(prev => prev + step);
+      } else if (e.code === 'Backslash' || (e.key?.toLowerCase() === 'g' && !e.ctrlKey && !e.metaKey && !e.altKey)) {
+        updateSubOffset(0);
+      }
+    };
+
+    window.addEventListener('keydown', handleGlobalSubKey);
+    return () => window.removeEventListener('keydown', handleGlobalSubKey);
+  }, [updateSubOffset]);
 
   // D. Native cuechange listener
   useEffect(() => {
@@ -1349,7 +1454,18 @@ const OmniPlayer = forwardRef<OmniPlayerRef, OmniPlayerProps>(({
 
   const togglePiP = async () => {
     if (!videoRef.current) return;
-    try { if (document.pictureInPictureElement) await document.exitPictureInPicture(); else await videoRef.current.requestPictureInPicture(); } catch (e) { console.error("PiP failed", e); }
+    try {
+      if (document.pictureInPictureElement) {
+        await document.exitPictureInPicture();
+      } else if (videoRef.current.requestPictureInPicture) {
+        await videoRef.current.requestPictureInPicture();
+      } else if ((videoRef.current as any).webkitSetPresentationMode) {
+        const mode = (videoRef.current as any).webkitPresentationMode;
+        (videoRef.current as any).webkitSetPresentationMode(mode === 'picture-in-picture' ? 'inline' : 'picture-in-picture');
+      }
+    } catch (e) {
+      console.error("PiP failed", e);
+    }
   };
 
   const handleCast = async () => {
@@ -1559,6 +1675,23 @@ const OmniPlayer = forwardRef<OmniPlayerRef, OmniPlayerProps>(({
       }
     }
     if (e.code === 'KeyN' && onNext) onNext();
+
+    // Subtitle Alignment Hotkeys
+    if (e.code === 'BracketLeft' || e.code === 'KeyZ') {
+      e.preventDefault();
+      const step = e.shiftKey ? -1.0 : -0.25;
+      updateSubOffset(prev => prev + step);
+    }
+    if (e.code === 'BracketRight' || e.code === 'KeyX') {
+      e.preventDefault();
+      const step = e.shiftKey ? 1.0 : 0.25;
+      updateSubOffset(prev => prev + step);
+    }
+    if (e.code === 'Backslash' || (e.code === 'KeyG' && !e.ctrlKey && !e.metaKey)) {
+      e.preventDefault();
+      updateSubOffset(0);
+    }
+
     showUI();
   };
 
@@ -1619,6 +1752,9 @@ const OmniPlayer = forwardRef<OmniPlayerRef, OmniPlayerProps>(({
   };
 
   const handleTouchStart = (e: React.TouchEvent) => {
+    touchInteractionActiveRef.current = true;
+    controlsWereHiddenAtStartRef.current = !showControlsRef.current;
+
     // Seekbar preview must NEVER show or get stuck during player video touch / gestures
     setHoverTime(null);
     setIsHoveringSeek(false);
@@ -1626,10 +1762,13 @@ const OmniPlayer = forwardRef<OmniPlayerRef, OmniPlayerProps>(({
     setIsDirectlyInteractingSeekbar(false);
     touchSeekTargetRef.current = null;
 
-    const target = e.target as HTMLElement;
-    if (target.closest('button') || target.closest('input') || target.closest('[role="menu"]') || target.closest('[data-player-menu="true"]') || target.closest('.absolute.bottom-12') || target.closest('.absolute.bottom-16') || target.closest('[class*="group/seek"]') || target.closest('[class*="bg-black/60"]')) return;
+    // When controls are visible, allow clicks/taps on controls/buttons to pass through to their handlers
+    if (showControlsRef.current) {
+      const target = e.target as HTMLElement;
+      if (target.closest('button') || target.closest('input') || target.closest('[role="menu"]') || target.closest('[data-player-menu="true"]') || target.closest('.absolute.bottom-12') || target.closest('.absolute.bottom-16') || target.closest('[class*="group/seek"]') || target.closest('[class*="bg-black/60"]')) return;
+    }
+
     if (!videoRef.current || !containerRef.current) return;
-    const rect = containerRef.current.getBoundingClientRect();
     touchStartRef.current = {
       x: e.touches[0].clientX,
       y: e.touches[0].clientY,
@@ -1739,6 +1878,9 @@ const OmniPlayer = forwardRef<OmniPlayerRef, OmniPlayerProps>(({
     touchStartRef.current = null;
     gestureLockRef.current = null;
     touchSeekTargetRef.current = null;
+    setTimeout(() => {
+      touchInteractionActiveRef.current = false;
+    }, 350);
     // Only trigger showUI if there was an actual swipe gesture (dragged volume/brightness/seek).
     // Simple taps are cleanly handled by handleGesture so controls don't double-toggle and vanish!
     if (hadActiveGesture) {
@@ -1747,12 +1889,24 @@ const OmniPlayer = forwardRef<OmniPlayerRef, OmniPlayerProps>(({
   };
 
   const handleMouseDown = (e: React.MouseEvent) => {
-    if ((e.target as HTMLElement).closest('button') || (e.target as HTMLElement).closest('input')) return;
+    controlsWereHiddenAtStartRef.current = !showControlsRef.current;
+    if (showControlsRef.current) {
+      if ((e.target as HTMLElement).closest('button') || (e.target as HTMLElement).closest('input')) return;
+    }
     startLongPress();
   };
   const handleMouseUp = () => endLongPress();
 
   const handleGesture = (e: React.MouseEvent) => {
+    // 1. If controls were hidden when tap started, tap MUST reveal UI and NOT immediately hide!
+    if (!showControlsRef.current || controlsWereHiddenAtStartRef.current) {
+      controlsWereHiddenAtStartRef.current = false;
+      if (clickTimerRef.current) clearTimeout(clickTimerRef.current);
+      showUI();
+      return;
+    }
+
+    // 2. When controls are showing, ignore clicks on interactive elements
     if ((e.target as HTMLElement).closest('button') || (e.target as HTMLElement).closest('input') || (e.target as HTMLElement).closest('[role="menu"]') || (e.target as HTMLElement).closest('[data-player-menu="true"]') || (e.target as HTMLElement).closest('.absolute.bottom-12') || (e.target as HTMLElement).closest('.absolute.bottom-16') || (e.target as HTMLElement).closest('[class*="group/seek"]') || (e.target as HTMLElement).closest('[class*="bg-black/60"]')) return;
     if (activeMenu !== 'none') { setActiveMenu('none'); return; }
 
@@ -1918,6 +2072,7 @@ const OmniPlayer = forwardRef<OmniPlayerRef, OmniPlayerProps>(({
   }, [showControls, isPlaying, activeMenu, isScrubbing, isDirectlyInteractingSeekbar, controlsTimeout]);
 
   const handleContainerMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
+    if (touchInteractionActiveRef.current) return;
     if (showSkipIntro || showSkipOutro) {
       const rect = containerRef.current?.getBoundingClientRect();
       if (rect) {
@@ -2268,7 +2423,7 @@ const OmniPlayer = forwardRef<OmniPlayerRef, OmniPlayerProps>(({
       />
 
       {/* Title Island with Cast */}
-      <div className={cn("absolute top-2 md:top-4 left-1/2 -translate-x-1/2 z-40 transition-all duration-500 max-w-[90%] w-auto", (showControls && !showEndingOverlay) ? "opacity-100 translate-y-0 pointer-events-auto visible" : "opacity-0 -translate-y-10 pointer-events-none invisible")}>
+      <div style={{ pointerEvents: (showControls && !showEndingOverlay) ? 'auto' : 'none' }} className={cn("absolute top-2 md:top-4 left-1/2 -translate-x-1/2 z-40 transition-all duration-500 max-w-[90%] w-auto", (showControls && !showEndingOverlay) ? "opacity-100 translate-y-0 pointer-events-auto visible" : "opacity-0 -translate-y-10 pointer-events-none invisible")}>
         <div ref={titleContainerRef} className={cn("bg-black/60 md:bg-black/80 border border-white/10 rounded-full px-4 py-1.5 md:py-2 shadow-2xl backdrop-blur-md flex items-center gap-3 overflow-hidden", (showControls && !showEndingOverlay) ? "pointer-events-auto" : "pointer-events-none")}>
 
 
@@ -2357,7 +2512,7 @@ const OmniPlayer = forwardRef<OmniPlayerRef, OmniPlayerProps>(({
         )}
       </div>
 
-      <div className={cn("absolute inset-0 bg-gradient-to-t from-black/90 via-transparent to-transparent flex flex-col justify-end px-3 pb-2 md:px-5 md:pb-3 transition-[opacity,visibility] duration-300 z-[60]", (showControls && !showEndingOverlay) ? "opacity-100 pointer-events-auto visible" : "opacity-0 pointer-events-none invisible")}>
+      <div style={{ pointerEvents: (showControls && !showEndingOverlay) ? 'auto' : 'none' }} className={cn("absolute inset-0 bg-gradient-to-t from-black/90 via-transparent to-transparent flex flex-col justify-end px-3 pb-2 md:px-5 md:pb-3 transition-[opacity,visibility] duration-300 z-[60]", (showControls && !showEndingOverlay) ? "opacity-100 pointer-events-auto visible" : "opacity-0 pointer-events-none invisible")}>
         {(() => {
           const isTouchOnly = typeof window !== 'undefined' && !window.matchMedia('(hover: hover) and (pointer: fine)').matches;
           // Seek preview should ONLY show when directly interacting with the seekbar:
@@ -2651,12 +2806,17 @@ const OmniPlayer = forwardRef<OmniPlayerRef, OmniPlayerProps>(({
               <button onClick={(e) => { e.stopPropagation(); seek(10); }} className="flex items-center gap-0.5 group/btn px-1.5 py-0.5 md:px-2 md:py-0.5 rounded-full border border-white/20 hover:border-primary-500 hover:bg-primary-500/10 transition-all active:scale-95"><span className="text-[8px] md:text-[9px] font-black text-white group-hover/btn:text-primary-500 transition-colors">10</span><ChevronsRight size={11} className="md:w-3 text-white group-hover/btn:text-primary-500 transition-colors" /></button>
             </div>
 
-            {/* Volume Slider: Hidden on mobile (uses hardware buttons), full on desktop */}
-            <div className="hidden md:flex items-center gap-1 md:gap-2 group/vol">
-              <button onClick={(e) => { e.stopPropagation(); toggleMute(); }} className="p-1.5 md:p-0">
+            {/* Volume Control: Visible on mobile when not in fullscreen so user can mute/unmute; full slider on desktop */}
+            <div className={cn("items-center gap-1 md:gap-2 group/vol", !isFullscreen ? "flex" : "hidden md:flex")}>
+              <button
+                onClick={(e) => { e.stopPropagation(); toggleMute(); }}
+                className="p-1.5 md:p-0 text-white hover:text-primary-400 transition-colors flex items-center justify-center active:scale-95"
+                title={isMuted || volume === 0 ? "Unmute" : "Mute"}
+                aria-label={isMuted || volume === 0 ? "Unmute" : "Mute"}
+              >
                 {isMuted || volume === 0 ? <VolumeX size={18} className="md:w-4.5 md:h-4.5" /> : <Volume2 size={18} className="md:w-4.5 md:h-4.5" />}
               </button>
-              <div className="w-0 overflow-hidden md:group-hover/vol:w-20 active:w-20 transition-all duration-300 flex items-center">
+              <div className="hidden md:flex w-0 overflow-hidden md:group-hover/vol:w-20 active:w-20 transition-all duration-300 items-center">
                 <input
                   type="range"
                   min="0"
@@ -2664,7 +2824,7 @@ const OmniPlayer = forwardRef<OmniPlayerRef, OmniPlayerProps>(({
                   step="0.05"
                   value={isMuted ? 0 : volume}
                   onChange={handleVolumeChange}
-                  className="w-16 md:w-full h-1 accent-red-600 cursor-pointer bg-white/20 rounded-full pointer-events-auto"
+                  className="w-16 md:w-full h-1 accent-red-600 cursor-pointer bg-white/20 rounded-full"
                   onClick={(e) => e.stopPropagation()}
                   onTouchStart={(e) => e.stopPropagation()}
                   onTouchMove={(e) => e.stopPropagation()}
@@ -2814,14 +2974,35 @@ const OmniPlayer = forwardRef<OmniPlayerRef, OmniPlayerProps>(({
                     onTouchStart={(e) => e.stopPropagation()}
                     onTouchMove={(e) => e.stopPropagation()}
                     onTouchEnd={(e) => e.stopPropagation()}
-                    style={{ maxHeight: `${menuMaxHeight}px` }}
-                    className="absolute bottom-11 sm:bottom-12 right-0 bg-zinc-950/95 backdrop-blur-3xl border border-white/10 ring-1 ring-white/10 rounded-2xl shadow-[0_8px_40px_rgba(0,0,0,0.85)] p-2 w-48 sm:w-56 max-w-[calc(100vw-24px)] overflow-hidden overscroll-contain z-[75] flex flex-col animate-in slide-in-from-bottom-2"
+                    style={{ maxHeight: trackSubtitles.length > 5 ? `${Math.max(menuMaxHeight, isMobile ? 240 : 340)}px` : `${menuMaxHeight}px` }}
+                    className={cn(
+                      "absolute bottom-11 sm:bottom-12 right-0 bg-zinc-950/95 backdrop-blur-3xl border border-white/10 ring-1 ring-white/10 rounded-2xl shadow-[0_8px_40px_rgba(0,0,0,0.85)] p-2.5 max-w-[calc(100vw-24px)] overflow-hidden overscroll-contain z-[75] flex flex-col animate-in slide-in-from-bottom-2",
+                      trackSubtitles.length > 5 ? "w-[290px] sm:w-[380px] md:w-[440px]" : "w-48 sm:w-56"
+                    )}
                   >
-                    <button onClick={(e) => { e.stopPropagation(); setActiveMenu('subSettings'); }} className="flex items-center gap-1.5 text-[10px] px-2 py-1 rounded-xl text-left font-black text-primary-500 hover:bg-white/5 transition-all mb-1 border-b border-white/10 shrink-0"><Settings size={12} /> CAPTION SETTINGS</button>
-                    <div className="overflow-y-auto flex-1 flex flex-col gap-1 custom-scrollbar">
-                      <button onClick={(e) => { e.stopPropagation(); changeSubtitle(-1); }} className={cn("text-[10px] px-2.5 py-1.5 rounded-xl text-left font-bold transition-all active:scale-95 shrink-0", currentSubtitle === -1 ? "bg-gradient-to-r from-primary-600 to-primary-500 text-white shadow-md shadow-primary-500/25 border border-primary-500/50" : "hover:bg-white/10 hover:shadow-inner text-zinc-400")}>Off</button>
+                    <div className="flex items-center justify-between gap-1 mb-1.5 pb-1.5 border-b border-white/10 shrink-0">
+                      <button onClick={(e) => { e.stopPropagation(); setActiveMenu('subSettings'); }} className="flex items-center gap-1.5 text-[10px] px-2 py-1 rounded-lg font-black text-primary-400 hover:text-primary-300 hover:bg-white/5 transition-all"><Settings size={12} /> CAPTION SETTINGS</button>
+                      <button onClick={(e) => { e.stopPropagation(); changeSubtitle(-1); }} className={cn("text-[10px] px-2.5 py-1 rounded-lg font-bold transition-all active:scale-95", currentSubtitle === -1 ? "bg-gradient-to-r from-primary-600 to-primary-500 text-white shadow-sm border border-primary-500/50" : "text-zinc-400 hover:text-white hover:bg-white/10")}>Off</button>
+                    </div>
+                    <div className={cn(
+                      "overflow-y-auto flex-1 custom-scrollbar pr-0.5",
+                      trackSubtitles.length > 5 ? "grid grid-cols-2 gap-1.5" : "flex flex-col gap-1"
+                    )}>
                       {trackSubtitles.map((t, i) => (
-                        <button key={i} onClick={(e) => { e.stopPropagation(); changeSubtitle(i); }} className={cn("text-[10px] px-2.5 py-1.5 rounded-xl text-left font-bold transition-all truncate active:scale-95 shrink-0", currentSubtitle === i ? "bg-gradient-to-r from-primary-600 to-primary-500 text-white shadow-md shadow-primary-500/25 border border-primary-500/50" : "hover:bg-white/10 hover:shadow-inner text-zinc-400")}>{t.label || t.name || t.lang}</button>
+                        <button
+                          key={i}
+                          onClick={(e) => { e.stopPropagation(); changeSubtitle(i); }}
+                          className={cn(
+                            "text-[10px] sm:text-[10.5px] px-2.5 py-1.5 rounded-xl text-left font-medium transition-all active:scale-95 truncate flex items-center justify-between gap-1",
+                            currentSubtitle === i
+                              ? "bg-gradient-to-r from-primary-600 to-primary-500 text-white font-bold shadow-md shadow-primary-500/25 border border-primary-500/50"
+                              : "hover:bg-white/10 hover:shadow-inner text-zinc-300 bg-white/[0.03] border border-white/[0.05]"
+                          )}
+                          title={t.label || t.name || t.lang}
+                        >
+                          <span className="truncate">{t.label || t.name || t.lang}</span>
+                          {currentSubtitle === i && <Check size={12} className="shrink-0 text-white" />}
+                        </button>
                       ))}
                     </div>
                   </div>
@@ -2835,9 +3016,115 @@ const OmniPlayer = forwardRef<OmniPlayerRef, OmniPlayerProps>(({
                     onTouchMove={(e) => e.stopPropagation()}
                     onTouchEnd={(e) => e.stopPropagation()}
                     style={{ maxHeight: `${menuMaxHeight}px` }}
-                    className="absolute bottom-11 sm:bottom-12 right-0 bg-zinc-950/95 backdrop-blur-3xl border border-white/10 ring-1 ring-white/10 rounded-2xl shadow-[0_8px_40px_rgba(0,0,0,0.9)] p-3 w-[260px] sm:w-64 max-w-[calc(100vw-24px)] overflow-y-auto overscroll-contain custom-scrollbar z-[75] flex flex-col gap-2.5 animate-in slide-in-from-bottom-2"
+                    className="absolute bottom-11 sm:bottom-12 right-0 bg-zinc-950/95 backdrop-blur-3xl border border-white/10 ring-1 ring-white/10 rounded-2xl shadow-[0_8px_40px_rgba(0,0,0,0.9)] p-3 w-[275px] sm:w-72 max-w-[calc(100vw-24px)] overflow-y-auto overscroll-contain custom-scrollbar z-[75] flex flex-col gap-2.5 animate-in slide-in-from-bottom-2"
                   >
-                    <div className="flex items-center gap-1.5 text-[10px] sm:text-xs font-black text-zinc-400 border-b border-white/10 pb-1.5 shrink-0"><button onClick={(e) => { e.stopPropagation(); setActiveMenu('subs') }} className="hover:text-white"><ChevronLeft size={13} /></button> CAPTION STYLE</div>
+                    {/* Header */}
+                    <div className="flex items-center justify-between text-[10px] sm:text-xs font-black text-zinc-400 border-b border-white/10 pb-1.5 shrink-0">
+                      <div className="flex items-center gap-1.5">
+                        <button onClick={(e) => { e.stopPropagation(); setActiveMenu('subs') }} className="hover:text-white transition-colors">
+                          <ChevronLeft size={13} />
+                        </button>
+                        <span>CAPTION CONTROLS</span>
+                      </div>
+                      <span className="text-[9px] uppercase font-mono font-bold px-2 py-0.5 rounded-full bg-primary-500/15 text-primary-400 border border-primary-500/30">
+                        {effectiveAudioTrack.toUpperCase()} • {subOffset === 0 ? 'SYNCED' : `${subOffset > 0 ? '+' : ''}${subOffset.toFixed(2)}s`}
+                      </span>
+                    </div>
+
+                    {/* Subtitle Alignment & Sync Section */}
+                    <div className="space-y-1.5 p-2 rounded-xl bg-white/[0.04] border border-white/[0.08]">
+                      <div className="flex items-center justify-between text-[9px] sm:text-[10px] font-bold uppercase text-zinc-300">
+                        <span className="flex items-center gap-1.5">
+                          <Clock size={11} className="text-primary-400" />
+                          <span>TIME ALIGNMENT</span>
+                        </span>
+                        <span className={cn(
+                          "font-mono font-bold px-1.5 py-0.5 rounded text-[8.5px]",
+                          subOffset === 0 ? "text-zinc-400 bg-white/5" : subOffset > 0 ? "text-emerald-400 bg-emerald-500/15" : "text-amber-400 bg-amber-500/15"
+                        )}>
+                          {subOffset > 0 ? `+${subOffset.toFixed(2)}s (Advance)` : subOffset < 0 ? `${subOffset.toFixed(2)}s (Delay)` : `0.00s (Default)`}
+                        </span>
+                      </div>
+
+                      {/* Stepper Buttons */}
+                      <div className="grid grid-cols-5 gap-1 pt-0.5">
+                        <button
+                          type="button"
+                          onClick={(e) => { e.stopPropagation(); updateSubOffset(prev => prev - 1.0); }}
+                          title="Delay -1.0s"
+                          className="py-1 px-0.5 rounded-lg text-[9px] font-mono font-black text-zinc-300 hover:text-white bg-white/5 hover:bg-white/10 border border-white/5 transition-all active:scale-95 text-center"
+                        >
+                          -1.0s
+                        </button>
+                        <button
+                          type="button"
+                          onClick={(e) => { e.stopPropagation(); updateSubOffset(prev => prev - 0.25); }}
+                          title="Delay -0.25s (Hotkeys: [ or Z)"
+                          className="py-1 px-0.5 rounded-lg text-[9px] font-mono font-black text-zinc-300 hover:text-white bg-white/5 hover:bg-white/10 border border-white/5 transition-all active:scale-95 text-center"
+                        >
+                          -0.25s
+                        </button>
+                        <button
+                          type="button"
+                          onClick={(e) => { e.stopPropagation(); updateSubOffset(0); }}
+                          title="Reset to 0.0s (Hotkeys: \ or G)"
+                          className={cn(
+                            "py-1 px-0.5 rounded-lg text-[9px] font-black uppercase transition-all active:scale-95 text-center",
+                            subOffset === 0
+                              ? "bg-primary-500/20 text-primary-300 border border-primary-500/40"
+                              : "text-zinc-400 hover:text-white bg-white/5 hover:bg-white/10 border border-white/5"
+                          )}
+                        >
+                          0.0s
+                        </button>
+                        <button
+                          type="button"
+                          onClick={(e) => { e.stopPropagation(); updateSubOffset(prev => prev + 0.25); }}
+                          title="Advance +0.25s (Hotkeys: ] or X)"
+                          className="py-1 px-0.5 rounded-lg text-[9px] font-mono font-black text-zinc-300 hover:text-white bg-white/5 hover:bg-white/10 border border-white/5 transition-all active:scale-95 text-center"
+                        >
+                          +0.25s
+                        </button>
+                        <button
+                          type="button"
+                          onClick={(e) => { e.stopPropagation(); updateSubOffset(prev => prev + 1.0); }}
+                          title="Advance +1.0s"
+                          className="py-1 px-0.5 rounded-lg text-[9px] font-mono font-black text-zinc-300 hover:text-white bg-white/5 hover:bg-white/10 border border-white/5 transition-all active:scale-95 text-center"
+                        >
+                          +1.0s
+                        </button>
+                      </div>
+
+                      {/* Precision Slider */}
+                      <div className="space-y-1 pt-1">
+                        <div className="flex items-center justify-between text-[8px] text-zinc-500 font-mono">
+                          <span>-10.0s</span>
+                          <span className="text-[7.5px] uppercase tracking-wider text-zinc-400">Sync Slider</span>
+                          <span>+10.0s</span>
+                        </div>
+                        <input
+                          type="range"
+                          min="-10"
+                          max="10"
+                          step="0.1"
+                          value={subOffset}
+                          onChange={(e) => {
+                            e.stopPropagation();
+                            updateSubOffset(parseFloat(e.target.value), false);
+                          }}
+                          className="w-full accent-primary-500 bg-white/10 rounded-full h-1 cursor-pointer"
+                          onClick={(e) => e.stopPropagation()}
+                          onTouchStart={(e) => e.stopPropagation()}
+                          onTouchMove={(e) => e.stopPropagation()}
+                        />
+                      </div>
+
+                      <div className="text-[8px] text-zinc-400/80 font-mono text-center pt-0.5">
+                        Keys: <span className="text-zinc-300 font-bold">[</span> / <span className="text-zinc-300 font-bold">]</span> or <span className="text-zinc-300 font-bold">Z</span> / <span className="text-zinc-300 font-bold">X</span> (0.25s) • <span className="text-zinc-300 font-bold">\</span> (Reset)
+                      </div>
+                    </div>
+
+                    <div className="text-[10px] font-black text-zinc-400 border-b border-white/10 pb-1 mt-1 shrink-0 uppercase tracking-wider">Appearance</div>
                     <div className="space-y-1"><span className="text-[9px] sm:text-[10px] font-bold text-zinc-400 uppercase">Color</span><div className="flex gap-1.5 flex-wrap">{Object.keys(SUB_COLORS).map((c) => (<button key={c} onClick={(e) => { e.stopPropagation(); updateLocalPrefs({ subStyle: { color: c } }) }} className={cn("w-5 h-5 sm:w-6 sm:h-6 rounded-full border transition-all active:scale-90 shrink-0", subStyle.color === c ? "border-white scale-110 shadow-md" : "border-transparent opacity-60")} style={{ background: SUB_COLORS[c as keyof typeof SUB_COLORS] }} />))}</div></div>
                     <div className="space-y-1"><span className="text-[9px] sm:text-[10px] font-bold text-zinc-400 uppercase">Size</span><div className="flex gap-1 bg-white/5 rounded-xl p-1">{Object.keys(SUB_SIZES).map((s) => (<button key={s} onClick={(e) => { e.stopPropagation(); updateLocalPrefs({ subStyle: { size: s } }) }} className={cn("flex-1 py-1 rounded-lg text-[9px] sm:text-[10px] font-bold transition-all active:scale-90 shrink-0", subStyle.size === s ? "bg-white text-black shadow-sm" : "text-zinc-400 hover:text-zinc-200")}>{s}</button>))}</div></div>
                     <div className="space-y-1"><span className="text-[9px] sm:text-[10px] font-bold text-zinc-400 uppercase">Background</span><div className="flex gap-1 bg-white/5 rounded-xl p-1 overflow-x-auto scrollbar-hide">{Object.keys(SUB_BACKGROUNDS).map((b) => (<button key={b} onClick={(e) => { e.stopPropagation(); updateLocalPrefs({ subStyle: { bg: b } }) }} className={cn("px-2 py-1 rounded-lg text-[9px] sm:text-[10px] font-bold transition-all active:scale-90 whitespace-nowrap shrink-0", subStyle.bg === b ? "bg-white text-black shadow-sm" : "text-zinc-400 hover:text-zinc-200")}>{b}</button>))}</div></div>
@@ -2851,7 +3138,7 @@ const OmniPlayer = forwardRef<OmniPlayerRef, OmniPlayerProps>(({
                         max="100"
                         value={subStyle.opacity ?? 75}
                         onChange={(e) => { e.stopPropagation(); updateLocalPrefs({ subStyle: { opacity: parseInt(e.target.value) } }) }}
-                        className="w-full accent-primary-500 bg-white/10 rounded-full h-1 cursor-pointer pointer-events-auto"
+                        className="w-full accent-primary-500 bg-white/10 rounded-full h-1 cursor-pointer"
                         onClick={(e) => e.stopPropagation()}
                         onTouchStart={(e) => e.stopPropagation()}
                         onTouchMove={(e) => e.stopPropagation()}
@@ -2865,15 +3152,6 @@ const OmniPlayer = forwardRef<OmniPlayerRef, OmniPlayerProps>(({
               </div>
             )}
 
-            {castAvailable && (
-              <button
-                onClick={(e) => { e.stopPropagation(); handleCast(); }}
-                className="hidden sm:flex hover:text-primary-500 transition-colors active:scale-90 w-9 h-9 sm:w-10 sm:h-10 md:w-auto md:h-auto items-center justify-center p-1 md:p-0 text-white"
-                title="Cast / AirPlay"
-              >
-                <Cast size={18} className="md:w-4.5 md:h-4.5" />
-              </button>
-            )}
             <button
               onClick={(e) => { e.stopPropagation(); togglePiP(); }}
               className={cn(
@@ -2882,7 +3160,7 @@ const OmniPlayer = forwardRef<OmniPlayerRef, OmniPlayerProps>(({
               )}
               title={isPiPActive ? "Exit Picture-in-Picture" : "Picture-in-Picture"}
             >
-              <PictureInPicture size={18} className="md:w-4.5 md:h-4.5" />
+              <PictureInPicture2 size={18} className="md:w-4.5 md:h-4.5" />
             </button>
             <button
               onClick={(e) => { e.stopPropagation(); toggleFullscreen(); }}

@@ -680,10 +680,10 @@ const AvatarCard = React.memo(function AvatarCard({
       className="flex flex-col items-center gap-1.5 w-full focus:outline-none group transition-transform duration-150 active:scale-95 hover:scale-105"
     >
       <div
-        className={`relative w-full aspect-square rounded-xl overflow-hidden border transition-colors duration-150 ${
+        className={`relative w-full aspect-square rounded-2xl overflow-hidden border transition-all duration-200 ${
           isSelected
-            ? 'border-primary ring-1 ring-primary/40'
-            : 'border-white/10 group-hover:border-white/30'
+            ? 'border-purple-500 ring-2 ring-purple-500/50 shadow-[0_0_15px_rgba(168,85,247,0.4)]'
+            : 'border-white/10 group-hover:border-purple-400/50 group-hover:shadow-[0_8px_20px_rgba(0,0,0,0.6)]'
         }`}
       >
         <img
@@ -788,82 +788,95 @@ export default function AvatarSelectorModal({
   const modalContent = (
     <AnimatePresence>
       <div
-        className="fixed inset-0 z-[1100] flex items-center justify-center p-4 bg-black/80 backdrop-blur-md"
+        className="fixed inset-0 z-[99990] flex items-center justify-center pt-[66px] pb-[76px] sm:pt-[70px] sm:pb-[82px] px-2 sm:px-4 md:px-6 bg-black/80 backdrop-blur-md overflow-hidden"
         onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
       >
         <motion.div
-          initial={{ scale: 0.95, opacity: 0, y: 12 }}
+          initial={{ scale: 0.96, opacity: 0, y: 12 }}
           animate={{ scale: 1, opacity: 1, y: 0 }}
-          exit={{ scale: 0.95, opacity: 0, y: 12 }}
-          transition={{ duration: 0.2, ease: 'easeOut' }}
-          className="relative w-full max-w-lg md:max-w-xl bg-[#0a0a12]/95 backdrop-blur-2xl border border-white/15 rounded-3xl shadow-[0_25px_60px_rgba(0,0,0,0.9)] flex flex-col overflow-hidden mx-auto"
-          style={{ maxHeight: 'min(82dvh, 580px)' }}
+          exit={{ scale: 0.96, opacity: 0, y: 12 }}
+          transition={{ duration: 0.22, ease: [0.16, 1, 0.3, 1] }}
+          className="relative w-full max-w-5xl xl:max-w-6xl 2xl:max-w-7xl h-full max-h-full bg-[#0a0a12]/95 backdrop-blur-2xl border border-white/15 rounded-3xl shadow-[0_25px_60px_rgba(0,0,0,0.9)] flex flex-col overflow-hidden mx-auto"
         >
           {/* ── Header ── */}
-          <div className="flex items-center justify-between px-5 pt-4 pb-3 border-b border-white/5 shrink-0">
-            <div className="flex items-center gap-2.5">
+          <div className="flex items-center justify-between px-5 sm:px-6 pt-4 pb-3 border-b border-white/10 shrink-0">
+            <div className="flex items-center gap-2.5 sm:gap-3">
               {onBack && (
                 <button
                   onClick={onBack}
                   title="Back to media panel"
-                  className="w-7 h-7 flex items-center justify-center rounded-lg bg-white/5 hover:bg-white/10 text-zinc-400 hover:text-white transition-colors border border-white/10"
+                  className="w-8 h-8 flex items-center justify-center rounded-xl bg-white/5 hover:bg-white/10 text-zinc-400 hover:text-white transition-colors border border-white/10 active:scale-95"
                 >
-                  <ArrowLeft size={14} />
+                  <ArrowLeft size={15} />
                 </button>
               )}
-              <UserCircle size={16} className="text-primary" />
-              <span className="text-sm font-black text-white tracking-wide">
+              <UserCircle size={18} className="text-purple-400 shrink-0" />
+              <span className="text-sm sm:text-base font-black text-white tracking-wide">
                 {isGuest ? 'Choose Your Avatar' : 'Avatar Library'}
               </span>
               {isGuest && (
-                <span className="flex items-center gap-1 text-[9px] bg-primary/10 text-primary border border-primary/20 px-2 py-0.5 rounded-full font-bold">
+                <span className="flex items-center gap-1 text-[9px] bg-purple-500/15 text-purple-300 border border-purple-500/30 px-2 py-0.5 rounded-full font-bold">
                   TRAVELLER
                 </span>
               )}
               {!isGuest && (
-                <span className="text-[9px] bg-white/5 text-zinc-500 px-2 py-0.5 rounded-full font-bold">
+                <span className="hidden sm:inline-flex text-[9px] bg-white/5 text-zinc-400 border border-white/10 px-2.5 py-0.5 rounded-full font-bold">
                   {ANIME_AVATARS.length} chars • 33 Anime Series
                 </span>
               )}
             </div>
-            <button onClick={onClose} className="w-7 h-7 flex items-center justify-center rounded-full hover:bg-white/8 text-zinc-500 hover:text-white transition-colors">
-              <X size={15} />
+            <button 
+              onClick={onClose} 
+              aria-label="Close modal"
+              className="w-8 h-8 flex items-center justify-center rounded-full bg-white/5 hover:bg-white/10 text-zinc-400 hover:text-white border border-white/10 transition-colors active:scale-90"
+            >
+              <X size={16} />
             </button>
           </div>
 
           {/* ── Search (Liquid Glass) ── */}
-          <div className="px-4 pt-3.5 pb-2.5 shrink-0 space-y-2 border-b border-white/10 bg-white/[0.02]">
+          <div className="px-4 sm:px-6 pt-3.5 pb-2.5 shrink-0 border-b border-white/10 bg-white/[0.02]">
             <div className="relative group">
-              <Search size={14} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-purple-300/60 group-focus-within:text-purple-400 transition-colors pointer-events-none z-10" />
+              <Search size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-purple-300/60 group-focus-within:text-purple-400 transition-colors pointer-events-none z-10" />
               <input
                 type="text"
                 placeholder={isGuest ? 'Search funny avatars…' : 'Search character or anime…'}
                 value={searchQuery}
                 onChange={e => setSearchQuery(e.target.value)}
-                className="w-full bg-white/[0.08] backdrop-blur-2xl border border-white/20 focus:border-purple-400/70 rounded-2xl pl-9 pr-4 py-2.5 text-xs text-white placeholder-zinc-400/60 outline-none shadow-[0_8px_32px_rgba(0,0,0,0.4)] focus:shadow-[0_0_25px_rgba(168,85,247,0.4)] transition-all duration-300"
+                className="w-full bg-white/[0.06] backdrop-blur-2xl border border-white/15 focus:border-purple-400/70 rounded-2xl pl-10 pr-10 py-2.5 text-xs sm:text-sm text-white placeholder-zinc-400/60 outline-none shadow-[0_8px_32px_rgba(0,0,0,0.4)] focus:shadow-[0_0_25px_rgba(168,85,247,0.4)] transition-all duration-300"
               />
+              {searchQuery && (
+                <button
+                  type="button"
+                  onClick={() => setSearchQuery('')}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 w-5 h-5 rounded-full bg-white/10 hover:bg-white/20 text-zinc-400 hover:text-white flex items-center justify-center transition-colors"
+                >
+                  <X size={12} />
+                </button>
+              )}
             </div>
           </div>
 
           {/* ── Avatar Grid ── */}
-          <div className="flex-1 overflow-y-auto px-4 pb-4 pt-2 min-h-0">
+          <div className="flex-1 overflow-y-auto px-4 sm:px-6 pb-6 pt-3 min-h-0 custom-scrollbar overscroll-contain">
             {!hasResults ? (
-              <div className="flex flex-col items-center justify-center py-16 text-zinc-700">
-                <Search size={28} className="mb-2 opacity-30" />
-                <p className="text-xs font-bold uppercase tracking-wider">No results</p>
+              <div className="flex flex-col items-center justify-center py-20 text-zinc-500">
+                <Search size={32} className="mb-2 opacity-30 text-purple-400" />
+                <p className="text-xs font-bold uppercase tracking-wider text-zinc-400">No matching characters found</p>
+                <p className="text-[11px] text-zinc-600 mt-1">Try another anime title or character name</p>
               </div>
             ) : (
-              <div className="space-y-6 mt-2">
+              <div className="space-y-6 sm:space-y-8 mt-1">
                 {Object.entries(groupedAvatars).map(([category, avatars]) => (
                   <div key={category}>
-                    <h3 className="text-xs font-bold text-zinc-400 uppercase tracking-widest mb-3 pl-1 flex items-center gap-2">
-                      {category === 'Funny Picks' ? '😄 Funny Picks' : category}
-                      <span className="text-[9px] font-semibold text-zinc-600 bg-white/5 px-1.5 py-0.5 rounded-md">
+                    <div className="text-xs font-bold text-zinc-400 uppercase tracking-widest mb-3 pl-1 flex items-center gap-2.5">
+                      <span>{category === 'Funny Picks' ? '😄 Funny Picks' : category}</span>
+                      <span className="text-[9px] font-semibold text-purple-300/80 bg-purple-500/15 border border-purple-500/25 px-2 py-0.5 rounded-full">
                         {avatars.length}
                       </span>
-                      <div className="h-px bg-white/10 flex-1"></div>
-                    </h3>
-                    <div className="grid grid-cols-4 sm:grid-cols-5 gap-2">
+                      <div className="h-px bg-gradient-to-r from-white/10 to-transparent flex-1" />
+                    </div>
+                    <div className="grid grid-cols-4 sm:grid-cols-5 md:grid-cols-6 lg:grid-cols-8 xl:grid-cols-9 2xl:grid-cols-10 gap-2.5 sm:gap-3">
                       {avatars.map((avatar) => (
                         <AvatarCard
                           key={avatar.id}
@@ -882,9 +895,9 @@ export default function AvatarSelectorModal({
 
           {/* ── Footer note for travellers ── */}
           {isGuest && (
-            <div className="px-5 py-3 border-t border-white/5 shrink-0">
-              <p className="text-[10px] text-zinc-600 text-center">
-                Create an account to unlock <span className="text-zinc-400 font-bold">{ANIME_AVATARS.length}+</span> character avatars
+            <div className="px-5 py-3 border-t border-white/5 shrink-0 bg-white/[0.01]">
+              <p className="text-[10px] text-zinc-500 text-center">
+                Create an account to unlock <span className="text-purple-400 font-bold">{ANIME_AVATARS.length}+</span> character avatars
               </p>
             </div>
           )}

@@ -22,8 +22,8 @@ export const SectionCardSkeleton = ({ withBottomInfo = false }: { withBottomInfo
     <div className="relative w-full aspect-[2/3] bg-white/[0.03] rounded-2xl md:rounded-[22px] overflow-hidden border border-white/[0.06] shadow-sm">
       <PulseLayer />
       {/* Top badges placeholder */}
-      <div className="absolute top-2.5 left-2.5 h-4.5 w-10 bg-white/10 rounded-full" />
-      <div className="absolute top-2.5 right-2.5 h-4.5 w-8 bg-white/10 rounded-full" />
+      <div className="absolute top-1.5 left-1.5 h-4 sm:h-5 w-10 bg-white/10 rounded-full" />
+      <div className="absolute top-1.5 right-1.5 h-4 sm:h-5 w-8 bg-white/10 rounded-full" />
       {/* Bottom title & pill placeholder */}
       <div className="absolute bottom-2.5 inset-x-2.5 flex flex-col gap-1.5 z-10">
         <div className="h-3 w-3/4 bg-white/15 rounded-md relative overflow-hidden"><PulseLayer /></div>

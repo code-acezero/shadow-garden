@@ -2821,7 +2821,7 @@ export default function ProfilePage() {
 
             {/* EDIT PROFILE MODAL */}
             <Dialog open={isEditing} onOpenChange={setIsEditing}>
-                <DialogContent className="bg-[#262626] border-none text-white max-w-md rounded-xl p-0 overflow-hidden" aria-describedby={undefined}>
+                <DialogContent className="bg-[#12121c]/95 backdrop-blur-3xl border border-white/15 text-white max-w-lg sm:max-w-xl w-[94vw] max-h-[calc(100dvh-156px)] rounded-3xl p-0 flex flex-col overflow-hidden shadow-2xl z-[99990]" aria-describedby={undefined}>
                     <DialogHeader className="p-4 border-b border-zinc-700">
                         <DialogTitle className="text-center font-bold text-base">Edit Profile</DialogTitle>
                     </DialogHeader>
@@ -2980,7 +2980,7 @@ export default function ProfilePage() {
 
             {/* AVATAR UPLOAD MODAL (Antigravity Redesign) */}
             <Dialog open={showAvatarModal} onOpenChange={setShowAvatarModal}>
-                <DialogContent className="bg-[#0a0a12]/90 backdrop-blur-3xl border border-white/15 text-white max-w-[420px] rounded-[32px] p-0 overflow-hidden shadow-[0_25px_60px_rgba(0,0,0,0.9)]" aria-describedby={undefined}>
+                <DialogContent className="bg-[#0a0a12]/90 backdrop-blur-3xl border border-white/15 text-white max-w-lg sm:max-w-xl w-[94vw] max-h-[calc(100dvh-156px)] rounded-[32px] p-0 flex flex-col overflow-hidden shadow-[0_25px_60px_rgba(0,0,0,0.9)] z-[99990]" aria-describedby={undefined}>
                     {/* Header with background blur gradient */}
                     <div className="relative px-6 pt-6 pb-4 border-b border-white/10 bg-gradient-to-b from-purple-500/10 via-transparent to-transparent flex items-center justify-between">
                         <div>
@@ -3003,7 +3003,7 @@ export default function ProfilePage() {
                     </div>
 
                     {/* Action Cards Grid */}
-                    <div className="p-5 space-y-3">
+                    <div className="p-5 space-y-3 flex-1 overflow-y-auto custom-scrollbar">
                         {/* Option 1: Avatar Library */}
                         <button 
                             onClick={() => { setShowAvatarModal(false); setAvatarLibraryModalOpen(true); }}
@@ -3103,7 +3103,7 @@ export default function ProfilePage() {
 
             {/* FOLLOWERS MODAL (INSTAGRAM-STYLE) */}
             <Dialog open={showFollowersModal} onOpenChange={setShowFollowersModal}>
-                <DialogContent className="bg-[#1c1c20] border border-white/10 text-white max-w-md rounded-2xl p-0 overflow-hidden shadow-2xl" aria-describedby={undefined}>
+                <DialogContent className="bg-[#1c1c20] border border-white/10 text-white max-w-md w-[94vw] max-h-[calc(100dvh-156px)] rounded-2xl p-0 flex flex-col overflow-hidden shadow-2xl z-[99990]" aria-describedby={undefined}>
                     <DialogHeader className="p-4 border-b border-zinc-800">
                         <DialogTitle className="text-center font-bold text-base text-white">Followers</DialogTitle>
                     </DialogHeader>
@@ -3124,7 +3124,7 @@ export default function ProfilePage() {
                         </div>
                     </div>
 
-                    <div className="max-h-[380px] overflow-y-auto p-2 divide-y divide-zinc-800/40">
+                    <div className="flex-1 overflow-y-auto p-2 divide-y divide-zinc-800/40 custom-scrollbar">
                         {followersList
                             .filter(u => !followerSearchQuery.trim() || (u.username && u.username.toLowerCase().includes(followerSearchQuery.toLowerCase())) || (u.full_name && u.full_name.toLowerCase().includes(followerSearchQuery.toLowerCase())))
                             .map(u => (
@@ -3159,7 +3159,7 @@ export default function ProfilePage() {
 
             {/* FOLLOWING MODAL (INSTAGRAM-STYLE) */}
             <Dialog open={showFollowingModal} onOpenChange={setShowFollowingModal}>
-                <DialogContent className="bg-[#1c1c20] border border-white/10 text-white max-w-md rounded-2xl p-0 overflow-hidden shadow-2xl" aria-describedby={undefined}>
+                <DialogContent className="bg-[#1c1c20] border border-white/10 text-white max-w-md w-[94vw] max-h-[calc(100dvh-156px)] rounded-2xl p-0 flex flex-col overflow-hidden shadow-2xl z-[99990]" aria-describedby={undefined}>
                     <DialogHeader className="p-4 border-b border-zinc-800">
                         <DialogTitle className="text-center font-bold text-base text-white">Following</DialogTitle>
                     </DialogHeader>

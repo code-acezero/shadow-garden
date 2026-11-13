@@ -51,11 +51,11 @@ export default function IframeAdShield({
   enabled = true,
   className = 'relative w-full h-full',
 }: IframeAdShieldProps) {
-  const containerRef  = useRef<HTMLDivElement>(null);
-  const isOverRef     = useRef(false);          // mouse is over the iframe area
-  const blockedRef    = useRef(0);              // total blocks this session
-  const cooldownRef   = useRef(false);          // debounce duplicate notifications
-  const [blockedCount, setBlockedCount]     = useState(0);
+  const containerRef = useRef<HTMLDivElement>(null);
+  const isOverRef = useRef(false);          // mouse is over the iframe area
+  const blockedRef = useRef(0);              // total blocks this session
+  const cooldownRef = useRef(false);          // debounce duplicate notifications
+  const [blockedCount, setBlockedCount] = useState(0);
 
   // ── Helper: report a blocked event ────────────────────────────────────────
   const reportBlock = useCallback(() => {
@@ -157,28 +157,39 @@ export default function IframeAdShield({
   }, [enabled]);
 
   // ── Mouse tracking & Seamless Page Scroll Bridge ─────────────────────────
-  const [isInteracting, setIsInteracting] = useState(false);
-  const interactTimerRef = useRef<NodeJS.Timeout | null>(null);
+  // Only intercept pointer-events briefly during active page wheel/scroll so clicks reach the player on the very first click.
+  const [isScrollingBridge, setIsScrollingBridge] = useState(false);
+  const scrollTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const onMouseEnter = useCallback(() => { 
-    isOverRef.current = true;  
+  const onMouseEnter = useCallback(() => {
+    isOverRef.current = true;
   }, []);
 
-  const onMouseLeave = useCallback(() => { 
-    isOverRef.current = false; 
-    setIsInteracting(false);
-    if (interactTimerRef.current) clearTimeout(interactTimerRef.current);
+  const onMouseLeave = useCallback(() => {
+    isOverRef.current = false;
+    setIsScrollingBridge(false);
+    if (scrollTimerRef.current) clearTimeout(scrollTimerRef.current);
   }, []);
 
-  const handlePointerDown = useCallback(() => {
-    // User intends to click the video area (play/pause or dismiss embed overlay)
-    setIsInteracting(true);
-    if (interactTimerRef.current) clearTimeout(interactTimerRef.current);
-    // Yield pointer events to iframe briefly, then instantly restore smooth page scrolling
-    interactTimerRef.current = setTimeout(() => {
-      setIsInteracting(false);
-    }, 1200);
-  }, []);
+  useEffect(() => {
+    if (!enabled) return;
+
+    const handleWindowScroll = () => {
+      setIsScrollingBridge(true);
+      if (scrollTimerRef.current) clearTimeout(scrollTimerRef.current);
+      scrollTimerRef.current = setTimeout(() => {
+        setIsScrollingBridge(false);
+      }, 250);
+    };
+
+    window.addEventListener('wheel', handleWindowScroll, { passive: true });
+    window.addEventListener('scroll', handleWindowScroll, { passive: true });
+    return () => {
+      window.removeEventListener('wheel', handleWindowScroll);
+      window.removeEventListener('scroll', handleWindowScroll);
+      if (scrollTimerRef.current) clearTimeout(scrollTimerRef.current);
+    };
+  }, [enabled]);
 
   if (!enabled) return <>{children}</>;
 
@@ -194,16 +205,15 @@ export default function IframeAdShield({
     >
       {children}
 
-      {/* Seamless Page Scroll Bridge over iframe (covers upper 85% of player, bottom 60px kept free for controls) */}
+      {/* Seamless Page Scroll Bridge over iframe (active only while wheel/scroll is moving so first-click Play works immediately) */}
       <div
         className={cn(
-          "absolute top-0 inset-x-0 bottom-16 z-20 cursor-pointer bg-transparent transition-opacity",
-          isInteracting ? "pointer-events-none opacity-0" : "pointer-events-auto opacity-100"
+          "absolute top-0 inset-x-0 bottom-16 z-20 bg-transparent",
+          isScrollingBridge ? "pointer-events-auto" : "pointer-events-none"
         )}
         onWheel={(e) => {
           window.scrollBy({ top: e.deltaY, behavior: 'instant' as any });
         }}
-        onPointerDown={handlePointerDown}
       />
 
       {/* ── Blocked-count badge ── */}

@@ -5,9 +5,9 @@ import React, { useState, useEffect, useRef, useCallback, memo, Suspense, useMem
 import { useParams, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { motion, AnimatePresence, LayoutGroup } from 'framer-motion';
-import { 
-  SkipForward, SkipBack, Server as ServerIcon, Layers, Clock, Play, 
-  Grid, List, LayoutGrid, ChevronDown, Flame, Info, Loader2, Check, X, 
+import {
+  SkipForward, SkipBack, Server as ServerIcon, Layers, Clock, Play,
+  Grid, List, LayoutGrid, ChevronDown, Flame, Info, Loader2, Check, X,
   Download, AlertTriangle, Lightbulb, StepForward, Share2, Users, Star,
   FastForward, Film, Zap, CheckCircle2, ChevronRight, ChevronLeft, MessageSquare,
   RefreshCw, Subtitles, Globe, Volume2, ShieldCheck
@@ -32,7 +32,7 @@ import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/context/AuthContext';
 import { useUserData } from '@/context/UserDataContext';
 import DCard from '@/components/Drama/DCard';
-import CountryBadge from '@/components/Drama/CountryBadge';
+import CountryBadge, { getCountryInfo } from '@/components/Drama/CountryBadge';
 
 // ── Marquee Title Helper ──────────────────────────────────────────────────────
 
@@ -79,6 +79,182 @@ const formatServerLabel = (name?: string) => {
 };
 
 // ── Mobile Player Toolbox (Adaptive Right-to-Left Compaction: 1. Room -> 2. Share -> 3. Download) ──
+// ── Shared Server Picker Dropdown ────────────────────────────────────────────
+
+interface ServerPickerDropdownProps {
+  stream: DramaStream | null;
+  currentServer?: DramaServer;
+  activeServerIdx: number;
+  setActiveServerIdx: (idx: number) => void;
+  align?: 'start' | 'end';
+  compact?: boolean;
+  triggerClassName?: string;
+}
+
+function ServerPickerDropdown({
+  stream,
+  currentServer,
+  activeServerIdx,
+  setActiveServerIdx,
+  align = 'end',
+  compact = false,
+  triggerClassName,
+}: ServerPickerDropdownProps) {
+  if (!stream?.servers || stream.servers.length === 0) return null;
+  const label = formatServerLabel(currentServer?.name);
+
+  return (
+    <DropdownMenu modal={false}>
+      <DropdownMenuTrigger asChild>
+        <button
+          type="button"
+          className={cn(
+            "h-8 rounded-full border border-cyan-400/30 bg-cyan-500/10 hover:bg-cyan-500/20 text-cyan-300 text-[10px] font-black uppercase tracking-wide flex items-center justify-center shrink-0 whitespace-nowrap atrax-bubbly-btn atrax-squish-tap transition-all",
+            compact ? "w-8 p-0" : "px-2.5 gap-1.5",
+            triggerClassName
+          )}
+          title={label}
+          aria-label={`Server: ${label}`}
+        >
+          <ServerIcon size={11} className="shrink-0" />
+          {!compact && (
+            <>
+              <span>{label}</span>
+              <ChevronDown size={10} className="shrink-0 opacity-80" />
+            </>
+          )}
+        </button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align={align} className="bg-[#0c1322] border border-white/[0.12] rounded-2xl shadow-xl z-50 min-w-[165px] p-1.5">
+        <ScrollArea className="h-auto max-h-[200px]">
+          <div className="flex flex-col gap-1">
+            {stream.servers.map((srv, idx) => (
+              <DropdownMenuItem
+                key={idx}
+                onClick={() => setActiveServerIdx(idx)}
+                className={cn(
+                  "cursor-pointer px-2.5 py-1.5 rounded-xl text-[10px] uppercase font-bold tracking-wider transition-all flex items-center justify-between",
+                  activeServerIdx === idx ? "bg-cyan-500 text-black font-black" : "text-zinc-300 hover:bg-white/5"
+                )}
+              >
+                <span>{formatServerLabel(srv.name)}</span>
+                {activeServerIdx === idx && <Check size={10} />}
+              </DropdownMenuItem>
+            ))}
+          </div>
+        </ScrollArea>
+      </DropdownMenuContent>
+    </DropdownMenu>
+  );
+}
+
+// ── Mobile Movie Stream Source Row (Auto-compacts Server only if any letter would clip) ──
+
+interface MovieMobileStreamRowProps {
+  audioMode: 'og' | 'multi';
+  audioLabels: { ogLabel: string; ogShort: string; multiLabel: string; multiShort: string };
+  isMultiAvailable?: boolean;
+  handleAudioModeChange: (mode: 'og' | 'multi') => void;
+  stream: DramaStream | null;
+  currentServer?: DramaServer;
+  activeServerIdx: number;
+  setActiveServerIdx: (idx: number) => void;
+}
+
+const MovieMobileStreamRow = memo(function MovieMobileStreamRow({
+  audioMode,
+  audioLabels,
+  isMultiAvailable = true,
+  handleAudioModeChange,
+  stream,
+  currentServer,
+  activeServerIdx,
+  setActiveServerIdx,
+}: MovieMobileStreamRowProps) {
+  const rowRef = useRef<HTMLDivElement>(null);
+  const audioRef = useRef<HTMLDivElement>(null);
+  const measureServerRef = useRef<HTMLSpanElement>(null);
+  const [serverCompact, setServerCompact] = useState(false);
+
+  const serverLabel = formatServerLabel(currentServer?.name);
+
+  useEffect(() => {
+    const compute = () => {
+      if (!rowRef.current || !audioRef.current || !measureServerRef.current) return;
+      const avail = Math.floor(rowRef.current.getBoundingClientRect().width);
+      const audioW = Math.ceil(audioRef.current.getBoundingClientRect().width);
+      const serverW = Math.ceil(measureServerRef.current.getBoundingClientRect().width);
+      const shouldCompact = audioW + serverW + 10 > avail;
+      setServerCompact((prev) => (prev === shouldCompact ? prev : shouldCompact));
+    };
+
+    compute();
+    const ro = new ResizeObserver(compute);
+    if (rowRef.current) ro.observe(rowRef.current);
+    return () => ro.disconnect();
+  }, [serverLabel, audioLabels.ogLabel, audioLabels.multiLabel, audioLabels.ogShort, audioLabels.multiShort]);
+
+  return (
+    <div ref={rowRef} className="relative flex items-center justify-between gap-2 w-full">
+      {/* Offscreen full server label measurer (zero-crop guarantee) */}
+      <span
+        ref={measureServerRef}
+        aria-hidden="true"
+        className="pointer-events-none invisible fixed -top-[9999px] left-0 inline-flex items-center gap-1.5 h-8 px-2.5 text-[10px] font-black uppercase tracking-wide whitespace-nowrap border border-transparent"
+      >
+        <ServerIcon size={11} />
+        <span>{serverLabel}</span>
+        <ChevronDown size={10} />
+      </span>
+
+      <div ref={audioRef} className="inline-flex items-center gap-0.5 bg-black/50 p-0.5 rounded-full border border-white/[0.08] shrink-0">
+        <button
+          type="button"
+          onClick={() => handleAudioModeChange('og')}
+          className={cn(
+            "px-2 sm:px-2.5 h-7 rounded-full text-[9px] font-black uppercase tracking-wider transition-all whitespace-nowrap active:scale-95",
+            audioMode === 'og'
+              ? "bg-cyan-500 text-black shadow-sm"
+              : "text-zinc-400 hover:text-white"
+          )}
+          title={`Original Audio (${audioLabels.ogLabel})`}
+        >
+          <span className="sm:hidden">{audioLabels.ogShort}</span>
+          <span className="hidden sm:inline">{audioLabels.ogLabel}</span>
+        </button>
+        <button
+          type="button"
+          disabled={!isMultiAvailable}
+          onClick={() => isMultiAvailable && handleAudioModeChange('multi')}
+          className={cn(
+            "px-2 sm:px-2.5 h-7 rounded-full text-[9px] font-black uppercase tracking-wider transition-all whitespace-nowrap active:scale-95",
+            audioMode === 'multi'
+              ? "bg-cyan-500 text-black shadow-sm font-black"
+              : isMultiAvailable
+                ? "text-zinc-400 hover:text-white"
+                : "opacity-35 cursor-not-allowed pointer-events-none text-zinc-600"
+          )}
+          title={isMultiAvailable ? audioLabels.multiLabel : "Dubbing unavailable for this title"}
+        >
+          <span className="sm:hidden">{audioLabels.multiShort}</span>
+          <span className="hidden sm:inline">{audioLabels.multiLabel}</span>
+        </button>
+      </div>
+
+      <ServerPickerDropdown
+        stream={stream}
+        currentServer={currentServer}
+        activeServerIdx={activeServerIdx}
+        setActiveServerIdx={setActiveServerIdx}
+        align="end"
+        compact={serverCompact}
+      />
+    </div>
+  );
+});
+MovieMobileStreamRow.displayName = "MovieMobileStreamRow";
+
+// ── Mobile Player Toolbox (Space-Aware: Shows Full Names Only When Uncropped) ──
 
 interface FlixverseMobileCockpitProps {
   drama: DramaDetail;
@@ -91,8 +267,16 @@ interface FlixverseMobileCockpitProps {
   activeServerIdx: number;
   setActiveServerIdx: (idx: number) => void;
   handleCreateWatchRoom: () => void;
-  dimMode?: boolean;
-  onToggleDimMode?: () => void;
+  visibilityClassName?: string;
+  showServer?: boolean;
+}
+
+interface CockpitFitState {
+  serverCompact: boolean;
+  listMode: 'full' | 'short' | 'icon';
+  showDownloadText: boolean;
+  showShareText: boolean;
+  showRoomText: boolean;
 }
 
 const FlixverseMobileCockpit = memo(function FlixverseMobileCockpit({
@@ -106,125 +290,157 @@ const FlixverseMobileCockpit = memo(function FlixverseMobileCockpit({
   activeServerIdx,
   setActiveServerIdx,
   handleCreateWatchRoom,
-  dimMode,
-  onToggleDimMode
+  visibilityClassName = "flex sm:hidden",
+  showServer = true,
 }: FlixverseMobileCockpitProps) {
   const rowRef = useRef<HTMLDivElement>(null);
-  const watchlistRef = useRef<HTMLDivElement>(null);
-  const downloadRef = useRef<HTMLAnchorElement>(null);
-  const shareRef = useRef<HTMLButtonElement>(null);
-  const roomRef = useRef<HTMLButtonElement>(null);
-
-  const [rowWidth, setRowWidth] = useState<number>(0);
-  const [watchlistWidth, setWatchlistWidth] = useState<number>(140);
-
-  // Compaction Stage (Right-to-Left priority: 1. Room -> 2. Share -> 3. Download):
-  // Stage 0: All expanded (Download, Share, Room all show text)
-  // Stage 1: Room compacts first (Share, Download show text; Room is icon-only)
-  // Stage 2: Share compacts second (Download shows text; Share & Room are icon-only)
-  // Stage 3: Download compacts third (All are compact icon-only)
-  const [stage, setStage] = useState<number>(3);
+  const mServerRef = useRef<HTMLSpanElement>(null);
+  const mListFullRef = useRef<HTMLSpanElement>(null);
+  const mListShortRef = useRef<HTMLSpanElement>(null);
+  const mDlRef = useRef<HTMLSpanElement>(null);
+  const mShareRef = useRef<HTMLSpanElement>(null);
+  const mRoomRef = useRef<HTMLSpanElement>(null);
 
   const hasDownload = Boolean(currentEpId);
-  const hasServer = Boolean(stream?.servers && stream.servers.length > 0);
+  const hasServer = showServer && Boolean(stream?.servers && stream.servers.length > 0);
+  const serverLabel = formatServerLabel(currentServer?.name);
 
-  useEffect(() => {
-    if (!rowRef.current) return;
-    const measure = () => {
-      if (!rowRef.current) return;
-      setRowWidth(rowRef.current.clientWidth);
-      if (watchlistRef.current) {
-        setWatchlistWidth(watchlistRef.current.offsetWidth || 140);
-      }
-    };
-    measure();
-    const ro = new ResizeObserver(measure);
-    ro.observe(rowRef.current);
-    return () => ro.disconnect();
-  }, []);
-
-  useEffect(() => {
-    if (rowWidth <= 0) return;
-    const serverWidth = hasServer ? 82 : 0;
-    const bulbWidth = onToggleDimMode ? 32 : 0;
-    const baseNeeded = (watchlistWidth || 140) + serverWidth + bulbWidth + (hasDownload ? 32 : 0) + 32 + 32 + 24;
-    const free = rowWidth - baseNeeded;
-
-    let calculatedStage = 3;
-    if (hasDownload) {
-      if (free >= 250) {
-        calculatedStage = 0; // All 3 fit with generous clearance
-      } else if (free >= 175) {
-        calculatedStage = 1; // 1. Room compacts first
-      } else if (free >= 105) {
-        calculatedStage = 2; // 2. Share compacts second
-      } else {
-        calculatedStage = 3; // 3. Download compacts third (all compact)
-      }
-    } else {
-      if (free >= 140) {
-        calculatedStage = 0;
-      } else if (free >= 70) {
-        calculatedStage = 1;
-      } else {
-        calculatedStage = 2;
-      }
-    }
-    setStage(calculatedStage);
-  }, [rowWidth, watchlistWidth, hasDownload, hasServer, onToggleDimMode]);
-
-  // Active Multi-Ref Overflow Guard: If any button text or the container overflows,
-  // immediately step down compaction stage from right to left so no text is EVER cut off!
-  useEffect(() => {
-    if (!rowRef.current) return;
-    const rowOverflows = rowRef.current.scrollWidth > rowRef.current.clientWidth + 1;
-    const downloadOverflows = downloadRef.current && (downloadRef.current.scrollWidth > downloadRef.current.clientWidth + 1);
-    const shareOverflows = shareRef.current && (shareRef.current.scrollWidth > shareRef.current.clientWidth + 1);
-    const roomOverflows = roomRef.current && (roomRef.current.scrollWidth > roomRef.current.clientWidth + 1);
-
-    if (rowOverflows || downloadOverflows || shareOverflows || roomOverflows) {
-      setStage(prev => (prev < 3 ? prev + 1 : prev));
-    }
+  const [fit, setFit] = useState<CockpitFitState>({
+    serverCompact: false,
+    listMode: 'short',
+    showDownloadText: false,
+    showShareText: false,
+    showRoomText: false,
   });
 
-  const showDownloadText = hasDownload && stage < 3;
-  const showShareText = stage < 2;
-  const showRoomText = stage < 1;
+  useEffect(() => {
+    const computeFit = () => {
+      if (!rowRef.current) return;
+      const avail = Math.floor(rowRef.current.getBoundingClientRect().width);
+      if (avail <= 0) return;
+
+      const ICON = 32;
+      const GAP = 6;
+      const SAFETY = 10; // buffer between left & right clusters + subpixel guard
+
+      const slotCount = (hasServer ? 1 : 0) + 1 + (hasDownload ? 1 : 0) + 2;
+      let used = slotCount * ICON + Math.max(0, slotCount - 1) * GAP + SAFETY;
+
+      const wServer = hasServer && mServerRef.current ? Math.ceil(mServerRef.current.getBoundingClientRect().width) : ICON;
+      const wListFull = mListFullRef.current ? Math.ceil(mListFullRef.current.getBoundingClientRect().width) : 112;
+      const wListShort = mListShortRef.current ? Math.ceil(mListShortRef.current.getBoundingClientRect().width) : 64;
+      const wDl = hasDownload && mDlRef.current ? Math.ceil(mDlRef.current.getBoundingClientRect().width) : 96;
+      const wShare = mShareRef.current ? Math.ceil(mShareRef.current.getBoundingClientRect().width) : 74;
+      const wRoom = mRoomRef.current ? Math.ceil(mRoomRef.current.getBoundingClientRect().width) : 72;
+
+      let serverCompact = true;
+      if (hasServer) {
+        const delta = Math.max(0, wServer - ICON);
+        if (used + delta <= avail) {
+          used += delta;
+          serverCompact = false;
+        }
+      }
+
+      let listMode: 'full' | 'short' | 'icon' = 'icon';
+      const listFullDelta = Math.max(0, wListFull - ICON);
+      const listShortDelta = Math.max(0, wListShort - ICON);
+      if (used + listFullDelta <= avail) {
+        used += listFullDelta;
+        listMode = 'full';
+      } else if (used + listShortDelta <= avail) {
+        used += listShortDelta;
+        listMode = 'short';
+      }
+
+      let showDownloadText = false;
+      if (hasDownload) {
+        const delta = Math.max(0, wDl - ICON);
+        if (used + delta <= avail) {
+          used += delta;
+          showDownloadText = true;
+        }
+      }
+
+      let showShareText = false;
+      const shareDelta = Math.max(0, wShare - ICON);
+      if (used + shareDelta <= avail) {
+        used += shareDelta;
+        showShareText = true;
+      }
+
+      let showRoomText = false;
+      const roomDelta = Math.max(0, wRoom - ICON);
+      if (used + roomDelta <= avail) {
+        used += roomDelta;
+        showRoomText = true;
+      }
+
+      setFit((prev) =>
+        prev.serverCompact === serverCompact &&
+          prev.listMode === listMode &&
+          prev.showDownloadText === showDownloadText &&
+          prev.showShareText === showShareText &&
+          prev.showRoomText === showRoomText
+          ? prev
+          : { serverCompact, listMode, showDownloadText, showShareText, showRoomText }
+      );
+    };
+
+    computeFit();
+    const ro = new ResizeObserver(computeFit);
+    if (rowRef.current) ro.observe(rowRef.current);
+    return () => ro.disconnect();
+  }, [hasDownload, hasServer, serverLabel]);
 
   return (
-    <div ref={rowRef} className="flex sm:hidden w-full items-center justify-between gap-1.5 border-t border-white/[0.06] pt-2 overflow-hidden">
-      {hasServer && (
-        <DropdownMenu modal={false}>
-          <DropdownMenuTrigger asChild>
-            <button className="h-8 px-2.5 rounded-full border border-cyan-400/30 bg-cyan-500/10 text-cyan-300 text-[10px] font-black uppercase flex items-center gap-1 shrink-0 atrax-bubbly-btn atrax-squish-tap shadow-sm">
-              <ServerIcon size={11} />
-              <span className="truncate max-w-[70px]">{formatServerLabel(currentServer?.name)}</span>
-              <ChevronDown size={10} />
-            </button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="start" className="bg-[#0c1322] border border-white/[0.12] rounded-2xl shadow-xl z-50 min-w-[150px] p-1.5">
-            <ScrollArea className="h-auto max-h-[190px]">
-              <div className="flex flex-col gap-1">
-                {stream?.servers.map((srv, idx) => (
-                  <DropdownMenuItem 
-                    key={idx} 
-                    onClick={() => setActiveServerIdx(idx)} 
-                    className={cn(
-                      "cursor-pointer px-2.5 py-1.5 rounded-xl text-[9px] uppercase font-bold tracking-wider transition-all flex items-center justify-between",
-                      activeServerIdx === idx ? "bg-cyan-500 text-black font-black" : "text-zinc-300 hover:bg-white/5"
-                    )}
-                  >
-                    <span>{formatServerLabel(srv.name)}</span>
-                    {activeServerIdx === idx && <Check size={10} />}
-                  </DropdownMenuItem>
-                ))}
-              </div>
-            </ScrollArea>
-          </DropdownMenuContent>
-        </DropdownMenu>
-      )}
+    <div ref={rowRef} className={cn(visibilityClassName, "relative w-full items-center justify-between gap-1.5 border-t border-white/[0.06] pt-2")}>
+      {/* Offscreen exact-class measurers (zero-crop guarantee: shows full name only if every character fits) */}
+      <div aria-hidden="true" className="pointer-events-none invisible fixed -top-[9999px] left-0 flex items-center gap-1.5 whitespace-nowrap">
+        {hasServer && (
+          <span ref={mServerRef} className="inline-flex items-center gap-1.5 h-8 px-2.5 text-[10px] font-black uppercase tracking-wide border border-transparent">
+            <ServerIcon size={11} />
+            <span>{serverLabel}</span>
+            <ChevronDown size={10} />
+          </span>
+        )}
+        <span ref={mListFullRef} className="inline-flex items-center gap-1.5 h-8 px-3 text-[10px] font-black uppercase tracking-wider border border-transparent">
+          <Clock size={14} />
+          <span>Add to List</span>
+        </span>
+        <span ref={mListShortRef} className="inline-flex items-center gap-1.5 h-8 px-3 text-[10px] font-black uppercase tracking-wider border border-transparent">
+          <Clock size={14} />
+          <span>List</span>
+        </span>
+        {hasDownload && (
+          <span ref={mDlRef} className="inline-flex items-center gap-1.5 h-8 px-3 text-[10px] font-black uppercase tracking-wider border border-transparent">
+            <Download size={12} />
+            <span>Download</span>
+          </span>
+        )}
+        <span ref={mShareRef} className="inline-flex items-center gap-1.5 h-8 px-3 text-[10px] font-black uppercase tracking-wider border border-transparent">
+          <Share2 size={12} />
+          <span>Share</span>
+        </span>
+        <span ref={mRoomRef} className="inline-flex items-center gap-1.5 h-8 px-3 text-[10px] font-black uppercase tracking-wider border border-transparent">
+          <Users size={12} />
+          <span>Room</span>
+        </span>
+      </div>
 
-      <div ref={watchlistRef} className="shrink-0">
+      {/* Left: Optional Server Dropdown + Watchlist */}
+      <div className="flex items-center gap-1.5 min-w-0">
+        {hasServer && (
+          <ServerPickerDropdown
+            stream={stream}
+            currentServer={currentServer}
+            activeServerIdx={activeServerIdx}
+            setActiveServerIdx={setActiveServerIdx}
+            align="start"
+            compact={fit.serverCompact}
+          />
+        )}
+
         <WatchListButton
           animeId={drama.id}
           animeTitle={drama.title}
@@ -233,92 +449,82 @@ const FlixverseMobileCockpit = memo(function FlixverseMobileCockpit({
           mediaType={isMovie ? "movie" : "drama"}
           totalEpisodes={drama.episodes?.length || 1}
           type={isMovie ? "Movie" : "Drama"}
+          compact
+          labelMode={fit.listMode}
         />
       </div>
 
-      {hasDownload && (
-        <Link
-          ref={downloadRef}
-          href={`/download/drama/${slug}?ep=${currentEpId}`}
-          className={cn(
-            "h-8 rounded-full border border-white/[0.08] bg-[#141d30] hover:bg-cyan-500 hover:border-cyan-400 hover:text-black text-zinc-300 flex items-center justify-center transition-all active:scale-95 atrax-bubbly-btn atrax-squish-tap shrink-0 shadow-sm",
-            showDownloadText ? "px-3 gap-1.5" : "w-8 p-0"
-          )}
-          title="Download Media"
-        >
-          <Download size={12} className="shrink-0" />
-          {showDownloadText && (
-            <span className="whitespace-nowrap select-none font-black uppercase tracking-wider text-[9px] shrink-0">
-              Download
-            </span>
-          )}
-        </Link>
-      )}
-
-      <PostShareModal
-        mediaData={{
-          id: drama.id,
-          title: drama.title,
-          poster: drama.image,
-          synopsis: drama.synopsis,
-          type: isMovie ? 'Movie' : 'Drama',
-          rating: drama.rating || '8.2',
-          totalEpisodes: drama.episodes?.length || 0,
-          episodeNumber: currentEp?.number || 1,
-          url: typeof window !== 'undefined' ? window.location.href : `/stream/${drama.id}${isMovie ? '?type=movie' : ''}`
-        }}
-        trigger={
-          <button
-            ref={shareRef}
-            type="button"
+      {/* Right: Download, Share & Watch Room */}
+      <div className="flex items-center gap-1.5 shrink-0">
+        {hasDownload && (
+          <Link
+            href={`/download/drama/${slug}?ep=${currentEpId}`}
             className={cn(
-              "h-8 rounded-full border border-white/[0.08] bg-[#141d30] text-zinc-300 hover:text-white hover:bg-cyan-500/20 hover:border-cyan-400/40 flex items-center justify-center transition-all active:scale-95 atrax-bubbly-btn atrax-squish-tap shrink-0 shadow-sm",
-              showShareText ? "px-3 gap-1.5" : "w-8 p-0"
+              "h-8 rounded-full border border-white/[0.08] bg-white/[0.04] hover:bg-cyan-500 hover:border-cyan-400 hover:text-black text-zinc-300 flex items-center justify-center transition-all active:scale-95 atrax-bubbly-btn atrax-squish-tap shrink-0",
+              fit.showDownloadText ? "px-3 gap-1.5" : "w-8 p-0"
             )}
-            title="Share"
+            title="Download"
+            aria-label="Download"
           >
-            <Share2 size={12} className="shrink-0" />
-            {showShareText && (
-              <span className="whitespace-nowrap select-none font-black uppercase tracking-wider text-[9px] shrink-0">
-                Share
+            <Download size={12} className="shrink-0" />
+            {fit.showDownloadText && (
+              <span className="whitespace-nowrap font-black uppercase tracking-wider text-[10px]">
+                Download
               </span>
             )}
-          </button>
-        }
-      />
-
-      <button
-        ref={roomRef}
-        type="button"
-        onClick={handleCreateWatchRoom}
-        className={cn(
-          "h-8 rounded-full border border-white/[0.08] bg-[#141d30] text-zinc-300 hover:text-white hover:bg-cyan-500/20 hover:border-cyan-400/40 flex items-center justify-center transition-all active:scale-95 atrax-bubbly-btn atrax-squish-tap shrink-0 shadow-sm",
-          showRoomText ? "px-3 gap-1.5" : "w-8 p-0"
+          </Link>
         )}
-        title="Create Watch Room"
-      >
-        <Users size={12} className="shrink-0" />
-        {showRoomText && (
-          <span className="whitespace-nowrap select-none font-black uppercase tracking-wider text-[9px] shrink-0">
-            Room
-          </span>
-        )}
-      </button>
 
-      {onToggleDimMode && (
-        <Button
-          onClick={onToggleDimMode}
-          variant="ghost"
-          size="icon"
+        <PostShareModal
+          mediaData={{
+            id: drama.id,
+            title: drama.title,
+            poster: drama.image,
+            synopsis: drama.synopsis,
+            type: isMovie ? 'Movie' : 'Drama',
+            rating: drama.rating || '8.2',
+            totalEpisodes: drama.episodes?.length || 0,
+            episodeNumber: currentEp?.number || 1,
+            url: typeof window !== 'undefined' ? window.location.href : `/stream/${drama.id}${isMovie ? '?type=movie' : ''}`
+          }}
+          trigger={
+            <button
+              type="button"
+              className={cn(
+                "h-8 rounded-full border border-white/[0.08] bg-white/[0.04] text-zinc-300 hover:text-white hover:bg-white/[0.09] flex items-center justify-center transition-all active:scale-95 atrax-bubbly-btn atrax-squish-tap shrink-0",
+                fit.showShareText ? "px-3 gap-1.5" : "w-8 p-0"
+              )}
+              title="Share"
+              aria-label="Share"
+            >
+              <Share2 size={12} className="shrink-0" />
+              {fit.showShareText && (
+                <span className="whitespace-nowrap font-black uppercase tracking-wider text-[10px]">
+                  Share
+                </span>
+              )}
+            </button>
+          }
+        />
+
+        <button
+          type="button"
+          onClick={handleCreateWatchRoom}
           className={cn(
-            "rounded-full w-8 h-8 shrink-0 border border-white/[0.08] bg-[#141d30] transition-all atrax-bubbly-btn atrax-squish-tap shadow-sm",
-            dimMode ? "text-yellow-300 bg-yellow-400/20 border-yellow-500/40" : "text-zinc-400 hover:text-white"
+            "h-8 rounded-full border border-white/[0.08] bg-white/[0.04] text-zinc-300 hover:text-white hover:bg-white/[0.09] flex items-center justify-center transition-all active:scale-95 atrax-bubbly-btn atrax-squish-tap shrink-0",
+            fit.showRoomText ? "px-3 gap-1.5" : "w-8 p-0"
           )}
-          title="Theater Dim Mode"
+          title="Watch Room"
+          aria-label="Watch Room"
         >
-          <Lightbulb size={12} />
-        </Button>
-      )}
+          <Users size={12} className="shrink-0" />
+          {fit.showRoomText && (
+            <span className="whitespace-nowrap font-black uppercase tracking-wider text-[10px]">
+              Room
+            </span>
+          )}
+        </button>
+      </div>
     </div>
   );
 });
@@ -342,15 +548,15 @@ const EpisodeButton = memo(({ ep, isCurrent, isPlayed, viewMode, onClick }: Epis
       onClick={() => onClick(ep.id)}
       className={cn(
         "relative overflow-hidden group border select-none transition-colors duration-200 transform-gpu active:scale-95 hover:scale-[1.03] text-center font-bold",
-        viewMode === 'grid' 
-          ? "h-8 sm:h-9 w-full rounded-full flex items-center justify-center text-[10px] sm:text-[11px] font-black" 
-          : viewMode === 'compact' 
-            ? "h-7 sm:h-8 w-full aspect-square rounded-full flex items-center justify-center text-[9px] font-bold" 
+        viewMode === 'grid'
+          ? "h-8 sm:h-9 w-full rounded-full flex items-center justify-center text-[10px] sm:text-[11px] font-black"
+          : viewMode === 'compact'
+            ? "h-7 sm:h-8 w-full aspect-square rounded-full flex items-center justify-center text-[9px] font-bold"
             : "w-full h-8 sm:h-9 rounded-2xl flex items-center px-3 sm:px-4 text-[10px] sm:text-[11px] font-bold text-left justify-start",
-        isCurrent 
-          ? "bg-slate-900/60 backdrop-blur-md border-0 text-white z-20 shadow-[0_0_15px_rgba(168,85,247,0.25)]" 
-          : isPlayed 
-            ? "bg-purple-950/30 backdrop-blur-md border-purple-800/40 text-purple-300 hover:border-purple-600/60" 
+        isCurrent
+          ? "bg-slate-900/60 backdrop-blur-md border-0 text-white z-20 shadow-[0_0_15px_rgba(168,85,247,0.25)]"
+          : isPlayed
+            ? "bg-purple-950/30 backdrop-blur-md border-purple-800/40 text-purple-300 hover:border-purple-600/60"
             : "bg-white/[0.03] backdrop-blur-md border-white/[0.06] text-zinc-400 hover:border-cyan-400/40 hover:bg-white/[0.08] hover:text-white"
       )}
     >
@@ -468,8 +674,8 @@ const CastCharactersBlock = ({ characters, cast }: { characters?: any[]; cast?: 
           const avatar = char.profile || char.profileLarge || char.image || char.poster;
 
           return (
-            <div 
-              key={char.id || `${actorName}-${idx}`} 
+            <div
+              key={char.id || `${actorName}-${idx}`}
               onClick={() => setSelectedCast({
                 id: char.id,
                 name: actorName,
@@ -504,10 +710,10 @@ const CastCharactersBlock = ({ characters, cast }: { characters?: any[]; cast?: 
         })}
       </div>
 
-      <CastDetailModal 
-        isOpen={Boolean(selectedCast)} 
-        onClose={() => setSelectedCast(null)} 
-        data={selectedCast} 
+      <CastDetailModal
+        isOpen={Boolean(selectedCast)}
+        onClose={() => setSelectedCast(null)}
+        data={selectedCast}
       />
     </div>
   );
@@ -527,10 +733,10 @@ const STRICT_RELATION_TYPES = new Set([
   'CHARACTER'
 ]);
 
-const RelatedTitlesBlock = ({ 
-  related, 
-  className = "xl:col-span-12 w-full" 
-}: { 
+const RelatedTitlesBlock = ({
+  related,
+  className = "xl:col-span-12 w-full"
+}: {
   related?: DramaCard[];
   className?: string;
 }) => {
@@ -640,7 +846,7 @@ const CinemaIntelPanel = ({ drama, isMovie = false }: CinemaIntelPanelProps) => 
         toast.success("Stream link copied to clipboard!");
         setTimeout(() => setCopied(false), 2000);
       }
-    } catch {}
+    } catch { }
   };
 
   const formattedRelease = useMemo(() => {
@@ -651,7 +857,7 @@ const CinemaIntelPanel = ({ drama, isMovie = false }: CinemaIntelPanelProps) => 
         if (!isNaN(d.getTime())) {
           return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
         }
-      } catch {}
+      } catch { }
     }
     return drama.year || null;
   }, [drama.releaseDate, drama.year]);
@@ -1018,7 +1224,7 @@ export function DramaWatchContent() {
       if (prev.has(id)) return prev;
       const next = new Set(prev);
       next.add(id);
-      try { localStorage.setItem(`shadow_drama_played_${slug}`, JSON.stringify([...next])); } catch {}
+      try { localStorage.setItem(`shadow_drama_played_${slug}`, JSON.stringify([...next])); } catch { }
       return next;
     });
   }, [slug]);
@@ -1055,7 +1261,7 @@ export function DramaWatchContent() {
                 .slice(0, 10);
             }
           }
-        } catch {}
+        } catch { }
       }
 
       setDrama(data);
@@ -1066,9 +1272,9 @@ export function DramaWatchContent() {
         if (urlEp) {
           const paramStr = String(urlEp).trim();
           const paramNum = Number(paramStr);
-          const found = data.episodes.find(e => 
-            String(e.id) === paramStr || 
-            String(e.number) === paramStr || 
+          const found = data.episodes.find(e =>
+            String(e.id) === paramStr ||
+            String(e.number) === paramStr ||
             (!isNaN(paramNum) && Number(e.number) === paramNum)
           );
           if (found) target = found.id;
@@ -1120,9 +1326,9 @@ export function DramaWatchContent() {
     setActiveServerIdx(0);
   }, [audioMode]);
 
-  // Dynamic Adapting Audio Labels (e.g. KOREAN (OG), JAPANESE (OG), ENGLISH (OG) / HINDI / MULTI)
+  // Dynamic Adapting Audio Labels (e.g. KOREAN, JAPANESE, ENGLISH / DUB / MULTI, and compact KO, JA, EN)
   const audioLabels = useMemo(() => {
-    if (!drama) return { ogLabel: 'OG AUDIO', multiLabel: 'MULTI / HINDI' };
+    if (!drama) return { ogLabel: 'ORIGINAL', ogShort: 'OG', multiLabel: 'DUB / MULTI', multiShort: 'DUB' };
 
     const lang = (drama.originalLanguage || '').toLowerCase();
     const country = (drama.country || '').toLowerCase();
@@ -1134,33 +1340,101 @@ export function DramaWatchContent() {
       country.includes('bollywood')
     );
 
-    let ogLabel = 'OG AUDIO';
+    let ogLabel = 'ORIGINAL';
+    let ogShort = 'OG';
+
     if (lang === 'ko' || country.includes('korea') || type.includes('k-drama')) {
-      ogLabel = 'KOREAN (OG)';
+      ogLabel = 'KOREAN';
+      ogShort = 'KO';
     } else if (lang === 'ja' || country.includes('japan') || type.includes('j-drama')) {
-      ogLabel = 'JAPANESE (OG)';
-    } else if (lang === 'zh' || country.includes('china') || country.includes('taiwan') || type.includes('c-drama')) {
-      ogLabel = 'CHINESE (OG)';
+      ogLabel = 'JAPANESE';
+      ogShort = 'JA';
+    } else if (lang === 'zh' || lang === 'cn' || country.includes('china') || country.includes('taiwan') || type.includes('c-drama')) {
+      ogLabel = 'CHINESE';
+      ogShort = 'ZH';
     } else if (lang === 'th' || country.includes('thai')) {
-      ogLabel = 'THAI (OG)';
+      ogLabel = 'THAI';
+      ogShort = 'TH';
     } else if (lang === 'tr' || country.includes('turk')) {
-      ogLabel = 'TURKISH (OG)';
+      ogLabel = 'TURKISH';
+      ogShort = 'TR';
     } else if (isHindi) {
-      ogLabel = 'HINDI (OG)';
+      ogLabel = 'HINDI';
+      ogShort = 'HI';
     } else if (lang === 'en' || country.includes('hollywood') || country.includes('usa') || country.includes('uk') || country.includes('english')) {
-      ogLabel = 'ENGLISH (OG)';
-    } else if (lang === 'es' || country.includes('spain')) {
-      ogLabel = 'SPANISH (OG)';
+      ogLabel = 'ENGLISH';
+      ogShort = 'EN';
+    } else if (lang === 'es' || country.includes('spain') || country.includes('mexic')) {
+      ogLabel = 'SPANISH';
+      ogShort = 'ES';
     } else if (lang === 'fr' || country.includes('france')) {
-      ogLabel = 'FRENCH (OG)';
+      ogLabel = 'FRENCH';
+      ogShort = 'FR';
     } else if (lang === 'de' || country.includes('german')) {
-      ogLabel = 'GERMAN (OG)';
+      ogLabel = 'GERMAN';
+      ogShort = 'DE';
+    } else if (lang === 'id' || country.includes('indonesia')) {
+      ogLabel = 'INDONESIAN';
+      ogShort = 'ID';
+    } else if (lang === 'it' || country.includes('ital')) {
+      ogLabel = 'ITALIAN';
+      ogShort = 'IT';
+    } else if (lang === 'pt' || country.includes('portug') || country.includes('brazil')) {
+      ogLabel = 'PORTUGUESE';
+      ogShort = 'PT';
+    } else if (lang === 'ru' || country.includes('russia')) {
+      ogLabel = 'RUSSIAN';
+      ogShort = 'RU';
+    } else if (lang === 'vi' || country.includes('vietnam')) {
+      ogLabel = 'VIETNAMESE';
+      ogShort = 'VI';
+    } else if (lang === 'ta') {
+      ogLabel = 'TAMIL';
+      ogShort = 'TA';
+    } else if (lang === 'te') {
+      ogLabel = 'TELUGU';
+      ogShort = 'TE';
+    } else if (lang === 'ml') {
+      ogLabel = 'MALAYALAM';
+      ogShort = 'ML';
+    } else if (lang === 'kn') {
+      ogLabel = 'KANNADA';
+      ogShort = 'KN';
+    } else if (lang === 'bn' || country.includes('bangla')) {
+      ogLabel = 'BENGALI';
+      ogShort = 'BN';
     }
 
-    const multiLabel = isHindi ? 'ENG / MULTI' : 'HINDI / MULTI';
+    const multiLabel = isHindi ? 'ENG / MULTI' : 'DUB / MULTI';
+    const multiShort = isHindi ? 'ENG' : 'DUB';
 
-    return { ogLabel, multiLabel };
+    return { ogLabel, ogShort, multiLabel, multiShort };
   }, [drama]);
+
+  // Determine whether secondary audio (DUB / MULTI) is actually available
+  const isMultiAvailable = useMemo(() => {
+    if (!stream) {
+      return Boolean(drama?.isHindi || (drama as any)?.hasHindiDub);
+    }
+    return Boolean(
+      stream.hasMultiAudio ||
+      (stream.multiServers && stream.multiServers.length > 0) ||
+      (audioMode === 'multi' && stream.servers && stream.servers.length > 0)
+    );
+  }, [stream, drama, audioMode]);
+
+  // Seamless fallback to original audio if multi is active but has 0 available servers
+  useEffect(() => {
+    if (
+      audioMode === 'multi' &&
+      stream &&
+      !stream.hasMultiAudio &&
+      (!stream.multiServers || stream.multiServers.length === 0) &&
+      (!stream.servers || stream.servers.length === 0)
+    ) {
+      setAudioMode('og');
+    }
+  }, [audioMode, stream]);
 
   const currentEpIndex = drama?.episodes.findIndex(e => e.id === currentEpId) ?? -1;
   const currentEp = drama?.episodes[currentEpIndex];
@@ -1226,27 +1500,27 @@ export function DramaWatchContent() {
       `}</style>
 
       {/* Dim Mode Overlay */}
-      <div 
-        onClick={() => setDimMode(false)} 
+      <div
+        onClick={() => setDimMode(false)}
         className={cn(
           "fixed inset-0 bg-black/95 transition-opacity duration-300 will-change-[opacity]",
           dimMode ? 'opacity-100 pointer-events-auto cursor-pointer z-[50]' : 'opacity-0 pointer-events-none z-[50]'
-        )} 
+        )}
       />
 
       <div className="w-full flex flex-col items-center relative z-10 px-3 sm:px-4 md:px-8 max-w-[1520px] mx-auto pt-2 pb-16">
-        
+
         {/* ══════════════════════════════════════════════════════════════════════
             MODE 1: CINEMA MOVIE WATCH EXPERIENCE (When drama.isMovie is true)
            ══════════════════════════════════════════════════════════════════════ */}
         {isMovie ? (
           <div className="w-full flex flex-col xl:grid xl:grid-cols-12 gap-6 items-stretch">
-            
+
             {/* Left 8-Column: Player + Cinema Controls Bar */}
             <div className="xl:col-span-8 w-full flex flex-col gap-3 order-1">
-              
+
               {/* Player Stage (16:9 Aspect Ratio) */}
-              <div 
+              <div
                 className={cn(
                   "w-full aspect-video bg-[#030712] rounded-2xl md:rounded-3xl overflow-hidden border border-white/[0.08] shadow-[0_8px_32px_rgba(0,0,0,0.5)] relative transition-all duration-300",
                   dimMode ? "z-[60] ring-2 ring-cyan-500/50 shadow-[0_0_60px_rgba(0,0,0,0.9)]" : "z-10"
@@ -1300,10 +1574,76 @@ export function DramaWatchContent() {
               </div>
 
               {/* Movie Cinema Controls Bar */}
-              <div className={cn("w-full bg-[#0c1322] border border-white/[0.12] rounded-[32px] px-5 py-3.5 flex flex-col gap-3 transition-all duration-300 shadow-[0_16px_40px_rgba(0,0,0,0.45)] ring-1 ring-white/[0.05]", dimMode ? "z-[60] relative" : "relative z-10")}>
-                
-                {/* ROW 1: Cinema Edition, Badges & Reload */}
-                <div className="flex w-full justify-between items-center gap-3">
+              <div className={cn("w-full bg-[#0c1322] border border-white/[0.12] rounded-2xl sm:rounded-[32px] px-3.5 py-2.5 sm:px-5 sm:py-3.5 flex flex-col gap-2 sm:gap-3 transition-all duration-300 shadow-[0_16px_40px_rgba(0,0,0,0.45)] ring-1 ring-white/[0.05]", dimMode ? "z-[60] relative" : "relative z-10")}>
+
+                {/* Mobile 3-Row Compact Setup (Row 1: Meta + Tools | Row 2: Audio + Server | Row 3: Cockpit) */}
+                <div className="flex sm:hidden flex-col gap-2">
+                  {/* Mobile Row 1: Compact Metadata Strip + Reload & Theater Dim */}
+                  <div className="flex items-center justify-between gap-2">
+                    <div className="flex items-center gap-1.5 text-[11px] font-medium text-zinc-400 min-w-0 truncate">
+                      {drama.rating && (
+                        <span className="inline-flex items-center gap-0.5 text-amber-300 font-bold shrink-0">
+                          <Star size={10} fill="currentColor" />
+                          {drama.rating}
+                        </span>
+                      )}
+                      {drama.year && (
+                        <span className="shrink-0">{drama.rating ? '· ' : ''}{drama.year}</span>
+                      )}
+                      {drama.runtime && (
+                        <span className="shrink-0">{(drama.rating || drama.year) ? '· ' : ''}{drama.runtime}</span>
+                      )}
+                      {drama.country && (
+                        <span className="uppercase shrink-0">{(drama.rating || drama.year || drama.runtime) ? '· ' : ''}{getCountryInfo(drama.country, drama.type).shortName}</span>
+                      )}
+                      {hasHindiAudio && (
+                        <span className="text-amber-400 font-bold truncate">· Hindi Dub</span>
+                      )}
+                    </div>
+
+                    <div className="flex items-center gap-0.5 shrink-0">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setStreamKey(k => k + 1);
+                          toast.info("Reloading stream player...");
+                        }}
+                        className="w-7 h-7 rounded-full text-zinc-400 hover:text-cyan-400 hover:bg-white/[0.06] flex items-center justify-center transition-colors active:scale-95"
+                        title="Reload Player Stream"
+                        aria-label="Reload Player Stream"
+                      >
+                        <RefreshCw size={13} className={isStreamLoading ? "animate-spin text-cyan-400" : ""} />
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setDimMode(v => !v)}
+                        className={cn(
+                          "w-7 h-7 rounded-full flex items-center justify-center transition-colors active:scale-95",
+                          dimMode ? "text-yellow-400 bg-yellow-500/15" : "text-zinc-400 hover:text-white hover:bg-white/[0.06]"
+                        )}
+                        title="Theater Cinema Mode"
+                        aria-label="Theater Cinema Mode"
+                      >
+                        <Lightbulb size={13} />
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Mobile Row 2: Audio Language Toggle + Auto-Compact Server Selector */}
+                  <MovieMobileStreamRow
+                    audioMode={audioMode}
+                    audioLabels={audioLabels}
+                    isMultiAvailable={isMultiAvailable}
+                    handleAudioModeChange={handleAudioModeChange}
+                    stream={stream}
+                    currentServer={currentServer}
+                    activeServerIdx={activeServerIdx}
+                    setActiveServerIdx={setActiveServerIdx}
+                  />
+                </div>
+
+                {/* Desktop ROW 1: Cinema Edition, Badges & Reload */}
+                <div className="hidden sm:flex w-full justify-between items-center gap-3">
                   <div className="flex items-center gap-2 flex-wrap min-w-0">
                     <span className="bg-gradient-to-r from-cyan-500 to-blue-500 text-black font-black text-[9px] uppercase px-2.5 py-0.5 rounded-full tracking-wider shadow-sm">
                       Cinema Edition
@@ -1325,23 +1665,23 @@ export function DramaWatchContent() {
                   </div>
 
                   <div className="flex items-center gap-2 shrink-0">
-                    <Button 
+                    <Button
                       onClick={() => {
                         setStreamKey(k => k + 1);
                         toast.info("Reloading stream player...");
                       }}
-                      variant="ghost" 
-                      size="icon" 
+                      variant="ghost"
+                      size="icon"
                       className="rounded-xl w-8 h-8 border border-white/[0.08] bg-[#141d30] text-zinc-400 hover:text-cyan-400 hover:bg-cyan-500/10 hover:border-cyan-400/30 transition-all atrax-bubbly-btn atrax-squish-tap shadow-sm"
                       title="Reload Player Stream"
                     >
                       <RefreshCw size={13} className={isStreamLoading ? "animate-spin text-cyan-400" : ""} />
                     </Button>
 
-                    <Button 
-                      onClick={() => setDimMode(v => !v)} 
-                      variant="ghost" 
-                      size="icon" 
+                    <Button
+                      onClick={() => setDimMode(v => !v)}
+                      variant="ghost"
+                      size="icon"
                       className={cn("rounded-xl w-8 h-8 border transition-all atrax-bubbly-btn atrax-squish-tap shadow-sm", dimMode ? "text-yellow-400 bg-yellow-500/20 border-yellow-500/40" : "text-zinc-400 bg-[#141d30] border-white/[0.08] hover:text-white")}
                       title="Theater Cinema Mode"
                     >
@@ -1358,19 +1698,22 @@ export function DramaWatchContent() {
                             ? "bg-cyan-500 text-black shadow-sm"
                             : "text-zinc-400 hover:text-white"
                         )}
-                        title="Original Language Audio"
+                        title={`Original Audio (${audioLabels.ogLabel})`}
                       >
                         {audioLabels.ogLabel}
                       </button>
                       <button
-                        onClick={() => handleAudioModeChange('multi')}
+                        disabled={!isMultiAvailable}
+                        onClick={() => isMultiAvailable && handleAudioModeChange('multi')}
                         className={cn(
                           "px-2.5 h-7 rounded-full text-[9px] font-black uppercase tracking-wider transition-all flex items-center gap-1",
                           audioMode === 'multi'
                             ? "bg-cyan-500 text-black shadow-sm font-black"
-                            : "text-zinc-400 hover:text-white"
+                            : isMultiAvailable
+                              ? "text-zinc-400 hover:text-white"
+                              : "opacity-35 cursor-not-allowed pointer-events-none text-zinc-600"
                         )}
-                        title="Multi-Audio & Dubbed"
+                        title={isMultiAvailable ? audioLabels.multiLabel : "Dubbing unavailable for this title"}
                       >
                         <span>{audioLabels.multiLabel}</span>
                       </button>
@@ -1387,16 +1730,16 @@ export function DramaWatchContent() {
                   </div>
 
                   <div className="flex items-center gap-2 shrink-0">
-                    <WatchListButton 
-                      animeId={drama.id} 
-                      animeTitle={drama.title} 
-                      animeImage={drama.image} 
-                      mediaType="movie" 
-                      totalEpisodes={1} 
-                      type="Movie" 
+                    <WatchListButton
+                      animeId={drama.id}
+                      animeTitle={drama.title}
+                      animeImage={drama.image}
+                      mediaType="movie"
+                      totalEpisodes={1}
+                      type="Movie"
                     />
 
-                    <button 
+                    <button
                       onClick={handleCreateWatchRoom}
                       className="flex items-center gap-1.5 h-8 px-3 rounded-full border border-white/[0.08] bg-[#141d30] text-zinc-300 hover:text-white hover:bg-cyan-500/20 hover:border-cyan-400/40 text-[10px] font-black uppercase tracking-wider transition-all atrax-bubbly-btn atrax-squish-tap shrink-0 shadow-sm"
                       title="Create Watch Room"
@@ -1418,7 +1761,7 @@ export function DramaWatchContent() {
                         url: typeof window !== 'undefined' ? window.location.href : `/stream/${drama.id}?type=movie`
                       }}
                       trigger={
-                        <button 
+                        <button
                           className="flex items-center gap-1.5 h-8 px-3 rounded-full border border-white/[0.08] bg-[#141d30] text-zinc-300 hover:text-white hover:bg-cyan-500/20 hover:border-cyan-400/40 text-[10px] font-black uppercase tracking-wider transition-all atrax-bubbly-btn atrax-squish-tap shrink-0 shadow-sm"
                           title="Share Movie"
                         >
@@ -1429,8 +1772,8 @@ export function DramaWatchContent() {
                     />
 
                     {currentEpId && (
-                      <Link 
-                        href={`/download/drama/${slug}?ep=${currentEpId}`} 
+                      <Link
+                        href={`/download/drama/${slug}?ep=${currentEpId}`}
                         className="flex items-center gap-1.5 px-3 h-8 rounded-full border border-white/[0.08] bg-[#141d30] text-zinc-300 text-[10px] font-black uppercase tracking-widest hover:bg-cyan-500 hover:border-cyan-400 hover:text-black transition-all atrax-bubbly-btn atrax-squish-tap shadow-sm"
                       >
                         <Download size={12} /> <span>Download</span>
@@ -1451,9 +1794,9 @@ export function DramaWatchContent() {
                           <ScrollArea className="h-auto max-h-[220px]">
                             <div className="flex flex-col gap-1">
                               {stream.servers.map((srv, idx) => (
-                                <DropdownMenuItem 
-                                  key={idx} 
-                                  onClick={() => setActiveServerIdx(idx)} 
+                                <DropdownMenuItem
+                                  key={idx}
+                                  onClick={() => setActiveServerIdx(idx)}
                                   className={cn(
                                     "cursor-pointer px-3 py-1.5 rounded-xl text-[9px] uppercase font-bold tracking-wider transition-all flex items-center justify-between",
                                     activeServerIdx === idx ? "bg-cyan-500 text-black font-black" : "text-zinc-300 hover:bg-white/5"
@@ -1471,14 +1814,7 @@ export function DramaWatchContent() {
                   </div>
                 </div>
 
-                {/* Mobile Title Row */}
-                <div className="flex sm:hidden w-full items-center justify-between gap-2 border-t border-white/[0.06] pt-2">
-                  <h1 className="text-sm font-black text-white font-lemon truncate">
-                    {drama.title}
-                  </h1>
-                </div>
-
-                {/* Mobile Player Action Cockpit */}
+                {/* Mobile Player Action Cockpit (Row 3) */}
                 <FlixverseMobileCockpit
                   drama={drama}
                   isMovie={true}
@@ -1490,8 +1826,7 @@ export function DramaWatchContent() {
                   activeServerIdx={activeServerIdx}
                   setActiveServerIdx={setActiveServerIdx}
                   handleCreateWatchRoom={handleCreateWatchRoom}
-                  dimMode={dimMode}
-                  onToggleDimMode={() => setDimMode(v => !v)}
+                  showServer={false}
                 />
 
               </div>
@@ -1499,7 +1834,7 @@ export function DramaWatchContent() {
 
             {/* Right 4-Column: Cinema Lounge Sidebar (Up Next & Franchise Only) */}
             <div className="xl:col-span-4 w-full flex flex-col order-2 xl:max-h-[620px]">
-              <MovieCinemaSidebar 
+              <MovieCinemaSidebar
                 drama={drama}
                 related={drama.related}
                 recommendations={drama.recommendations}
@@ -1509,10 +1844,10 @@ export function DramaWatchContent() {
             {/* Bottom 12-Column: Movie Overview & Details Card with One-Click Trailer */}
             <div className="xl:col-span-12 w-full bg-[#0c1322] rounded-[32px] border border-white/[0.12] p-6 shadow-[0_16px_40px_rgba(0,0,0,0.45)] ring-1 ring-white/[0.05] flex flex-col lg:flex-row gap-6 items-stretch order-3">
               <div className="shrink-0 w-36 sm:w-44 flex flex-col gap-2.5">
-                <img 
-                  src={drama.image || '/images/no-poster.png'} 
-                  alt={drama.title} 
-                  className="w-full aspect-[2/3] object-cover rounded-2xl border border-white/10 shadow-lg" 
+                <img
+                  src={drama.image || '/images/no-poster.png'}
+                  alt={drama.title}
+                  className="w-full aspect-[2/3] object-cover rounded-2xl border border-white/10 shadow-lg"
                 />
                 {/* One-Click Watch Trailer Button Under Poster */}
                 <button
@@ -1599,9 +1934,9 @@ export function DramaWatchContent() {
 
             {/* Movie Comments & Reviews */}
             <div className="xl:col-span-12 w-full pt-4 order-6">
-              <ShadowComments 
+              <ShadowComments
                 key={user?.id || 'guest'}
-                episodeId={`drama-movie-${drama.id}`} 
+                episodeId={`drama-movie-${drama.id}`}
                 themeColor="stream"
               />
             </div>
@@ -1613,12 +1948,12 @@ export function DramaWatchContent() {
               MODE 2: ANIMEPAGE EXACT WATCH LAYOUT (For Dramas & Web Series)
              ══════════════════════════════════════════════════════════════════════ */
           <div className="w-full flex flex-col xl:grid xl:grid-cols-12 gap-6 items-stretch">
-            
+
             {/* Left 8-Column: Player + Desktop & Mobile Animewatch Controls Bar */}
             <div className="xl:col-span-8 w-full flex flex-col gap-3 order-1">
-              
+
               {/* Player Stage */}
-              <div 
+              <div
                 className={cn(
                   "w-full aspect-video bg-[#030712] rounded-2xl md:rounded-3xl overflow-hidden border border-white/[0.08] shadow-[0_8px_32px_rgba(0,0,0,0.5)] relative transition-all duration-300",
                   dimMode ? "z-[60] ring-2 ring-cyan-500/50 shadow-[0_0_60px_rgba(0,0,0,0.9)]" : "z-10"
@@ -1681,10 +2016,10 @@ export function DramaWatchContent() {
 
               {/* Series & Drama Control Box (Desktop - 2 Rows) */}
               <div className={cn("hidden lg:flex w-full bg-[#0c1322] border border-white/[0.12] rounded-[32px] px-5 py-3.5 flex-col gap-3 transition-all duration-300 shadow-[0_16px_40px_rgba(0,0,0,0.45)] ring-1 ring-white/[0.05]", dimMode ? "z-[60] relative" : "relative z-10")}>
-                
+
                 {/* ROW 1: Season Dropdown, Episode Navigation, Automations & Player Reload */}
                 <div className="flex w-full justify-between items-center gap-3">
-                  
+
                   {/* Left: Season + Prev Ep + Current Badge + Next Ep + Auto Next + Reload */}
                   <div className="flex items-center gap-2 flex-nowrap shrink-0">
                     {/* Season Switcher for multi-season TV series */}
@@ -1700,9 +2035,9 @@ export function DramaWatchContent() {
                           <ScrollArea className="h-auto max-h-[220px]">
                             <div className="flex flex-col gap-1">
                               {drama.seasons.map((s) => (
-                                <DropdownMenuItem 
-                                  key={s.seasonNumber} 
-                                  onClick={() => handleSeasonChange(s.seasonNumber)} 
+                                <DropdownMenuItem
+                                  key={s.seasonNumber}
+                                  onClick={() => handleSeasonChange(s.seasonNumber)}
                                   className={cn(
                                     "cursor-pointer px-3 py-1.5 rounded-xl text-[9px] uppercase font-bold tracking-wider transition-all flex items-center justify-between",
                                     activeSeason === s.seasonNumber ? "bg-cyan-500 text-black font-black" : "text-zinc-300 hover:bg-white/5"
@@ -1723,8 +2058,8 @@ export function DramaWatchContent() {
                       onClick={() => prevEp && handleEpClick(prevEp.id)}
                       className={cn(
                         "flex items-center justify-center gap-1.5 px-3.5 h-8 rounded-full border text-[10px] font-black uppercase tracking-tighter transition-all whitespace-nowrap atrax-bubbly-btn atrax-squish-tap shadow-sm",
-                        prevEp 
-                          ? "bg-[#141d30] border-white/[0.10] text-zinc-300 hover:bg-cyan-500 hover:border-cyan-400 hover:text-black" 
+                        prevEp
+                          ? "bg-[#141d30] border-white/[0.10] text-zinc-300 hover:bg-cyan-500 hover:border-cyan-400 hover:text-black"
                           : "opacity-20 border-white/5 text-zinc-600 cursor-not-allowed"
                       )}
                     >
@@ -1798,19 +2133,22 @@ export function DramaWatchContent() {
                             ? "bg-cyan-500 text-black shadow-sm"
                             : "text-zinc-400 hover:text-white"
                         )}
-                        title="Original Language Audio"
+                        title={`Original Audio (${audioLabels.ogLabel})`}
                       >
                         {audioLabels.ogLabel}
                       </button>
                       <button
-                        onClick={() => handleAudioModeChange('multi')}
+                        disabled={!isMultiAvailable}
+                        onClick={() => isMultiAvailable && handleAudioModeChange('multi')}
                         className={cn(
                           "px-2.5 h-7 rounded-full text-[9px] font-black uppercase tracking-wider transition-all flex items-center gap-1",
                           audioMode === 'multi'
                             ? "bg-cyan-500 text-black shadow-sm font-black"
-                            : "text-zinc-400 hover:text-white"
+                            : isMultiAvailable
+                              ? "text-zinc-400 hover:text-white"
+                              : "opacity-35 cursor-not-allowed pointer-events-none text-zinc-600"
                         )}
-                        title="Multi-Audio & Dubbed"
+                        title={isMultiAvailable ? audioLabels.multiLabel : "Dubbing unavailable for this title"}
                       >
                         <span>{audioLabels.multiLabel}</span>
                       </button>
@@ -1840,25 +2178,25 @@ export function DramaWatchContent() {
 
                   <div className="flex items-center gap-2 flex-shrink-0 flex-wrap">
                     {currentEpId && (
-                      <Link 
-                        href={`/download/drama/${slug}?ep=${currentEpId}`} 
+                      <Link
+                        href={`/download/drama/${slug}?ep=${currentEpId}`}
                         className="flex items-center gap-1.5 px-3 h-8 rounded-full border border-white/[0.08] bg-white/[0.04] text-zinc-300 text-[10px] font-black uppercase tracking-widest hover:bg-cyan-500 hover:border-cyan-400 hover:text-black transition-all active:scale-95"
                       >
                         <Download size={12} /> <span>Download</span>
                       </Link>
                     )}
 
-                    <WatchListButton 
-                      animeId={drama.id} 
-                      animeTitle={drama.title} 
-                      animeImage={drama.image} 
-                      currentEp={currentEp?.number} 
-                      mediaType="drama" 
-                      totalEpisodes={drama.episodes?.length || 1} 
-                      type="Drama" 
+                    <WatchListButton
+                      animeId={drama.id}
+                      animeTitle={drama.title}
+                      animeImage={drama.image}
+                      currentEp={currentEp?.number}
+                      mediaType="drama"
+                      totalEpisodes={drama.episodes?.length || 1}
+                      type="Drama"
                     />
 
-                    <button 
+                    <button
                       onClick={handleCreateWatchRoom}
                       className="flex items-center gap-1.5 h-8 px-3 rounded-full border border-white/[0.08] bg-white/[0.04] text-zinc-300 hover:text-white hover:bg-cyan-500/20 hover:border-cyan-400/40 text-[10px] font-black uppercase tracking-wider transition-all active:scale-95 shrink-0"
                       title="Create Watch Room"
@@ -1880,7 +2218,7 @@ export function DramaWatchContent() {
                         url: typeof window !== 'undefined' ? window.location.href : `/stream/${drama.id}?ep=${currentEp?.number || 1}`
                       }}
                       trigger={
-                        <button 
+                        <button
                           className="flex items-center gap-1.5 h-8 px-3 rounded-full border border-white/[0.08] bg-white/[0.04] text-zinc-300 hover:text-white hover:bg-cyan-500/20 hover:border-cyan-400/40 text-[10px] font-black uppercase tracking-wider transition-all active:scale-95 shrink-0"
                           title="Share Episode"
                         >
@@ -1904,9 +2242,9 @@ export function DramaWatchContent() {
                           <ScrollArea className="h-auto max-h-[220px]">
                             <div className="flex flex-col gap-1">
                               {stream.servers.map((srv, idx) => (
-                                <DropdownMenuItem 
-                                  key={idx} 
-                                  onClick={() => setActiveServerIdx(idx)} 
+                                <DropdownMenuItem
+                                  key={idx}
+                                  onClick={() => setActiveServerIdx(idx)}
                                   className={cn(
                                     "cursor-pointer px-3 py-1.5 rounded-xl text-[9px] uppercase font-bold tracking-wider transition-all flex items-center justify-between",
                                     activeServerIdx === idx ? "bg-cyan-500 text-black font-black" : "text-zinc-300 hover:bg-white/5"
@@ -1926,81 +2264,122 @@ export function DramaWatchContent() {
 
               </div>
 
-              {/* Series & Drama Control Bar (Mobile) */}
-              <div className={cn("flex lg:hidden w-full bg-[#0c1322] border border-white/[0.12] rounded-[28px] p-3.5 flex-col gap-3 transition-all duration-300 shadow-[0_16px_40px_rgba(0,0,0,0.45)] ring-1 ring-white/[0.05]", dimMode ? "z-[60] relative" : "relative z-10")}>
-                <div className="flex items-center justify-between gap-2 overflow-hidden">
-                  <div className="flex items-center gap-2 min-w-0 overflow-hidden">
-                    <span className="text-[10px] text-cyan-400 font-black uppercase shrink-0">NOW:</span>
-                    <span className="text-[10px] font-black uppercase tracking-tighter text-zinc-300 truncate">
-                      {currentEp ? (getEpisodeSubtitleOnly(currentEp.number, currentEp.title) ? `S${activeSeason}: EP ${currentEp.number} — ${getEpisodeSubtitleOnly(currentEp.number, currentEp.title)}` : `S${activeSeason}: EP ${currentEp.number}`) : drama.title}
-                    </span>
-                  </div>
-                  <div className="flex items-center gap-1.5 shrink-0">
+              {/* Series & Drama Control Bar (Mobile - Compact 3-Row Layout) */}
+              <div className={cn("flex lg:hidden w-full bg-[#0c1322] border border-white/[0.12] rounded-[26px] p-3 flex-col gap-2.5 transition-all duration-300 shadow-[0_16px_40px_rgba(0,0,0,0.45)] ring-1 ring-white/[0.05]", dimMode ? "z-[60] relative" : "relative z-10")}>
+                {/* Mobile Row 1: Episode Navigation & Quick Tools */}
+                <div className="flex items-center justify-between gap-1.5 w-full">
+                  <div className="flex items-center gap-1.5 min-w-0 flex-1 overflow-x-auto scrollbar-none py-0.5">
+                    {drama.seasons && drama.seasons.length > 1 && (
+                      <DropdownMenu modal={false}>
+                        <DropdownMenuTrigger asChild>
+                          <button className="h-8 px-2.5 rounded-full border border-cyan-400/30 bg-cyan-500/10 text-cyan-300 text-[10px] font-black uppercase flex items-center gap-1 shrink-0 active:scale-95 transition-all shadow-sm">
+                            <span>S{activeSeason}</span>
+                            <ChevronDown size={10} />
+                          </button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="start" className="bg-[#0b101e] border border-white/[0.08] rounded-2xl shadow-xl z-50 min-w-[130px] p-1.5">
+                          <ScrollArea className="h-auto max-h-[180px]">
+                            <div className="flex flex-col gap-1">
+                              {drama.seasons.map((s) => (
+                                <DropdownMenuItem
+                                  key={s.seasonNumber}
+                                  onClick={() => handleSeasonChange(s.seasonNumber)}
+                                  className={cn(
+                                    "cursor-pointer px-2.5 py-1.5 rounded-xl text-[9px] uppercase font-bold tracking-wider transition-all flex items-center justify-between",
+                                    activeSeason === s.seasonNumber ? "bg-cyan-500 text-black font-black" : "text-zinc-300 hover:bg-white/5"
+                                  )}
+                                >
+                                  <span>Season {s.seasonNumber}</span>
+                                  {activeSeason === s.seasonNumber && <Check size={10} />}
+                                </DropdownMenuItem>
+                              ))}
+                            </div>
+                          </ScrollArea>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    )}
+
                     <button
+                      disabled={!prevEp}
+                      onClick={() => prevEp && handleEpClick(prevEp.id)}
+                      className="h-8 px-2.5 rounded-full bg-[#141d30] border border-white/[0.10] flex items-center justify-center gap-1 text-zinc-300 hover:text-white text-[10px] font-black uppercase active:scale-95 disabled:opacity-25 disabled:pointer-events-none transition-all shrink-0 atrax-bubbly-btn atrax-squish-tap shadow-sm"
+                      title="Previous Episode"
+                      aria-label="Previous Episode"
+                    >
+                      <SkipBack size={12} />
+                      <span className="hidden xs:inline">PREV</span>
+                    </button>
+
+                    <div className="h-8 px-2.5 rounded-full bg-cyan-500/15 border border-cyan-400/30 text-cyan-300 text-[10px] font-black uppercase tracking-wider flex items-center justify-center shrink-0 shadow-sm whitespace-nowrap">
+                      <span>{`S${activeSeason} · EP ${currentEp?.number || 1}`}</span>
+                    </div>
+
+                    <button
+                      disabled={!nextEp}
+                      onClick={() => nextEp && handleEpClick(nextEp.id)}
+                      className="h-8 px-2.5 rounded-full bg-[#141d30] border border-white/[0.10] flex items-center justify-center gap-1 text-zinc-300 hover:text-white text-[10px] font-black uppercase active:scale-95 disabled:opacity-25 disabled:pointer-events-none transition-all shrink-0 atrax-bubbly-btn atrax-squish-tap shadow-sm"
+                      title="Next Episode"
+                      aria-label="Next Episode"
+                    >
+                      <span className="hidden xs:inline">NEXT</span>
+                      <SkipForward size={12} />
+                    </button>
+
+                    <button
+                      onClick={() => setIsAutoNext(v => !v)}
+                      className={cn(
+                        "h-8 px-2.5 rounded-full border text-[9px] font-black uppercase tracking-wider transition-all shrink-0 active:scale-95 atrax-bubbly-btn atrax-squish-tap shadow-sm flex items-center gap-1",
+                        isAutoNext ? "bg-cyan-500/20 border-cyan-400/60 text-cyan-300" : "bg-[#141d30] border-white/[0.10] text-zinc-400 hover:text-zinc-200"
+                      )}
+                      title={`Auto Next: ${isAutoNext ? 'ON' : 'OFF'}`}
+                      aria-label={`Auto Next: ${isAutoNext ? 'ON' : 'OFF'}`}
+                    >
+                      <StepForward size={11} className={cn(isAutoNext ? "text-cyan-400" : "text-zinc-500")} />
+                      <span className="hidden xs:inline">AUTO</span>
+                    </button>
+                  </div>
+
+                  <div className="flex items-center gap-1 shrink-0 pl-1 border-l border-white/[0.08]">
+                    <button
+                      type="button"
                       onClick={() => {
                         setStreamKey(k => k + 1);
                         toast.info("Reloading stream player...");
                       }}
-                      className="p-1.5 rounded-lg border border-white/[0.08] bg-white/[0.04] text-zinc-400 hover:text-cyan-400 active:scale-95"
+                      className="w-7 h-7 rounded-full text-zinc-400 hover:text-cyan-400 hover:bg-white/[0.06] flex items-center justify-center transition-colors active:scale-95 shrink-0"
                       title="Reload Player Stream"
+                      aria-label="Reload Player Stream"
                     >
                       <RefreshCw size={12} className={isStreamLoading ? "animate-spin text-cyan-400" : ""} />
                     </button>
-                    <Button onClick={() => setDimMode(v => !v)} variant="ghost" size="icon" className={cn("rounded-lg w-7 h-7 border shrink-0", dimMode ? "text-yellow-400 bg-yellow-500/20 border-yellow-500/40" : "text-zinc-400 bg-white/[0.04] border-white/[0.08]")}>
+                    <button
+                      type="button"
+                      onClick={() => setDimMode(v => !v)}
+                      className={cn(
+                        "w-7 h-7 rounded-full flex items-center justify-center transition-colors active:scale-95 shrink-0",
+                        dimMode ? "text-yellow-400 bg-yellow-500/15" : "text-zinc-400 hover:text-white hover:bg-white/[0.06]"
+                      )}
+                      title="Theater Dim Mode"
+                      aria-label="Theater Dim Mode"
+                    >
                       <Lightbulb size={12} />
-                    </Button>
+                    </button>
                   </div>
                 </div>
 
-                <div className="flex items-center gap-2 w-full">
-                  {drama.seasons && drama.seasons.length > 1 && (
-                    <DropdownMenu modal={false}>
-                      <DropdownMenuTrigger asChild>
-                        <button className="h-8 px-2.5 rounded-xl border border-cyan-400/30 bg-cyan-500/10 text-cyan-300 text-[10px] font-black uppercase flex items-center gap-1 shrink-0">
-                          <span>S{activeSeason}</span>
-                          <ChevronDown size={10} />
-                        </button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="start" className="bg-[#0b101e] border border-white/[0.08] rounded-xl shadow-xl z-50 min-w-[130px] p-1.5">
-                        <ScrollArea className="h-auto max-h-[180px]">
-                          <div className="flex flex-col gap-1">
-                            {drama.seasons.map((s) => (
-                              <DropdownMenuItem 
-                                key={s.seasonNumber} 
-                                onClick={() => handleSeasonChange(s.seasonNumber)} 
-                                className={cn(
-                                  "cursor-pointer px-2.5 py-1.5 rounded-lg text-[9px] uppercase font-bold tracking-wider transition-all flex items-center justify-between",
-                                  activeSeason === s.seasonNumber ? "bg-cyan-500 text-black font-black" : "text-zinc-300 hover:bg-white/5"
-                                )}
-                              >
-                                <span>Season {s.seasonNumber}</span>
-                                {activeSeason === s.seasonNumber && <Check size={10} />}
-                              </DropdownMenuItem>
-                            ))}
-                          </div>
-                        </ScrollArea>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                  )}
-                  <button disabled={!prevEp} onClick={() => prevEp && handleEpClick(prevEp.id)} className="flex-1 bg-[#141d30] h-8 rounded-xl border border-white/[0.10] flex items-center justify-center gap-1 text-zinc-300 text-[10px] font-black uppercase hover:text-white atrax-bubbly-btn atrax-squish-tap shadow-sm disabled:opacity-20">
-                    <SkipBack size={12} /> PREV
-                  </button>
-                  <button disabled={!nextEp} onClick={() => nextEp && handleEpClick(nextEp.id)} className="flex-1 bg-[#141d30] h-8 rounded-xl border border-white/[0.10] flex items-center justify-center gap-1 text-zinc-300 text-[10px] font-black uppercase hover:text-white atrax-bubbly-btn atrax-squish-tap shadow-sm disabled:opacity-20">
-                    NEXT <SkipForward size={12} />
-                  </button>
-                  <button 
-                    onClick={() => setIsAutoNext(v => !v)} 
-                    className={cn(
-                      "px-2.5 h-8 rounded-xl border text-[9px] font-black uppercase tracking-wider transition-all shrink-0 atrax-bubbly-btn atrax-squish-tap shadow-sm flex items-center gap-1",
-                      isAutoNext ? "bg-cyan-500/20 border-cyan-400/60 text-cyan-300" : "bg-[#141d30] border-white/[0.10] text-zinc-400"
-                    )}
-                  >
-                    <StepForward size={11} />
-                    <span>AUTO: {isAutoNext ? 'ON' : 'OFF'}</span>
-                  </button>
-                </div>
+                {/* Mobile Row 2: Audio Language Toggle + Auto-Compact Server Selector */}
+                <MovieMobileStreamRow
+                  audioMode={audioMode}
+                  audioLabels={audioLabels}
+                  isMultiAvailable={isMultiAvailable}
+                  handleAudioModeChange={handleAudioModeChange}
+                  stream={stream}
+                  currentServer={currentServer}
+                  activeServerIdx={activeServerIdx}
+                  setActiveServerIdx={setActiveServerIdx}
+                />
 
-                {/* Mobile Player Action Cockpit */}
+                {/* Mobile Row 3: Player Action Cockpit */}
                 <FlixverseMobileCockpit
                   drama={drama}
                   isMovie={false}
@@ -2012,6 +2391,8 @@ export function DramaWatchContent() {
                   activeServerIdx={activeServerIdx}
                   setActiveServerIdx={setActiveServerIdx}
                   handleCreateWatchRoom={handleCreateWatchRoom}
+                  visibilityClassName="flex"
+                  showServer={false}
                 />
               </div>
 
@@ -2020,133 +2401,133 @@ export function DramaWatchContent() {
             {/* Right 4-Column: Exact Animewatch Episode Navigation Sidebar */}
             <div className="xl:col-span-4 w-full h-[460px] sm:h-[520px] xl:h-auto xl:relative xl:self-stretch order-2">
               <div className="w-full h-full xl:absolute xl:inset-0 bg-[#0c1322] rounded-[32px] border border-white/[0.12] overflow-hidden flex flex-col shadow-[0_16px_40px_rgba(0,0,0,0.45)] ring-1 ring-white/[0.05] relative z-20">
-              
-              {/* Episodes Section Header */}
-              <div className="p-4 bg-[#0e1628] border-b border-white/[0.08] flex justify-between items-center shrink-0">
-                <div className="flex items-center gap-2.5">
-                  <h3 className="font-black text-white flex items-center gap-2 uppercase text-xs font-lemon tracking-widest">
-                    <Layers size={16} className="text-cyan-400" /> 
-                    <span>Episodes</span>
-                  </h3>
-                  <Badge className="bg-cyan-500/20 border border-cyan-400/40 text-cyan-300 font-black text-[10px] px-2.5 h-5 rounded-full shadow-sm">
-                    {drama.episodes.length}
-                  </Badge>
+
+                {/* Episodes Section Header */}
+                <div className="p-4 bg-[#0e1628] border-b border-white/[0.08] flex justify-between items-center shrink-0">
+                  <div className="flex items-center gap-2.5">
+                    <h3 className="font-black text-white flex items-center gap-2 uppercase text-xs font-lemon tracking-widest">
+                      <Layers size={16} className="text-cyan-400" />
+                      <span>Episodes</span>
+                    </h3>
+                    <Badge className="bg-cyan-500/20 border border-cyan-400/40 text-cyan-300 font-black text-[10px] px-2.5 h-5 rounded-full shadow-sm">
+                      {drama.episodes.length}
+                    </Badge>
+                  </div>
+
+                  {/* View Mode Switcher */}
+                  <div className="flex items-center gap-1 bg-black/50 p-1 rounded-xl border border-white/[0.06]">
+                    <button
+                      onClick={() => setEpViewMode('compact')}
+                      className={cn("p-1.5 rounded-lg transition-all", epViewMode === 'compact' ? "bg-cyan-500 text-black shadow-sm" : "text-zinc-500 hover:text-zinc-300")}
+                      title="Compact Dots"
+                    >
+                      <Grid size={13} />
+                    </button>
+                    <button
+                      onClick={() => setEpViewMode('grid')}
+                      className={cn("p-1.5 rounded-lg transition-all", epViewMode === 'grid' ? "bg-cyan-500 text-black shadow-sm" : "text-zinc-500 hover:text-zinc-300")}
+                      title="Grid Tiles"
+                    >
+                      <LayoutGrid size={13} />
+                    </button>
+                    <button
+                      onClick={() => setEpViewMode('list')}
+                      className={cn("p-1.5 rounded-lg transition-all", epViewMode === 'list' ? "bg-cyan-500 text-black shadow-sm" : "text-zinc-500 hover:text-zinc-300")}
+                      title="Detailed List"
+                    >
+                      <List size={13} />
+                    </button>
+                  </div>
                 </div>
 
-                {/* View Mode Switcher */}
-                <div className="flex items-center gap-1 bg-black/50 p-1 rounded-xl border border-white/[0.06]">
-                  <button 
-                    onClick={() => setEpViewMode('compact')} 
-                    className={cn("p-1.5 rounded-lg transition-all", epViewMode === 'compact' ? "bg-cyan-500 text-black shadow-sm" : "text-zinc-500 hover:text-zinc-300")}
-                    title="Compact Dots"
-                  >
-                    <Grid size={13} />
-                  </button>
-                  <button 
-                    onClick={() => setEpViewMode('grid')} 
-                    className={cn("p-1.5 rounded-lg transition-all", epViewMode === 'grid' ? "bg-cyan-500 text-black shadow-sm" : "text-zinc-500 hover:text-zinc-300")}
-                    title="Grid Tiles"
-                  >
-                    <LayoutGrid size={13} />
-                  </button>
-                  <button 
-                    onClick={() => setEpViewMode('list')} 
-                    className={cn("p-1.5 rounded-lg transition-all", epViewMode === 'list' ? "bg-cyan-500 text-black shadow-sm" : "text-zinc-500 hover:text-zinc-300")}
-                    title="Detailed List"
-                  >
-                    <List size={13} />
-                  </button>
-                </div>
-              </div>
+                {/* Season Picker Bar for Series */}
+                {drama.seasons && drama.seasons.length > 1 && (
+                  <div className="w-full border-b border-white/[0.06] bg-black/30 py-2.5 px-3 flex items-center justify-between gap-2 shrink-0">
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-zinc-400">Season</span>
+                    <DropdownMenu modal={false}>
+                      <DropdownMenuTrigger asChild>
+                        <button className="flex items-center gap-1.5 h-7 px-3 rounded-lg bg-cyan-500/10 border border-cyan-400/30 text-cyan-300 text-[10px] font-black uppercase tracking-wider hover:bg-cyan-500/20 transition-all active:scale-95">
+                          <span>Season {activeSeason}</span>
+                          <ChevronDown size={11} />
+                        </button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end" className="bg-[#0b101e] border border-white/[0.08] rounded-xl shadow-xl z-50 min-w-[150px] p-1.5">
+                        <ScrollArea className="h-auto max-h-[220px]">
+                          <div className="flex flex-col gap-1">
+                            {drama.seasons.map((s) => (
+                              <DropdownMenuItem
+                                key={s.seasonNumber}
+                                onClick={() => handleSeasonChange(s.seasonNumber)}
+                                className={cn(
+                                  "cursor-pointer px-2.5 py-1.5 rounded-lg text-[10px] uppercase font-bold tracking-wider transition-all flex items-center justify-between",
+                                  activeSeason === s.seasonNumber ? "bg-cyan-500 text-black font-black" : "text-zinc-300 hover:bg-white/5"
+                                )}
+                              >
+                                <span>{s.name || `Season ${s.seasonNumber}`}</span>
+                                <span className="text-[9px] opacity-60 ml-2">{s.episodeCount} eps</span>
+                              </DropdownMenuItem>
+                            ))}
+                          </div>
+                        </ScrollArea>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  </div>
+                )}
 
-              {/* Season Picker Bar for Series */}
-              {drama.seasons && drama.seasons.length > 1 && (
-                <div className="w-full border-b border-white/[0.06] bg-black/30 py-2.5 px-3 flex items-center justify-between gap-2 shrink-0">
-                  <span className="text-[10px] font-bold uppercase tracking-wider text-zinc-400">Season</span>
-                  <DropdownMenu modal={false}>
-                    <DropdownMenuTrigger asChild>
-                      <button className="flex items-center gap-1.5 h-7 px-3 rounded-lg bg-cyan-500/10 border border-cyan-400/30 text-cyan-300 text-[10px] font-black uppercase tracking-wider hover:bg-cyan-500/20 transition-all active:scale-95">
-                        <span>Season {activeSeason}</span>
-                        <ChevronDown size={11} />
-                      </button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end" className="bg-[#0b101e] border border-white/[0.08] rounded-xl shadow-xl z-50 min-w-[150px] p-1.5">
-                      <ScrollArea className="h-auto max-h-[220px]">
-                        <div className="flex flex-col gap-1">
-                          {drama.seasons.map((s) => (
-                            <DropdownMenuItem
-                              key={s.seasonNumber}
-                              onClick={() => handleSeasonChange(s.seasonNumber)}
-                              className={cn(
-                                "cursor-pointer px-2.5 py-1.5 rounded-lg text-[10px] uppercase font-bold tracking-wider transition-all flex items-center justify-between",
-                                activeSeason === s.seasonNumber ? "bg-cyan-500 text-black font-black" : "text-zinc-300 hover:bg-white/5"
-                              )}
-                            >
-                              <span>{s.name || `Season ${s.seasonNumber}`}</span>
-                              <span className="text-[9px] opacity-60 ml-2">{s.episodeCount} eps</span>
-                            </DropdownMenuItem>
-                          ))}
-                        </div>
-                      </ScrollArea>
-                    </DropdownMenuContent>
-                  </DropdownMenu>
-                </div>
-              )}
+                {/* Episode Chunk Switcher (> 50 episodes) */}
+                {episodeChunks.length > 1 && (
+                  <div className="w-full border-b border-white/[0.06] bg-black/25 py-2.5 px-3">
+                    <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar">
+                      {episodeChunks.map((_, idx) => (
+                        <button
+                          key={idx}
+                          onClick={() => setEpChunkIndex(idx)}
+                          className={cn(
+                            "flex-shrink-0 px-4 py-1.5 rounded-full text-sm sm:text-base font-black tracking-tight transition-all select-none border-0",
+                            epChunkIndex === idx
+                              ? "bg-[#7c3aed] text-white shadow-none"
+                              : "bg-white/[0.05] text-zinc-400 hover:text-zinc-100 hover:bg-white/[0.08]"
+                          )}
+                        >
+                          {idx * chunkSize + 1}–{Math.min((idx + 1) * chunkSize, drama.episodes.length)}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
 
-              {/* Episode Chunk Switcher (> 50 episodes) */}
-              {episodeChunks.length > 1 && (
-                <div className="w-full border-b border-white/[0.06] bg-black/25 py-2.5 px-3">
-                  <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar">
-                    {episodeChunks.map((_, idx) => (
-                      <button
-                        key={idx}
-                        onClick={() => setEpChunkIndex(idx)}
-                        className={cn(
-                          "flex-shrink-0 px-4 py-1.5 rounded-full text-sm sm:text-base font-black tracking-tight transition-all select-none border-0",
-                          epChunkIndex === idx 
-                            ? "bg-[#7c3aed] text-white shadow-none" 
-                            : "bg-white/[0.05] text-zinc-400 hover:text-zinc-100 hover:bg-white/[0.08]"
-                        )}
-                      >
-                        {idx * chunkSize + 1}–{Math.min((idx + 1) * chunkSize, drama.episodes.length)}
-                      </button>
+                {/* Episode Buttons Container */}
+                <div className="flex-1 min-h-0 overflow-y-auto p-3 custom-scrollbar overflow-x-hidden">
+                  <div
+                    ref={epContainerRef}
+                    className={cn(
+                      "grid",
+                      epViewMode === 'grid' ? 'grid-cols-5 gap-2' : epViewMode === 'compact' ? 'grid-cols-10 gap-1.5' : 'grid-cols-1 gap-1.5'
+                    )}
+                  >
+                    {episodeChunks[epChunkIndex]?.map((ep) => (
+                      <EpisodeButton
+                        key={ep.id}
+                        ep={ep}
+                        isCurrent={ep.id === currentEpId}
+                        isPlayed={playedEpIds.has(ep.id) && ep.id !== currentEpId}
+                        viewMode={epViewMode}
+                        onClick={handleEpClick}
+                      />
                     ))}
                   </div>
                 </div>
-              )}
 
-              {/* Episode Buttons Container */}
-              <div className="flex-1 min-h-0 overflow-y-auto p-3 custom-scrollbar overflow-x-hidden">
-                <div
-                  ref={epContainerRef}
-                  className={cn(
-                    "grid",
-                    epViewMode === 'grid' ? 'grid-cols-5 gap-2' : epViewMode === 'compact' ? 'grid-cols-10 gap-1.5' : 'grid-cols-1 gap-1.5'
-                  )}
-                >
-                  {episodeChunks[epChunkIndex]?.map((ep) => (
-                    <EpisodeButton
-                      key={ep.id}
-                      ep={ep}
-                      isCurrent={ep.id === currentEpId}
-                      isPlayed={playedEpIds.has(ep.id) && ep.id !== currentEpId}
-                      viewMode={epViewMode}
-                      onClick={handleEpClick}
-                    />
-                  ))}
-                </div>
               </div>
-
             </div>
-          </div>
 
             {/* Bottom 12-Column: Overview & Details Card */}
             <div className="xl:col-span-12 w-full bg-[#0c1322] rounded-[32px] border border-white/[0.12] p-6 shadow-[0_16px_40px_rgba(0,0,0,0.45)] ring-1 ring-white/[0.05] flex flex-col lg:flex-row gap-6 items-stretch order-3">
               <div className="shrink-0 w-36 sm:w-44 flex flex-col gap-2.5">
-                <img 
-                  src={drama.image || '/images/no-poster.png'} 
-                  alt={drama.title} 
-                  className="w-full aspect-[2/3] object-cover rounded-2xl border border-white/10 shadow-lg" 
+                <img
+                  src={drama.image || '/images/no-poster.png'}
+                  alt={drama.title}
+                  className="w-full aspect-[2/3] object-cover rounded-2xl border border-white/10 shadow-lg"
                 />
                 {/* One-Click Watch Trailer Button Under Poster */}
                 <button
@@ -2175,7 +2556,7 @@ export function DramaWatchContent() {
                   {drama.year && <span className="bg-white/[0.05] border border-white/[0.08] px-2.5 py-0.5 rounded-full">{drama.year}</span>}
                   {drama.status && (
                     <span className={cn(
-                      "px-2.5 py-0.5 rounded-full border", 
+                      "px-2.5 py-0.5 rounded-full border",
                       drama.status.toLowerCase().includes('ongoing') ? "text-emerald-400 border-emerald-500/30 bg-emerald-500/10" : "bg-white/[0.05] border-white/[0.08]"
                     )}>
                       {drama.status}
@@ -2244,9 +2625,9 @@ export function DramaWatchContent() {
 
             {/* Full Comments Section (Bottom 12-Column) */}
             <div className="xl:col-span-12 w-full pt-4 order-6">
-              <ShadowComments 
+              <ShadowComments
                 key={user?.id || 'guest'}
-                episodeId={currentEpId || `drama-${drama.id}-ep-${currentEp?.number || 1}`} 
+                episodeId={currentEpId || `drama-${drama.id}-ep-${currentEp?.number || 1}`}
                 themeColor="stream"
               />
             </div>
@@ -2256,11 +2637,11 @@ export function DramaWatchContent() {
 
       </div>
 
-      <TrailerModal 
-        isOpen={showTrailerModal} 
-        onClose={() => setShowTrailerModal(false)} 
-        trailer={drama?.trailer} 
-        title={drama?.title} 
+      <TrailerModal
+        isOpen={showTrailerModal}
+        onClose={() => setShowTrailerModal(false)}
+        trailer={drama?.trailer}
+        title={drama?.title}
         mediaId={drama?.id}
       />
 

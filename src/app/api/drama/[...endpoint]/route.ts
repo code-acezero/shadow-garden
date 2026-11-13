@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { 
-  getBlakiteLiveAction, 
-  getBlakiteStreamUrl, 
-  cleanHindiTitle 
+import {
+  getBlakiteLiveAction,
+  getBlakiteStreamUrl,
+  cleanHindiTitle
 } from '@/lib/blakite';
 
 export const runtime = 'nodejs';
@@ -65,17 +65,17 @@ async function fetchTmdb(endpoint: string, params: Record<string, string | numbe
 
 function mapTmdbToCard(item: any, forceType?: string): any {
   if (!item) return null;
-  const poster = item.poster_path 
-    ? `${TMDB_IMAGE_BASE}${item.poster_path}` 
+  const poster = item.poster_path
+    ? `${TMDB_IMAGE_BASE}${item.poster_path}`
     : (item.backdrop_path ? `${TMDB_IMAGE_BASE}${item.backdrop_path}` : '');
 
   const dateStr = item.first_air_date || item.release_date || '';
   const year = dateStr ? dateStr.split('-')[0] : '';
   const rating = item.vote_average ? Number(item.vote_average).toFixed(1) : '7.8';
-  
+
   const lang = (item.original_language || '').toLowerCase();
   const isMovie = item.title !== undefined || item.media_type === 'movie' || forceType === 'Movie';
-  
+
   let type = 'Drama';
   let country = 'Global';
   let category: 'drama' | 'series' | 'movie' = 'drama';
@@ -168,7 +168,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ endp
   const action = endpoint?.[0] || 'home';
   const urlObj = new URL(req.url);
 
-  const cacheKey = `drama_v2:${endpoint?.join('/') || action}:${urlObj.search}`;
+  const cacheKey = `drama_v3:${endpoint?.join('/') || action}:${urlObj.search}`;
   const cached = getCached(cacheKey);
   if (cached) return NextResponse.json(cached);
 
@@ -308,14 +308,6 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ endp
         });
       }
 
-      if (liveActionHindi.length > 0) {
-        sections.splice(2, 0, {
-          title: 'Hindi Dubbed K-Dramas & Asian Series',
-          items: liveActionHindi,
-          query: 'hindi'
-        });
-      }
-
       const result = { sections: sections.filter(s => s.items.length > 0) };
       setCached(cacheKey, result, 900);
       return NextResponse.json(result);
@@ -364,7 +356,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ endp
             }
           }
           combinedDramas = deduped;
-        } catch {}
+        } catch { }
       }
 
       const result = {
@@ -462,7 +454,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ endp
             }
           }
           combinedMovies = deduped;
-        } catch {}
+        } catch { }
       }
 
       const result = {
@@ -561,7 +553,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ endp
               combined.push(item);
             }
           }
-        } catch {}
+        } catch { }
       }
 
       for (const item of tmdbResults) {
@@ -650,7 +642,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ endp
               };
             }
           }
-        } catch {}
+        } catch { }
       }
 
       if (!trailerResult && q) {
@@ -679,7 +671,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ endp
               };
             }
           }
-        } catch {}
+        } catch { }
       }
 
       if (trailerResult) {
@@ -857,12 +849,12 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ endp
       // Construct seasons list for TV / Dramas / Web Series
       const seasonsList = (!isMovie && Array.isArray(mediaData.seasons))
         ? mediaData.seasons
-            .filter((s: any) => s.season_number > 0)
-            .map((s: any) => ({
-              seasonNumber: s.season_number,
-              name: s.name || `Season ${s.season_number}`,
-              episodeCount: s.episode_count || 1
-            }))
+          .filter((s: any) => s.season_number > 0)
+          .map((s: any) => ({
+            seasonNumber: s.season_number,
+            name: s.name || `Season ${s.season_number}`,
+            episodeCount: s.episode_count || 1
+          }))
         : [];
 
       const requestedSeason = parseInt(urlObj.searchParams.get('season') || '1', 10);
@@ -937,11 +929,11 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ endp
       });
 
       // Official YouTube Trailer extraction with multi-priority matching & fallbacks
-      let trailerObj = (mediaData.videos?.results || []).find((v: any) => 
+      let trailerObj = (mediaData.videos?.results || []).find((v: any) =>
         v.site === 'YouTube' && v.type === 'Trailer' && v.official && v.iso_639_1 === 'en'
-      ) || (mediaData.videos?.results || []).find((v: any) => 
+      ) || (mediaData.videos?.results || []).find((v: any) =>
         v.site === 'YouTube' && v.type === 'Trailer' && v.official
-      ) || (mediaData.videos?.results || []).find((v: any) => 
+      ) || (mediaData.videos?.results || []).find((v: any) =>
         v.site === 'YouTube' && (v.type === 'Trailer' || v.type === 'Teaser')
       ) || (mediaData.videos?.results || []).find((v: any) => v.site === 'YouTube');
 
@@ -955,7 +947,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ endp
             || extraVids.find((v: any) => v.site === 'YouTube' && v.type === 'Trailer' && v.official)
             || extraVids.find((v: any) => v.site === 'YouTube' && (v.type === 'Trailer' || v.type === 'Teaser'))
             || extraVids.find((v: any) => v.site === 'YouTube');
-        } catch {}
+        } catch { }
       }
 
       if (!trailerObj) {
@@ -984,7 +976,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ endp
                 };
               }
             }
-          } catch {}
+          } catch { }
         }
       }
 
@@ -1010,7 +1002,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ endp
                 relationType: 'FRANCHISE'
               }));
           }
-        } catch {}
+        } catch { }
       } else {
         // For titles without belongs_to_collection (e.g. multi-season dramas, direct sequels/spinoffs)
         const mainTitle = (mediaData.name || mediaData.title || '').trim();
@@ -1031,7 +1023,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ endp
                 relationType: 'CONNECTED'
               }));
             }
-          } catch {}
+          } catch { }
         }
       }
 
@@ -1054,8 +1046,8 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ endp
           country: c.origin_country || ''
         }));
 
-      const director = (mediaData.credits?.crew || []).find((c: any) => c.job === 'Director')?.name 
-        || (mediaData.created_by || [])[0]?.name 
+      const director = (mediaData.credits?.crew || []).find((c: any) => c.job === 'Director')?.name
+        || (mediaData.created_by || [])[0]?.name
         || '';
 
       const result = {
@@ -1101,7 +1093,8 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ endp
     // ── 11. STREAM / SERVERS RESOLVER: Direct HLS + Multi-Server Switcher ──
     if (action === 'stream' || action === 'embed' || action === 'watch' || action === 'servers') {
       const embedParam = urlObj.searchParams.get('url') || urlObj.searchParams.get('embed') || '';
-      let id = urlObj.searchParams.get('id') || '';
+      const rawId = urlObj.searchParams.get('id') || '';
+      let id = rawId.match(/^(tt\d+|\d+)(?:-|$)/i)?.[1] || rawId;
       let season = urlObj.searchParams.get('season') || '1';
       let episode = urlObj.searchParams.get('episode') || urlObj.searchParams.get('ep') || '1';
       let isMovie = urlObj.searchParams.get('isMovie') === 'true' || urlObj.searchParams.get('type') === 'movie';
@@ -1139,21 +1132,33 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ endp
           try {
             const ext = await fetchTmdb(`/${isMovie ? 'movie' : 'tv'}/${id}/external_ids`).catch(() => null);
             if (ext?.imdb_id) imdbIdParam = ext.imdb_id;
-          } catch {}
+          } catch { }
         }
       }
-      const superTarget = imdbIdParam || id;
+      // Normalize slug-prefixed IDs (e.g. "656908-ramayana-rise-of-a-legend" -> "656908")
+      id = id.match(/^(tt\d+|\d+)(?:-|$)/i)?.[1] || id;
+
+      // Fetch TMDB metadata upfront so we know original language and resolved IMDb ID
+      let mediaMeta: any = null;
+      if (id && /^\d+$/.test(id)) {
+        try {
+          mediaMeta = await fetchTmdb(`/${isMovie ? 'movie' : 'tv'}/${id}`, { append_to_response: 'external_ids' }).catch(() => null);
+        } catch { }
+      }
+
+      const resolvedImdbId = imdbIdParam || mediaMeta?.external_ids?.imdb_id || mediaMeta?.imdb_id || (/^tt\d+$/i.test(id) ? id : '');
+      const superTarget = resolvedImdbId || id;
 
       // Helper: check if Super Player is available for this title
       const checkSuperPlayerAvailable = async (target: string): Promise<boolean> => {
-        if (!target) return false;
+        if (!target || !/^tt\d+$/i.test(target)) return false;
         const ck = `super_srv_check_${target}`;
         const cached = getCached<boolean>(ck);
         if (cached !== null) return cached;
 
         try {
           const controller = new AbortController();
-          const timeoutId = setTimeout(() => controller.abort(), 2000);
+          const timeoutId = setTimeout(() => controller.abort(), 4500);
           const res = await fetch(`https://slast430did.com/play/${target}`, {
             headers: {
               'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)',
@@ -1171,8 +1176,8 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ endp
           setCached(ck, isAvail, 1800);
           return isAvail;
         } catch {
-          // If check times out, fallback to true so we don't break playback
-          return true;
+          // If check times out on a valid IMDb ID, fallback to true so we don't break playback
+          return /^tt\d+$/i.test(target);
         }
       };
 
@@ -1186,8 +1191,8 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ endp
 
         try {
           const controller = new AbortController();
-          const timeoutId = setTimeout(() => controller.abort(), 2500);
-          const searchRes = await fetch(`https://hindidrama.net/search.php?search=${encodeURIComponent(cleanTitle)}`, {
+          const timeoutId = setTimeout(() => controller.abort(), 2800);
+          const searchRes = await fetch(`https://hindidrama.net/search.php?q=${encodeURIComponent(cleanTitle)}`, {
             headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)', 'Referer': 'https://hindidrama.net/' },
             signal: controller.signal
           });
@@ -1195,81 +1200,144 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ endp
           if (!searchRes.ok) return [];
           const searchHtml = await searchRes.text();
 
-          const linkRegex = /href="([^"]*hindi-dubbed-online\/watch-[^"]+)"/gi;
-          let linkMatch;
-          const candidateHrefs: string[] = [];
+          const cardRegex = /<a\s+class="card"\s+href="([^"]+)"\s+title="([^"]+)"/gi;
+          let cardMatch;
+          const candidateHrefs: { href: string; title: string }[] = [];
 
-          while ((linkMatch = linkRegex.exec(searchHtml)) !== null) {
-            candidateHrefs.push(linkMatch[1]);
+          while ((cardMatch = cardRegex.exec(searchHtml)) !== null) {
+            candidateHrefs.push({ href: cardMatch[1], title: cardMatch[2] });
+          }
+
+          if (candidateHrefs.length === 0) {
+            // Also try legacy href regex fallback
+            const legRegex = /href="([^"]*hindi-dubbed-online\/watch-[^"]+)"/gi;
+            let lm;
+            while ((lm = legRegex.exec(searchHtml)) !== null) {
+              candidateHrefs.push({ href: lm[1], title: cleanTitle });
+            }
           }
 
           if (candidateHrefs.length === 0) return [];
 
-          // Find the best matching href based on title tokens and season
-          const titleTokens = cleanTitle.toLowerCase().split(/\s+/).filter(w => w.length > 2);
+          const stopWords = new Set(['the', 'and', 'for', 'with', 'from', 'all', 'this', 'that']);
+          const titleTokens = cleanTitle.toLowerCase().split(/\s+/).filter(w => w.length > 2 && !stopWords.has(w));
           const seasonNum = Number(s) || 1;
-          const seasonKeywords = [`season-${seasonNum}`, `s0${seasonNum}`, `s${seasonNum}`];
+          const seasonKeywords = [`season-${seasonNum}`, `s0${seasonNum}`, `s${seasonNum}`, `season ${seasonNum}`];
 
-          let bestHref = candidateHrefs[0];
-          let bestScore = -1;
+          let bestHref = '';
+          let bestScore = 0;
 
-          for (const href of candidateHrefs) {
-            const lowerHref = href.toLowerCase();
+          for (const item of candidateHrefs) {
+            const lowerHref = item.href.toLowerCase();
+            const lowerTitle = item.title.toLowerCase();
             let score = 0;
             for (const token of titleTokens) {
-              if (lowerHref.includes(token)) score += 2;
+              if (lowerHref.includes(token) || lowerTitle.includes(token)) score += 3;
             }
-            if (!isMov) {
+            if (!isMov && score > 0) {
               for (const sk of seasonKeywords) {
-                if (lowerHref.includes(sk)) score += 3;
+                if (lowerHref.includes(sk) || lowerTitle.includes(sk)) score += 2;
               }
             }
             if (score > bestScore) {
               bestScore = score;
-              bestHref = href;
+              bestHref = item.href;
             }
           }
 
-          if (bestScore <= 0 && titleTokens.length > 0) {
+          if (bestScore < 3) {
             setCached(ck, [], 1800);
             return [];
           }
 
-          const parts = bestHref.replace(/\/$/, '').split('/');
-          const slug = parts[parts.length - 1];
-          const epStr = String(e).padStart(2, '0');
-          const embedUrl = isMov 
-            ? `https://hindidrama.net/embed/tvshow_srv?search=${slug}`
-            : `https://hindidrama.net/embed/tvshow_srv?search=${slug}-e${epStr}`;
-
-          const epController = new AbortController();
-          const epTimeoutId = setTimeout(() => epController.abort(), 2500);
-          const embedRes = await fetch(embedUrl, {
-            headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)', 'Referer': 'https://hindidrama.net/' },
-            signal: epController.signal
+          const targetSeriesUrl = bestHref.startsWith('http') ? bestHref : `https://hindidrama.net${bestHref}`;
+          const seriesRes = await fetch(targetSeriesUrl, {
+            headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)', 'Referer': 'https://hindidrama.net/' }
           });
-          clearTimeout(epTimeoutId);
-          if (!embedRes.ok) return [];
-          const embedHtml = await embedRes.text();
+          if (!seriesRes.ok) return [];
+          const seriesHtml = await seriesRes.text();
+
+          let targetEpPageUrl = targetSeriesUrl;
+          if (!isMov) {
+            const epNum = parseInt(String(e), 10) || 1;
+            const epPad = epNum < 10 ? `0${epNum}` : `${epNum}`;
+            const epPatterns = [
+              new RegExp(`href="([^"]+-e${epPad}[^"]*)"`, 'i'),
+              new RegExp(`href="([^"]+-e${epNum}[^"]*)"`, 'i'),
+              new RegExp(`href="([^"]+)"[^>]*>\\s*Episode\\s+${epNum}\\b`, 'i')
+            ];
+
+            for (const pat of epPatterns) {
+              const m = seriesHtml.match(pat);
+              if (m && m[1]) {
+                targetEpPageUrl = m[1].startsWith('http') ? m[1] : `https://hindidrama.net${m[1]}`;
+                break;
+              }
+            }
+          }
+
+          const epRes = await fetch(targetEpPageUrl, {
+            headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)', 'Referer': 'https://hindidrama.net/' }
+          });
+          if (!epRes.ok) return [];
+          const epHtml = await epRes.text();
+
+          const currentMatch = epHtml.match(/var\s+current\s*=\s*["']([^"']+)["']/i);
+          let embedPath = currentMatch ? currentMatch[1].replace(/\\/g, '') : '';
+          if (!embedPath) {
+            const parts = bestHref.replace(/\/$/, '').split('/');
+            const slug = parts[parts.length - 1];
+            const epStr = String(e).padStart(2, '0');
+            embedPath = isMov ? `/embed/tvshow_srv?search=${slug}` : `/embed/tvshow_srv?search=${slug}-e${epStr}`;
+          }
+
+          const embedUrl = embedPath.startsWith('http') ? embedPath : `https://hindidrama.net${embedPath}`;
+          const srvRes = await fetch(embedUrl, {
+            headers: {
+              'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)',
+              'Referer': targetEpPageUrl
+            }
+          });
+          if (!srvRes.ok) return [];
+          const srvHtml = await srvRes.text();
 
           const extractedServers: { name: string; url: string; type: 'hls' | 'iframe' }[] = [];
-          if (embedHtml) {
+
+          // 1. Parse JSON sources map: var sources = {...};
+          const sourcesMatch = srvHtml.match(/var\s+sources\s*=\s*(\{[\s\S]*?\});/i);
+          if (sourcesMatch) {
+            try {
+              const sources = JSON.parse(sourcesMatch[1]);
+              for (const [idKey, src] of Object.entries(sources)) {
+                const sUrl = String(src);
+                let srvName = `Server ${idKey} (Hindi)`;
+                if (sUrl.includes('byse')) srvName = 'Byse (Hindi)';
+                else if (sUrl.includes('morencius') || sUrl.includes('vidmoly')) srvName = 'Vidmoly (Hindi)';
+                else if (sUrl.includes('streamtape')) srvName = 'Streamtape (Hindi)';
+                else if (sUrl.includes('rpm') || sUrl.includes('bolly')) srvName = 'RPM (Hindi)';
+                extractedServers.push({ name: srvName, url: sUrl, type: 'iframe' });
+              }
+            } catch { }
+          }
+
+          // 2. Fallback to legacy regex: case (\d+): src = "(.*?)";
+          if (extractedServers.length === 0) {
             const srvRegex = /case\s+(\d+):\s*src\s*=\s*"(.*?)";/g;
             let srvMatch;
-            while ((srvMatch = srvRegex.exec(embedHtml)) !== null) {
+            while ((srvMatch = srvRegex.exec(srvHtml)) !== null) {
               const srvId = srvMatch[1];
               const src = srvMatch[2];
               if (!src) continue;
-              let srvName = `Server ${srvId}`;
-              if (src.includes('byse')) srvName = 'Byse';
-              else if (src.includes('morencius') || src.includes('vidmoly')) srvName = 'Vidmoly';
-              else if (src.includes('streamtape')) srvName = 'Streamtape';
-              else if (src.includes('rpm') || src.includes('bolly')) srvName = 'RPM';
+              let srvName = `Server ${srvId} (Hindi)`;
+              if (src.includes('byse')) srvName = 'Byse (Hindi)';
+              else if (src.includes('morencius') || src.includes('vidmoly')) srvName = 'Vidmoly (Hindi)';
+              else if (src.includes('streamtape')) srvName = 'Streamtape (Hindi)';
+              else if (src.includes('rpm') || src.includes('bolly')) srvName = 'RPM (Hindi)';
               extractedServers.push({ name: srvName, url: src, type: 'iframe' });
             }
           }
 
-          if (extractedServers.length === 0 && embedHtml.includes('videoLink')) {
+          if (extractedServers.length === 0 && (srvHtml.includes('videoLink') || srvHtml.includes('player'))) {
             extractedServers.push({ name: 'Hindi HD', url: embedUrl, type: 'iframe' });
           }
 
@@ -1280,98 +1348,129 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ endp
         }
       };
 
+      // Real-time server availability verification: tests if embed URL is live and functioning
+      const checkServerAvailable = async (server: { name: string; url: string; type: string }): Promise<boolean> => {
+        if (!server || !server.url) return false;
+        if (server.type === 'hls') return true;
+
+        const ck = `srv_avail_check_${server.name}_${encodeURIComponent(server.url)}`;
+        const cached = getCached<boolean>(ck);
+        if (cached !== null) return cached;
+
+        try {
+          const controller = new AbortController();
+          const timeoutId = setTimeout(() => controller.abort(), 2500);
+          const res = await fetch(server.url, {
+            headers: {
+              'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)',
+              'Referer': 'https://kagemi.flixverse.com/'
+            },
+            signal: controller.signal
+          });
+          clearTimeout(timeoutId);
+
+          if (!res.ok) {
+            setCached(ck, false, 600);
+            return false;
+          }
+
+          const html = await res.text();
+          if (
+            html.includes('404 Not Found') ||
+            html.includes('Video not found') ||
+            html.includes('Video is not available') ||
+            html.includes('could not be found') ||
+            html.includes('No stream found') ||
+            (server.name === 'Super Player' && !html.includes('let p3 =') && !html.includes('HDVBPlayer'))
+          ) {
+            setCached(ck, false, 600);
+            return false;
+          }
+
+          setCached(ck, true, 1800);
+          return true;
+        } catch {
+          return false;
+        }
+      };
+
       const reqAudio = (urlObj.searchParams.get('audio') || '').toLowerCase();
 
-      // Check whether this media is natively in Hindi (e.g. Bollywood movie / Indian show)
-      let isHindiNative = false;
-      try {
-        const mediaMeta = await fetchTmdb(`/${isMovie ? 'movie' : 'tv'}/${id}`).catch(() => null);
-        if (mediaMeta?.original_language === 'hi') {
-          isHindiNative = true;
-        }
-      } catch {}
+      // Check whether this media is natively in Hindi / Indian regional audio
+      const origLang = (mediaMeta?.original_language || '').toLowerCase();
+      const isHindiNative = origLang === 'hi';
+      const isIndianNative = ['hi', 'ta', 'te', 'ml', 'kn', 'bn', 'pa', 'mr'].includes(origLang);
 
-      // Parallel execution for fast response: check hindidrama & super player
-      const [hindiDramaServers, isSuperAvailable] = await Promise.all([
-        reqAudio === 'multi' && title ? fetchHindiDramaServers(title, season, episode, isMovie) : Promise.resolve([]),
-        checkSuperPlayerAvailable(superTarget)
+      // Construct candidate verified servers
+      const superServer = isMovie
+        ? (superTarget ? { name: 'Super Player', url: `https://slast430did.com/play/${superTarget}`, type: 'iframe' as const } : null)
+        : (resolvedImdbId ? { name: 'Super Player', url: `https://slast430did.com/play/${resolvedImdbId}`, type: 'iframe' as const } : null);
+
+      const vidLinkServer = isMovie
+        ? { name: 'VidLink', url: `https://vidlink.pro/movie/${id}`, type: 'iframe' as const }
+        : { name: 'VidLink', url: `https://vidlink.pro/tv/${id}/${season}/${episode}`, type: 'iframe' as const };
+      const twoEmbedServer = isMovie
+        ? { name: '2Embed', url: `https://www.2embed.cc/embed/${id}`, type: 'iframe' as const }
+        : { name: '2Embed', url: `https://www.2embed.cc/embedtv/${id}&s=${season}&e=${episode}`, type: 'iframe' as const };
+      const smashyServer = isMovie
+        ? { name: 'SmashyStream', url: `https://embed.smashystream.com/playere.php?tmdb=${id}`, type: 'iframe' as const }
+        : { name: 'SmashyStream', url: `https://embed.smashystream.com/playere.php?tmdb=${id}&season=${season}&episode=${episode}`, type: 'iframe' as const };
+      const autoEmbedServer = isMovie
+        ? { name: 'AutoEmbed', url: `https://autoembed.co/movie/tmdb/${id}`, type: 'iframe' as const }
+        : { name: 'AutoEmbed', url: `https://autoembed.co/tv/tmdb/${id}-${season}-${episode}`, type: 'iframe' as const };
+      const cinemaOsServer = isMovie
+        ? { name: 'CinemaOS', url: `https://cinemaos.tech/player/${id}`, type: 'iframe' as const }
+        : { name: 'CinemaOS', url: `https://cinemaos.tech/player/${id}/${season}/${episode}`, type: 'iframe' as const };
+
+      // Candidate list of original audio servers
+      const candidateOgServers: { name: string; url: string; type: 'hls' | 'iframe' }[] = (
+        isIndianNative
+          ? [superServer, twoEmbedServer, smashyServer, vidLinkServer, autoEmbedServer, cinemaOsServer]
+          : [superServer, vidLinkServer, twoEmbedServer, smashyServer, autoEmbedServer, cinemaOsServer]
+      ).filter((s): s is { name: string; url: string; type: 'iframe' } => Boolean(s));
+
+      // Parallel execution: fetch Hindi Dubbed servers and verify candidate servers availability
+      const [hindiDramaServers, verifiedOgList] = await Promise.all([
+        title ? fetchHindiDramaServers(title, season, episode, isMovie) : Promise.resolve([]),
+        Promise.all(candidateOgServers.map(async (s) => (await checkServerAvailable(s)) ? s : null))
       ]);
 
+      // Keep only verified available servers (no broken 404/500 servers)
+      const availableOgServers = verifiedOgList.filter((s): s is { name: string; url: string; type: 'iframe' } => Boolean(s));
+      const ogServers = availableOgServers.length > 0 ? availableOgServers : candidateOgServers;
+
       // Construct Multi-Audio & Hindi Dubbed Server Sources DYNAMICALLY
-      // ONLY load servers that genuinely provide Hindi/Multi audio (NO fake dummy fallbacks)
       const multiServers: { name: string; url: string; type: 'hls' | 'iframe' }[] = [];
 
       // 0. Direct high-speed Hindi HLS stream from Blakite if title or id matches live-action
-      if (reqAudio === 'multi' || isHindiNative) {
-        try {
-          const cleanId = id.split('-')[0].trim();
-          const targetSlug = isMovie ? cleanId : `${cleanId}::${season}-${episode}`;
-          const blakiteStream = await getBlakiteStreamUrl(targetSlug).catch(() => null);
-          if (blakiteStream && blakiteStream.url) {
-            const proxiedUrl = `/api/proxy?url=${encodeURIComponent(blakiteStream.url)}`;
-            multiServers.unshift({
-              name: 'Blakite Hindi HD',
-              url: proxiedUrl,
-              type: 'hls'
-            });
-          }
-        } catch (e) {
-          console.warn('[Drama Stream] Blakite live-action stream lookup failed:', e);
+      try {
+        const cleanId = id.split('-')[0].trim();
+        const targetSlug = isMovie ? cleanId : `${cleanId}::${season}-${episode}`;
+        const blakiteStream = await getBlakiteStreamUrl(targetSlug).catch(() => null);
+        if (blakiteStream && blakiteStream.url) {
+          multiServers.unshift({
+            name: 'Blakite Hindi HD',
+            url: `/api/proxy?url=${encodeURIComponent(blakiteStream.url)}`,
+            type: 'hls'
+          });
         }
-      }
+      } catch { }
 
       // 1. Add scraped genuine Hindi Dubbed servers (Byse, Vidmoly, Streamtape, RPM)
       if (hindiDramaServers.length > 0) {
         multiServers.push(...hindiDramaServers);
       }
 
-      // 2. Add verified Super Player (which has Hindi audio tracks from HDMovie2/HDVB)
-      if (isSuperAvailable) {
-        multiServers.push({
-          name: 'Super Player',
-          url: `https://slast430did.com/play/${superTarget}`,
-          type: 'iframe'
-        });
-        multiServers.push({
-          name: 'Super Mirror',
-          url: `https://gemma416okl.com/play/${superTarget}`,
-          type: 'iframe'
-        });
+      // 2. Add Super Player if verified available (carries Indian multi-audio streams)
+      if (superServer && availableOgServers.some(s => s.name === 'Super Player')) {
+        multiServers.push(superServer);
       }
 
-      // 3. If native Hindi content, standard servers ARE playing Hindi original audio!
-      if (isHindiNative) {
-        multiServers.push(
-          isMovie 
-            ? { name: 'VidLink', url: `https://vidlink.pro/movie/${id}`, type: 'iframe' }
-            : { name: 'VidLink', url: `https://vidlink.pro/tv/${id}/${season}/${episode}`, type: 'iframe' },
-          isMovie
-            ? { name: 'Videasy', url: `https://player.videasy.net/movie/${id}`, type: 'iframe' }
-            : { name: 'Videasy', url: `https://player.videasy.net/tv/${id}/${season}/${episode}`, type: 'iframe' },
-          isMovie
-            ? { name: 'AutoEmbed', url: `https://player.autoembed.cc/embed/movie/${id}`, type: 'iframe' }
-            : { name: 'AutoEmbed', url: `https://player.autoembed.cc/embed/tv/${id}/${season}/${episode}`, type: 'iframe' }
-        );
+      // 3. If native Hindi/Indian content, verified standard servers also carry native Hindi
+      if (isIndianNative) {
+        const indianStandard = availableOgServers.filter(s => s.name !== 'Super Player');
+        multiServers.push(...indianStandard);
       }
-
-      // Original Audio Server Sources (Verified working embeds)
-      const ogServers: { name: string; url: string; type: 'hls' | 'iframe' }[] = isMovie ? [
-        { name: 'VidLink', url: `https://vidlink.pro/movie/${id}`, type: 'iframe' },
-        { name: 'Videasy', url: `https://player.videasy.net/movie/${id}`, type: 'iframe' },
-        { name: 'AutoEmbed', url: `https://player.autoembed.cc/embed/movie/${id}`, type: 'iframe' },
-        { name: 'VidSrc ME', url: `https://vidsrc.me/embed/movie?tmdb=${id}`, type: 'iframe' },
-        { name: 'SuperEmbed', url: `https://multiembed.mov/?video_id=${id}&tmdb=1`, type: 'iframe' },
-        { name: '2Embed', url: `https://www.2embed.cc/embed/${id}`, type: 'iframe' },
-        { name: 'Super Player', url: `https://slast430did.com/play/${superTarget}`, type: 'iframe' }
-      ] : [
-        { name: 'VidLink', url: `https://vidlink.pro/tv/${id}/${season}/${episode}`, type: 'iframe' },
-        { name: 'Videasy', url: `https://player.videasy.net/tv/${id}/${season}/${episode}`, type: 'iframe' },
-        { name: 'AutoEmbed', url: `https://player.autoembed.cc/embed/tv/${id}/${season}/${episode}`, type: 'iframe' },
-        { name: 'VidSrc ME', url: `https://vidsrc.me/embed/tv?tmdb=${id}&season=${season}&episode=${episode}`, type: 'iframe' },
-        { name: 'SuperEmbed', url: `https://multiembed.mov/?video_id=${id}&tmdb=1&s=${season}&e=${episode}`, type: 'iframe' },
-        { name: '2Embed', url: `https://www.2embed.cc/embedtv/${id}&s=${season}&e=${episode}`, type: 'iframe' },
-        { name: 'Super Player', url: `https://slast430did.com/play/${superTarget}`, type: 'iframe' }
-      ];
 
       const servers = reqAudio === 'multi' ? multiServers : ogServers;
 

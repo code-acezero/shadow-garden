@@ -346,10 +346,17 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
       } else if (key === 'defaultAudio') {
         newSettings.audio = value;
         newSettings.category = (value === 'en' || value === 'hi') ? 'dub' : 'sub';
+      } else if (key === 'server') {
+        newSettings.defaultServer = value as any;
       } else if (key === 'category') {
-        if (!newSettings.audio || newSettings.audio === 'jp' || newSettings.audio === 'en') {
-          newSettings.audio = value === 'dub' ? 'en' : 'jp';
-          newSettings.defaultAudio = newSettings.audio as any;
+        const isCurrentDub = newSettings.audio === 'en' || newSettings.audio === 'hi';
+        const isCurrentSub = ['jp', 'cn', 'kr'].includes(newSettings.audio || '');
+        if (value === 'dub' && !isCurrentDub) {
+          newSettings.audio = 'en';
+          newSettings.defaultAudio = 'en';
+        } else if (value === 'sub' && !isCurrentSub) {
+          newSettings.audio = 'jp';
+          newSettings.defaultAudio = 'jp';
         }
       }
 
@@ -442,7 +449,7 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
           localStorage.setItem('shadow_player_prefs', JSON.stringify(updatedPlayerPrefs));
           localStorage.setItem('shadow_watch_settings_anime', JSON.stringify(updatedPlayerPrefs));
           if (typeof window !== 'undefined' && key !== 'playerPrefs') {
-            queueMicrotask(() => {
+            setTimeout(() => {
               window.dispatchEvent(new CustomEvent('update_player_prefs', { detail: { playerPrefs: updatedPlayerPrefs, source: 'SettingsProvider' } }));
             });
           }

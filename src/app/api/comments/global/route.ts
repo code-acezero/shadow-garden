@@ -22,7 +22,10 @@ export interface GlobalCommentItem {
   user_name: string;
   user_avatar: string;
   user_role: string;
+  user_frame?: string | null;
+  user_level?: number;
   is_traveler: boolean;
+  profile?: any;
 }
 
 export async function GET(req: NextRequest) {
@@ -47,6 +50,8 @@ export async function GET(req: NextRequest) {
           id,
           username,
           avatar_url,
+          frame_id,
+          level,
           full_name,
           role,
           admin_title
@@ -79,6 +84,8 @@ export async function GET(req: NextRequest) {
       const userName = travelerMeta?.name || profile?.full_name || profile?.username || 'Shadow Operative';
       const userAvatar = travelerMeta?.avatar || profile?.avatar_url || '/images/default-avatar.png';
       const userRole = profile?.admin_title || profile?.role || (isTraveler ? 'Traveler' : 'Operative');
+      const userFrame = profile?.frame_id || null;
+      const userLevel = profile?.level || 1;
 
       return {
         id: c.id,
@@ -89,7 +96,18 @@ export async function GET(req: NextRequest) {
         user_name: userName,
         user_avatar: userAvatar,
         user_role: userRole,
+        user_frame: userFrame,
+        user_level: userLevel,
         is_traveler: isTraveler,
+        profile: profile ? {
+          id: profile.id,
+          username: userName,
+          avatar_url: userAvatar,
+          frame_id: userFrame,
+          level: userLevel,
+          role: profile.role,
+          admin_title: profile.admin_title
+        } : null
       };
     });
 

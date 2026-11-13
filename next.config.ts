@@ -1,17 +1,22 @@
 import type { NextConfig } from "next";
+import createBundleAnalyzer from "@next/bundle-analyzer";
 
-const withBundleAnalyzer = require('@next/bundle-analyzer')({
-  enabled: process.env.ANALYZE === 'true',
+const withBundleAnalyzer = createBundleAnalyzer({
+  enabled: process.env.ANALYZE === "true",
 });
 
 const nextConfig: NextConfig = {
   reactStrictMode: false,
-  eslint: {
-    ignoreDuringBuilds: true,
-  },
   typescript: {
-    // Add this to ignore type errors during build
+    // Keep ignoring pre-existing build-time type issues when bundling
     ignoreBuildErrors: true,
+  },
+  turbopack: {
+    resolveAlias: {
+      fs: { browser: false },
+      path: { browser: false },
+      crypto: { browser: false },
+    },
   },
   images: {
     remotePatterns: [
@@ -24,56 +29,21 @@ const nextConfig: NextConfig = {
   async redirects() {
     return [
       {
-        source: '/admin',
-        destination: '/master',
+        source: "/admin",
+        destination: "/master",
         permanent: true,
       },
       {
-        source: '/watchlist',
-        destination: '/library',
+        source: "/watchlist",
+        destination: "/library",
         permanent: true,
       },
       {
-        source: '/hindi-watch/:id',
-        destination: '/watch/:id?audio=hi',
+        source: "/hindi-watch/:id",
+        destination: "/watch/:id?audio=hi",
         permanent: true,
       },
     ];
-  },
-  // Add this to fix the @consumet/extensions issue
-  transpilePackages: ['@consumet/extensions'],
-
-  webpack: (config, { isServer, dev }) => {
-    if (dev) {
-      config.cache = false;
-    }
-    if (!isServer) {
-      config.resolve.fallback = {
-        ...config.resolve.fallback,
-        fs: false,
-        net: false,
-        tls: false,
-        vm: false,
-        child_process: false,
-      };
-      
-      config.externals.push({
-        "node:vm": "commonjs vm",
-      });
-    }
-
-    // Fix for "punycode" warning
-    config.ignoreWarnings = [
-      { module: /node_modules\/punycode/ }
-    ];
-
-    // Exclude @consumet/extensions from problematic bundling
-    config.externals = config.externals || [];
-    if (isServer) {
-      config.externals.push('@consumet/extensions');
-    }
-
-    return config;
   },
 };
 

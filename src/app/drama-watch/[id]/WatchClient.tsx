@@ -8,7 +8,7 @@ import { motion, AnimatePresence, LayoutGroup } from 'framer-motion';
 import {
   SkipForward, SkipBack, Server as ServerIcon, Layers, Clock, Play,
   Grid, List, LayoutGrid, ChevronDown, Flame, Info, Loader2, Check, X,
-  Download, AlertTriangle, Lightbulb, StepForward, Share2, Users, Star,
+  Download, AlertTriangle, Lightbulb, StepForward, Share2, Users, Star, ArrowRightCircle,
   FastForward, Film, CheckCircle2, ChevronRight, MessageSquare,
   RefreshCw, Subtitles, Globe
 } from 'lucide-react';
@@ -1245,7 +1245,7 @@ export function DramaWatchContent() {
                       )}
                       title="Auto Next Episode"
                     >
-                      <StepForward size={12} className={cn(isAutoNext ? "text-cyan-400" : "text-zinc-500")} />
+                      <ArrowRightCircle size={12} className={cn(isAutoNext ? "text-cyan-400" : "text-zinc-500")} />
                       <span>AUTO NEXT: {isAutoNext ? 'ON' : 'OFF'}</span>
                     </button>
 

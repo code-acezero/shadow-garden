@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Seraphina & Anime Companion Unified Rig Engine</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/build/three.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+  <style>
+    :root {
+      --bg: #07050e;
+      --card-bg: rgba(16, 12, 28, 0.85);
+      --card-border: rgba(168, 85, 247, 0.25);
+      --accent-crimson: #e11d48;
+      --accent-purple: #a855f7;
+      --text-main: #f1f5f9;
+      --text-muted: #94a3b8;
+    }
+    * { box-sizing: border-box; user-select: none; }
+    html, body {
+      margin: 0; padding: 0; width: 100%; height: 100%;
+      overflow: hidden; background: var(--bg); color: var(--text-main);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    }
+    #stage { position: absolute; inset: 0; width: 100%; height: 100%; }
+    canvas#c { width: 100%; height: 100%; display: block; }
+    
+    header {
+      position: absolute; top: 0; left: 0; width: 100%; height: 56px;
+      padding: 0 16px; display: flex; align-items: center; justify-content: space-between;
+      background: rgba(7, 5, 14, 0.85); backdrop-filter: blur(16px);
+      border-bottom: 1px solid rgba(168, 85, 247, 0.15); z-index: 50;
+    }
+    .brand-title { display: flex; align-items: center; gap: 10px; }
+    .brand-name { font-size: 16px; font-weight: 700; background: linear-gradient(135deg, #f43f5e, #c084fc); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+    .brand-tag { font-size: 11px; padding: 2px 8px; border-radius: 9999px; background: rgba(168, 85, 247, 0.18); border: 1px solid rgba(168, 85, 247, 0.35); color: #d8b4fe; }
+
+    .top-controls { display: flex; align-items: center; gap: 8px; }
+    .btn-top {
+      padding: 5px 12px; border-radius: 8px; font-size: 12px; font-weight: 600;
+      background: rgba(255, 255, 255, 0.06); border: 1px solid rgba(255, 255, 255, 0.12);
+      color: var(--text-main); cursor: pointer; transition: all 0.2s;
+    }
+    .btn-top:hover { background: rgba(168, 85, 247, 0.25); border-color: rgba(168, 85, 247, 0.5); }
+    .btn-top.active { background: linear-gradient(135deg, rgba(225, 29, 72, 0.5), rgba(168, 85, 247, 0.5)); border-color: #f43f5e; color: #fff; }
+
+    /* Bottom Control Deck */
+    #bottom-deck {
+      position: absolute; bottom: 16px; left: 50%; transform: translateX(-50%);
+      width: calc(100% - 32px); max-width: 1100px;
+      background: var(--card-bg); backdrop-filter: blur(20px);
+      border: 1px solid var(--card-border); border-radius: 16px;
+      padding: 12px 16px; z-index: 50; display: flex; flex-direction: column; gap: 10px;
+    }
+    .row-chips { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+    .chip-btn {
+      padding: 5px 12px; border-radius: 9999px; font-size: 11.5px; font-weight: 500;
+      background: rgba(255, 255, 255, 0.05); border: 1px solid rgba(255, 255, 255, 0.12);
+      color: #cbd5e1; cursor: pointer; transition: all 0.18s;
+    }
+    .chip-btn:hover { background: rgba(168, 85, 247, 0.25); border-color: #c084fc; color: #fff; }
+    .chip-btn.active { background: #e11d48; border-color: #fb7185; color: #fff; }
+
+    .select-styled {
+      padding: 5px 10px; border-radius: 8px; font-size: 11.5px;
+      background: rgba(16, 12, 28, 0.9); border: 1px solid rgba(168, 85, 247, 0.35);
+      color: #f1f5f9; outline: none; cursor: pointer;
+    }
+
+    #bubble {
+      position: absolute; top: 70px; left: 50%; transform: translateX(-50%);
+      padding: 8px 16px; border-radius: 9999px; font-size: 12px; font-weight: 500;
+      background: rgba(16, 12, 28, 0.85); backdrop-filter: blur(16px);
+      border: 1px solid rgba(168, 85, 247, 0.3); color: #e2e8f0; pointer-events: none; z-index: 40;
+    }
+  </style>
+</head>
+<body>
+  <div id="stage"><canvas id="c"></canvas></div>
+
+  <header>
+    <div class="brand-title">
+      <span class="brand-name">Seraphina & Anime Companion</span>
+      <span class="brand-tag" id="model-tag">Model: Seraphina Vampire Queen</span>
+    </div>
+    <div class="top-controls">
+      <button class="btn-top active" id="btn-switch-model">Switch: Seraphina / Companion</button>
+      <button class="btn-top" id="btn-view-face">Face Focus</button>
+      <button class="btn-top" id="btn-view-full">Full Body</button>
+      <button class="btn-top" id="btn-view-hands">Hands</button>
+      <button class="btn-top" id="btn-idle-life">Idle Life: ON</button>
+    </div>
+  </header>
+
+  <div id="bubble">Seraphina Nocturne: Alive & breathing with fluid skeletal dynamics!</div>
+
+  <div id="bottom-deck">
+    <!-- Row 1: Primary Gestures -->
+    <div class="row-chips">
+      <span style="font-size:11px; color:#94a3b8; font-weight:600; min-width:65px;">👑 Gestures:</span>
+      <button class="chip-btn" data-g="wave">Wave</button>
+      <button class="chip-btn" data-g="arms_cross">Arms Cross (Smug)</button>
+      <button class="chip-btn" data-g="point">Command Point</button>
+      <button class="chip-btn" data-g="shy_pose">Shy Paws</button>
+      <button class="chip-btn" data-g="stretch">Morning Stretch</button>
+      <button class="chip-btn" data-g="tease_pose">Tease Peace</button>
+      <button class="chip-btn" data-g="bow">Royal Bow</button>
+      <button class="chip-btn" data-g="blow_kiss">Blow Kiss</button>
+      <button class="chip-btn" data-g="salute">Royal Salute</button>
+      <button class="chip-btn" data-g="clap">Clap</button>
+      <select class="select-styled" id="sel-all-gestures">
+        <option value="">All 45+ Gestures...</option>
+      </select>
+    </div>
+
+    <!-- Row 2: Dances & Locomotion -->
+    <div class="row-chips">
+      <span style="font-size:11px; color:#94a3b8; font-weight:600; min-width:65px;">💃 Dances:</span>
+      <button class="chip-btn" data-d="sway">Moonlight Sway</button>
+      <button class="chip-btn" data-d="bounce">Cute Bounce</button>
+      <button class="chip-btn" data-d="disco">Disco Flow</button>
+      <button class="chip-btn" data-d="twist">Gothic Twist</button>
+      <button class="chip-btn" data-d="floss">Floss</button>
+      <button class="chip-btn" data-d="dab">Dab</button>
+      <button class="chip-btn" data-d="gangnam">Gangnam</button>
+      <button class="chip-btn" data-d="macarena">Macarena</button>
+      <select class="select-styled" id="sel-all-dances">
+        <option value="">All 20+ Dances...</option>
+      </select>
+
+      <span style="font-size:11px; color:#94a3b8; font-weight:600; margin-left:12px;">🚶 Locomotion:</span>
+      <button class="chip-btn" data-loco="catwalk">Catwalk</button>
+      <button class="chip-btn" data-loco="walk">Walk</button>
+      <button class="chip-btn" data-loco="run">Run</button>
+      <button class="chip-btn" data-loco="sneak">Sneak</button>
+      <button class="chip-btn" id="btn-stop-all">⏹️ Stop</button>
+    </div>
+
+    <!-- Row 3: Moods & Expressions -->
+    <div class="row-chips">
+      <span style="font-size:11px; color:#94a3b8; font-weight:600; min-width:65px;">😊 Moods:</span>
+      <button class="chip-btn" data-ex="smug">Smug</button>
+      <button class="chip-btn" data-ex="cat">Cat :3</button>
+      <button class="chip-btn" data-ex="pout">Pout</button>
+      <button class="chip-btn" data-ex="happy">Happy</button>
+      <button class="chip-btn" data-ex="joy">Joy</button>
+      <button class="chip-btn" data-ex="tease">Tease</button>
+      <button class="chip-btn" data-ex="heart_eyes">Heart Eyes</button>
+      <button class="chip-btn" data-ex="star_eyes">Star Eyes</button>
+      <button class="chip-btn" data-ex="shy">Shy Blush</button>
+      <button class="chip-btn" data-ex="neutral">Neutral</button>
+      <select class="select-styled" id="sel-all-expr">
+        <option value="">All 35+ Expressions...</option>
+      </select>
+    </div>
+  </div>
+
+  <script src="/experiments/unified-companion-engine.js"></script>
+</body>
+</html>
+

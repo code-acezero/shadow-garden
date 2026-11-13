@@ -4,7 +4,7 @@ import React, { useState, useEffect, useRef, useCallback, Suspense, useMemo } fr
 import Link from 'next/link';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
-import { 
+import {
   Search, Play, ChevronRight, ChevronLeft, Info, Loader2, Plus,
   Star, Film, Clapperboard, Tv, Crown, Flame, Radio, Heart,
   Zap, Globe
@@ -17,6 +17,7 @@ import DCard from '@/components/Drama/DCard';
 import CountryBadge, { getCountryInfo } from '@/components/Drama/CountryBadge';
 import { MoviePageSkeleton } from '@/components/UIx/SkeletonLoaders';
 import { playGummyTap } from '@/lib/audioManager';
+import FlixverseRecentUpdatesSection from '@/components/Cinema/FlixverseRecentUpdatesSection';
 
 
 // ── Hero Slider (Center Aligned, Android Monet Glass Style) ───────────────────
@@ -24,12 +25,12 @@ import { playGummyTap } from '@/lib/audioManager';
 const HeroSlider = ({ items }: { items: DramaCard[] }) => {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [details, setDetails] = useState<Record<string, any>>({});
-  
+
   useEffect(() => {
     if (!items || items.length === 0) return;
     const interval = setInterval(() => {
       setCurrentIndex(prev => (prev + 1) % items.length);
-    }, 7500); 
+    }, 7500);
     return () => clearInterval(interval);
   }, [items]);
 
@@ -38,7 +39,7 @@ const HeroSlider = ({ items }: { items: DramaCard[] }) => {
     if (item && !details[item.id]) {
       omni.drama.getDetail(item.id).then(d => {
         if (d) setDetails(prev => ({ ...prev, [item.id]: d }));
-      }).catch(() => {});
+      }).catch(() => { });
     }
   }, [currentIndex, items, details]);
 
@@ -87,8 +88,8 @@ const HeroSlider = ({ items }: { items: DramaCard[] }) => {
             {/* Clean Typographic Metadata Row (Containerless - Anti-Container Rule #6) */}
             <div className="flex flex-wrap items-center justify-center gap-x-2.5 gap-y-1 text-xs sm:text-[13px] font-medium text-zinc-300 drop-shadow-md">
               <span className="font-semibold text-cyan-400 tracking-wide">
-                {current.isMovie 
-                  ? 'Cinema Movie' 
+                {current.isMovie
+                  ? 'Cinema Movie'
                   : (getCountryInfo(current.country, current.type).shortName || current.type || 'Series')}
               </span>
 
@@ -143,7 +144,7 @@ const HeroSlider = ({ items }: { items: DramaCard[] }) => {
           </motion.div>
         </AnimatePresence>
       </div>
-      
+
       {/* Centered Carousel Controls (Left Arrow + Indicator Dots + Right Arrow) */}
       <div className="absolute bottom-3 left-1/2 -translate-x-1/2 z-30 flex items-center justify-center gap-1.5 sm:gap-2 pointer-events-auto bg-[#0a0f1d]/85 backdrop-blur-md px-2 py-1 sm:px-2.5 sm:py-1 rounded-full border border-white/[0.08] shadow-[0_4px_20px_rgba(0,0,0,0.5)]">
         {/* Left Arrow Button */}
@@ -163,19 +164,19 @@ const HeroSlider = ({ items }: { items: DramaCard[] }) => {
         {/* Indicator Dots */}
         <div className="flex items-center gap-1.5 px-0.5">
           {items.map((_, i) => (
-            <button 
-              key={i} 
+            <button
+              key={i}
               type="button"
               aria-label={`Go to slide ${i + 1}`}
               onClick={(e) => {
                 e.stopPropagation();
                 playGummyTap();
                 setCurrentIndex(i);
-              }} 
+              }}
               className={cn(
-                "h-1.5 shrink-0 rounded-full transition-all duration-300 border-0 outline-none p-0 cursor-pointer block", 
-                currentIndex === i 
-                  ? "w-6 bg-cyan-400 shadow-[0_0_10px_rgba(34,211,238,0.7)]" 
+                "h-1.5 shrink-0 rounded-full transition-all duration-300 border-0 outline-none p-0 cursor-pointer block",
+                currentIndex === i
+                  ? "w-6 bg-cyan-400 shadow-[0_0_10px_rgba(34,211,238,0.7)]"
                   : "w-1.5 bg-white/30 hover:bg-white/60"
               )}
             />
@@ -222,12 +223,12 @@ function getShortSectionTitle(fullTitle: string): string {
 
 // ── Horizontal Scroll Row (Netflix Carousel with Android Monet Glass UI) ───────
 
-const ContentRow = ({ 
-  section, 
+const ContentRow = ({
+  section,
   icon: Icon = Film,
   accentColor = "text-cyan-400",
   id
-}: { 
+}: {
   section: DramaSection & { query?: string };
   icon?: any;
   accentColor?: string;
@@ -258,8 +259,8 @@ const ContentRow = ({
   if (!section.items?.length) return null;
 
   return (
-    <section 
-      id={id} 
+    <section
+      id={id}
       className="w-full relative z-30 px-2 sm:px-4 group/row scroll-mt-24"
       style={{ contentVisibility: 'auto', containIntrinsicSize: '1px 360px' }}
     >
@@ -276,18 +277,18 @@ const ContentRow = ({
 
         <div className="flex items-center gap-2">
           {(() => {
-            const isMovieSection = section.title.toLowerCase().includes('movie') || 
-                                   section.title.toLowerCase().includes('cinema') || 
-                                   section.title.toLowerCase().includes('hollywood') || 
-                                   section.title.toLowerCase().includes('bollywood');
+            const isMovieSection = section.title.toLowerCase().includes('movie') ||
+              section.title.toLowerCase().includes('cinema') ||
+              section.title.toLowerCase().includes('hollywood') ||
+              section.title.toLowerCase().includes('bollywood');
             const targetLib = isMovieSection ? 'movies' : 'drama';
-            const exploreHref = section.query 
-              ? `/explore?library=${targetLib}&keyword=${encodeURIComponent(section.query)}` 
+            const exploreHref = section.query
+              ? `/explore?library=${targetLib}&keyword=${encodeURIComponent(section.query)}`
               : `/explore?library=${targetLib}`;
 
             return (
-              <Link 
-                href={exploreHref} 
+              <Link
+                href={exploreHref}
                 className="text-[10px] md:text-[11px] font-black uppercase tracking-wider text-zinc-300 md:text-zinc-400 hover:text-white px-3 py-1.5 rounded-full bg-white/5 border border-white/10 md:border-white/5 hover:border-cyan-500/40 transition-all inline-flex items-center gap-1 whitespace-nowrap active:scale-95"
               >
                 <span className="md:hidden">Explore</span>
@@ -318,7 +319,7 @@ const ContentRow = ({
         </div>
       </div>
 
-      <div 
+      <div
         ref={scrollRef}
         onScroll={checkScroll}
         className="flex gap-3.5 sm:gap-4 md:gap-5 pb-3 overflow-x-auto no-scrollbar scroll-smooth snap-x snap-mandatory"
@@ -409,6 +410,30 @@ function CinemaContent() {
     });
   }, [homeSections, activeCategory]);
 
+  const recentSection = useMemo(() => {
+    return homeSections.find(s => {
+      const t = s.title.toLowerCase();
+      return t.includes('recent') || t.includes('latest') || t.includes('update') || t.includes('airing');
+    });
+  }, [homeSections]);
+
+  const otherSections = useMemo(() => {
+    const seenFirstItemIds = new Set<string>();
+    return filteredSections.filter(s => {
+      const t = s.title.toLowerCase();
+      if (t.includes('recent') || t.includes('latest') || t.includes('update') || t.includes('airing')) {
+        return false;
+      }
+      // Deduplicate sections that have the exact same starting item
+      const firstId = s.items?.[0]?.id;
+      if (firstId) {
+        if (seenFirstItemIds.has(firstId)) return false;
+        seenFirstItemIds.add(firstId);
+      }
+      return true;
+    });
+  }, [filteredSections]);
+
   // Curate Spotlight items for Hero Slider: Adapts to chosen category
   const heroItems = useMemo(() => {
     if (!homeSections || homeSections.length === 0) return [];
@@ -452,15 +477,23 @@ function CinemaContent() {
           {/* Center-Aligned Hero Slider (Movies + Dramas) */}
           {heroItems.length > 0 && <HeroSlider items={heroItems} />}
 
-          {/* Full Page Body with Staggered Horizontal Sections (Netflix Style) */}
+          {/* Full Page Body with Staggered Sections */}
           <div className="flex flex-col gap-8 md:gap-11 relative z-20 py-4 pb-20">
-            {filteredSections.map((section) => {
+            {/* Flixverse Recent Updates Section (Appears and works exactly like Recent Updates in Home) */}
+            {(activeCategory === 'all' || activeCategory === 'recent') && (
+              <div className="w-full px-2 sm:px-4">
+                <FlixverseRecentUpdatesSection initialData={recentSection?.items || []} />
+              </div>
+            )}
+
+            {/* Other Curated Horizontal Carousel Rows */}
+            {otherSections.map((section) => {
               const meta = getSectionMeta(section.title);
               return (
-                <ContentRow 
-                  key={section.title} 
-                  section={section} 
-                  icon={meta.icon} 
+                <ContentRow
+                  key={section.title}
+                  section={section}
+                  icon={meta.icon}
                   accentColor={meta.accentColor}
                   id={meta.id}
                 />
@@ -483,7 +516,7 @@ function CinemaContent() {
           </div>
 
           {/* CUTE SHARE BAR */}
-          <CuteShareBar 
+          <CuteShareBar
             badgeText="Share Cinema"
             badgeSubtext="Movies & Dramas"
             title="Invite your Friends to Shadow Cinema!"

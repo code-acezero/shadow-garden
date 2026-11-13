@@ -1,12 +1,13 @@
 "use client";
 
 import React, { useState, useEffect } from 'react';
-import { supabase } from '@/lib/supabase'; // ✅ IMPORT SINGLETON
+import { supabase } from '@/lib/supabase';
 import { cn } from '@/lib/utils';
 import { toast } from '@/lib/toast';
 import { triggerTelepathy } from '@/lib/voice';
 import { Plus, Eye, CheckCircle, XCircle, Clock, Loader2, Trash2 } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
+import { useUserData } from '@/context/UserDataContext';
 import {
   DropdownMenu, 
   DropdownMenuContent, 
@@ -23,10 +24,13 @@ interface WatchListButtonProps {
     mediaType?: string;
     totalEpisodes?: number;
     type?: string;
+    compact?: boolean;
+    labelMode?: 'full' | 'short' | 'icon';
 }
 
-export default function WatchListButton({ animeId, animeTitle, animeImage, currentEp, mediaType = 'anime', totalEpisodes, type }: WatchListButtonProps) {
+export default function WatchListButton({ animeId, animeTitle, animeImage, currentEp, mediaType = 'anime', totalEpisodes, type, compact = false, labelMode }: WatchListButtonProps) {
     const { user, isLoading: isAuthLoading } = useAuth();
+    const { watchlist, library, addToLibrary, updateLibraryStatus, removeFromLibrary } = useUserData();
     const [status, setStatus] = useState<string | null>(null);
     const [loading, setLoading] = useState(false);
     const [mounted, setMounted] = useState(false);
@@ -44,7 +48,22 @@ export default function WatchListButton({ animeId, animeTitle, animeImage, curre
         "dropped": { label: "Dropped", icon: <XCircle size={14}/>, color: "text-rose-400 border-rose-500/20 bg-rose-500/10" },
     };
 
-    // 1. Initial Check: Is this anime in the user's DB?
+    // 1. Synchronize Status with UserDataContext
+    useEffect(() => {
+        const item = watchlist.find((i: any) => String(i.anime_id) === String(animeId) || String(i.id) === String(animeId))
+            || library.find((i: any) => String(i.anime_id) === String(animeId) || String(i.id) === String(animeId));
+        if (item?.status) {
+            setStatus(item.status);
+        } else if (!user) {
+            try {
+                const localWatch = JSON.parse(localStorage.getItem('shadow_watchlist') || '[]');
+                const localItem = localWatch.find((i: any) => String(i.anime_id) === String(animeId) || String(i.id) === String(animeId));
+                if (localItem?.status) setStatus(localItem.status);
+            } catch (_) {}
+        }
+    }, [animeId, watchlist, library, user]);
+
+    // 2. Initial Fallback Check from Supabase if not yet in context cache
     useEffect(() => {
         let isMounted = true;
 
@@ -52,7 +71,6 @@ export default function WatchListButton({ animeId, animeTitle, animeImage, curre
             if (!supabase || !user) return;
 
             try {
-                // ✅ Check using the Shared Client
                 const { data, error } = await supabase
                     .from('watchlist')
                     .select('status')
@@ -62,7 +80,7 @@ export default function WatchListButton({ animeId, animeTitle, animeImage, curre
                 
                 if (error) throw error;
                 
-                if (isMounted && data) {
+                if (isMounted && data?.status) {
                     setStatus(data.status);
                 }
             } catch (err: any) {
@@ -71,44 +89,74 @@ export default function WatchListButton({ animeId, animeTitle, animeImage, curre
             }
         };
 
-        if (!isAuthLoading) {
+        if (!isAuthLoading && user && !status) {
             checkStatus();
         }
 
         return () => { isMounted = false; };
-    }, [animeId, user, isAuthLoading]);
+    }, [animeId, user, isAuthLoading, status]);
 
     const handleUpdate = async (newStatus: string) => {
-        if (!user) {
-            if (typeof window !== 'undefined') {
-                window.dispatchEvent(new CustomEvent('shadow-open-auth', { detail: { view: 'ENTER' } }));
-            }
-            return;
-        }
-
         setLoading(true);
+        const epNum = Number(currentEp || 1);
+        const total = totalEpisodes ? Number(totalEpisodes) : null;
+
+        const optimisticItem = {
+            id: animeId,
+            anime_id: animeId,
+            title: animeTitle,
+            anime_title: animeTitle,
+            poster: animeImage,
+            anime_image: animeImage,
+            status: newStatus,
+            last_episode_number: epNum,
+            progress: epNum,
+            total_episodes: total,
+            media_type: mediaType || 'anime',
+            type: (type || 'TV').toUpperCase(),
+            updated_at: new Date().toISOString()
+        };
+
+        // 1. Immediately update global UserDataContext (instant UI reactivity)
+        addToLibrary(optimisticItem);
+        updateLibraryStatus(animeId, newStatus);
+        setStatus(newStatus);
+
         try {
-            const payload: any = {
-                user_id: user.id,
-                anime_id: animeId,
-                status: newStatus,
-                media_type: mediaType,
-                title: animeTitle,
-                poster: animeImage,
-                updated_at: new Date().toISOString()
-            };
+            if (user && supabase) {
+                // ✅ Exact Supabase column schema matching
+                const payload: any = {
+                    user_id: user.id,
+                    anime_id: animeId,
+                    anime_title: animeTitle,
+                    anime_image: animeImage,
+                    status: newStatus,
+                    media_type: mediaType || 'anime',
+                    last_episode_number: epNum,
+                    updated_at: new Date().toISOString()
+                };
 
-            if (currentEp !== undefined) payload.current_episode = currentEp;
-            if (totalEpisodes !== undefined) payload.total_episodes = totalEpisodes;
+                if (total !== null) payload.total_episodes = total;
 
-            // ✅ Upsert using the Shared Client
-            const { error } = await supabase
-                .from('watchlist')
-                .upsert(payload, { onConflict: 'user_id, anime_id' });
+                const { error } = await supabase
+                    .from('watchlist')
+                    .upsert(payload, { onConflict: 'user_id,anime_id' });
 
-            if (error) throw error;
+                if (error) throw error;
+            }
 
-            setStatus(newStatus);
+            // Always update client-side storage cache for instant reactivity
+            try {
+                const current = JSON.parse(localStorage.getItem('shadow_watchlist') || '[]');
+                const filtered = current.filter((x: any) => String(x.id || x.anime_id) !== String(animeId));
+                filtered.unshift(optimisticItem);
+                localStorage.setItem('shadow_watchlist', JSON.stringify(filtered));
+            } catch (_) {}
+
+            if (typeof window !== 'undefined') {
+                window.dispatchEvent(new CustomEvent('shadow-watchlist-updated'));
+            }
+
             toast.success(`Marked as ${statusMap[newStatus]?.label || newStatus}`);
             triggerTelepathy('BOOKMARK', `Marked ${animeTitle} as ${statusMap[newStatus]?.label || newStatus}`);
         } catch (err: any) {
@@ -120,19 +168,31 @@ export default function WatchListButton({ animeId, animeTitle, animeImage, curre
     };
 
     const handleRemove = async () => {
-        if (!user) return;
-
         setLoading(true);
+        removeFromLibrary(animeId);
+        setStatus(null);
+
         try {
-            const { error } = await supabase
-                .from('watchlist')
-                .delete()
-                .eq('user_id', user.id)
-                .eq('anime_id', animeId);
+            if (user && supabase) {
+                const { error } = await supabase
+                    .from('watchlist')
+                    .delete()
+                    .eq('user_id', user.id)
+                    .eq('anime_id', animeId);
 
-            if (error) throw error;
+                if (error) throw error;
+            }
 
-            setStatus(null);
+            try {
+                const current = JSON.parse(localStorage.getItem('shadow_watchlist') || '[]');
+                const filtered = current.filter((x: any) => String(x.id || x.anime_id) !== String(animeId));
+                localStorage.setItem('shadow_watchlist', JSON.stringify(filtered));
+            } catch (_) {}
+
+            if (typeof window !== 'undefined') {
+                window.dispatchEvent(new CustomEvent('shadow-watchlist-updated'));
+            }
+
             toast.success("Removed from library.");
         } catch (err: any) {
             console.error("Remove Error:", err);
@@ -143,19 +203,31 @@ export default function WatchListButton({ animeId, animeTitle, animeImage, curre
     };
 
     const activeConfig = status ? statusMap[status] : null;
+    const effectiveMode = labelMode ?? (compact ? 'short' : 'full');
+    const isIconOnly = effectiveMode === 'icon';
+    const buttonText = activeConfig ? activeConfig.label : (effectiveMode === 'short' ? "List" : "Add to List");
 
     const triggerButton = (
         <button 
             disabled={loading || isAuthLoading}
             className={cn(
-                "flex items-center justify-center gap-2 rounded-full px-4 h-8 text-[9px] sm:text-[10px] font-black transition-all shadow-lg active:scale-95 border outline-none focus:outline-none focus:ring-0 whitespace-nowrap flex-shrink-0 cursor-pointer",
+                "flex items-center justify-center rounded-full h-8 font-black transition-all shadow-sm active:scale-95 border outline-none focus:outline-none focus:ring-0 whitespace-nowrap flex-shrink-0 cursor-pointer atrax-bubbly-btn atrax-squish-tap",
+                isIconOnly
+                    ? "w-8 p-0"
+                    : compact
+                        ? "gap-1.5 px-3 text-[10px]"
+                        : "gap-2 px-4 text-[9px] sm:text-[10px] shadow-lg",
                 activeConfig 
                     ? activeConfig.color 
-                    : "bg-white/5 border-white/10 text-zinc-400 hover:bg-white/10 hover:text-white"
+                    : "bg-white/[0.04] border-white/[0.08] text-zinc-300 hover:bg-white/10 hover:text-white"
             )}
+            title={buttonText}
+            aria-label={buttonText}
         >
-            {loading ? <Loader2 size={14} className="animate-spin"/> : (activeConfig ? activeConfig.icon : <Plus size={14}/>)}
-            <span className="uppercase tracking-wider">{activeConfig ? activeConfig.label : "Add to List"}</span>
+            {loading ? <Loader2 size={compact || isIconOnly ? 12 : 14} className="animate-spin"/> : (activeConfig ? activeConfig.icon : <Plus size={compact || isIconOnly ? 12 : 14}/>)}
+            {!isIconOnly && (
+                <span className="uppercase tracking-wider">{buttonText}</span>
+            )}
         </button>
     );
 
@@ -168,13 +240,14 @@ export default function WatchListButton({ animeId, animeTitle, animeImage, curre
             <DropdownMenuTrigger asChild>
                 {triggerButton}
             </DropdownMenuTrigger>
-            <DropdownMenuContent className="min-w-[150px]">
+            <DropdownMenuContent className="min-w-[150px] bg-[#0c1322] border-white/10 text-zinc-200">
                 {Object.keys(statusMap).map((key) => (
                     <DropdownMenuItem 
                         key={key} 
+                        onSelect={() => handleUpdate(key)}
                         onClick={() => handleUpdate(key)} 
                         className={cn(
-                            "gap-2 uppercase tracking-wide font-bold",
+                            "gap-2 uppercase tracking-wide font-bold cursor-pointer transition-colors focus:bg-white/10",
                             status === key && "text-primary bg-primary/15"
                         )}
                     >
@@ -184,8 +257,12 @@ export default function WatchListButton({ animeId, animeTitle, animeImage, curre
                 
                 {status && (
                     <>
-                        <DropdownMenuSeparator />
-                        <DropdownMenuItem onClick={handleRemove} className="text-rose-400 hover:text-rose-300 hover:bg-rose-500/10 gap-2 font-bold uppercase tracking-wide focus:bg-rose-500/10">
+                        <DropdownMenuSeparator className="bg-white/10" />
+                        <DropdownMenuItem 
+                            onSelect={handleRemove}
+                            onClick={handleRemove} 
+                            className="text-rose-400 hover:text-rose-300 hover:bg-rose-500/10 gap-2 font-bold uppercase tracking-wide focus:bg-rose-500/10 cursor-pointer"
+                        >
                             <Trash2 size={14} /> Remove
                         </DropdownMenuItem>
                     </>

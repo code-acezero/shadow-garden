@@ -543,25 +543,27 @@ class OmniClient {
 
         if (hasRealSeasons) {
           standardServers.push(
-            { name: 'VidSrc', url: `https://vidsrc.me/embed/tv?imdb=${imdbId}&season=1&episode=1`, type: 'embed' },
-            { name: 'VidSrc Pro', url: `https://vidsrc.to/embed/tv/${imdbId}/1/1`, type: 'embed' },
-            { name: 'VidSrc IN', url: `https://vidsrc.in/embed/tv/${imdbId}/1/1`, type: 'embed' },
-            { name: 'AutoEmbed', url: `https://autoembed.co/tv/imdb/${imdbId}-1-1`, type: 'embed' },
-            { name: 'VidSrc CC', url: `https://vidsrc.cc/v2/embed/tv/${imdbId}/1/1`, type: 'embed' }
+            { name: '2Embed', url: `https://www.2embed.cc/embedtv/${imdbId}&s=1&e=1`, type: 'embed' },
+            { name: 'AutoEmbed', url: `https://autoembed.co/tv/imdb/${imdbId}-1-1`, type: 'embed' }
           );
         } else {
           standardServers.push(
-            { name: 'VidSrc', url: `https://vidsrc.me/embed/movie?imdb=${imdbId}`, type: 'embed' },
-            { name: 'VidSrc Pro', url: `https://vidsrc.to/embed/movie/${imdbId}`, type: 'embed' },
-            { name: 'VidSrc IN', url: `https://vidsrc.in/embed/movie/${imdbId}`, type: 'embed' },
-            { name: 'AutoEmbed', url: `https://autoembed.co/movie/imdb/${imdbId}`, type: 'embed' },
-            { name: 'VidSrc CC', url: `https://vidsrc.cc/v2/embed/movie/${imdbId}`, type: 'embed' }
+            { name: '2Embed', url: `https://www.2embed.cc/embed/${imdbId}`, type: 'embed' },
+            { name: 'AutoEmbed', url: `https://autoembed.co/movie/imdb/${imdbId}`, type: 'embed' }
           );
         }
       }
 
-      // Filter out broken hosts (e.g. multiembed returns 404)
-      const brokenKeywords = ['multiembed.mov'];
+      // Filter out dead/broken hosts (404 / expired SSL / unreachable mirrors)
+      const brokenKeywords = [
+        'multiembed.mov',
+        'vidsrc.me',
+        'vidsrc.to',
+        'vidsrc.in',
+        'vidsrc.cc',
+        'player.videasy.net',
+        'player.autoembed.cc'
+      ];
       const isBroken = (url: string) => !url || brokenKeywords.some(b => url.toLowerCase().includes(b));
 
       const cleanStreams: { name: string; url: string; type?: string }[] = [...standardServers];
@@ -595,11 +597,8 @@ class OmniClient {
             const seasonNum = season.seasonNumber || 1;
             const sources = imdbId ? [
               { name: 'Super Player', url: `https://slast430did.com/play/${imdbId}` },
-              { name: 'VidSrc', url: `https://vidsrc.me/embed/tv?imdb=${imdbId}&season=${seasonNum}&episode=1` },
-              { name: 'VidSrc Pro', url: `https://vidsrc.to/embed/tv/${imdbId}/${seasonNum}/1` },
-              { name: 'VidSrc IN', url: `https://vidsrc.in/embed/tv/${imdbId}/${seasonNum}/1` },
-              { name: 'AutoEmbed', url: `https://autoembed.co/tv/imdb/${imdbId}-${seasonNum}-1` },
-              { name: 'VidSrc CC', url: `https://vidsrc.cc/v2/embed/tv/${imdbId}/${seasonNum}/1` }
+              { name: '2Embed', url: `https://www.2embed.cc/embedtv/${imdbId}&s=${seasonNum}&e=1` },
+              { name: 'AutoEmbed', url: `https://autoembed.co/tv/imdb/${imdbId}-${seasonNum}-1` }
             ] : (season.sources || []).filter((s: any) => !isBroken(s?.url));
 
             return {

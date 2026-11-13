@@ -2,7 +2,7 @@
 
 import React, { useEffect, useRef, useState, useCallback, forwardRef, useImperativeHandle } from 'react';
 import Hls from 'hls.js';
-import { Play, Pause, Volume2, VolumeX, Settings, Maximize, Subtitles, Gauge, ChevronRight, ChevronLeft, ChevronsLeft, ChevronsRight, Loader2, PictureInPicture, Server as ServerIcon, SkipForward, ToggleLeft, ToggleRight, RotateCw, AlertTriangle } from 'lucide-react';
+import { Play, Pause, Volume2, VolumeX, Settings, Maximize, Subtitles, Gauge, ChevronRight, ChevronLeft, ChevronsLeft, ChevronsRight, Loader2, PictureInPicture2, Server as ServerIcon, SkipForward, ToggleLeft, ToggleRight, RotateCw, AlertTriangle } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { MagicalWaveParticlesPlayerLoader } from '@/components/Watch/LiquidWatchLoaders';
 import { RunHappyPlayerLoader } from '@/components/UIx/SkeletonLoaders';
@@ -556,7 +556,8 @@ const DramaPlayer = forwardRef<DramaPlayerRef, DramaPlayerProps>(({
                 </div>
               )}
             </div>
-            <button onClick={(e) => { e.stopPropagation(); toggleFullscreen(); }} className="hover:text-primary-500 transition-colors active:scale-90 p-2 md:p-0 text-white"><Maximize size={21} /></button>
+            <button onClick={(e) => { e.stopPropagation(); togglePiP(); }} className="hover:text-primary-500 transition-colors active:scale-90 p-2 md:p-0 text-white" title="Picture-in-Picture"><PictureInPicture2 size={20} /></button>
+            <button onClick={(e) => { e.stopPropagation(); toggleFullscreen(); }} className="hover:text-primary-500 transition-colors active:scale-90 p-2 md:p-0 text-white" title="Fullscreen"><Maximize size={21} /></button>
           </div>
         </div>
       </div>

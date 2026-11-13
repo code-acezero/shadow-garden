@@ -1861,7 +1861,7 @@ function WhisperIslandContent() {
 
 
   return (
-    <div ref={wrapperRef} className="fixed top-0 left-0 right-0 z-[9999] pt-[0.08rem] px-2 sm:px-4 pointer-events-none font-sans h-auto min-h-[64px]">
+    <div ref={wrapperRef} className="fixed top-0 left-0 right-0 z-[99999] pt-[0.08rem] px-2 sm:px-4 pointer-events-none font-sans h-auto min-h-[64px]">
         <style>{`
             @keyframes electric-text-glitch {
                 0% {
@@ -2145,7 +2145,7 @@ function WhisperIslandContent() {
             {/* --- RIGHT SECTION: DESKTOP CONTROLS & MOBILE/TABLET MERGED PILL --- */}
             {(() => {
                 const profileDropdownMenuContent = (
-                    <DropdownMenuContent align="end" className="liquid-glass text-zinc-300 p-2 sm:p-2.5 rounded-[22px] z-[9999] w-[176px] sm:w-[190px] md:w-[220px]">
+                    <DropdownMenuContent align="end" className="liquid-glass text-zinc-300 p-2 sm:p-2.5 rounded-[22px] z-[99999] w-[176px] sm:w-[190px] md:w-[220px]">
                         {isAuthenticated ? (
                             <div className="space-y-1.5">
                                 <div className="flex flex-col items-center justify-center text-center px-1.5 pt-0.5 pb-0.5">
@@ -2339,7 +2339,7 @@ function WhisperIslandContent() {
 
 export default function WhisperIsland() {
     return (
-        <Suspense fallback={<div className="fixed top-0 h-16 w-full z-[9999]" />}>
+        <Suspense fallback={<div className="fixed top-0 h-16 w-full z-[99999]" />}>
             <WhisperIslandContent />
         </Suspense>
     );

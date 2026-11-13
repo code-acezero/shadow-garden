@@ -19,7 +19,7 @@ export function useMentions(text: string, onSelect: (username: string) => void) 
     selectedIndex: 0,
   });
 
-  const searchTimeoutRef = useRef<NodeJS.Timeout>();
+  const searchTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
     // Basic mention detection looking for @word at the end of the cursor

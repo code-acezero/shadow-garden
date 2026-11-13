@@ -110,21 +110,21 @@ const UserDataContext = createContext<UserDataContextType>({
     continueData: [],
     continueReadingData: [],
     loadingData: true,
-    refreshData: async () => {},
-    updateLibraryStatus: () => {},
-    addToLibrary: () => {},
-    removeFromLibrary: () => {},
-    removeFromContinue: () => {},
-    clearContinueData: () => {},
+    refreshData: async () => { },
+    updateLibraryStatus: () => { },
+    addToLibrary: () => { },
+    removeFromLibrary: () => { },
+    removeFromContinue: () => { },
+    clearContinueData: () => { },
 
-    syncWatchingProgress: async () => {},
-    updateLibraryProgress: async () => {},
-    addToReadlist: async () => {},
-    updateReadlistStatus: async () => {},
-    updateReadlistProgress: async () => {},
-    removeFromReadlist: async () => {},
-    saveReadingProgress: async () => {},
-    removeFromContinueReading: async () => {},
+    syncWatchingProgress: async () => { },
+    updateLibraryProgress: async () => { },
+    addToReadlist: async () => { },
+    updateReadlistStatus: async () => { },
+    updateReadlistProgress: async () => { },
+    removeFromReadlist: async () => { },
+    saveReadingProgress: async () => { },
+    removeFromContinueReading: async () => { },
 });
 
 const getValidPoster = (...candidates: any[]) => {
@@ -249,7 +249,7 @@ export const UserDataProvider = ({ children }: { children: React.ReactNode }) =>
                         const guestWatchlist = JSON.parse(localStorage.getItem('shadow_watchlist') || '[]');
                         const guestReadlist = JSON.parse(localStorage.getItem('shadow_readlist') || '[]');
                         const guestMerged = [...guestWatchlist, ...guestReadlist];
-                        
+
                         if (guestMerged.length > 0 && watchlistRes.data) {
                             const existingDbIds = new Set(watchlistRes.data.map((x: any) => x.anime_id));
                             const newToSync = guestMerged.filter((g: any) => {
@@ -274,17 +274,69 @@ export const UserDataProvider = ({ children }: { children: React.ReactNode }) =>
                                 }
                             }
                         }
-                    } catch (_) {}
+                    } catch (_) { }
                 }
             }
-            
+
             if (continueRes.data) {
                 const dbData = continueRes.data;
                 const uniqueMap = new Map<string, any>();
                 dbData.forEach((item: any) => {
                     if (!uniqueMap.has(item.anime_id)) uniqueMap.set(item.anime_id, item);
+                    const aid = (item.anime_id || '').trim() || (item.episode_id && item.episode_id.includes('::') ? item.episode_id.split('::')[0] : '');
+                    if (!aid) return;
+                    item.anime_id = aid;
+                    if (!uniqueMap.has(aid)) uniqueMap.set(aid, item);
                 });
-                
+
+                // Seamless Traveller -> Adventurer Continue Watching Auto-Migration:
+                // Merge local storage continue items into Supabase and in-memory state
+                if (typeof window !== 'undefined') {
+                    try {
+                        const localRaw = localStorage.getItem('shadow_continue_watching');
+                        if (localRaw) {
+                            const localData = JSON.parse(localRaw);
+                            const localEntries = Object.values(localData) as any[];
+                            const toSyncToDb: any[] = [];
+
+                            for (const entry of localEntries) {
+                                const aid = (entry.animeId || entry.anime_id || '').toString().trim() ||
+                                    (entry.episodeId && entry.episodeId.includes('::') ? entry.episodeId.split('::')[0] : '');
+                                if (!aid) continue;
+
+                                const existingDb = uniqueMap.get(aid);
+                                const localTime = entry.lastUpdated ? new Date(entry.lastUpdated).getTime() : 0;
+                                const dbTime = existingDb?.last_updated ? new Date(existingDb.last_updated).getTime() : 0;
+
+                                if (!existingDb || localTime > dbTime) {
+                                    const mergedItem = {
+                                        user_id: user.id,
+                                        anime_id: aid,
+                                        title: entry.title || existingDb?.title || 'Anime',
+                                        banner_image: entry.poster || existingDb?.banner_image || null,
+                                        episode_id: entry.episodeId || entry.episode_id || existingDb?.episode_id || `${aid}::1`,
+                                        episode_number: Number(entry.episodeNumber || entry.episode_number || existingDb?.episode_number || 1),
+                                        progress: Number(entry.progress || 0),
+                                        duration: Number(entry.duration || existingDb?.duration || 1440),
+                                        total_episodes: entry.totalEpisodes || existingDb?.total_episodes || 1,
+                                        type: entry.type || existingDb?.type || 'TV',
+                                        is_completed: Boolean(entry.is_completed ?? existingDb?.is_completed),
+                                        last_updated: entry.lastUpdated ? new Date(entry.lastUpdated).toISOString() : new Date().toISOString()
+                                    };
+                                    uniqueMap.set(aid, mergedItem);
+                                    toSyncToDb.push(mergedItem);
+                                }
+                            }
+
+                            if (toSyncToDb.length > 0 && supabase) {
+                                (supabase.from('user_continue_watching') as any)
+                                    .upsert(toSyncToDb, { onConflict: 'user_id,episode_id' })
+                                    .catch((err: any) => console.warn('Background continue watching sync error:', err));
+                            }
+                        }
+                    } catch (_) { }
+                }
+
                 const enriched = Array.from(uniqueMap.values()).map((item) => {
                     const rawProg = item.progress || 0;
                     const calculatedProgress = rawProg <= 100 ? rawProg : Math.min(Math.round((rawProg / (item.duration || 1350)) * 100), 100);
@@ -302,9 +354,11 @@ export const UserDataProvider = ({ children }: { children: React.ReactNode }) =>
                         ageRating: item.age_rating || item.ageRating || (item.is_adult || item.isAdult ? '18+' : null),
                         isAdult: item.is_adult || item.isAdult || false,
                         sub: undefined,
-                        dub: undefined
+                        dub: undefined,
+                        last_updated: item.last_updated || new Date().toISOString()
                     };
                 });
+                enriched.sort((a, b) => new Date(b.last_updated).getTime() - new Date(a.last_updated).getTime());
                 setContinueData(enriched);
             }
 
@@ -368,7 +422,7 @@ export const UserDataProvider = ({ children }: { children: React.ReactNode }) =>
                 .update({ status: newStatus, updated_at: new Date().toISOString() })
                 .eq('user_id', user.id)
                 .eq('anime_id', animeId)
-                .then(() => {})
+                .then(() => { })
                 .catch((err: any) => console.error("Failed to update status in Supabase:", err));
         } else {
             try {
@@ -378,7 +432,7 @@ export const UserDataProvider = ({ children }: { children: React.ReactNode }) =>
                 const current = JSON.parse(localStorage.getItem(storageKey) || '[]');
                 const updated = current.map((x: any) => (x.id || x.anime_id) === animeId ? { ...x, status: newStatus } : x);
                 localStorage.setItem(storageKey, JSON.stringify(updated));
-            } catch (_) {}
+            } catch (_) { }
         }
 
         if (typeof window !== 'undefined') {
@@ -405,7 +459,7 @@ export const UserDataProvider = ({ children }: { children: React.ReactNode }) =>
                 const filtered = current.filter((x: any) => (x.id || x.anime_id) !== id);
                 filtered.unshift(item);
                 localStorage.setItem(storageKey, JSON.stringify(filtered));
-            } catch (_) {}
+            } catch (_) { }
         }
     }, [user]);
 
@@ -419,7 +473,7 @@ export const UserDataProvider = ({ children }: { children: React.ReactNode }) =>
                 .delete()
                 .eq('user_id', user.id)
                 .eq('anime_id', animeId)
-                .then(() => {})
+                .then(() => { })
                 .catch((err: any) => console.error("Failed to delete from Supabase:", err));
         } else {
             try {
@@ -430,7 +484,7 @@ export const UserDataProvider = ({ children }: { children: React.ReactNode }) =>
                 const currentRead = JSON.parse(localStorage.getItem('shadow_readlist') || '[]');
                 const filteredRead = currentRead.filter((x: any) => (x.id || x.anime_id) !== animeId);
                 localStorage.setItem('shadow_readlist', JSON.stringify(filteredRead));
-            } catch (_) {}
+            } catch (_) { }
         }
 
         if (typeof window !== 'undefined') {
@@ -484,7 +538,7 @@ export const UserDataProvider = ({ children }: { children: React.ReactNode }) =>
                     status: isCompleted ? 'completed' : (x.status === 'plan_to_watch' ? 'watching' : x.status)
                 } : x);
                 localStorage.setItem('shadow_watchlist', JSON.stringify(updated));
-            } catch (_) {}
+            } catch (_) { }
         }
 
         if (typeof window !== 'undefined') {
@@ -539,7 +593,7 @@ export const UserDataProvider = ({ children }: { children: React.ReactNode }) =>
                     const parsed = JSON.parse(raw);
                     if (parsed.autoWatchlistTracking === false) autoWatchlist = false;
                 }
-            } catch (_) {}
+            } catch (_) { }
         }
 
         let newStatus = existing?.status || 'watching';
@@ -548,9 +602,9 @@ export const UserDataProvider = ({ children }: { children: React.ReactNode }) =>
                 newStatus = 'completed';
             } else if (!existing) {
                 newStatus = 'watching';
-            } else if (existing.status === 'plan_to_watch' || existing.status === 'on_hold') {
-                newStatus = 'watching';
             }
+            // If already existing with a user-chosen status (plan_to_watch, on_hold, dropped, completed),
+            // preserve the user's intentional status selection.
         }
 
         // Avoid re-writing to Supabase/localStorage if unchanged
@@ -598,7 +652,7 @@ export const UserDataProvider = ({ children }: { children: React.ReactNode }) =>
                     total_episodes: totalEps || existing?.total_episodes || null,
                     media_type: mediaType,
                     updated_at: new Date().toISOString()
-                }, { onConflict: 'user_id, anime_id' });
+                }, { onConflict: 'user_id,anime_id' });
             } catch (err) {
                 console.error("Failed to sync watchlist to Supabase:", err);
             }
@@ -608,8 +662,15 @@ export const UserDataProvider = ({ children }: { children: React.ReactNode }) =>
                 const filtered = current.filter((x: any) => (x.id || x.anime_id) !== animeId);
                 filtered.unshift(updatedItem);
                 localStorage.setItem('shadow_watchlist', JSON.stringify(filtered));
-            } catch (_) {}
+            } catch (_) { }
         }
+        // Always maintain local cache for instant offline responsiveness & consistency
+        try {
+            const current = JSON.parse(localStorage.getItem('shadow_watchlist') || '[]');
+            const filtered = current.filter((x: any) => (x.id || x.anime_id) !== animeId);
+            filtered.unshift(updatedItem);
+            localStorage.setItem('shadow_watchlist', JSON.stringify(filtered));
+        } catch (_) { }
 
         if (typeof window !== 'undefined') {
             window.dispatchEvent(new CustomEvent('shadow-watchlist-updated'));
@@ -627,12 +688,59 @@ export const UserDataProvider = ({ children }: { children: React.ReactNode }) =>
     }, [user, library]);
 
     const removeFromContinue = useCallback((animeId: string) => {
-        setContinueData(prev => prev.filter(item => item.anime_id !== animeId));
-    }, []);
+        setContinueData(prev => prev.filter(item => item.anime_id !== animeId && item.id !== animeId));
 
-    const clearContinueData = useCallback(() => {
+        if (user) {
+            supabase
+                .from('user_continue_watching')
+                .delete()
+                .eq('user_id', user.id)
+                .eq('anime_id', animeId)
+                .then(() => { })
+                .catch((err: any) => console.error("Failed to delete continue watching from Supabase:", err));
+        }
+
+        try {
+            const localData = JSON.parse(localStorage.getItem('shadow_continue_watching') || '{}');
+            let changed = false;
+            for (const key of Object.keys(localData)) {
+                const item = localData[key];
+                if (key === animeId || item?.animeId === animeId || item?.anime_id === animeId) {
+                    delete localData[key];
+                    changed = true;
+                }
+            }
+            if (changed) {
+                localStorage.setItem('shadow_continue_watching', JSON.stringify(localData));
+            }
+        } catch (_) { }
+
+        if (typeof window !== 'undefined') {
+            window.dispatchEvent(new CustomEvent('shadow-continue-updated'));
+            window.dispatchEvent(new Event('shadow_continue_watching_updated'));
+        }
+    }, [user]);
+
+    const clearContinueData = useCallback(async () => {
         setContinueData([]);
-    }, []);
+
+        if (user) {
+            try {
+                await supabase.from('user_continue_watching').delete().eq('user_id', user.id);
+            } catch (err) {
+                console.error("Failed to clear continue watching from Supabase:", err);
+            }
+        }
+
+        try {
+            localStorage.removeItem('shadow_continue_watching');
+        } catch (_) { }
+
+        if (typeof window !== 'undefined') {
+            window.dispatchEvent(new CustomEvent('shadow-continue-updated'));
+            window.dispatchEvent(new Event('shadow_continue_watching_updated'));
+        }
+    }, [user]);
 
     // ─── READLIST OPERATIONS ─────────────────────────────────────────────────
     const addToReadlist = useCallback(async (item: {
@@ -694,7 +802,7 @@ export const UserDataProvider = ({ children }: { children: React.ReactNode }) =>
                 const filtered = current.filter((x: any) => (x.id || x.anime_id) !== mangaId);
                 filtered.unshift(optimisticItem);
                 localStorage.setItem('shadow_readlist', JSON.stringify(filtered));
-            } catch (_) {}
+            } catch (_) { }
         }
 
         if (typeof window !== 'undefined') {
@@ -723,7 +831,7 @@ export const UserDataProvider = ({ children }: { children: React.ReactNode }) =>
                 const current = JSON.parse(localStorage.getItem('shadow_readlist') || '[]');
                 const updated = current.map((x: any) => (x.id || x.anime_id) === mangaId ? { ...x, status: newStatus } : x);
                 localStorage.setItem('shadow_readlist', JSON.stringify(updated));
-            } catch (_) {}
+            } catch (_) { }
         }
 
         if (typeof window !== 'undefined') {
@@ -777,7 +885,7 @@ export const UserDataProvider = ({ children }: { children: React.ReactNode }) =>
                     status: isCompleted ? 'completed' : (x.status === 'plan_to_read' ? 'reading' : x.status)
                 } : x);
                 localStorage.setItem('shadow_readlist', JSON.stringify(updated));
-            } catch (_) {}
+            } catch (_) { }
         }
 
         if (typeof window !== 'undefined') {
@@ -813,7 +921,7 @@ export const UserDataProvider = ({ children }: { children: React.ReactNode }) =>
                 const current = JSON.parse(localStorage.getItem('shadow_readlist') || '[]');
                 const updated = current.filter((x: any) => (x.id || x.anime_id) !== mangaId);
                 localStorage.setItem('shadow_readlist', JSON.stringify(updated));
-            } catch (_) {}
+            } catch (_) { }
         }
 
         if (typeof window !== 'undefined') {
@@ -870,7 +978,7 @@ export const UserDataProvider = ({ children }: { children: React.ReactNode }) =>
             const current = JSON.parse(localStorage.getItem('shadow_continue_reading') || '{}');
             current[mangaId] = record;
             localStorage.setItem('shadow_continue_reading', JSON.stringify(current));
-        } catch (_) {}
+        } catch (_) { }
 
         if (user) {
             try {
@@ -886,8 +994,8 @@ export const UserDataProvider = ({ children }: { children: React.ReactNode }) =>
                     total_pages: item.total_pages || 1,
                     media_type: mediaType,
                     last_read: new Date().toISOString()
-                }, { onConflict: 'user_id, manga_id' });
-            } catch (err) {}
+                }, { onConflict: 'user_id,manga_id' });
+            } catch (err) { }
         }
 
         // 2. Readlist Auto-Update & Completion Detection
@@ -957,7 +1065,7 @@ export const UserDataProvider = ({ children }: { children: React.ReactNode }) =>
                 const filtered = current.filter((x: any) => (x.id || x.anime_id) !== mangaId);
                 filtered.unshift(updatedReadlistItem);
                 localStorage.setItem('shadow_readlist', JSON.stringify(filtered));
-            } catch (_) {}
+            } catch (_) { }
         }
 
         if (typeof window !== 'undefined') {
@@ -982,7 +1090,7 @@ export const UserDataProvider = ({ children }: { children: React.ReactNode }) =>
             const current = JSON.parse(localStorage.getItem('shadow_continue_reading') || '{}');
             delete current[mangaId];
             localStorage.setItem('shadow_continue_reading', JSON.stringify(current));
-        } catch (_) {}
+        } catch (_) { }
 
         if (user) {
             try {
@@ -991,7 +1099,7 @@ export const UserDataProvider = ({ children }: { children: React.ReactNode }) =>
                     .delete()
                     .eq('user_id', user.id)
                     .eq('manga_id', mangaId);
-            } catch (_) {}
+            } catch (_) { }
         }
     }, [user]);
 
@@ -1006,17 +1114,24 @@ export const UserDataProvider = ({ children }: { children: React.ReactNode }) =>
         const handleWatchlistUpdated = () => {
             refreshData(true);
         };
+        const handleContinueUpdated = () => {
+            refreshData(true);
+        };
 
         if (typeof window !== 'undefined') {
             window.addEventListener('shadow-sync-watching', handleSyncWatching);
             window.addEventListener('shadow-sync-reading', handleSyncReading);
             window.addEventListener('shadow-watchlist-updated', handleWatchlistUpdated);
+            window.addEventListener('shadow-continue-updated', handleContinueUpdated);
+            window.addEventListener('shadow_continue_watching_updated', handleContinueUpdated);
         }
         return () => {
             if (typeof window !== 'undefined') {
                 window.removeEventListener('shadow-sync-watching', handleSyncWatching);
                 window.removeEventListener('shadow-sync-reading', handleSyncReading);
                 window.removeEventListener('shadow-watchlist-updated', handleWatchlistUpdated);
+                window.removeEventListener('shadow-continue-updated', handleContinueUpdated);
+                window.removeEventListener('shadow_continue_watching_updated', handleContinueUpdated);
             }
         };
     }, [syncWatchingProgress, saveReadingProgress, refreshData]);

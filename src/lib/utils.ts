@@ -268,14 +268,26 @@ export function formatAnimeTitle(
 
 export function sanitizeContinueWatchingEntry(p: any, fallbackUserId?: string) {
     if (!p) return null;
+    const rawAnimeId = p.anime_id || p.animeId || '';
+    const inferredAnimeId = (rawAnimeId && String(rawAnimeId).trim() !== '')
+        ? String(rawAnimeId).trim()
+        : (p.episode_id && String(p.episode_id).includes('::') ? String(p.episode_id).split('::')[0] : '');
+
+    // Reject entries that do not have a valid anime/media ID
+    if (!inferredAnimeId) return null;
+
+    const rawTitle = p.title || p.anime_title || p.name;
+    const cleanTitle = (rawTitle && rawTitle !== 'Unknown Title') ? rawTitle : 'Anime';
+
     return {
         user_id: p.user_id || fallbackUserId,
-        anime_id: p.anime_id || p.animeId || '',
-        title: p.title || 'Unknown Title',
-        banner_image: p.banner_image || p.poster || p.image || null,
+        anime_id: inferredAnimeId,
+        title: cleanTitle,
+        banner_image: p.banner_image || p.poster || p.image || p.anime_image || null,
         episode_id: p.episode_id || p.episodeId || '',
         episode_number: Number(p.episode_number || p.episodeNumber || p.episode) || 1,
         progress: Math.floor(Number(p.progress) || 0),
+        duration: Math.floor(Number(p.duration) || 1440),
         last_updated: p.last_updated || (p.lastUpdated ? new Date(p.lastUpdated).toISOString() : new Date().toISOString()),
         last_server: p.last_server || null,
         episode_image: p.episode_image || p.banner_image || p.poster || null,

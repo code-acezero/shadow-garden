@@ -1,0 +1,512 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Anime 3D Character Lab – Princess & Vampire Queen</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/build/three.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+  <style>
+    :root {
+      --bg: #07050e;
+      --panel-bg: rgba(13, 10, 24, 0.88);
+      --panel-border: rgba(168, 85, 247, 0.22);
+      --card-bg: rgba(22, 17, 38, 0.75);
+      --accent-crimson: #e11d48;
+      --accent-purple: #a855f7;
+      --accent-violet: #8b5cf6;
+      --text-main: #f8fafc;
+      --text-muted: #94a3b8;
+    }
+    * {
+      box-sizing: border-box;
+      user-select: none;
+      -webkit-user-select: none;
+    }
+    html, body {
+      margin: 0;
+      padding: 0;
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      background: var(--bg);
+      color: var(--text-main);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    }
+
+    /* Edge-to-edge Top Nav (Rule 3) */
+    header {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 52px;
+      padding: 0 16px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      background: rgba(7, 5, 14, 0.90);
+      backdrop-filter: blur(16px);
+      border-bottom: 1px solid rgba(168, 85, 247, 0.16);
+      z-index: 100;
+    }
+    .brand-group {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+    .brand-name {
+      font-size: 15px;
+      font-weight: 700;
+      letter-spacing: -0.01em;
+      background: linear-gradient(135deg, #f43f5e, #c084fc);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+    .brand-model-badge {
+      font-size: 11px;
+      font-weight: 600;
+      padding: 3px 9px;
+      border-radius: 9999px;
+      background: rgba(168, 85, 247, 0.14);
+      border: 1px solid rgba(168, 85, 247, 0.32);
+      color: #d8b4fe;
+    }
+    .top-quick-actions {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .btn-nav {
+      padding: 5px 12px;
+      border-radius: 8px;
+      font-size: 11.5px;
+      font-weight: 600;
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      color: var(--text-main);
+      cursor: pointer;
+      transition: all 0.18s ease;
+    }
+    .btn-nav:hover {
+      background: rgba(168, 85, 247, 0.22);
+      border-color: rgba(168, 85, 247, 0.45);
+      color: #fff;
+    }
+    .btn-nav.active {
+      background: linear-gradient(135deg, rgba(225, 29, 72, 0.45), rgba(168, 85, 247, 0.45));
+      border-color: #f43f5e;
+      color: #fff;
+    }
+
+    /* Main Flex Layout */
+    #app-layout {
+      position: absolute;
+      top: 52px;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      display: flex;
+      width: 100%;
+      height: calc(100% - 52px);
+    }
+    /* Optional Left Flip */
+    #app-layout.layout-panel-left {
+      flex-direction: row-reverse;
+    }
+
+    /* 3D Viewport on Left */
+    #canvas-container {
+      flex: 1;
+      height: 100%;
+      position: relative;
+      overflow: hidden;
+      background: radial-gradient(circle at 50% 45%, #130d24 0%, #07050e 80%);
+    }
+    canvas#c {
+      width: 100%;
+      height: 100%;
+      display: block;
+    }
+
+    /* Floating Status Pill inside Viewport */
+    #bubble {
+      position: absolute;
+      top: 14px;
+      left: 50%;
+      transform: translateX(-50%);
+      padding: 6px 16px;
+      border-radius: 9999px;
+      font-size: 11.5px;
+      font-weight: 500;
+      background: rgba(16, 12, 28, 0.82);
+      border: 1px solid rgba(168, 85, 247, 0.25);
+      backdrop-filter: blur(12px);
+      color: #e2e8f0;
+      pointer-events: none;
+      z-index: 20;
+      white-space: nowrap;
+    }
+    #viewport-hint {
+      position: absolute;
+      bottom: 14px;
+      left: 50%;
+      transform: translateX(-50%);
+      font-size: 11px;
+      letter-spacing: 0.04em;
+      color: rgba(241, 245, 249, 0.45);
+      pointer-events: none;
+      z-index: 20;
+    }
+
+    /* Right-side Menu Panel (User Request) */
+    #right-panel {
+      width: 375px;
+      min-width: 330px;
+      height: 100%;
+      background: var(--panel-bg);
+      backdrop-filter: blur(24px);
+      border-left: 1px solid var(--panel-border);
+      display: flex;
+      flex-direction: column;
+      z-index: 30;
+      overflow-y: auto;
+      overflow-x: hidden;
+    }
+    #app-layout.layout-panel-left #right-panel {
+      border-left: none;
+      border-right: 1px solid var(--panel-border);
+    }
+    #right-panel::-webkit-scrollbar {
+      width: 5px;
+    }
+    #right-panel::-webkit-scrollbar-thumb {
+      background: rgba(168, 85, 247, 0.28);
+      border-radius: 4px;
+    }
+
+    .panel-section {
+      padding: 14px 16px;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+    .panel-section:last-child {
+      border-bottom: none;
+    }
+    .section-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      font-size: 12px;
+      font-weight: 700;
+      letter-spacing: 0.02em;
+      color: #e2e8f0;
+      text-transform: uppercase;
+    }
+    .section-header .count-badge {
+      font-size: 10px;
+      font-weight: 600;
+      padding: 1px 6px;
+      border-radius: 9999px;
+      background: rgba(168, 85, 247, 0.2);
+      color: #c084fc;
+    }
+
+    /* Model Switcher Buttons */
+    .model-card-grid {
+      display: flex;
+      flex-direction: column;
+      gap: 7px;
+    }
+    .model-card-btn {
+      padding: 9px 12px;
+      border-radius: 10px;
+      background: var(--card-bg);
+      border: 1px solid rgba(255, 255, 255, 0.07);
+      color: var(--text-main);
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      transition: all 0.18s ease;
+      text-align: left;
+    }
+    .model-card-btn:hover {
+      background: rgba(168, 85, 247, 0.18);
+      border-color: rgba(168, 85, 247, 0.4);
+      transform: translateX(2px);
+    }
+    .model-card-btn.active {
+      background: linear-gradient(135deg, rgba(225, 29, 72, 0.35) 0%, rgba(147, 51, 234, 0.35) 100%);
+      border-color: #f43f5e;
+      box-shadow: 0 0 14px rgba(225, 29, 72, 0.22);
+    }
+    .model-info-title {
+      font-size: 12.5px;
+      font-weight: 600;
+      color: #f8fafc;
+    }
+    .model-info-desc {
+      font-size: 10.5px;
+      color: var(--text-muted);
+      margin-top: 2px;
+    }
+
+    /* Chips & Action Buttons */
+    .chips-flow {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+    }
+    .chip {
+      padding: 5px 10px;
+      border-radius: 9999px;
+      font-size: 11px;
+      font-weight: 500;
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid rgba(255, 255, 255, 0.10);
+      color: #cbd5e1;
+      cursor: pointer;
+      transition: all 0.16s ease;
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+    }
+    .chip:hover {
+      background: rgba(168, 85, 247, 0.25);
+      border-color: #c084fc;
+      color: #fff;
+    }
+    .chip.active {
+      background: #e11d48;
+      border-color: #fb7185;
+      color: #fff;
+    }
+
+    /* Dropdown Picker */
+    .styled-select {
+      width: 100%;
+      padding: 7px 10px;
+      border-radius: 8px;
+      background: rgba(16, 12, 28, 0.95);
+      border: 1px solid rgba(168, 85, 247, 0.3);
+      color: #f1f5f9;
+      font-size: 11.5px;
+      outline: none;
+      cursor: pointer;
+    }
+    .styled-select option {
+      background: #0f0a1c;
+      color: #f1f5f9;
+    }
+
+    /* Slider Row */
+    .slider-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      font-size: 11.5px;
+      color: var(--text-muted);
+    }
+    .slider-row label {
+      min-width: 60px;
+    }
+    .slider-row input[type="range"] {
+      flex: 1;
+      accent-color: #c084fc;
+      cursor: pointer;
+    }
+    .slider-row .val {
+      width: 32px;
+      text-align: right;
+      font-variant-numeric: tabular-nums;
+      color: var(--text-main);
+      font-weight: 600;
+    }
+  </style>
+</head>
+<body>
+  <!-- Top Navigation (Rule 3) -->
+  <header>
+    <div class="brand-group">
+      <span class="brand-name">Anime 3D Character Lab</span>
+      <span class="brand-model-badge" id="cur-model-label">Princess Anime Girl</span>
+    </div>
+    <div class="top-quick-actions">
+      <button class="btn-nav" id="btn-toggle-layout" title="Flip Panel Left / Right">Panel: Right</button>
+      <button class="btn-nav" id="btn-view-face">Face</button>
+      <button class="btn-nav" id="btn-view-full">Full Body</button>
+      <button class="btn-nav active" id="btn-idle-life">Idle Life: ON</button>
+      <button class="btn-nav" id="btn-stop-all" style="border-color:rgba(225,29,72,0.4); color:#fda4af;">⏹️ Poise</button>
+    </div>
+  </header>
+
+  <!-- Main Viewport + Right Menu Panel -->
+  <div id="app-layout">
+    <!-- Viewport Canvas (Left / Main) -->
+    <div id="canvas-container">
+      <canvas id="c"></canvas>
+      <div id="bubble">Awakening Princess Model with Complete Living Movement...</div>
+      <div id="viewport-hint">Click & drag to orbit · Scroll to zoom smoothly · Shift+drag to pan</div>
+    </div>
+
+    <!-- Dedicated Right-side Menu Panel (User Request) -->
+    <aside id="right-panel">
+      <!-- 1. Model Selector Section -->
+      <div class="panel-section">
+        <div class="section-header">
+          <span>Character Model</span>
+          <span class="count-badge">3 Ready</span>
+        </div>
+        <div class="model-card-grid">
+          <button class="model-card-btn active" data-model="princess">
+            <div>
+              <div class="model-info-title">👑 Princess Anime Girl</div>
+              <div class="model-info-desc">Fully rigged royal anime girl with flowing dress</div>
+            </div>
+            <span style="font-size:11px; color:#c084fc;">Active</span>
+          </button>
+          <button class="model-card-btn" data-model="seraphina">
+            <div>
+              <div class="model-info-title">🦇 Seraphina Nocturne</div>
+              <div class="model-info-desc">Vampire Queen with gothic outfit & cat ears</div>
+            </div>
+          </button>
+          <button class="model-card-btn" data-model="companion">
+            <div>
+              <div class="model-info-title">🐱 Vampire Companion</div>
+              <div class="model-info-desc">Purple twin-tails with bat wings & demonic charm</div>
+            </div>
+          </button>
+        </div>
+      </div>
+
+      <!-- 2. Camera Angles -->
+      <div class="panel-section">
+        <div class="section-header">
+          <span>Camera Presets</span>
+        </div>
+        <div class="chips-flow">
+          <button class="chip" id="btn-view-full-chip">Full View</button>
+          <button class="chip" id="btn-view-face-chip">Portrait Face</button>
+          <button class="chip" id="btn-view-hands">Hands & Gestures</button>
+          <button class="chip" id="btn-view-legs">Legs & Stance</button>
+        </div>
+      </div>
+
+      <!-- 3. Gestures Section (45+) -->
+      <div class="panel-section">
+        <div class="section-header">
+          <span>Gestures & Actions</span>
+          <span class="count-badge">45+</span>
+        </div>
+        <div class="chips-flow">
+          <button class="chip" data-g="wave">Wave</button>
+          <button class="chip" data-g="arms_cross">Arms Cross</button>
+          <button class="chip" data-g="point">Command Point</button>
+          <button class="chip" data-g="shy_pose">Shy Paws</button>
+          <button class="chip" data-g="stretch">Morning Stretch</button>
+          <button class="chip" data-g="tease_pose">Tease Peace</button>
+          <button class="chip" data-g="bow">Royal Bow</button>
+          <button class="chip" data-g="blow_kiss">Blow Kiss</button>
+          <button class="chip" data-g="salute">Salute</button>
+          <button class="chip" data-g="clap">Clap</button>
+        </div>
+        <select class="styled-select" id="sel-all-gestures">
+          <option value="">Search / select from all 45+ gestures...</option>
+        </select>
+      </div>
+
+      <!-- 4. Dances Section (20+) -->
+      <div class="panel-section">
+        <div class="section-header">
+          <span>Dances & Rhythm</span>
+          <span class="count-badge">20+</span>
+        </div>
+        <div class="chips-flow">
+          <button class="chip" data-d="sway">Moonlight Sway</button>
+          <button class="chip" data-d="bounce">Cute Bounce</button>
+          <button class="chip" data-d="disco">Disco Flow</button>
+          <button class="chip" data-d="twist">Gothic Twist</button>
+          <button class="chip" data-d="floss">Floss</button>
+          <button class="chip" data-d="dab">Dab</button>
+          <button class="chip" data-d="gangnam">Gangnam</button>
+          <button class="chip" data-d="macarena">Macarena</button>
+          <button class="chip" data-d="wave_arms">Wave Arms</button>
+        </div>
+        <select class="styled-select" id="sel-all-dances">
+          <option value="">Search / select from all 20+ dances...</option>
+        </select>
+      </div>
+
+      <!-- 5. Moods & Expressions (35+) -->
+      <div class="panel-section">
+        <div class="section-header">
+          <span>Facial Moods & Expressions</span>
+          <span class="count-badge">35+</span>
+        </div>
+        <div class="chips-flow">
+          <button class="chip" data-ex="smug">Smug</button>
+          <button class="chip" data-ex="cat">Cat :3</button>
+          <button class="chip" data-ex="pout">Pout</button>
+          <button class="chip" data-ex="happy">Happy</button>
+          <button class="chip" data-ex="joy">Joy</button>
+          <button class="chip" data-ex="tease">Tease</button>
+          <button class="chip" data-ex="heart_eyes">Heart Eyes</button>
+          <button class="chip" data-ex="star_eyes">Star Eyes</button>
+          <button class="chip" data-ex="shy">Shy Blush</button>
+          <button class="chip" data-ex="neutral">Neutral</button>
+        </div>
+        <select class="styled-select" id="sel-all-expr">
+          <option value="">Search / select from all 35+ moods...</option>
+        </select>
+      </div>
+
+      <!-- 6. Locomotion & Gait -->
+      <div class="panel-section">
+        <div class="section-header">
+          <span>Locomotion & Gait</span>
+        </div>
+        <div class="chips-flow">
+          <button class="chip" data-loco="catwalk">Catwalk</button>
+          <button class="chip" data-loco="walk">Natural Walk</button>
+          <button class="chip" data-loco="run">Agile Run</button>
+          <button class="chip" data-loco="sneak">Stealth Sneak</button>
+        </div>
+      </div>
+
+      <!-- 7. Secondary Physics Tuning -->
+      <div class="panel-section">
+        <div class="section-header">
+          <span>Physics & Dynamics</span>
+        </div>
+        <div class="slider-row">
+          <label>Gravity:</label>
+          <input type="range" id="slider-gravity" min="0" max="2.5" step="0.1" value="1.0">
+          <span class="val" id="val-gravity">1.0</span>
+        </div>
+        <div class="slider-row">
+          <label>Wind:</label>
+          <input type="range" id="slider-wind" min="0" max="1.5" step="0.1" value="0.3">
+          <span class="val" id="val-wind">0.3</span>
+        </div>
+      </div>
+    </aside>
+  </div>
+
+  <script src="/experiments/seraphina-engine.js"></script>
+  <script>
+    // Wire up duplicate camera buttons if clicked from chip section
+    document.getElementById('btn-view-full-chip')?.addEventListener('click', () => {
+      document.getElementById('btn-view-full')?.click();
+    });
+    document.getElementById('btn-view-face-chip')?.addEventListener('click', () => {
+      document.getElementById('btn-view-face')?.click();
+    });
+  </script>
+</body>
+</html>

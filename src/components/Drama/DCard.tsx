@@ -49,71 +49,76 @@ const DCard = memo(({ item }: { item: DramaCard }) => {
           </div>
         )}
         
-        {/* Top-Left: Media Type & Country Badge (One UI 8 Frosted Glass Pill) */}
-        <div className="absolute top-2.5 left-2.5 z-20">
-          <CountryBadge country={item.country} type={item.type} />
+        {/* Top Badges Row: Unified Flex Row (Pixel-Perfect Alignment & Compact on Mobile) */}
+        <div className="absolute top-1.5 left-1.5 right-1.5 sm:top-2 sm:left-2 sm:right-2 z-20 flex items-center justify-between pointer-events-none gap-1">
+          {/* Top-Left: Media Type & Country Badge */}
+          <div className="flex items-center shrink-0">
+            <CountryBadge country={item.country} type={item.type} />
+          </div>
+
+          {/* Top-Right: Unified Pill (HINDI / EP TAG / MOVIE) */}
+          <div className="flex items-center shrink-0 ml-auto">
+            {isHindi && !isCountryHindi ? (
+              <div className="inline-flex items-center justify-center bg-black/60 backdrop-blur-md text-amber-300 border border-white/10 px-1.5 sm:px-2 py-0.5 h-4 sm:h-5 rounded-full font-bold text-[7.5px] sm:text-[8.5px] shadow-sm uppercase tracking-wider leading-none">
+                HINDI
+              </div>
+            ) : epTag ? (
+              <div className="inline-flex items-center justify-center bg-black/60 backdrop-blur-md text-zinc-200 border border-white/10 px-1.5 sm:px-2 py-0.5 h-4 sm:h-5 rounded-full font-bold text-[7.5px] sm:text-[8.5px] shadow-sm uppercase tracking-wider leading-none">
+                {epTag}
+              </div>
+            ) : isMovie ? (
+              <div className="inline-flex items-center justify-center bg-black/60 backdrop-blur-md text-zinc-300 border border-white/10 px-1.5 sm:px-2 py-0.5 h-4 sm:h-5 rounded-full font-bold text-[7.5px] sm:text-[8.5px] shadow-sm uppercase tracking-wider leading-none">
+                MOVIE
+              </div>
+            ) : null}
+          </div>
         </div>
 
-        {/* Top-Right: Unified One UI 8 Pill (No redundant tags) */}
-        {isHindi && !isCountryHindi ? (
-          <div className="absolute top-2.5 right-2.5 bg-black/60 backdrop-blur-md text-amber-300 border border-white/10 px-2 py-0.5 rounded-full font-bold text-[9px] z-20 shadow-sm flex items-center uppercase tracking-wider">
-            HINDI
-          </div>
-        ) : epTag ? (
-          <div className="absolute top-2.5 right-2.5 bg-black/60 backdrop-blur-md text-zinc-200 border border-white/10 px-2 py-0.5 rounded-full font-bold text-[9px] z-20 shadow-sm uppercase tracking-wider">
-            {epTag}
-          </div>
-        ) : isMovie ? (
-          <div className="absolute top-2.5 right-2.5 bg-black/60 backdrop-blur-md text-zinc-300 border border-white/10 px-2 py-0.5 rounded-full font-bold text-[9px] z-20 shadow-sm uppercase tracking-wider">
-            MOVIE
-          </div>
-        ) : null}
-
         {/* Gradient Scrim: Subtle at rest for text legibility, smooth deepen on hover */}
-        <div className="absolute inset-0 bg-gradient-to-t from-[#020617] via-[#020617]/45 to-transparent opacity-85 group-hover:opacity-95 transition-opacity duration-300 pointer-events-none z-10" />
+        <div className="absolute inset-0 bg-gradient-to-t from-[#020617] via-[#020617]/55 to-transparent opacity-95 md:opacity-85 md:group-hover:opacity-95 transition-opacity duration-300 pointer-events-none z-10" />
 
-        {/* Bottom Content Area: Title ALWAYS visible, smoothly moves up on hover to reveal options */}
-        <div className="absolute inset-x-0 bottom-0 p-3 sm:p-3.5 z-20 flex flex-col justify-end pointer-events-none">
+        {/* Bottom Content Area: Title and controls (Always visible on mobile, reveal on hover for desktop) */}
+        <div className="absolute inset-x-0 bottom-0 p-2.5 sm:p-3 md:p-3.5 z-20 flex flex-col justify-end pointer-events-none">
           {/* Always Visible Title */}
-          <div className="transform transition-transform duration-300 ease-out group-hover:-translate-y-1">
+          <div className="transform transition-transform duration-300 ease-out md:group-hover:-translate-y-0.5">
             <h3 className="text-xs sm:text-[13px] font-black text-white line-clamp-2 leading-snug drop-shadow-md">
               {item.title}
             </h3>
           </div>
 
-          {/* Smoothly Revealed Secondary Info & Action Buttons on Hover */}
-          <div className="overflow-hidden max-h-0 opacity-0 group-hover:max-h-24 group-hover:opacity-100 transition-all duration-300 ease-out flex flex-col gap-2 pt-1.5 pointer-events-auto">
+          {/* Secondary Info & Action Buttons: ALWAYS visible on mobile, smooth hover reveal on desktop */}
+          <div className="overflow-hidden max-h-28 opacity-100 md:max-h-0 md:opacity-0 md:group-hover:max-h-28 md:group-hover:opacity-100 transition-all duration-300 ease-out flex flex-col gap-1.5 sm:gap-2 pt-1 sm:pt-1.5 pointer-events-auto">
             {/* One UI 8 Clean Cohesive Meta Row */}
-            <div className="flex flex-wrap items-center gap-1 text-[8.5px] font-bold text-zinc-300 uppercase tracking-wider">
+            <div className="flex flex-wrap items-center gap-1 text-[7.5px] sm:text-[8.5px] font-bold text-zinc-300 uppercase tracking-wider">
               {item.year && (
-                <span className="bg-white/10 backdrop-blur-md px-2 py-0.5 rounded-full border border-white/10">
+                <span className="bg-white/10 backdrop-blur-md px-1.5 sm:px-2 py-0.5 rounded-full border border-white/10">
                   {item.year}
                 </span>
               )}
-              <span className="bg-white/10 backdrop-blur-md text-amber-300 px-2 py-0.5 rounded-full border border-white/10 flex items-center gap-0.5">
+              <span className="bg-white/10 backdrop-blur-md text-amber-300 px-1.5 sm:px-2 py-0.5 rounded-full border border-white/10 flex items-center gap-0.5">
                 <Star size={8.5} className="fill-amber-400 text-amber-400" />
                 {item.score || '8.2'}
               </span>
               {item.type && (
-                <span className="bg-white/10 backdrop-blur-md text-zinc-300 px-2 py-0.5 rounded-full border border-white/10">
+                <span className="bg-white/10 backdrop-blur-md text-zinc-300 px-1.5 sm:px-2 py-0.5 rounded-full border border-white/10">
                   {item.type}
                 </span>
               )}
             </div>
 
             {/* Quick Action Buttons (One UI 8 Pill Action) */}
-            <div className="flex items-center gap-2 pt-0.5">
-              <div className="flex-1 flex items-center justify-center gap-1.5 py-1.5 px-3 rounded-full bg-primary-600 hover:bg-primary-500 text-white font-black text-[11px] uppercase tracking-wider shadow-[0_2px_12px_rgba(220,38,38,0.45)] transition-all active:scale-95">
-                <Play size={11} className="fill-current" />
+            <div className="flex items-center gap-1.5 sm:gap-2 pt-0.5">
+              <div className="flex-1 flex items-center justify-center gap-1 sm:gap-1.5 h-6 sm:h-7 px-2.5 sm:px-3 rounded-full bg-primary-600 hover:bg-primary-500 text-white font-black text-[10px] sm:text-[11px] uppercase tracking-wider shadow-[0_2px_12px_rgba(220,38,38,0.45)] transition-all active:scale-95">
+                <Play size={10} className="fill-current" />
                 <span>Play</span>
               </div>
               <button 
                 type="button"
-                className="w-7 h-7 rounded-full bg-white/10 hover:bg-white/20 border border-white/15 text-white flex items-center justify-center transition-all active:scale-90 shrink-0" 
+                className="w-6 h-6 sm:w-7 sm:h-7 rounded-full bg-white/10 hover:bg-white/20 border border-white/15 text-white flex items-center justify-center transition-all active:scale-90 shrink-0" 
                 onClick={(e) => { e.stopPropagation(); e.preventDefault(); }}
                 title="Add to Watchlist"
               >
-                <Plus size={13} />
+                <Plus size={12} />
               </button>
             </div>
           </div>

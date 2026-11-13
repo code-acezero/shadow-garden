@@ -1,13 +1,21 @@
-import { Object3DNode } from '@react-three/fiber';
-import { ShaderMaterial } from 'three';
+import type { ThreeElement } from '@react-three/fiber';
+import type { ShaderMaterial } from 'three';
+
+type CustomShaderElement = ThreeElement<typeof ShaderMaterial> & Record<string, any>;
 
 declare module '@react-three/fiber' {
   interface ThreeElements {
-    grassMaterial: Object3DNode<ShaderMaterial, typeof ShaderMaterial>;
-    manaBarrierMaterial: Object3DNode<ShaderMaterial, typeof ShaderMaterial>;
-    ancientStoneMaterial: Object3DNode<ShaderMaterial, typeof ShaderMaterial>;
-    holyFireMaterial: Object3DNode<ShaderMaterial, typeof ShaderMaterial>;
-    divineCoreShader: Object3DNode<ShaderMaterial, typeof ShaderMaterial>;
-    rainShader: Object3DNode<ShaderMaterial, typeof ShaderMaterial>;
+    grassMaterial: CustomShaderElement;
+    manaBarrierMaterial: CustomShaderElement;
+    ancientStoneMaterial: CustomShaderElement;
+    holyFireMaterial: CustomShaderElement;
+    divineCoreShader: CustomShaderElement;
+    rainShader: CustomShaderElement;
+    tunnelShader: CustomShaderElement;
+    portalVortexShader: CustomShaderElement;
+    warpShader: CustomShaderElement;
+    runeShader: CustomShaderElement;
+    magmaShader: CustomShaderElement;
+    cloudShader: CustomShaderElement;
   }
 }

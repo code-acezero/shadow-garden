@@ -13,7 +13,7 @@ import {
     FastForward, Star, Info, MessageSquare, User, Users,
     Loader2, Globe, Flame, Calendar, Copyright, Check, Mic, X,
     ChevronLeft, ChevronRight, Pause, ArrowLeft, ArrowRight, Download, Compass,
-    PlayCircle, StepForward, Share2
+    PlayCircle, StepForward, Share2, ArrowRightCircle
 } from 'lucide-react';
 
 import { AnimeService, UniversalAnime } from '@/lib/api';
@@ -940,7 +940,7 @@ function WatchContent() {
             };
             const sanitized = sanitizeContinueWatchingEntry(entry, user.id);
             if (sanitized) {
-                (supabase.from('user_continue_watching') as any).upsert(sanitized, { onConflict: 'user_id,anime_id' }).catch(() => {});
+                (supabase.from('user_continue_watching') as any).upsert(sanitized, { onConflict: 'user_id,episode_id' }).catch(() => {});
             }
         }
     }, [anime, animeId, user, supabase]);
@@ -996,9 +996,15 @@ function WatchContent() {
         const payload = Object.values(progressBuffer.current);
         if (payload.length === 0) return;
         isBufferDirty.current = false;
-        const sanitizedPayload = payload.map(p => sanitizeContinueWatchingEntry(p, user.id)).filter(Boolean);
+        const sanitizedPayload = payload.map(p => sanitizeContinueWatchingEntry(p, user.id)).filter((p): p is NonNullable<typeof p> => Boolean(p && p.episode_id));
+        const deduplicatedMap = new Map<string, typeof sanitizedPayload[0]>();
+        for (const item of sanitizedPayload) {
+            deduplicatedMap.set(item.episode_id, item);
+        }
+        const uniquePayload = Array.from(deduplicatedMap.values());
+        if (uniquePayload.length === 0) return;
         try {
-            await (supabase.from('user_continue_watching') as any).upsert(sanitizedPayload, { onConflict: 'user_id,episode_id' });
+            await (supabase.from('user_continue_watching') as any).upsert(uniquePayload, { onConflict: 'user_id,episode_id' });
             if (typeof window !== 'undefined') window.dispatchEvent(new CustomEvent('shadow-continue-updated'));
         } catch (e) {
             isBufferDirty.current = true;
@@ -1420,8 +1426,15 @@ function WatchContent() {
             if (savedServer && savedServer !== settings.server) updateSetting('server', savedServer);
             localStorage.setItem(tempStorageKey, JSON.stringify(progressBuffer.current));
             if (user && needsDbUpdate && bufferToFlush.length > 0) {
-                const sanitized = bufferToFlush.map(p => sanitizeContinueWatchingEntry(p, user.id)).filter(Boolean);
-                (supabase!.from('user_continue_watching') as any).upsert(sanitized, { onConflict: 'user_id,episode_id' });
+                const sanitized = bufferToFlush.map(p => sanitizeContinueWatchingEntry(p, user.id)).filter((p): p is NonNullable<typeof p> => Boolean(p && p.episode_id));
+                const deduplicatedMap = new Map<string, typeof sanitized[0]>();
+                for (const item of sanitized) {
+                    deduplicatedMap.set(item.episode_id, item);
+                }
+                const uniqueSanitized = Array.from(deduplicatedMap.values());
+                if (uniqueSanitized.length > 0) {
+                    (supabase!.from('user_continue_watching') as any).upsert(uniqueSanitized, { onConflict: 'user_id,episode_id' });
+                }
             }
 
             // Robust URL Episode Resolution
@@ -1858,7 +1871,7 @@ function WatchContent() {
                                 {/* Middle: AutoNext & WatchList */}
                                 <div className="flex-1 min-w-0 flex items-center justify-center gap-4 border-l border-white/5 pl-4 ml-2">
                                     <button onClick={() => updateSetting('autoNext', !settings.autoNext)} className={cn("flex items-center justify-center gap-2 px-6 h-8 rounded-full border text-[9px] sm:text-[10px] font-black uppercase tracking-widest transition-all whitespace-nowrap flex-shrink-0", settings.autoNext ? "bg-emerald-600/20 border-emerald-500/50 text-purple-400" : "bg-white/5 border-white/10 text-zinc-500 hover:bg-white/10 hover:text-zinc-300")}>
-                                        <SkipForward size={14} /> AUTO-NEXT
+                                        <ArrowRightCircle size={14} /> AUTO-NEXT
                                     </button>
                                     <WatchListButton animeId={anime.id} animeTitle={anime.title} animeImage={anime.poster} currentEp={currentEpisode?.number} mediaType="donghua" totalEpisodes={anime.episodes?.length || 1} type={(anime as any).type || "Donghua"} />
                                 </div>
@@ -1960,7 +1973,7 @@ function WatchContent() {
                                         <PlayCircle size={14} className={cn("transition-transform", settings.autoPlay && "scale-110")} />
                                     </button>
                                     <button onClick={() => updateSetting('autoNext', !settings.autoNext)} className={cn("flex-1 h-9 rounded-full border-0 flex items-center justify-center transition-all relative active:scale-95", settings.autoNext ? "bg-emerald-600/20 text-emerald-300 shadow-sm" : "bg-white/5 text-zinc-400 hover:text-zinc-200")} title={`Auto Next Episode: ${settings.autoNext ? 'ON' : 'OFF'}`}>
-                                        <StepForward size={14} className={cn("transition-transform", settings.autoNext && "scale-110")} />
+                                        <ArrowRightCircle size={14} className={cn("transition-transform", settings.autoNext && "scale-110")} />
                                     </button>
                                     <button disabled={!nextEpisode} onClick={() => nextEpisode && handleEpisodeClick(nextEpisode.id)} className="flex-1 bg-white/5 h-9 rounded-full border border-white/5 flex items-center justify-center text-zinc-400 hover:text-white active:scale-95 disabled:opacity-30 disabled:pointer-events-none transition-all" title="Next Episode"><SkipForward size={14} /></button>
                                 </div>

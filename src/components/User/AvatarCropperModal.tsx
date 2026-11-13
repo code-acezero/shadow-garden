@@ -210,13 +210,13 @@ export default function AvatarCropperModal({
 
   const modalContent = (
     <AnimatePresence>
-      <div className="fixed inset-0 z-[1200] flex items-center justify-center p-4 bg-black/85 backdrop-blur-md">
+      <div className="fixed inset-0 z-[99990] flex items-center justify-center pt-[66px] pb-[76px] sm:pt-[70px] sm:pb-[82px] px-2 sm:px-4 md:px-6 bg-black/85 backdrop-blur-md overflow-hidden">
         <motion.div
           initial={{ scale: 0.95, opacity: 0, y: 16 }}
           animate={{ scale: 1, opacity: 1, y: 0 }}
           exit={{ scale: 0.95, opacity: 0, y: 16 }}
           transition={{ duration: 0.2, ease: 'easeOut' }}
-          className="relative w-full max-w-md bg-[#0a0a12]/95 backdrop-blur-2xl border border-white/15 rounded-3xl shadow-[0_25px_60px_rgba(0,0,0,0.9)] flex flex-col overflow-hidden mx-auto text-white"
+          className="relative w-full max-w-lg sm:max-w-2xl max-h-full bg-[#0a0a12]/95 backdrop-blur-2xl border border-white/15 rounded-3xl shadow-[0_25px_60px_rgba(0,0,0,0.9)] flex flex-col overflow-hidden mx-auto text-white"
         >
           {/* Header */}
           <div className="flex items-center justify-between px-6 pt-5 pb-3 border-b border-white/10 shrink-0">
@@ -235,7 +235,7 @@ export default function AvatarCropperModal({
           </div>
 
           {/* Interactive Viewport */}
-          <div className="p-6 flex flex-col items-center justify-center bg-black/40">
+          <div className="p-4 sm:p-6 flex flex-col items-center justify-center bg-black/40 overflow-y-auto min-h-0 flex-1 custom-scrollbar">
             <div
               ref={containerRef}
               onMouseDown={handleMouseDown}

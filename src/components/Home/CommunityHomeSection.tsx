@@ -11,6 +11,7 @@ import {
 import MonetLineIcon from '@/components/UIx/MonetLineIcon';
 import CutePageSwitcher from '@/components/UIx/CutePageSwitcher';
 import CylinderPageSlider from '@/components/UIx/CylinderPageSlider';
+import ProfileAvatar from '@/components/User/ProfileAvatar';
 import { playGummyTap, playGummyPop } from '@/lib/audioManager';
 import { cn } from '@/lib/utils';
 
@@ -23,11 +24,14 @@ export interface GlobalComment {
   user_name: string;
   user_avatar: string;
   user_role: string;
+  user_frame?: string | null;
+  user_level?: number;
   is_traveler: boolean;
   media_title?: string;
   media_type?: 'Anime' | 'Donghua' | 'Hindi Anime' | 'Movie' | 'Series' | 'Drama';
   episode_number?: number | string;
   watch_url?: string;
+  profile?: any;
 }
 
 // Fallback comments if remote database returns empty, representing all media realms
@@ -45,6 +49,8 @@ const FALLBACK_COMMENTS: GlobalComment[] = [
     user_name: 'Alpha_Zero',
     user_avatar: 'https://s4.anilist.co/file/anilistcdn/character/large/b161715-6XG3kQxS667Y.jpg',
     user_role: 'Guild Master',
+    user_frame: 'shadow_monarch',
+    user_level: 99,
     is_traveler: false,
   },
   {
@@ -58,8 +64,10 @@ const FALLBACK_COMMENTS: GlobalComment[] = [
     watch_url: '/watch/mushoku-tensei-jobless-reincarnation?ep=12&audio=hi',
     is_spoiler: false,
     user_name: 'CidKagenou',
-    user_avatar: 'https://s4.anilist.co/file/anilistcdn/character/large/b185874-9bC623uMhG9n.jpg',
-    user_role: 'Operative',
+    user_avatar: 'https://s4.anilist.co/file/anilistcdn/character/large/b161714-X36rC2D0c0bX.jpg',
+    user_role: 'Shadow Lord',
+    user_frame: 'eminence_aura',
+    user_level: 75,
     is_traveler: false,
   },
   {
@@ -75,6 +83,8 @@ const FALLBACK_COMMENTS: GlobalComment[] = [
     user_name: 'K_Drifter',
     user_avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=200&auto=format&fit=crop',
     user_role: 'Traveler',
+    user_frame: 'flame_lotus',
+    user_level: 42,
     is_traveler: true,
   },
   {
@@ -90,6 +100,8 @@ const FALLBACK_COMMENTS: GlobalComment[] = [
     user_name: 'DeltaBlade',
     user_avatar: 'https://s4.anilist.co/file/anilistcdn/character/large/b207191-8W94f0J1oPqQ.jpg',
     user_role: 'Operative',
+    user_frame: 'celestial_ring',
+    user_level: 60,
     is_traveler: false,
   },
   {
@@ -105,6 +117,8 @@ const FALLBACK_COMMENTS: GlobalComment[] = [
     user_name: 'ShadowFang',
     user_avatar: 'https://s4.anilist.co/file/anilistcdn/character/large/b204436-xO1pG2Q4xH2P.png',
     user_role: 'Traveler',
+    user_frame: 'shadow_monarch',
+    user_level: 88,
     is_traveler: true,
   },
   {
@@ -119,6 +133,8 @@ const FALLBACK_COMMENTS: GlobalComment[] = [
     user_name: 'CinemaLover',
     user_avatar: 'https://images.unsplash.com/photo-1517841905240-472988babdf9?w=200&auto=format&fit=crop',
     user_role: 'Traveler',
+    user_frame: 'flame_lotus',
+    user_level: 50,
     is_traveler: true,
   },
   {
@@ -134,6 +150,8 @@ const FALLBACK_COMMENTS: GlobalComment[] = [
     user_name: 'NightOwl',
     user_avatar: 'https://s4.anilist.co/file/anilistcdn/character/large/b205177-hLV4nVQjoBIC.png',
     user_role: 'Operative',
+    user_frame: 'celestial_ring',
+    user_level: 35,
     is_traveler: false,
   },
   {
@@ -149,6 +167,8 @@ const FALLBACK_COMMENTS: GlobalComment[] = [
     user_name: 'GammaTactics',
     user_avatar: 'https://s4.anilist.co/file/anilistcdn/character/large/b209895-7hN6pW1qXzZa.jpg',
     user_role: 'Operative',
+    user_frame: 'shadow_monarch',
+    user_level: 70,
     is_traveler: false,
   },
 ];
@@ -382,16 +402,20 @@ export default function CommunityHomeSection() {
               {/* Card Header: User Avatar, Name, Role Badge, Time */}
               <div className="flex items-center justify-between gap-2">
                 <div className="flex items-center gap-2.5 min-w-0">
-                  <div className="relative w-8 h-8 sm:w-9 sm:h-9 rounded-full overflow-hidden shrink-0 border border-purple-500/30 bg-purple-950/40 shadow-sm">
-                    <img
-                      src={comment.user_avatar}
-                      alt={comment.user_name}
-                      className="w-full h-full object-cover"
-                      onError={(e) => {
-                        (e.currentTarget as HTMLImageElement).src = '/images/default-avatar.png';
-                      }}
-                    />
-                  </div>
+                  <ProfileAvatar
+                    profile={comment.profile || {
+                      id: (comment as any).user_id,
+                      username: comment.user_name,
+                      avatar_url: comment.user_avatar,
+                      frame_id: comment.user_frame,
+                      role: comment.user_role,
+                      admin_title: comment.user_role,
+                      level: comment.user_level || 1,
+                    }}
+                    travellerAvatar={comment.is_traveler ? comment.user_avatar : undefined}
+                    className="w-8 h-8 sm:w-9 sm:h-9 shrink-0"
+                    animate="inview"
+                  />
                   <div className="min-w-0">
                     <div className="flex items-center gap-1.5 flex-wrap">
                       <span className="text-xs font-black text-white truncate group-hover:text-purple-300 transition-colors">

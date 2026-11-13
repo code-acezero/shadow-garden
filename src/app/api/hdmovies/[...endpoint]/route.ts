@@ -277,16 +277,75 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ endp
       const poster = movie.poster_path ? `${TMDB_IMAGE_BASE}${movie.poster_path}` : '';
       const backdrop = movie.backdrop_path ? `${TMDB_BACKDROP_BASE}${movie.backdrop_path}` : poster;
 
-      // Multi-Server High Speed Embed Players
-      const streams = [
-        { name: 'VidSrc Pro', url: `https://vidsrc.to/embed/movie/${imdbId || movie.id}`, type: 'embed' },
-        { name: 'VidLink Pro', url: `https://vidlink.pro/movie/${movie.id}`, type: 'embed' },
-        { name: 'AutoEmbed', url: `https://autoembed.co/movie/tmdb/${movie.id}`, type: 'embed' },
-        { name: 'EmbedSU', url: `https://embed.su/embed/movie/${movie.id}`, type: 'embed' },
-        { name: 'VidSrc CC', url: `https://vidsrc.cc/v2/embed/movie/${movie.id}`, type: 'embed' },
-        { name: 'Super Player', url: `https://slast430did.com/play/${imdbId || movie.id}`, type: 'iframe' },
-        { name: '2Embed', url: `https://www.2embed.cc/embed/${imdbId || movie.id}`, type: 'embed' }
-      ];
+      // Verified Live Multi-Server High Speed Embed Players
+      const isIndianNative = ['hi', 'ta', 'te', 'ml', 'kn', 'bn', 'pa', 'mr'].includes((movie.original_language || '').toLowerCase());
+
+      // Real-time server availability verification: tests if embed URL is live and functioning
+      const checkServerAvailable = async (server: { name: string; url: string; type: string }): Promise<boolean> => {
+        if (!server || !server.url) return false;
+        if (server.type === 'hls') return true;
+
+        const ck = `srv_avail_check_${server.name}_${encodeURIComponent(server.url)}`;
+        const cached = getCached<boolean>(ck);
+        if (cached !== null) return cached;
+
+        try {
+          const controller = new AbortController();
+          const timeoutId = setTimeout(() => controller.abort(), 2500);
+          const res = await fetch(server.url, {
+            headers: {
+              'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)',
+              'Referer': 'https://kagemi.flixverse.com/'
+            },
+            signal: controller.signal
+          });
+          clearTimeout(timeoutId);
+
+          if (!res.ok) {
+            setCached(ck, false, 600);
+            return false;
+          }
+
+          const html = await res.text();
+          if (
+            html.includes('404 Not Found') ||
+            html.includes('Video not found') ||
+            html.includes('Video is not available') ||
+            html.includes('could not be found') ||
+            html.includes('No stream found') ||
+            (server.name === 'Super Player' && !html.includes('let p3 =') && !html.includes('HDVBPlayer'))
+          ) {
+            setCached(ck, false, 600);
+            return false;
+          }
+
+          setCached(ck, true, 1800);
+          return true;
+        } catch {
+          return false;
+        }
+      };
+
+      const superPlayer = /^tt\d+$/i.test(imdbId)
+        ? { name: 'Super Player', url: `https://slast430did.com/play/${imdbId}`, type: 'iframe' }
+        : null;
+      const vidLink = { name: 'VidLink Pro', url: `https://vidlink.pro/movie/${movie.id}`, type: 'embed' };
+      const twoEmbed = { name: '2Embed', url: `https://www.2embed.cc/embed/${movie.id}`, type: 'embed' };
+      const smashyStream = { name: 'SmashyStream', url: `https://embed.smashystream.com/playere.php?tmdb=${movie.id}`, type: 'embed' };
+      const autoEmbed = { name: 'AutoEmbed', url: `https://autoembed.co/movie/tmdb/${movie.id}`, type: 'embed' };
+      const cinemaOs = { name: 'CinemaOS', url: `https://cinemaos.tech/player/${movie.id}`, type: 'embed' };
+
+      const candidateStreams = (
+        isIndianNative
+          ? [superPlayer, twoEmbed, smashyStream, vidLink, autoEmbed, cinemaOs]
+          : [superPlayer, vidLink, twoEmbed, smashyStream, autoEmbed, cinemaOs]
+      ).filter((s): s is { name: string; url: string; type: string } => Boolean(s));
+
+      const verifiedStreams = (
+        await Promise.all(candidateStreams.map(async (s) => (await checkServerAvailable(s)) ? s : null))
+      ).filter((s): s is { name: string; url: string; type: string } => Boolean(s));
+
+      const streams = verifiedStreams.length > 0 ? verifiedStreams : candidateStreams;
 
       const related = (movie.recommendations?.results || []).map(mapTmdbToCard).filter(Boolean).slice(0, 12);
 

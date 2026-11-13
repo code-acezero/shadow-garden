@@ -11,9 +11,12 @@ interface CacheEntry {
 }
 
 const MEMORY_CACHE = new Map<string, CacheEntry>();
-const CACHE_DIR = path.join(process.cwd(), '.cache', 'anilist');
 const DEFAULT_TTL_MS = 4 * 60 * 60 * 1000; // 4 hours fresh
 const STALE_TTL_MS = 14 * 24 * 60 * 60 * 1000; // 14 days stale fallback
+
+function getCacheDir(): string {
+  return path.join(process.cwd(), '.cache', 'anilist');
+}
 
 let rateLimitedUntil = 0;
 
@@ -33,8 +36,9 @@ function getHashKey(key: string): string {
 
 function ensureCacheDir() {
   try {
-    if (!fs.existsSync(CACHE_DIR)) {
-      fs.mkdirSync(CACHE_DIR, { recursive: true });
+    const cacheDir = getCacheDir();
+    if (!fs.existsSync(cacheDir)) {
+      fs.mkdirSync(cacheDir, { recursive: true });
     }
   } catch (e) {
     // Non-fatal if filesystem is read-only
@@ -59,7 +63,7 @@ export function getCachedAniList(key: string): { data: any; isStale: boolean } |
   if (typeof window === 'undefined') {
     try {
       const hash = getHashKey(key);
-      const filePath = path.join(CACHE_DIR, `${hash}.json`);
+      const filePath = path.join(getCacheDir(), `${hash}.json`);
       if (fs.existsSync(filePath)) {
         const raw = fs.readFileSync(filePath, 'utf-8');
         const entry: CacheEntry = JSON.parse(raw);
@@ -102,7 +106,7 @@ export function setCachedAniList(key: string, data: any, ttlMs: number = DEFAULT
     try {
       ensureCacheDir();
       const hash = getHashKey(key);
-      const filePath = path.join(CACHE_DIR, `${hash}.json`);
+      const filePath = path.join(getCacheDir(), `${hash}.json`);
       fs.writeFile(filePath, JSON.stringify(entry), () => {});
     } catch (e) {
       // Ignore disk write error

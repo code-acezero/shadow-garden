@@ -3718,13 +3718,13 @@ export default function Settings() {
       {/* Account Deletion Confirmation Modal (2D Monet UI) */}
       <AnimatePresence>
         {isDeleteModalOpen && (
-          <div className="fixed inset-0 z-[30000] flex items-center justify-center p-4 bg-black/80 backdrop-blur-md">
+          <div className="fixed inset-0 z-[99990] flex items-center justify-center pt-[66px] pb-[76px] sm:pt-[70px] sm:pb-[82px] px-2 sm:px-4 md:px-6 bg-black/80 backdrop-blur-md overflow-hidden">
             <motion.div
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.95 }}
               transition={{ type: "spring", stiffness: 450, damping: 25 }}
-              className="w-full max-w-md rounded-2xl bg-[#0d111d] border border-red-500/30 p-6 space-y-5 text-white"
+              className="w-full max-w-md max-h-full overflow-y-auto custom-scrollbar rounded-2xl bg-[#0d111d] border border-red-500/30 p-6 space-y-5 text-white"
             >
               <div className="flex items-center gap-3">
                 <div className="w-10 h-10 rounded-xl bg-red-500/15 border border-red-500/30 flex items-center justify-center text-red-400 shrink-0">
@@ -3781,13 +3781,13 @@ export default function Settings() {
       {/* XML Backup Modal (Android-style Granular Module Selection) */}
       <AnimatePresence>
         {isBackupModalOpen && (
-          <div className="fixed inset-0 z-[30000] flex items-center justify-center p-4 bg-black/80 backdrop-blur-md">
+          <div className="fixed inset-0 z-[99990] flex items-center justify-center pt-[66px] pb-[76px] sm:pt-[70px] sm:pb-[82px] px-2 sm:px-4 md:px-6 bg-black/80 backdrop-blur-md overflow-hidden">
             <motion.div
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.95 }}
               transition={{ type: "spring", stiffness: 450, damping: 25 }}
-              className="w-full max-w-lg rounded-2xl bg-[#0d111d] border border-white/10 p-6 space-y-5 text-white"
+              className="w-full max-w-lg max-h-full overflow-y-auto custom-scrollbar rounded-2xl bg-[#0d111d] border border-white/10 p-6 space-y-5 text-white"
             >
               <div className="flex items-center justify-between pb-3 border-b border-white/[0.08]">
                 <div className="flex items-center gap-2.5">
@@ -3889,13 +3889,13 @@ export default function Settings() {
       {/* XML Restore Modal (Android-style Granular Restoration) */}
       <AnimatePresence>
         {isRestoreModalOpen && parsedBackupData && (
-          <div className="fixed inset-0 z-[30000] flex items-center justify-center p-4 bg-black/80 backdrop-blur-md">
+          <div className="fixed inset-0 z-[99990] flex items-center justify-center pt-[66px] pb-[76px] sm:pt-[70px] sm:pb-[82px] px-2 sm:px-4 md:px-6 bg-black/80 backdrop-blur-md overflow-hidden">
             <motion.div
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.95 }}
               transition={{ type: "spring", stiffness: 450, damping: 25 }}
-              className="w-full max-w-lg rounded-2xl bg-[#0d111d] border border-white/10 p-6 space-y-5 text-white"
+              className="w-full max-w-lg max-h-full overflow-y-auto custom-scrollbar rounded-2xl bg-[#0d111d] border border-white/10 p-6 space-y-5 text-white"
             >
               <div className="flex items-center justify-between pb-3 border-b border-white/[0.08]">
                 <div className="flex items-center gap-2.5">
