@@ -84,9 +84,17 @@ export default function LandingClient() {
   const [isCheckingAuth, setIsCheckingAuth] = useState(true);
   const [showAuth, setShowAuth] = useState(false);
   
+  const isEmbedded = typeof window !== 'undefined' && (
+    window.self !== window.top || 
+    new URLSearchParams(window.location.search).get('embed') === '1'
+  );
+
   // Adaptive UI state: returning/skip users get instant UI, first-time users see intro
   const [showLandingUI, setShowLandingUI] = useState(() => {
     if (typeof window !== 'undefined') {
+      if (window.self !== window.top || new URLSearchParams(window.location.search).get('embed') === '1') {
+        return true;
+      }
       const hasAudio = localStorage.getItem('shadow_audio_permitted') === 'true' || localStorage.getItem('guild_audio_permit') === 'true';
       const isSkip = localStorage.getItem('anim_never_ask') === 'true' || localStorage.getItem('anim_preference') === 'skip' || localStorage.getItem('sg_portal_seen') === 'true';
       return hasAudio && isSkip;
@@ -150,23 +158,27 @@ export default function LandingClient() {
       const isNativeContainer = isAndroidAPK || (typeof window !== 'undefined' && window.matchMedia('(display-mode: standalone)').matches);
       const hasSeenPortal = typeof window !== 'undefined' && localStorage.getItem('shadow_apk_intro_completed') === 'true';
 
-      if (isNativeContainer && hasSeenPortal) {
-        router.replace('/home');
-        return;
-      }
-
-      try {
-        const user = await UserAPI.getCurrentUser();
-        if (user) {
-          if (typeof window !== 'undefined') localStorage.setItem('shadow_auth_hint', 'true');
+      if (!isEmbedded) {
+        if (isNativeContainer && hasSeenPortal) {
           router.replace('/home');
           return;
-        } else {
-          if (typeof window !== 'undefined') localStorage.removeItem('shadow_auth_hint');
         }
-      } catch (authErr) {
-        console.warn("Auth initialization check failed:", authErr);
-      } finally {
+
+        try {
+          const user = await UserAPI.getCurrentUser();
+          if (user) {
+            if (typeof window !== 'undefined') localStorage.setItem('shadow_auth_hint', 'true');
+            router.replace('/home');
+            return;
+          } else {
+            if (typeof window !== 'undefined') localStorage.removeItem('shadow_auth_hint');
+          }
+        } catch (authErr) {
+          console.warn("Auth initialization check failed:", authErr);
+        } finally {
+          setIsCheckingAuth(false);
+        }
+      } else {
         setIsCheckingAuth(false);
       }
 
@@ -322,28 +334,30 @@ export default function LandingClient() {
   return (
     <main className="relative min-h-screen w-full bg-[#050508] text-white selection:bg-purple-900/40 selection:text-white overflow-x-hidden">
       
-      {/* 3D PORTAL ENGINE (Background ambience during browsing, Full-Screen 100% focus during entry sequence) */}
-      <PortalErrorBoundary onError={() => {
-        setShowLandingUI(true);
-        if (triggerEntry) handlePortalComplete();
-      }}>
-        <div 
-          className={cn(
-            "fixed inset-0 transition-all duration-1000",
-            triggerEntry 
-              ? "z-[99990] opacity-100 pointer-events-auto bg-black" 
-              : "z-0 opacity-40 pointer-events-auto mix-blend-screen"
-          )}
-        >
-          <Suspense fallback={null}>
-            <ShadowGardenPortal 
-              startTransition={triggerEntry}
-              onComplete={handlePortalComplete}
-              onSceneReady={handleSceneReady}
-            />
-          </Suspense>
-        </div>
-      </PortalErrorBoundary>
+      {/* 3D PORTAL ENGINE (Background ambience during browsing, Full-Screen 100% focus during entry sequence - Skipped when embedded) */}
+      {!isEmbedded && (
+        <PortalErrorBoundary onError={() => {
+          setShowLandingUI(true);
+          if (triggerEntry) handlePortalComplete();
+        }}>
+          <div 
+            className={cn(
+              "fixed inset-0 transition-all duration-1000",
+              triggerEntry 
+                ? "z-[99990] opacity-100 pointer-events-auto bg-black" 
+                : "z-0 opacity-40 pointer-events-auto mix-blend-screen"
+            )}
+          >
+            <Suspense fallback={null}>
+              <ShadowGardenPortal 
+                startTransition={triggerEntry}
+                onComplete={handlePortalComplete}
+                onSceneReady={handleSceneReady}
+              />
+            </Suspense>
+          </div>
+        </PortalErrorBoundary>
+      )}
 
       {/* SKIP ANIMATION CONTROLLER (Prominently available whenever entry transition is running) */}
       {triggerEntry && (

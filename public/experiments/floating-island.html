@@ -117,38 +117,7 @@
     }
   
     
-    /* Compact, discreet POI marker */
-    .g-poi-card {
-      display: none;
-      flex-direction: column;
-      align-items: center;
-      background: rgba(10, 14, 26, 0.9);
-      border: 1px solid rgba(229, 196, 126, 0.25);
-      border-radius: 4px;
-      padding: 3px 8px;
-      margin-top: 3px;
-      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.7);
-      backdrop-filter: blur(8px);
-      white-space: nowrap;
-    }
-    .g-poi-category {
-      font-size: 8px;
-      font-weight: 700;
-      color: #e5c47e;
-      letter-spacing: 0.1em;
-      text-transform: uppercase;
-    }
-    .g-poi-title {
-      font-size: 11px;
-      font-weight: 600;
-      color: #ffffff;
-      margin-top: 1px;
-    }
-    .g-poi-dist-val {
-      font-size: 10px;
-      color: #52e5ff;
-      font-weight: 600;
-    }
+    
 
     /* Huge, freely scrollable Landing Page (HiAnime, Miruro & Anikoto aesthetic) */
     #kagemi-landing-modal {
@@ -766,6 +735,288 @@
       }
     }
   
+  
+    /* Genshin Impact Style Landmark Point Markers */
+    #g-poi-markers-list {
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      z-index: 85;
+    }
+    .g-poi-node {
+      position: fixed;
+      transform: translate(-50%, -50%);
+      display: none;
+      flex-direction: column;
+      align-items: center;
+      pointer-events: none;
+      z-index: 86;
+      transition: opacity 0.2s ease;
+    }
+    .g-poi-pin {
+      width: 24px;
+      height: 24px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .g-poi-diamond {
+      width: 11px;
+      height: 11px;
+      background: #52e5ff;
+      border: 1.5px solid #ffffff;
+      transform: rotate(45deg);
+      box-shadow: 0 0 10px rgba(82, 229, 255, 0.85), 0 0 20px rgba(82, 229, 255, 0.5);
+      animation: gPoiPulse 2s ease-in-out infinite;
+    }
+    @keyframes gPoiPulse {
+      0%, 100% { transform: rotate(45deg) scale(1); opacity: 0.9; }
+      50% { transform: rotate(45deg) scale(1.25); opacity: 1; }
+    }
+    .g-poi-card {
+      display: flex !important;
+      flex-direction: column;
+      align-items: center;
+      background: rgba(10, 14, 26, 0.94);
+      border: 1px solid rgba(82, 229, 255, 0.4);
+      border-radius: 6px;
+      padding: 4px 10px;
+      margin-top: 5px;
+      box-shadow: 0 4px 16px rgba(0, 0, 0, 0.85);
+      backdrop-filter: blur(8px);
+      -webkit-backdrop-filter: blur(8px);
+      white-space: nowrap;
+    }
+    .g-poi-title {
+      font-size: 11px;
+      font-weight: 700;
+      color: #ffffff;
+      letter-spacing: 0.04em;
+      text-shadow: 0 1px 3px rgba(0, 0, 0, 0.8);
+    }
+    .g-poi-dist-val {
+      font-size: 10px;
+      color: #52e5ff;
+      font-weight: 700;
+      margin-top: 1px;
+    }
+  
+  
+    /* Original Kagemi Landing Component Live Portal Modal */
+    #kagemi-landing-modal {
+      position: fixed;
+      inset: 0;
+      z-index: 9999;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      background: rgba(3, 5, 12, 0.88);
+      backdrop-filter: blur(24px);
+      -webkit-backdrop-filter: blur(24px);
+      padding: 16px;
+      box-sizing: border-box;
+    }
+    #kagemi-landing-modal.active {
+      display: flex !important;
+      animation: kagemiModalFadeIn 0.25s ease-out forwards;
+    }
+    @keyframes kagemiModalFadeIn {
+      from { opacity: 0; transform: scale(0.98); }
+      to { opacity: 1; transform: scale(1); }
+    }
+    .kagemi-portal-window {
+      width: 96vw;
+      max-width: 1440px;
+      height: 94vh;
+      max-height: 94vh;
+      background: #060913;
+      border: 1px solid rgba(124, 58, 237, 0.28);
+      border-radius: 16px;
+      box-shadow: 0 24px 70px rgba(0, 0, 0, 0.95), 0 0 40px rgba(124, 58, 237, 0.15);
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+    .kagemi-portal-topbar {
+      height: 52px;
+      background: rgba(10, 14, 28, 0.96);
+      border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 20px;
+      flex-shrink: 0;
+    }
+    .kagemi-portal-brand {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .kagemi-portal-icon {
+      font-size: 18px;
+      color: #7c3aed;
+    }
+    .kagemi-portal-title {
+      font-size: 15px;
+      font-weight: 800;
+      letter-spacing: 0.06em;
+      color: #ffffff;
+    }
+    .kagemi-portal-sub {
+      font-size: 10px;
+      font-weight: 700;
+      color: #38bdf8;
+      background: rgba(56, 189, 248, 0.12);
+      border: 1px solid rgba(56, 189, 248, 0.25);
+      padding: 2px 7px;
+      border-radius: 999px;
+      letter-spacing: 0.05em;
+    }
+    .kagemi-portal-ctrls {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+    .kagemi-portal-ext-btn {
+      font-size: 12px;
+      font-weight: 700;
+      color: #cbd5e1;
+      text-decoration: none;
+      background: rgba(255, 255, 255, 0.06);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      padding: 5px 14px;
+      border-radius: 999px;
+      transition: all 0.15s;
+    }
+    .kagemi-portal-ext-btn:hover {
+      background: rgba(255, 255, 255, 0.15);
+      color: #ffffff;
+    }
+    .kagemi-portal-close-btn {
+      font-size: 12px;
+      font-weight: 800;
+      color: #ffffff;
+      background: #7c3aed;
+      border: none;
+      padding: 6px 18px;
+      border-radius: 999px;
+      cursor: pointer;
+      box-shadow: 0 2px 10px rgba(124, 58, 237, 0.4);
+      transition: all 0.15s;
+    }
+    .kagemi-portal-close-btn:hover {
+      background: #6d28d9;
+      transform: scale(1.04);
+    }
+    .kagemi-portal-iframe-wrap {
+      flex: 1;
+      width: 100%;
+      height: 100%;
+      position: relative;
+      background: #020617;
+    }
+    #kagemi-live-frame {
+      width: 100%;
+      height: 100%;
+      border: none;
+      display: block;
+    }
+
+    /* Full Detailed Portal Informational Modal */
+    #genshin-portal-msg-modal {
+      position: fixed;
+      bottom: 28px;
+      left: 50%;
+      transform: translateX(-50%);
+      z-index: 9999;
+      display: none;
+      pointer-events: auto;
+      font-family: var(--g-font-sans, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif);
+    }
+    #genshin-portal-msg-modal.active {
+      display: block !important;
+      animation: gToastSlideUp 0.25s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+    }
+    .g-portal-toast {
+      background: rgba(8, 12, 22, 0.96);
+      border: 1px solid rgba(124, 58, 237, 0.35);
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      border-radius: 16px;
+      padding: 18px 26px;
+      box-shadow: 0 20px 50px rgba(0, 0, 0, 0.85), 0 0 30px rgba(124, 58, 237, 0.2);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 12px;
+      max-width: 540px;
+      width: 90vw;
+      text-align: center;
+      box-sizing: border-box;
+    }
+    .g-portal-toast-header {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 4px;
+    }
+    .g-portal-toast-badge {
+      font-size: 10px;
+      font-weight: 800;
+      color: #38bdf8;
+      background: rgba(56, 189, 248, 0.12);
+      border: 1px solid rgba(56, 189, 248, 0.25);
+      padding: 2px 10px;
+      border-radius: 999px;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+    .g-portal-toast-title {
+      margin: 2px 0 0 0;
+      font-size: 17px;
+      font-weight: 800;
+      color: #ffffff;
+      letter-spacing: 0.04em;
+    }
+    .g-portal-toast-msg {
+      font-size: 13px;
+      font-weight: 500;
+      color: #cbd5e1;
+      line-height: 1.55;
+      letter-spacing: 0.01em;
+      margin: 0;
+    }
+    .g-portal-toast-sub {
+      font-size: 11px;
+      font-weight: 600;
+      color: #94a3b8;
+      background: rgba(255, 255, 255, 0.04);
+      padding: 6px 14px;
+      border-radius: 8px;
+      border: 1px solid rgba(255, 255, 255, 0.06);
+    }
+    .g-portal-toast-btn {
+      background: #7c3aed;
+      color: #ffffff;
+      font-size: 13px;
+      font-weight: 800;
+      padding: 8px 36px;
+      border-radius: 999px;
+      border: none;
+      cursor: pointer;
+      box-shadow: 0 4px 16px rgba(124, 58, 237, 0.5);
+      transition: transform 0.15s, background 0.15s;
+      outline: none;
+      letter-spacing: 0.04em;
+    }
+    .g-portal-toast-btn:hover {
+      background: #6d28d9;
+      transform: scale(1.04);
+    }
+    .g-portal-toast-btn:active {
+      transform: scale(0.96);
+    }
+  
   </style>
 </head>
 
@@ -822,401 +1073,40 @@
   </div>
 
   
-  <!-- Huge, freely scrollable Landing Page (HiAnime, Miruro & Anikoto aesthetic) -->
-  <div id="kagemi-landing-modal" role="dialog" aria-modal="true">
-    <div class="g-menu-frame">
-      <!-- HiAnime / Miruro Top Navbar -->
-      <div class="h-nav-bar">
-        <a href="/anime" target="_top" class="h-brand">
-          <div class="h-logo-icon">K</div>
-          <div class="h-brand-text">
-            <h2>KAGEMI</h2>
-            <span>Streaming Sanctuary • Ver 2.5</span>
-          </div>
-        </a>
-
-        <div class="h-search-wrapper">
-          <span class="h-search-icon">🔍</span>
-          <input type="text" class="h-search-input" placeholder="Search anime, movies, Asian dramas, genres..." />
+    <!-- Original Kagemi Landing Component Live Portal Modal -->
+  <div id="kagemi-landing-modal" role="dialog" aria-modal="true" style="display:none;">
+    <div class="kagemi-portal-window">
+      <div class="kagemi-portal-topbar">
+        <div class="kagemi-portal-brand">
+          <span class="kagemi-portal-icon">❖</span>
+          <span class="kagemi-portal-title">KAGEMI SANCTUARY</span>
+          <span class="kagemi-portal-sub">LIVE PORTAL</span>
         </div>
-
-        <div class="h-nav-links">
-          <a href="/anime" target="_top" class="h-nav-tab active">Anime</a>
-          <a href="/cinema" target="_top" class="h-nav-tab">Cinema & Dramas</a>
-          <a href="/community" target="_top" class="h-nav-tab">Community</a>
-          <a href="/manga" target="_top" class="h-nav-tab">Manga</a>
-          <a href="/profile" target="_top" class="h-nav-tab">Sanctum</a>
-        </div>
-
-        <button id="g-menu-close-btn" class="h-close-btn">✕ Return to Island (Esc)</button>
-      </div>
-
-      <!-- Spotlight Hero Banner (The Eminence in Shadow) -->
-      <div class="h-spotlight-hero">
-        <div class="h-hero-badge-row">
-          <span class="h-badge-spotlight">SPOTLIGHT #1</span>
-          <span class="h-pill-meta">TV SERIES</span>
-          <span class="h-pill-meta">SUB & HINDI DUB</span>
-          <span class="h-pill-meta">1080P ULTRA</span>
-          <span class="h-pill-score">★ 8.9</span>
-        </div>
-        <h1 class="h-hero-title">The Eminence in Shadow: Sanctuary of Shadows</h1>
-        <p class="h-hero-desc">Cid Kagenou ascends through the dimensional mana gateway into the hidden sanctuary of Shadow Garden. Stream complete seasons, films, and specials in pristine lossless quality with dual audio, synced subtitles, and zero ads.</p>
-        <div class="h-hero-actions">
-          <a href="/anime" target="_top" class="h-btn-play">▶ Start Watching</a>
-          <a href="/profile" target="_top" class="h-btn-watchlist">+ Add to Watchlist</a>
-          <a href="/anime" target="_top" class="h-btn-watchlist">ℹ Details</a>
+        <div class="kagemi-portal-ctrls">
+          <a href="/" target="_blank" class="kagemi-portal-ext-btn" title="Open in New Tab">↗ Full Page</a>
+          <button id="g-menu-close-btn" class="kagemi-portal-close-btn" title="Close Menu (Esc)">✕ Exit (Esc)</button>
         </div>
       </div>
-
-      <!-- Section 1: Trending & Top Airing Anime (HiAnime / Miruro Card Grid) -->
-      <div>
-        <div class="h-shelf-head">
-          <div class="h-shelf-title">
-            <span>🔥</span>
-            <span>TRENDING & TOP AIRING ANIME</span>
-          </div>
-          <a href="/anime" target="_top" class="h-shelf-link">EXPLORE ALL ></a>
-        </div>
-        <div class="h-cards-grid" style="margin-top: 14px;">
-          <!-- Solo Leveling -->
-          <div class="h-anime-card">
-            <div class="h-card-poster">
-              <img src="/images/posters/solo-leveling.jpg" onerror="this.src='/logo.png'" alt="Solo Leveling" class="h-card-img" />
-              <span class="h-card-tag-top">TOP #1</span>
-              <span class="h-card-audio-top">SUB & DUB</span>
-            </div>
-            <div class="h-card-info">
-              <h3 class="h-card-name">Solo Leveling: Arise</h3>
-              <div class="h-meta-row">
-                <span class="h-pill-year">2024</span>
-                <span class="h-pill-star">★ 8.8</span>
-                <span class="h-pill-format">TV</span>
-              </div>
-              <div class="h-card-actions">
-                <a href="/anime" target="_top" class="h-play-pill">▶ PLAY</a>
-                <button class="h-plus-btn" title="Add to Watchlist">+</button>
-              </div>
-            </div>
-          </div>
-
-          <!-- Frieren -->
-          <div class="h-anime-card">
-            <div class="h-card-poster">
-              <img src="/images/posters/frieren.jpg" onerror="this.src='/logo.png'" alt="Frieren" class="h-card-img" />
-              <span class="h-card-tag-top">TOP #2</span>
-              <span class="h-card-audio-top">SUB & DUB</span>
-            </div>
-            <div class="h-card-info">
-              <h3 class="h-card-name">Frieren: Beyond Journey's End</h3>
-              <div class="h-meta-row">
-                <span class="h-pill-year">2024</span>
-                <span class="h-pill-star">★ 9.1</span>
-                <span class="h-pill-format">TV</span>
-              </div>
-              <div class="h-card-actions">
-                <a href="/anime" target="_top" class="h-play-pill">▶ PLAY</a>
-                <button class="h-plus-btn" title="Add to Watchlist">+</button>
-              </div>
-            </div>
-          </div>
-
-          <!-- Jujutsu Kaisen -->
-          <div class="h-anime-card">
-            <div class="h-card-poster">
-              <img src="/images/posters/jjk.jpg" onerror="this.src='/logo.png'" alt="Jujutsu Kaisen" class="h-card-img" />
-              <span class="h-card-tag-top">HOT</span>
-              <span class="h-card-audio-top">SUB & DUB</span>
-            </div>
-            <div class="h-card-info">
-              <h3 class="h-card-name">Jujutsu Kaisen: Shibuya Arc</h3>
-              <div class="h-meta-row">
-                <span class="h-pill-year">2023</span>
-                <span class="h-pill-star">★ 8.9</span>
-                <span class="h-pill-format">TV</span>
-              </div>
-              <div class="h-card-actions">
-                <a href="/anime" target="_top" class="h-play-pill">▶ PLAY</a>
-                <button class="h-plus-btn" title="Add to Watchlist">+</button>
-              </div>
-            </div>
-          </div>
-
-          <!-- Demon Slayer -->
-          <div class="h-anime-card">
-            <div class="h-card-poster">
-              <img src="/images/posters/demon-slayer.jpg" onerror="this.src='/logo.png'" alt="Demon Slayer" class="h-card-img" />
-              <span class="h-card-tag-top">POPULAR</span>
-              <span class="h-card-audio-top">SUB & DUB</span>
-            </div>
-            <div class="h-card-info">
-              <h3 class="h-card-name">Demon Slayer: Hashira Training</h3>
-              <div class="h-meta-row">
-                <span class="h-pill-year">2024</span>
-                <span class="h-pill-star">★ 8.6</span>
-                <span class="h-pill-format">TV</span>
-              </div>
-              <div class="h-card-actions">
-                <a href="/anime" target="_top" class="h-play-pill">▶ PLAY</a>
-                <button class="h-plus-btn" title="Add to Watchlist">+</button>
-              </div>
-            </div>
-          </div>
-
-          <!-- Chainsaw Man -->
-          <div class="h-anime-card">
-            <div class="h-card-poster">
-              <img src="/images/posters/chainsaw-man.jpg" onerror="this.src='/logo.png'" alt="Chainsaw Man" class="h-card-img" />
-              <span class="h-card-tag-top">UPCOMING</span>
-              <span class="h-card-audio-top">SUB & DUB</span>
-            </div>
-            <div class="h-card-info">
-              <h3 class="h-card-name">Chainsaw Man: The Movie</h3>
-              <div class="h-meta-row">
-                <span class="h-pill-year">2025</span>
-                <span class="h-pill-star">★ 8.7</span>
-                <span class="h-pill-format">MOVIE</span>
-              </div>
-              <div class="h-card-actions">
-                <a href="/anime" target="_top" class="h-play-pill">▶ PLAY</a>
-                <button class="h-plus-btn" title="Add to Watchlist">+</button>
-              </div>
-            </div>
-          </div>
-
-          <!-- Bleach -->
-          <div class="h-anime-card">
-            <div class="h-card-poster">
-              <img src="/images/posters/bleach.jpg" onerror="this.src='/logo.png'" alt="Bleach" class="h-card-img" />
-              <span class="h-card-tag-top">EPIC</span>
-              <span class="h-card-audio-top">SUB & DUB</span>
-            </div>
-            <div class="h-card-info">
-              <h3 class="h-card-name">Bleach: Thousand-Year Blood War</h3>
-              <div class="h-meta-row">
-                <span class="h-pill-year">2024</span>
-                <span class="h-pill-star">★ 9.0</span>
-                <span class="h-pill-format">TV</span>
-              </div>
-              <div class="h-card-actions">
-                <a href="/anime" target="_top" class="h-play-pill">▶ PLAY</a>
-                <button class="h-plus-btn" title="Add to Watchlist">+</button>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <!-- Section 2: Asian Dramas & Cinema Spotlight (Exact card format from user reference) -->
-      <div>
-        <div class="h-shelf-head">
-          <div class="h-shelf-title">
-            <span>🎬</span>
-            <span>HINDI DUBBED SPOTLIGHT & ASIAN SERIES</span>
-          </div>
-          <a href="/cinema" target="_top" class="h-shelf-link">EXPLORE MORE ></a>
-        </div>
-        <div class="h-cards-grid" style="margin-top: 14px;">
-          <!-- The Mongoose (Exact match from user attachment) -->
-          <div class="h-anime-card">
-            <div class="h-card-poster">
-              <img src="/images/posters/the-mongoose.jpg" onerror="this.src='/logo.png'" alt="The Mongoose" class="h-card-img" />
-              <span class="h-card-tag-top">CINEMA</span>
-              <span class="h-card-audio-top">HINDI</span>
-            </div>
-            <div class="h-card-info">
-              <h3 class="h-card-name">The Mongoose</h3>
-              <div class="h-meta-row">
-                <span class="h-pill-year">2026</span>
-                <span class="h-pill-star">★ 6.1</span>
-                <span class="h-pill-format">MOVIE</span>
-              </div>
-              <div class="h-card-actions">
-                <a href="/cinema" target="_top" class="h-play-pill">▶ PLAY</a>
-                <button class="h-plus-btn" title="Add to Watchlist">+</button>
-              </div>
-            </div>
-          </div>
-
-          <!-- Perfect Crown -->
-          <div class="h-anime-card">
-            <div class="h-card-poster">
-              <img src="/images/posters/perfect-crown.jpg" onerror="this.src='/logo.png'" alt="Perfect Crown" class="h-card-img" />
-              <span class="h-card-tag-top">K-DRAMA</span>
-              <span class="h-card-audio-top">HINDI</span>
-            </div>
-            <div class="h-card-info">
-              <h3 class="h-card-name">Perfect Crown</h3>
-              <div class="h-meta-row">
-                <span class="h-pill-year">2024</span>
-                <span class="h-pill-star">★ 8.7</span>
-                <span class="h-pill-format">SERIES</span>
-              </div>
-              <div class="h-card-actions">
-                <a href="/cinema" target="_top" class="h-play-pill">▶ PLAY</a>
-                <button class="h-plus-btn" title="Add to Watchlist">+</button>
-              </div>
-            </div>
-          </div>
-
-          <!-- See You at Work Tomorrow! -->
-          <div class="h-anime-card">
-            <div class="h-card-poster">
-              <img src="/images/posters/see-you-at-work.jpg" onerror="this.src='/logo.png'" alt="See You at Work Tomorrow!" class="h-card-img" />
-              <span class="h-card-tag-top">C-DRAMA</span>
-              <span class="h-card-audio-top">HINDI</span>
-            </div>
-            <div class="h-card-info">
-              <h3 class="h-card-name">See You at Work Tomorrow!</h3>
-              <div class="h-meta-row">
-                <span class="h-pill-year">2024</span>
-                <span class="h-pill-star">★ 8.5</span>
-                <span class="h-pill-format">SERIES</span>
-              </div>
-              <div class="h-card-actions">
-                <a href="/cinema" target="_top" class="h-play-pill">▶ PLAY</a>
-                <button class="h-plus-btn" title="Add to Watchlist">+</button>
-              </div>
-            </div>
-          </div>
-
-          <!-- Twinkling Watermelon -->
-          <div class="h-anime-card">
-            <div class="h-card-poster">
-              <img src="/images/posters/twinkling-watermelon.jpg" onerror="this.src='/logo.png'" alt="Twinkling Watermelon" class="h-card-img" />
-              <span class="h-card-tag-top">K-DRAMA</span>
-              <span class="h-card-audio-top">HINDI</span>
-            </div>
-            <div class="h-card-info">
-              <h3 class="h-card-name">Twinkling Watermelon</h3>
-              <div class="h-meta-row">
-                <span class="h-pill-year">2023</span>
-                <span class="h-pill-star">★ 9.2</span>
-                <span class="h-pill-format">SERIES</span>
-              </div>
-              <div class="h-card-actions">
-                <a href="/cinema" target="_top" class="h-play-pill">▶ PLAY</a>
-                <button class="h-plus-btn" title="Add to Watchlist">+</button>
-              </div>
-            </div>
-          </div>
-
-          <!-- When Life Gives You Tangerines -->
-          <div class="h-anime-card">
-            <div class="h-card-poster">
-              <img src="/images/posters/tangerines.jpg" onerror="this.src='/logo.png'" alt="When Life Gives You Tangerines" class="h-card-img" />
-              <span class="h-card-tag-top">K-DRAMA</span>
-              <span class="h-card-audio-top">DUB</span>
-            </div>
-            <div class="h-card-info">
-              <h3 class="h-card-name">When Life Gives You Tangerines</h3>
-              <div class="h-meta-row">
-                <span class="h-pill-year">2025</span>
-                <span class="h-pill-star">★ 8.9</span>
-                <span class="h-pill-format">SERIES</span>
-              </div>
-              <div class="h-card-actions">
-                <a href="/cinema" target="_top" class="h-play-pill">▶ PLAY</a>
-                <button class="h-plus-btn" title="Add to Watchlist">+</button>
-              </div>
-            </div>
-          </div>
-
-          <!-- Our Sticky Love -->
-          <div class="h-anime-card">
-            <div class="h-card-poster">
-              <img src="/images/posters/our-sticky-love.jpg" onerror="this.src='/logo.png'" alt="Our Sticky Love" class="h-card-img" />
-              <span class="h-card-tag-top">K-DRAMA</span>
-              <span class="h-card-audio-top">HINDI</span>
-            </div>
-            <div class="h-card-info">
-              <h3 class="h-card-name">Our Sticky Love</h3>
-              <div class="h-meta-row">
-                <span class="h-pill-year">2024</span>
-                <span class="h-pill-star">★ 8.3</span>
-                <span class="h-pill-format">SERIES</span>
-              </div>
-              <div class="h-card-actions">
-                <a href="/cinema" target="_top" class="h-play-pill">▶ PLAY</a>
-                <button class="h-plus-btn" title="Add to Watchlist">+</button>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <!-- Quick Realm Gateways -->
-      <div>
-        <div class="h-shelf-head">
-          <div class="h-shelf-title">
-            <span>🌐</span>
-            <span>DIRECT REALM DIRECTORY</span>
-          </div>
-        </div>
-        <div class="g-realm-grid" style="margin-top: 14px;">
-          <a href="/anime" target="_top" class="g-realm-card">
-            <div class="g-realm-top">
-              <span class="g-realm-badge">STREAMING</span>
-              <span class="g-realm-icon">❖</span>
-            </div>
-            <div>
-              <h4 class="g-realm-title">Anime Sanctuary</h4>
-              <p class="g-realm-desc">Thousands of subbed and dubbed anime series in lossless clarity.</p>
-            </div>
-            <div class="g-realm-btn">Enter Anime →</div>
-          </a>
-          <a href="/cinema" target="_top" class="g-realm-card">
-            <div class="g-realm-top">
-              <span class="g-realm-badge">MULTI-AUDIO</span>
-              <span class="g-realm-icon">✦</span>
-            </div>
-            <div>
-              <h4 class="g-realm-title">Cinema & Asian Dramas</h4>
-              <p class="g-realm-desc">Korean Dramas, Hindi Dubs, Chinese Historicals & Hollywood Blockbusters.</p>
-            </div>
-            <div class="g-realm-btn">Watch Cinema →</div>
-          </a>
-          <a href="/community" target="_top" class="g-realm-card">
-            <div class="g-realm-top">
-              <span class="g-realm-badge">COMMUNITY</span>
-              <span class="g-realm-icon">💬</span>
-            </div>
-            <div>
-              <h4 class="g-realm-title">Travelers' Community</h4>
-              <p class="g-realm-desc">Episode theory discussions, user reviews, custom profile frames & badges.</p>
-            </div>
-            <div class="g-realm-btn">Join Community →</div>
-          </a>
-          <a href="/profile" target="_top" class="g-realm-card">
-            <div class="g-realm-top">
-              <span class="g-realm-badge">SANCTUM</span>
-              <span class="g-realm-icon">★</span>
-            </div>
-            <div>
-              <h4 class="g-realm-title">Traveler Profile</h4>
-              <p class="g-realm-desc">Watchlist, continue watching history, custom titles & settings.</p>
-            </div>
-            <div class="g-realm-btn">Open Profile →</div>
-          </a>
-        </div>
-      </div>
-
-      <!-- Footer Info -->
-      <div class="g-menu-footer">
-        <div>Kagemi Archives • Sanctuary of Anime & Cinema</div>
-        <div class="g-menu-hint-keys">
-          <span><kbd>ESC</kbd> Return to Isle</span>
-          <span><kbd>WASD</kbd> Walk freely</span>
-        </div>
+      <div class="kagemi-portal-iframe-wrap">
+        <iframe id="kagemi-live-frame" src="/?embed=1" title="Kagemi Sanctuary Live" allow="autoplay; fullscreen"></iframe>
       </div>
     </div>
   </div>
 
-  <!-- Small Bottom Portal Message Popup (#genshin-portal-msg-modal) -->
+  <!-- Full Detailed Portal Message Modal (#genshin-portal-msg-modal) -->
   <div id="genshin-portal-msg-modal" role="dialog" aria-modal="true" style="display:none;">
     <div class="g-portal-toast">
-      <div class="g-portal-toast-msg">Entering the World of Kagemi</div>
-      <button id="g-portal-toast-ok-btn" class="g-portal-toast-btn">OK</button>
+      <div class="g-portal-toast-header">
+        <span class="g-portal-toast-badge">❖ DIMENSIONAL MANA GATEWAY</span>
+        <h3 class="g-portal-toast-title">Entering the World of Kagemi</h3>
+      </div>
+      <div class="g-portal-toast-msg">
+        You stand before the ancient Mana Gateway of Shadow Garden. Beyond this mystic portal lies Kagemi — an infinite sanctuary uniting over 15,000 anime series, Asian dramas, and cinema in pristine 1080p Full HD with dual audio, synchronized subtitles, and zero ads.
+      </div>
+      <div class="g-portal-toast-sub">
+        Ascend the stairs and step into the water vortex to traverse the dimensional warp tunnel.
+      </div>
+      <button id="g-portal-toast-ok-btn" class="g-portal-toast-btn">OK, ENTER SANCTUARY</button>
     </div>
   </div>
 
@@ -4399,7 +4289,7 @@ totalEmissiveRadiance*=rTm;`);
        GENSHIN IMPACT 3D TERMINAL, POI SYSTEM & GAME MODALS
        ========================================================================= */
     let kagemiTerminalGroup = null, kagemiCrystal = null, kagemiBeacon = null, kagemiTerminalLight = null;
-    let isLandingMenuOpen = false, isPortalToastOpen = false, isNearTerminal = false;
+    let isLandingMenuOpen = false, isPortalToastOpen = false, isNearTerminal = false, portalToastDismissedInZone = false;
 
     // Sound chime helper using Web Audio
     function playGenshinChime(isMajor = true) {
@@ -4429,452 +4319,554 @@ totalEmissiveRadiance*=rTm;`);
       } catch (e) {}
     }
 
-    // Build Massive In-World 3D Kagemi Landing Page Screen (13x-15x Huge Scale, HiAnime/Miruro Style, Freely Scrollable, Matte/No Glowings)
-    let kagemiScreenMesh = null, kagemiScreenCanvas = null, kagemiScreenCtx = null, kagemiScreenTex = null;
-    let kagemiScrollY = 0, kagemiMaxScroll = 1200;
+    // Build In-World 3D Kagemi Terminal (3x Smaller: 1400x800, Floating on Stone Altar, Real Kagemi Landing Page with Free Scroll, No Glowings)
+    let kagemiScreenMesh = null, kagemiScreenCanvas = null, kagemiScreenCtx = null, kagemiScreenTex = null, kagemiScreenFrame = null;
+    let kagemiScrollY = 0;
+    const kagemiMaxScroll = 1200;
 
     function renderKagemiScreen(scrollY = 0) {
       if (!kagemiScreenCtx) return;
       const ctx = kagemiScreenCtx;
-      const W = 2048, H = 1152;
+      const W = 2048, H = 1170;
       const isMobile = (window.innerWidth < 768) || /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
 
       ctx.save();
-      // Background: Deep obsidian space with subtle grid pattern
-      const bgGrad = ctx.createLinearGradient(0, 0, 0, H);
-      bgGrad.addColorStop(0, '#070a14');
-      bgGrad.addColorStop(0.5, '#0b0f1e');
-      bgGrad.addColorStop(1, '#060810');
-      ctx.fillStyle = bgGrad;
+      // Deep obsidian space backdrop matching Kagemi dark theme
+      ctx.fillStyle = '#050508';
       ctx.fillRect(0, 0, W, H);
 
       // Subtle architectural grid background
-      ctx.strokeStyle = 'rgba(255, 255, 255, 0.03)';
+      ctx.strokeStyle = 'rgba(255, 255, 255, 0.025)';
       ctx.lineWidth = 1;
-      for (let x = 0; x < W; x += 64) {
-        ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, H); ctx.stroke();
-      }
-      for (let y = 0; y < H; y += 64) {
-        ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(W, y); ctx.stroke();
-      }
+      for (let x = 0; x < W; x += 48) { ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, H); ctx.stroke(); }
+      for (let y = 0; y < H; y += 48) { ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(W, y); ctx.stroke(); }
 
-      // Clip content area below header
+      // Outer bezel line
+      ctx.strokeStyle = 'rgba(124, 58, 237, 0.28)';
+      ctx.lineWidth = 2;
+      ctx.strokeRect(16, 16, W - 32, H - 32);
+
+      // Scrollable content area
       ctx.save();
       ctx.beginPath();
-      ctx.rect(0, 110, W, H - 190);
+      ctx.rect(20, 85, W - 40, H - 155);
       ctx.clip();
+      ctx.translate(0, 85 - scrollY);
 
-      // Scroll translation for dynamic scrollable landing page content
-      ctx.translate(0, 110 - scrollY);
+      if (!isMobile) {
+        // =====================================================================
+        // DESKTOP AUTHENTIC KAGEMI LANDING PAGE LAYOUT
+        // =====================================================================
 
-      // =====================================================================
-      // 1. HERO SPOTLIGHT BANNER
-      // =====================================================================
-      const heroY = 24;
-      const heroH = 380;
-      
-      // Hero Card Container
-      ctx.fillStyle = 'rgba(16, 22, 40, 0.9)';
-      ctx.beginPath();
-      ctx.roundRect(48, heroY, W - 96, heroH, 20);
-      ctx.fill();
-      ctx.strokeStyle = 'rgba(255, 255, 255, 0.1)';
-      ctx.lineWidth = 2;
-      ctx.stroke();
+        // 1. CINEMATIC HERO SECTION
+        const heroY = 24;
 
-      // Hero Artwork Backdrop Gradient
-      const heroGrad = ctx.createLinearGradient(48, heroY, W - 48, heroY + heroH);
-      heroGrad.addColorStop(0, 'rgba(124, 58, 237, 0.28)');
-      heroGrad.addColorStop(0.5, 'rgba(6, 182, 212, 0.14)');
-      heroGrad.addColorStop(1, 'rgba(10, 14, 26, 0.85)');
-      ctx.fillStyle = heroGrad;
-      ctx.beginPath();
-      ctx.roundRect(50, heroY + 2, W - 100, heroH - 4, 18);
-      ctx.fill();
-
-      // Spotlight Tags
-      ctx.fillStyle = '#7c3aed';
-      ctx.beginPath();
-      ctx.roundRect(80, heroY + 36, 170, 36, 18);
-      ctx.fill();
-      ctx.fillStyle = '#ffffff';
-      ctx.font = 'bold 16px system-ui, sans-serif';
-      ctx.textAlign = 'center';
-      ctx.fillText('#1 SPOTLIGHT', 165, heroY + 60);
-
-      // Meta Pills
-      const drawPill = (text, color, x, y, w) => {
-        ctx.fillStyle = 'rgba(255, 255, 255, 0.1)';
+        // Top Tag Badge
+        ctx.fillStyle = 'rgba(255, 255, 255, 0.05)';
         ctx.beginPath();
-        ctx.roundRect(x, y, w, 36, 18);
+        ctx.roundRect(W / 2 - 165, heroY + 10, 330, 34, 17);
+        ctx.fill();
+        ctx.strokeStyle = 'rgba(255, 255, 255, 0.12)';
+        ctx.lineWidth = 1;
+        ctx.stroke();
+        ctx.fillStyle = '#c084fc';
+        ctx.font = 'bold 13px system-ui, sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText('NEXT-GEN HIGH-FIDELITY STREAMING', W / 2, heroY + 32);
+
+        // Headline with Gradient ("Where Stories Ascend.") - dynamically measured for perfect spacing
+        const t1 = 'Where Stories ';
+        const t2 = 'Ascend.';
+        ctx.font = '900 68px system-ui, sans-serif';
+        const w1 = ctx.measureText(t1).width;
+        const w2 = ctx.measureText(t2).width;
+        const totalW = w1 + w2;
+        const startX = (W - totalW) / 2;
+
+        ctx.textAlign = 'left';
+        ctx.fillStyle = '#ffffff';
+        ctx.fillText(t1, startX, heroY + 115);
+
+        const grad = ctx.createLinearGradient(startX + w1, 0, startX + totalW, 0);
+        grad.addColorStop(0, '#c084fc');
+        grad.addColorStop(0.5, '#7dd3fc');
+        grad.addColorStop(1, '#a855f7');
+        ctx.fillStyle = grad;
+        ctx.fillText(t2, startX + w1, heroY + 115);
+
+        // Value Proposition Subtitle
+        ctx.fillStyle = '#94a3b8';
+        ctx.font = '20px system-ui, sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText('Stream 15,000+ anime & donghua episodes in pristine 1080p 60fps, alongside 35,000+', W / 2, heroY + 165);
+        ctx.fillText('unlocked vertical mini-dramas and manga. Zero interruptions, zero lag.', W / 2, heroY + 195);
+
+        // Search Bar Box
+        const sbW = 860, sbH = 56, sbX = (W - sbW) / 2, sbY = heroY + 230;
+        ctx.fillStyle = 'rgba(15, 23, 42, 0.85)';
+        ctx.beginPath();
+        ctx.roundRect(sbX, sbY, sbW, sbH, 28);
         ctx.fill();
         ctx.strokeStyle = 'rgba(255, 255, 255, 0.15)';
-        ctx.lineWidth = 1;
-        ctx.stroke();
-        ctx.fillStyle = color;
-        ctx.font = 'bold 15px system-ui, sans-serif';
-        ctx.textAlign = 'center';
-        ctx.fillText(text, x + w / 2, y + 24);
-      };
-      drawPill('★ 9.8 RATING', '#facc15', 265, heroY + 36, 145);
-      drawPill('ACTION / FANTASY', '#e2e8f0', 425, heroY + 36, 185);
-      drawPill('EPISODE 12 / 12', '#38bdf8', 625, heroY + 36, 160);
-
-      // Hero Title
-      ctx.fillStyle = '#ffffff';
-      ctx.font = '900 48px system-ui, sans-serif';
-      ctx.textAlign = 'left';
-      ctx.fillText('SOLO LEVELING: ARISE', 80, heroY + 145);
-
-      // Hero Description
-      ctx.fillStyle = '#94a3b8';
-      ctx.font = '20px system-ui, sans-serif';
-      ctx.fillText('In a world where hunters must battle deadly monsters from invading gates, the weakest hunter Sung Jinwoo', 80, heroY + 195);
-      ctx.fillText('discovers a mysterious quest system that allows him to level up infinitely beyond human limits.', 80, heroY + 228);
-
-      // Hero Action Buttons
-      // [ ▶ WATCH NOW ]
-      ctx.fillStyle = '#7c3aed';
-      ctx.beginPath();
-      ctx.roundRect(80, heroY + 275, 220, 60, 30);
-      ctx.fill();
-      ctx.fillStyle = '#ffffff';
-      ctx.font = '900 20px system-ui, sans-serif';
-      ctx.textAlign = 'center';
-      ctx.fillText('▶  WATCH NOW', 190, heroY + 312);
-
-      // [ + WATCHLIST ]
-      ctx.fillStyle = 'rgba(255, 255, 255, 0.12)';
-      ctx.beginPath();
-      ctx.roundRect(318, heroY + 275, 200, 60, 30);
-      ctx.fill();
-      ctx.strokeStyle = 'rgba(255, 255, 255, 0.2)';
-      ctx.lineWidth = 1.5;
-      ctx.stroke();
-      ctx.fillStyle = '#ffffff';
-      ctx.font = 'bold 18px system-ui, sans-serif';
-      ctx.fillText('+  WATCHLIST', 418, heroY + 312);
-
-      // =====================================================================
-      // 2. TRENDING ANIME & CINEMA CARDS SHELF
-      // =====================================================================
-      const shelfY = heroY + heroH + 50;
-      
-      // Shelf Header
-      ctx.fillStyle = '#ffffff';
-      ctx.font = '900 28px system-ui, sans-serif';
-      ctx.textAlign = 'left';
-      ctx.fillText('🔥  TRENDING ON KAGEMI', 48, shelfY + 20);
-
-      ctx.fillStyle = '#7c3aed';
-      ctx.font = 'bold 18px system-ui, sans-serif';
-      ctx.textAlign = 'right';
-      ctx.fillText('EXPLORE MORE (240+) >', W - 48, shelfY + 20);
-
-      // Cards Grid (5 Cards matching user specifications)
-      const cards = [
-        { title: 'The Mongoose', year: '2026', score: '★ 6.1', format: 'MOVIE', tag: 'CINEMA', audio: 'HINDI', bg: '#1e1628' },
-        { title: 'Solo Leveling', year: '2024', score: '★ 9.8', format: 'SERIES', tag: 'ANIME', audio: 'DUB', bg: '#101a2c' },
-        { title: 'Demon Slayer', year: '2024', score: '★ 9.6', format: 'SERIES', tag: 'ANIME', audio: 'SUB', bg: '#241418' },
-        { title: 'Tangerines', year: '2025', score: '★ 8.9', format: 'SERIES', tag: 'K-DRAMA', audio: 'HINDI', bg: '#2a1a12' },
-        { title: 'Jujutsu Kaisen', year: '2023', score: '★ 9.4', format: 'SERIES', tag: 'ANIME', audio: 'SUB', bg: '#12182a' }
-      ];
-
-      const cardW = 368;
-      const cardH = 460;
-      const cardGap = 28;
-      const startX = 48;
-
-      cards.forEach((c, idx) => {
-        const cx = startX + idx * (cardW + cardGap);
-        const cy = shelfY + 50;
-
-        // Card Poster Box
-        ctx.fillStyle = c.bg;
-        ctx.beginPath();
-        ctx.roundRect(cx, cy, cardW, cardH, 16);
-        ctx.fill();
-        ctx.strokeStyle = 'rgba(255, 255, 255, 0.1)';
         ctx.lineWidth = 1.5;
         ctx.stroke();
-
-        // Poster Artwork Area
-        const posterGrad = ctx.createLinearGradient(cx, cy, cx, cy + 280);
-        posterGrad.addColorStop(0, 'rgba(255, 255, 255, 0.08)');
-        posterGrad.addColorStop(1, 'rgba(0, 0, 0, 0.6)');
-        ctx.fillStyle = posterGrad;
-        ctx.beginPath();
-        ctx.roundRect(cx + 2, cy + 2, cardW - 4, 280, 14);
-        ctx.fill();
-
-        // Top Badges
-        // Left Badge
-        ctx.fillStyle = 'rgba(0, 0, 0, 0.75)';
-        ctx.beginPath();
-        ctx.roundRect(cx + 14, cy + 14, 86, 28, 14);
-        ctx.fill();
-        ctx.fillStyle = '#ffffff';
-        ctx.font = 'bold 12px system-ui, sans-serif';
-        ctx.textAlign = 'center';
-        ctx.fillText(c.tag, cx + 57, cy + 33);
-
-        // Right Badge
-        ctx.fillStyle = c.audio === 'HINDI' ? 'rgba(234, 179, 8, 0.88)' : 'rgba(56, 189, 248, 0.85)';
-        ctx.beginPath();
-        ctx.roundRect(cx + cardW - 86, cy + 14, 72, 28, 14);
-        ctx.fill();
-        ctx.fillStyle = '#0a0d18';
-        ctx.font = '900 12px system-ui, sans-serif';
-        ctx.fillText(c.audio, cx + cardW - 50, cy + 33);
-
-        // Card Title
-        ctx.fillStyle = '#ffffff';
-        ctx.font = '900 24px system-ui, sans-serif';
-        ctx.textAlign = 'left';
-        ctx.fillText(c.title, cx + 18, cy + 325);
-
-        // Metadata Pills Row: [2026] [★ 6.1] [MOVIE] (Exactly matching user image)
-        const pillY = cy + 348;
-        const drawSmallPill = (txt, col, px, w) => {
-          ctx.fillStyle = 'rgba(255, 255, 255, 0.1)';
-          ctx.beginPath();
-          ctx.roundRect(px, pillY, w, 28, 14);
-          ctx.fill();
-          ctx.strokeStyle = 'rgba(255, 255, 255, 0.12)';
-          ctx.lineWidth = 1;
-          ctx.stroke();
-          ctx.fillStyle = col;
-          ctx.font = 'bold 13px system-ui, sans-serif';
-          ctx.textAlign = 'center';
-          ctx.fillText(txt, px + w / 2, pillY + 19);
-        };
-        drawSmallPill(c.year, '#cbd5e1', cx + 18, 64);
-        drawSmallPill(c.score, '#facc15', cx + 88, 72);
-        drawSmallPill(c.format, '#e2e8f0', cx + 166, 78);
-
-        // Action Buttons: [ ▶ PLAY ] and (+)
-        const btnY = cy + 392;
-        ctx.fillStyle = '#7c3aed';
-        ctx.beginPath();
-        ctx.roundRect(cx + 18, btnY, cardW - 90, 48, 24);
-        ctx.fill();
-        ctx.fillStyle = '#ffffff';
-        ctx.font = '900 16px system-ui, sans-serif';
-        ctx.textAlign = 'center';
-        ctx.fillText('▶   PLAY', cx + 18 + (cardW - 90) / 2, btnY + 30);
-
-        // Circle (+) Watchlist Button
-        ctx.fillStyle = 'rgba(255, 255, 255, 0.12)';
-        ctx.beginPath();
-        ctx.arc(cx + cardW - 40, btnY + 24, 24, 0, Math.PI * 2);
-        ctx.fill();
-        ctx.strokeStyle = 'rgba(255, 255, 255, 0.2)';
-        ctx.lineWidth = 1.5;
-        ctx.stroke();
-        ctx.fillStyle = '#ffffff';
-        ctx.font = 'bold 22px system-ui, sans-serif';
-        ctx.textAlign = 'center';
-        ctx.fillText('+', cx + cardW - 40, btnY + 31);
-      });
-
-      // =====================================================================
-      // 3. DIRECT REALM GATEWAYS SECTION
-      // =====================================================================
-      const realmY = shelfY + cardH + 90;
-      ctx.fillStyle = '#ffffff';
-      ctx.font = '900 28px system-ui, sans-serif';
-      ctx.textAlign = 'left';
-      ctx.fillText('🌐  DIRECT REALM DIRECTORY', 48, realmY + 20);
-
-      const realms = [
-        { name: 'ANIME REALM', desc: '10,000+ Series & Movies', icon: '❖', color: '#7c3aed' },
-        { name: 'CINEMA HUB', desc: 'Global & Asian Films', icon: '🎬', color: '#06b6d4' },
-        { name: 'HINDI DUBBED', desc: 'Dual-Audio Collections', icon: '🎙️', color: '#eab308' },
-        { name: 'COMMUNITY', desc: 'Discussions & Rankings', icon: '💬', color: '#10b981' }
-      ];
-
-      const rW = (W - 96 - 3 * 24) / 4;
-      realms.forEach((r, i) => {
-        const rx = 48 + i * (rW + 24);
-        const ry = realmY + 50;
-
-        ctx.fillStyle = 'rgba(18, 24, 44, 0.85)';
-        ctx.beginPath();
-        ctx.roundRect(rx, ry, rW, 140, 16);
-        ctx.fill();
-        ctx.strokeStyle = 'rgba(255, 255, 255, 0.1)';
-        ctx.lineWidth = 1.5;
-        ctx.stroke();
-
-        ctx.fillStyle = r.color;
-        ctx.font = '36px system-ui, sans-serif';
-        ctx.textAlign = 'left';
-        ctx.fillText(r.icon, rx + 24, ry + 56);
-
-        ctx.fillStyle = '#ffffff';
-        ctx.font = '900 20px system-ui, sans-serif';
-        ctx.fillText(r.name, rx + 24, ry + 94);
 
         ctx.fillStyle = '#94a3b8';
-        ctx.font = '14px system-ui, sans-serif';
-        ctx.fillText(r.desc, rx + 24, ry + 120);
-      });
+        ctx.font = '16px system-ui, sans-serif';
+        ctx.textAlign = 'left';
+        ctx.fillText('🔍  Search anime, movies, donghua, or characters...', sbX + 26, sbY + 35);
+        ctx.textAlign = 'right';
+        ctx.fillStyle = '#7c3aed';
+        ctx.font = 'bold 15px system-ui, sans-serif';
+        ctx.fillText('⚡ SEARCH', sbX + sbW - 26, sbY + 35);
 
-      ctx.restore(); // Restore clip
-
-      // =====================================================================
-      // TOP HEADER (Always fixed at top of screen)
-      // =====================================================================
-      const hGrad = ctx.createLinearGradient(0, 0, 0, 110);
-      hGrad.addColorStop(0, '#070a14');
-      hGrad.addColorStop(0.85, 'rgba(7, 10, 20, 0.95)');
-      hGrad.addColorStop(1, 'rgba(7, 10, 20, 0)');
-      ctx.fillStyle = hGrad;
-      ctx.fillRect(0, 0, W, 110);
-
-      // Brand Logo
-      ctx.fillStyle = '#7c3aed';
-      ctx.beginPath();
-      ctx.roundRect(48, 28, 54, 54, 12);
-      ctx.fill();
-      ctx.fillStyle = '#ffffff';
-      ctx.font = 'bold 30px system-ui, sans-serif';
-      ctx.textAlign = 'center';
-      ctx.fillText('❖', 75, 66);
-
-      ctx.textAlign = 'left';
-      ctx.fillStyle = '#ffffff';
-      ctx.font = '900 32px system-ui, sans-serif';
-      ctx.fillText('KAGEMI', 116, 58);
-      ctx.fillStyle = '#38bdf8';
-      ctx.font = 'bold 13px system-ui, sans-serif';
-      ctx.fillText('ANIME & CINEMA WORLD', 118, 77);
-
-      // Global Search Bar in Header
-      ctx.fillStyle = 'rgba(255, 255, 255, 0.08)';
-      ctx.beginPath();
-      ctx.roundRect(460, 32, 680, 48, 24);
-      ctx.fill();
-      ctx.strokeStyle = 'rgba(255, 255, 255, 0.12)';
-      ctx.lineWidth = 1.5;
-      ctx.stroke();
-      ctx.fillStyle = '#94a3b8';
-      ctx.font = '16px system-ui, sans-serif';
-      ctx.textAlign = 'left';
-      ctx.fillText('🔍   Search 10,000+ anime titles, movies, drama...       Ctrl + K', 490, 62);
-
-      // Status Badges on right
-      const drawBadge = (txt, x, w) => {
-        ctx.fillStyle = 'rgba(255, 255, 255, 0.06)';
-        ctx.beginPath();
-        ctx.roundRect(x, 34, w, 44, 22);
-        ctx.fill();
-        ctx.strokeStyle = 'rgba(255, 255, 255, 0.1)';
-        ctx.lineWidth = 1;
-        ctx.stroke();
-        ctx.fillStyle = '#e2e8f0';
-        ctx.font = 'bold 14px system-ui, sans-serif';
+        // Trending Chips
         ctx.textAlign = 'center';
-        ctx.fillText(txt, x + w / 2, 61);
-      };
-      drawBadge('1080p FHD', 1200, 110);
-      drawBadge('MULTI-SUB', 1324, 120);
-      drawBadge('ZERO ADS', 1458, 110);
+        ctx.fillStyle = '#64748b';
+        ctx.font = '14px system-ui, sans-serif';
+        ctx.fillText('Trending:', W / 2 - 280, sbY + 86);
+        const chips = ['Solo Leveling', 'Bleach TYBW', 'Demon Slayer', 'Frieren', 'Omniscient Reader'];
+        let chipX = W / 2 - 220;
+        chips.forEach(c => {
+          const cw = ctx.measureText(c).width + 24;
+          ctx.fillStyle = 'rgba(255, 255, 255, 0.06)';
+          ctx.beginPath();
+          ctx.roundRect(chipX, sbY + 70, cw, 26, 13);
+          ctx.fill();
+          ctx.strokeStyle = 'rgba(255, 255, 255, 0.1)';
+          ctx.lineWidth = 1;
+          ctx.stroke();
+          ctx.fillStyle = '#cbd5e1';
+          ctx.fillText(c, chipX + cw / 2, sbY + 88);
+          chipX += cw + 12;
+        });
+
+        // Hero CTA Buttons
+        // [ ▶ Start Watching Free ]
+        const ctaW = 240, ctaH = 52, ctaY = sbY + 125;
+        ctx.fillStyle = '#7c3aed';
+        ctx.beginPath();
+        ctx.roundRect(W / 2 - ctaW - 14, ctaY, ctaW, ctaH, 26);
+        ctx.fill();
+        ctx.fillStyle = '#ffffff';
+        ctx.font = 'bold 17px system-ui, sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText('▶   Start Watching Free', W / 2 - 14 - ctaW / 2, ctaY + 33);
+
+        // [ 🧭 Explore Catalog ]
+        ctx.fillStyle = 'rgba(255, 255, 255, 0.08)';
+        ctx.beginPath();
+        ctx.roundRect(W / 2 + 14, ctaY, ctaW, ctaH, 26);
+        ctx.fill();
+        ctx.strokeStyle = 'rgba(255, 255, 255, 0.15)';
+        ctx.lineWidth = 1.2;
+        ctx.stroke();
+        ctx.fillStyle = '#ffffff';
+        ctx.fillText('🧭   Explore Catalog', W / 2 + 14 + ctaW / 2, ctaY + 33);
+
+        // Metrics Row (Typographic counts, strict no-pulse compliance)
+        const metY = ctaY + 85;
+        ctx.strokeStyle = 'rgba(255, 255, 255, 0.08)';
+        ctx.beginPath();
+        ctx.moveTo(120, metY);
+        ctx.lineTo(W - 120, metY);
+        ctx.stroke();
+
+        const metrics = [
+          { val: '15,000+', lbl: 'ANIME & DONGHUA', col: '#ffffff' },
+          { val: '35,000+', lbl: 'VERTICAL SHORTS', col: '#c084fc' },
+          { val: '1080p 60fps', lbl: 'ULTRA HD QUALITY', col: '#38bdf8' },
+          { val: 'Zero Lag', lbl: 'GLOBAL EDGE CDN', col: '#34d399' }
+        ];
+        const mColW = (W - 240) / 4;
+        metrics.forEach((m, i) => {
+          const mx = 120 + i * mColW + mColW / 2;
+          ctx.fillStyle = m.col;
+          ctx.font = '900 28px system-ui, sans-serif';
+          ctx.textAlign = 'center';
+          ctx.fillText(m.val, mx, metY + 44);
+          ctx.fillStyle = '#64748b';
+          ctx.font = 'bold 12px system-ui, sans-serif';
+          ctx.fillText(m.lbl, mx, metY + 66);
+        });
+
+        // 2. EXPLORE ALL REALMS
+        const realmsY = metY + 115;
+        ctx.fillStyle = '#a855f7';
+        ctx.font = 'bold 12px system-ui, sans-serif';
+        ctx.textAlign = 'left';
+        ctx.fillText('UNIFIED ECOSYSTEM', 60, realmsY);
+        ctx.fillStyle = '#ffffff';
+        ctx.font = '900 32px system-ui, sans-serif';
+        ctx.fillText('EXPLORE ALL REALMS', 60, realmsY + 36);
+
+        const realms = [
+          { title: 'Anime & Donghua', sub: 'Broadcast simultaneously from Japan & China. High-definition Sub & Dub updated daily.', icon: '❖', col: '#a855f7', link: 'Browse Series →' },
+          { title: 'Vertical Mini-Dramas', sub: 'Fast-paced 1-minute episodes. Billionaire, CEO, Werewolf, and Martial Arts stories.', icon: '🎬', col: '#f43f5e', link: 'Watch Shorts →' },
+          { title: 'Cinema & Theatrical', sub: 'Feature-length blockbuster anime movies, Asian theatricals in master quality.', icon: '🎞️', col: '#f59e0b', link: 'Stream Cinema →' },
+          { title: 'Mangvels Reader', sub: 'High-resolution digital reader for manga, manhwa, and translated web novels.', icon: '📖', col: '#10b981', link: 'Open Reader →' }
+        ];
+        const rW = (W - 120 - 3 * 24) / 4;
+        realms.forEach((r, i) => {
+          const rx = 60 + i * (rW + 24);
+          const ry = realmsY + 60;
+          ctx.fillStyle = 'rgba(15, 20, 36, 0.85)';
+          ctx.beginPath();
+          ctx.roundRect(rx, ry, rW, 160, 16);
+          ctx.fill();
+          ctx.strokeStyle = 'rgba(255, 255, 255, 0.08)';
+          ctx.lineWidth = 1;
+          ctx.stroke();
+
+          ctx.fillStyle = r.col;
+          ctx.font = '26px system-ui, sans-serif';
+          ctx.fillText(r.icon, rx + 24, ry + 42);
+
+          ctx.fillStyle = '#ffffff';
+          ctx.font = 'bold 18px system-ui, sans-serif';
+          ctx.fillText(r.title, rx + 24, ry + 75);
+
+          ctx.fillStyle = '#94a3b8';
+          ctx.font = '12px system-ui, sans-serif';
+          const words = r.sub.split(' ');
+          let l1 = '', l2 = '';
+          words.forEach(w => {
+            if ((l1 + w).length < 32) l1 += w + ' ';
+            else l2 += w + ' ';
+          });
+          ctx.fillText(l1.trim(), rx + 24, ry + 102);
+          ctx.fillText(l2.trim(), rx + 24, ry + 120);
+
+          ctx.fillStyle = r.col;
+          ctx.font = 'bold 13px system-ui, sans-serif';
+          ctx.fillText(r.link, rx + 24, ry + 144);
+        });
+
+        // 3. TOP AIRING BROADCASTS (Real Kagemi Airing Anime - NO 'The Mongoose'!)
+        const animeShelfY = realmsY + 265;
+        ctx.fillStyle = '#ffffff';
+        ctx.font = '900 32px system-ui, sans-serif';
+        ctx.textAlign = 'left';
+        ctx.fillText('🔥  TOP AIRING BROADCASTS', 60, animeShelfY);
+        ctx.fillStyle = '#64748b';
+        ctx.font = '14px system-ui, sans-serif';
+        ctx.fillText('Most streamed releases across Kagemi this week', 60, animeShelfY + 26);
+
+        ctx.fillStyle = '#c084fc';
+        ctx.font = 'bold 16px system-ui, sans-serif';
+        ctx.textAlign = 'right';
+        ctx.fillText('BROWSE ALL (15,000+) >', W - 60, animeShelfY + 14);
+
+        const animeList = [
+          { rank: '#1', title: 'Solo Leveling: Arise', year: '2024', score: '★ 9.8', type: 'SERIES', audio: 'SUB & DUB', bg: '#0f172a' },
+          { rank: '#2', title: 'Demon Slayer: Hashira Training', year: '2024', score: '★ 9.6', type: 'SERIES', audio: 'SUB & DUB', bg: '#1c1917' },
+          { rank: '#3', title: 'The Apothecary Diaries', year: '2025', score: '★ 9.5', type: 'SERIES', audio: 'SUB & DUB', bg: '#142018' },
+          { rank: '#4', title: 'Bleach: Thousand-Year Blood War', year: '2024', score: '★ 9.7', type: 'SERIES', audio: 'SUB & DUB', bg: '#1e1124' },
+          { rank: '#5', title: 'Frieren: Beyond Journey', year: '2024', score: '★ 9.9', type: 'SERIES', audio: 'SUB & DUB', bg: '#0e1e24' }
+        ];
+
+        const cardW = (W - 120 - 4 * 22) / 5;
+        const cardH = 340;
+        animeList.forEach((a, i) => {
+          const cx = 60 + i * (cardW + 22);
+          const cy = animeShelfY + 48;
+
+          ctx.fillStyle = a.bg;
+          ctx.beginPath();
+          ctx.roundRect(cx, cy, cardW, cardH, 14);
+          ctx.fill();
+          ctx.strokeStyle = 'rgba(255, 255, 255, 0.08)';
+          ctx.lineWidth = 1;
+          ctx.stroke();
+
+          // Poster artwork gradient area
+          const artGrad = ctx.createLinearGradient(cx, cy, cx, cy + 200);
+          artGrad.addColorStop(0, 'rgba(255, 255, 255, 0.08)');
+          artGrad.addColorStop(1, 'rgba(0, 0, 0, 0.7)');
+          ctx.fillStyle = artGrad;
+          ctx.beginPath();
+          ctx.roundRect(cx + 2, cy + 2, cardW - 4, 196, 12);
+          ctx.fill();
+
+          // Rank Badge
+          ctx.fillStyle = 'rgba(0, 0, 0, 0.8)';
+          ctx.beginPath();
+          ctx.roundRect(cx + 12, cy + 12, 42, 24, 6);
+          ctx.fill();
+          ctx.fillStyle = '#ffffff';
+          ctx.font = 'bold 12px system-ui, sans-serif';
+          ctx.textAlign = 'center';
+          ctx.fillText(a.rank, cx + 33, cy + 28);
+
+          // Quality Pill
+          ctx.fillStyle = 'rgba(124, 58, 237, 0.85)';
+          ctx.beginPath();
+          ctx.roundRect(cx + cardW - 68, cy + 12, 56, 24, 6);
+          ctx.fill();
+          ctx.fillStyle = '#ffffff';
+          ctx.font = '900 11px system-ui, sans-serif';
+          ctx.fillText('1080p', cx + cardW - 40, cy + 28);
+
+          // Title
+          ctx.textAlign = 'left';
+          ctx.fillStyle = '#ffffff';
+          ctx.font = 'bold 16px system-ui, sans-serif';
+          const tText = a.title.length > 22 ? a.title.slice(0, 20) + '...' : a.title;
+          ctx.fillText(tText, cx + 14, cy + 230);
+
+          // Metadata row
+          ctx.fillStyle = '#facc15';
+          ctx.font = 'bold 12px system-ui, sans-serif';
+          ctx.fillText(a.score, cx + 14, cy + 254);
+          ctx.fillStyle = '#94a3b8';
+          ctx.font = '12px system-ui, sans-serif';
+          ctx.fillText('•  ' + a.audio, cx + 64, cy + 254);
+
+          // [ ▶ PLAY ] button
+          ctx.fillStyle = '#7c3aed';
+          ctx.beginPath();
+          ctx.roundRect(cx + 14, cy + 276, cardW - 28, 44, 22);
+          ctx.fill();
+          ctx.fillStyle = '#ffffff';
+          ctx.font = 'bold 14px system-ui, sans-serif';
+          ctx.textAlign = 'center';
+          ctx.fillText('▶   PLAY', cx + cardW / 2, cy + 303);
+        });
+
+      } else {
+        // =====================================================================
+        // MOBILE AUTHENTIC KAGEMI LANDING PAGE LAYOUT
+        // =====================================================================
+        const heroY = 20;
+
+        ctx.fillStyle = 'rgba(255, 255, 255, 0.05)';
+        ctx.beginPath();
+        ctx.roundRect(W / 2 - 200, heroY, 400, 40, 20);
+        ctx.fill();
+        ctx.fillStyle = '#c084fc';
+        ctx.font = 'bold 15px system-ui, sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText('NEXT-GEN HIGH-FIDELITY STREAMING', W / 2, heroY + 25);
+
+        ctx.font = '900 72px system-ui, sans-serif';
+        ctx.fillStyle = '#ffffff';
+        ctx.fillText('Where Stories Ascend.', W / 2, heroY + 120);
+
+        ctx.fillStyle = '#94a3b8';
+        ctx.font = '24px system-ui, sans-serif';
+        ctx.fillText('15,000+ Anime Episodes • 35,000+ Vertical Shorts • Zero Ads', W / 2, heroY + 175);
+
+        // Mobile Search Bar
+        const sbW = W - 120, sbH = 70, sbX = 60, sbY = heroY + 220;
+        ctx.fillStyle = 'rgba(15, 23, 42, 0.9)';
+        ctx.beginPath();
+        ctx.roundRect(sbX, sbY, sbW, sbH, 35);
+        ctx.fill();
+        ctx.strokeStyle = 'rgba(255, 255, 255, 0.15)';
+        ctx.lineWidth = 2;
+        ctx.stroke();
+
+        ctx.fillStyle = '#94a3b8';
+        ctx.font = '22px system-ui, sans-serif';
+        ctx.textAlign = 'left';
+        ctx.fillText('🔍  Search anime, movies, donghua...', sbX + 36, sbY + 44);
+
+        // Mobile Primary CTA
+        const ctaW = W - 120, ctaH = 72, ctaY = sbY + 95;
+        ctx.fillStyle = '#7c3aed';
+        ctx.beginPath();
+        ctx.roundRect(sbX, ctaY, ctaW, ctaH, 36);
+        ctx.fill();
+        ctx.fillStyle = '#ffffff';
+        ctx.font = 'bold 24px system-ui, sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText('▶   Start Watching Free', W / 2, ctaY + 45);
+
+        // Mobile 4 Realms
+        const rY = ctaY + 120;
+        const mRealms = [
+          { title: 'Anime & Donghua', sub: '10,000+ Series Sub & Dub', col: '#a855f7' },
+          { title: 'Vertical Mini-Dramas', sub: '35,000+ 1-Min Shorts', col: '#f43f5e' },
+          { title: 'Cinema & Theatrical', sub: 'Master Quality Movies', col: '#f59e0b' },
+          { title: 'Mangvels Reader', sub: 'Infinite Scroll Reader', col: '#10b981' }
+        ];
+        mRealms.forEach((r, i) => {
+          const rx = 60;
+          const ry = rY + i * 110;
+          ctx.fillStyle = 'rgba(15, 20, 36, 0.85)';
+          ctx.beginPath();
+          ctx.roundRect(rx, ry, W - 120, 92, 18);
+          ctx.fill();
+          ctx.strokeStyle = 'rgba(255, 255, 255, 0.08)';
+          ctx.lineWidth = 1;
+          ctx.stroke();
+
+          ctx.textAlign = 'left';
+          ctx.fillStyle = r.col;
+          ctx.font = 'bold 24px system-ui, sans-serif';
+          ctx.fillText(r.title, rx + 28, ry + 42);
+
+          ctx.fillStyle = '#94a3b8';
+          ctx.font = '17px system-ui, sans-serif';
+          ctx.fillText(r.sub, rx + 28, ry + 70);
+
+          ctx.textAlign = 'right';
+          ctx.fillStyle = r.col;
+          ctx.font = 'bold 24px system-ui, sans-serif';
+          ctx.fillText('>', rx + W - 160, ry + 54);
+        });
+      }
+
+      ctx.restore();
 
       // =====================================================================
-      // BOTTOM CONTROL BAR & SCROLLBAR
+      // FIXED TOP NAVBAR (Always Visible Over Scroll)
       // =====================================================================
-      const fGrad = ctx.createLinearGradient(0, H - 90, 0, H);
-      fGrad.addColorStop(0, 'rgba(7, 10, 20, 0)');
-      fGrad.addColorStop(0.3, 'rgba(7, 10, 20, 0.95)');
-      fGrad.addColorStop(1, '#070a14');
-      ctx.fillStyle = fGrad;
-      ctx.fillRect(0, H - 90, W, 90);
+      ctx.fillStyle = 'rgba(5, 5, 8, 0.95)';
+      ctx.fillRect(20, 20, W - 40, 65);
+      ctx.strokeStyle = 'rgba(255, 255, 255, 0.08)';
+      ctx.lineWidth = 1;
+      ctx.strokeRect(20, 20, W - 40, 65);
 
-      // Bottom Interaction Help
-      ctx.fillStyle = '#ffffff';
-      ctx.font = 'bold 18px system-ui, sans-serif';
-      ctx.textAlign = 'center';
-      ctx.fillText('📜  SCROLL TO BROWSE (MOUSE WHEEL / TOUCH)   •   ⚡ PRESS [F] OR CLICK FOR FULLSCREEN INTERACTIVE MENU', W / 2, H - 34);
-
-      // Dynamic Scrollbar Track on the right
-      const sbTrackH = H - 220;
-      const sbThumbH = Math.max(60, sbTrackH * (H / 2200));
-      const sbProgress = kagemiMaxScroll > 0 ? scrollY / kagemiMaxScroll : 0;
-      const sbThumbY = 120 + sbProgress * (sbTrackH - sbThumbH);
-
-      ctx.fillStyle = 'rgba(255, 255, 255, 0.06)';
+      // Logo Icon & Brand
+      ctx.fillStyle = 'rgba(124, 58, 237, 0.2)';
       ctx.beginPath();
-      ctx.roundRect(W - 24, 120, 8, sbTrackH, 4);
+      ctx.roundRect(40, 32, 42, 42, 10);
       ctx.fill();
+      ctx.strokeStyle = 'rgba(168, 85, 247, 0.5)';
+      ctx.lineWidth = 1.2;
+      ctx.stroke();
+      ctx.fillStyle = '#c084fc';
+      ctx.font = 'bold 22px system-ui, sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillText('🛡️', 61, 62);
 
+      ctx.textAlign = 'left';
+      ctx.fillStyle = '#ffffff';
+      ctx.font = '900 24px system-ui, sans-serif';
+      ctx.fillText('KAGEMI', 96, 54);
+      ctx.fillStyle = '#a855f7';
+      ctx.font = 'bold 10px monospace';
+      ctx.fillText('STREAMING PLATFORM', 98, 68);
+
+      // Nav Links (Desktop)
+      if (!isMobile) {
+        const navLinks = ['Anime', 'Donghua', 'Cinema', 'Shorts', 'Mangvels', 'OtakuVerse'];
+        let nX = 360;
+        ctx.font = 'bold 15px system-ui, sans-serif';
+        navLinks.forEach(n => {
+          ctx.fillStyle = '#cbd5e1';
+          ctx.fillText(n, nX, 58);
+          nX += 125;
+        });
+      }
+
+      // Top Right CTA: [ Enter App → ]
       ctx.fillStyle = '#7c3aed';
       ctx.beginPath();
-      ctx.roundRect(W - 24, sbThumbY, 8, sbThumbH, 4);
+      ctx.roundRect(W - 190, 32, 150, 42, 21);
       ctx.fill();
+      ctx.fillStyle = '#ffffff';
+      ctx.font = 'bold 15px system-ui, sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillText('Enter App  →', W - 115, 58);
+
+      // Bottom Interaction Help Bar
+      ctx.fillStyle = 'rgba(5, 5, 8, 0.96)';
+      ctx.fillRect(20, H - 65, W - 40, 45);
+      ctx.strokeStyle = 'rgba(255, 255, 255, 0.08)';
+      ctx.lineWidth = 1;
+      ctx.strokeRect(20, H - 65, W - 40, 45);
+
+      ctx.fillStyle = '#94a3b8';
+      ctx.font = 'bold 13px system-ui, sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillText('⚡ SCROLL WITH MOUSE WHEEL TO BROWSE • CLICK SCREEN OR PRESS [F] TO LAUNCH FULL KAGEMI SANCTUARY', W / 2, H - 37);
 
       ctx.restore();
       if (kagemiScreenTex) kagemiScreenTex.needsUpdate = true;
     }
 
+    // Expose terminal controller globally
+    window.__KAGEMI_TERMINAL = {
+      render: (s) => {
+        kagemiScrollY = s !== undefined ? s : kagemiScrollY;
+        renderKagemiScreen(kagemiScrollY);
+      },
+      getScroll: () => kagemiScrollY,
+      setScroll: (s) => {
+        kagemiScrollY = Math.max(0, Math.min(kagemiMaxScroll, s));
+        renderKagemiScreen(kagemiScrollY);
+      }
+    };
+
     function buildKagemiTerminal() {
       if (kagemiTerminalGroup) return;
       kagemiTerminalGroup = new THREE.Group();
       
-      // Placed on right side of small island walkway: x = -29400, y = -5908, z = 2600
-      kagemiTerminalGroup.position.set(-29400, -5908, 2600);
+      // Placed on right side of small island walkway: x = -29450, y = -5908, z = 2500
+      kagemiTerminalGroup.position.set(-29450, -5908, 2500);
 
-      // Face directly to the center of the small island ({-30753, 1485}):
-      const dx = -30753 - (-29400);
-      const dz = 1485 - 2600;
+      // Face towards center of the small island ({-30753, 1485}):
+      const dx = -30753 - (-29450);
+      const dz = 1485 - 2500;
       kagemiTerminalGroup.rotation.y = Math.atan2(dx, dz);
 
       // =====================================================================
-      // 1. DUAL ARCHITECTURAL SUPPORT PYLONS (Dark stone / titanium pillars)
+      // 1. SMALL STONE ATELIER / ALTAR PEDESTAL (Ground stone altar, NO pillars)
       // =====================================================================
-      const pylonMat = new THREE.MeshStandardMaterial({
-        color: 0x141824,
-        roughness: 0.85,
-        metalness: 0.2
+      const stoneMat = new THREE.MeshStandardMaterial({
+        color: 0x181c2b,
+        roughness: 0.92,
+        metalness: 0.12
       });
-      const pylonGeo = new THREE.CylinderGeometry(55, 70, 1800, 24);
 
-      const pylonL = new THREE.Mesh(pylonGeo, pylonMat);
-      pylonL.position.set(-1650, 900, -25);
-      kagemiTerminalGroup.add(pylonL);
+      // Stepped hexagonal base plinths
+      const base1 = new THREE.Mesh(new THREE.CylinderGeometry(260, 300, 35, 6), stoneMat);
+      base1.position.y = 18;
+      kagemiTerminalGroup.add(base1);
 
-      const pylonR = new THREE.Mesh(pylonGeo, pylonMat);
-      pylonR.position.set(1650, 900, -25);
-      kagemiTerminalGroup.add(pylonR);
+      const base2 = new THREE.Mesh(new THREE.CylinderGeometry(200, 240, 35, 6), stoneMat);
+      base2.position.y = 52;
+      kagemiTerminalGroup.add(base2);
 
-      // Stepped base pedestals
-      const baseGeo = new THREE.BoxGeometry(320, 120, 320);
-      const baseL = new THREE.Mesh(baseGeo, pylonMat);
-      baseL.position.set(-1650, 60, -25);
-      kagemiTerminalGroup.add(baseL);
+      // Altar central shaft
+      const shaft = new THREE.Mesh(new THREE.CylinderGeometry(130, 160, 150, 6), stoneMat);
+      shaft.position.y = 142;
+      kagemiTerminalGroup.add(shaft);
 
-      const baseR = new THREE.Mesh(baseGeo, pylonMat);
-      baseR.position.set(1650, 60, -25);
-      kagemiTerminalGroup.add(baseR);
+      // Altar top capital slab
+      const capital = new THREE.Mesh(new THREE.CylinderGeometry(220, 180, 35, 6), stoneMat);
+      capital.position.y = 230;
+      kagemiTerminalGroup.add(capital);
+
+      // Small central dark focus crystal hovering on the altar
+      const crystalMat = new THREE.MeshStandardMaterial({
+        color: 0x1e2438,
+        roughness: 0.2,
+        metalness: 0.8,
+        transparent: true,
+        opacity: 0.9
+      });
+      const miniCrystal = new THREE.Mesh(new THREE.OctahedronGeometry(42, 0), crystalMat);
+      miniCrystal.position.y = 295;
+      kagemiTerminalGroup.add(miniCrystal);
 
       // =====================================================================
-      // 2. SLEEK MASSIVE FRAME BEZEL (4320 x 2520 x 60)
+      // 2. FLOATING SCREEN (3x Smaller: 1400 x 800, Floats gently above altar)
       // =====================================================================
       const frameMat = new THREE.MeshStandardMaterial({
         color: 0x0c0f1a,
-        roughness: 0.8,
-        metalness: 0.3
+        roughness: 0.85,
+        metalness: 0.25
       });
-      const frameMesh = new THREE.Mesh(new THREE.BoxGeometry(4320, 2520, 50), frameMat);
-      frameMesh.position.set(0, 1550, -25);
-      kagemiTerminalGroup.add(frameMesh);
+      kagemiScreenFrame = new THREE.Mesh(new THREE.BoxGeometry(1440, 840, 22), frameMat);
+      kagemiScreenFrame.position.set(0, 680, 0);
+      kagemiTerminalGroup.add(kagemiScreenFrame);
 
-      // =====================================================================
-      // 3. MASSIVE HIGH-RES DISPLAY SCREEN (4200 x 2400) - 13x-15x SCALE
-      // =====================================================================
       kagemiScreenCanvas = document.createElement('canvas');
       kagemiScreenCanvas.width = 2048;
-      kagemiScreenCanvas.height = 1152;
+      kagemiScreenCanvas.height = 1170;
       kagemiScreenCtx = kagemiScreenCanvas.getContext('2d');
 
       kagemiScreenTex = new THREE.CanvasTexture(kagemiScreenCanvas);
@@ -4891,28 +4883,27 @@ totalEmissiveRadiance*=rTm;`);
         side: THREE.FrontSide
       });
 
-      kagemiScreenMesh = new THREE.Mesh(new THREE.PlaneGeometry(4200, 2400), screenMat);
-      kagemiScreenMesh.position.set(0, 1550, 2);
+      kagemiScreenMesh = new THREE.Mesh(new THREE.PlaneGeometry(1400, 800), screenMat);
+      kagemiScreenMesh.position.set(0, 680, 12);
       kagemiTerminalGroup.add(kagemiScreenMesh);
 
-      // Initial Render of Landing Page
       renderKagemiScreen(0);
 
-      // Bind Mouse Wheel & Touch Scrolling for the Massive 3D Screen
+      // Mouse Wheel Free Scrolling when standing near the altar
       window.addEventListener('wheel', (e) => {
-        if (!cam || isLandingMenuOpen || isPortalToastOpen) return;
-        const dToKiosk = cam.position.distanceTo(new THREE.Vector3(-29400, -5908, 2600));
-        if (dToKiosk < 4200) {
+        if (!cam || isLandingMenuOpen || isPortalToastOpen || mode !== 'walk') return;
+        const dToKiosk = cam.position.distanceTo(new THREE.Vector3(-29450, -5908, 2500));
+        if (dToKiosk < 3200) {
           kagemiScrollY = Math.max(0, Math.min(kagemiMaxScroll, kagemiScrollY + e.deltaY * 0.9));
           renderKagemiScreen(kagemiScrollY);
         }
       }, { passive: true });
 
-      // Click to open fullscreen interactive modal
+      // Click to open fullscreen interactive original Kagemi modal
       window.addEventListener('click', (e) => {
         if (!cam || isLandingMenuOpen || isPortalToastOpen || mode !== 'walk') return;
-        const dToKiosk = cam.position.distanceTo(new THREE.Vector3(-29400, -5908, 2600));
-        if (dToKiosk < 3800) {
+        const dToKiosk = cam.position.distanceTo(new THREE.Vector3(-29450, -5908, 2500));
+        if (dToKiosk < 3200) {
           const ray = new THREE.Raycaster();
           const mouse = new THREE.Vector2((e.clientX / window.innerWidth) * 2 - 1, -(e.clientY / window.innerHeight) * 2 + 1);
           ray.setFromCamera(mouse, cam);
@@ -5214,19 +5205,27 @@ totalEmissiveRadiance*=rTm;`);
         }
       }
 
-      // 2. Project Landmark POI Markers: Dynamic gaze-tracking on object position
+      // Floating hover animation for 3D screen above stone altar
+      if (kagemiScreenMesh && kagemiScreenFrame) {
+        const hoverY = 680 + Math.sin(ts * 1.5) * 12;
+        kagemiScreenMesh.position.y = hoverY;
+        kagemiScreenFrame.position.y = hoverY;
+      }
+
+      // 2. Project Landmark POI Markers: Dynamic gaze-tracking with reliable visibility
       let closestPoi = null;
-      let minCenterDist = 180; // Focus cone threshold
+      let minCenterDist = Math.min(w, h) * 0.42; // Generous focus cone
 
       GENSHIN_LANDMARKS.forEach(poi => {
         if (!poi.el) return;
-        // Dynamically compute target position on object moving according to view
         const pPos = poi.getTargetPos(cam);
         _poiScr.copy(pPos).project(cam);
         const behind = _poiScr.z >= 1.0 || pPos.clone().sub(cam.position).dot(_camFwd) < 0.1;
-        const distM = Math.max(1, Math.round(cam.position.distanceTo(pPos) / 100));
+        const distUnits = cam.position.distanceTo(pPos);
+        const distM = Math.max(1, Math.round(distUnits / 100));
 
-        if (behind || mode === 'tunnel' || distM > 55) {
+        // On small island vs main island adaptive range (up to 160m)
+        if (behind || mode === 'tunnel' || distM > 160) {
           poi.el.style.display = 'none';
           poi.screenDist = 9999;
           poi.distM = distM;
@@ -5245,7 +5244,7 @@ totalEmissiveRadiance*=rTm;`);
         }
       });
 
-      // Show the single focused landmark around the player; smoothly move according to view
+      // Show focused landmark around the player; smoothly moves according to gaze
       GENSHIN_LANDMARKS.forEach(poi => {
         if (!poi.el) return;
         if (closestPoi && poi === closestPoi) {
@@ -5261,27 +5260,27 @@ totalEmissiveRadiance*=rTm;`);
         }
       });
 
-      // 3. Check Portal Front Trigger
+      // 3. Check Portal Front Trigger (Standing in front of the stairs; won't show again once clicked OK)
       if (PW && mode === 'walk' && !isLandingMenuOpen) {
-        const toP = PW.c.clone().sub(cam.position);
-        const dAlong = toP.dot(D);
-        const perpOffset = toP.clone().addScaledVector(D, -dAlong).length();
-        
-        // Front stairs zone within 3.5m of portal
-        const isFront = (toP.x > 0);
-        const isClose = (dAlong > 40 && dAlong < 380);
-        const isCorridor = (Math.abs(P0.z - PW.c.z) < 320);
-        const isWithinR = (perpOffset < PW.R * 0.85);
+        let isAlreadyRead = false;
+        try { isAlreadyRead = (sessionStorage.getItem('kagemi_portal_msg_read') === '1'); } catch(e) {}
 
-        if (isFront && isClose && isCorridor && isWithinR) {
-          if (!isPortalToastOpen && !portalToastDismissedInZone) {
-            openPortalToast();
+        if (!isAlreadyRead && !portalToastDismissedInZone) {
+          const toP = PW.c.clone().sub(cam.position);
+          const dAlong = toP.dot(D);
+          const isFront = (toP.x > 0);
+          // Standing in front of the shrine stairs (between 6.5m and 25m in front of portal)
+          const isAtStairs = (dAlong >= 650 && dAlong <= 2500);
+          const isCorridor = (Math.abs(P0.z - PW.c.z) < 550);
+
+          if (isFront && isAtStairs && isCorridor) {
+            if (!isPortalToastOpen) {
+              openPortalToast();
+            }
           }
-        } else {
-          portalToastDismissedInZone = false;
         }
       }
-    }
+      }
 
 
     // Bind Genshin UI Events
