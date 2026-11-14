@@ -751,57 +751,145 @@
       align-items: center;
       pointer-events: none;
       z-index: 86;
-      transition: opacity 0.2s ease;
+      transition: opacity 0.15s ease-out;
     }
     .g-poi-pin {
-      width: 24px;
-      height: 24px;
+      width: 16px;
+      height: 16px;
       display: flex;
       align-items: center;
       justify-content: center;
+      position: relative;
     }
     .g-poi-diamond {
-      width: 11px;
-      height: 11px;
+      width: 7px;
+      height: 7px;
       background: #52e5ff;
-      border: 1.5px solid #ffffff;
+      border: 1px solid #ffffff;
       transform: rotate(45deg);
-      box-shadow: 0 0 10px rgba(82, 229, 255, 0.85), 0 0 20px rgba(82, 229, 255, 0.5);
-      animation: gPoiPulse 2s ease-in-out infinite;
+      box-shadow: 0 0 6px rgba(82, 229, 255, 0.8);
+      transition: all 0.2s ease;
     }
-    @keyframes gPoiPulse {
-      0%, 100% { transform: rotate(45deg) scale(1); opacity: 0.9; }
-      50% { transform: rotate(45deg) scale(1.25); opacity: 1; }
+    .g-poi-node.focused .g-poi-diamond {
+      width: 9px;
+      height: 9px;
+      background: #e5c47e;
+      border-color: #ffffff;
+      transform: rotate(45deg) scale(1.15);
+      box-shadow: 0 0 10px rgba(229, 196, 126, 0.9);
     }
     .g-poi-card {
-      display: flex !important;
+      display: none;
       flex-direction: column;
       align-items: center;
-      background: rgba(10, 14, 26, 0.94);
-      border: 1px solid rgba(82, 229, 255, 0.4);
-      border-radius: 6px;
-      padding: 4px 10px;
-      margin-top: 5px;
-      box-shadow: 0 4px 16px rgba(0, 0, 0, 0.85);
+      background: rgba(10, 14, 26, 0.88);
+      border: 1px solid rgba(229, 196, 126, 0.4);
+      border-radius: 4px;
+      padding: 2px 7px;
+      margin-top: 3px;
+      box-shadow: 0 2px 10px rgba(0, 0, 0, 0.7);
       backdrop-filter: blur(8px);
       -webkit-backdrop-filter: blur(8px);
       white-space: nowrap;
+      transition: all 0.15s ease;
+    }
+    .g-poi-node.focused .g-poi-card {
+      display: flex !important;
+      border-color: rgba(229, 196, 126, 0.85);
+      box-shadow: 0 3px 14px rgba(0, 0, 0, 0.85), 0 0 8px rgba(229, 196, 126, 0.25);
+    }
+    .g-poi-category {
+      font-size: 7px;
+      font-weight: 700;
+      letter-spacing: 0.1em;
+      color: #e5c47e;
+      text-transform: uppercase;
+      display: flex;
+      align-items: center;
+      gap: 2px;
+      line-height: 1;
+    }
+    .g-poi-category::before {
+      content: "✦";
+      font-size: 6.5px;
+      color: #e5c47e;
     }
     .g-poi-title {
-      font-size: 11px;
+      font-size: 10.5px;
       font-weight: 700;
       color: #ffffff;
-      letter-spacing: 0.04em;
-      text-shadow: 0 1px 3px rgba(0, 0, 0, 0.8);
+      letter-spacing: 0.02em;
+      margin-top: 1px;
+      line-height: 1.1;
+      text-shadow: 0 1px 2px rgba(0, 0, 0, 0.8);
     }
     .g-poi-dist-val {
-      font-size: 10px;
+      font-size: 8px;
+      font-weight: 600;
       color: #52e5ff;
-      font-weight: 700;
+      letter-spacing: 0.03em;
       margin-top: 1px;
+      line-height: 1;
     }
   
   
+    
+    /* Authentic Genshin Impact Action Prompt (Positioned in LEFT TOP CORNER) */
+    #genshin-interact-prompt {
+      position: fixed;
+      left: 24px;
+      top: 24px;
+      display: none;
+      align-items: center;
+      gap: 10px;
+      background: linear-gradient(90deg, rgba(14, 18, 32, 0.94) 0%, rgba(8, 11, 20, 0.90) 100%);
+      border: 1px solid rgba(229, 196, 126, 0.5);
+      border-radius: 999px;
+      padding: 6px 16px 6px 8px;
+      box-shadow: 0 4px 18px rgba(0, 0, 0, 0.8), 0 0 12px rgba(229, 196, 126, 0.2);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      z-index: 9999;
+      pointer-events: auto;
+      cursor: pointer;
+      user-select: none;
+      transition: all 0.2s ease;
+    }
+    #genshin-interact-prompt:hover {
+      border-color: rgba(229, 196, 126, 0.9);
+      box-shadow: 0 4px 22px rgba(0, 0, 0, 0.9), 0 0 16px rgba(229, 196, 126, 0.35);
+      transform: scale(1.03);
+    }
+    .g-prompt-key {
+      width: 26px;
+      height: 26px;
+      border-radius: 50%;
+      background: #e5c47e;
+      color: #0b0e1b;
+      font-weight: 900;
+      font-size: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 2px 6px rgba(0, 0, 0, 0.5);
+    }
+    .g-prompt-info {
+      display: flex;
+      flex-direction: column;
+    }
+    .g-prompt-title {
+      font-size: 11.5px;
+      font-weight: 700;
+      color: #ffffff;
+      letter-spacing: 0.02em;
+    }
+    .g-prompt-sub {
+      font-size: 9px;
+      color: #e5c47e;
+      font-weight: 600;
+      letter-spacing: 0.03em;
+    }
+
     /* Original Kagemi Landing Component Live Portal Modal */
     #kagemi-landing-modal {
       position: fixed;
@@ -1030,7 +1118,7 @@
   <div id="ld">Loading the floating island…</div>
   
   <!-- Genshin Impact Quest Tracker (Top-Left HUD) -->
-  <div id="genshin-quest-hud">
+  <div id="genshin-quest-hud" style="display:none;">
     <div class="g-quest-badge">
       <span>◆</span>
       <span>WORLD QUEST</span>
@@ -1064,7 +1152,7 @@
   </div>
 
   <!-- Genshin [F] Interaction Prompt -->
-  <div id="genshin-interact-prompt" style="display:none;">
+  <div id="genshin-interact-prompt" style="display:none;" onclick="openKagemiMenu()">
     <div class="g-prompt-key">F</div>
     <div class="g-prompt-info">
       <span class="g-prompt-title">Kagemi Realm Directory</span>
@@ -1088,7 +1176,7 @@
         </div>
       </div>
       <div class="kagemi-portal-iframe-wrap">
-        <iframe id="kagemi-live-frame" src="/?embed=1" title="Kagemi Sanctuary Live" allow="autoplay; fullscreen"></iframe>
+        <iframe id="kagemi-live-frame" data-src="/?embed=1" title="Kagemi Sanctuary Live" allow="autoplay; fullscreen"></iframe>
       </div>
     </div>
   </div>
@@ -4804,16 +4892,14 @@ totalEmissiveRadiance*=rTm;`);
       if (kagemiTerminalGroup) return;
       kagemiTerminalGroup = new THREE.Group();
       
-      // Placed on right side of small island walkway: x = -29450, y = -5908, z = 2500
-      kagemiTerminalGroup.position.set(-29450, -5908, 2500);
+      // Placed at the BACK of the small island on the ground: x = -30750, y = -6100, z = 1500
+      kagemiTerminalGroup.position.set(-28500, -5820, 2500);
 
-      // Face towards center of the small island ({-30753, 1485}):
-      const dx = -30753 - (-29450);
-      const dz = 1485 - 2500;
-      kagemiTerminalGroup.rotation.y = Math.atan2(dx, dz);
+      // Face forward into the island (+X towards spawn and bridge)
+      kagemiTerminalGroup.rotation.y = -2.35;
 
       // =====================================================================
-      // 1. SMALL STONE ATELIER / ALTAR PEDESTAL (Ground stone altar, NO pillars)
+      // 1. SMALL STONE ATELIER / ALTAR PEDESTAL (Firmly seated on the ground)
       // =====================================================================
       const stoneMat = new THREE.MeshStandardMaterial({
         color: 0x181c2b,
@@ -4821,23 +4907,18 @@ totalEmissiveRadiance*=rTm;`);
         metalness: 0.12
       });
 
-      // Stepped hexagonal base plinths
-      const base1 = new THREE.Mesh(new THREE.CylinderGeometry(260, 300, 35, 6), stoneMat);
-      base1.position.y = 18;
+      // Stepped hexagonal base plinths right on the grass
+      const base1 = new THREE.Mesh(new THREE.CylinderGeometry(280, 320, 24, 6), stoneMat);
+      base1.position.y = 12;
       kagemiTerminalGroup.add(base1);
 
-      const base2 = new THREE.Mesh(new THREE.CylinderGeometry(200, 240, 35, 6), stoneMat);
-      base2.position.y = 52;
+      const base2 = new THREE.Mesh(new THREE.CylinderGeometry(230, 270, 24, 6), stoneMat);
+      base2.position.y = 36;
       kagemiTerminalGroup.add(base2);
 
-      // Altar central shaft
-      const shaft = new THREE.Mesh(new THREE.CylinderGeometry(130, 160, 150, 6), stoneMat);
-      shaft.position.y = 142;
-      kagemiTerminalGroup.add(shaft);
-
       // Altar top capital slab
-      const capital = new THREE.Mesh(new THREE.CylinderGeometry(220, 180, 35, 6), stoneMat);
-      capital.position.y = 230;
+      const capital = new THREE.Mesh(new THREE.CylinderGeometry(250, 210, 20, 6), stoneMat);
+      capital.position.y = 56;
       kagemiTerminalGroup.add(capital);
 
       // Small central dark focus crystal hovering on the altar
@@ -4848,20 +4929,21 @@ totalEmissiveRadiance*=rTm;`);
         transparent: true,
         opacity: 0.9
       });
-      const miniCrystal = new THREE.Mesh(new THREE.OctahedronGeometry(42, 0), crystalMat);
-      miniCrystal.position.y = 295;
+      const miniCrystal = new THREE.Mesh(new THREE.OctahedronGeometry(32, 0), crystalMat);
+      miniCrystal.position.y = 78;
       kagemiTerminalGroup.add(miniCrystal);
 
       // =====================================================================
-      // 2. FLOATING SCREEN (3x Smaller: 1400 x 800, Floats gently above altar)
+      // 2. SCREEN (3x Smaller: 1400 x 800, Base resting directly on altar capital)
       // =====================================================================
       const frameMat = new THREE.MeshStandardMaterial({
         color: 0x0c0f1a,
         roughness: 0.85,
         metalness: 0.25
       });
+      // Screen frame rests right on top of capital (capital top at y = 66; frame height 840, center y = 486)
       kagemiScreenFrame = new THREE.Mesh(new THREE.BoxGeometry(1440, 840, 22), frameMat);
-      kagemiScreenFrame.position.set(0, 680, 0);
+      kagemiScreenFrame.position.set(0, 486, 0);
       kagemiTerminalGroup.add(kagemiScreenFrame);
 
       kagemiScreenCanvas = document.createElement('canvas');
@@ -4884,15 +4966,15 @@ totalEmissiveRadiance*=rTm;`);
       });
 
       kagemiScreenMesh = new THREE.Mesh(new THREE.PlaneGeometry(1400, 800), screenMat);
-      kagemiScreenMesh.position.set(0, 680, 12);
+      kagemiScreenMesh.position.set(0, 486, 12);
       kagemiTerminalGroup.add(kagemiScreenMesh);
 
       renderKagemiScreen(0);
 
-      // Mouse Wheel Free Scrolling when standing near the altar
+      // Mouse Wheel Free Scrolling when standing near the atelier at the back
       window.addEventListener('wheel', (e) => {
         if (!cam || isLandingMenuOpen || isPortalToastOpen || mode !== 'walk') return;
-        const dToKiosk = cam.position.distanceTo(new THREE.Vector3(-29450, -5908, 2500));
+        const dToKiosk = cam.position.distanceTo(new THREE.Vector3(-28500, -5820, 2500));
         if (dToKiosk < 3200) {
           kagemiScrollY = Math.max(0, Math.min(kagemiMaxScroll, kagemiScrollY + e.deltaY * 0.9));
           renderKagemiScreen(kagemiScrollY);
@@ -4902,7 +4984,7 @@ totalEmissiveRadiance*=rTm;`);
       // Click to open fullscreen interactive original Kagemi modal
       window.addEventListener('click', (e) => {
         if (!cam || isLandingMenuOpen || isPortalToastOpen || mode !== 'walk') return;
-        const dToKiosk = cam.position.distanceTo(new THREE.Vector3(-29450, -5908, 2500));
+        const dToKiosk = cam.position.distanceTo(new THREE.Vector3(-28500, -5820, 2500));
         if (dToKiosk < 3200) {
           const ray = new THREE.Raycaster();
           const mouse = new THREE.Vector2((e.clientX / window.innerWidth) * 2 - 1, -(e.clientY / window.innerHeight) * 2 + 1);
@@ -4923,40 +5005,24 @@ totalEmissiveRadiance*=rTm;`);
     // As player looks at the object, the marker smoothly glides according to gaze
     const GENSHIN_LANDMARKS = [
       {
-        id: 'small_bridge',
-        name: 'Small Bridge',
-        category: 'CROSSING',
+        id: 'spring',
+        name: 'Sacred Spring',
+        category: 'SPRING',
         getTargetPos: (cam) => {
-          const pGap = V(-13800, -250, 1050);
-          const pMain = V(-19300, -2500, 1370);
-          const target = cam.position.distanceTo(pGap) < 5500 ? pGap : pMain;
+          const center = V(-28909, -5960, 985);
           const fwd = cam.getWorldDirection(V(0, 0, 0));
-          const t = target.clone().sub(cam.position).dot(fwd);
-          const pt = cam.position.clone().addScaledVector(fwd, Math.max(100, t));
-          pt.x = Math.max(target.x - 1400, Math.min(target.x + 1400, pt.x));
-          pt.y = target.y + 80;
-          pt.z = Math.max(target.z - 350, Math.min(target.z + 350, pt.z));
+          const t = center.clone().sub(cam.position).dot(fwd);
+          const pt = cam.position.clone().addScaledVector(fwd, Math.max(80, t));
+          pt.x = Math.max(-28909 - 700, Math.min(-28909 + 700, pt.x));
+          pt.y = -5960;
+          pt.z = Math.max(985 - 700, Math.min(985 + 700, pt.z));
           return pt;
         }
       },
       {
-        id: 'flowers',
-        name: 'Flowers',
-        category: 'FLORA',
-        getTargetPos: (cam) => {
-          const fwd = cam.getWorldDirection(V(0, 0, 0));
-          const lookGround = cam.position.clone().addScaledVector(fwd, 420);
-          if (typeof groundAt === 'function') {
-            const gy = groundAt(lookGround.x, lookGround.z, lookGround.y + 300);
-            if (gy !== null) lookGround.y = gy + 40;
-          }
-          return lookGround;
-        }
-      },
-      {
         id: 'waterfall',
-        name: 'Waterfall',
-        category: 'SPRING',
+        name: 'Mana Waterfall',
+        category: 'WATERFALL',
         getTargetPos: (cam) => {
           const top = V(-29211, -5908, -1088);
           const fwd = cam.getWorldDirection(V(0, 0, 0));
@@ -4969,8 +5035,59 @@ totalEmissiveRadiance*=rTm;`);
         }
       },
       {
+        id: 'small_bridge',
+        name: 'Small Bridge',
+        category: 'CROSSING',
+        getTargetPos: (cam) => {
+          const pGap = V(-13800, -250, 1050);
+          const pMain = V(-19300, -2500, 1370);
+          const pLow = V(-25500, -5800, 1500);
+          const target = cam.position.distanceTo(pLow) < 5500 ? pLow : (cam.position.distanceTo(pGap) < 5500 ? pGap : pMain);
+          const fwd = cam.getWorldDirection(V(0, 0, 0));
+          const t = target.clone().sub(cam.position).dot(fwd);
+          const pt = cam.position.clone().addScaledVector(fwd, Math.max(100, t));
+          pt.x = Math.max(target.x - 1400, Math.min(target.x + 1400, pt.x));
+          pt.y = target.y + 80;
+          pt.z = Math.max(target.z - 350, Math.min(target.z + 350, pt.z));
+          return pt;
+        }
+      },
+      {
+        id: 'flowers',
+        name: 'Luminescent Flowers',
+        category: 'FLORA',
+        getTargetPos: (cam) => {
+          const fwd = cam.getWorldDirection(V(0, 0, 0));
+          const lookGround = cam.position.clone().addScaledVector(fwd, 420);
+          if (typeof groundAt === 'function') {
+            const gy = groundAt(lookGround.x, lookGround.z, lookGround.y + 300);
+            if (gy !== null) lookGround.y = gy + 40;
+          }
+          return lookGround;
+        }
+      },
+      {
+        id: 'crystal_stones',
+        name: 'Crystal Stones',
+        category: 'RELIC',
+        getTargetPos: (cam) => {
+          const crystals = [
+            V(2800, 40, -438),
+            V(2754, 40, 1193),
+            V(-31600, -5880, 1500),
+            V(-29600, -5550, 2500)
+          ];
+          let best = crystals[0], bestDist = Infinity;
+          for (const c of crystals) {
+            const d = cam.position.distanceTo(c);
+            if (d < bestDist) { bestDist = d; best = c; }
+          }
+          return best.clone();
+        }
+      },
+      {
         id: 'shrine_gate',
-        name: 'Shrine Gate (Torii)',
+        name: 'Torii Shrine Gate',
         category: 'SHRINE',
         getTargetPos: (cam) => {
           const center = V(1397, 831, 381);
@@ -5003,7 +5120,7 @@ totalEmissiveRadiance*=rTm;`);
       {
         id: 'portal_trees',
         name: 'Trees on the Portal',
-        category: 'FLORA',
+        category: 'GUARDIAN',
         getTargetPos: (cam) => {
           const leftTree = V(3250, 600, -350);
           const rightTree = V(3350, 600, 1300);
@@ -5018,27 +5135,8 @@ totalEmissiveRadiance*=rTm;`);
         }
       },
       {
-        id: 'crystal_stones',
-        name: 'Crystal Stones',
-        category: 'RELIC',
-        getTargetPos: (cam) => {
-          const crystals = [
-            V(2800, 40, -438),
-            V(2754, 40, 1193),
-            V(-31600, -5880, 1500),
-            V(-29600, -5550, 2500)
-          ];
-          let best = crystals[0], bestDist = Infinity;
-          for (const c of crystals) {
-            const d = cam.position.distanceTo(c);
-            if (d < bestDist) { bestDist = d; best = c; }
-          }
-          return best.clone();
-        }
-      },
-      {
         id: 'sakura',
-        name: 'Sakura Tree',
+        name: 'Sacred Sakura Tree',
         category: 'FLORA',
         getTargetPos: (cam) => {
           const center = V(842, 1600, -3282);
@@ -5049,6 +5147,14 @@ totalEmissiveRadiance*=rTm;`);
           pt.y = Math.max(800, Math.min(2100, pt.y));
           pt.z = Math.max(-3282 - 900, Math.min(-3282 + 900, pt.z));
           return pt;
+        }
+      },
+      {
+        id: 'atelier',
+        name: 'Sanctuary Atelier',
+        category: 'ATELIER',
+        getTargetPos: (cam) => {
+          return V(-28500, -5350, 2500);
         }
       }
     ];
@@ -5066,6 +5172,7 @@ totalEmissiveRadiance*=rTm;`);
             <div class="g-poi-diamond"></div>
           </div>
           <div class="g-poi-card">
+            <span class="g-poi-category">${poi.category}</span>
             <span class="g-poi-title">${poi.name}</span>
             <span class="g-poi-dist-val">--m</span>
           </div>
@@ -5081,6 +5188,10 @@ totalEmissiveRadiance*=rTm;`);
       if (isLandingMenuOpen) return;
       isLandingMenuOpen = true;
       const modal = document.getElementById('kagemi-landing-modal');
+      const frame = document.getElementById('kagemi-live-frame');
+      if (frame && (!frame.src || frame.src === 'about:blank' || frame.src.endsWith('/about:blank'))) {
+        frame.src = frame.getAttribute('data-src') || '/?embed=1';
+      }
       if (modal) modal.classList.add('active');
       playGenshinChime(true);
       if (document.exitPointerLock) document.exitPointerLock();
@@ -5134,12 +5245,14 @@ totalEmissiveRadiance*=rTm;`);
         kagemiBeacon.rotation.y -= d * 0.4;
       }
 
-      // Check distance to Kagemi Terminal
-      const terminalPos = new THREE.Vector3(-29400, -5908, 2600);
+      // Check distance and gaze to Kagemi Terminal on right edge of island
+      const terminalPos = new THREE.Vector3(-28500, -5820, 2500);
       const dToTerminal = cam.position.distanceTo(terminalPos);
+      const toTerminal = terminalPos.clone().sub(cam.position).normalize();
+      const isFacingTerminal = toTerminal.dot(_camFwd) > 0.3;
       const promptEl = document.getElementById('genshin-interact-prompt');
 
-      if (dToTerminal < 3200 && mode === 'walk' && !isLandingMenuOpen && !isPortalToastOpen) {
+      if (dToTerminal < 1200 && isFacingTerminal && mode === 'walk' && !isLandingMenuOpen && !isPortalToastOpen) {
         isNearTerminal = true;
         if (promptEl) promptEl.style.display = 'flex';
       } else {
@@ -5158,17 +5271,14 @@ totalEmissiveRadiance*=rTm;`);
       // 1. Mission Waypoint Project to Screen Space
       const wpEl = document.getElementById('g-mission-waypoint');
       const edgeEl = document.getElementById('g-edge-pointer');
-      // Position on outer layer of portal (Object_42 top rim)
       const wpPos = (PW ? PW.c.clone().setY(PW.c.y + PW.R * 0.98) : portalTarget.clone().setY(portalTarget.y + 1150));
       
       _poiScr.copy(wpPos).project(cam);
       const isBehind = _poiScr.z >= 1.0 || wpPos.clone().sub(cam.position).dot(_camFwd) < 0;
 
       if (!isBehind && _poiScr.x >= -1.05 && _poiScr.x <= 1.05 && _poiScr.y >= -1.05 && _poiScr.y <= 1.05) {
-        // On screen: show floating waypoint
         if (wpEl) {
-          const sx = (_poiScr.x * 0.5 + 0.5) * w;
-          const sy = (-(_poiScr.y * 0.5) + 0.5) * h;
+          const sx = Math.max(60, Math.min(w - 60, (_poiScr.x * 0.5 + 0.5) * w)); const sy = Math.max(40, Math.min(h - 75, (-(_poiScr.y * 0.5) + 0.5) * h));
           wpEl.style.display = mode === 'tunnel' ? 'none' : 'flex';
           wpEl.style.left = sx + 'px';
           wpEl.style.top = sy + 'px';
@@ -5177,11 +5287,9 @@ totalEmissiveRadiance*=rTm;`);
         }
         if (edgeEl) edgeEl.style.display = 'none';
       } else {
-        // Off screen or behind: show edge pointer
         if (wpEl) wpEl.style.display = 'none';
         if (edgeEl && mode !== 'tunnel') {
           edgeEl.style.display = 'flex';
-          // Calculate screen edge clamping
           let ex = _poiScr.x, ey = _poiScr.y;
           if (isBehind) { ex = -ex; ey = -ey; }
           const ang = Math.atan2(ey, ex);
@@ -5205,33 +5313,33 @@ totalEmissiveRadiance*=rTm;`);
         }
       }
 
-      // Floating hover animation for 3D screen above stone altar
+      // Solid ground placement for 3D screen above stone altar capital
       if (kagemiScreenMesh && kagemiScreenFrame) {
-        const hoverY = 680 + Math.sin(ts * 1.5) * 12;
-        kagemiScreenMesh.position.y = hoverY;
-        kagemiScreenFrame.position.y = hoverY;
+        kagemiScreenMesh.position.y = 486;
+        kagemiScreenFrame.position.y = 486;
       }
 
-      // 2. Project Landmark POI Markers: Dynamic gaze-tracking with reliable visibility
+      // 2. Project Landmark POI Markers: Only show when closer (<= 18m), only focused shows card
+      const MAX_POI_DIST = 18;
       let closestPoi = null;
-      let minCenterDist = Math.min(w, h) * 0.42; // Generous focus cone
+      let minCenterDist = Math.min(w, h) * 0.28;
 
       GENSHIN_LANDMARKS.forEach(poi => {
         if (!poi.el) return;
         const pPos = poi.getTargetPos(cam);
         _poiScr.copy(pPos).project(cam);
-        const behind = _poiScr.z >= 1.0 || pPos.clone().sub(cam.position).dot(_camFwd) < 0.1;
+        const behind = _poiScr.z >= 1.0 || pPos.clone().sub(cam.position).dot(_camFwd) < 0.2;
         const distUnits = cam.position.distanceTo(pPos);
         const distM = Math.max(1, Math.round(distUnits / 100));
 
-        // On small island vs main island adaptive range (up to 160m)
-        if (behind || mode === 'tunnel' || distM > 160) {
+        // ONLY show when closer (<= 18m) and in front
+        if (behind || mode === 'tunnel' || distM > MAX_POI_DIST) {
           poi.el.style.display = 'none';
           poi.screenDist = 9999;
           poi.distM = distM;
         } else {
-          const sx = (_poiScr.x * 0.5 + 0.5) * w;
-          const sy = (-(_poiScr.y * 0.5) + 0.5) * h;
+          const sx = Math.max(50, Math.min(w - 50, (_poiScr.x * 0.5 + 0.5) * w));
+          const sy = Math.max(35, Math.min(h - 60, (-(_poiScr.y * 0.5) + 0.5) * h));
           poi.sx = sx; poi.sy = sy;
           const distCenter = Math.hypot(sx - w / 2, sy - h / 2);
           poi.screenDist = distCenter;
@@ -5244,19 +5352,26 @@ totalEmissiveRadiance*=rTm;`);
         }
       });
 
-      // Show focused landmark around the player; smoothly moves according to gaze
+      // Render: Only the focused landmark displays its small elegant card!
+      // Other nearby landmarks only show a minimal 7px diamond beacon.
       GENSHIN_LANDMARKS.forEach(poi => {
         if (!poi.el) return;
-        if (closestPoi && poi === closestPoi) {
+        if (poi.screenDist !== 9999 && poi.distM <= MAX_POI_DIST) {
           poi.el.style.display = 'flex';
           poi.el.style.left = poi.sx + 'px';
           poi.el.style.top = poi.sy + 'px';
-          poi.el.classList.add('expanded');
-          const cardDist = poi.el.querySelector('.g-poi-dist-val');
-          if (cardDist) cardDist.textContent = poi.distM + 'm';
+
+          const isFocused = (closestPoi && poi === closestPoi);
+          if (isFocused) {
+            poi.el.classList.add('focused');
+            const cardDist = poi.el.querySelector('.g-poi-dist-val');
+            if (cardDist) cardDist.textContent = poi.distM + 'm';
+          } else {
+            poi.el.classList.remove('focused');
+          }
         } else {
           poi.el.style.display = 'none';
-          poi.el.classList.remove('expanded');
+          poi.el.classList.remove('focused');
         }
       });
 
@@ -5305,6 +5420,12 @@ totalEmissiveRadiance*=rTm;`);
     }
 
     window.__ISLAND = {
+      setLook: (y, p) => {
+        yaw = y; pitch = p;
+        if (typeof pl !== 'undefined' && pl) { pl.yawS = y; pl.pitchS = p; }
+      },
+      getYaw: () => yaw,
+      getPitch: () => pitch,
       scene,
       cam,
       get PW() { return PW; },
