@@ -182,8 +182,8 @@ export default function CountryBadge({ country, type, showFullname = false, clas
   const info = getCountryInfo(country, type);
 
   return (
-    <div className={cn("inline-flex items-center justify-center bg-black/60 backdrop-blur-md px-1.5 sm:px-2 py-0.5 h-4 sm:h-5 rounded-full border border-white/10 z-10 shadow-sm", className)}>
-      <span className="text-[7.5px] sm:text-[8.5px] font-bold text-zinc-200 uppercase tracking-wider leading-none">
+    <div className={cn("inline-flex items-center justify-center bg-black/60 backdrop-blur-md px-1.5 sm:px-2 py-0.5 h-3.5 sm:h-4.5 rounded-full border border-white/10 z-10 shadow-sm", className)}>
+      <span className="text-[7px] sm:text-[8px] font-bold text-zinc-200 uppercase tracking-wider leading-none">
         {showFullname ? info.name : info.shortName}
       </span>
     </div>
