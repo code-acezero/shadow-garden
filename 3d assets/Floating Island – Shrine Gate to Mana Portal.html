@@ -5301,9 +5301,9 @@ totalEmissiveRadiance*=rTm;`);
       kagemiTerminalGroup = new THREE.Group();
       
       // Placed at the BACK of the small island on the ground: x = -30750, y = -6100, z = 1500
-      kagemiTerminalGroup.position.set(-31500, -5940, 3100);
-      // Face towards the waterfall (-29211, -1088), angled 10 degrees toward player position (-32984, 2089)
-      kagemiTerminalGroup.rotation.y = 2.8159;
+      kagemiTerminalGroup.position.set(-30000, -5820, 4300);
+      // Face towards the waterfall (-29211, -1088), angled 10 degrees toward starting player position (-32984, 2089)
+      kagemiTerminalGroup.rotation.y = 3.1707;
 
       // =====================================================================
       // 1. SMALL STONE ATELIER / ALTAR PEDESTAL (Firmly seated on the ground)
@@ -5561,7 +5561,7 @@ totalEmissiveRadiance*=rTm;`);
         name: 'Sanctuary Atelier',
         category: 'ATELIER',
         getTargetPos: (cam) => {
-          return V(-31500, -5400, 3100);
+          return V(-30000, -5350, 4300);
         }
       }
     ];
@@ -5655,7 +5655,7 @@ totalEmissiveRadiance*=rTm;`);
       }
 
       // Check distance and gaze to Kagemi Terminal on right edge of island
-      const terminalPos = new THREE.Vector3(-31500, -5940, 3100);
+      const terminalPos = new THREE.Vector3(-30000, -5820, 4300);
       const dToTerminal = cam.position.distanceTo(terminalPos);
       const toTerminal = terminalPos.clone().sub(cam.position).normalize();
       const isFacingTerminal = toTerminal.dot(_camFwd) > 0.3;
