@@ -58,9 +58,9 @@ const CastCharactersBlock = ({ characters, cast }: { characters?: any[]; cast?: 
           </div>
           <div>
             <h3 className="text-base sm:text-lg font-black text-white uppercase tracking-wider font-lemon">
-              Cast & Characters
+              Casts
             </h3>
-            <p className="text-[10px] text-zinc-400">Starring actors, leading roles & character profiles</p>
+            <p className="text-[10px] text-zinc-400">Starring actors, leading roles & cast profiles</p>
           </div>
         </div>
         <span className="text-[10px] font-black text-emerald-300 px-3 py-1 rounded-full bg-emerald-500/10 border border-emerald-400/20 uppercase tracking-widest">
@@ -563,7 +563,7 @@ export default function WatchClient() {
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         transition={{ duration: 0.7 }}
-        className="w-full flex flex-col items-center relative z-10 px-3 mt-0"
+        className="w-full flex flex-col items-center relative z-10 px-2 sm:px-4 md:px-6 mt-0"
       >
         <div className="w-full flex flex-col gap-6">
 

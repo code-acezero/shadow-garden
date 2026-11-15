@@ -164,9 +164,9 @@ const CastCharactersBlock = ({ characters, cast }: { characters?: any[]; cast?: 
           </div>
           <div>
             <h3 className="text-base sm:text-lg font-black text-white uppercase tracking-wider font-lemon">
-              Cast & Characters
+              Casts
             </h3>
-            <p className="text-[10px] text-zinc-400">Starring actors, leading roles & character profiles</p>
+            <p className="text-[10px] text-zinc-400">Starring actors, leading roles & cast profiles</p>
           </div>
         </div>
         <span className="text-[10px] font-black text-cyan-300 px-3 py-1 rounded-full bg-cyan-500/10 border border-cyan-400/20 uppercase tracking-widest">
@@ -859,7 +859,7 @@ export function DramaWatchContent() {
         )}
       />
 
-      <div className="w-full flex flex-col items-center relative z-10 px-3 sm:px-4 md:px-8 max-w-[1520px] mx-auto pt-2 pb-16">
+      <div className="w-full flex flex-col items-center relative z-10 px-2 sm:px-4 md:px-6 pt-2 pb-16">
 
         {/* ══════════════════════════════════════════════════════════════════════
             MODE 1: CINEMA MOVIE WATCH EXPERIENCE (When drama.isMovie is true)

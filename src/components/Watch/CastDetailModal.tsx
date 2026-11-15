@@ -391,7 +391,7 @@ export default function CastDetailModal({ isOpen, onClose, data }: CastDetailMod
                 <User size={14} />
               </div>
               <span className="text-[11px] font-black uppercase tracking-widest text-zinc-300 font-lemon">
-                Character Profile
+                {isLiveAction ? 'Cast Profile' : 'Character Profile'}
               </span>
             </div>
           )}
@@ -517,13 +517,13 @@ export default function CastDetailModal({ isOpen, onClose, data }: CastDetailMod
               <div className="flex flex-col gap-2 pt-2 border-t border-white/[0.06]">
                 <h4 className="text-[11px] font-black text-zinc-400 uppercase tracking-widest font-lemon flex items-center gap-1.5">
                   <User size={13} className="text-primary-500" />
-                  <span>Character Dossier & Lore</span>
+                  <span>{isLiveAction ? 'Cast Dossier & Biography' : 'Character Dossier & Lore'}</span>
                 </h4>
 
                 {loading && !fullChar?.description ? (
                   <div className="flex items-center gap-2 py-3 text-xs text-zinc-500">
                     <Loader2 size={14} className="animate-spin text-primary-500" />
-                    <span>Loading character archive...</span>
+                    <span>{isLiveAction ? 'Loading cast archive...' : 'Loading character archive...'}</span>
                   </div>
                 ) : charParagraphs.length > 0 ? (
                   <div className="text-xs sm:text-sm text-zinc-300 leading-relaxed font-sans space-y-2">
@@ -533,7 +533,7 @@ export default function CastDetailModal({ isOpen, onClose, data }: CastDetailMod
                   </div>
                 ) : (
                   <p className="text-xs text-zinc-500 italic py-1">
-                    No detailed character biography registered in the archives.
+                    {isLiveAction ? 'No detailed cast biography registered in the archives.' : 'No detailed character biography registered in the archives.'}
                   </p>
                 )}
               </div>
