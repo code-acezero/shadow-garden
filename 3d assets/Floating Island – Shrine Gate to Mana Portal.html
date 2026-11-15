@@ -2285,9 +2285,11 @@
       d = Math.min(d, 0.0333);
       ts += d; perfTick(d); if (mixer) mixer.update(d); for (const f of fxs) f(d); for (const f of fxB) f(d);
       if (typeof updateGenshinHUD === "function") updateGenshinHUD(d);
-      if (typeof kagemiTargetScrollY !== 'undefined' && typeof kagemiScrollY !== 'undefined' && Math.abs(kagemiTargetScrollY - kagemiScrollY) > 0.4) {
-        kagemiScrollY += (kagemiTargetScrollY - kagemiScrollY) * 0.16;
-        if (typeof renderKagemiScreen === "function") renderKagemiScreen(kagemiScrollY);
+      if (typeof kagemiTargetScrollY !== 'undefined' && typeof kagemiScrollY !== 'undefined' && Math.abs(kagemiTargetScrollY - kagemiScrollY) > 0.1) {
+        kagemiScrollY += (kagemiTargetScrollY - kagemiScrollY) * 0.18;
+        if (kagemiScreenTex) {
+          kagemiScreenTex.offset.y = Math.max(0, Math.min(1 - kagemiViewRatio, (kagemiTotalH - kagemiViewH - kagemiScrollY) / kagemiTotalH));
+        }
       }
       if (mode === 'landing_sequence') landingSequenceManager.update(d); else if (mode === 'seq') seqI(); else if (mode === 'walk') walk(d); else if (mode === 'fpv') fpv(d); else if (mode === 'orbit') ctl.update(); else if (mode === 'tunnel') tunnelTick(d);
 
@@ -4820,419 +4822,708 @@ totalEmissiveRadiance*=rTm;`);
       } catch (e) {}
     }
 
-            // Build In-World 3D Kagemi Terminal (Monolithic Stone Plate Stele: 2800x1850, Crystal-Clear 4K UHD, Solid Stone Backing, Zero Hollow Gap)
-    let kagemiScreenMesh = null, kagemiScreenCanvas = null, kagemiScreenCtx = null, kagemiScreenTex = null, kagemiScreenFrame = null;
-    let kagemiScrollY = 0, kagemiTargetScrollY = 0;
-    const kagemiMaxScroll = 2600;
+            // =========================================================================
+    // IN-WORLD 3D KAGEMI MONOLITH TERMINAL (ZERO-LAG HARDWARE UV SCROLLING)
+    // Complete Authentic Landing Page Data: Hero, Realms, Anime, Shorts, Features, Community, Footer
+    // =========================================================================
+    let kagemiScreenMesh = null, kagemiMasterCanvas = null, kagemiMasterCtx = null, kagemiScreenTex = null, kagemiScreenFrame = null;
+    let kagemiTopNavMesh = null, kagemiTopNavCanvas = null, kagemiTopNavTex = null;
+    let kagemiBottomBarMesh = null, kagemiBottomBarCanvas = null, kagemiBottomBarTex = null;
 
-    function renderKagemiScreen(scrollY = 0) {
-      if (!kagemiScreenCtx) return;
-      const ctx = kagemiScreenCtx;
-      const W = 4096, H = 2706;
-      const isMobile = (window.innerWidth < 768) || /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+    let kagemiScrollY = 0, kagemiTargetScrollY = 0;
+    const kagemiViewH = 1440;
+    const kagemiTotalH = 7200;
+    const kagemiViewRatio = kagemiViewH / kagemiTotalH; // 0.20
+    const kagemiMaxScroll = kagemiTotalH - kagemiViewH; // 5760
+
+    function renderMasterLandingCanvas(ctx) {
+      const W = 2560, H = 7200;
 
       ctx.save();
-      // Deep obsidian space backdrop matching Kagemi dark theme - Crystal Clear, Zero Cathode Grid
+      // 1. Deep Obsidian Space Backdrop
       const bgGrad = ctx.createLinearGradient(0, 0, 0, H);
-      bgGrad.addColorStop(0, '#06070c');
-      bgGrad.addColorStop(0.5, '#090c16');
-      bgGrad.addColorStop(1, '#05060a');
+      bgGrad.addColorStop(0, '#05060b');
+      bgGrad.addColorStop(0.12, '#080c18');
+      bgGrad.addColorStop(0.25, '#05060c');
+      bgGrad.addColorStop(0.40, '#0a0b16');
+      bgGrad.addColorStop(0.55, '#060810');
+      bgGrad.addColorStop(0.70, '#090b17');
+      bgGrad.addColorStop(0.85, '#05060d');
+      bgGrad.addColorStop(1, '#040508');
       ctx.fillStyle = bgGrad;
       ctx.fillRect(0, 0, W, H);
 
-      // Subtle atmospheric edge vignette
-      const edgeGrad = ctx.createRadialGradient(W / 2, H / 2, H * 0.4, W / 2, H / 2, W * 0.7);
-      edgeGrad.addColorStop(0, 'rgba(0, 0, 0, 0)');
-      edgeGrad.addColorStop(1, 'rgba(3, 4, 8, 0.6)');
-      ctx.fillStyle = edgeGrad;
-      ctx.fillRect(0, 0, W, H);
-
-      // Scrollable content area
-      ctx.save();
-      ctx.beginPath();
-      ctx.rect(40, 160, W - 80, H - 280);
-      ctx.clip();
-      ctx.translate(0, 160 - scrollY);
-
-      if (!isMobile) {
-        // =====================================================================
-        // DESKTOP AUTHENTIC KAGEMI LANDING PAGE LAYOUT (4K Crystal-Clear Rendering)
-        // =====================================================================
-
-        // 1. CINEMATIC HERO SECTION
-        const heroY = 50;
-
-        // Top Tag Badge
-        ctx.fillStyle = 'rgba(255, 255, 255, 0.06)';
-        ctx.beginPath();
-        ctx.roundRect(W / 2 - 330, heroY + 20, 660, 64, 32);
-        ctx.fill();
-        ctx.strokeStyle = 'rgba(255, 255, 255, 0.16)';
-        ctx.lineWidth = 2;
-        ctx.stroke();
-        ctx.fillStyle = '#c084fc';
-        ctx.font = 'bold 24px system-ui, -apple-system, sans-serif';
-        ctx.textAlign = 'center';
-        ctx.fillText('NEXT-GEN HIGH-FIDELITY STREAMING', W / 2, heroY + 61);
-
-        // Headline with Gradient ("Where Stories Ascend.")
-        const t1 = 'Where Stories ';
-        const t2 = 'Ascend.';
-        ctx.font = '900 134px system-ui, -apple-system, sans-serif';
-        const w1 = ctx.measureText(t1).width;
-        const w2 = ctx.measureText(t2).width;
-        const totalW = w1 + w2;
-        const startX = (W - totalW) / 2;
-
-        ctx.textAlign = 'left';
-        ctx.fillStyle = '#ffffff';
-        ctx.fillText(t1, startX, heroY + 225);
-
-        const grad = ctx.createLinearGradient(startX + w1, 0, startX + totalW, 0);
-        grad.addColorStop(0, '#c084fc');
-        grad.addColorStop(0.5, '#7dd3fc');
-        grad.addColorStop(1, '#a855f7');
-        ctx.fillStyle = grad;
-        ctx.fillText(t2, startX + w1, heroY + 225);
-
-        // Value Proposition Subtitle
-        ctx.fillStyle = '#94a3b8';
-        ctx.font = '38px system-ui, -apple-system, sans-serif';
-        ctx.textAlign = 'center';
-        ctx.fillText('Stream 15,000+ anime & donghua episodes in pristine 1080p 60fps, alongside 35,000+', W / 2, heroY + 315);
-        ctx.fillText('unlocked vertical mini-dramas and manga. Zero interruptions, zero lag.', W / 2, heroY + 372);
-
-        // Search Bar Box
-        const sbW = 1680, sbH = 104, sbX = (W - sbW) / 2, sbY = heroY + 440;
-        ctx.fillStyle = 'rgba(15, 23, 42, 0.92)';
-        ctx.beginPath();
-        ctx.roundRect(sbX, sbY, sbW, sbH, 52);
-        ctx.fill();
-        ctx.strokeStyle = 'rgba(255, 255, 255, 0.2)';
-        ctx.lineWidth = 2.5;
-        ctx.stroke();
-
-        ctx.fillStyle = '#94a3b8';
-        ctx.font = '30px system-ui, -apple-system, sans-serif';
-        ctx.textAlign = 'left';
-        ctx.fillText('🔍  Search anime, movies, donghua, or characters...', sbX + 50, sbY + 65);
-        ctx.textAlign = 'right';
-        ctx.fillStyle = '#a855f7';
-        ctx.font = 'bold 28px system-ui, -apple-system, sans-serif';
-        ctx.fillText('⚡ SEARCH', sbX + sbW - 50, sbY + 65);
-
-        // Trending Chips
-        ctx.textAlign = 'center';
-        ctx.fillStyle = '#64748b';
-        ctx.font = '26px system-ui, -apple-system, sans-serif';
-        ctx.fillText('Trending:', W / 2 - 540, sbY + 165);
-        const chips = ['Solo Leveling', 'Bleach TYBW', 'Demon Slayer', 'Frieren', 'Omniscient Reader'];
-        let chipX = W / 2 - 420;
-        chips.forEach(c => {
-          ctx.font = '26px system-ui, -apple-system, sans-serif';
-          const cw = ctx.measureText(c).width + 48;
-          ctx.fillStyle = 'rgba(255, 255, 255, 0.08)';
-          ctx.beginPath();
-          ctx.roundRect(chipX, sbY + 132, cw, 52, 26);
-          ctx.fill();
-          ctx.strokeStyle = 'rgba(255, 255, 255, 0.14)';
-          ctx.lineWidth = 1.5;
-          ctx.stroke();
-          ctx.fillStyle = '#e2e8f0';
-          ctx.fillText(c, chipX + cw / 2, sbY + 167);
-          chipX += cw + 20;
-        });
-
-        // Hero CTA Buttons
-        const ctaW = 460, ctaH = 98, ctaY = sbY + 235;
-        ctx.fillStyle = '#7c3aed';
-        ctx.beginPath();
-        ctx.roundRect(W / 2 - ctaW - 24, ctaY, ctaW, ctaH, 49);
-        ctx.fill();
-        ctx.fillStyle = '#ffffff';
-        ctx.font = 'bold 32px system-ui, -apple-system, sans-serif';
-        ctx.textAlign = 'center';
-        ctx.fillText('▶   Start Watching Free', W / 2 - 24 - ctaW / 2, ctaY + 61);
-
-        ctx.fillStyle = 'rgba(255, 255, 255, 0.09)';
-        ctx.beginPath();
-        ctx.roundRect(W / 2 + 24, ctaY, ctaW, ctaH, 49);
-        ctx.fill();
-        ctx.strokeStyle = 'rgba(255, 255, 255, 0.2)';
-        ctx.lineWidth = 2;
-        ctx.stroke();
-        ctx.fillStyle = '#ffffff';
-        ctx.fillText('🧭   Explore Catalog', W / 2 + 24 + ctaW / 2, ctaY + 61);
-
-        // Metrics Row
-        const metY = ctaY + 165;
-        ctx.strokeStyle = 'rgba(255, 255, 255, 0.12)';
-        ctx.lineWidth = 1.5;
-        ctx.beginPath();
-        ctx.moveTo(200, metY);
-        ctx.lineTo(W - 200, metY);
-        ctx.stroke();
-
-        const metrics = [
-          { val: '15,000+', lbl: 'ANIME & DONGHUA', col: '#ffffff' },
-          { val: '35,000+', lbl: 'VERTICAL SHORTS', col: '#c084fc' },
-          { val: '1080p 60fps', lbl: 'ULTRA HD QUALITY', col: '#38bdf8' },
-          { val: 'Zero Lag', lbl: 'GLOBAL EDGE CDN', col: '#34d399' }
-        ];
-        const mColW = (W - 400) / 4;
-        metrics.forEach((m, i) => {
-          const mx = 200 + i * mColW + mColW / 2;
-          ctx.fillStyle = m.col;
-          ctx.font = '900 52px system-ui, -apple-system, sans-serif';
-          ctx.textAlign = 'center';
-          ctx.fillText(m.val, mx, metY + 75);
-          ctx.fillStyle = '#94a3b8';
-          ctx.font = 'bold 22px system-ui, -apple-system, sans-serif';
-          ctx.fillText(m.lbl, mx, metY + 115);
-        });
-
-        // 2. EXPLORE ALL REALMS
-        const realmsY = metY + 195;
-        ctx.fillStyle = '#c084fc';
-        ctx.font = 'bold 24px system-ui, -apple-system, sans-serif';
-        ctx.textAlign = 'left';
-        ctx.fillText('UNIFIED ECOSYSTEM', 120, realmsY);
-        ctx.fillStyle = '#ffffff';
-        ctx.font = '900 60px system-ui, -apple-system, sans-serif';
-        ctx.fillText('EXPLORE ALL REALMS', 120, realmsY + 65);
-
-        const realms = [
-          { title: 'Anime & Donghua', sub: 'Broadcast simultaneously from Japan & China. High-definition Sub & Dub updated daily.', icon: '❖', col: '#a855f7', link: 'Browse Series →' },
-          { title: 'Vertical Mini-Dramas', sub: 'Fast-paced 1-minute episodes. Billionaire, CEO, Werewolf, and Martial Arts stories.', icon: '🎬', col: '#f43f5e', link: 'Watch Shorts →' },
-          { title: 'Cinema & Theatrical', sub: 'Feature-length blockbuster anime movies, Asian theatricals in master quality.', icon: '🎞️', col: '#f59e0b', link: 'Stream Cinema →' },
-          { title: 'Mangvels Reader', sub: 'High-resolution digital reader for manga, manhwa, and translated web novels.', icon: '📖', col: '#10b981', link: 'Open Reader →' }
-        ];
-        const rW = (W - 240 - 3 * 40) / 4;
-        realms.forEach((r, i) => {
-          const rx = 120 + i * (rW + 40);
-          const ry = realmsY + 105;
-          ctx.fillStyle = 'rgba(15, 20, 36, 0.9)';
-          ctx.beginPath();
-          ctx.roundRect(rx, ry, rW, 310, 26);
-          ctx.fill();
-          ctx.strokeStyle = 'rgba(255, 255, 255, 0.12)';
-          ctx.lineWidth = 1.5;
-          ctx.stroke();
-
-          ctx.fillStyle = r.col;
-          ctx.font = '48px system-ui, -apple-system, sans-serif';
-          ctx.fillText(r.icon, rx + 40, ry + 70);
-
-          ctx.fillStyle = '#ffffff';
-          ctx.font = 'bold 34px system-ui, -apple-system, sans-serif';
-          ctx.fillText(r.title, rx + 40, ry + 130);
-
-          ctx.fillStyle = '#94a3b8';
-          ctx.font = '22px system-ui, -apple-system, sans-serif';
-          const words = r.sub.split(' ');
-          let l1 = '', l2 = '';
-          words.forEach(w => {
-            if ((l1 + w).length < 32) l1 += w + ' ';
-            else l2 += w + ' ';
-          });
-          ctx.fillText(l1.trim(), rx + 40, ry + 180);
-          ctx.fillText(l2.trim(), rx + 40, ry + 215);
-
-          ctx.fillStyle = r.col;
-          ctx.font = 'bold 24px system-ui, -apple-system, sans-serif';
-          ctx.fillText(r.link, rx + 40, ry + 265);
-        });
-
-        // 3. TOP AIRING BROADCASTS
-        const animeShelfY = realmsY + 480;
-        ctx.fillStyle = '#ffffff';
-        ctx.font = '900 60px system-ui, -apple-system, sans-serif';
-        ctx.textAlign = 'left';
-        ctx.fillText('🔥  TOP AIRING BROADCASTS', 120, animeShelfY);
-        ctx.fillStyle = '#64748b';
-        ctx.font = '26px system-ui, -apple-system, sans-serif';
-        ctx.fillText('Most streamed releases across Kagemi this week', 120, animeShelfY + 48);
-
-        ctx.fillStyle = '#c084fc';
-        ctx.font = 'bold 28px system-ui, -apple-system, sans-serif';
-        ctx.textAlign = 'right';
-        ctx.fillText('BROWSE ALL (15,000+) >', W - 120, animeShelfY + 28);
-
-        const animeList = [
-          { rank: '#1', title: 'Solo Leveling: Arise', year: '2024', score: '★ 9.8', type: 'SERIES', audio: 'SUB & DUB', bg: '#0f172a' },
-          { rank: '#2', title: 'Demon Slayer: Hashira Training', year: '2024', score: '★ 9.6', type: 'SERIES', audio: 'SUB & DUB', bg: '#1c1917' },
-          { rank: '#3', title: 'The Apothecary Diaries', year: '2025', score: '★ 9.5', type: 'SERIES', audio: 'SUB & DUB', bg: '#142018' },
-          { rank: '#4', title: 'Bleach: Thousand-Year Blood War', year: '2024', score: '★ 9.7', type: 'SERIES', audio: 'SUB & DUB', bg: '#1e1124' },
-          { rank: '#5', title: 'Frieren: Beyond Journey', year: '2024', score: '★ 9.9', type: 'SERIES', audio: 'SUB & DUB', bg: '#0e1e24' }
-        ];
-
-        const cardW = (W - 240 - 4 * 36) / 5;
-        const cardH = 640;
-        animeList.forEach((a, i) => {
-          const cx = 120 + i * (cardW + 36);
-          const cy = animeShelfY + 85;
-
-          ctx.fillStyle = a.bg;
-          ctx.beginPath();
-          ctx.roundRect(cx, cy, cardW, cardH, 24);
-          ctx.fill();
-          ctx.strokeStyle = 'rgba(255, 255, 255, 0.12)';
-          ctx.lineWidth = 1.5;
-          ctx.stroke();
-
-          // Poster artwork gradient area
-          const artGrad = ctx.createLinearGradient(cx, cy, cx, cy + 380);
-          artGrad.addColorStop(0, 'rgba(255, 255, 255, 0.08)');
-          artGrad.addColorStop(1, 'rgba(0, 0, 0, 0.75)');
-          ctx.fillStyle = artGrad;
-          ctx.beginPath();
-          ctx.roundRect(cx + 4, cy + 4, cardW - 8, 372, 20);
-          ctx.fill();
-
-          // Rank Badge
-          ctx.fillStyle = 'rgba(0, 0, 0, 0.85)';
-          ctx.beginPath();
-          ctx.roundRect(cx + 24, cy + 24, 76, 44, 12);
-          ctx.fill();
-          ctx.fillStyle = '#ffffff';
-          ctx.font = 'bold 22px system-ui, -apple-system, sans-serif';
-          ctx.textAlign = 'center';
-          ctx.fillText(a.rank, cx + 62, cy + 54);
-
-          // Quality Pill
-          ctx.fillStyle = 'rgba(124, 58, 237, 0.9)';
-          ctx.beginPath();
-          ctx.roundRect(cx + cardW - 120, cy + 24, 96, 44, 12);
-          ctx.fill();
-          ctx.fillStyle = '#ffffff';
-          ctx.font = '900 20px system-ui, -apple-system, sans-serif';
-          ctx.fillText('1080p', cx + cardW - 72, cy + 54);
-
-          // Title
-          ctx.textAlign = 'left';
-          ctx.fillStyle = '#ffffff';
-          ctx.font = 'bold 30px system-ui, -apple-system, sans-serif';
-          const tText = a.title.length > 20 ? a.title.slice(0, 18) + '...' : a.title;
-          ctx.fillText(tText, cx + 24, cy + 440);
-
-          // Metadata row
-          ctx.fillStyle = '#facc15';
-          ctx.font = 'bold 22px system-ui, -apple-system, sans-serif';
-          ctx.fillText(a.score, cx + 24, cy + 485);
-          ctx.fillStyle = '#94a3b8';
-          ctx.font = '22px system-ui, -apple-system, sans-serif';
-          ctx.fillText('•  ' + a.audio, cx + 115, cy + 485);
-
-          // [ ▶ PLAY ] button
-          ctx.fillStyle = '#7c3aed';
-          ctx.beginPath();
-          ctx.roundRect(cx + 24, cy + 530, cardW - 48, 80, 40);
-          ctx.fill();
-          ctx.fillStyle = '#ffffff';
-          ctx.font = 'bold 26px system-ui, -apple-system, sans-serif';
-          ctx.textAlign = 'center';
-          ctx.fillText('▶   PLAY', cx + cardW / 2, cy + 580);
-        });
-
-      } else {
-        // Mobile Layout
-        const heroY = 40;
-        ctx.fillStyle = 'rgba(255, 255, 255, 0.06)';
-        ctx.beginPath();
-        ctx.roundRect(W / 2 - 380, heroY, 760, 76, 38);
-        ctx.fill();
-        ctx.fillStyle = '#c084fc';
-        ctx.font = 'bold 28px system-ui, -apple-system, sans-serif';
-        ctx.textAlign = 'center';
-        ctx.fillText('NEXT-GEN HIGH-FIDELITY STREAMING', W / 2, heroY + 48);
-
-        ctx.font = '900 134px system-ui, -apple-system, sans-serif';
-        ctx.fillStyle = '#ffffff';
-        ctx.fillText('Where Stories Ascend.', W / 2, heroY + 230);
-
-        ctx.fillStyle = '#94a3b8';
-        ctx.font = '46px system-ui, -apple-system, sans-serif';
-        ctx.fillText('15,000+ Anime Episodes • 35,000+ Vertical Shorts • Zero Ads', W / 2, heroY + 335);
+      // Subtle atmospheric grid background
+      ctx.strokeStyle = 'rgba(255, 255, 255, 0.022)';
+      ctx.lineWidth = 1;
+      for (let x = 0; x < W; x += 64) {
+        ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, H); ctx.stroke();
+      }
+      for (let y = 0; y < H; y += 64) {
+        ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(W, y); ctx.stroke();
       }
 
-      ctx.restore();
+      // Atmospheric radial glow pools behind key sections
+      const glow1 = ctx.createRadialGradient(W / 2, 550, 150, W / 2, 550, 1100);
+      glow1.addColorStop(0, 'rgba(168, 85, 247, 0.22)');
+      glow1.addColorStop(1, 'rgba(0, 0, 0, 0)');
+      ctx.fillStyle = glow1;
+      ctx.fillRect(0, 0, W, 1440);
 
-      // FIXED TOP NAVBAR
-      ctx.fillStyle = 'rgba(5, 7, 12, 0.98)';
-      ctx.fillRect(40, 30, W - 80, 120);
-      ctx.strokeStyle = 'rgba(255, 255, 255, 0.12)';
-      ctx.lineWidth = 2;
-      ctx.strokeRect(40, 30, W - 80, 120);
+      const glow2 = ctx.createRadialGradient(W / 2, 3500, 200, W / 2, 3500, 1200);
+      glow2.addColorStop(0, 'rgba(124, 58, 237, 0.15)');
+      glow2.addColorStop(1, 'rgba(0, 0, 0, 0)');
+      ctx.fillStyle = glow2;
+      ctx.fillRect(0, 2800, W, 1600);
 
-      // Logo Icon & Brand
-      ctx.fillStyle = 'rgba(124, 58, 237, 0.25)';
+      const glow3 = ctx.createRadialGradient(W / 2, 5000, 200, W / 2, 5000, 1200);
+      glow3.addColorStop(0, 'rgba(244, 63, 94, 0.12)');
+      glow3.addColorStop(1, 'rgba(0, 0, 0, 0)');
+      ctx.fillStyle = glow3;
+      ctx.fillRect(0, 4300, W, 1600);
+
+      // =======================================================================
+      // VIEWPORT 1: CINEMATIC HERO SECTION (y: 140 .. 1400)
+      // =======================================================================
+      const heroY = 160;
+
+      // Top Tag Badge
+      ctx.fillStyle = 'rgba(255, 255, 255, 0.06)';
       ctx.beginPath();
-      ctx.roundRect(75, 48, 84, 84, 20);
+      ctx.roundRect(W / 2 - 270, heroY, 540, 58, 29);
       ctx.fill();
-      ctx.strokeStyle = 'rgba(168, 85, 247, 0.6)';
-      ctx.lineWidth = 2;
+      ctx.strokeStyle = 'rgba(168, 85, 247, 0.5)';
+      ctx.lineWidth = 1.5;
       ctx.stroke();
       ctx.fillStyle = '#c084fc';
-      ctx.font = '40px system-ui, -apple-system, sans-serif';
+      ctx.font = 'bold 23px system-ui, -apple-system, sans-serif';
       ctx.textAlign = 'center';
-      ctx.fillText('🛡️', 117, 107);
+      ctx.fillText('NEXT-GEN HIGH-FIDELITY STREAMING', W / 2, heroY + 38);
+
+      // Main Headline: "Where Stories Ascend."
+      const t1 = 'Where Stories ';
+      const t2 = 'Ascend.';
+      ctx.font = '900 128px system-ui, -apple-system, sans-serif';
+      const w1 = ctx.measureText(t1).width;
+      const w2 = ctx.measureText(t2).width;
+      const totalTitleW = w1 + w2;
+      const titleStartX = (W - totalTitleW) / 2;
 
       ctx.textAlign = 'left';
       ctx.fillStyle = '#ffffff';
-      ctx.font = '900 44px system-ui, -apple-system, sans-serif';
-      ctx.fillText('KAGEMI', 185, 92);
-      ctx.fillStyle = '#a855f7';
-      ctx.font = 'bold 18px monospace';
-      ctx.fillText('STREAMING PLATFORM', 188, 120);
+      ctx.fillText(t1, titleStartX, heroY + 190);
 
-      // Nav Links (Desktop)
-      if (!isMobile) {
-        const navLinks = ['Anime', 'Donghua', 'Cinema', 'Shorts', 'Mangvels', 'OtakuVerse'];
-        let nX = 700;
-        ctx.font = 'bold 28px system-ui, -apple-system, sans-serif';
-        navLinks.forEach(n => {
-          ctx.fillStyle = '#cbd5e1';
-          ctx.fillText(n, nX, 100);
-          nX += 230;
-        });
-      }
+      const headlineGrad = ctx.createLinearGradient(titleStartX + w1, 0, titleStartX + totalTitleW, 0);
+      headlineGrad.addColorStop(0, '#c084fc');
+      headlineGrad.addColorStop(0.5, '#7dd3fc');
+      headlineGrad.addColorStop(1, '#a855f7');
+      ctx.fillStyle = headlineGrad;
+      ctx.fillText(t2, titleStartX + w1, heroY + 190);
 
-      // Top Right CTA: [ Enter App → ]
-      ctx.fillStyle = '#7c3aed';
+      // Value Proposition Subtitle
+      ctx.fillStyle = '#cbd5e1';
+      ctx.font = '34px system-ui, -apple-system, sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillText('Stream 15,000+ anime & donghua episodes in pristine 1080p 60fps, alongside 35,000+', W / 2, heroY + 280);
+      ctx.fillText('unlocked vertical mini-dramas and manga. Zero interruptions, zero lag.', W / 2, heroY + 332);
+
+      // Search Bar Box
+      const sbW = 1600, sbH = 96, sbX = (W - sbW) / 2, sbY = heroY + 400;
+      ctx.fillStyle = 'rgba(15, 23, 42, 0.96)';
       ctx.beginPath();
-      ctx.roundRect(W - 370, 50, 300, 80, 40);
+      ctx.roundRect(sbX, sbY, sbW, sbH, 48);
+      ctx.fill();
+      ctx.strokeStyle = 'rgba(255, 255, 255, 0.2)';
+      ctx.lineWidth = 2;
+      ctx.stroke();
+
+      ctx.fillStyle = '#94a3b8';
+      ctx.font = '28px system-ui, -apple-system, sans-serif';
+      ctx.textAlign = 'left';
+      ctx.fillText('🔍  Search anime, movies, donghua, or characters...', sbX + 50, sbY + 60);
+      ctx.textAlign = 'right';
+      ctx.fillStyle = '#a855f7';
+      ctx.font = 'bold 26px system-ui, -apple-system, sans-serif';
+      ctx.fillText('⚡ SEARCH', sbX + sbW - 50, sbY + 60);
+
+      // Trending Chips Row
+      ctx.textAlign = 'center';
+      ctx.fillStyle = '#64748b';
+      ctx.font = 'bold 24px system-ui, -apple-system, sans-serif';
+      ctx.fillText('Trending:', W / 2 - 520, sbY + 155);
+      const chips = ['Solo Leveling', 'Bleach TYBW', 'Demon Slayer', 'Frieren', 'Omniscient Reader'];
+      let chipX = W / 2 - 400;
+      chips.forEach(c => {
+        ctx.font = '23px system-ui, -apple-system, sans-serif';
+        const cw = ctx.measureText(c).width + 44;
+        ctx.fillStyle = 'rgba(255, 255, 255, 0.08)';
+        ctx.beginPath();
+        ctx.roundRect(chipX, sbY + 125, cw, 50, 25);
+        ctx.fill();
+        ctx.strokeStyle = 'rgba(255, 255, 255, 0.16)';
+        ctx.lineWidth = 1;
+        ctx.stroke();
+        ctx.fillStyle = '#e2e8f0';
+        ctx.fillText(c, chipX + cw / 2, sbY + 159);
+        chipX += cw + 18;
+      });
+
+      // Hero Action Buttons
+      const ctaW = 440, ctaH = 86, ctaY = sbY + 220;
+      // Start Watching Free button
+      const ctaGrad = ctx.createLinearGradient(W / 2 - ctaW - 20, ctaY, W / 2 - 20, ctaY + ctaH);
+      ctaGrad.addColorStop(0, '#9333ea');
+      ctaGrad.addColorStop(1, '#7c3aed');
+      ctx.fillStyle = ctaGrad;
+      ctx.beginPath();
+      ctx.roundRect(W / 2 - ctaW - 20, ctaY, ctaW, ctaH, 43);
       ctx.fill();
       ctx.fillStyle = '#ffffff';
       ctx.font = 'bold 28px system-ui, -apple-system, sans-serif';
       ctx.textAlign = 'center';
-      ctx.fillText('Enter App  →', W - 220, 100);
+      ctx.fillText('▶   Start Watching Free', W / 2 - 20 - ctaW / 2, ctaY + 54);
 
-      // Bottom Interaction Help Bar
-      ctx.fillStyle = 'rgba(5, 7, 12, 0.98)';
-      ctx.fillRect(40, H - 110, W - 80, 80);
+      // Explore Catalog button
+      ctx.fillStyle = 'rgba(255, 255, 255, 0.09)';
+      ctx.beginPath();
+      ctx.roundRect(W / 2 + 20, ctaY, ctaW, ctaH, 43);
+      ctx.fill();
+      ctx.strokeStyle = 'rgba(255, 255, 255, 0.22)';
+      ctx.lineWidth = 1.5;
+      ctx.stroke();
+      ctx.fillStyle = '#ffffff';
+      ctx.fillText('🧭   Explore Catalog', W / 2 + 20 + ctaW / 2, ctaY + 54);
+
+      // Platform Metrics Row
+      const metY = ctaY + 155;
       ctx.strokeStyle = 'rgba(255, 255, 255, 0.12)';
-      ctx.lineWidth = 2;
-      ctx.strokeRect(40, H - 110, W - 80, 80);
+      ctx.lineWidth = 1.5;
+      ctx.beginPath();
+      ctx.moveTo(90, metY);
+      ctx.lineTo(W - 90, metY);
+      ctx.stroke();
+
+      const metrics = [
+        { val: '15,000+', lbl: 'ANIME & DONGHUA', col: '#ffffff' },
+        { val: '35,000+', lbl: 'VERTICAL SHORTS', col: '#c084fc' },
+        { val: '1080p 60fps', lbl: 'ULTRA HD QUALITY', col: '#38bdf8' },
+        { val: 'Zero Lag', lbl: 'GLOBAL EDGE CDN', col: '#34d399' }
+      ];
+      const mColW = (W - 180) / 4;
+      metrics.forEach((m, i) => {
+        const mx = 90 + i * mColW + mColW / 2;
+        ctx.fillStyle = m.col;
+        ctx.font = '900 56px system-ui, -apple-system, sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText(m.val, mx, metY + 76);
+        ctx.fillStyle = '#94a3b8';
+        ctx.font = 'bold 21px monospace';
+        ctx.fillText(m.lbl, mx, metY + 120);
+      });
+
+      // =======================================================================
+      // VIEWPORT 2: EXPLORE ALL REALMS (y: 1540 .. 2800)
+      // =======================================================================
+      const realmsY = 1560;
+      ctx.fillStyle = '#c084fc';
+      ctx.font = 'bold 24px monospace';
+      ctx.textAlign = 'left';
+      ctx.fillText('UNIFIED ECOSYSTEM', 90, realmsY);
+      ctx.fillStyle = '#ffffff';
+      ctx.font = '900 64px system-ui, -apple-system, sans-serif';
+      ctx.fillText('EXPLORE ALL REALMS', 90, realmsY + 68);
 
       ctx.fillStyle = '#94a3b8';
-      ctx.font = 'bold 24px system-ui, -apple-system, sans-serif';
+      ctx.font = '28px system-ui, -apple-system, sans-serif';
+      ctx.fillText('Four distinct universes of Asian storytelling on a single high-speed platform', 90, realmsY + 118);
+
+      ctx.fillStyle = '#c084fc';
+      ctx.font = 'bold 26px system-ui, -apple-system, sans-serif';
+      ctx.textAlign = 'right';
+      ctx.fillText('VIEW ALL REALMS >', W - 90, realmsY + 68);
+
+      const realms = [
+        { title: 'Anime & Donghua', sub: 'Broadcast simultaneously from Japan & China. High-definition Sub & Dub updated daily with studio sound.', icon: '❖', col: '#a855f7', link: 'Browse Series →' },
+        { title: 'Vertical Mini-Dramas', sub: 'Fast-paced 1-minute episodes. Billionaire, CEO, Werewolf, and Martial Arts high-octane stories.', icon: '🎬', col: '#f43f5e', link: 'Watch Shorts →' },
+        { title: 'Cinema & Theatrical', sub: 'Feature-length blockbuster anime movies, Asian theatricals in master quality uncompressed bitrates.', icon: '🎞️', col: '#f59e0b', link: 'Stream Cinema →' },
+        { title: 'Mangvels Reader', sub: 'High-resolution digital reader for manga, manhwa, and translated web novels with instant chapter sync.', icon: '📖', col: '#10b981', link: 'Open Reader →' }
+      ];
+      const rW = (W - 180 - 3 * 34) / 4;
+      const rH = 820;
+      realms.forEach((r, i) => {
+        const rx = 90 + i * (rW + 34);
+        const ry = realmsY + 170;
+        ctx.fillStyle = 'rgba(15, 20, 36, 0.90)';
+        ctx.beginPath();
+        ctx.roundRect(rx, ry, rW, rH, 28);
+        ctx.fill();
+        ctx.strokeStyle = 'rgba(255, 255, 255, 0.14)';
+        ctx.lineWidth = 1.5;
+        ctx.stroke();
+
+        // Realm artwork top gradient
+        const rGrad = ctx.createLinearGradient(rx, ry, rx, ry + 280);
+        rGrad.addColorStop(0, r.col + '33');
+        rGrad.addColorStop(1, 'transparent');
+        ctx.fillStyle = rGrad;
+        ctx.beginPath();
+        ctx.roundRect(rx + 2, ry + 2, rW - 4, 276, 26);
+        ctx.fill();
+
+        ctx.fillStyle = r.col;
+        ctx.font = '64px system-ui, -apple-system, sans-serif';
+        ctx.textAlign = 'left';
+        ctx.fillText(r.icon, rx + 44, ry + 110);
+
+        ctx.fillStyle = '#ffffff';
+        ctx.font = 'bold 38px system-ui, -apple-system, sans-serif';
+        ctx.fillText(r.title, rx + 44, ry + 200);
+
+        ctx.fillStyle = '#94a3b8';
+        ctx.font = '25px system-ui, -apple-system, sans-serif';
+        const words = r.sub.split(' ');
+        let l1 = '', l2 = '', l3 = '';
+        words.forEach(w => {
+          if ((l1 + w).length < 24) l1 += w + ' ';
+          else if ((l2 + w).length < 24) l2 += w + ' ';
+          else l3 += w + ' ';
+        });
+        ctx.fillText(l1.trim(), rx + 44, ry + 290);
+        ctx.fillText(l2.trim(), rx + 44, ry + 335);
+        ctx.fillText(l3.trim(), rx + 44, ry + 380);
+
+        ctx.fillStyle = r.col;
+        ctx.font = 'bold 30px system-ui, -apple-system, sans-serif';
+        ctx.fillText(r.link, rx + 44, ry + rH - 70);
+      });
+
+      // =======================================================================
+      // VIEWPORT 3: TOP AIRING BROADCASTS (y: 2980 .. 4260)
+      // =======================================================================
+      const animeY = 3000;
+      ctx.fillStyle = '#ffffff';
+      ctx.font = '900 64px system-ui, -apple-system, sans-serif';
+      ctx.textAlign = 'left';
+      ctx.fillText('🔥  TOP AIRING BROADCASTS', 90, animeY);
+      ctx.fillStyle = '#94a3b8';
+      ctx.font = '28px system-ui, -apple-system, sans-serif';
+      ctx.fillText('Most streamed releases across Kagemi this week', 90, animeY + 54);
+
+      ctx.fillStyle = '#c084fc';
+      ctx.font = 'bold 26px system-ui, -apple-system, sans-serif';
+      ctx.textAlign = 'right';
+      ctx.fillText('BROWSE ALL (15,000+) >', W - 90, animeY + 32);
+
+      const animeList = [
+        { rank: '#1', title: 'Solo Leveling: Arise', score: '★ 9.8', audio: 'SUB & DUB', theme1: '#3b0764', theme2: '#090514', sigil: '⚔️' },
+        { rank: '#2', title: 'Demon Slayer: Hashira', score: '★ 9.6', audio: 'SUB & DUB', theme1: '#991b1b', theme2: '#180505', sigil: '🔥' },
+        { rank: '#3', title: 'The Apothecary Diaries', score: '★ 9.5', audio: 'SUB & DUB', theme1: '#065f46', theme2: '#04160e', sigil: '🍃' },
+        { rank: '#4', title: 'Bleach: Thousand-Year', score: '★ 9.7', audio: 'SUB & DUB', theme1: '#581c87', theme2: '#0e061c', sigil: '⚡' },
+        { rank: '#5', title: 'Frieren: Beyond Journey', score: '★ 9.9', audio: 'SUB & DUB', theme1: '#155e75', theme2: '#05141a', sigil: '✨' },
+        { rank: '#6', title: 'Jujutsu Kaisen: Shibuya', score: '★ 9.8', audio: 'SUB & DUB', theme1: '#3730a3', theme2: '#080718', sigil: '👁️' }
+      ];
+
+      const aW = (W - 180 - 5 * 24) / 6;
+      const aH = 920;
+      animeList.forEach((a, i) => {
+        const ax = 90 + i * (aW + 24);
+        const ay = animeY + 110;
+
+        // Card Container
+        ctx.fillStyle = '#0b0f19';
+        ctx.beginPath();
+        ctx.roundRect(ax, ay, aW, aH, 24);
+        ctx.fill();
+        ctx.strokeStyle = 'rgba(255, 255, 255, 0.12)';
+        ctx.lineWidth = 1.5;
+        ctx.stroke();
+
+        // Illustrated Poster Artwork Canvas Area
+        const artGrad = ctx.createLinearGradient(ax, ay, ax, ay + 580);
+        artGrad.addColorStop(0, a.theme1);
+        artGrad.addColorStop(0.7, a.theme2);
+        artGrad.addColorStop(1, '#000000');
+        ctx.fillStyle = artGrad;
+        ctx.beginPath();
+        ctx.roundRect(ax + 3, ay + 3, aW - 6, 574, 22);
+        ctx.fill();
+
+        // Character sigil emblem
+        ctx.fillStyle = 'rgba(255, 255, 255, 0.9)';
+        ctx.font = '108px system-ui, -apple-system, sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText(a.sigil, ax + aW / 2, ay + 320);
+
+        // Rank Badge
+        ctx.fillStyle = 'rgba(0, 0, 0, 0.85)';
+        ctx.beginPath();
+        ctx.roundRect(ax + 20, ay + 20, 84, 46, 12);
+        ctx.fill();
+        ctx.fillStyle = '#ffffff';
+        ctx.font = 'bold 24px monospace';
+        ctx.fillText(a.rank, ax + 62, ay + 52);
+
+        // Quality Pill
+        ctx.fillStyle = 'rgba(124, 58, 237, 0.9)';
+        ctx.beginPath();
+        ctx.roundRect(ax + aW - 115, ay + 20, 95, 46, 12);
+        ctx.fill();
+        ctx.fillStyle = '#ffffff';
+        ctx.font = '900 20px monospace';
+        ctx.fillText('1080p', ax + aW - 68, ay + 52);
+
+        // Title
+        ctx.textAlign = 'left';
+        ctx.fillStyle = '#ffffff';
+        ctx.font = 'bold 28px system-ui, -apple-system, sans-serif';
+        ctx.fillText(a.title, ax + 22, ay + 650);
+
+        // Metadata row
+        ctx.fillStyle = '#facc15';
+        ctx.font = 'bold 24px system-ui, -apple-system, sans-serif';
+        ctx.fillText(a.score, ax + 22, ay + 710);
+        ctx.fillStyle = '#94a3b8';
+        ctx.font = '22px monospace';
+        ctx.fillText('• ' + a.audio, ax + 115, ay + 710);
+
+        // Play Button
+        ctx.fillStyle = '#7c3aed';
+        ctx.beginPath();
+        ctx.roundRect(ax + 22, ay + 770, aW - 44, 86, 43);
+        ctx.fill();
+        ctx.fillStyle = '#ffffff';
+        ctx.font = 'bold 28px system-ui, -apple-system, sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText('▶   PLAY', ax + aW / 2, ay + 824);
+      });
+
+      // =======================================================================
+      // VIEWPORT 4: VERTICAL MINI-DRAMAS & SHORTS (y: 4420 .. 5700)
+      // =======================================================================
+      const shortsY = 4440;
+      ctx.fillStyle = '#f43f5e';
+      ctx.font = 'bold 24px monospace';
+      ctx.textAlign = 'left';
+      ctx.fillText('🔥  35,000+ UNLOCKED TITLES', 90, shortsY);
+      ctx.fillStyle = '#ffffff';
+      ctx.font = '900 64px system-ui, -apple-system, sans-serif';
+      ctx.fillText('VERTICAL MINI-DRAMAS & SHORTS', 90, shortsY + 68);
+
+      ctx.fillStyle = '#94a3b8';
+      ctx.font = '28px system-ui, -apple-system, sans-serif';
+      ctx.fillText('Reels & TikTok format. High-octane micro-series designed for immersive vertical playback.', 90, shortsY + 118);
+
+      ctx.fillStyle = '#f43f5e';
+      ctx.font = 'bold 26px system-ui, -apple-system, sans-serif';
+      ctx.textAlign = 'right';
+      ctx.fillText('EXPLORE SHORTS FEED >', W - 90, shortsY + 68);
+
+      const shortsList = [
+        { title: 'God of War: Wife Protector', eps: '40 eps', lang: 'Hindi & Eng Dub', rating: '★ 9.0', grad1: '#4c0519', grad2: '#831843', icon: '👑' },
+        { title: 'The Hidden Billionaire Heir', eps: '60 eps', lang: 'English Dub', rating: '★ 9.2', grad1: '#78350f', grad2: '#b45309', icon: '💼' },
+        { title: 'Rise of the Martial Emperor', eps: '80 eps', lang: 'English Dub', rating: '★ 9.4', grad1: '#581c87', grad2: '#7e22ce', icon: '🐉' },
+        { title: "Alpha's Destined Royal Luna", eps: '50 eps', lang: 'English Dub', rating: '★ 9.1', grad1: '#0c4a6e', grad2: '#0284c7', icon: '🐺' }
+      ];
+
+      const sW = (W - 180 - 3 * 34) / 4;
+      const sH = 920;
+      shortsList.forEach((s, i) => {
+        const sx = 90 + i * (sW + 34);
+        const sy = shortsY + 170;
+
+        // 9:16 Vertical Card Box
+        ctx.fillStyle = '#0b0e17';
+        ctx.beginPath();
+        ctx.roundRect(sx, sy, sW, sH, 26);
+        ctx.fill();
+        ctx.strokeStyle = 'rgba(255, 255, 255, 0.12)';
+        ctx.lineWidth = 1.5;
+        ctx.stroke();
+
+        // Vertical Poster Art Gradient Area
+        const sGrad = ctx.createLinearGradient(sx, sy, sx, sy + 640);
+        sGrad.addColorStop(0, s.grad1);
+        sGrad.addColorStop(0.65, s.grad2);
+        sGrad.addColorStop(1, '#05070c');
+        ctx.fillStyle = sGrad;
+        ctx.beginPath();
+        ctx.roundRect(sx + 3, sy + 3, sW - 6, 634, 24);
+        ctx.fill();
+
+        // Icon
+        ctx.fillStyle = '#ffffff';
+        ctx.font = '112px system-ui, -apple-system, sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText(s.icon, sx + sW / 2, sy + 340);
+
+        // Language Badge Top-Left
+        ctx.fillStyle = 'rgba(0, 0, 0, 0.82)';
+        ctx.beginPath();
+        ctx.roundRect(sx + 24, sy + 24, 210, 46, 23);
+        ctx.fill();
+        ctx.fillStyle = '#f43f5e';
+        ctx.font = 'bold 21px monospace';
+        ctx.fillText(s.lang, sx + 129, sy + 55);
+
+        // Eps Badge Top-Right
+        ctx.fillStyle = 'rgba(0, 0, 0, 0.82)';
+        ctx.beginPath();
+        ctx.roundRect(sx + sW - 130, sy + 24, 106, 46, 23);
+        ctx.fill();
+        ctx.fillStyle = '#ffffff';
+        ctx.fillText(s.eps, sx + sW - 77, sy + 55);
+
+        // Title
+        ctx.textAlign = 'left';
+        ctx.fillStyle = '#ffffff';
+        ctx.font = 'bold 32px system-ui, -apple-system, sans-serif';
+        ctx.fillText(s.title, sx + 28, sy + 710);
+
+        // Rating & CTA
+        ctx.fillStyle = '#facc15';
+        ctx.font = 'bold 24px system-ui, -apple-system, sans-serif';
+        ctx.fillText(s.rating, sx + 28, sy + 765);
+        ctx.fillStyle = '#94a3b8';
+        ctx.font = '24px system-ui, -apple-system, sans-serif';
+        ctx.fillText('• Micro-Series', sx + 120, sy + 765);
+
+        // Watch button
+        ctx.fillStyle = '#e11d48';
+        ctx.beginPath();
+        ctx.roundRect(sx + 28, sy + 810, sW - 56, 76, 38);
+        ctx.fill();
+        ctx.fillStyle = '#ffffff';
+        ctx.font = 'bold 26px system-ui, -apple-system, sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText('▶   Watch Episode 1', sx + sW / 2, sy + 858);
+      });
+
+      // =======================================================================
+      // VIEWPORT 5: PLATFORM ARCHITECTURE, COMMUNITY & FOOTER (y: 5820 .. 7200)
+      // =======================================================================
+      const featY = 5860;
+      ctx.fillStyle = '#c084fc';
+      ctx.font = 'bold 24px monospace';
+      ctx.textAlign = 'left';
+      ctx.fillText('ENGINEERING ADVANTAGE', 90, featY);
+      ctx.fillStyle = '#ffffff';
+      ctx.font = '900 58px system-ui, -apple-system, sans-serif';
+      ctx.fillText('BUILT FOR SUPREME PERFORMANCE', 90, featY + 64);
+
+      const features = [
+        { icon: '⚡', title: 'Zero Buffer Delivery', desc: 'Video fragments are precached across 180+ global edge locations for instant 0.2s start times and zero playback pauses.' },
+        { icon: '🎧', title: '1080p 60fps Master Audio', desc: 'Studio-grade lossless FLAC & uncompressed AAC audio pipelines combined with native 60fps visual rendering.' },
+        { icon: '🌐', title: 'Multi-Language Sub & Dub', desc: 'Real-time dual-track audio switching between Japanese, Chinese, English, and Hindi with community-verified subtitles.' }
+      ];
+
+      const fW = (W - 180 - 2 * 36) / 3;
+      features.forEach((f, i) => {
+        const fx = 90 + i * (fW + 36);
+        const fy = featY + 120;
+
+        ctx.fillStyle = 'rgba(15, 23, 42, 0.85)';
+        ctx.beginPath();
+        ctx.roundRect(fx, fy, fW, 260, 22);
+        ctx.fill();
+        ctx.strokeStyle = 'rgba(255, 255, 255, 0.14)';
+        ctx.lineWidth = 1.5;
+        ctx.stroke();
+
+        ctx.fillStyle = '#a855f7';
+        ctx.font = '40px system-ui, -apple-system, sans-serif';
+        ctx.fillText(f.icon, fx + 36, fy + 62);
+
+        ctx.fillStyle = '#ffffff';
+        ctx.font = 'bold 30px system-ui, -apple-system, sans-serif';
+        ctx.fillText(f.title, fx + 36, fy + 120);
+
+        ctx.fillStyle = '#94a3b8';
+        ctx.font = '22px system-ui, -apple-system, sans-serif';
+        const words = f.desc.split(' ');
+        let l1 = '', l2 = '', l3 = '';
+        words.forEach(w => {
+          if ((l1 + w).length < 38) l1 += w + ' ';
+          else if ((l2 + w).length < 38) l2 += w + ' ';
+          else l3 += w + ' ';
+        });
+        ctx.fillText(l1.trim(), fx + 36, fy + 170);
+        ctx.fillText(l2.trim(), fx + 36, fy + 204);
+        ctx.fillText(l3.trim(), fx + 36, fy + 238);
+      });
+
+      // Community Section
+      const commY = featY + 420;
+      ctx.fillStyle = '#ffffff';
+      ctx.font = '900 52px system-ui, -apple-system, sans-serif';
+      ctx.fillText('COMMUNITY & OTAKUVERSE REALM', 90, commY);
+      ctx.fillStyle = '#94a3b8';
+      ctx.font = '25px system-ui, -apple-system, sans-serif';
+      ctx.fillText('Join millions of fans streaming, reviewing, and discussing daily releases', 90, commY + 46);
+
+      const commCards = [
+        { num: '28,450+', title: 'Active Explorers', sub: 'Streaming anime & interacting in OtakuVerse discussions in real time.' },
+        { num: '15,400+', title: 'Catalog Vault', sub: 'Comprehensive verified series and movies with zero missing episodes.' },
+        { num: '35,000+', title: 'Shorts Unlocked', sub: 'Infinite vertical mini-drama feed unlocked with multi-audio dubbing.' }
+      ];
+
+      commCards.forEach((c, i) => {
+        const cx = 90 + i * (fW + 36);
+        const cy = commY + 86;
+
+        ctx.fillStyle = 'rgba(15, 23, 42, 0.75)';
+        ctx.beginPath();
+        ctx.roundRect(cx, cy, fW, 200, 20);
+        ctx.fill();
+        ctx.strokeStyle = 'rgba(168, 85, 247, 0.28)';
+        ctx.lineWidth = 1.5;
+        ctx.stroke();
+
+        ctx.fillStyle = '#c084fc';
+        ctx.font = '900 50px system-ui, -apple-system, sans-serif';
+        ctx.fillText(c.num, cx + 36, cy + 70);
+
+        ctx.fillStyle = '#ffffff';
+        ctx.font = 'bold 26px system-ui, -apple-system, sans-serif';
+        ctx.fillText(c.title, cx + 36, cy + 120);
+
+        ctx.fillStyle = '#94a3b8';
+        ctx.font = '20px system-ui, -apple-system, sans-serif';
+        ctx.fillText(c.sub, cx + 36, cy + 160);
+      });
+
+      // Full Footer
+      const footY = commY + 330;
+      ctx.strokeStyle = 'rgba(255, 255, 255, 0.15)';
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.moveTo(90, footY);
+      ctx.lineTo(W - 90, footY);
+      ctx.stroke();
+
+      ctx.fillStyle = '#ffffff';
+      ctx.font = '900 40px system-ui, -apple-system, sans-serif';
+      ctx.fillText('🛡️  KAGEMI', 90, footY + 70);
+      ctx.fillStyle = '#a855f7';
+      ctx.font = 'bold 22px monospace';
+      ctx.fillText('WHERE STORIES ASCEND', 300, footY + 70);
+
+      const fCols = [
+        { head: 'STREAMING', links: ['Anime & Donghua', 'Vertical Shorts', 'Theatrical Cinema', 'Mangvels Reader'] },
+        { head: 'UNIVERSE', links: ['OtakuVerse Guild', 'Airing Schedule', 'Top Leaderboards', 'Community Reviews'] },
+        { head: 'SYSTEM', links: ['1080p 60fps HDR', 'Global Edge CDN', 'Dual Sub & Dub', 'Offline Synchronization'] },
+        { head: 'STATUS', links: ['All 18 Nodes Live', 'Zero Log Privacy', 'SSL Certified', '24/7 Availability'] }
+      ];
+
+      const fColW = (W - 180) / 4;
+      fCols.forEach((col, idx) => {
+        const fx = 90 + idx * fColW;
+        ctx.fillStyle = '#cbd5e1';
+        ctx.font = 'bold 22px monospace';
+        ctx.fillText(col.head, fx, footY + 145);
+
+        col.links.forEach((link, lIdx) => {
+          ctx.fillStyle = '#94a3b8';
+          ctx.font = '21px system-ui, -apple-system, sans-serif';
+          ctx.fillText(link, fx, footY + 195 + lIdx * 38);
+        });
+      });
+
+      ctx.strokeStyle = 'rgba(255, 255, 255, 0.08)';
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.moveTo(90, footY + 380);
+      ctx.lineTo(W - 90, footY + 380);
+      ctx.stroke();
+
+      ctx.fillStyle = '#64748b';
+      ctx.font = 'bold 20px monospace';
       ctx.textAlign = 'center';
-      ctx.fillText('⚡ SCROLL WITH MOUSE WHEEL TO BROWSE • CLICK STONE PLATE OR PRESS [F] TO LAUNCH FULL KAGEMI SANCTUARY', W / 2, H - 60);
+      ctx.fillText('© 2026 KAGEMI ENTERTAINMENT INC. ALL RIGHTS RESERVED. BUILT FOR ANIME LOVERS WORLDWIDE.', W / 2, footY + 430);
 
       ctx.restore();
-      if (kagemiScreenTex) kagemiScreenTex.needsUpdate = true;
+    }
+
+    function renderTopNavCanvas(ctx) {
+      const W = 2560, H = 104;
+      ctx.save();
+      // Frosted obsidian glass top navbar
+      ctx.fillStyle = 'rgba(6, 8, 15, 0.96)';
+      ctx.fillRect(0, 0, W, H);
+      ctx.strokeStyle = 'rgba(168, 85, 247, 0.35)';
+      ctx.lineWidth = 2;
+      ctx.strokeRect(0, 0, W, H);
+
+      // Logo Icon & Brand
+      ctx.fillStyle = 'rgba(124, 58, 237, 0.28)';
+      ctx.beginPath();
+      ctx.roundRect(70, 14, 76, 76, 18);
+      ctx.fill();
+      ctx.strokeStyle = 'rgba(168, 85, 247, 0.6)';
+      ctx.lineWidth = 2;
+      ctx.stroke();
+
+      ctx.fillStyle = '#c084fc';
+      ctx.font = '36px system-ui, -apple-system, sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillText('🛡️', 108, 65);
+
+      ctx.textAlign = 'left';
+      ctx.fillStyle = '#ffffff';
+      ctx.font = '900 38px system-ui, -apple-system, sans-serif';
+      ctx.fillText('KAGEMI', 165, 52);
+      ctx.fillStyle = '#a855f7';
+      ctx.font = 'bold 16px monospace';
+      ctx.fillText('STREAMING PLATFORM', 168, 77);
+
+      // Nav Links
+      const navLinks = ['Anime', 'Donghua', 'Cinema', 'Shorts', 'Mangvels', 'OtakuVerse'];
+      let nX = 640;
+      ctx.font = 'bold 24px system-ui, -apple-system, sans-serif';
+      navLinks.forEach(n => {
+        ctx.fillStyle = '#cbd5e1';
+        ctx.fillText(n, nX, 60);
+        nX += 200;
+      });
+
+      // Top Right CTA: [ Enter App → ] (Padded safely 70px inside right edge)
+      const btnW = 230, btnH = 68, btnX = W - 70 - btnW, btnY = 18;
+      const btnGrad = ctx.createLinearGradient(btnX, btnY, btnX + btnW, btnY + btnH);
+      btnGrad.addColorStop(0, '#9333ea');
+      btnGrad.addColorStop(1, '#7c3aed');
+      ctx.fillStyle = btnGrad;
+      ctx.beginPath();
+      ctx.roundRect(btnX, btnY, btnW, btnH, 34);
+      ctx.fill();
+      ctx.fillStyle = '#ffffff';
+      ctx.font = 'bold 24px system-ui, -apple-system, sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillText('Enter App  →', btnX + btnW / 2, btnY + 43);
+
+      ctx.restore();
+    }
+
+    function renderBottomBarCanvas(ctx) {
+      const W = 2560, H = 56;
+      ctx.save();
+      // Frosted dark bottom interaction bar
+      ctx.fillStyle = 'rgba(5, 7, 12, 0.94)';
+      ctx.fillRect(0, 0, W, H);
+      ctx.strokeStyle = 'rgba(168, 85, 247, 0.3)';
+      ctx.lineWidth = 1.5;
+      ctx.strokeRect(0, 0, W, H);
+
+      ctx.fillStyle = '#cbd5e1';
+      ctx.font = 'bold 20px monospace';
+      ctx.textAlign = 'center';
+      ctx.fillText('⚡ SCROLL WITH MOUSE WHEEL TO BROWSE • CLICK SCREEN TO LAUNCH FULL KAGEMI SANCTUARY', W / 2, 36);
+      ctx.restore();
     }
 
     // Expose terminal controller globally
     window.__KAGEMI_TERMINAL = {
-      render: (s) => {
-        kagemiScrollY = s !== undefined ? s : kagemiScrollY;
-        renderKagemiScreen(kagemiScrollY);
-      },
       getScroll: () => kagemiScrollY,
       setScroll: (s) => {
-        kagemiScrollY = Math.max(0, Math.min(kagemiMaxScroll, s));
-        renderKagemiScreen(kagemiScrollY);
+        kagemiTargetScrollY = Math.max(0, Math.min(kagemiMaxScroll, s));
       }
     };
 
@@ -5310,14 +5601,20 @@ totalEmissiveRadiance*=rTm;`);
       kagemiTerminalGroup.add(topCrown);
 
       // =====================================================================
-      // 3. CRYSTAL-CLEAR 4K SCREEN INSCRIBED IN THE STONE MONOLITH (2240 x 1260)
+      // 3. COMPLETE AUTHENTIC MASTER LANDING CANVAS (Zero-Lag UV GPU Scrolling)
       // =====================================================================
-      kagemiScreenCanvas = document.createElement('canvas');
-      kagemiScreenCanvas.width = 3840;
-      kagemiScreenCanvas.height = 2160;
-      kagemiScreenCtx = kagemiScreenCanvas.getContext('2d');
+      kagemiMasterCanvas = document.createElement('canvas');
+      kagemiMasterCanvas.width = 2560;
+      kagemiMasterCanvas.height = 7200;
+      kagemiMasterCtx = kagemiMasterCanvas.getContext('2d');
 
-      kagemiScreenTex = new THREE.CanvasTexture(kagemiScreenCanvas);
+      renderMasterLandingCanvas(kagemiMasterCtx);
+
+      kagemiScreenTex = new THREE.CanvasTexture(kagemiMasterCanvas);
+      kagemiScreenTex.wrapS = THREE.ClampToEdgeWrapping;
+      kagemiScreenTex.wrapT = THREE.ClampToEdgeWrapping;
+      kagemiScreenTex.repeat.set(1.0, kagemiViewRatio);
+      kagemiScreenTex.offset.set(0.0, (kagemiTotalH - kagemiViewH) / kagemiTotalH);
       kagemiScreenTex.generateMipmaps = true;
       kagemiScreenTex.minFilter = THREE.LinearMipmapLinearFilter;
       kagemiScreenTex.magFilter = THREE.LinearFilter;
@@ -5343,7 +5640,72 @@ totalEmissiveRadiance*=rTm;`);
       kagemiScreenMesh.position.set(0, 780, 32);
       kagemiTerminalGroup.add(kagemiScreenMesh);
 
-      renderKagemiScreen(0);
+      // =====================================================================
+      // 3B. PINNED FROSTED GLASS TOP NAVBAR (Never Scrolls, Always Padded & Crisp)
+      // =====================================================================
+      kagemiTopNavCanvas = document.createElement('canvas');
+      kagemiTopNavCanvas.width = 2560;
+      kagemiTopNavCanvas.height = 104;
+      kagemiTopNavCtx = kagemiTopNavCanvas.getContext('2d');
+      renderTopNavCanvas(kagemiTopNavCtx);
+
+      kagemiTopNavTex = new THREE.CanvasTexture(kagemiTopNavCanvas);
+      kagemiTopNavTex.generateMipmaps = true;
+      kagemiTopNavTex.minFilter = THREE.LinearMipmapLinearFilter;
+      kagemiTopNavTex.magFilter = THREE.LinearFilter;
+      if ('colorSpace' in kagemiTopNavTex) {
+        kagemiTopNavTex.colorSpace = THREE.SRGBColorSpace;
+      } else if ('encoding' in kagemiTopNavTex) {
+        kagemiTopNavTex.encoding = THREE.sRGBEncoding;
+      }
+
+      const navMat = new THREE.MeshStandardMaterial({
+        map: kagemiTopNavTex,
+        emissiveMap: kagemiTopNavTex,
+        emissive: new THREE.Color(0xffffff),
+        emissiveIntensity: 0.95,
+        roughness: 0.2,
+        metalness: 0.05,
+        transparent: true,
+        side: THREE.FrontSide
+      });
+
+      kagemiTopNavMesh = new THREE.Mesh(new THREE.PlaneGeometry(2240, 86), navMat);
+      // Pinned exactly at top of screen mesh: 780 + 1260/2 - 43 = 1367
+      kagemiTopNavMesh.position.set(0, 1367, 33);
+      kagemiTerminalGroup.add(kagemiTopNavMesh);
+
+      // =====================================================================
+      // 3C. PINNED FROSTED GLASS BOTTOM HELP BAR (Zero Lag)
+      // =====================================================================
+      kagemiBottomBarCanvas = document.createElement('canvas');
+      kagemiBottomBarCanvas.width = 2560;
+      kagemiBottomBarCanvas.height = 56;
+      kagemiBottomBarCtx = kagemiBottomBarCanvas.getContext('2d');
+      renderBottomBarCanvas(kagemiBottomBarCtx);
+
+      kagemiBottomBarTex = new THREE.CanvasTexture(kagemiBottomBarCanvas);
+      if ('colorSpace' in kagemiBottomBarTex) {
+        kagemiBottomBarTex.colorSpace = THREE.SRGBColorSpace;
+      } else if ('encoding' in kagemiBottomBarTex) {
+        kagemiBottomBarTex.encoding = THREE.sRGBEncoding;
+      }
+
+      const bottomMat = new THREE.MeshStandardMaterial({
+        map: kagemiBottomBarTex,
+        emissiveMap: kagemiBottomBarTex,
+        emissive: new THREE.Color(0xffffff),
+        emissiveIntensity: 0.92,
+        roughness: 0.2,
+        metalness: 0.05,
+        transparent: true,
+        side: THREE.FrontSide
+      });
+
+      kagemiBottomBarMesh = new THREE.Mesh(new THREE.PlaneGeometry(2240, 48), bottomMat);
+      // Pinned exactly at bottom of screen mesh: 780 - 1260/2 + 24 = 174
+      kagemiBottomBarMesh.position.set(0, 174, 33);
+      kagemiTerminalGroup.add(kagemiBottomBarMesh);
 
       // =====================================================================
       // 4. SOLID COLLISION RESOLUTION (Player cannot pass through the stone plate)
@@ -5364,24 +5726,31 @@ totalEmissiveRadiance*=rTm;`);
         });
       }
 
-      // Mouse Wheel Free Smooth Damped Scrolling when standing near the stone plate
+      // Mouse Wheel Free Smooth Damped Scrolling (Zero CPU Re-renders!)
       window.addEventListener('wheel', (e) => {
         if (!cam || isLandingMenuOpen || isPortalToastOpen || mode !== 'walk') return;
         const dToKiosk = cam.position.distanceTo(new THREE.Vector3(-31000, -5860, 4050));
         if (dToKiosk < 4200) {
-          kagemiTargetScrollY = Math.max(0, Math.min(kagemiMaxScroll, kagemiTargetScrollY + e.deltaY * 0.9));
+          kagemiTargetScrollY = Math.max(0, Math.min(kagemiMaxScroll, kagemiTargetScrollY + e.deltaY * 2.2));
         }
       }, { passive: true });
 
-      // Hover pointer cursor over screen
+      // Hover pointer cursor over screen (Throttled, Zero GC lag)
+      let lastKioskRayTime = 0;
+      const kioskRaycaster = new THREE.Raycaster();
+      const kioskMouse = new THREE.Vector2();
+
       window.addEventListener('mousemove', (e) => {
+        const now = performance.now();
+        if (now - lastKioskRayTime < 35) return;
+        lastKioskRayTime = now;
+
         if (!cam || isLandingMenuOpen || isPortalToastOpen || mode !== 'walk' || !kagemiScreenMesh) return;
         const dToKiosk = cam.position.distanceTo(new THREE.Vector3(-31000, -5860, 4050));
         if (dToKiosk < 3800) {
-          const ray = new THREE.Raycaster();
-          const mouse = new THREE.Vector2((e.clientX / window.innerWidth) * 2 - 1, -(e.clientY / window.innerHeight) * 2 + 1);
-          ray.setFromCamera(mouse, cam);
-          const hits = ray.intersectObject(kagemiScreenMesh);
+          kioskMouse.set((e.clientX / window.innerWidth) * 2 - 1, -(e.clientY / window.innerHeight) * 2 + 1);
+          kioskRaycaster.setFromCamera(kioskMouse, cam);
+          const hits = kioskRaycaster.intersectObjects([kagemiScreenMesh, kagemiTopNavMesh]);
           if (hits.length > 0) {
             document.body.style.cursor = 'pointer';
             return;
@@ -5397,10 +5766,10 @@ totalEmissiveRadiance*=rTm;`);
         if (!cam || isLandingMenuOpen || isPortalToastOpen || mode !== 'walk') return;
         const dToKiosk = cam.position.distanceTo(new THREE.Vector3(-31000, -5860, 4050));
         if (dToKiosk < 4200) {
-          const ray = new THREE.Raycaster();
-          const mouse = new THREE.Vector2((e.clientX / window.innerWidth) * 2 - 1, -(e.clientY / window.innerHeight) * 2 + 1);
-          ray.setFromCamera(mouse, cam);
-          const hits = ray.intersectObject(kagemiScreenMesh);
+          const clickRay = new THREE.Raycaster();
+          const clickMouse = new THREE.Vector2((e.clientX / window.innerWidth) * 2 - 1, -(e.clientY / window.innerHeight) * 2 + 1);
+          clickRay.setFromCamera(clickMouse, cam);
+          const hits = clickRay.intersectObjects([kagemiScreenMesh, kagemiTopNavMesh]);
           if (hits.length > 0) {
             openKagemiMenu();
           }
