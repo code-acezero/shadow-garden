@@ -20,7 +20,7 @@ const MIME_TYPES = {
 
 const server = http.createServer((req, res) => {
   let reqPath = decodeURIComponent(req.url.split('?')[0]);
-  if (reqPath === '/') reqPath = '/experiments/floating-island.html';
+  if (reqPath === '/') reqPath = '/experiments/kagemi-island.html';
   
   const filePath = path.join(PUBLIC_DIR, reqPath);
   
@@ -38,6 +38,6 @@ const server = http.createServer((req, res) => {
 });
 
 server.listen(PORT, '127.0.0.1', () => {
-  console.log(`Experiment server live at http://localhost:${PORT}/experiments/floating-island.html`);
+  console.log(`Experiment server live at http://localhost:${PORT}/experiments/kagemi-island.html`);
 });
 

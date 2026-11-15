@@ -42,7 +42,7 @@ export default function PortalExperimentClient() {
   // Reload the 3D scene
   const reloadScene = useCallback(() => {
     if (iframeRef.current) {
-      iframeRef.current.src = '/experiments/floating-island.html';
+      iframeRef.current.src = '/experiments/kagemi-island.html';
     }
   }, []);
 
@@ -71,8 +71,8 @@ export default function PortalExperimentClient() {
       {/* 3D Scene Iframe */}
       <iframe
         ref={iframeRef}
-        src="/experiments/floating-island.html"
-        title="Floating Island – Shrine Gate to Mana Portal"
+        src="/experiments/kagemi-island.html"
+        title="Kagemi Island – Shrine Gate to Mana Portal"
         className="absolute inset-0 w-full h-full border-0 z-0"
         allow="pointer-lock; fullscreen; autoplay; xr-spatial-tracking"
         onLoad={handleIframeLoad}
@@ -115,7 +115,7 @@ export default function PortalExperimentClient() {
 
           {/* Open Standalone in New Tab */}
           <a
-            href="/experiments/floating-island.html"
+            href="/experiments/kagemi-island.html"
             target="_blank"
             rel="noopener noreferrer"
             className="p-1.5 rounded-full text-zinc-300 hover:text-white hover:bg-white/10 transition-colors"
