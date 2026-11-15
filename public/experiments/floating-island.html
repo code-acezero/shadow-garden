@@ -2161,7 +2161,7 @@
     });
     addEventListener('keyup', e => keys.delete(e.key.toLowerCase()));
     addEventListener('pointerdown', e => {
-      if (e.target && (e.target.closest('#ui') || e.target.closest('button'))) return;
+      if (isPortalToastOpen || isLandingMenuOpen || (e.target && (e.target.closest('#ui') || e.target.closest('button') || e.target.closest('#genshin-portal-msg-modal') || e.target.closest('#kagemi-landing-modal')))) return;
       if (mode === 'walk') {
         isMouseDown = true;
         lastMouseX = e.clientX;
@@ -5205,19 +5205,38 @@ totalEmissiveRadiance*=rTm;`);
     }
 
     function openPortalToast() {
+      if (portalToastDismissedInZone || !!window.__portalMsgDismissed) return;
+      try {
+        if (sessionStorage.getItem('kagemi_portal_msg_read') === '1' || localStorage.getItem('kagemi_portal_msg_read') === '1') {
+          portalToastDismissedInZone = true;
+          return;
+        }
+      } catch (e) {}
       if (isPortalToastOpen || mode === 'tunnel') return;
       isPortalToastOpen = true;
       const modal = document.getElementById('genshin-portal-msg-modal');
-      if (modal) modal.classList.add('active');
+      if (modal) {
+        modal.style.display = 'block';
+        modal.classList.add('active');
+      }
       playGenshinChime(true);
       if (document.exitPointerLock) document.exitPointerLock();
     }
 
-    function closePortalToast() {
-      if (!isPortalToastOpen) return;
+    function closePortalToast(stepBack = false) {
       isPortalToastOpen = false;
+      portalToastDismissedInZone = true;
+      window.__portalMsgDismissed = true;
+      try {
+        sessionStorage.setItem('kagemi_portal_msg_read', '1');
+        localStorage.setItem('kagemi_portal_msg_read', '1');
+      } catch (e) {}
+
       const modal = document.getElementById('genshin-portal-msg-modal');
-      if (modal) modal.classList.remove('active');
+      if (modal) {
+        modal.classList.remove('active');
+        modal.style.display = 'none';
+      }
       if (stepBack && PW) {
         // Step player back slightly along stairs corridor so popup doesn't immediately re-trigger
         P0.x = Math.min(P0.x, PW.c.x - 480);
@@ -5377,10 +5396,15 @@ totalEmissiveRadiance*=rTm;`);
 
       // 3. Check Portal Front Trigger (Standing in front of the stairs; won't show again once clicked OK)
       if (PW && mode === 'walk' && !isLandingMenuOpen) {
-        let isAlreadyRead = false;
-        try { isAlreadyRead = (sessionStorage.getItem('kagemi_portal_msg_read') === '1'); } catch(e) {}
+        let isAlreadyRead = portalToastDismissedInZone || !!window.__portalMsgDismissed;
+        try {
+          if (sessionStorage.getItem('kagemi_portal_msg_read') === '1' || localStorage.getItem('kagemi_portal_msg_read') === '1') {
+            isAlreadyRead = true;
+            portalToastDismissedInZone = true;
+          }
+        } catch(e) {}
 
-        if (!isAlreadyRead && !portalToastDismissedInZone) {
+        if (!isAlreadyRead) {
           const toP = PW.c.clone().sub(cam.position);
           const dAlong = toP.dot(D);
           const isFront = (toP.x > 0);
@@ -5404,12 +5428,38 @@ totalEmissiveRadiance*=rTm;`);
       if (menuClose) menuClose.onclick = () => closeKagemiMenu();
 
       const portalOk = document.getElementById('g-portal-toast-ok-btn');
-      if (portalOk) portalOk.onclick = () => closePortalToast();
+      if (portalOk) {
+        const handleOk = (e) => {
+          if (e) {
+            e.preventDefault();
+            e.stopPropagation();
+            if (e.stopImmediatePropagation) e.stopImmediatePropagation();
+          }
+          closePortalToast();
+        };
+        portalOk.onclick = handleOk;
+        portalOk.onpointerdown = (e) => { if (e) e.stopPropagation(); };
+        portalOk.ontouchstart = handleOk;
+      }
+
+      const portalModal = document.getElementById('genshin-portal-msg-modal');
+      if (portalModal) {
+        portalModal.addEventListener('click', (e) => {
+          if (e.target === portalModal || e.target.id === 'g-portal-toast-ok-btn' || (e.target.closest && e.target.closest('#g-portal-toast-ok-btn'))) {
+            closePortalToast();
+          }
+        });
+      }
 
       window.addEventListener('keydown', (e) => {
-        if (e.key === 'Escape') {
-          if (isLandingMenuOpen) closeKagemiMenu();
-          if (isPortalToastOpen) closePortalToast();
+        if (e.key === 'Escape' || ((e.key === 'Enter' || e.key === ' ') && isPortalToastOpen)) {
+          if (isPortalToastOpen) {
+            e.preventDefault();
+            e.stopPropagation();
+            closePortalToast();
+          } else if (isLandingMenuOpen) {
+            closeKagemiMenu();
+          }
         } else if (e.key === 'f' || e.key === 'F') {
           if (isNearTerminal && !isLandingMenuOpen && !isPortalToastOpen) {
             e.preventDefault();
