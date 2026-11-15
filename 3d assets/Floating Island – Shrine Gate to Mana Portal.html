@@ -810,7 +810,7 @@
       line-height: 1;
     }
     .g-poi-category::before {
-      content: "✦";
+      content: "◆";
       font-size: 6.5px;
       color: #e5c47e;
     }
@@ -834,62 +834,6 @@
   
   
     
-    /* Authentic Genshin Impact Action Prompt (Positioned in LEFT TOP CORNER) */
-    #genshin-interact-prompt {
-      position: fixed;
-      left: 24px;
-      top: 24px;
-      display: none;
-      align-items: center;
-      gap: 10px;
-      background: linear-gradient(90deg, rgba(14, 18, 32, 0.94) 0%, rgba(8, 11, 20, 0.90) 100%);
-      border: 1px solid rgba(229, 196, 126, 0.5);
-      border-radius: 999px;
-      padding: 6px 16px 6px 8px;
-      box-shadow: 0 4px 18px rgba(0, 0, 0, 0.8), 0 0 12px rgba(229, 196, 126, 0.2);
-      backdrop-filter: blur(12px);
-      -webkit-backdrop-filter: blur(12px);
-      z-index: 9999;
-      pointer-events: auto;
-      cursor: pointer;
-      user-select: none;
-      transition: all 0.2s ease;
-    }
-    #genshin-interact-prompt:hover {
-      border-color: rgba(229, 196, 126, 0.9);
-      box-shadow: 0 4px 22px rgba(0, 0, 0, 0.9), 0 0 16px rgba(229, 196, 126, 0.35);
-      transform: scale(1.03);
-    }
-    .g-prompt-key {
-      width: 26px;
-      height: 26px;
-      border-radius: 50%;
-      background: #e5c47e;
-      color: #0b0e1b;
-      font-weight: 900;
-      font-size: 12px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      box-shadow: 0 2px 6px rgba(0, 0, 0, 0.5);
-    }
-    .g-prompt-info {
-      display: flex;
-      flex-direction: column;
-    }
-    .g-prompt-title {
-      font-size: 11.5px;
-      font-weight: 700;
-      color: #ffffff;
-      letter-spacing: 0.02em;
-    }
-    .g-prompt-sub {
-      font-size: 9px;
-      color: #e5c47e;
-      font-weight: 600;
-      letter-spacing: 0.03em;
-    }
-
     /* Original Kagemi Landing Component Live Portal Modal */
     #kagemi-landing-modal {
       position: fixed;
@@ -1254,18 +1198,7 @@
     <div id="g-poi-markers-list"></div>
   </div>
 
-  <!-- Genshin [F] Interaction Prompt -->
-  <div id="genshin-interact-prompt" style="display:none;" onclick="openKagemiMenu()">
-    <div class="g-prompt-key">F</div>
-    <div class="g-prompt-info">
-      <span class="g-prompt-title">Kagemi Realm Directory</span>
-      <span class="g-prompt-sub">Press [F] or Tap to Open</span>
-    </div>
-  </div>
-
-  
-    <!-- Original Kagemi Landing Component Live Portal Modal -->
-    <!-- Original Kagemi Landing Component Live Portal Modal -->
+  <!-- Original Kagemi Landing Component Live Portal Modal -->
   <div id="kagemi-landing-modal" role="dialog" aria-modal="true" style="display:none;">
     <div class="kagemi-modal-container">
       <div class="kagemi-modal-header">
@@ -2024,6 +1957,10 @@
       d = Math.min(d, 0.0333);
       ts += d; perfTick(d); if (mixer) mixer.update(d); for (const f of fxs) f(d); for (const f of fxB) f(d);
       if (typeof updateGenshinHUD === "function") updateGenshinHUD(d);
+      if (typeof kagemiTargetScrollY !== 'undefined' && typeof kagemiScrollY !== 'undefined' && Math.abs(kagemiTargetScrollY - kagemiScrollY) > 0.4) {
+        kagemiScrollY += (kagemiTargetScrollY - kagemiScrollY) * 0.16;
+        if (typeof renderKagemiScreen === "function") renderKagemiScreen(kagemiScrollY);
+      }
       if (mode === 'seq') seqI(); else if (mode === 'walk') walk(d); else if (mode === 'fpv') fpv(d); else if (mode === 'orbit') ctl.update(); else if (mode === 'tunnel') tunnelTick(d);
 
       if (PW && mode === 'walk') {
@@ -4557,7 +4494,7 @@ totalEmissiveRadiance*=rTm;`);
 
             // Build In-World 3D Kagemi Terminal (Monolithic Stone Plate Stele: 2800x1850, Crystal-Clear 4K UHD, Solid Stone Backing, Zero Hollow Gap)
     let kagemiScreenMesh = null, kagemiScreenCanvas = null, kagemiScreenCtx = null, kagemiScreenTex = null, kagemiScreenFrame = null;
-    let kagemiScrollY = 0;
+    let kagemiScrollY = 0, kagemiTargetScrollY = 0;
     const kagemiMaxScroll = 2600;
 
     function renderKagemiScreen(scrollY = 0) {
@@ -4975,10 +4912,10 @@ totalEmissiveRadiance*=rTm;`);
       if (kagemiTerminalGroup) return;
       kagemiTerminalGroup = new THREE.Group();
       
-      // Placed firmly in from the edge on lush ground: x = -29900, y = -5905, z = 3550
-      kagemiTerminalGroup.position.set(-29900, -5905, 3550);
-      // Face towards waterfall pond, angled 10 degrees toward player starting spawn
-      kagemiTerminalGroup.rotation.y = 3.1707;
+      // Placed firmly in from the edge on dry turf: x = -31000, y = -5860, z = 4050
+      // Safely >80 units away from water (z <= 3714) and >250 units away from cliffs
+      kagemiTerminalGroup.position.set(-31000, -5860, 4050);
+      kagemiTerminalGroup.rotation.y = 3.12;
 
       // =====================================================================
       // 1. ANCIENT CARVED TEMPLE STONE FOUNDATION PLINTH (Firmly anchored on turf)
@@ -4996,27 +4933,27 @@ totalEmissiveRadiance*=rTm;`);
       });
 
       // Stepped tier 1 base slab resting directly on the grass (all 4 corners 100% on ground)
-      const base1 = new THREE.Mesh(new THREE.BoxGeometry(3200, 60, 900), stoneMat);
-      base1.position.y = 30;
+      const base1 = new THREE.Mesh(new THREE.BoxGeometry(2550, 45, 480), stoneMat);
+      base1.position.y = 22;
       kagemiTerminalGroup.add(base1);
 
       // Stepped tier 2 slab
-      const base2 = new THREE.Mesh(new THREE.BoxGeometry(3000, 50, 780), stoneMat);
-      base2.position.y = 80;
+      const base2 = new THREE.Mesh(new THREE.BoxGeometry(2450, 40, 420), stoneMat);
+      base2.position.y = 60;
       kagemiTerminalGroup.add(base2);
 
       // Stepped tier 3 slab / altar pedestal bench
-      const base3 = new THREE.Mesh(new THREE.BoxGeometry(2880, 50, 680), stoneTrimMat);
-      base3.position.y = 125;
+      const base3 = new THREE.Mesh(new THREE.BoxGeometry(2360, 35, 370), stoneTrimMat);
+      base3.position.y = 95;
       kagemiTerminalGroup.add(base3);
 
       // Bottom stone sill plinth resting on the stand
-      const bottomSill = new THREE.Mesh(new THREE.BoxGeometry(2880, 50, 80), stoneTrimMat);
-      bottomSill.position.set(0, 165, 6);
+      const bottomSill = new THREE.Mesh(new THREE.BoxGeometry(2360, 40, 70), stoneTrimMat);
+      bottomSill.position.set(0, 130, 6);
       kagemiTerminalGroup.add(bottomSill);
 
       // =====================================================================
-      // 2. MONOLITHIC CARVED DARK STONE PLATE (Solid Monolith Stele: 2900 x 1950 x 70 - ZERO Hollow Gap)
+      // 2. MONOLITHIC CARVED DARK STONE ARCHITECTURE WITH OPEN HOLLOW TRANSOM
       // =====================================================================
       const stonePlateMat = new THREE.MeshStandardMaterial({
         color: 0x121520,
@@ -5024,31 +4961,32 @@ totalEmissiveRadiance*=rTm;`);
         metalness: 0.08
       });
 
-      // Solid monolithic back slab completely covering height from plinth to crown
-      kagemiScreenFrame = new THREE.Mesh(new THREE.BoxGeometry(2900, 1950, 70), stonePlateMat);
-      kagemiScreenFrame.position.set(0, 1125, 0);
+      // Solid stone backing plate behind the screen (y = 780, height = 1280, top = 1420)
+      kagemiScreenFrame = new THREE.Mesh(new THREE.BoxGeometry(2280, 1280, 50), stonePlateMat);
+      kagemiScreenFrame.position.set(0, 780, 0);
       kagemiTerminalGroup.add(kagemiScreenFrame);
 
-      // Carved stone side architectural pillars framing the tablet tightly
-      const pillarL = new THREE.Mesh(new THREE.BoxGeometry(70, 1960, 80), stoneTrimMat);
-      pillarL.position.set(-1435, 1125, 6);
+      // Carved stone side architectural pillars framing the tablet and supporting crown
+      // Height 1500: extends from bottom plinth (y = 130) up to top crown (y = 1630)
+      const pillarL = new THREE.Mesh(new THREE.BoxGeometry(50, 1500, 65), stoneTrimMat);
+      pillarL.position.set(-1145, 880, 6);
       kagemiTerminalGroup.add(pillarL);
 
-      const pillarR = new THREE.Mesh(new THREE.BoxGeometry(70, 1960, 80), stoneTrimMat);
-      pillarR.position.set(1435, 1125, 6);
+      const pillarR = new THREE.Mesh(new THREE.BoxGeometry(50, 1500, 65), stoneTrimMat);
+      pillarR.position.set(1145, 880, 6);
       kagemiTerminalGroup.add(pillarR);
 
-      // Carved stone top pediment crown (Directly flush atop the stone slab and pillars, no hollow space!)
-      const topCrown = new THREE.Mesh(new THREE.BoxGeometry(2960, 70, 90), stoneTrimMat);
-      topCrown.position.set(0, 2135, 6);
+      // Carved stone top pediment crown beam (leaving an elegant 180-unit hollow opening above screen)
+      const topCrown = new THREE.Mesh(new THREE.BoxGeometry(2380, 60, 80), stoneTrimMat);
+      topCrown.position.set(0, 1630, 6);
       kagemiTerminalGroup.add(topCrown);
 
       // =====================================================================
-      // 3. CRYSTAL-CLEAR 4K SCREEN INSCRIBED IN THE STONE MONOLITH (2800 x 1850)
+      // 3. CRYSTAL-CLEAR 4K SCREEN INSCRIBED IN THE STONE MONOLITH (2240 x 1260)
       // =====================================================================
       kagemiScreenCanvas = document.createElement('canvas');
-      kagemiScreenCanvas.width = 4096;
-      kagemiScreenCanvas.height = 2706;
+      kagemiScreenCanvas.width = 3840;
+      kagemiScreenCanvas.height = 2160;
       kagemiScreenCtx = kagemiScreenCanvas.getContext('2d');
 
       kagemiScreenTex = new THREE.CanvasTexture(kagemiScreenCanvas);
@@ -5073,27 +5011,64 @@ totalEmissiveRadiance*=rTm;`);
         side: THREE.FrontSide
       });
 
-      kagemiScreenMesh = new THREE.Mesh(new THREE.PlaneGeometry(2800, 1850), screenMat);
-      kagemiScreenMesh.position.set(0, 1125, 36);
+      kagemiScreenMesh = new THREE.Mesh(new THREE.PlaneGeometry(2240, 1260), screenMat);
+      kagemiScreenMesh.position.set(0, 780, 32);
       kagemiTerminalGroup.add(kagemiScreenMesh);
 
       renderKagemiScreen(0);
 
-      // Mouse Wheel Free Scrolling when standing near the stone plate
+      // =====================================================================
+      // 4. SOLID COLLISION RESOLUTION (Player cannot pass through the stone plate)
+      // =====================================================================
+      const cx = -31000, cz = 4050, rotY = 3.12;
+      for (let i = -2; i <= 2; i++) {
+        const lx = i * 480;
+        const wx = cx + lx * Math.cos(rotY);
+        const wz = cz - lx * Math.sin(rotY);
+        worldObstacles.push({
+          type: 'cylinder',
+          x: wx,
+          z: wz,
+          r: 260,
+          minY: -6000,
+          maxY: -4000,
+          name: 'Kagemi Monolith Pillar Col'
+        });
+      }
+
+      // Mouse Wheel Free Smooth Damped Scrolling when standing near the stone plate
       window.addEventListener('wheel', (e) => {
         if (!cam || isLandingMenuOpen || isPortalToastOpen || mode !== 'walk') return;
-        const dToKiosk = cam.position.distanceTo(new THREE.Vector3(-29900, -5905, 3550));
-        if (dToKiosk < 4500) {
-          kagemiScrollY = Math.max(0, Math.min(kagemiMaxScroll, kagemiScrollY + e.deltaY * 1.5));
-          renderKagemiScreen(kagemiScrollY);
+        const dToKiosk = cam.position.distanceTo(new THREE.Vector3(-31000, -5860, 4050));
+        if (dToKiosk < 4200) {
+          kagemiTargetScrollY = Math.max(0, Math.min(kagemiMaxScroll, kagemiTargetScrollY + e.deltaY * 0.9));
         }
       }, { passive: true });
+
+      // Hover pointer cursor over screen
+      window.addEventListener('mousemove', (e) => {
+        if (!cam || isLandingMenuOpen || isPortalToastOpen || mode !== 'walk' || !kagemiScreenMesh) return;
+        const dToKiosk = cam.position.distanceTo(new THREE.Vector3(-31000, -5860, 4050));
+        if (dToKiosk < 3800) {
+          const ray = new THREE.Raycaster();
+          const mouse = new THREE.Vector2((e.clientX / window.innerWidth) * 2 - 1, -(e.clientY / window.innerHeight) * 2 + 1);
+          ray.setFromCamera(mouse, cam);
+          const hits = ray.intersectObject(kagemiScreenMesh);
+          if (hits.length > 0) {
+            document.body.style.cursor = 'pointer';
+            return;
+          }
+        }
+        if (document.body.style.cursor === 'pointer' && !isLandingMenuOpen) {
+          document.body.style.cursor = 'default';
+        }
+      });
 
       // Click to open fullscreen interactive original Kagemi modal
       window.addEventListener('click', (e) => {
         if (!cam || isLandingMenuOpen || isPortalToastOpen || mode !== 'walk') return;
-        const dToKiosk = cam.position.distanceTo(new THREE.Vector3(-29900, -5905, 3550));
-        if (dToKiosk < 4500) {
+        const dToKiosk = cam.position.distanceTo(new THREE.Vector3(-31000, -5860, 4050));
+        if (dToKiosk < 4200) {
           const ray = new THREE.Raycaster();
           const mouse = new THREE.Vector2((e.clientX / window.innerWidth) * 2 - 1, -(e.clientY / window.innerHeight) * 2 + 1);
           ray.setFromCamera(mouse, cam);
@@ -5109,162 +5084,92 @@ totalEmissiveRadiance*=rTm;`);
 
     
     
-    // 8 Landmarks with dynamic view-based gaze tracking
-    // As player looks at the object, the marker smoothly glides according to gaze
+    // Genshin Impact In-World Landmark POI Registry
+    // Accurate, fixed 3D coordinates with authentic Genshin-styled names and categories
     const GENSHIN_LANDMARKS = [
       {
-        id: 'spring',
-        name: 'Sacred Spring',
-        category: 'SPRING',
-        getTargetPos: (cam) => {
-          const center = V(-28909, -5960, 985);
-          const fwd = cam.getWorldDirection(V(0, 0, 0));
-          const t = center.clone().sub(cam.position).dot(fwd);
-          const pt = cam.position.clone().addScaledVector(fwd, Math.max(80, t));
-          pt.x = Math.max(-28909 - 700, Math.min(-28909 + 700, pt.x));
-          pt.y = -5960;
-          pt.z = Math.max(985 - 700, Math.min(985 + 700, pt.z));
-          return pt;
-        }
-      },
-      {
-        id: 'waterfall',
-        name: 'Mana Waterfall',
-        category: 'WATERFALL',
-        getTargetPos: (cam) => {
-          const top = V(-29211, -5908, -1088);
-          const fwd = cam.getWorldDirection(V(0, 0, 0));
-          const t = top.clone().sub(cam.position).dot(fwd);
-          const pt = cam.position.clone().addScaledVector(fwd, Math.max(100, t));
-          pt.x = -29211;
-          pt.z = -1088;
-          pt.y = Math.max(-8100, Math.min(-5880, pt.y));
-          return pt;
-        }
-      },
-      {
-        id: 'small_bridge',
-        name: 'Small Bridge',
-        category: 'CROSSING',
-        getTargetPos: (cam) => {
-          const pGap = V(-13800, -250, 1050);
-          const pMain = V(-19300, -2500, 1370);
-          const pLow = V(-25500, -5800, 1500);
-          const target = cam.position.distanceTo(pLow) < 5500 ? pLow : (cam.position.distanceTo(pGap) < 5500 ? pGap : pMain);
-          const fwd = cam.getWorldDirection(V(0, 0, 0));
-          const t = target.clone().sub(cam.position).dot(fwd);
-          const pt = cam.position.clone().addScaledVector(fwd, Math.max(100, t));
-          pt.x = Math.max(target.x - 1400, Math.min(target.x + 1400, pt.x));
-          pt.y = target.y + 80;
-          pt.z = Math.max(target.z - 350, Math.min(target.z + 350, pt.z));
-          return pt;
-        }
-      },
-      {
         id: 'flowers',
-        name: 'Luminescent Flowers',
-        category: 'FLORA',
-        getTargetPos: (cam) => {
-          const fwd = cam.getWorldDirection(V(0, 0, 0));
-          const lookGround = cam.position.clone().addScaledVector(fwd, 420);
-          if (typeof groundAt === 'function') {
-            const gy = groundAt(lookGround.x, lookGround.z, lookGround.y + 300);
-            if (gy !== null) lookGround.y = gy + 40;
-          }
-          return lookGround;
-        }
-      },
-      {
-        id: 'crystal_stones',
-        name: 'Crystal Stones',
-        category: 'RELIC',
-        getTargetPos: (cam) => {
-          const crystals = [
-            V(2800, 40, -438),
-            V(2754, 40, 1193),
-            V(-31600, -5880, 1500),
-            V(-29600, -5550, 2500)
-          ];
-          let best = crystals[0], bestDist = Infinity;
-          for (const c of crystals) {
-            const d = cam.position.distanceTo(c);
-            if (d < bestDist) { bestDist = d; best = c; }
-          }
-          return best.clone();
-        }
-      },
-      {
-        id: 'shrine_gate',
-        name: 'Torii Shrine Gate',
-        category: 'SHRINE',
-        getTargetPos: (cam) => {
-          const center = V(1397, 831, 381);
-          const fwd = cam.getWorldDirection(V(0, 0, 0));
-          const t = center.clone().sub(cam.position).dot(fwd);
-          const pt = cam.position.clone().addScaledVector(fwd, Math.max(100, t));
-          pt.x = Math.max(1397 - 280, Math.min(1397 + 280, pt.x));
-          pt.y = Math.max(500, Math.min(1350, pt.y));
-          pt.z = Math.max(381 - 420, Math.min(381 + 420, pt.z));
-          return pt;
-        }
-      },
-      {
-        id: 'small_shelters',
-        name: 'Small Shelters',
-        category: 'SHELTER',
-        getTargetPos: (cam) => {
-          const p1 = V(-8431, 350, 3296);
-          const p2 = V(-7, 520, -1501);
-          const target = cam.position.distanceTo(p1) < cam.position.distanceTo(p2) ? p1 : p2;
-          const fwd = cam.getWorldDirection(V(0, 0, 0));
-          const t = target.clone().sub(cam.position).dot(fwd);
-          const pt = cam.position.clone().addScaledVector(fwd, Math.max(100, t));
-          pt.x = Math.max(target.x - 300, Math.min(target.x + 300, pt.x));
-          pt.y = Math.max(target.y - 100, Math.min(target.y + 350, pt.y));
-          pt.z = Math.max(target.z - 300, Math.min(target.z + 300, pt.z));
-          return pt;
-        }
-      },
-      {
-        id: 'portal_trees',
-        name: 'Trees on the Portal',
-        category: 'GUARDIAN',
-        getTargetPos: (cam) => {
-          const leftTree = V(3250, 600, -350);
-          const rightTree = V(3350, 600, 1300);
-          const target = cam.position.distanceTo(leftTree) < cam.position.distanceTo(rightTree) ? leftTree : rightTree;
-          const fwd = cam.getWorldDirection(V(0, 0, 0));
-          const t = target.clone().sub(cam.position).dot(fwd);
-          const pt = cam.position.clone().addScaledVector(fwd, Math.max(100, t));
-          pt.x = Math.max(target.x - 350, Math.min(target.x + 350, pt.x));
-          pt.y = Math.max(350, Math.min(1200, pt.y));
-          pt.z = Math.max(target.z - 350, Math.min(target.z + 350, pt.z));
-          return pt;
-        }
-      },
-      {
-        id: 'sakura',
-        name: 'Sacred Sakura Tree',
-        category: 'FLORA',
-        getTargetPos: (cam) => {
-          const center = V(842, 1600, -3282);
-          const fwd = cam.getWorldDirection(V(0, 0, 0));
-          const t = center.clone().sub(cam.position).dot(fwd);
-          const pt = cam.position.clone().addScaledVector(fwd, Math.max(100, t));
-          pt.x = Math.max(842 - 900, Math.min(842 + 900, pt.x));
-          pt.y = Math.max(800, Math.min(2100, pt.y));
-          pt.z = Math.max(-3282 - 900, Math.min(-3282 + 900, pt.z));
-          return pt;
-        }
+        name: 'Luminous Glaze Lily',
+        category: 'REGIONAL SPECIALTY',
+        targetPos: V(-31250, -5840, 3350)
       },
       {
         id: 'atelier',
         name: 'Sanctuary Atelier',
-        category: 'ATELIER',
-        getTargetPos: (cam) => {
-          // Bottom stone stand plinth below the plate
-          return V(-29900, -5820, 3420);
-        }
+        category: 'DOMAIN OF STORIES',
+        targetPos: V(-31000, -5730, 4050)
+      },
+      {
+        id: 'stepping_stones',
+        name: 'Moonlit Stepping Stones',
+        category: 'SACRED PATHWAY',
+        targetPos: V(-31650, -5930, 1820)
+      },
+      {
+        id: 'spring',
+        name: 'Spring of Celestial Echoes',
+        category: 'SACRED WATERS',
+        targetPos: V(-28909, -5920, 985)
+      },
+      {
+        id: 'waterfall',
+        name: 'Veil of Azure Mist',
+        category: 'MANA CATARACT',
+        targetPos: V(-29211, -5880, -1088)
+      },
+      {
+        id: 'bridge_lamps_lower',
+        name: 'Twin Guiding Lanterns',
+        category: 'WAYPOINT BEACON',
+        targetPos: V(-27611, -5280, 1690)
+      },
+      {
+        id: 'bridge',
+        name: 'Bridge of Boundless Clouds',
+        category: 'CELESTIAL CROSSING',
+        targetPos: V(-21581, -2650, 1369)
+      },
+      {
+        id: 'bridge_lamps_upper',
+        name: 'Brazier Pillars of the Crossing',
+        category: 'SACRED BEACON',
+        targetPos: V(-14528, -200, 1118)
+      },
+      {
+        id: 'ancient_maple',
+        name: 'Ancient Whispering Maple',
+        category: 'SACRED FLORA',
+        targetPos: V(-10393, 250, -3166)
+      },
+      {
+        id: 'sanctuary_altar',
+        name: 'Altar of Silent Oaths',
+        category: 'SANCTUARY',
+        targetPos: V(-8389, -240, 3255)
+      },
+      {
+        id: 'treasure_chest',
+        name: 'Gilded Relic Casket',
+        category: 'TREASURE',
+        targetPos: V(-10866, -420, -2491)
+      },
+      {
+        id: 'torii_gate',
+        name: 'Torii of Ascendance',
+        category: 'SACRED ARCHWAY',
+        targetPos: V(1397, 850, 381)
+      },
+      {
+        id: 'portal_trees',
+        name: 'Twin Guardian Willows',
+        category: 'CELESTIAL FLORA',
+        targetPos: V(3292, 550, 452)
+      },
+      {
+        id: 'mana_portal',
+        name: 'Astral Gateway to Kagemi',
+        category: 'CELESTIAL REALM',
+        targetPos: V(3514, 752, 437)
       }
     ];
 
@@ -5361,18 +5266,15 @@ totalEmissiveRadiance*=rTm;`);
       }
 
       // Check distance and gaze to Kagemi Terminal on right edge of island
-      const terminalPos = new THREE.Vector3(-30000, -5820, 4300);
+      const terminalPos = new THREE.Vector3(-31000, -5860, 4050);
       const dToTerminal = cam.position.distanceTo(terminalPos);
       const toTerminal = terminalPos.clone().sub(cam.position).normalize();
       const isFacingTerminal = toTerminal.dot(_camFwd) > 0.3;
-      const promptEl = document.getElementById('genshin-interact-prompt');
 
-      if (dToTerminal < 1200 && isFacingTerminal && mode === 'walk' && !isLandingMenuOpen && !isPortalToastOpen) {
+      if (dToTerminal < 1400 && isFacingTerminal && mode === 'walk' && !isLandingMenuOpen && !isPortalToastOpen) {
         isNearTerminal = true;
-        if (promptEl) promptEl.style.display = 'flex';
       } else {
         isNearTerminal = false;
-        if (promptEl) promptEl.style.display = 'none';
       }
 
       // Check distance to Mana Portal and update Quest Tracker
@@ -5430,18 +5332,18 @@ totalEmissiveRadiance*=rTm;`);
 
       // Solid ground placement for 3D screen in stone monolith stele
       if (kagemiScreenMesh && kagemiScreenFrame) {
-        kagemiScreenMesh.position.y = 1125;
-        kagemiScreenFrame.position.y = 1125;
+        kagemiScreenMesh.position.y = 780;
+        kagemiScreenFrame.position.y = 780;
       }
 
-      // 2. Project Landmark POI Markers: Only show when closer (<= 18m), only focused shows card
-      const MAX_POI_DIST = 50;
+      // 2. Project Landmark POI Markers: Only show when closer (<= 65m), only focused shows card
+      const MAX_POI_DIST = 65;
       let closestPoi = null;
       let minCenterDist = Math.min(w, h) * 0.28;
 
       GENSHIN_LANDMARKS.forEach(poi => {
         if (!poi.el) return;
-        const pPos = poi.getTargetPos(cam);
+        const pPos = poi.targetPos || (typeof poi.getTargetPos === 'function' ? poi.getTargetPos(cam) : V(0,0,0));
         _poiScr.copy(pPos).project(cam);
         const behind = _poiScr.z >= 1.0 || pPos.clone().sub(cam.position).dot(_camFwd) < 0.2;
         const distUnits = cam.position.distanceTo(pPos);
