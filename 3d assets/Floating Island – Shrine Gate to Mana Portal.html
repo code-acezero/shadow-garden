@@ -1163,20 +1163,390 @@
   
     <!-- Original Kagemi Landing Component Live Portal Modal -->
   <div id="kagemi-landing-modal" role="dialog" aria-modal="true" style="display:none;">
-    <div class="kagemi-portal-window">
-      <div class="kagemi-portal-topbar">
-        <div class="kagemi-portal-brand">
-          <span class="kagemi-portal-icon">❖</span>
-          <span class="kagemi-portal-title">KAGEMI SANCTUARY</span>
-          <span class="kagemi-portal-sub">LIVE PORTAL</span>
+    <div class="g-menu-frame">
+      <!-- HiAnime / Miruro Top Navbar -->
+      <div class="h-nav-bar">
+        <a href="/anime" target="_top" class="h-brand">
+          <div class="h-logo-icon">K</div>
+          <div class="h-brand-text">
+            <h2>KAGEMI</h2>
+            <span>Streaming Sanctuary • Ver 2.5</span>
+          </div>
+        </a>
+
+        <div class="h-search-wrapper">
+          <span class="h-search-icon">🔍</span>
+          <input type="text" class="h-search-input" placeholder="Search anime, movies, Asian dramas, genres..." />
         </div>
-        <div class="kagemi-portal-ctrls">
-          <a href="/" target="_blank" class="kagemi-portal-ext-btn" title="Open in New Tab">↗ Full Page</a>
-          <button id="g-menu-close-btn" class="kagemi-portal-close-btn" title="Close Menu (Esc)">✕ Exit (Esc)</button>
+
+        <div class="h-nav-links">
+          <a href="/anime" target="_top" class="h-nav-tab active">Anime</a>
+          <a href="/cinema" target="_top" class="h-nav-tab">Cinema & Dramas</a>
+          <a href="/community" target="_top" class="h-nav-tab">Community</a>
+          <a href="/manga" target="_top" class="h-nav-tab">Manga</a>
+          <a href="/profile" target="_top" class="h-nav-tab">Sanctum</a>
+        </div>
+
+        <button id="g-menu-close-btn" class="h-close-btn">✕ Return to Island (Esc)</button>
+      </div>
+
+      <!-- Spotlight Hero Banner (The Eminence in Shadow) -->
+      <div class="h-spotlight-hero">
+        <div class="h-hero-badge-row">
+          <span class="h-badge-spotlight">SPOTLIGHT #1</span>
+          <span class="h-pill-meta">TV SERIES</span>
+          <span class="h-pill-meta">SUB & HINDI DUB</span>
+          <span class="h-pill-meta">1080P ULTRA</span>
+          <span class="h-pill-score">★ 8.9</span>
+        </div>
+        <h1 class="h-hero-title">The Eminence in Shadow: Sanctuary of Shadows</h1>
+        <p class="h-hero-desc">Cid Kagenou ascends through the dimensional mana gateway into the hidden sanctuary of Shadow Garden. Stream complete seasons, films, and specials in pristine lossless quality with dual audio, synced subtitles, and zero ads.</p>
+        <div class="h-hero-actions">
+          <a href="/anime" target="_top" class="h-btn-play">▶ Start Watching</a>
+          <a href="/profile" target="_top" class="h-btn-watchlist">+ Add to Watchlist</a>
+          <a href="/anime" target="_top" class="h-btn-watchlist">ℹ Details</a>
         </div>
       </div>
-      <div class="kagemi-portal-iframe-wrap">
-        <iframe id="kagemi-live-frame" data-src="/?embed=1" title="Kagemi Sanctuary Live" allow="autoplay; fullscreen"></iframe>
+
+      <!-- Section 1: Trending & Top Airing Anime (HiAnime / Miruro Card Grid) -->
+      <div>
+        <div class="h-shelf-head">
+          <div class="h-shelf-title">
+            <span>🔥</span>
+            <span>TRENDING & TOP AIRING ANIME</span>
+          </div>
+          <a href="/anime" target="_top" class="h-shelf-link">EXPLORE ALL ></a>
+        </div>
+        <div class="h-cards-grid" style="margin-top: 14px;">
+          <!-- Solo Leveling -->
+          <div class="h-anime-card">
+            <div class="h-card-poster">
+              <img src="/images/posters/solo-leveling.jpg" onerror="this.src='/logo.png'" alt="Solo Leveling" class="h-card-img" />
+              <span class="h-card-tag-top">TOP #1</span>
+              <span class="h-card-audio-top">SUB & DUB</span>
+            </div>
+            <div class="h-card-info">
+              <h3 class="h-card-name">Solo Leveling: Arise</h3>
+              <div class="h-meta-row">
+                <span class="h-pill-year">2024</span>
+                <span class="h-pill-star">★ 8.8</span>
+                <span class="h-pill-format">TV</span>
+              </div>
+              <div class="h-card-actions">
+                <a href="/anime" target="_top" class="h-play-pill">▶ PLAY</a>
+                <button class="h-plus-btn" title="Add to Watchlist">+</button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Frieren -->
+          <div class="h-anime-card">
+            <div class="h-card-poster">
+              <img src="/images/posters/frieren.jpg" onerror="this.src='/logo.png'" alt="Frieren" class="h-card-img" />
+              <span class="h-card-tag-top">TOP #2</span>
+              <span class="h-card-audio-top">SUB & DUB</span>
+            </div>
+            <div class="h-card-info">
+              <h3 class="h-card-name">Frieren: Beyond Journey's End</h3>
+              <div class="h-meta-row">
+                <span class="h-pill-year">2024</span>
+                <span class="h-pill-star">★ 9.1</span>
+                <span class="h-pill-format">TV</span>
+              </div>
+              <div class="h-card-actions">
+                <a href="/anime" target="_top" class="h-play-pill">▶ PLAY</a>
+                <button class="h-plus-btn" title="Add to Watchlist">+</button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Jujutsu Kaisen -->
+          <div class="h-anime-card">
+            <div class="h-card-poster">
+              <img src="/images/posters/jjk.jpg" onerror="this.src='/logo.png'" alt="Jujutsu Kaisen" class="h-card-img" />
+              <span class="h-card-tag-top">HOT</span>
+              <span class="h-card-audio-top">SUB & DUB</span>
+            </div>
+            <div class="h-card-info">
+              <h3 class="h-card-name">Jujutsu Kaisen: Shibuya Arc</h3>
+              <div class="h-meta-row">
+                <span class="h-pill-year">2023</span>
+                <span class="h-pill-star">★ 8.9</span>
+                <span class="h-pill-format">TV</span>
+              </div>
+              <div class="h-card-actions">
+                <a href="/anime" target="_top" class="h-play-pill">▶ PLAY</a>
+                <button class="h-plus-btn" title="Add to Watchlist">+</button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Demon Slayer -->
+          <div class="h-anime-card">
+            <div class="h-card-poster">
+              <img src="/images/posters/demon-slayer.jpg" onerror="this.src='/logo.png'" alt="Demon Slayer" class="h-card-img" />
+              <span class="h-card-tag-top">POPULAR</span>
+              <span class="h-card-audio-top">SUB & DUB</span>
+            </div>
+            <div class="h-card-info">
+              <h3 class="h-card-name">Demon Slayer: Hashira Training</h3>
+              <div class="h-meta-row">
+                <span class="h-pill-year">2024</span>
+                <span class="h-pill-star">★ 8.6</span>
+                <span class="h-pill-format">TV</span>
+              </div>
+              <div class="h-card-actions">
+                <a href="/anime" target="_top" class="h-play-pill">▶ PLAY</a>
+                <button class="h-plus-btn" title="Add to Watchlist">+</button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Chainsaw Man -->
+          <div class="h-anime-card">
+            <div class="h-card-poster">
+              <img src="/images/posters/chainsaw-man.jpg" onerror="this.src='/logo.png'" alt="Chainsaw Man" class="h-card-img" />
+              <span class="h-card-tag-top">UPCOMING</span>
+              <span class="h-card-audio-top">SUB & DUB</span>
+            </div>
+            <div class="h-card-info">
+              <h3 class="h-card-name">Chainsaw Man: The Movie</h3>
+              <div class="h-meta-row">
+                <span class="h-pill-year">2025</span>
+                <span class="h-pill-star">★ 8.7</span>
+                <span class="h-pill-format">MOVIE</span>
+              </div>
+              <div class="h-card-actions">
+                <a href="/anime" target="_top" class="h-play-pill">▶ PLAY</a>
+                <button class="h-plus-btn" title="Add to Watchlist">+</button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Bleach -->
+          <div class="h-anime-card">
+            <div class="h-card-poster">
+              <img src="/images/posters/bleach.jpg" onerror="this.src='/logo.png'" alt="Bleach" class="h-card-img" />
+              <span class="h-card-tag-top">EPIC</span>
+              <span class="h-card-audio-top">SUB & DUB</span>
+            </div>
+            <div class="h-card-info">
+              <h3 class="h-card-name">Bleach: Thousand-Year Blood War</h3>
+              <div class="h-meta-row">
+                <span class="h-pill-year">2024</span>
+                <span class="h-pill-star">★ 9.0</span>
+                <span class="h-pill-format">TV</span>
+              </div>
+              <div class="h-card-actions">
+                <a href="/anime" target="_top" class="h-play-pill">▶ PLAY</a>
+                <button class="h-plus-btn" title="Add to Watchlist">+</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Section 2: Asian Dramas & Cinema Spotlight (Exact card format from user reference) -->
+      <div>
+        <div class="h-shelf-head">
+          <div class="h-shelf-title">
+            <span>🎬</span>
+            <span>HINDI DUBBED SPOTLIGHT & ASIAN SERIES</span>
+          </div>
+          <a href="/cinema" target="_top" class="h-shelf-link">EXPLORE MORE ></a>
+        </div>
+        <div class="h-cards-grid" style="margin-top: 14px;">
+          <!-- The Mongoose (Exact match from user attachment) -->
+          <div class="h-anime-card">
+            <div class="h-card-poster">
+              <img src="/images/posters/the-mongoose.jpg" onerror="this.src='/logo.png'" alt="The Mongoose" class="h-card-img" />
+              <span class="h-card-tag-top">CINEMA</span>
+              <span class="h-card-audio-top">HINDI</span>
+            </div>
+            <div class="h-card-info">
+              <h3 class="h-card-name">The Mongoose</h3>
+              <div class="h-meta-row">
+                <span class="h-pill-year">2026</span>
+                <span class="h-pill-star">★ 6.1</span>
+                <span class="h-pill-format">MOVIE</span>
+              </div>
+              <div class="h-card-actions">
+                <a href="/cinema" target="_top" class="h-play-pill">▶ PLAY</a>
+                <button class="h-plus-btn" title="Add to Watchlist">+</button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Perfect Crown -->
+          <div class="h-anime-card">
+            <div class="h-card-poster">
+              <img src="/images/posters/perfect-crown.jpg" onerror="this.src='/logo.png'" alt="Perfect Crown" class="h-card-img" />
+              <span class="h-card-tag-top">K-DRAMA</span>
+              <span class="h-card-audio-top">HINDI</span>
+            </div>
+            <div class="h-card-info">
+              <h3 class="h-card-name">Perfect Crown</h3>
+              <div class="h-meta-row">
+                <span class="h-pill-year">2024</span>
+                <span class="h-pill-star">★ 8.7</span>
+                <span class="h-pill-format">SERIES</span>
+              </div>
+              <div class="h-card-actions">
+                <a href="/cinema" target="_top" class="h-play-pill">▶ PLAY</a>
+                <button class="h-plus-btn" title="Add to Watchlist">+</button>
+              </div>
+            </div>
+          </div>
+
+          <!-- See You at Work Tomorrow! -->
+          <div class="h-anime-card">
+            <div class="h-card-poster">
+              <img src="/images/posters/see-you-at-work.jpg" onerror="this.src='/logo.png'" alt="See You at Work Tomorrow!" class="h-card-img" />
+              <span class="h-card-tag-top">C-DRAMA</span>
+              <span class="h-card-audio-top">HINDI</span>
+            </div>
+            <div class="h-card-info">
+              <h3 class="h-card-name">See You at Work Tomorrow!</h3>
+              <div class="h-meta-row">
+                <span class="h-pill-year">2024</span>
+                <span class="h-pill-star">★ 8.5</span>
+                <span class="h-pill-format">SERIES</span>
+              </div>
+              <div class="h-card-actions">
+                <a href="/cinema" target="_top" class="h-play-pill">▶ PLAY</a>
+                <button class="h-plus-btn" title="Add to Watchlist">+</button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Twinkling Watermelon -->
+          <div class="h-anime-card">
+            <div class="h-card-poster">
+              <img src="/images/posters/twinkling-watermelon.jpg" onerror="this.src='/logo.png'" alt="Twinkling Watermelon" class="h-card-img" />
+              <span class="h-card-tag-top">K-DRAMA</span>
+              <span class="h-card-audio-top">HINDI</span>
+            </div>
+            <div class="h-card-info">
+              <h3 class="h-card-name">Twinkling Watermelon</h3>
+              <div class="h-meta-row">
+                <span class="h-pill-year">2023</span>
+                <span class="h-pill-star">★ 9.2</span>
+                <span class="h-pill-format">SERIES</span>
+              </div>
+              <div class="h-card-actions">
+                <a href="/cinema" target="_top" class="h-play-pill">▶ PLAY</a>
+                <button class="h-plus-btn" title="Add to Watchlist">+</button>
+              </div>
+            </div>
+          </div>
+
+          <!-- When Life Gives You Tangerines -->
+          <div class="h-anime-card">
+            <div class="h-card-poster">
+              <img src="/images/posters/tangerines.jpg" onerror="this.src='/logo.png'" alt="When Life Gives You Tangerines" class="h-card-img" />
+              <span class="h-card-tag-top">K-DRAMA</span>
+              <span class="h-card-audio-top">DUB</span>
+            </div>
+            <div class="h-card-info">
+              <h3 class="h-card-name">When Life Gives You Tangerines</h3>
+              <div class="h-meta-row">
+                <span class="h-pill-year">2025</span>
+                <span class="h-pill-star">★ 8.9</span>
+                <span class="h-pill-format">SERIES</span>
+              </div>
+              <div class="h-card-actions">
+                <a href="/cinema" target="_top" class="h-play-pill">▶ PLAY</a>
+                <button class="h-plus-btn" title="Add to Watchlist">+</button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Our Sticky Love -->
+          <div class="h-anime-card">
+            <div class="h-card-poster">
+              <img src="/images/posters/our-sticky-love.jpg" onerror="this.src='/logo.png'" alt="Our Sticky Love" class="h-card-img" />
+              <span class="h-card-tag-top">K-DRAMA</span>
+              <span class="h-card-audio-top">HINDI</span>
+            </div>
+            <div class="h-card-info">
+              <h3 class="h-card-name">Our Sticky Love</h3>
+              <div class="h-meta-row">
+                <span class="h-pill-year">2024</span>
+                <span class="h-pill-star">★ 8.3</span>
+                <span class="h-pill-format">SERIES</span>
+              </div>
+              <div class="h-card-actions">
+                <a href="/cinema" target="_top" class="h-play-pill">▶ PLAY</a>
+                <button class="h-plus-btn" title="Add to Watchlist">+</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Quick Realm Gateways -->
+      <div>
+        <div class="h-shelf-head">
+          <div class="h-shelf-title">
+            <span>🌐</span>
+            <span>DIRECT REALM DIRECTORY</span>
+          </div>
+        </div>
+        <div class="g-realm-grid" style="margin-top: 14px;">
+          <a href="/anime" target="_top" class="g-realm-card">
+            <div class="g-realm-top">
+              <span class="g-realm-badge">STREAMING</span>
+              <span class="g-realm-icon">❖</span>
+            </div>
+            <div>
+              <h4 class="g-realm-title">Anime Sanctuary</h4>
+              <p class="g-realm-desc">Thousands of subbed and dubbed anime series in lossless clarity.</p>
+            </div>
+            <div class="g-realm-btn">Enter Anime →</div>
+          </a>
+          <a href="/cinema" target="_top" class="g-realm-card">
+            <div class="g-realm-top">
+              <span class="g-realm-badge">MULTI-AUDIO</span>
+              <span class="g-realm-icon">✦</span>
+            </div>
+            <div>
+              <h4 class="g-realm-title">Cinema & Asian Dramas</h4>
+              <p class="g-realm-desc">Korean Dramas, Hindi Dubs, Chinese Historicals & Hollywood Blockbusters.</p>
+            </div>
+            <div class="g-realm-btn">Watch Cinema →</div>
+          </a>
+          <a href="/community" target="_top" class="g-realm-card">
+            <div class="g-realm-top">
+              <span class="g-realm-badge">COMMUNITY</span>
+              <span class="g-realm-icon">💬</span>
+            </div>
+            <div>
+              <h4 class="g-realm-title">Travelers' Community</h4>
+              <p class="g-realm-desc">Episode theory discussions, user reviews, custom profile frames & badges.</p>
+            </div>
+            <div class="g-realm-btn">Join Community →</div>
+          </a>
+          <a href="/profile" target="_top" class="g-realm-card">
+            <div class="g-realm-top">
+              <span class="g-realm-badge">SANCTUM</span>
+              <span class="g-realm-icon">★</span>
+            </div>
+            <div>
+              <h4 class="g-realm-title">Traveler Profile</h4>
+              <p class="g-realm-desc">Watchlist, continue watching history, custom titles & settings.</p>
+            </div>
+            <div class="g-realm-btn">Open Profile →</div>
+          </a>
+        </div>
+      </div>
+
+      <!-- Footer Info -->
+      <div class="g-menu-footer">
+        <div>Kagemi Archives • Sanctuary of Anime & Cinema</div>
+        <div class="g-menu-hint-keys">
+          <span><kbd>ESC</kbd> Return to Isle</span>
+          <span><kbd>WASD</kbd> Walk freely</span>
+        </div>
       </div>
     </div>
   </div>
@@ -3876,14 +4246,13 @@ void main(){
       if (islandRoot) { populateDioramaFoliage(model, islandRoot); buildGapBridge(); }
 
 
-      // Set new starting point: lower island at the bottom, looking up towards the grand bridge and floating islands
-      const spawnX = -28400 + GX, spawnZ = 1431;
-      const gLower = groundAt(spawnX, spawnZ, -4000);
-      const spawnY = (gLower !== null) ? gLower : -5970;
+      // Set starting point: user exact saved starting position and orientation
+      const spawnX = -32984, spawnZ = 2089;
+      const spawnY = -5908.37;
       P0.set(spawnX, spawnY, spawnZ);
       cam.position.set(spawnX, spawnY + pl.eye, spawnZ);
-      yaw = -1.547;
-      pitch = 0.24;
+      yaw = -1.466368;
+      pitch = -0.1262;
       pl.yawS = yaw; pl.pitchS = pitch;
       cam.rotation.set(pitch, yaw, 0, 'YXZ');
     }
@@ -4350,25 +4719,63 @@ totalEmissiveRadiance*=rTm;`);
           gl.parse(ab, '', gd => safeBuild(gd), e => { console.warn('embedded diorama failed', e); loadDioFiles(); });
         } catch (e) { console.warn('embedded diorama unavailable', e); loadDioFiles(); }
       })();
-      mode = 'idle';
-      const spawnX0 = -29600, spawnZ0 = 1500;
-      cam.position.set(spawnX0, -6062.75 + pl.eye, spawnZ0);
-      yaw = -1.547;
-      pitch = 0.24;
+            mode = 'walk';
+      const spawnX0 = -32984, spawnZ0 = 2089;
+      const spawnY0 = -5908.37;
+      mode = 'walk';
+      cam.position.set(spawnX0, spawnY0 + pl.eye, spawnZ0);
+      yaw = -1.466368;
+      pitch = -0.1262;
       pl.yawS = yaw; pl.pitchS = pitch;
       cam.rotation.set(pitch, yaw, 0, 'YXZ');
-      P0.set(spawnX0, -6062.75, spawnZ0);
-      const ld = $('ld'); ld.style.cursor = 'pointer'; ld.innerHTML = '<div style="text-align:center">▶ Click or tap to enter<br><small style="opacity:.6">sound on · headphones recommended</small></div>';
-      ld.onclick = () => {
+      P0.set(spawnX0, spawnY0, spawnZ0);
+
+      // Dismiss loading screen immediately with no click needed
+      const ld = $('ld');
+      if (ld) {
+        ld.style.transition = 'opacity 0.6s ease';
+        ld.style.opacity = '0';
+        ld.style.pointerEvents = 'none';
+        setTimeout(() => { if (ld && ld.parentNode) ld.remove(); }, 650);
+      }
+
+      // Cinematic Title Intro (Non-blocking, live over 3D world)
+      const titleCard = document.getElementById('kagemi-cinematic-title');
+      if (titleCard) {
+        titleCard.style.display = 'flex';
+        titleCard.classList.remove('kagemi-cinematic-intro');
+        void titleCard.offsetWidth; // trigger reflow
+        titleCard.classList.add('kagemi-cinematic-intro');
+        titleCard.addEventListener('animationend', (e) => {
+          if (e.target !== titleCard) return;
+          titleCard.style.display = 'none';
+        });
+      }
+
+      // Initialize sound & BGM engine immediately with graceful user-gesture unlock
+      kagemiAudio.init();
+      audioInit();
+      kagemiAudio.playRandomBgm();
+      const unlockAudio = () => {
+        kagemiAudio.init();
         audioInit();
         if (S.ac && S.ac.state === 'suspended') S.ac.resume();
-        ld.style.opacity = 0;
-        ld.style.pointerEvents = 'none';
-        setTimeout(() => ld.remove(), 900);
-        setMode('walk');
-        requestLock();
+        if (!kagemiAudio.bgmAudio || kagemiAudio.bgmAudio.paused) {
+          kagemiAudio.playRandomBgm();
+        }
+        window.removeEventListener('pointerdown', unlockAudio);
+        window.removeEventListener('keydown', unlockAudio);
+        window.removeEventListener('touchstart', unlockAudio);
       };
-      clock.start(); ren.setAnimationLoop(() => { const delta = clock.getDelta(); frame(Math.min(delta, 0.0333)); })
+      window.addEventListener('pointerdown', unlockAudio, { once: true });
+      window.addEventListener('keydown', unlockAudio, { once: true });
+      window.addEventListener('touchstart', unlockAudio, { once: true });
+
+      clock.start();
+      ren.setAnimationLoop(() => {
+        const delta = clock.getDelta();
+        frame(Math.min(delta, 0.0333));
+      });
     }, bad);
 
 
@@ -4377,7 +4784,8 @@ totalEmissiveRadiance*=rTm;`);
        GENSHIN IMPACT 3D TERMINAL, POI SYSTEM & GAME MODALS
        ========================================================================= */
     let kagemiTerminalGroup = null, kagemiCrystal = null, kagemiBeacon = null, kagemiTerminalLight = null;
-    let isLandingMenuOpen = false, isPortalToastOpen = false, isNearTerminal = false, portalToastDismissedInZone = false;
+    let isLandingMenuOpen = false, isPortalToastOpen = false, isNearTerminal = false, portalToastDismissedInZone = true;
+    window.__portalMsgDismissed = true;
 
     // Sound chime helper using Web Audio
     function playGenshinChime(isMajor = true) {
@@ -4893,10 +5301,9 @@ totalEmissiveRadiance*=rTm;`);
       kagemiTerminalGroup = new THREE.Group();
       
       // Placed at the BACK of the small island on the ground: x = -30750, y = -6100, z = 1500
-      kagemiTerminalGroup.position.set(-28500, -5820, 2500);
-
-      // Face forward into the island (+X towards spawn and bridge)
-      kagemiTerminalGroup.rotation.y = -2.35;
+      kagemiTerminalGroup.position.set(-31500, -5940, 3100);
+      // Face towards the waterfall (-29211, -1088), angled 10 degrees toward player position (-32984, 2089)
+      kagemiTerminalGroup.rotation.y = 2.8159;
 
       // =====================================================================
       // 1. SMALL STONE ATELIER / ALTAR PEDESTAL (Firmly seated on the ground)
@@ -5154,7 +5561,7 @@ totalEmissiveRadiance*=rTm;`);
         name: 'Sanctuary Atelier',
         category: 'ATELIER',
         getTargetPos: (cam) => {
-          return V(-28500, -5350, 2500);
+          return V(-31500, -5400, 3100);
         }
       }
     ];
@@ -5183,16 +5590,15 @@ totalEmissiveRadiance*=rTm;`);
     }
   
 
-    // Modal Control Functions
+        // Modal Control Functions (Instant, Pure Native HTML/CSS Landing Page - Zero Lag, No Iframe)
     function openKagemiMenu() {
       if (isLandingMenuOpen) return;
       isLandingMenuOpen = true;
       const modal = document.getElementById('kagemi-landing-modal');
-      const frame = document.getElementById('kagemi-live-frame');
-      if (frame && (!frame.src || frame.src === 'about:blank' || frame.src.endsWith('/about:blank'))) {
-        frame.src = frame.getAttribute('data-src') || '/?embed=1';
+      if (modal) {
+        modal.style.display = 'flex';
+        modal.classList.add('active');
       }
-      if (modal) modal.classList.add('active');
       playGenshinChime(true);
       if (document.exitPointerLock) document.exitPointerLock();
     }
@@ -5201,7 +5607,10 @@ totalEmissiveRadiance*=rTm;`);
       if (!isLandingMenuOpen) return;
       isLandingMenuOpen = false;
       const modal = document.getElementById('kagemi-landing-modal');
-      if (modal) modal.classList.remove('active');
+      if (modal) {
+        modal.classList.remove('active');
+        modal.style.display = 'none';
+      }
     }
 
     function openPortalToast() {
@@ -5246,7 +5655,7 @@ totalEmissiveRadiance*=rTm;`);
       }
 
       // Check distance and gaze to Kagemi Terminal on right edge of island
-      const terminalPos = new THREE.Vector3(-28500, -5820, 2500);
+      const terminalPos = new THREE.Vector3(-31500, -5940, 3100);
       const dToTerminal = cam.position.distanceTo(terminalPos);
       const toTerminal = terminalPos.clone().sub(cam.position).normalize();
       const isFacingTerminal = toTerminal.dot(_camFwd) > 0.3;
