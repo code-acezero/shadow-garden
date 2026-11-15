@@ -1105,6 +1105,109 @@
       transform: scale(0.96);
     }
   
+    /* Original Kagemi Landing Page Modal (Edge-to-Edge Clean Container with Live Iframe) */
+    #kagemi-landing-modal {
+      position: fixed;
+      inset: 0;
+      z-index: 99990;
+      background: rgba(3, 4, 10, 0.94);
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      padding: 16px;
+      box-sizing: border-box;
+    }
+    #kagemi-landing-modal.active {
+      display: flex !important;
+      animation: kagemiModalFadeIn 0.25s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+    }
+    @keyframes kagemiModalFadeIn {
+      from { opacity: 0; transform: scale(0.985); }
+      to { opacity: 1; transform: scale(1); }
+    }
+    .kagemi-modal-container {
+      width: 96vw;
+      max-width: 1720px;
+      height: 94vh;
+      background: #050508;
+      border: 1px solid rgba(168, 85, 247, 0.4);
+      border-radius: 20px;
+      box-shadow: 0 30px 80px -15px rgba(0, 0, 0, 0.95), 0 0 40px rgba(124, 58, 237, 0.25);
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+    .kagemi-modal-header {
+      height: 60px;
+      padding: 0 24px;
+      background: rgba(10, 12, 22, 0.98);
+      border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-shrink: 0;
+    }
+    .kagemi-modal-brand {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+    .kagemi-modal-logo {
+      width: 36px;
+      height: 36px;
+      border-radius: 10px;
+      background: rgba(124, 58, 237, 0.25);
+      border: 1px solid rgba(168, 85, 247, 0.5);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 20px;
+    }
+    .kagemi-modal-title {
+      font-size: 15px;
+      font-weight: 900;
+      letter-spacing: 0.1em;
+      color: #ffffff;
+    }
+    .kagemi-modal-subtitle {
+      font-size: 11px;
+      font-family: monospace;
+      color: #c084fc;
+      letter-spacing: 0.05em;
+    }
+    .kagemi-modal-close {
+      padding: 9px 20px;
+      background: rgba(124, 58, 237, 0.25);
+      border: 1px solid rgba(168, 85, 247, 0.45);
+      border-radius: 999px;
+      color: #ffffff;
+      font-size: 13px;
+      font-weight: 700;
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+    .kagemi-modal-close:hover {
+      background: #7c3aed;
+      border-color: #a855f7;
+      transform: scale(1.03);
+    }
+    .kagemi-modal-iframe-wrap {
+      flex: 1;
+      width: 100%;
+      height: calc(100% - 60px);
+      position: relative;
+      background: #050508;
+    }
+    #kagemi-live-frame {
+      width: 100%;
+      height: 100%;
+      border: none;
+      display: block;
+      background: #050508;
+    }
+
   </style>
 </head>
 
@@ -1162,391 +1265,21 @@
 
   
     <!-- Original Kagemi Landing Component Live Portal Modal -->
+    <!-- Original Kagemi Landing Component Live Portal Modal -->
   <div id="kagemi-landing-modal" role="dialog" aria-modal="true" style="display:none;">
-    <div class="g-menu-frame">
-      <!-- HiAnime / Miruro Top Navbar -->
-      <div class="h-nav-bar">
-        <a href="/anime" target="_top" class="h-brand">
-          <div class="h-logo-icon">K</div>
-          <div class="h-brand-text">
-            <h2>KAGEMI</h2>
-            <span>Streaming Sanctuary • Ver 2.5</span>
+    <div class="kagemi-modal-container">
+      <div class="kagemi-modal-header">
+        <div class="kagemi-modal-brand">
+          <div class="kagemi-modal-logo">🛡️</div>
+          <div>
+            <div class="kagemi-modal-title">KAGEMI SANCTUARY</div>
+            <div class="kagemi-modal-subtitle">Original Streaming Portal • Live Next.js Component</div>
           </div>
-        </a>
-
-        <div class="h-search-wrapper">
-          <span class="h-search-icon">🔍</span>
-          <input type="text" class="h-search-input" placeholder="Search anime, movies, Asian dramas, genres..." />
         </div>
-
-        <div class="h-nav-links">
-          <a href="/anime" target="_top" class="h-nav-tab active">Anime</a>
-          <a href="/cinema" target="_top" class="h-nav-tab">Cinema & Dramas</a>
-          <a href="/community" target="_top" class="h-nav-tab">Community</a>
-          <a href="/manga" target="_top" class="h-nav-tab">Manga</a>
-          <a href="/profile" target="_top" class="h-nav-tab">Sanctum</a>
-        </div>
-
-        <button id="g-menu-close-btn" class="h-close-btn">✕ Return to Island (Esc)</button>
+        <button id="g-menu-close-btn" class="kagemi-modal-close" onclick="closeKagemiMenu()">✕ Return to Island (Esc)</button>
       </div>
-
-      <!-- Spotlight Hero Banner (The Eminence in Shadow) -->
-      <div class="h-spotlight-hero">
-        <div class="h-hero-badge-row">
-          <span class="h-badge-spotlight">SPOTLIGHT #1</span>
-          <span class="h-pill-meta">TV SERIES</span>
-          <span class="h-pill-meta">SUB & HINDI DUB</span>
-          <span class="h-pill-meta">1080P ULTRA</span>
-          <span class="h-pill-score">★ 8.9</span>
-        </div>
-        <h1 class="h-hero-title">The Eminence in Shadow: Sanctuary of Shadows</h1>
-        <p class="h-hero-desc">Cid Kagenou ascends through the dimensional mana gateway into the hidden sanctuary of Shadow Garden. Stream complete seasons, films, and specials in pristine lossless quality with dual audio, synced subtitles, and zero ads.</p>
-        <div class="h-hero-actions">
-          <a href="/anime" target="_top" class="h-btn-play">▶ Start Watching</a>
-          <a href="/profile" target="_top" class="h-btn-watchlist">+ Add to Watchlist</a>
-          <a href="/anime" target="_top" class="h-btn-watchlist">ℹ Details</a>
-        </div>
-      </div>
-
-      <!-- Section 1: Trending & Top Airing Anime (HiAnime / Miruro Card Grid) -->
-      <div>
-        <div class="h-shelf-head">
-          <div class="h-shelf-title">
-            <span>🔥</span>
-            <span>TRENDING & TOP AIRING ANIME</span>
-          </div>
-          <a href="/anime" target="_top" class="h-shelf-link">EXPLORE ALL ></a>
-        </div>
-        <div class="h-cards-grid" style="margin-top: 14px;">
-          <!-- Solo Leveling -->
-          <div class="h-anime-card">
-            <div class="h-card-poster">
-              <img src="/images/posters/solo-leveling.jpg" onerror="this.src='/logo.png'" alt="Solo Leveling" class="h-card-img" />
-              <span class="h-card-tag-top">TOP #1</span>
-              <span class="h-card-audio-top">SUB & DUB</span>
-            </div>
-            <div class="h-card-info">
-              <h3 class="h-card-name">Solo Leveling: Arise</h3>
-              <div class="h-meta-row">
-                <span class="h-pill-year">2024</span>
-                <span class="h-pill-star">★ 8.8</span>
-                <span class="h-pill-format">TV</span>
-              </div>
-              <div class="h-card-actions">
-                <a href="/anime" target="_top" class="h-play-pill">▶ PLAY</a>
-                <button class="h-plus-btn" title="Add to Watchlist">+</button>
-              </div>
-            </div>
-          </div>
-
-          <!-- Frieren -->
-          <div class="h-anime-card">
-            <div class="h-card-poster">
-              <img src="/images/posters/frieren.jpg" onerror="this.src='/logo.png'" alt="Frieren" class="h-card-img" />
-              <span class="h-card-tag-top">TOP #2</span>
-              <span class="h-card-audio-top">SUB & DUB</span>
-            </div>
-            <div class="h-card-info">
-              <h3 class="h-card-name">Frieren: Beyond Journey's End</h3>
-              <div class="h-meta-row">
-                <span class="h-pill-year">2024</span>
-                <span class="h-pill-star">★ 9.1</span>
-                <span class="h-pill-format">TV</span>
-              </div>
-              <div class="h-card-actions">
-                <a href="/anime" target="_top" class="h-play-pill">▶ PLAY</a>
-                <button class="h-plus-btn" title="Add to Watchlist">+</button>
-              </div>
-            </div>
-          </div>
-
-          <!-- Jujutsu Kaisen -->
-          <div class="h-anime-card">
-            <div class="h-card-poster">
-              <img src="/images/posters/jjk.jpg" onerror="this.src='/logo.png'" alt="Jujutsu Kaisen" class="h-card-img" />
-              <span class="h-card-tag-top">HOT</span>
-              <span class="h-card-audio-top">SUB & DUB</span>
-            </div>
-            <div class="h-card-info">
-              <h3 class="h-card-name">Jujutsu Kaisen: Shibuya Arc</h3>
-              <div class="h-meta-row">
-                <span class="h-pill-year">2023</span>
-                <span class="h-pill-star">★ 8.9</span>
-                <span class="h-pill-format">TV</span>
-              </div>
-              <div class="h-card-actions">
-                <a href="/anime" target="_top" class="h-play-pill">▶ PLAY</a>
-                <button class="h-plus-btn" title="Add to Watchlist">+</button>
-              </div>
-            </div>
-          </div>
-
-          <!-- Demon Slayer -->
-          <div class="h-anime-card">
-            <div class="h-card-poster">
-              <img src="/images/posters/demon-slayer.jpg" onerror="this.src='/logo.png'" alt="Demon Slayer" class="h-card-img" />
-              <span class="h-card-tag-top">POPULAR</span>
-              <span class="h-card-audio-top">SUB & DUB</span>
-            </div>
-            <div class="h-card-info">
-              <h3 class="h-card-name">Demon Slayer: Hashira Training</h3>
-              <div class="h-meta-row">
-                <span class="h-pill-year">2024</span>
-                <span class="h-pill-star">★ 8.6</span>
-                <span class="h-pill-format">TV</span>
-              </div>
-              <div class="h-card-actions">
-                <a href="/anime" target="_top" class="h-play-pill">▶ PLAY</a>
-                <button class="h-plus-btn" title="Add to Watchlist">+</button>
-              </div>
-            </div>
-          </div>
-
-          <!-- Chainsaw Man -->
-          <div class="h-anime-card">
-            <div class="h-card-poster">
-              <img src="/images/posters/chainsaw-man.jpg" onerror="this.src='/logo.png'" alt="Chainsaw Man" class="h-card-img" />
-              <span class="h-card-tag-top">UPCOMING</span>
-              <span class="h-card-audio-top">SUB & DUB</span>
-            </div>
-            <div class="h-card-info">
-              <h3 class="h-card-name">Chainsaw Man: The Movie</h3>
-              <div class="h-meta-row">
-                <span class="h-pill-year">2025</span>
-                <span class="h-pill-star">★ 8.7</span>
-                <span class="h-pill-format">MOVIE</span>
-              </div>
-              <div class="h-card-actions">
-                <a href="/anime" target="_top" class="h-play-pill">▶ PLAY</a>
-                <button class="h-plus-btn" title="Add to Watchlist">+</button>
-              </div>
-            </div>
-          </div>
-
-          <!-- Bleach -->
-          <div class="h-anime-card">
-            <div class="h-card-poster">
-              <img src="/images/posters/bleach.jpg" onerror="this.src='/logo.png'" alt="Bleach" class="h-card-img" />
-              <span class="h-card-tag-top">EPIC</span>
-              <span class="h-card-audio-top">SUB & DUB</span>
-            </div>
-            <div class="h-card-info">
-              <h3 class="h-card-name">Bleach: Thousand-Year Blood War</h3>
-              <div class="h-meta-row">
-                <span class="h-pill-year">2024</span>
-                <span class="h-pill-star">★ 9.0</span>
-                <span class="h-pill-format">TV</span>
-              </div>
-              <div class="h-card-actions">
-                <a href="/anime" target="_top" class="h-play-pill">▶ PLAY</a>
-                <button class="h-plus-btn" title="Add to Watchlist">+</button>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <!-- Section 2: Asian Dramas & Cinema Spotlight (Exact card format from user reference) -->
-      <div>
-        <div class="h-shelf-head">
-          <div class="h-shelf-title">
-            <span>🎬</span>
-            <span>HINDI DUBBED SPOTLIGHT & ASIAN SERIES</span>
-          </div>
-          <a href="/cinema" target="_top" class="h-shelf-link">EXPLORE MORE ></a>
-        </div>
-        <div class="h-cards-grid" style="margin-top: 14px;">
-          <!-- The Mongoose (Exact match from user attachment) -->
-          <div class="h-anime-card">
-            <div class="h-card-poster">
-              <img src="/images/posters/the-mongoose.jpg" onerror="this.src='/logo.png'" alt="The Mongoose" class="h-card-img" />
-              <span class="h-card-tag-top">CINEMA</span>
-              <span class="h-card-audio-top">HINDI</span>
-            </div>
-            <div class="h-card-info">
-              <h3 class="h-card-name">The Mongoose</h3>
-              <div class="h-meta-row">
-                <span class="h-pill-year">2026</span>
-                <span class="h-pill-star">★ 6.1</span>
-                <span class="h-pill-format">MOVIE</span>
-              </div>
-              <div class="h-card-actions">
-                <a href="/cinema" target="_top" class="h-play-pill">▶ PLAY</a>
-                <button class="h-plus-btn" title="Add to Watchlist">+</button>
-              </div>
-            </div>
-          </div>
-
-          <!-- Perfect Crown -->
-          <div class="h-anime-card">
-            <div class="h-card-poster">
-              <img src="/images/posters/perfect-crown.jpg" onerror="this.src='/logo.png'" alt="Perfect Crown" class="h-card-img" />
-              <span class="h-card-tag-top">K-DRAMA</span>
-              <span class="h-card-audio-top">HINDI</span>
-            </div>
-            <div class="h-card-info">
-              <h3 class="h-card-name">Perfect Crown</h3>
-              <div class="h-meta-row">
-                <span class="h-pill-year">2024</span>
-                <span class="h-pill-star">★ 8.7</span>
-                <span class="h-pill-format">SERIES</span>
-              </div>
-              <div class="h-card-actions">
-                <a href="/cinema" target="_top" class="h-play-pill">▶ PLAY</a>
-                <button class="h-plus-btn" title="Add to Watchlist">+</button>
-              </div>
-            </div>
-          </div>
-
-          <!-- See You at Work Tomorrow! -->
-          <div class="h-anime-card">
-            <div class="h-card-poster">
-              <img src="/images/posters/see-you-at-work.jpg" onerror="this.src='/logo.png'" alt="See You at Work Tomorrow!" class="h-card-img" />
-              <span class="h-card-tag-top">C-DRAMA</span>
-              <span class="h-card-audio-top">HINDI</span>
-            </div>
-            <div class="h-card-info">
-              <h3 class="h-card-name">See You at Work Tomorrow!</h3>
-              <div class="h-meta-row">
-                <span class="h-pill-year">2024</span>
-                <span class="h-pill-star">★ 8.5</span>
-                <span class="h-pill-format">SERIES</span>
-              </div>
-              <div class="h-card-actions">
-                <a href="/cinema" target="_top" class="h-play-pill">▶ PLAY</a>
-                <button class="h-plus-btn" title="Add to Watchlist">+</button>
-              </div>
-            </div>
-          </div>
-
-          <!-- Twinkling Watermelon -->
-          <div class="h-anime-card">
-            <div class="h-card-poster">
-              <img src="/images/posters/twinkling-watermelon.jpg" onerror="this.src='/logo.png'" alt="Twinkling Watermelon" class="h-card-img" />
-              <span class="h-card-tag-top">K-DRAMA</span>
-              <span class="h-card-audio-top">HINDI</span>
-            </div>
-            <div class="h-card-info">
-              <h3 class="h-card-name">Twinkling Watermelon</h3>
-              <div class="h-meta-row">
-                <span class="h-pill-year">2023</span>
-                <span class="h-pill-star">★ 9.2</span>
-                <span class="h-pill-format">SERIES</span>
-              </div>
-              <div class="h-card-actions">
-                <a href="/cinema" target="_top" class="h-play-pill">▶ PLAY</a>
-                <button class="h-plus-btn" title="Add to Watchlist">+</button>
-              </div>
-            </div>
-          </div>
-
-          <!-- When Life Gives You Tangerines -->
-          <div class="h-anime-card">
-            <div class="h-card-poster">
-              <img src="/images/posters/tangerines.jpg" onerror="this.src='/logo.png'" alt="When Life Gives You Tangerines" class="h-card-img" />
-              <span class="h-card-tag-top">K-DRAMA</span>
-              <span class="h-card-audio-top">DUB</span>
-            </div>
-            <div class="h-card-info">
-              <h3 class="h-card-name">When Life Gives You Tangerines</h3>
-              <div class="h-meta-row">
-                <span class="h-pill-year">2025</span>
-                <span class="h-pill-star">★ 8.9</span>
-                <span class="h-pill-format">SERIES</span>
-              </div>
-              <div class="h-card-actions">
-                <a href="/cinema" target="_top" class="h-play-pill">▶ PLAY</a>
-                <button class="h-plus-btn" title="Add to Watchlist">+</button>
-              </div>
-            </div>
-          </div>
-
-          <!-- Our Sticky Love -->
-          <div class="h-anime-card">
-            <div class="h-card-poster">
-              <img src="/images/posters/our-sticky-love.jpg" onerror="this.src='/logo.png'" alt="Our Sticky Love" class="h-card-img" />
-              <span class="h-card-tag-top">K-DRAMA</span>
-              <span class="h-card-audio-top">HINDI</span>
-            </div>
-            <div class="h-card-info">
-              <h3 class="h-card-name">Our Sticky Love</h3>
-              <div class="h-meta-row">
-                <span class="h-pill-year">2024</span>
-                <span class="h-pill-star">★ 8.3</span>
-                <span class="h-pill-format">SERIES</span>
-              </div>
-              <div class="h-card-actions">
-                <a href="/cinema" target="_top" class="h-play-pill">▶ PLAY</a>
-                <button class="h-plus-btn" title="Add to Watchlist">+</button>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <!-- Quick Realm Gateways -->
-      <div>
-        <div class="h-shelf-head">
-          <div class="h-shelf-title">
-            <span>🌐</span>
-            <span>DIRECT REALM DIRECTORY</span>
-          </div>
-        </div>
-        <div class="g-realm-grid" style="margin-top: 14px;">
-          <a href="/anime" target="_top" class="g-realm-card">
-            <div class="g-realm-top">
-              <span class="g-realm-badge">STREAMING</span>
-              <span class="g-realm-icon">❖</span>
-            </div>
-            <div>
-              <h4 class="g-realm-title">Anime Sanctuary</h4>
-              <p class="g-realm-desc">Thousands of subbed and dubbed anime series in lossless clarity.</p>
-            </div>
-            <div class="g-realm-btn">Enter Anime →</div>
-          </a>
-          <a href="/cinema" target="_top" class="g-realm-card">
-            <div class="g-realm-top">
-              <span class="g-realm-badge">MULTI-AUDIO</span>
-              <span class="g-realm-icon">✦</span>
-            </div>
-            <div>
-              <h4 class="g-realm-title">Cinema & Asian Dramas</h4>
-              <p class="g-realm-desc">Korean Dramas, Hindi Dubs, Chinese Historicals & Hollywood Blockbusters.</p>
-            </div>
-            <div class="g-realm-btn">Watch Cinema →</div>
-          </a>
-          <a href="/community" target="_top" class="g-realm-card">
-            <div class="g-realm-top">
-              <span class="g-realm-badge">COMMUNITY</span>
-              <span class="g-realm-icon">💬</span>
-            </div>
-            <div>
-              <h4 class="g-realm-title">Travelers' Community</h4>
-              <p class="g-realm-desc">Episode theory discussions, user reviews, custom profile frames & badges.</p>
-            </div>
-            <div class="g-realm-btn">Join Community →</div>
-          </a>
-          <a href="/profile" target="_top" class="g-realm-card">
-            <div class="g-realm-top">
-              <span class="g-realm-badge">SANCTUM</span>
-              <span class="g-realm-icon">★</span>
-            </div>
-            <div>
-              <h4 class="g-realm-title">Traveler Profile</h4>
-              <p class="g-realm-desc">Watchlist, continue watching history, custom titles & settings.</p>
-            </div>
-            <div class="g-realm-btn">Open Profile →</div>
-          </a>
-        </div>
-      </div>
-
-      <!-- Footer Info -->
-      <div class="g-menu-footer">
-        <div>Kagemi Archives • Sanctuary of Anime & Cinema</div>
-        <div class="g-menu-hint-keys">
-          <span><kbd>ESC</kbd> Return to Isle</span>
-          <span><kbd>WASD</kbd> Walk freely</span>
-        </div>
+      <div class="kagemi-modal-iframe-wrap">
+        <iframe id="kagemi-live-frame" src="/?embed=1" title="Kagemi Landing Page" allow="autoplay; fullscreen; clipboard-write; encrypted-media"></iframe>
       </div>
     </div>
   </div>
@@ -1617,6 +1350,13 @@
     const ctl = new THREE.OrbitControls(cam, ren.domElement); ctl.target.copy(at(1000, 300)); ctl.enabled = false;
     // ---- modes: seq (scripted flight) | walk (first person) | orbit ----
     let mode = 'idle', PW = null, P0 = cam.position.clone(), yaw = 0, pitch = 0, hold = false, dragX = null, cp, cl, mixer, T = 40, t0 = performance.now(), suc = 0;
+    window.__setLook = (y, p) => {
+      yaw = y; pitch = p;
+      if (typeof pl !== 'undefined') { pl.yawS = y; pl.pitchS = p; }
+      if (cam) cam.rotation.set(p, y, 0, 'YXZ');
+    };
+    window.__teleport = (x, y, z) => { if (typeof P0 !== 'undefined') { P0.set(x, y, z); if (cam) cam.position.set(x, y, z); } };
+    window.__getCam = () => ({ x: cam.position.x, y: cam.position.y, z: cam.position.z, yaw, pitch });
     let tunnelRoot = null, islandRoot = null, tunnelSegments = [], tunnelLight = null, tunnelTrailLight = null, tunnelExitLight = null, tunnelExitDisc = null, tunnelExitHalo = null, tunnelTotalLength = 28000, tunnelDist = 0, tunnelVel = 1500, tunnelT = 0;
     let dioramaRoot = null, dioramaGrassTex = null, dioramaFlameLight = null, dioramaWaterfallMat = null, dioramaWaterMat = null,
         dioramaBasePos = null, dioramaBaseRot = null, dioramaBridgeMesh = null, dioramaBridgeCollider = null,
@@ -4815,65 +4555,65 @@ totalEmissiveRadiance*=rTm;`);
       } catch (e) {}
     }
 
-    // Build In-World 3D Kagemi Terminal (3x Smaller: 1400x800, Floating on Stone Altar, Real Kagemi Landing Page with Free Scroll, No Glowings)
+            // Build In-World 3D Kagemi Terminal (Monolithic Stone Plate Stele: 2800x1850, Crystal-Clear 4K UHD, Solid Stone Backing, Zero Hollow Gap)
     let kagemiScreenMesh = null, kagemiScreenCanvas = null, kagemiScreenCtx = null, kagemiScreenTex = null, kagemiScreenFrame = null;
     let kagemiScrollY = 0;
-    const kagemiMaxScroll = 1200;
+    const kagemiMaxScroll = 2600;
 
     function renderKagemiScreen(scrollY = 0) {
       if (!kagemiScreenCtx) return;
       const ctx = kagemiScreenCtx;
-      const W = 2048, H = 1170;
+      const W = 4096, H = 2706;
       const isMobile = (window.innerWidth < 768) || /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
 
       ctx.save();
-      // Deep obsidian space backdrop matching Kagemi dark theme
-      ctx.fillStyle = '#050508';
+      // Deep obsidian space backdrop matching Kagemi dark theme - Crystal Clear, Zero Cathode Grid
+      const bgGrad = ctx.createLinearGradient(0, 0, 0, H);
+      bgGrad.addColorStop(0, '#06070c');
+      bgGrad.addColorStop(0.5, '#090c16');
+      bgGrad.addColorStop(1, '#05060a');
+      ctx.fillStyle = bgGrad;
       ctx.fillRect(0, 0, W, H);
 
-      // Subtle architectural grid background
-      ctx.strokeStyle = 'rgba(255, 255, 255, 0.025)';
-      ctx.lineWidth = 1;
-      for (let x = 0; x < W; x += 48) { ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, H); ctx.stroke(); }
-      for (let y = 0; y < H; y += 48) { ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(W, y); ctx.stroke(); }
-
-      // Outer bezel line
-      ctx.strokeStyle = 'rgba(124, 58, 237, 0.28)';
-      ctx.lineWidth = 2;
-      ctx.strokeRect(16, 16, W - 32, H - 32);
+      // Subtle atmospheric edge vignette
+      const edgeGrad = ctx.createRadialGradient(W / 2, H / 2, H * 0.4, W / 2, H / 2, W * 0.7);
+      edgeGrad.addColorStop(0, 'rgba(0, 0, 0, 0)');
+      edgeGrad.addColorStop(1, 'rgba(3, 4, 8, 0.6)');
+      ctx.fillStyle = edgeGrad;
+      ctx.fillRect(0, 0, W, H);
 
       // Scrollable content area
       ctx.save();
       ctx.beginPath();
-      ctx.rect(20, 85, W - 40, H - 155);
+      ctx.rect(40, 160, W - 80, H - 280);
       ctx.clip();
-      ctx.translate(0, 85 - scrollY);
+      ctx.translate(0, 160 - scrollY);
 
       if (!isMobile) {
         // =====================================================================
-        // DESKTOP AUTHENTIC KAGEMI LANDING PAGE LAYOUT
+        // DESKTOP AUTHENTIC KAGEMI LANDING PAGE LAYOUT (4K Crystal-Clear Rendering)
         // =====================================================================
 
         // 1. CINEMATIC HERO SECTION
-        const heroY = 24;
+        const heroY = 50;
 
         // Top Tag Badge
-        ctx.fillStyle = 'rgba(255, 255, 255, 0.05)';
+        ctx.fillStyle = 'rgba(255, 255, 255, 0.06)';
         ctx.beginPath();
-        ctx.roundRect(W / 2 - 165, heroY + 10, 330, 34, 17);
+        ctx.roundRect(W / 2 - 330, heroY + 20, 660, 64, 32);
         ctx.fill();
-        ctx.strokeStyle = 'rgba(255, 255, 255, 0.12)';
-        ctx.lineWidth = 1;
+        ctx.strokeStyle = 'rgba(255, 255, 255, 0.16)';
+        ctx.lineWidth = 2;
         ctx.stroke();
         ctx.fillStyle = '#c084fc';
-        ctx.font = 'bold 13px system-ui, sans-serif';
+        ctx.font = 'bold 24px system-ui, -apple-system, sans-serif';
         ctx.textAlign = 'center';
-        ctx.fillText('NEXT-GEN HIGH-FIDELITY STREAMING', W / 2, heroY + 32);
+        ctx.fillText('NEXT-GEN HIGH-FIDELITY STREAMING', W / 2, heroY + 61);
 
-        // Headline with Gradient ("Where Stories Ascend.") - dynamically measured for perfect spacing
+        // Headline with Gradient ("Where Stories Ascend.")
         const t1 = 'Where Stories ';
         const t2 = 'Ascend.';
-        ctx.font = '900 68px system-ui, sans-serif';
+        ctx.font = '900 134px system-ui, -apple-system, sans-serif';
         const w1 = ctx.measureText(t1).width;
         const w2 = ctx.measureText(t2).width;
         const totalW = w1 + w2;
@@ -4881,91 +4621,91 @@ totalEmissiveRadiance*=rTm;`);
 
         ctx.textAlign = 'left';
         ctx.fillStyle = '#ffffff';
-        ctx.fillText(t1, startX, heroY + 115);
+        ctx.fillText(t1, startX, heroY + 225);
 
         const grad = ctx.createLinearGradient(startX + w1, 0, startX + totalW, 0);
         grad.addColorStop(0, '#c084fc');
         grad.addColorStop(0.5, '#7dd3fc');
         grad.addColorStop(1, '#a855f7');
         ctx.fillStyle = grad;
-        ctx.fillText(t2, startX + w1, heroY + 115);
+        ctx.fillText(t2, startX + w1, heroY + 225);
 
         // Value Proposition Subtitle
         ctx.fillStyle = '#94a3b8';
-        ctx.font = '20px system-ui, sans-serif';
+        ctx.font = '38px system-ui, -apple-system, sans-serif';
         ctx.textAlign = 'center';
-        ctx.fillText('Stream 15,000+ anime & donghua episodes in pristine 1080p 60fps, alongside 35,000+', W / 2, heroY + 165);
-        ctx.fillText('unlocked vertical mini-dramas and manga. Zero interruptions, zero lag.', W / 2, heroY + 195);
+        ctx.fillText('Stream 15,000+ anime & donghua episodes in pristine 1080p 60fps, alongside 35,000+', W / 2, heroY + 315);
+        ctx.fillText('unlocked vertical mini-dramas and manga. Zero interruptions, zero lag.', W / 2, heroY + 372);
 
         // Search Bar Box
-        const sbW = 860, sbH = 56, sbX = (W - sbW) / 2, sbY = heroY + 230;
-        ctx.fillStyle = 'rgba(15, 23, 42, 0.85)';
+        const sbW = 1680, sbH = 104, sbX = (W - sbW) / 2, sbY = heroY + 440;
+        ctx.fillStyle = 'rgba(15, 23, 42, 0.92)';
         ctx.beginPath();
-        ctx.roundRect(sbX, sbY, sbW, sbH, 28);
+        ctx.roundRect(sbX, sbY, sbW, sbH, 52);
         ctx.fill();
-        ctx.strokeStyle = 'rgba(255, 255, 255, 0.15)';
-        ctx.lineWidth = 1.5;
+        ctx.strokeStyle = 'rgba(255, 255, 255, 0.2)';
+        ctx.lineWidth = 2.5;
         ctx.stroke();
 
         ctx.fillStyle = '#94a3b8';
-        ctx.font = '16px system-ui, sans-serif';
+        ctx.font = '30px system-ui, -apple-system, sans-serif';
         ctx.textAlign = 'left';
-        ctx.fillText('🔍  Search anime, movies, donghua, or characters...', sbX + 26, sbY + 35);
+        ctx.fillText('🔍  Search anime, movies, donghua, or characters...', sbX + 50, sbY + 65);
         ctx.textAlign = 'right';
-        ctx.fillStyle = '#7c3aed';
-        ctx.font = 'bold 15px system-ui, sans-serif';
-        ctx.fillText('⚡ SEARCH', sbX + sbW - 26, sbY + 35);
+        ctx.fillStyle = '#a855f7';
+        ctx.font = 'bold 28px system-ui, -apple-system, sans-serif';
+        ctx.fillText('⚡ SEARCH', sbX + sbW - 50, sbY + 65);
 
         // Trending Chips
         ctx.textAlign = 'center';
         ctx.fillStyle = '#64748b';
-        ctx.font = '14px system-ui, sans-serif';
-        ctx.fillText('Trending:', W / 2 - 280, sbY + 86);
+        ctx.font = '26px system-ui, -apple-system, sans-serif';
+        ctx.fillText('Trending:', W / 2 - 540, sbY + 165);
         const chips = ['Solo Leveling', 'Bleach TYBW', 'Demon Slayer', 'Frieren', 'Omniscient Reader'];
-        let chipX = W / 2 - 220;
+        let chipX = W / 2 - 420;
         chips.forEach(c => {
-          const cw = ctx.measureText(c).width + 24;
-          ctx.fillStyle = 'rgba(255, 255, 255, 0.06)';
+          ctx.font = '26px system-ui, -apple-system, sans-serif';
+          const cw = ctx.measureText(c).width + 48;
+          ctx.fillStyle = 'rgba(255, 255, 255, 0.08)';
           ctx.beginPath();
-          ctx.roundRect(chipX, sbY + 70, cw, 26, 13);
+          ctx.roundRect(chipX, sbY + 132, cw, 52, 26);
           ctx.fill();
-          ctx.strokeStyle = 'rgba(255, 255, 255, 0.1)';
-          ctx.lineWidth = 1;
+          ctx.strokeStyle = 'rgba(255, 255, 255, 0.14)';
+          ctx.lineWidth = 1.5;
           ctx.stroke();
-          ctx.fillStyle = '#cbd5e1';
-          ctx.fillText(c, chipX + cw / 2, sbY + 88);
-          chipX += cw + 12;
+          ctx.fillStyle = '#e2e8f0';
+          ctx.fillText(c, chipX + cw / 2, sbY + 167);
+          chipX += cw + 20;
         });
 
         // Hero CTA Buttons
-        // [ ▶ Start Watching Free ]
-        const ctaW = 240, ctaH = 52, ctaY = sbY + 125;
+        const ctaW = 460, ctaH = 98, ctaY = sbY + 235;
         ctx.fillStyle = '#7c3aed';
         ctx.beginPath();
-        ctx.roundRect(W / 2 - ctaW - 14, ctaY, ctaW, ctaH, 26);
+        ctx.roundRect(W / 2 - ctaW - 24, ctaY, ctaW, ctaH, 49);
         ctx.fill();
         ctx.fillStyle = '#ffffff';
-        ctx.font = 'bold 17px system-ui, sans-serif';
+        ctx.font = 'bold 32px system-ui, -apple-system, sans-serif';
         ctx.textAlign = 'center';
-        ctx.fillText('▶   Start Watching Free', W / 2 - 14 - ctaW / 2, ctaY + 33);
+        ctx.fillText('▶   Start Watching Free', W / 2 - 24 - ctaW / 2, ctaY + 61);
 
-        // [ 🧭 Explore Catalog ]
-        ctx.fillStyle = 'rgba(255, 255, 255, 0.08)';
+        ctx.fillStyle = 'rgba(255, 255, 255, 0.09)';
         ctx.beginPath();
-        ctx.roundRect(W / 2 + 14, ctaY, ctaW, ctaH, 26);
+        ctx.roundRect(W / 2 + 24, ctaY, ctaW, ctaH, 49);
         ctx.fill();
-        ctx.strokeStyle = 'rgba(255, 255, 255, 0.15)';
-        ctx.lineWidth = 1.2;
+        ctx.strokeStyle = 'rgba(255, 255, 255, 0.2)';
+        ctx.lineWidth = 2;
         ctx.stroke();
         ctx.fillStyle = '#ffffff';
-        ctx.fillText('🧭   Explore Catalog', W / 2 + 14 + ctaW / 2, ctaY + 33);
+        ctx.fillText('🧭   Explore Catalog', W / 2 + 24 + ctaW / 2, ctaY + 61);
 
-        // Metrics Row (Typographic counts, strict no-pulse compliance)
-        const metY = ctaY + 85;
-        ctx.strokeStyle = 'rgba(255, 255, 255, 0.08)';
+        // Metrics Row
+        const metY = ctaY + 165;
+        ctx.strokeStyle = 'rgba(255, 255, 255, 0.12)';
+        ctx.lineWidth = 1.5;
         ctx.beginPath();
-        ctx.moveTo(120, metY);
-        ctx.lineTo(W - 120, metY);
+        ctx.moveTo(200, metY);
+        ctx.lineTo(W - 200, metY);
         ctx.stroke();
 
         const metrics = [
@@ -4974,27 +4714,27 @@ totalEmissiveRadiance*=rTm;`);
           { val: '1080p 60fps', lbl: 'ULTRA HD QUALITY', col: '#38bdf8' },
           { val: 'Zero Lag', lbl: 'GLOBAL EDGE CDN', col: '#34d399' }
         ];
-        const mColW = (W - 240) / 4;
+        const mColW = (W - 400) / 4;
         metrics.forEach((m, i) => {
-          const mx = 120 + i * mColW + mColW / 2;
+          const mx = 200 + i * mColW + mColW / 2;
           ctx.fillStyle = m.col;
-          ctx.font = '900 28px system-ui, sans-serif';
+          ctx.font = '900 52px system-ui, -apple-system, sans-serif';
           ctx.textAlign = 'center';
-          ctx.fillText(m.val, mx, metY + 44);
-          ctx.fillStyle = '#64748b';
-          ctx.font = 'bold 12px system-ui, sans-serif';
-          ctx.fillText(m.lbl, mx, metY + 66);
+          ctx.fillText(m.val, mx, metY + 75);
+          ctx.fillStyle = '#94a3b8';
+          ctx.font = 'bold 22px system-ui, -apple-system, sans-serif';
+          ctx.fillText(m.lbl, mx, metY + 115);
         });
 
         // 2. EXPLORE ALL REALMS
-        const realmsY = metY + 115;
-        ctx.fillStyle = '#a855f7';
-        ctx.font = 'bold 12px system-ui, sans-serif';
+        const realmsY = metY + 195;
+        ctx.fillStyle = '#c084fc';
+        ctx.font = 'bold 24px system-ui, -apple-system, sans-serif';
         ctx.textAlign = 'left';
-        ctx.fillText('UNIFIED ECOSYSTEM', 60, realmsY);
+        ctx.fillText('UNIFIED ECOSYSTEM', 120, realmsY);
         ctx.fillStyle = '#ffffff';
-        ctx.font = '900 32px system-ui, sans-serif';
-        ctx.fillText('EXPLORE ALL REALMS', 60, realmsY + 36);
+        ctx.font = '900 60px system-ui, -apple-system, sans-serif';
+        ctx.fillText('EXPLORE ALL REALMS', 120, realmsY + 65);
 
         const realms = [
           { title: 'Anime & Donghua', sub: 'Broadcast simultaneously from Japan & China. High-definition Sub & Dub updated daily.', icon: '❖', col: '#a855f7', link: 'Browse Series →' },
@@ -5002,56 +4742,56 @@ totalEmissiveRadiance*=rTm;`);
           { title: 'Cinema & Theatrical', sub: 'Feature-length blockbuster anime movies, Asian theatricals in master quality.', icon: '🎞️', col: '#f59e0b', link: 'Stream Cinema →' },
           { title: 'Mangvels Reader', sub: 'High-resolution digital reader for manga, manhwa, and translated web novels.', icon: '📖', col: '#10b981', link: 'Open Reader →' }
         ];
-        const rW = (W - 120 - 3 * 24) / 4;
+        const rW = (W - 240 - 3 * 40) / 4;
         realms.forEach((r, i) => {
-          const rx = 60 + i * (rW + 24);
-          const ry = realmsY + 60;
-          ctx.fillStyle = 'rgba(15, 20, 36, 0.85)';
+          const rx = 120 + i * (rW + 40);
+          const ry = realmsY + 105;
+          ctx.fillStyle = 'rgba(15, 20, 36, 0.9)';
           ctx.beginPath();
-          ctx.roundRect(rx, ry, rW, 160, 16);
+          ctx.roundRect(rx, ry, rW, 310, 26);
           ctx.fill();
-          ctx.strokeStyle = 'rgba(255, 255, 255, 0.08)';
-          ctx.lineWidth = 1;
+          ctx.strokeStyle = 'rgba(255, 255, 255, 0.12)';
+          ctx.lineWidth = 1.5;
           ctx.stroke();
 
           ctx.fillStyle = r.col;
-          ctx.font = '26px system-ui, sans-serif';
-          ctx.fillText(r.icon, rx + 24, ry + 42);
+          ctx.font = '48px system-ui, -apple-system, sans-serif';
+          ctx.fillText(r.icon, rx + 40, ry + 70);
 
           ctx.fillStyle = '#ffffff';
-          ctx.font = 'bold 18px system-ui, sans-serif';
-          ctx.fillText(r.title, rx + 24, ry + 75);
+          ctx.font = 'bold 34px system-ui, -apple-system, sans-serif';
+          ctx.fillText(r.title, rx + 40, ry + 130);
 
           ctx.fillStyle = '#94a3b8';
-          ctx.font = '12px system-ui, sans-serif';
+          ctx.font = '22px system-ui, -apple-system, sans-serif';
           const words = r.sub.split(' ');
           let l1 = '', l2 = '';
           words.forEach(w => {
             if ((l1 + w).length < 32) l1 += w + ' ';
             else l2 += w + ' ';
           });
-          ctx.fillText(l1.trim(), rx + 24, ry + 102);
-          ctx.fillText(l2.trim(), rx + 24, ry + 120);
+          ctx.fillText(l1.trim(), rx + 40, ry + 180);
+          ctx.fillText(l2.trim(), rx + 40, ry + 215);
 
           ctx.fillStyle = r.col;
-          ctx.font = 'bold 13px system-ui, sans-serif';
-          ctx.fillText(r.link, rx + 24, ry + 144);
+          ctx.font = 'bold 24px system-ui, -apple-system, sans-serif';
+          ctx.fillText(r.link, rx + 40, ry + 265);
         });
 
-        // 3. TOP AIRING BROADCASTS (Real Kagemi Airing Anime - NO 'The Mongoose'!)
-        const animeShelfY = realmsY + 265;
+        // 3. TOP AIRING BROADCASTS
+        const animeShelfY = realmsY + 480;
         ctx.fillStyle = '#ffffff';
-        ctx.font = '900 32px system-ui, sans-serif';
+        ctx.font = '900 60px system-ui, -apple-system, sans-serif';
         ctx.textAlign = 'left';
-        ctx.fillText('🔥  TOP AIRING BROADCASTS', 60, animeShelfY);
+        ctx.fillText('🔥  TOP AIRING BROADCASTS', 120, animeShelfY);
         ctx.fillStyle = '#64748b';
-        ctx.font = '14px system-ui, sans-serif';
-        ctx.fillText('Most streamed releases across Kagemi this week', 60, animeShelfY + 26);
+        ctx.font = '26px system-ui, -apple-system, sans-serif';
+        ctx.fillText('Most streamed releases across Kagemi this week', 120, animeShelfY + 48);
 
         ctx.fillStyle = '#c084fc';
-        ctx.font = 'bold 16px system-ui, sans-serif';
+        ctx.font = 'bold 28px system-ui, -apple-system, sans-serif';
         ctx.textAlign = 'right';
-        ctx.fillText('BROWSE ALL (15,000+) >', W - 60, animeShelfY + 14);
+        ctx.fillText('BROWSE ALL (15,000+) >', W - 120, animeShelfY + 28);
 
         const animeList = [
           { rank: '#1', title: 'Solo Leveling: Arise', year: '2024', score: '★ 9.8', type: 'SERIES', audio: 'SUB & DUB', bg: '#0f172a' },
@@ -5061,223 +4801,158 @@ totalEmissiveRadiance*=rTm;`);
           { rank: '#5', title: 'Frieren: Beyond Journey', year: '2024', score: '★ 9.9', type: 'SERIES', audio: 'SUB & DUB', bg: '#0e1e24' }
         ];
 
-        const cardW = (W - 120 - 4 * 22) / 5;
-        const cardH = 340;
+        const cardW = (W - 240 - 4 * 36) / 5;
+        const cardH = 640;
         animeList.forEach((a, i) => {
-          const cx = 60 + i * (cardW + 22);
-          const cy = animeShelfY + 48;
+          const cx = 120 + i * (cardW + 36);
+          const cy = animeShelfY + 85;
 
           ctx.fillStyle = a.bg;
           ctx.beginPath();
-          ctx.roundRect(cx, cy, cardW, cardH, 14);
+          ctx.roundRect(cx, cy, cardW, cardH, 24);
           ctx.fill();
-          ctx.strokeStyle = 'rgba(255, 255, 255, 0.08)';
-          ctx.lineWidth = 1;
+          ctx.strokeStyle = 'rgba(255, 255, 255, 0.12)';
+          ctx.lineWidth = 1.5;
           ctx.stroke();
 
           // Poster artwork gradient area
-          const artGrad = ctx.createLinearGradient(cx, cy, cx, cy + 200);
+          const artGrad = ctx.createLinearGradient(cx, cy, cx, cy + 380);
           artGrad.addColorStop(0, 'rgba(255, 255, 255, 0.08)');
-          artGrad.addColorStop(1, 'rgba(0, 0, 0, 0.7)');
+          artGrad.addColorStop(1, 'rgba(0, 0, 0, 0.75)');
           ctx.fillStyle = artGrad;
           ctx.beginPath();
-          ctx.roundRect(cx + 2, cy + 2, cardW - 4, 196, 12);
+          ctx.roundRect(cx + 4, cy + 4, cardW - 8, 372, 20);
           ctx.fill();
 
           // Rank Badge
-          ctx.fillStyle = 'rgba(0, 0, 0, 0.8)';
+          ctx.fillStyle = 'rgba(0, 0, 0, 0.85)';
           ctx.beginPath();
-          ctx.roundRect(cx + 12, cy + 12, 42, 24, 6);
+          ctx.roundRect(cx + 24, cy + 24, 76, 44, 12);
           ctx.fill();
           ctx.fillStyle = '#ffffff';
-          ctx.font = 'bold 12px system-ui, sans-serif';
+          ctx.font = 'bold 22px system-ui, -apple-system, sans-serif';
           ctx.textAlign = 'center';
-          ctx.fillText(a.rank, cx + 33, cy + 28);
+          ctx.fillText(a.rank, cx + 62, cy + 54);
 
           // Quality Pill
-          ctx.fillStyle = 'rgba(124, 58, 237, 0.85)';
+          ctx.fillStyle = 'rgba(124, 58, 237, 0.9)';
           ctx.beginPath();
-          ctx.roundRect(cx + cardW - 68, cy + 12, 56, 24, 6);
+          ctx.roundRect(cx + cardW - 120, cy + 24, 96, 44, 12);
           ctx.fill();
           ctx.fillStyle = '#ffffff';
-          ctx.font = '900 11px system-ui, sans-serif';
-          ctx.fillText('1080p', cx + cardW - 40, cy + 28);
+          ctx.font = '900 20px system-ui, -apple-system, sans-serif';
+          ctx.fillText('1080p', cx + cardW - 72, cy + 54);
 
           // Title
           ctx.textAlign = 'left';
           ctx.fillStyle = '#ffffff';
-          ctx.font = 'bold 16px system-ui, sans-serif';
-          const tText = a.title.length > 22 ? a.title.slice(0, 20) + '...' : a.title;
-          ctx.fillText(tText, cx + 14, cy + 230);
+          ctx.font = 'bold 30px system-ui, -apple-system, sans-serif';
+          const tText = a.title.length > 20 ? a.title.slice(0, 18) + '...' : a.title;
+          ctx.fillText(tText, cx + 24, cy + 440);
 
           // Metadata row
           ctx.fillStyle = '#facc15';
-          ctx.font = 'bold 12px system-ui, sans-serif';
-          ctx.fillText(a.score, cx + 14, cy + 254);
+          ctx.font = 'bold 22px system-ui, -apple-system, sans-serif';
+          ctx.fillText(a.score, cx + 24, cy + 485);
           ctx.fillStyle = '#94a3b8';
-          ctx.font = '12px system-ui, sans-serif';
-          ctx.fillText('•  ' + a.audio, cx + 64, cy + 254);
+          ctx.font = '22px system-ui, -apple-system, sans-serif';
+          ctx.fillText('•  ' + a.audio, cx + 115, cy + 485);
 
           // [ ▶ PLAY ] button
           ctx.fillStyle = '#7c3aed';
           ctx.beginPath();
-          ctx.roundRect(cx + 14, cy + 276, cardW - 28, 44, 22);
+          ctx.roundRect(cx + 24, cy + 530, cardW - 48, 80, 40);
           ctx.fill();
           ctx.fillStyle = '#ffffff';
-          ctx.font = 'bold 14px system-ui, sans-serif';
+          ctx.font = 'bold 26px system-ui, -apple-system, sans-serif';
           ctx.textAlign = 'center';
-          ctx.fillText('▶   PLAY', cx + cardW / 2, cy + 303);
+          ctx.fillText('▶   PLAY', cx + cardW / 2, cy + 580);
         });
 
       } else {
-        // =====================================================================
-        // MOBILE AUTHENTIC KAGEMI LANDING PAGE LAYOUT
-        // =====================================================================
-        const heroY = 20;
-
-        ctx.fillStyle = 'rgba(255, 255, 255, 0.05)';
+        // Mobile Layout
+        const heroY = 40;
+        ctx.fillStyle = 'rgba(255, 255, 255, 0.06)';
         ctx.beginPath();
-        ctx.roundRect(W / 2 - 200, heroY, 400, 40, 20);
+        ctx.roundRect(W / 2 - 380, heroY, 760, 76, 38);
         ctx.fill();
         ctx.fillStyle = '#c084fc';
-        ctx.font = 'bold 15px system-ui, sans-serif';
+        ctx.font = 'bold 28px system-ui, -apple-system, sans-serif';
         ctx.textAlign = 'center';
-        ctx.fillText('NEXT-GEN HIGH-FIDELITY STREAMING', W / 2, heroY + 25);
+        ctx.fillText('NEXT-GEN HIGH-FIDELITY STREAMING', W / 2, heroY + 48);
 
-        ctx.font = '900 72px system-ui, sans-serif';
+        ctx.font = '900 134px system-ui, -apple-system, sans-serif';
         ctx.fillStyle = '#ffffff';
-        ctx.fillText('Where Stories Ascend.', W / 2, heroY + 120);
+        ctx.fillText('Where Stories Ascend.', W / 2, heroY + 230);
 
         ctx.fillStyle = '#94a3b8';
-        ctx.font = '24px system-ui, sans-serif';
-        ctx.fillText('15,000+ Anime Episodes • 35,000+ Vertical Shorts • Zero Ads', W / 2, heroY + 175);
-
-        // Mobile Search Bar
-        const sbW = W - 120, sbH = 70, sbX = 60, sbY = heroY + 220;
-        ctx.fillStyle = 'rgba(15, 23, 42, 0.9)';
-        ctx.beginPath();
-        ctx.roundRect(sbX, sbY, sbW, sbH, 35);
-        ctx.fill();
-        ctx.strokeStyle = 'rgba(255, 255, 255, 0.15)';
-        ctx.lineWidth = 2;
-        ctx.stroke();
-
-        ctx.fillStyle = '#94a3b8';
-        ctx.font = '22px system-ui, sans-serif';
-        ctx.textAlign = 'left';
-        ctx.fillText('🔍  Search anime, movies, donghua...', sbX + 36, sbY + 44);
-
-        // Mobile Primary CTA
-        const ctaW = W - 120, ctaH = 72, ctaY = sbY + 95;
-        ctx.fillStyle = '#7c3aed';
-        ctx.beginPath();
-        ctx.roundRect(sbX, ctaY, ctaW, ctaH, 36);
-        ctx.fill();
-        ctx.fillStyle = '#ffffff';
-        ctx.font = 'bold 24px system-ui, sans-serif';
-        ctx.textAlign = 'center';
-        ctx.fillText('▶   Start Watching Free', W / 2, ctaY + 45);
-
-        // Mobile 4 Realms
-        const rY = ctaY + 120;
-        const mRealms = [
-          { title: 'Anime & Donghua', sub: '10,000+ Series Sub & Dub', col: '#a855f7' },
-          { title: 'Vertical Mini-Dramas', sub: '35,000+ 1-Min Shorts', col: '#f43f5e' },
-          { title: 'Cinema & Theatrical', sub: 'Master Quality Movies', col: '#f59e0b' },
-          { title: 'Mangvels Reader', sub: 'Infinite Scroll Reader', col: '#10b981' }
-        ];
-        mRealms.forEach((r, i) => {
-          const rx = 60;
-          const ry = rY + i * 110;
-          ctx.fillStyle = 'rgba(15, 20, 36, 0.85)';
-          ctx.beginPath();
-          ctx.roundRect(rx, ry, W - 120, 92, 18);
-          ctx.fill();
-          ctx.strokeStyle = 'rgba(255, 255, 255, 0.08)';
-          ctx.lineWidth = 1;
-          ctx.stroke();
-
-          ctx.textAlign = 'left';
-          ctx.fillStyle = r.col;
-          ctx.font = 'bold 24px system-ui, sans-serif';
-          ctx.fillText(r.title, rx + 28, ry + 42);
-
-          ctx.fillStyle = '#94a3b8';
-          ctx.font = '17px system-ui, sans-serif';
-          ctx.fillText(r.sub, rx + 28, ry + 70);
-
-          ctx.textAlign = 'right';
-          ctx.fillStyle = r.col;
-          ctx.font = 'bold 24px system-ui, sans-serif';
-          ctx.fillText('>', rx + W - 160, ry + 54);
-        });
+        ctx.font = '46px system-ui, -apple-system, sans-serif';
+        ctx.fillText('15,000+ Anime Episodes • 35,000+ Vertical Shorts • Zero Ads', W / 2, heroY + 335);
       }
 
       ctx.restore();
 
-      // =====================================================================
-      // FIXED TOP NAVBAR (Always Visible Over Scroll)
-      // =====================================================================
-      ctx.fillStyle = 'rgba(5, 5, 8, 0.95)';
-      ctx.fillRect(20, 20, W - 40, 65);
-      ctx.strokeStyle = 'rgba(255, 255, 255, 0.08)';
-      ctx.lineWidth = 1;
-      ctx.strokeRect(20, 20, W - 40, 65);
+      // FIXED TOP NAVBAR
+      ctx.fillStyle = 'rgba(5, 7, 12, 0.98)';
+      ctx.fillRect(40, 30, W - 80, 120);
+      ctx.strokeStyle = 'rgba(255, 255, 255, 0.12)';
+      ctx.lineWidth = 2;
+      ctx.strokeRect(40, 30, W - 80, 120);
 
       // Logo Icon & Brand
-      ctx.fillStyle = 'rgba(124, 58, 237, 0.2)';
+      ctx.fillStyle = 'rgba(124, 58, 237, 0.25)';
       ctx.beginPath();
-      ctx.roundRect(40, 32, 42, 42, 10);
+      ctx.roundRect(75, 48, 84, 84, 20);
       ctx.fill();
-      ctx.strokeStyle = 'rgba(168, 85, 247, 0.5)';
-      ctx.lineWidth = 1.2;
+      ctx.strokeStyle = 'rgba(168, 85, 247, 0.6)';
+      ctx.lineWidth = 2;
       ctx.stroke();
       ctx.fillStyle = '#c084fc';
-      ctx.font = 'bold 22px system-ui, sans-serif';
+      ctx.font = '40px system-ui, -apple-system, sans-serif';
       ctx.textAlign = 'center';
-      ctx.fillText('🛡️', 61, 62);
+      ctx.fillText('🛡️', 117, 107);
 
       ctx.textAlign = 'left';
       ctx.fillStyle = '#ffffff';
-      ctx.font = '900 24px system-ui, sans-serif';
-      ctx.fillText('KAGEMI', 96, 54);
+      ctx.font = '900 44px system-ui, -apple-system, sans-serif';
+      ctx.fillText('KAGEMI', 185, 92);
       ctx.fillStyle = '#a855f7';
-      ctx.font = 'bold 10px monospace';
-      ctx.fillText('STREAMING PLATFORM', 98, 68);
+      ctx.font = 'bold 18px monospace';
+      ctx.fillText('STREAMING PLATFORM', 188, 120);
 
       // Nav Links (Desktop)
       if (!isMobile) {
         const navLinks = ['Anime', 'Donghua', 'Cinema', 'Shorts', 'Mangvels', 'OtakuVerse'];
-        let nX = 360;
-        ctx.font = 'bold 15px system-ui, sans-serif';
+        let nX = 700;
+        ctx.font = 'bold 28px system-ui, -apple-system, sans-serif';
         navLinks.forEach(n => {
           ctx.fillStyle = '#cbd5e1';
-          ctx.fillText(n, nX, 58);
-          nX += 125;
+          ctx.fillText(n, nX, 100);
+          nX += 230;
         });
       }
 
       // Top Right CTA: [ Enter App → ]
       ctx.fillStyle = '#7c3aed';
       ctx.beginPath();
-      ctx.roundRect(W - 190, 32, 150, 42, 21);
+      ctx.roundRect(W - 370, 50, 300, 80, 40);
       ctx.fill();
       ctx.fillStyle = '#ffffff';
-      ctx.font = 'bold 15px system-ui, sans-serif';
+      ctx.font = 'bold 28px system-ui, -apple-system, sans-serif';
       ctx.textAlign = 'center';
-      ctx.fillText('Enter App  →', W - 115, 58);
+      ctx.fillText('Enter App  →', W - 220, 100);
 
       // Bottom Interaction Help Bar
-      ctx.fillStyle = 'rgba(5, 5, 8, 0.96)';
-      ctx.fillRect(20, H - 65, W - 40, 45);
-      ctx.strokeStyle = 'rgba(255, 255, 255, 0.08)';
-      ctx.lineWidth = 1;
-      ctx.strokeRect(20, H - 65, W - 40, 45);
+      ctx.fillStyle = 'rgba(5, 7, 12, 0.98)';
+      ctx.fillRect(40, H - 110, W - 80, 80);
+      ctx.strokeStyle = 'rgba(255, 255, 255, 0.12)';
+      ctx.lineWidth = 2;
+      ctx.strokeRect(40, H - 110, W - 80, 80);
 
       ctx.fillStyle = '#94a3b8';
-      ctx.font = 'bold 13px system-ui, sans-serif';
+      ctx.font = 'bold 24px system-ui, -apple-system, sans-serif';
       ctx.textAlign = 'center';
-      ctx.fillText('⚡ SCROLL WITH MOUSE WHEEL TO BROWSE • CLICK SCREEN OR PRESS [F] TO LAUNCH FULL KAGEMI SANCTUARY', W / 2, H - 37);
+      ctx.fillText('⚡ SCROLL WITH MOUSE WHEEL TO BROWSE • CLICK STONE PLATE OR PRESS [F] TO LAUNCH FULL KAGEMI SANCTUARY', W / 2, H - 60);
 
       ctx.restore();
       if (kagemiScreenTex) kagemiScreenTex.needsUpdate = true;
@@ -5300,90 +4975,116 @@ totalEmissiveRadiance*=rTm;`);
       if (kagemiTerminalGroup) return;
       kagemiTerminalGroup = new THREE.Group();
       
-      // Placed at the BACK of the small island on the ground: x = -30750, y = -6100, z = 1500
-      kagemiTerminalGroup.position.set(-30000, -5820, 4300);
-      // Face towards the waterfall (-29211, -1088), angled 10 degrees toward starting player position (-32984, 2089)
+      // Placed firmly in from the edge on lush ground: x = -29900, y = -5905, z = 3550
+      kagemiTerminalGroup.position.set(-29900, -5905, 3550);
+      // Face towards waterfall pond, angled 10 degrees toward player starting spawn
       kagemiTerminalGroup.rotation.y = 3.1707;
 
       // =====================================================================
-      // 1. SMALL STONE ATELIER / ALTAR PEDESTAL (Firmly seated on the ground)
+      // 1. ANCIENT CARVED TEMPLE STONE FOUNDATION PLINTH (Firmly anchored on turf)
       // =====================================================================
       const stoneMat = new THREE.MeshStandardMaterial({
-        color: 0x181c2b,
+        color: 0x161925,
         roughness: 0.92,
-        metalness: 0.12
+        metalness: 0.1
       });
 
-      // Stepped hexagonal base plinths right on the grass
-      const base1 = new THREE.Mesh(new THREE.CylinderGeometry(280, 320, 24, 6), stoneMat);
-      base1.position.y = 12;
+      const stoneTrimMat = new THREE.MeshStandardMaterial({
+        color: 0x222638,
+        roughness: 0.88,
+        metalness: 0.15
+      });
+
+      // Stepped tier 1 base slab resting directly on the grass (all 4 corners 100% on ground)
+      const base1 = new THREE.Mesh(new THREE.BoxGeometry(3200, 60, 900), stoneMat);
+      base1.position.y = 30;
       kagemiTerminalGroup.add(base1);
 
-      const base2 = new THREE.Mesh(new THREE.CylinderGeometry(230, 270, 24, 6), stoneMat);
-      base2.position.y = 36;
+      // Stepped tier 2 slab
+      const base2 = new THREE.Mesh(new THREE.BoxGeometry(3000, 50, 780), stoneMat);
+      base2.position.y = 80;
       kagemiTerminalGroup.add(base2);
 
-      // Altar top capital slab
-      const capital = new THREE.Mesh(new THREE.CylinderGeometry(250, 210, 20, 6), stoneMat);
-      capital.position.y = 56;
-      kagemiTerminalGroup.add(capital);
+      // Stepped tier 3 slab / altar pedestal bench
+      const base3 = new THREE.Mesh(new THREE.BoxGeometry(2880, 50, 680), stoneTrimMat);
+      base3.position.y = 125;
+      kagemiTerminalGroup.add(base3);
 
-      // Small central dark focus crystal hovering on the altar
-      const crystalMat = new THREE.MeshStandardMaterial({
-        color: 0x1e2438,
-        roughness: 0.2,
-        metalness: 0.8,
-        transparent: true,
-        opacity: 0.9
-      });
-      const miniCrystal = new THREE.Mesh(new THREE.OctahedronGeometry(32, 0), crystalMat);
-      miniCrystal.position.y = 78;
-      kagemiTerminalGroup.add(miniCrystal);
+      // Bottom stone sill plinth resting on the stand
+      const bottomSill = new THREE.Mesh(new THREE.BoxGeometry(2880, 50, 80), stoneTrimMat);
+      bottomSill.position.set(0, 165, 6);
+      kagemiTerminalGroup.add(bottomSill);
 
       // =====================================================================
-      // 2. SCREEN (3x Smaller: 1400 x 800, Base resting directly on altar capital)
+      // 2. MONOLITHIC CARVED DARK STONE PLATE (Solid Monolith Stele: 2900 x 1950 x 70 - ZERO Hollow Gap)
       // =====================================================================
-      const frameMat = new THREE.MeshStandardMaterial({
-        color: 0x0c0f1a,
-        roughness: 0.85,
-        metalness: 0.25
+      const stonePlateMat = new THREE.MeshStandardMaterial({
+        color: 0x121520,
+        roughness: 0.94,
+        metalness: 0.08
       });
-      // Screen frame rests right on top of capital (capital top at y = 66; frame height 840, center y = 486)
-      kagemiScreenFrame = new THREE.Mesh(new THREE.BoxGeometry(1440, 840, 22), frameMat);
-      kagemiScreenFrame.position.set(0, 486, 0);
+
+      // Solid monolithic back slab completely covering height from plinth to crown
+      kagemiScreenFrame = new THREE.Mesh(new THREE.BoxGeometry(2900, 1950, 70), stonePlateMat);
+      kagemiScreenFrame.position.set(0, 1125, 0);
       kagemiTerminalGroup.add(kagemiScreenFrame);
 
+      // Carved stone side architectural pillars framing the tablet tightly
+      const pillarL = new THREE.Mesh(new THREE.BoxGeometry(70, 1960, 80), stoneTrimMat);
+      pillarL.position.set(-1435, 1125, 6);
+      kagemiTerminalGroup.add(pillarL);
+
+      const pillarR = new THREE.Mesh(new THREE.BoxGeometry(70, 1960, 80), stoneTrimMat);
+      pillarR.position.set(1435, 1125, 6);
+      kagemiTerminalGroup.add(pillarR);
+
+      // Carved stone top pediment crown (Directly flush atop the stone slab and pillars, no hollow space!)
+      const topCrown = new THREE.Mesh(new THREE.BoxGeometry(2960, 70, 90), stoneTrimMat);
+      topCrown.position.set(0, 2135, 6);
+      kagemiTerminalGroup.add(topCrown);
+
+      // =====================================================================
+      // 3. CRYSTAL-CLEAR 4K SCREEN INSCRIBED IN THE STONE MONOLITH (2800 x 1850)
+      // =====================================================================
       kagemiScreenCanvas = document.createElement('canvas');
-      kagemiScreenCanvas.width = 2048;
-      kagemiScreenCanvas.height = 1170;
+      kagemiScreenCanvas.width = 4096;
+      kagemiScreenCanvas.height = 2706;
       kagemiScreenCtx = kagemiScreenCanvas.getContext('2d');
 
       kagemiScreenTex = new THREE.CanvasTexture(kagemiScreenCanvas);
-      kagemiScreenTex.minFilter = THREE.LinearFilter;
+      kagemiScreenTex.generateMipmaps = true;
+      kagemiScreenTex.minFilter = THREE.LinearMipmapLinearFilter;
       kagemiScreenTex.magFilter = THREE.LinearFilter;
-      kagemiScreenTex.generateMipmaps = false;
+      kagemiScreenTex.anisotropy = 16;
+      if ('colorSpace' in kagemiScreenTex) {
+        kagemiScreenTex.colorSpace = THREE.SRGBColorSpace;
+      } else if ('encoding' in kagemiScreenTex) {
+        kagemiScreenTex.encoding = THREE.sRGBEncoding;
+      }
 
+      // Self-luminous emissive material for crystal clarity in night atmosphere
       const screenMat = new THREE.MeshStandardMaterial({
         map: kagemiScreenTex,
-        roughness: 0.65,
+        emissiveMap: kagemiScreenTex,
+        emissive: new THREE.Color(0xffffff),
+        emissiveIntensity: 0.94,
+        roughness: 0.28,
         metalness: 0.05,
-        emissive: 0x000000,
-        emissiveIntensity: 0.0,
         side: THREE.FrontSide
       });
 
-      kagemiScreenMesh = new THREE.Mesh(new THREE.PlaneGeometry(1400, 800), screenMat);
-      kagemiScreenMesh.position.set(0, 486, 12);
+      kagemiScreenMesh = new THREE.Mesh(new THREE.PlaneGeometry(2800, 1850), screenMat);
+      kagemiScreenMesh.position.set(0, 1125, 36);
       kagemiTerminalGroup.add(kagemiScreenMesh);
 
       renderKagemiScreen(0);
 
-      // Mouse Wheel Free Scrolling when standing near the atelier at the back
+      // Mouse Wheel Free Scrolling when standing near the stone plate
       window.addEventListener('wheel', (e) => {
         if (!cam || isLandingMenuOpen || isPortalToastOpen || mode !== 'walk') return;
-        const dToKiosk = cam.position.distanceTo(new THREE.Vector3(-28500, -5820, 2500));
-        if (dToKiosk < 3200) {
-          kagemiScrollY = Math.max(0, Math.min(kagemiMaxScroll, kagemiScrollY + e.deltaY * 0.9));
+        const dToKiosk = cam.position.distanceTo(new THREE.Vector3(-29900, -5905, 3550));
+        if (dToKiosk < 4500) {
+          kagemiScrollY = Math.max(0, Math.min(kagemiMaxScroll, kagemiScrollY + e.deltaY * 1.5));
           renderKagemiScreen(kagemiScrollY);
         }
       }, { passive: true });
@@ -5391,8 +5092,8 @@ totalEmissiveRadiance*=rTm;`);
       // Click to open fullscreen interactive original Kagemi modal
       window.addEventListener('click', (e) => {
         if (!cam || isLandingMenuOpen || isPortalToastOpen || mode !== 'walk') return;
-        const dToKiosk = cam.position.distanceTo(new THREE.Vector3(-28500, -5820, 2500));
-        if (dToKiosk < 3200) {
+        const dToKiosk = cam.position.distanceTo(new THREE.Vector3(-29900, -5905, 3550));
+        if (dToKiosk < 4500) {
           const ray = new THREE.Raycaster();
           const mouse = new THREE.Vector2((e.clientX / window.innerWidth) * 2 - 1, -(e.clientY / window.innerHeight) * 2 + 1);
           ray.setFromCamera(mouse, cam);
@@ -5561,7 +5262,8 @@ totalEmissiveRadiance*=rTm;`);
         name: 'Sanctuary Atelier',
         category: 'ATELIER',
         getTargetPos: (cam) => {
-          return V(-30000, -5350, 4300);
+          // Bottom stone stand plinth below the plate
+          return V(-29900, -5820, 3420);
         }
       }
     ];
@@ -5595,6 +5297,10 @@ totalEmissiveRadiance*=rTm;`);
       if (isLandingMenuOpen) return;
       isLandingMenuOpen = true;
       const modal = document.getElementById('kagemi-landing-modal');
+      const frame = document.getElementById('kagemi-live-frame');
+      if (frame && (!frame.src || frame.src === 'about:blank' || !frame.src.includes('embed=1'))) {
+        frame.src = '/?embed=1';
+      }
       if (modal) {
         modal.style.display = 'flex';
         modal.classList.add('active');
@@ -5722,14 +5428,14 @@ totalEmissiveRadiance*=rTm;`);
         }
       }
 
-      // Solid ground placement for 3D screen above stone altar capital
+      // Solid ground placement for 3D screen in stone monolith stele
       if (kagemiScreenMesh && kagemiScreenFrame) {
-        kagemiScreenMesh.position.y = 486;
-        kagemiScreenFrame.position.y = 486;
+        kagemiScreenMesh.position.y = 1125;
+        kagemiScreenFrame.position.y = 1125;
       }
 
       // 2. Project Landmark POI Markers: Only show when closer (<= 18m), only focused shows card
-      const MAX_POI_DIST = 18;
+      const MAX_POI_DIST = 50;
       let closestPoi = null;
       let minCenterDist = Math.min(w, h) * 0.28;
 
