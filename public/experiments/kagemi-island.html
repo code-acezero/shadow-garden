@@ -1105,15 +1105,352 @@
       transform: scale(0.96);
     }
   
+  
+    /* =========================================================================
+       LANDING ANIMATION SEQUENCE & BGM STYLES
+       ========================================================================= */
+    #kagemi-whiteout-overlay {
+      position: fixed;
+      inset: 0;
+      background: #ffffff;
+      pointer-events: none;
+      opacity: 0;
+      z-index: 99998;
+      transition: opacity 0.35s ease;
+    }
+
+    /* Cinematic Title Intro */
+    #kagemi-cinematic-title {
+      position: fixed;
+      inset: 0;
+      z-index: 99995;
+      background: #020205;
+      display: none;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      overflow: hidden;
+      user-select: none;
+      transition: opacity 0.8s ease;
+    }
+    #kagemi-cinematic-title.active {
+      display: flex;
+    }
+    .k-title-glow-sphere {
+      position: absolute;
+      width: 600px;
+      height: 600px;
+      border-radius: 50%;
+      background: rgba(124, 58, 237, 0.15);
+      filter: blur(140px);
+      pointer-events: none;
+    }
+    .k-title-content {
+      position: relative;
+      z-index: 2;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      text-align: center;
+      padding: 0 24px;
+      max-width: 900px;
+    }
+    .k-title-h1 {
+      font-size: clamp(48px, 9vw, 108px);
+      font-weight: 800;
+      letter-spacing: 0.38em;
+      margin-left: 0.38em;
+      text-transform: uppercase;
+      background: linear-gradient(135deg, #ffffff 0%, #e0e7ff 45%, #c084fc 80%, #7c3aed 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      filter: drop-shadow(0 0 32px rgba(124, 58, 237, 0.65));
+      margin-bottom: 0;
+      line-height: 1.1;
+    }
+    .k-title-laser-container {
+      position: relative;
+      width: 100%;
+      max-width: 640px;
+      height: 24px;
+      margin: 12px 0 16px 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .k-title-laser-line {
+      position: absolute;
+      width: 100%;
+      height: 1px;
+      background: linear-gradient(90deg, transparent, rgba(168, 85, 247, 0.6), transparent);
+    }
+    .k-title-laser-beam {
+      position: absolute;
+      width: 90px;
+      height: 2px;
+      background: linear-gradient(90deg, transparent, #ffffff 50%, transparent);
+      box-shadow: 0 0 16px #a855f7, 0 0 32px #7c3aed;
+      border-radius: 999px;
+      animation: kLaserSweep 3.2s cubic-bezier(0.16, 1, 0.3, 1) infinite;
+    }
+    @keyframes kLaserSweep {
+      0% { transform: translateX(-320px); opacity: 0; }
+      15% { opacity: 1; }
+      85% { opacity: 1; }
+      100% { transform: translateX(320px); opacity: 0; }
+    }
+    .k-title-sub {
+      font-size: 13px;
+      letter-spacing: 0.28em;
+      text-transform: uppercase;
+      color: rgba(226, 232, 240, 0.75);
+      font-weight: 600;
+      margin: 0;
+    }
+    .k-title-enter-hint {
+      margin-top: 36px;
+      font-size: 12px;
+      letter-spacing: 0.18em;
+      color: rgba(168, 85, 247, 0.9);
+      background: rgba(124, 58, 237, 0.12);
+      border: 1px solid rgba(168, 85, 247, 0.3);
+      padding: 6px 18px;
+      border-radius: 999px;
+      text-transform: uppercase;
+      font-weight: 600;
+      animation: kHintPulse 2s ease-in-out infinite;
+    }
+    @keyframes kHintPulse {
+      0%, 100% { opacity: 0.65; transform: scale(1); }
+      50% { opacity: 1; transform: scale(1.03); }
+    }
+
+    /* Floating Skip Sequence Button */
+    #kagemi-seq-skip-btn {
+      position: fixed;
+      top: 24px;
+      right: 24px;
+      z-index: 99999;
+      display: none;
+      align-items: center;
+      gap: 8px;
+      background: rgba(10, 14, 26, 0.88);
+      border: 1px solid rgba(168, 85, 247, 0.45);
+      color: #f1f5f9;
+      font-size: 12px;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      padding: 8px 18px;
+      border-radius: 999px;
+      cursor: pointer;
+      backdrop-filter: blur(14px);
+      -webkit-backdrop-filter: blur(14px);
+      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.6), 0 0 16px rgba(124, 58, 237, 0.3);
+      transition: all 0.2s ease;
+    }
+    #kagemi-seq-skip-btn:hover {
+      background: #7c3aed;
+      border-color: #a855f7;
+      transform: scale(1.04);
+      box-shadow: 0 8px 28px rgba(124, 58, 237, 0.6);
+    }
+    #kagemi-seq-skip-btn:active {
+      transform: scale(0.96);
+    }
+
+    /* Dimension Alert (Brace Popup) from Main Landing Page */
+    #kagemi-brace-modal {
+      position: fixed;
+      inset: 0;
+      z-index: 99997;
+      background: rgba(2, 4, 10, 0.78);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+    }
+    #kagemi-brace-modal.active {
+      display: flex;
+    }
+    .k-brace-card {
+      position: relative;
+      max-width: 460px;
+      width: 100%;
+      background: rgba(10, 14, 26, 0.95);
+      border: 1px solid rgba(220, 38, 38, 0.55);
+      border-radius: 20px;
+      padding: 24px;
+      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.8), 0 0 36px rgba(220, 38, 38, 0.3);
+      text-align: center;
+      animation: kBraceSlideUp 0.28s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+    }
+    @keyframes kBraceSlideUp {
+      from { opacity: 0; transform: translateY(18px) scale(0.96); }
+      to { opacity: 1; transform: translateY(0) scale(1); }
+    }
+    .k-brace-header {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      margin-bottom: 14px;
+      border-bottom: 1px solid rgba(220, 38, 38, 0.2);
+      padding-bottom: 12px;
+    }
+    .k-brace-badge {
+      font-size: 11px;
+      font-weight: 800;
+      letter-spacing: 0.15em;
+      text-transform: uppercase;
+      color: #f87171;
+      background: rgba(220, 38, 38, 0.15);
+      border: 1px solid rgba(220, 38, 38, 0.35);
+      padding: 3px 12px;
+      border-radius: 999px;
+    }
+    .k-brace-title {
+      margin: 0;
+      font-size: 17px;
+      font-weight: 800;
+      color: #ffffff;
+      letter-spacing: 0.04em;
+    }
+    .k-brace-msg {
+      font-size: 13px;
+      line-height: 1.6;
+      color: #cbd5e1;
+      text-align: left;
+      margin: 0 0 20px 0;
+      font-family: monospace, sans-serif;
+    }
+    .k-brace-btn {
+      width: 100%;
+      background: linear-gradient(135deg, #b91c1c, #991b1b);
+      color: #ffffff;
+      font-size: 13px;
+      font-weight: 800;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      padding: 12px 24px;
+      border-radius: 12px;
+      border: 1px solid rgba(248, 113, 113, 0.5);
+      cursor: pointer;
+      box-shadow: 0 6px 20px rgba(185, 28, 28, 0.5);
+      transition: all 0.18s ease;
+    }
+    .k-brace-btn:hover {
+      background: linear-gradient(135deg, #dc2626, #b91c1c);
+      transform: scale(1.02);
+      box-shadow: 0 8px 26px rgba(220, 38, 38, 0.7);
+    }
+    .k-brace-btn:active {
+      transform: scale(0.97);
+    }
+
+    /* BGM Now Playing Floating Toast */
+    #kagemi-bgm-toast {
+      position: fixed;
+      bottom: 84px;
+      left: 24px;
+      z-index: 9990;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      background: rgba(10, 14, 26, 0.88);
+      border: 1px solid rgba(168, 85, 247, 0.35);
+      backdrop-filter: blur(14px);
+      -webkit-backdrop-filter: blur(14px);
+      padding: 8px 16px;
+      border-radius: 999px;
+      color: #e2e8f0;
+      font-size: 12px;
+      font-weight: 600;
+      letter-spacing: 0.03em;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.55);
+      opacity: 0;
+      transform: translateY(12px);
+      pointer-events: none;
+      transition: opacity 0.3s ease, transform 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+    #kagemi-bgm-toast.visible {
+      opacity: 1;
+      transform: translateY(0);
+    }
+    .k-bgm-note {
+      color: #a855f7;
+      font-size: 14px;
+      animation: kNoteBounce 1.5s ease-in-out infinite;
+    }
+    @keyframes kNoteBounce {
+      0%, 100% { transform: translateY(0); }
+      50% { transform: translateY(-2px); }
+    }
+
   </style>
 </head>
 
 <body>
   <div id="c"></div>
+  <!-- Whiteout transition flash overlay -->
+  <div id="kagemi-whiteout-overlay"></div>
+
+  <!-- Full-screen Cinematic Title Card Overlay -->
+  <div id="kagemi-cinematic-title" class="active">
+    <div class="k-title-glow-sphere"></div>
+    <div class="k-title-content">
+      <h1 class="k-title-h1">KAGEMI</h1>
+      <div class="k-title-laser-container">
+        <div class="k-title-laser-line"></div>
+        <div class="k-title-laser-beam"></div>
+      </div>
+      <p class="k-title-sub">Sanctuary of Shadows · Dimensional Gateway</p>
+      <div class="k-title-enter-hint">▶ Click anywhere to begin landing sequence</div>
+    </div>
+  </div>
+
+  <!-- Floating Skip to Island Button -->
+  <button id="kagemi-seq-skip-btn" title="Skip cinematic sequence">
+    <span>Skip to Walk</span>
+    <span>⏭</span>
+  </button>
+
+  <!-- Dimension Alert (Brace Popup) -->
+  <div id="kagemi-brace-modal">
+    <div class="k-brace-card">
+      <div class="k-brace-header">
+        <span class="k-brace-badge">⚠ DIMENSION ALERT</span>
+      </div>
+      <h3 class="k-brace-title">TRAVERSE THE MANA GATEWAY</h3>
+      <p class="k-brace-msg">
+        We are not going beyond Kagemi, we are going beyond our reality and going to a place known as Otakuverse which has the guild Kagemi where we will operate everything. Brace yourself and push the door.
+      </p>
+      <button id="k-brace-ok-btn" class="k-brace-btn">OK, I'M READY</button>
+    </div>
+  </div>
+
+  <!-- Floating BGM Now-Playing Toast -->
+  <div id="kagemi-bgm-toast">
+    <span class="k-bgm-note">♫</span>
+    <span id="k-bgm-title">Now Playing: Hiisi Island Night</span>
+  </div>
+
   <div id="t">The shrine gate leads straight to the mana portal</div>
-  <div id="ui"><button id="fl">Flyover</button><button id="wk" class="on">Walk</button><button id="fo">Free
-      look</button><button id="fp">FPV</button><button id="al">Alignment line</button><button id="sn">Sound:
-      on</button><button id="hw" hidden>Hold to walk</button></div>
+  <div id="ui">
+    <button id="btn-landing-seq" title="Play Authentic Cinematic Landing Sequence">🎬 Landing Sequence</button>
+    <button id="fl">Flyover</button>
+    <button id="wk" class="on">Walk</button>
+    <button id="fo">Free look</button>
+    <button id="fp">FPV</button>
+    <button id="al">Alignment line</button>
+    <button id="btn-bgm-toggle" title="Toggle Background Music">♫ Music: On</button>
+    <button id="btn-bgm-next" title="Next BGM Track">⏭</button>
+    <button id="sn">SFX: On</button>
+    <button id="hw" hidden>Hold to walk</button>
+  </div>
   <div id="hint"></div>
   <div id="ld">Loading the floating island…</div>
   
@@ -1914,7 +2251,7 @@
       d = Math.min(d, 0.0333);
       ts += d; perfTick(d); if (mixer) mixer.update(d); for (const f of fxs) f(d); for (const f of fxB) f(d);
       if (typeof updateGenshinHUD === "function") updateGenshinHUD(d);
-      if (mode === 'seq') seqI(); else if (mode === 'walk') walk(d); else if (mode === 'fpv') fpv(d); else if (mode === 'orbit') ctl.update(); else if (mode === 'tunnel') tunnelTick(d);
+      if (mode === 'landing_sequence') landingSequenceManager.update(d); else if (mode === 'seq') seqI(); else if (mode === 'walk') walk(d); else if (mode === 'fpv') fpv(d); else if (mode === 'orbit') ctl.update(); else if (mode === 'tunnel') tunnelTick(d);
 
       if (PW && mode === 'walk') {
         // Strict Front Stairs Approach Cone:
@@ -4365,8 +4702,7 @@ totalEmissiveRadiance*=rTm;`);
         ld.style.opacity = 0;
         ld.style.pointerEvents = 'none';
         setTimeout(() => ld.remove(), 900);
-        setMode('walk');
-        requestLock();
+        landingSequenceManager.start();
       };
       clock.start(); ren.setAnimationLoop(() => { const delta = clock.getDelta(); frame(Math.min(delta, 0.0333)); })
     }, bad);
@@ -5423,7 +5759,597 @@ totalEmissiveRadiance*=rTm;`);
 
 
     // Bind Genshin UI Events
+    
+    /* =========================================================================
+       KAGEMI AUDIO & BGM MANAGER (AUTHENTIC MAIN LANDING PAGE BGM PLAYLIST)
+       ========================================================================= */
+    const KAGEMI_BGM_TRACKS = [
+      { title: "Hiisi Island Night (To Light the Aeon Dark)", url: "/bgm/Hiisi Island Night OST 1 (To Light the Aeon Dark Motif)  Genshin Impact Luna I OST.mp3" },
+      { title: "Hiisi Island Day OST 3", url: "/bgm/Hiisi Island Day OST 3  Genshin Impact 6.0 OST.mp3" },
+      { title: "Through the Silent Frostbound Night", url: "/bgm/[Finalized] Through the Silent Frostbound Night - Hiisi Island OST 2  Genshin Impact 6.0 OST.mp3" },
+      { title: "Columbina Nod-Krai Leitmotif", url: "/bgm/Columbina Nod-Krai Leitmotif Vocal 2 - Silvermoon Hall (Red)  Genshin Impact 6.0 OST.mp3" },
+      { title: "Columbina's Lullaby Vocal", url: "/bgm/[Final V4] Columbina's Lullaby Vocal - Maiden Flowerbed (Blue)  Genshin Impact 6.0 OST.mp3" },
+      { title: "Lullaby of the New Moon", url: "/bgm/Lullaby of the New Moon (III)_ Petala ceciderunt - Silvermoon Hall (White)  Genshin Impact 6.0 OST.mp3" },
+      { title: "Dawn Winery Theme", url: "/bgm/Dawn Winery Theme.mp3" },
+      { title: "The Outlander Who Caught the Wind", url: "/bgm/The Outlander Who Caught the Wind.mp3" },
+      { title: "Overture of Falling Stars", url: "/bgm/Overture of Falling Stars.mp3" },
+      { title: "Homecoming to Port", url: "/bgm/Homecoming to Port.mp3" },
+      { title: "Bleach OST - Soundscape to Ardor", url: "/bgm/Bleach OST 3 - Soundscape to Ardor.mp3" },
+      { title: "Madoka Magica - Take Your Hands", url: "/bgm/Mahou Shoujo Madoka Magica Rebellion OST - Take Your Hands.mp3" },
+      { title: "Sad Anime OST - Eye Water", url: "/bgm/Sad Anime Ost _ Eye Water - Guitar.mp3" },
+      { title: "Naruto Shippuden - Man of the World", url: "/bgm/Naruto Shippuuden Sountrack (Man of the world).mp3" }
+    ];
+
+    const KAGEMI_SFX_FILES = {
+      title: '/sfx/title.mp3',
+      drone: '/sfx/drone.mp3',
+      door: '/sfx/door.mp3',
+      portal: '/sfx/portal.mp3',
+      glitch: '/sfx/glitch.mp3',
+      tunnel: '/sfx/tunnel.mp3',
+      destination: '/sfx/destination.mp3'
+    };
+
+    class KagemiAudioEngine {
+      constructor() {
+        this.bgmAudio = null;
+        this.currentBgmIdx = -1;
+        this.bgmEnabled = true;
+        this.sfxEnabled = true;
+        this.sfxPool = new Map();
+        this.toastTimer = null;
+        this.fadeInterval = null;
+        this.targetVol = 0.35;
+      }
+
+      init() {
+        // Pre-create SFX Audio instances
+        Object.entries(KAGEMI_SFX_FILES).forEach(([key, url]) => {
+          try {
+            const a = new Audio(url);
+            a.preload = 'auto';
+            this.sfxPool.set(key, a);
+          } catch(e) {}
+        });
+      }
+
+      playSfx(key, vol = 0.6, loop = false) {
+        if (!this.sfxEnabled) return;
+        const a = this.sfxPool.get(key);
+        if (a) {
+          try {
+            a.currentTime = 0;
+            a.volume = vol;
+            a.loop = loop;
+            const p = a.play();
+            if (p && typeof p.catch === 'function') p.catch(() => {});
+          } catch(e) {}
+        }
+      }
+
+      stopSfx(key) {
+        const a = this.sfxPool.get(key);
+        if (a) {
+          try {
+            a.pause();
+            a.currentTime = 0;
+            a.loop = false;
+          } catch(e) {}
+        }
+      }
+
+      stopAllSfx() {
+        this.sfxPool.forEach(a => {
+          try { a.pause(); a.currentTime = 0; a.loop = false; } catch(e) {}
+        });
+      }
+
+      playBgm(idx) {
+        if (!this.bgmEnabled) return;
+        if (idx < 0 || idx >= KAGEMI_BGM_TRACKS.length) idx = 0;
+        this.currentBgmIdx = idx;
+        const track = KAGEMI_BGM_TRACKS[idx];
+
+        if (this.bgmAudio) {
+          try {
+            this.bgmAudio.pause();
+            this.bgmAudio = null;
+          } catch(e) {}
+        }
+
+        try {
+          const a = new Audio(track.url);
+          a.preload = 'auto';
+          a.volume = 0;
+          a.onended = () => { this.nextBgm(); };
+          this.bgmAudio = a;
+
+          const p = a.play();
+          if (p && typeof p.catch === 'function') {
+            p.catch(err => {
+              console.warn('[BGM Autoplay prevented, will start on next interaction]:', err);
+            });
+          }
+
+          // Smooth 2s fade in
+          let v = 0;
+          if (this.fadeInterval) clearInterval(this.fadeInterval);
+          this.fadeInterval = setInterval(() => {
+            if (!this.bgmAudio) { clearInterval(this.fadeInterval); return; }
+            v = Math.min(this.targetVol, v + 0.025);
+            this.bgmAudio.volume = v;
+            if (v >= this.targetVol) clearInterval(this.fadeInterval);
+          }, 80);
+
+          this.showToast(track.title);
+          this.updateToolbarLabel();
+        } catch(err) {
+          console.warn('[BGM Play Error]:', err);
+        }
+      }
+
+      playRandomBgm() {
+        const nextIdx = Math.floor(Math.random() * KAGEMI_BGM_TRACKS.length);
+        this.playBgm(nextIdx);
+      }
+
+      nextBgm() {
+        const nextIdx = (this.currentBgmIdx + 1) % KAGEMI_BGM_TRACKS.length;
+        this.playBgm(nextIdx);
+      }
+
+      toggleBgm() {
+        this.bgmEnabled = !this.bgmEnabled;
+        if (!this.bgmEnabled) {
+          if (this.bgmAudio) {
+            try { this.bgmAudio.pause(); } catch(e) {}
+          }
+        } else {
+          if (this.bgmAudio && this.bgmAudio.src) {
+            this.bgmAudio.play().catch(() => {});
+          } else {
+            this.playRandomBgm();
+          }
+        }
+        this.updateToolbarLabel();
+      }
+
+      updateToolbarLabel() {
+        const btn = document.getElementById('btn-bgm-toggle');
+        if (btn) {
+          btn.textContent = this.bgmEnabled ? '♫ Music: On' : '♫ Music: Off';
+          btn.classList.toggle('on', this.bgmEnabled);
+        }
+      }
+
+      showToast(trackTitle) {
+        const toast = document.getElementById('kagemi-bgm-toast');
+        const titleEl = document.getElementById('k-bgm-title');
+        if (!toast || !titleEl) return;
+
+        titleEl.textContent = 'Now Playing: ' + trackTitle;
+        toast.classList.add('visible');
+
+        if (this.toastTimer) clearTimeout(this.toastTimer);
+        this.toastTimer = setTimeout(() => {
+          toast.classList.remove('visible');
+        }, 5000);
+      }
+    }
+
+    const kagemiAudio = new KagemiAudioEngine();
+    window.kagemiAudio = kagemiAudio;
+
+
+    /* =========================================================================
+       AUTHENTIC LANDING ANIMATION SEQUENCE CONTROLLER
+       ========================================================================= */
+    let landingShake = 0;
+
+    class LandingSequenceManager {
+      constructor() {
+        this.active = false;
+        this.stage = 'idle'; // 'title', 'flyover', 'drop', 'crouch', 'stand', 'confusion', 'walk', 'brace', 'push_suction', 'tunnel', 'arrival'
+        this.stageElapsed = 0;
+        this.totalElapsed = 0;
+        this.walkBobT = 0;
+        this.swayAngle = 0;
+        this.savedCamPos = new THREE.Vector3();
+        this.savedCamLook = new THREE.Vector3();
+
+        // Key Points in 3D Space
+        this.islandCenter = new THREE.Vector3(897, 0, 66);
+        this.dropTarget = new THREE.Vector3(-28500, -5820 + 90, 1600);
+        this.stairsFoot = null; // Calculated dynamically from PW.c
+      }
+
+      start() {
+        this.active = true;
+        this.stageElapsed = 0;
+        this.totalElapsed = 0;
+        this.walkBobT = 0;
+        this.swayAngle = 0;
+        landingShake = 0;
+
+        // Ensure audio is initialized and unlocked
+        kagemiAudio.init();
+        audioInit();
+        if (S.ac && S.ac.state === 'suspended') S.ac.resume();
+
+        // Show skip button
+        const skipBtn = document.getElementById('kagemi-seq-skip-btn');
+        if (skipBtn) skipBtn.style.display = 'flex';
+
+        // Set mode
+        setMode('landing_sequence');
+
+        // Phase 1: Title Card Intro
+        this.setStage('title');
+      }
+
+      setStage(newStage) {
+        this.stage = newStage;
+        this.stageElapsed = 0;
+        console.log('[Landing Sequence Stage]:', newStage);
+
+        const titleCard = document.getElementById('kagemi-cinematic-title');
+        const braceModal = document.getElementById('kagemi-brace-modal');
+        const whiteout = document.getElementById('kagemi-whiteout-overlay');
+
+        if (newStage === 'title') {
+          if (titleCard) {
+            titleCard.style.display = 'flex';
+            titleCard.style.opacity = '1';
+            titleCard.classList.add('active');
+          }
+          kagemiAudio.playSfx('title', 0.8);
+          // Start BGM swelling in
+          setTimeout(() => {
+            if (!kagemiAudio.bgmAudio || kagemiAudio.bgmAudio.paused) {
+              kagemiAudio.playRandomBgm();
+            }
+          }, 800);
+        } else if (newStage === 'flyover') {
+          if (titleCard) {
+            titleCard.style.opacity = '0';
+            setTimeout(() => { titleCard.style.display = 'none'; titleCard.classList.remove('active'); }, 800);
+          }
+          kagemiAudio.playSfx('drone', 0.5, true);
+        } else if (newStage === 'drop') {
+          kagemiAudio.stopSfx('drone');
+          kagemiAudio.playSfx('drone', 0.75, false);
+        } else if (newStage === 'crouch') {
+          landingShake = 3.5;
+          kagemiAudio.playSfx('door', 0.6); // Impact thud
+          playGenshinChime(true);
+        } else if (newStage === 'stand') {
+          landingShake = 0;
+        } else if (newStage === 'walk') {
+          // Footsteps will play during walk update
+        } else if (newStage === 'brace') {
+          if (document.exitPointerLock) document.exitPointerLock();
+          if (braceModal) braceModal.classList.add('active');
+          playGenshinChime(true);
+        } else if (newStage === 'push_suction') {
+          if (braceModal) braceModal.classList.remove('active');
+          kagemiAudio.playSfx('door', 0.8);
+          kagemiAudio.playSfx('portal', 0.8, true);
+          kagemiAudio.playSfx('glitch', 0.7, true);
+          landingShake = 5.0;
+        } else if (newStage === 'tunnel') {
+          kagemiAudio.stopSfx('portal');
+          kagemiAudio.stopSfx('glitch');
+          kagemiAudio.playSfx('tunnel', 0.8, true);
+          landingShake = 0;
+          enterTunnel();
+        } else if (newStage === 'arrival') {
+          kagemiAudio.stopSfx('tunnel');
+          kagemiAudio.playSfx('destination', 0.9);
+          if (whiteout) {
+            whiteout.style.opacity = '1';
+            setTimeout(() => { whiteout.style.opacity = '0'; }, 300);
+          }
+          exitTunnel();
+          this.complete();
+        }
+      }
+
+      update(d) {
+        if (!this.active) return;
+        this.stageElapsed += d;
+        this.totalElapsed += d;
+
+        // Apply camera shake if active
+        if (landingShake > 0) {
+          landingShake = Math.max(0, landingShake - d * 2.5);
+          cam.position.x += (Math.random() - 0.5) * landingShake * 35;
+          cam.position.y += (Math.random() - 0.5) * landingShake * 25;
+          cam.position.z += (Math.random() - 0.5) * landingShake * 35;
+        }
+
+        const t = this.stageElapsed;
+
+        switch (this.stage) {
+          case 'title': {
+            // Position camera high above looking down at the island diorama
+            cam.position.set(-16000, 4200, 8000);
+            cam.lookAt(this.islandCenter);
+            if (t >= 3.2) {
+              this.setStage('flyover');
+            }
+            break;
+          }
+
+          case 'flyover': {
+            const flyDuration = 8.5;
+            const p = Math.min(1.0, t / flyDuration);
+            const easeOut = 1 - Math.pow(1 - p, 3);
+
+            // Orbit 1.25 laps around island center
+            const angle = easeOut * 2.5 * Math.PI - 1.2;
+            const radius = 16000 * (1 - easeOut) + 8500 * easeOut;
+            const alt = 4200 * (1 - easeOut) + 1400 * easeOut;
+
+            const cx = this.islandCenter.x + Math.sin(angle) * radius;
+            const cz = this.islandCenter.z + Math.cos(angle) * radius;
+
+            cam.position.set(cx, alt, cz);
+            cam.lookAt(this.islandCenter.x, 300, this.islandCenter.z);
+            cam.fov = 70 - easeOut * 15;
+            cam.updateProjectionMatrix();
+
+            if (p >= 1.0) {
+              this.setStage('drop');
+            }
+            break;
+          }
+
+          case 'drop': {
+            const dropDur = 1.6;
+            const p = Math.min(1.0, t / dropDur);
+            // Accelerate downward (quadratic ease-in)
+            const easeIn = p * p;
+
+            const startY = 3200;
+            const targetY = -5820 + 90;
+            const currentY = startY * (1 - easeIn) + targetY * easeIn;
+
+            cam.position.set(-28500, currentY, 1600);
+            cam.lookAt(-25000, currentY - 100, 1500);
+
+            if (p >= 1.0) {
+              this.setStage('crouch');
+            }
+            break;
+          }
+
+          case 'crouch': {
+            // Hits ground impact
+            const crouchDur = 1.0;
+            cam.position.set(-28500, -5820 + 25, 1600);
+            cam.lookAt(-26000, -5820 + 10, 1500);
+
+            if (t >= crouchDur) {
+              this.setStage('stand');
+            }
+            break;
+          }
+
+          case 'stand': {
+            // Smoothly raise camera to standing eye height
+            const standDur = 1.2;
+            const p = Math.min(1.0, t / standDur);
+            const ease = p * p * (3 - 2 * p);
+
+            const crouchY = -5820 + 25;
+            const standY = -5820 + 90;
+            const currentY = crouchY * (1 - ease) + standY * ease;
+
+            cam.position.set(-28500, currentY, 1600);
+            cam.lookAt(-24000, currentY, 1500);
+
+            if (p >= 1.0) {
+              this.setStage('confusion');
+            }
+            break;
+          }
+
+          case 'confusion': {
+            // Sway head left and right taking in the scenery
+            const confDur = 2.2;
+            this.swayAngle += d * 2.5;
+            const yawOffset = Math.sin(this.swayAngle) * 0.45;
+
+            const lookTarget = new THREE.Vector3(-24000, -5820 + 90, 1500);
+            lookTarget.z += Math.sin(this.swayAngle) * 3500;
+
+            cam.position.set(-28500, -5820 + 90, 1600);
+            cam.lookAt(lookTarget);
+
+            if (t >= confDur) {
+              this.setStage('walk');
+            }
+            break;
+          }
+
+          case 'walk': {
+            // Strides smoothly forward along the bridge and approach path
+            const walkDur = 4.5;
+            const p = Math.min(1.0, t / walkDur);
+            const ease = p * p * (3 - 2 * p);
+
+            this.walkBobT += d * 7.0;
+            const headBob = Math.sin(this.walkBobT) * 7.0;
+            const headSway = Math.sin(this.walkBobT * 0.5) * 5.0;
+
+            // Advance from small island lawn to in front of shrine stairs
+            const startX = -28500, startZ = 1600, startY = -5820 + 90;
+            const targetX = PW ? (PW.c.x - 2200) : -800;
+            const targetZ = PW ? PW.c.z : 400;
+            const targetY = PW ? (PW.c.y + 60) : 760;
+
+            const curX = startX * (1 - ease) + targetX * ease;
+            const curY = startY * (1 - ease) + targetY * ease + headBob;
+            const curZ = startZ * (1 - ease) + targetZ * ease + headSway;
+
+            cam.position.set(curX, curY, curZ);
+            const lookAtTarget = PW ? PW.c.clone().setY(PW.c.y + 120) : at(0, 700);
+            cam.lookAt(lookAtTarget);
+
+            // Play procedural footstep tick
+            if (Math.sin(this.walkBobT) > 0.95 && !this.justStepped) {
+              this.justStepped = true;
+              if (typeof S !== 'undefined' && S.thud) S.thud(120, 0.08, 0.25, 0);
+            } else if (Math.sin(this.walkBobT) < 0.2) {
+              this.justStepped = false;
+            }
+
+            if (p >= 1.0) {
+              this.setStage('brace');
+            }
+            break;
+          }
+
+          case 'brace': {
+            // Camera waits at the foot of the stairs looking at the portal
+            if (PW) {
+              cam.position.set(PW.c.x - 2200, PW.c.y + 60, PW.c.z);
+              cam.lookAt(PW.c.x, PW.c.y + 120, PW.c.z);
+            }
+            break;
+          }
+
+          case 'push_suction': {
+            // Rapid surge forward into the water vortex!
+            const surgeDur = 2.4;
+            const p = Math.min(1.0, t / surgeDur);
+            const easeIn = p * p * p;
+
+            if (PW) {
+              const startX = PW.c.x - 2200;
+              const targetX = PW.c.x + 80;
+              const curX = startX * (1 - easeIn) + targetX * easeIn;
+
+              cam.position.set(curX, PW.c.y + 50, PW.c.z);
+              cam.lookAt(PW.c.x + 500, PW.c.y + 50, PW.c.z);
+            }
+
+            // Whiteout swells at the end of suction
+            const whiteout = document.getElementById('kagemi-whiteout-overlay');
+            if (whiteout && p > 0.6) {
+              whiteout.style.opacity = ((p - 0.6) / 0.4).toFixed(2);
+            }
+
+            if (p >= 1.0) {
+              this.setStage('tunnel');
+            }
+            break;
+          }
+
+          case 'tunnel': {
+            // tunnelTick handles rendering; after 4.5s transition to arrival
+            if (t >= 4.5) {
+              this.setStage('arrival');
+            }
+            break;
+          }
+        }
+      }
+
+      complete() {
+        this.active = false;
+        this.stage = 'idle';
+
+        // Hide sequence overlays
+        const titleCard = document.getElementById('kagemi-cinematic-title');
+        const braceModal = document.getElementById('kagemi-brace-modal');
+        const skipBtn = document.getElementById('kagemi-seq-skip-btn');
+        const whiteout = document.getElementById('kagemi-whiteout-overlay');
+
+        if (titleCard) { titleCard.style.display = 'none'; titleCard.classList.remove('active'); }
+        if (braceModal) { braceModal.classList.remove('active'); }
+        if (skipBtn) { skipBtn.style.display = 'none'; }
+        if (whiteout) { whiteout.style.opacity = '0'; }
+
+        // Land the player cleanly in front of the sacred shrine on the island
+        if (PW) {
+          cam.position.copy(at(-2400, 700));
+          cam.lookAt(at(0, 700));
+          const g0 = groundAt(cam.position.x, cam.position.z, cam.position.y + 500);
+          if (g0 !== null) cam.position.y = g0 + pl.eye;
+          P0.copy(cam.position);
+          pl.vel.set(0, 0, 0);
+        } else {
+          setMode('walk');
+        }
+
+        setMode('walk');
+        playGenshinChime(true);
+      }
+
+      skip() {
+        kagemiAudio.stopAllSfx();
+        this.complete();
+      }
+    }
+
+    const landingSequenceManager = new LandingSequenceManager();
+    window.landingSequenceManager = landingSequenceManager;
+    window.startLandingSequence = () => landingSequenceManager.start();
+    window.skipLandingSequence = () => landingSequenceManager.skip();
+
+
     function bindGenshinEvents() {
+      
+      // Landing Sequence & BGM Event Listeners
+      const btnLandingSeq = document.getElementById('btn-landing-seq');
+      if (btnLandingSeq) {
+        btnLandingSeq.onclick = () => {
+          landingSequenceManager.start();
+        };
+      }
+
+      const skipBtn = document.getElementById('kagemi-seq-skip-btn');
+      if (skipBtn) {
+        skipBtn.onclick = () => {
+          landingSequenceManager.skip();
+        };
+      }
+
+      const braceOk = document.getElementById('k-brace-ok-btn');
+      if (braceOk) {
+        const handleBrace = (e) => {
+          if (e) { e.preventDefault(); e.stopPropagation(); }
+          landingSequenceManager.setStage('push_suction');
+        };
+        braceOk.onclick = handleBrace;
+        braceOk.onpointerdown = (e) => { if (e) e.stopPropagation(); };
+        braceOk.ontouchstart = handleBrace;
+      }
+
+      const titleCard = document.getElementById('kagemi-cinematic-title');
+      if (titleCard) {
+        titleCard.onclick = () => {
+          if (landingSequenceManager.active && landingSequenceManager.stage === 'title') {
+            landingSequenceManager.setStage('flyover');
+          }
+        };
+      }
+
+      const btnBgmToggle = document.getElementById('btn-bgm-toggle');
+      if (btnBgmToggle) {
+        btnBgmToggle.onclick = () => {
+          kagemiAudio.toggleBgm();
+        };
+      }
+
+      const btnBgmNext = document.getElementById('btn-bgm-next');
+      if (btnBgmNext) {
+        btnBgmNext.onclick = () => {
+          kagemiAudio.nextBgm();
+        };
+      }
+
       const menuClose = document.getElementById('g-menu-close-btn');
       if (menuClose) menuClose.onclick = () => closeKagemiMenu();
 
