@@ -25,6 +25,7 @@ import dynamic from 'next/dynamic';
 import { getRandomAvatar, getRandomGuestName } from '@/components/User/AvatarSelectorModal';
 import { Capacitor } from '@capacitor/core';
 import { formatAnimeTitle, slugifyTitle, cn } from '@/lib/utils';
+import EyeLoader from './EyeLoader';
 
 // Dynamic 3D WebGL Portal with safe fallback
 const ShadowGardenPortal = dynamic(
@@ -92,7 +93,8 @@ export default function LandingClient() {
   // Adaptive UI state: returning/skip users get instant UI, first-time users see intro
   const [showLandingUI, setShowLandingUI] = useState(() => {
     if (typeof window !== 'undefined') {
-      if (window.self !== window.top || new URLSearchParams(window.location.search).get('embed') === '1') {
+      const searchParams = new URLSearchParams(window.location.search);
+      if (window.self !== window.top || searchParams.get('embed') === '1' || searchParams.get('skipIntro') === '1') {
         return true;
       }
       const hasAudio = localStorage.getItem('shadow_audio_permitted') === 'true' || localStorage.getItem('guild_audio_permit') === 'true';
@@ -102,6 +104,7 @@ export default function LandingClient() {
     return false;
   });
 
+  const [entryStage, setEntryStage] = useState<'choice' | 'title' | 'eyeloader' | 'ready'>('choice');
   const [triggerEntry, setTriggerEntry] = useState(false);
   const [bgImage, setBgImage] = useState(HERO_BG_IMAGES[0]);
   const [installPrompt, setInstallPrompt] = useState<any>(null);
@@ -129,17 +132,22 @@ export default function LandingClient() {
     setShowLandingUI(true);
   }, []);
 
+  // Title shimmer timer: advance to EyeLoader after 2.4s
+  useEffect(() => {
+    if (entryStage === 'title') {
+      const timer = setTimeout(() => {
+        setEntryStage('eyeloader');
+      }, 2400);
+      return () => clearTimeout(timer);
+    }
+  }, [entryStage]);
+
   useEffect(() => {
     // 1. Random Hero Backdrop
     const randomIdx = Math.floor(Math.random() * HERO_BG_IMAGES.length);
     setBgImage(HERO_BG_IMAGES[randomIdx]);
 
-    // 2. Safety timer: reveal landing UI after 5s if user hasn't seen it yet
-    const fallbackTimer = setTimeout(() => {
-      setShowLandingUI(true);
-    }, 5000);
-
-    // 3. PWA Handler
+    // 2. PWA Handler
     const pwaHandler = (e: any) => {
       e.preventDefault();
       setInstallPrompt(e);
@@ -255,7 +263,6 @@ export default function LandingClient() {
     init();
 
     return () => {
-      clearTimeout(fallbackTimer);
       window.removeEventListener('beforeinstallprompt', pwaHandler);
     };
   }, [router]);
@@ -274,6 +281,18 @@ export default function LandingClient() {
     localStorage.setItem('shadow_audio_permitted', 'true');
     localStorage.setItem('guild_audio_permit', 'true');
   }, []);
+
+  const handleSelectWorld = useCallback((e?: React.MouseEvent) => {
+    if (e) { e.preventDefault(); e.stopPropagation(); }
+    initializeAudio();
+    router.push('/experiments/kagemi-island.html');
+  }, [initializeAudio, router]);
+
+  const handleSelectHome = useCallback((e?: React.MouseEvent) => {
+    if (e) { e.preventDefault(); e.stopPropagation(); }
+    initializeAudio();
+    setEntryStage('title');
+  }, [initializeAudio]);
 
   const handlePortalComplete = useCallback(() => { 
     if (typeof window !== 'undefined') {
@@ -369,6 +388,116 @@ export default function LandingClient() {
             <span>Skip To Home</span>
             <ArrowRight className="w-4 h-4 text-purple-400" />
           </button>
+        </div>
+      )}
+
+      {/* FULL-SCREEN ENTRY SEQUENCE CONTROLLER (Choice Popup -> Title Intro -> EyeLoader -> Reveal UI) */}
+      {!showLandingUI && !isEmbedded && (
+        <div className="fixed inset-0 z-[99999] bg-black flex items-center justify-center pointer-events-auto">
+          {entryStage === 'choice' && (
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              transition={{ duration: 0.3 }}
+              className="w-[92vw] max-w-[520px] rounded-3xl bg-[#0b0b12]/95 border border-purple-500/30 p-7 sm:p-9 shadow-[0_30px_80px_-15px_rgba(0,0,0,0.85),0_0_50px_rgba(147,51,234,0.18)] flex flex-col items-center text-center"
+            >
+              <div className="w-11 h-11 rounded-2xl bg-purple-600/20 border border-purple-500/40 flex items-center justify-center text-purple-300 mb-3 shadow-[0_0_20px_rgba(168,85,247,0.25)]">
+                <Shield className="w-5 h-5 text-purple-400" />
+              </div>
+              <div className="text-lg font-black tracking-[0.34em] ml-[0.34em] uppercase text-white leading-tight font-lemon">
+                KAGEMI
+              </div>
+              <div className="text-[11px] font-mono tracking-[0.25em] ml-[0.25em] text-purple-300/80 uppercase mt-1 mb-4">
+                影見島 • CELESTIAL REALM
+              </div>
+              <h2 className="text-xl font-bold text-white mb-2 tracking-tight">
+                Choose Your Experience
+              </h2>
+              <p className="text-xs text-zinc-400 max-w-sm mb-6 leading-relaxed">
+                Explore our interactive 3D celestial sanctuary or proceed directly to the anime streaming platform.
+              </p>
+
+              <div className="flex flex-col gap-3 w-full">
+                {/* Option 1: Enter Kagemi World */}
+                <button
+                  onClick={handleSelectWorld}
+                  className="flex items-center gap-4 p-4 rounded-2xl bg-gradient-to-r from-purple-950/40 to-indigo-950/40 border border-purple-500/45 hover:border-purple-400 hover:from-purple-950/60 hover:to-indigo-950/60 text-left transition-all duration-200 group active:scale-[0.98] shadow-[0_10px_30px_-5px_rgba(168,85,247,0.25)] cursor-pointer"
+                >
+                  <div className="w-11 h-11 rounded-xl bg-purple-600/20 border border-purple-500/40 flex items-center justify-center text-purple-300 flex-shrink-0 group-hover:scale-105 transition-transform">
+                    <Compass className="w-5 h-5 text-purple-400" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="text-sm font-bold text-white">Enter Kagemi World</div>
+                    <div className="text-xs text-zinc-400 mt-0.5">3D celestial sanctuary • Game-like exploration</div>
+                  </div>
+                  <ArrowRight className="w-4 h-4 text-purple-400 opacity-70 group-hover:opacity-100 group-hover:translate-x-1 transition-all flex-shrink-0" />
+                </button>
+
+                {/* Option 2: Skip to Home Page */}
+                <button
+                  onClick={handleSelectHome}
+                  className="flex items-center gap-4 p-4 rounded-2xl bg-white/[0.04] border border-white/10 hover:border-white/25 hover:bg-white/[0.08] text-left transition-all duration-200 group active:scale-[0.98] cursor-pointer"
+                >
+                  <div className="w-11 h-11 rounded-xl bg-white/10 border border-white/15 flex items-center justify-center text-zinc-300 flex-shrink-0 group-hover:scale-105 transition-transform">
+                    <Tv className="w-5 h-5 text-zinc-300" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="text-sm font-bold text-white">Skip to Home Page</div>
+                    <div className="text-xs text-zinc-400 mt-0.5">Stream 15,000+ anime & donghua • Direct catalog</div>
+                  </div>
+                  <ArrowRight className="w-4 h-4 text-zinc-400 opacity-70 group-hover:opacity-100 group-hover:translate-x-1 transition-all flex-shrink-0" />
+                </button>
+              </div>
+
+              <div className="flex items-center gap-2 mt-5 text-[11px] text-zinc-500 text-center">
+                <Zap className="w-3.5 h-3.5 text-purple-400 flex-shrink-0" />
+                <span>Audio permission is automatically enabled upon selecting either realm.</span>
+              </div>
+            </motion.div>
+          )}
+
+          {entryStage === 'title' && (
+            <motion.div
+              initial={{ opacity: 0, scale: 1.05 }}
+              animate={{ opacity: 1, scale: 1.0 }}
+              exit={{ opacity: 0, scale: 0.96 }}
+              transition={{ duration: 0.8, ease: "easeOut" }}
+              className="flex flex-col items-center justify-center text-center select-none"
+            >
+              <div className="w-[500px] h-[300px] rounded-full bg-purple-600/25 blur-[90px] absolute pointer-events-none" />
+              <h1 className="text-5xl sm:text-7xl md:text-8xl font-black tracking-[0.34em] ml-[0.34em] uppercase text-transparent bg-clip-text bg-gradient-to-r from-purple-400 via-fuchsia-200 to-purple-500 drop-shadow-[0_0_40px_rgba(168,85,247,0.7)] font-lemon">
+                KAGEMI
+              </h1>
+              <div className="text-lg sm:text-xl font-serif tracking-[0.85em] ml-[0.85em] text-purple-200/90 mt-4 drop-shadow-[0_0_20px_rgba(168,85,247,0.8)]">
+                影見島
+              </div>
+            </motion.div>
+          )}
+
+          {entryStage === 'eyeloader' && (
+            <div className="fixed inset-0 z-[100000] bg-black flex items-center justify-center">
+              <EyeLoader
+                fullscreen
+                speed={1.0}
+                maxCycles={1}
+                onComplete={() => {
+                  setEntryStage('ready');
+                  setShowLandingUI(true);
+                }}
+              />
+              <button
+                onClick={() => {
+                  setEntryStage('ready');
+                  setShowLandingUI(true);
+                }}
+                className="fixed top-6 right-6 z-[100001] px-4 py-2 rounded-full bg-zinc-900/80 border border-purple-500/40 text-xs font-mono tracking-widest uppercase text-zinc-300 hover:text-white hover:border-purple-400 backdrop-blur-xl transition-all cursor-pointer flex items-center gap-1.5"
+              >
+                <span>Skip</span>
+                <ArrowRight className="w-3.5 h-3.5 text-purple-400" />
+              </button>
+            </div>
+          )}
         </div>
       )}
 

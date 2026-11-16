@@ -1564,6 +1564,250 @@
       100% { opacity: 0; transform: scale(0.96); filter: blur(8px); pointer-events: none; }
     }
 
+    /* =========================================================================
+       ENTRY SEQUENCE PARTITION & CHOICE MODAL (Kagemi World vs Home Page)
+       ========================================================================= */
+    #kagemi-entry-choice-modal {
+      position: fixed;
+      inset: 0;
+      z-index: 99999;
+      background: rgba(4, 4, 7, 0.82);
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+    #kagemi-entry-choice-modal.active {
+      opacity: 1;
+      pointer-events: auto;
+    }
+    .k-choice-card {
+      width: 92vw;
+      max-width: 520px;
+      background: rgba(11, 11, 18, 0.94);
+      border: 1px solid rgba(168, 85, 247, 0.28);
+      border-radius: 24px;
+      padding: 36px 28px;
+      box-shadow: 0 30px 80px -15px rgba(0, 0, 0, 0.85), 0 0 50px rgba(147, 51, 234, 0.18);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      text-align: center;
+      transform: scale(0.96);
+      transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+    #kagemi-entry-choice-modal.active .k-choice-card {
+      transform: scale(1);
+    }
+    .k-choice-emblem {
+      width: 44px;
+      height: 44px;
+      border-radius: 14px;
+      background: rgba(168, 85, 247, 0.15);
+      border: 1px solid rgba(168, 85, 247, 0.35);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #c084fc;
+      margin-bottom: 12px;
+      box-shadow: 0 0 20px rgba(168, 85, 247, 0.25);
+    }
+    .k-choice-brand {
+      font-size: 18px;
+      font-weight: 900;
+      letter-spacing: 0.34em;
+      margin-left: 0.34em;
+      text-transform: uppercase;
+      color: #ffffff;
+      line-height: 1.2;
+    }
+    .k-choice-kanji {
+      font-size: 11px;
+      letter-spacing: 0.25em;
+      margin-left: 0.25em;
+      color: rgba(192, 132, 252, 0.85);
+      text-transform: uppercase;
+      margin-top: 4px;
+      margin-bottom: 16px;
+      font-family: monospace;
+    }
+    .k-choice-heading {
+      font-size: 20px;
+      font-weight: 700;
+      color: #ffffff;
+      margin: 0 0 8px 0;
+      letter-spacing: -0.01em;
+    }
+    .k-choice-desc {
+      font-size: 13px;
+      color: #94a3b8;
+      line-height: 1.5;
+      margin: 0;
+      max-width: 420px;
+    }
+    .k-choice-actions {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      width: 100%;
+      margin-top: 24px;
+    }
+    .k-choice-btn {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      padding: 16px 20px;
+      border-radius: 18px;
+      cursor: pointer;
+      text-align: left;
+      transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+      font-family: inherit;
+      position: relative;
+      overflow: hidden;
+    }
+    .k-choice-btn-primary {
+      background: linear-gradient(135deg, rgba(147, 51, 234, 0.18) 0%, rgba(91, 33, 182, 0.25) 100%);
+      border: 1px solid rgba(168, 85, 247, 0.45);
+      color: #ffffff;
+    }
+    .k-choice-btn-primary:hover {
+      background: linear-gradient(135deg, rgba(147, 51, 234, 0.28) 0%, rgba(91, 33, 182, 0.38) 100%);
+      border-color: rgba(192, 132, 252, 0.75);
+      transform: translateY(-2px);
+      box-shadow: 0 10px 30px -5px rgba(168, 85, 247, 0.35);
+    }
+    .k-choice-btn-secondary {
+      background: rgba(255, 255, 255, 0.04);
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      color: #e2e8f0;
+    }
+    .k-choice-btn-secondary:hover {
+      background: rgba(255, 255, 255, 0.08);
+      border-color: rgba(255, 255, 255, 0.25);
+      transform: translateY(-2px);
+      box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.5);
+      color: #ffffff;
+    }
+    .k-choice-btn-icon {
+      width: 42px;
+      height: 42px;
+      border-radius: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+    }
+    .k-icon-compass {
+      background: rgba(168, 85, 247, 0.2);
+      border: 1px solid rgba(168, 85, 247, 0.4);
+      color: #d8b4fe;
+    }
+    .k-icon-tv {
+      background: rgba(255, 255, 255, 0.08);
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      color: #cbd5e1;
+    }
+    .k-choice-btn-body {
+      flex: 1;
+      min-width: 0;
+    }
+    .k-choice-btn-title {
+      font-size: 15px;
+      font-weight: 700;
+      color: #ffffff;
+      line-height: 1.3;
+    }
+    .k-choice-btn-subtitle {
+      font-size: 12px;
+      color: #94a3b8;
+      line-height: 1.4;
+      margin-top: 2px;
+    }
+    .k-choice-btn-arrow {
+      color: #a855f7;
+      opacity: 0.7;
+      transition: transform 0.2s ease, opacity 0.2s ease;
+      flex-shrink: 0;
+    }
+    .k-choice-btn:hover .k-choice-btn-arrow {
+      opacity: 1;
+      transform: translateX(3px);
+    }
+    .k-choice-footer {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-top: 20px;
+      font-size: 11px;
+      color: #64748b;
+      line-height: 1.4;
+      text-align: center;
+    }
+    .k-choice-audio-icon {
+      color: #a855f7;
+      flex-shrink: 0;
+    }
+
+    /* =========================================================================
+       EYELOADER OVERLAY STYLING (Anime Eyes Opening Out of the Dark)
+       ========================================================================= */
+    #kagemi-eye-loader-wrap {
+      position: fixed;
+      inset: 0;
+      z-index: 99996;
+      background: #000000;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      opacity: 0;
+      transition: opacity 0.5s ease;
+      overflow: hidden;
+      user-select: none;
+    }
+    #kagemi-eye-loader-wrap.active {
+      opacity: 1;
+      display: flex;
+    }
+    #kagemi-eye-loader-canvas {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 100%;
+      height: 100%;
+    }
+    .k-eye-skip {
+      position: fixed;
+      top: 24px;
+      right: 24px;
+      z-index: 100000;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 16px;
+      border-radius: 999px;
+      background: rgba(15, 15, 24, 0.75);
+      border: 1px solid rgba(168, 85, 247, 0.35);
+      color: #cbd5e1;
+      font-size: 11px;
+      font-family: monospace;
+      font-weight: 600;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      cursor: pointer;
+      backdrop-filter: blur(12px);
+      transition: all 0.2s ease;
+    }
+    .k-eye-skip:hover {
+      color: #ffffff;
+      border-color: rgba(168, 85, 247, 0.65);
+      background: rgba(25, 25, 40, 0.95);
+      transform: scale(1.04);
+    }
+
     /* Floating Skip to Walk Button */
     .k-seq-skip-btn {
       position: fixed;
@@ -2221,6 +2465,71 @@
     <div class="k-title-content">
       <h1 class="k-title-h1">K A G E M I</h1>
       <div class="k-title-kanji">影 見 島</div>
+    </div>
+  </div>
+
+  <!-- Anime EyeLoader Overlay (Anime Eyes Opening Out of the Darkness) -->
+  <div id="kagemi-eye-loader-wrap" style="display:none;">
+    <div id="kagemi-eye-loader-canvas"></div>
+    <button id="k-eye-skip-btn" class="k-eye-skip" title="Skip to Destination">
+      <span>Skip</span>
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+    </button>
+  </div>
+
+  <!-- Entry Choice Modal (Partition 1: Kagemi World vs Partition 2: Skip to Home Page) -->
+  <div id="kagemi-entry-choice-modal" style="display:none;">
+    <div class="k-choice-card">
+      <div class="k-choice-emblem">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+        </svg>
+      </div>
+      <div class="k-choice-brand">K A G E M I</div>
+      <div class="k-choice-kanji">影 見 島 • CELESTIAL REALM</div>
+      <h2 class="k-choice-heading">Choose Your Experience</h2>
+      <p class="k-choice-desc">Explore our interactive 3D celestial sanctuary or proceed directly to the anime streaming platform.</p>
+
+      <div class="k-choice-actions">
+        <!-- Option 1: Enter Kagemi World (Game-like 3D Experience) -->
+        <button id="k-btn-enter-world" class="k-choice-btn k-choice-btn-primary">
+          <div class="k-choice-btn-icon k-icon-compass">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <circle cx="12" cy="12" r="10"/><polygon points="16.24 7.76 14.12 14.12 7.76 16.24 9.88 9.88 16.24 7.76"/>
+            </svg>
+          </div>
+          <div class="k-choice-btn-body">
+            <div class="k-choice-btn-title">Enter Kagemi World</div>
+            <div class="k-choice-btn-subtitle">3D celestial sanctuary • Game-like exploration</div>
+          </div>
+          <div class="k-choice-btn-arrow">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+          </div>
+        </button>
+
+        <!-- Option 2: Skip to Home Page (Direct to Anime Streaming) -->
+        <button id="k-btn-skip-home" class="k-choice-btn k-choice-btn-secondary">
+          <div class="k-choice-btn-icon k-icon-tv">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <rect width="20" height="15" x="2" y="7" rx="2" ry="2"/><polyline points="17 2 12 7 7 2"/>
+            </svg>
+          </div>
+          <div class="k-choice-btn-body">
+            <div class="k-choice-btn-title">Skip to Home Page</div>
+            <div class="k-choice-btn-subtitle">Stream 15,000+ anime & donghua • Direct catalog</div>
+          </div>
+          <div class="k-choice-btn-arrow">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+          </div>
+        </button>
+      </div>
+
+      <div class="k-choice-footer">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="k-choice-audio-icon">
+          <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14"/>
+        </svg>
+        <span>Audio permission is automatically enabled upon selecting either realm.</span>
+      </div>
     </div>
   </div>
 
@@ -5771,7 +6080,7 @@ totalEmissiveRadiance*=rTm;`);
           requestAnimationFrame(prewarmAndStartIntro);
         } else {
           if (typeof landingSequenceManager !== 'undefined') {
-            landingSequenceManager.start();
+            landingSequenceManager.showInitialChoicePopup();
           }
         }
       }
@@ -7708,10 +8017,317 @@ totalEmissiveRadiance*=rTm;`);
 
     let landingShake = 0;
 
+    /* =========================================================================
+       AUDIO PERMISSION UNLOCK HELPER (Guaranteed user gesture unlock)
+       ========================================================================= */
+    function grantAudioPermission() {
+      try {
+        const AudioCtx = window.AudioContext || window.webkitAudioContext;
+        if (AudioCtx) {
+          if (!window.__kagemiAudioCtx) {
+            window.__kagemiAudioCtx = new AudioCtx();
+          }
+          if (window.__kagemiAudioCtx.state === 'suspended') {
+            window.__kagemiAudioCtx.resume();
+          }
+        }
+        if (typeof kagemiAudio !== 'undefined' && kagemiAudio.init) {
+          kagemiAudio.init();
+        }
+        if (typeof audioInit === 'function') {
+          audioInit();
+        }
+        if (typeof S !== 'undefined' && S.ac && S.ac.state === 'suspended') {
+          S.ac.resume();
+        }
+      } catch (e) {
+        console.warn("Audio unlock:", e);
+      }
+      try {
+        localStorage.setItem('shadow_audio_permitted', 'true');
+        localStorage.setItem('guild_audio_permit', 'true');
+      } catch (e) {}
+    }
+    window.grantAudioPermission = grantAudioPermission;
+
+    /* =========================================================================
+       EYELOADER SVG ENGINE (Anime Eyes Opening from Darkness)
+       Reference: EyeLoader.tsx - Pure SVG Catmull-Rom Animation
+       ========================================================================= */
+    let eyeLoaderRaf = 0;
+    function stopKagemiEyeLoader() {
+      if (eyeLoaderRaf) {
+        cancelAnimationFrame(eyeLoaderRaf);
+        eyeLoaderRaf = 0;
+      }
+      const container = document.getElementById('kagemi-eye-loader-canvas');
+      if (container) container.innerHTML = '';
+    }
+
+    function startKagemiEyeLoader(opts = {}) {
+      stopKagemiEyeLoader();
+      const container = document.getElementById('kagemi-eye-loader-canvas');
+      if (!container) return;
+
+      const speed = opts.speed || 1.0;
+      const maxCycles = opts.maxCycles || 1;
+      const onComplete = opts.onComplete || (() => {});
+
+      const W = 880, H = 400, CX = 200, CY = 122, X1 = 40, X2 = 360, UP = 92, LOW = 70;
+      const f = (n) => n.toFixed(1);
+      const cl = (v, a = 0, b = 1) => Math.min(b, Math.max(a, v));
+      const easeOut = (t) => 1 - Math.pow(1 - t, 3);
+      const easeIn = (t) => t * t * t;
+
+      const REST = {
+        lx: 0, ly: 0, open: 1, raise: 0, arc: 0, brow: 0, tilt: 0, pupil: 1, vein: 0,
+        ex: 0, roll: 0, zoom: 0, shake: 0, spin: 1,
+      };
+      const PK = Object.keys(REST);
+      const TEMPO = 1.2;
+
+      function expand(keys) {
+        let p = { ...REST };
+        return keys.map(([t, d]) => ({ t: t * TEMPO, p: (p = { ...p, ...d }) }));
+      }
+
+      function poseAt(tl, t) {
+        const n = tl.length;
+        if (t <= tl[0].t) return tl[0].p;
+        if (t >= tl[n - 1].t) return tl[n - 1].p;
+        let i = 0;
+        while (tl[i + 1].t <= t) i++;
+        const a = tl[i], b = tl[i + 1], h = b.t - a.t, u = (t - a.t) / h;
+        const pa = tl[Math.max(i - 1, 0)], pb = tl[Math.min(i + 2, n - 1)];
+        const u2 = u * u, u3 = u2 * u;
+        const h00 = 2 * u3 - 3 * u2 + 1, h10 = u3 - 2 * u2 + u, h01 = -2 * u3 + 3 * u2, h11 = u3 - u2;
+        const out = { ...REST };
+        for (const k of PK) {
+          const m0 = i === 0 ? 0 : ((b.p[k] - pa.p[k]) / (b.t - pa.t)) * h;
+          const m1 = i + 2 >= n ? 0 : ((pb.p[k] - a.p[k]) / (pb.t - a.t)) * h;
+          out[k] = h00 * a.p[k] + h10 * m0 + h01 * b.p[k] + h11 * m1;
+        }
+        out.ex = cl(out.ex); out.raise = cl(out.raise); out.arc = cl(out.arc); out.tilt = cl(out.tilt);
+        out.vein = cl(out.vein); out.open = cl(out.open, 0, 1.2); out.pupil = cl(out.pupil, 0.3, 1.8);
+        return out;
+      }
+
+      function lids(o0, raise, arc, brow, tilt) {
+        const o = o0 * (1 + brow * 0.08);
+        const up = UP * o * 1.3333;
+        const lo = LOW * o * (1 - 0.75 * raise) * 1.3333;
+        const sag = (1 - cl(o)) * 14 - arc * 30;
+        const iy = CY + 8, oy = CY - 8;
+        const u1 = CY - up + sag + tilt * 30 * cl(o), u2 = CY - up * 1.05 + sag - tilt * 6 * cl(o);
+        const l1 = CY + lo * 0.95 + sag, l2 = CY + lo + sag;
+        const upper = `C${X1 + 50} ${f(u1)} ${X2 - 120} ${f(u2)} ${X2} ${oy}`;
+        const lower = `C${X2 - 70} ${f(l1)} ${X1 + 90} ${f(l2)} ${X1} ${iy}`;
+        return {
+          clip: `M${X1} ${iy}${upper}${lower}Z`,
+          shade: f(CY - UP * o - 2),
+        };
+      }
+
+      const ATTR = {
+        clip: "d", shade: "y",
+        iris: "transform", spin: "transform", pupil: "transform", cam: "transform", fade: "opacity", veins: "opacity",
+      };
+
+      function frame(o, p, ang, now, zb, reduce) {
+        const m = lids(o * p.open, p.raise, p.arc, p.brow, p.tilt);
+        const x = lids(o * cl(p.ex) * 0.9, 0.35, 0, 0, 0);
+        const sc = 1 + 0.03 * (1 - o);
+        const y = f(CY + 2 + p.ly);
+        const sh = reduce ? 0 : p.shake * 1.4;
+        const z = 1 + zb + p.zoom;
+        m.irisR = `translate(${f(CX + p.lx)} ${y}) scale(${sc.toFixed(3)})`;
+        m.irisL = `translate(${f(CX - p.lx)} ${y}) scale(${(-sc).toFixed(3)} ${sc.toFixed(3)})`;
+        m.spin = `rotate(${f(ang)})`;
+        m.pupil = `scale(${p.pupil.toFixed(3)})`;
+        m.veins = (0.35 + 0.65 * cl(p.vein)).toFixed(2);
+        m.fade = cl(0.12 + 1.15 * o).toFixed(2);
+        m.cam = `translate(440 200) rotate(${f(p.roll + sh * 0.25 * Math.sin(now / 190))}) scale(${z.toFixed(3)}) translate(${f(-440 + sh * Math.sin(now / 130))} ${f(-200 - 36 * cl(p.ex) + sh * Math.cos(now / 170))})`;
+        return { m, x };
+      }
+
+      function blade(r0, r1, sweep, A, p, rot) {
+        const n = 28, L = [], R = [];
+        for (let i = 0; i <= n; i++) {
+          const t = i / n, c = rot + sweep * t - Math.PI / 2, a = A * Math.pow(1 - t, p), r = r0 + (r1 - r0) * t;
+          L.push(`${f(r * Math.cos(c + a))} ${f(r * Math.sin(c + a))}`);
+          R.push(`${f(r * Math.cos(c - a))} ${f(r * Math.sin(c - a))}`);
+        }
+        return `M${L.join("L")}L${R.reverse().join("L")}Z`;
+      }
+      const blades = (n, r0, r1, sw, A, p, off = 0) =>
+        Array.from({ length: n }, (_, k) => blade(r0, r1, sw, A, p, off + (k * 2 * Math.PI) / n)).join("");
+
+      const FIB = Array.from({ length: 64 }, (_, i) => {
+        const a = (i / 64) * Math.PI * 2, r0 = 20 + 8 * Math.abs(Math.sin(i * 7.3)), r1 = 58 + 16 * Math.abs(Math.sin(i * 3.1 + 1));
+        return `M${f(r0 * Math.cos(a))} ${f(r0 * Math.sin(a))}L${f(r1 * Math.cos(a))} ${f(r1 * Math.sin(a))}`;
+      }).join("");
+
+      const GRADS = {
+        red: ["#ff3a2a", "#d4141a", "#6e0508"],
+        crimson: ["#ff4a5c", "#b30019", "#3d0008"],
+        vamp: ["#ff8a3d", "#d0021b", "#470010"],
+        ghoul: ["#ff2338", "#c40018", "#50000c"],
+        rinne: ["#e2d3f7", "#a98ad6", "#573790"],
+        byak: ["#ffffff", "#e6e3f6", "#b6b0da"],
+        six: ["#f2fdff", "#6fd0ff", "#1d5fc4"],
+        suku: ["#ff9a45", "#c80f1e", "#34000a"]
+      };
+
+      const tomoeSvg = (n) => `
+        <g fill="#0b0000">
+          ${Array.from({ length: n }, (_, i) => `
+            <g transform="rotate(${(360 / n) * i})">
+              <circle cy="-48" r="9.5" />
+              <path d="M0 -57.5Q37 -53 41 -28.5Q20 -41 0 -38.5Z" />
+            </g>
+          `).join('')}
+        </g>
+      `;
+
+      const discSvg = (g, fib = '#fff') => `
+        <circle r="80" fill="url(#eyl-${g})" />
+        <path d="${FIB}" stroke="${fib}" stroke-opacity="0.12" stroke-width="1" fill="none" />
+        <circle r="37" fill="none" stroke="${fib}" stroke-opacity="0.18" stroke-width="1.4" />
+        <circle r="76.5" fill="none" stroke="#000" stroke-opacity="0.5" stroke-width="7" />
+      `;
+
+      // Preset 0: Sharingan (3 tomoe) with Catmull-Rom animation keys
+      const eyeData = {
+        sclera: "#f4eeea", spin: 240, twitch: true,
+        base: `${discSvg('red')}<circle r="48" fill="none" stroke="#120000" stroke-width="2.4" /><circle data-r="pupil" transform="scale(1)" r="13" fill="#050001" />`,
+        rot: tomoeSvg(3),
+        keys: [[0, {}], [250, { lx: -50 }], [500, { lx: 50 }], [750, { lx: -30, ly: -8 }], [1000, { lx: 34, ly: 6 }],
+          [1450, { lx: 0, ly: 0, open: 0.78, tilt: 0.85, brow: -0.5, pupil: 0.7, spin: 2.8, zoom: 0.05 }], [2300, REST]]
+      };
+
+      const tl = expand(eyeData.keys);
+      const dur = tl[tl.length - 1].t + 200;
+
+      container.innerHTML = `
+        <svg viewBox="0 0 ${W} ${H}" width="760" style="display:block;max-width:94vw;height:auto;overflow:hidden;" aria-hidden="true">
+          <defs>
+            ${Object.entries(GRADS).map(([id, [a, b, c]]) => `
+              <radialGradient id="eyl-${id}">
+                <stop offset="0" stop-color="${a}" /><stop offset=".55" stop-color="${b}" /><stop offset="1" stop-color="${c}" />
+              </radialGradient>
+            `).join('')}
+            <radialGradient id="eyl-lum"><stop offset="0" stop-color="#f3e8ff" stop-opacity=".9" /><stop offset="1" stop-color="#b79cf0" stop-opacity="0" /></radialGradient>
+            <radialGradient id="eyl-ball" gradientUnits="userSpaceOnUse" cx="${CX}" cy="${CY}" r="190">
+              <stop offset=".55" stop-color="#000" stop-opacity="0" /><stop offset="1" stop-color="#000" stop-opacity=".38" />
+            </radialGradient>
+            <linearGradient id="eyl-shade" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0" stop-color="#000" stop-opacity=".42" /><stop offset="1" stop-color="#000" stop-opacity="0" />
+            </linearGradient>
+            <clipPath id="eyl-c-mR"><path data-r="clip" data-u="m" data-s="" /></clipPath>
+            <clipPath id="eyl-c-mL"><path data-r="clip" data-u="m" data-s="" /></clipPath>
+          </defs>
+
+          <g data-r="cam" data-u="m">
+            <g data-r="fade" data-u="m">
+              <!-- Right Eye -->
+              <g transform="translate(450 78)">
+                <g clip-path="url(#eyl-c-mR)">
+                  <rect width="400" height="244" fill="${eyeData.sclera}" />
+                  <g data-r="iris" data-u="m" data-s="R">
+                    ${eyeData.base}
+                    <g data-r="spin" data-u="m">${eyeData.rot}</g>
+                    <ellipse cx="-28" cy="-32" rx="17" ry="11" transform="rotate(-28 -28 -32)" fill="#fff" opacity="0.7" />
+                    <circle cx="30" cy="28" r="6" fill="#fff" opacity="0.5" />
+                    <path d="M-50 22A56 56 0 0 0 18 54" fill="none" stroke="#fff" stroke-opacity="0.2" stroke-width="5" stroke-linecap="round" />
+                  </g>
+                  <rect width="400" height="244" fill="url(#eyl-ball)" />
+                  <rect data-r="shade" data-u="m" width="400" height="92" fill="url(#eyl-shade)" />
+                </g>
+              </g>
+
+              <!-- Left Eye -->
+              <g transform="translate(430 78) scale(-1 1)">
+                <g clip-path="url(#eyl-c-mL)">
+                  <rect width="400" height="244" fill="${eyeData.sclera}" />
+                  <g data-r="iris" data-u="m" data-s="L">
+                    ${eyeData.base}
+                    <g data-r="spin" data-u="m">${eyeData.rot}</g>
+                    <ellipse cx="-28" cy="-32" rx="17" ry="11" transform="rotate(-28 -28 -32)" fill="#fff" opacity="0.7" />
+                    <circle cx="30" cy="28" r="6" fill="#fff" opacity="0.5" />
+                    <path d="M-50 22A56 56 0 0 0 18 54" fill="none" stroke="#fff" stroke-opacity="0.2" stroke-width="5" stroke-linecap="round" />
+                  </g>
+                  <rect width="400" height="244" fill="url(#eyl-ball)" />
+                  <rect data-r="shade" data-u="m" width="400" height="92" fill="url(#eyl-shade)" />
+                </g>
+              </g>
+            </g>
+          </g>
+        </svg>
+      `;
+
+      const items = Array.from(container.querySelectorAll('[data-r]')).map((el) => ({
+        el, r: el.dataset.r, u: el.dataset.u || 'm', s: el.dataset.s || '',
+      }));
+
+      let phase = 'open';
+      let t0 = performance.now(), last = t0, from = 0, o = 0, ang = 0, zb = 0;
+      let completed = 0;
+
+      const tick = (now) => {
+        const dt = Math.min(now - last, 64);
+        last = now;
+        let p;
+        let target = 0;
+
+        if (phase === 'open') {
+          const q = cl((now - t0) / (320 / speed));
+          o = from + (1 - from) * easeOut(q);
+          p = tl[0].p;
+          if (q >= 1) { phase = 'hold'; t0 = now; }
+        } else if (phase === 'hold') {
+          const t = (now - t0) * speed;
+          o = 1;
+          p = poseAt(tl, t);
+          target = 0.04 * cl(t / dur);
+          if (t >= dur) { phase = 'close'; t0 = now; }
+        } else {
+          const q = cl((now - t0) / (280 / speed));
+          o = 1 - easeIn(q);
+          p = tl[tl.length - 1].p;
+          target = 0.04;
+          if (q >= 1) {
+            completed++;
+            if (completed >= maxCycles) {
+              stopKagemiEyeLoader();
+              onComplete();
+              return;
+            }
+            phase = 'open';
+            t0 = now;
+            from = 0;
+          }
+        }
+
+        zb += (target - zb) * (1 - Math.exp(-dt / 260));
+        ang = (ang + eyeData.spin * p.spin * speed * (dt / 1000) * (0.7 + 0.3 * o)) % 360;
+
+        const F = frame(o, p, ang, now, zb, false);
+        for (const item of items) {
+          const v = F[item.u][item.r + item.s] ?? F.m[item.r + item.s];
+          if (v !== undefined) item.el.setAttribute(ATTR[item.r], v);
+        }
+
+        eyeLoaderRaf = requestAnimationFrame(tick);
+      };
+
+      eyeLoaderRaf = requestAnimationFrame(tick);
+    }
+
     class LandingSequenceManager {
       constructor() {
         this.active = false;
-        this.stage = 'idle'; // 'title_black', 'title_world', 'flight', 'idle'
+        this.stage = 'idle'; // 'idle', 'choice', 'title_intro', 'eyeloader', 'flight'
+        this.destination = 'world'; // 'world' or 'home'
         this.elapsed = 0;
 
         // Island 1 Walk Spawn Position & Target Orientation
@@ -7726,14 +8342,7 @@ totalEmissiveRadiance*=rTm;`);
         this.P2 = new THREE.Vector3();
         this.P3 = new THREE.Vector3();
 
-        // Sequence Timing:
-        // Blackout fades out at 2.6s revealing the world while title is still showing!
-        // Title card slowly dissolves at 4.2s
-        // Flight finishes at 10.1s
-        this.blackoutFadeTime = 2.6;
-        this.titleFadeTime = 4.2;
         this.flightDuration = 7.5;
-        this.totalDuration = 10.1;
       }
 
       setupFlightPath() {
@@ -7790,14 +8399,31 @@ totalEmissiveRadiance*=rTm;`);
         return tan.normalize();
       }
 
-      start() {
-        this.active = true;
-        this.elapsed = 0;
+      showInitialChoicePopup() {
+        // Keep blackout active so nothing flashes behind
+        const blackout = document.getElementById('kagemi-cinematic-blackout');
+        if (blackout) blackout.style.opacity = '1';
 
-        // Initialize audio safely without buzzing drone sound
-        kagemiAudio.init();
-        audioInit();
-        if (S.ac && S.ac.state === 'suspended') S.ac.resume();
+        // Hide normal in-game HUD & Menu button
+        const menuBtn = document.getElementById('k-menu-btn');
+        if (menuBtn) menuBtn.style.display = 'none';
+        const bottomHud = document.getElementById('kagemi-bottom-hud');
+        if (bottomHud) bottomHud.style.display = 'none';
+
+        // Reveal choice modal
+        const choiceModal = document.getElementById('kagemi-entry-choice-modal');
+        if (choiceModal) {
+          choiceModal.style.display = 'flex';
+          void choiceModal.offsetWidth;
+          choiceModal.classList.add('active');
+        }
+        this.stage = 'choice';
+      }
+
+      startSequence(destination) {
+        this.destination = destination; // 'world' or 'home'
+        this.active = true;
+        this.stage = 'title_intro';
 
         // Close side menu if open
         closeSideMenu();
@@ -7808,26 +8434,14 @@ totalEmissiveRadiance*=rTm;`);
         const bottomHud = document.getElementById('kagemi-bottom-hud');
         if (bottomHud) bottomHud.style.display = 'none';
 
-        // Show skip button
-        const skipBtn = document.getElementById('kagemi-seq-skip-btn');
-        if (skipBtn) skipBtn.style.display = 'flex';
+        // Dismiss choice modal
+        const choiceModal = document.getElementById('kagemi-entry-choice-modal');
+        if (choiceModal) {
+          choiceModal.classList.remove('active');
+          setTimeout(() => { choiceModal.style.display = 'none'; }, 350);
+        }
 
-        // Generate smooth one-shot flight path
-        this.setupFlightPath();
-
-        // Position camera at start point facing initial trajectory tangent
-        const initialTan = this.getSplineTangent(0);
-        cam.position.copy(this.P0);
-        const initYaw = Math.atan2(-initialTan.x, -initialTan.z);
-        const initPitch = Math.asin(initialTan.y);
-        cam.rotation.set(initPitch, initYaw, 0, 'YXZ');
-        cam.fov = 72;
-        cam.updateProjectionMatrix();
-
-        // Set mode
-        setMode('landing_sequence');
-
-        // Black screen fully opaque at start
+        // Black screen fully opaque
         const blackout = document.getElementById('kagemi-cinematic-blackout');
         if (blackout) {
           blackout.style.transition = 'none';
@@ -7845,81 +8459,121 @@ totalEmissiveRadiance*=rTm;`);
           titleCard.classList.add('active');
         }
 
-        // Play gentle title sound and start atmospheric BGM (no drone motor buzzing)
+        // Play gentle title sound
         kagemiAudio.playSfx('title', 0.85);
+
+        // After title shimmer holds, fade out title card and launch EyeLoader!
         setTimeout(() => {
-          if (!kagemiAudio.bgmAudio || kagemiAudio.bgmAudio.paused) {
-            kagemiAudio.playRandomBgm();
-          }
-        }, 500);
-
-        this.stage = 'title_black';
-      }
-
-      update(d) {
-        if (!this.active) return;
-        this.elapsed += d;
-        const t = this.elapsed;
-
-        const blackout = document.getElementById('kagemi-cinematic-blackout');
-        const titleCard = document.getElementById('kagemi-cinematic-title');
-
-        // 1. Black screen fades out first at 2.6s, revealing the 3D scene while title is still showing
-        if (t >= this.blackoutFadeTime && this.stage === 'title_black') {
-          this.stage = 'title_world';
-          if (blackout) blackout.style.opacity = '0';
-        }
-
-        // 2. Title card slowly fades out at 4.2s
-        if (t >= this.titleFadeTime && this.stage === 'title_world') {
-          this.stage = 'flight';
           if (titleCard) {
             titleCard.classList.remove('active');
             titleCard.classList.add('fade-out');
-            setTimeout(() => {
-              if (!this.active || this.stage === 'flight' || this.stage === 'idle') {
-                titleCard.style.display = 'none';
-              }
-            }, 2000);
           }
+          setTimeout(() => {
+            if (titleCard) titleCard.style.display = 'none';
+            this.playEyeLoaderSequence();
+          }, 600);
+        }, 2200);
+      }
+
+      playEyeLoaderSequence() {
+        this.stage = 'eyeloader';
+        const eyeWrap = document.getElementById('kagemi-eye-loader-wrap');
+        if (eyeWrap) {
+          eyeWrap.style.display = 'flex';
+          void eyeWrap.offsetWidth;
+          eyeWrap.classList.add('active');
         }
 
-        // 3. Smooth one-shot fly-in glide
-        if (t >= this.blackoutFadeTime) {
-          const flightElapsed = t - this.blackoutFadeTime;
-          const p = Math.min(1.0, flightElapsed / this.flightDuration);
-
-          // Buttery smooth ease in-out
-          const ease = p < 0.5 ? 4 * p * p * p : 1 - Math.pow(-2 * p + 2, 3) / 2;
-
-          // Position along one-shot spline
-          const curPos = this.getSplinePoint(ease);
-          cam.position.copy(curPos);
-
-          // Orientation along continuous spline tangent
-          const curTan = this.getSplineTangent(ease);
-          const curYaw = Math.atan2(-curTan.x, -curTan.z);
-          const curPitch = Math.asin(curTan.y);
-
-          // Subtle gentle roll banking into curve (peaks at only 0.025 rad ~1.4 deg, 0 at touchdown)
-          const rollBank = Math.sin(p * Math.PI) * 0.025;
-          cam.rotation.set(curPitch, curYaw, rollBank, 'YXZ');
-
-          // Smoothly ease FOV from 72 down to 55
-          cam.fov = 72 - 17 * ease;
-          cam.updateProjectionMatrix();
-
-          // Completed touchdown seamlessly
-          if (p >= 1.0) {
-            this.complete();
+        startKagemiEyeLoader({
+          speed: 1.0,
+          maxCycles: 1,
+          onComplete: () => {
+            this.finishEyeLoaderAndTransition();
           }
+        });
+
+        // Wire EyeLoader skip button
+        const eyeSkipBtn = document.getElementById('k-eye-skip-btn');
+        if (eyeSkipBtn) {
+          eyeSkipBtn.onclick = (e) => {
+            if (e) { e.preventDefault(); e.stopPropagation(); }
+            stopKagemiEyeLoader();
+            this.finishEyeLoaderAndTransition();
+          };
+        }
+      }
+
+      finishEyeLoaderAndTransition() {
+        const eyeWrap = document.getElementById('kagemi-eye-loader-wrap');
+        if (eyeWrap) {
+          eyeWrap.classList.remove('active');
+          setTimeout(() => { eyeWrap.style.display = 'none'; }, 400);
+        }
+
+        if (this.destination === 'home') {
+          // 2nd PARTITION: Skips the Kagemi 3D world and shows the main landing page normally!
+          this.active = false;
+          this.stage = 'idle';
+          window.location.href = '/?skipIntro=1';
         } else {
-          // Camera remains poised at start point while on pure black
-          cam.position.copy(this.P0);
-          const initialTan = this.getSplineTangent(0);
-          cam.rotation.set(Math.asin(initialTan.y), Math.atan2(-initialTan.x, -initialTan.z), 0, 'YXZ');
-          cam.fov = 72;
-          cam.updateProjectionMatrix();
+          // 1st PARTITION: Enter Kagemi World 3D Flyover!
+          this.launchWorldFlyover();
+        }
+      }
+
+      launchWorldFlyover() {
+        this.stage = 'flight';
+        this.elapsed = 0;
+
+        // Show skip to walk button
+        const skipBtn = document.getElementById('kagemi-seq-skip-btn');
+        if (skipBtn) skipBtn.style.display = 'flex';
+
+        // Start atmospheric background music
+        if (!kagemiAudio.bgmAudio || kagemiAudio.bgmAudio.paused) {
+          kagemiAudio.playRandomBgm();
+        }
+
+        // Setup flight path
+        this.setupFlightPath();
+
+        const initialTan = this.getSplineTangent(0);
+        cam.position.copy(this.P0);
+        const initYaw = Math.atan2(-initialTan.x, -initialTan.z);
+        const initPitch = Math.asin(initialTan.y);
+        cam.rotation.set(initPitch, initYaw, 0, 'YXZ');
+        cam.fov = 72;
+        cam.updateProjectionMatrix();
+
+        setMode('landing_sequence');
+
+        // Black screen fades out revealing the 3D celestial sky!
+        const blackout = document.getElementById('kagemi-cinematic-blackout');
+        if (blackout) blackout.style.opacity = '0';
+      }
+
+      update(d) {
+        if (!this.active || this.stage !== 'flight') return;
+        this.elapsed += d;
+        const t = this.elapsed;
+
+        const p = Math.min(1.0, t / this.flightDuration);
+        const ease = p < 0.5 ? 4 * p * p * p : 1 - Math.pow(-2 * p + 2, 3) / 2;
+
+        const curPos = this.getSplinePoint(ease);
+        cam.position.copy(curPos);
+
+        const curTan = this.getSplineTangent(ease);
+        const curYaw = Math.atan2(-curTan.x, -curTan.z);
+        const curPitch = Math.asin(curTan.y);
+        const rollBank = Math.sin(p * Math.PI) * 0.025;
+        cam.rotation.set(curPitch, curYaw, rollBank, 'YXZ');
+
+        cam.fov = 72 - 17 * ease;
+        cam.updateProjectionMatrix();
+
+        if (p >= 1.0) {
+          this.complete();
         }
       }
 
@@ -7927,17 +8581,60 @@ totalEmissiveRadiance*=rTm;`);
         this.active = false;
         this.stage = 'idle';
 
+        stopKagemiEyeLoader();
+
         // Hide overlays
         const blackout = document.getElementById('kagemi-cinematic-blackout');
         const titleCard = document.getElementById('kagemi-cinematic-title');
         const skipBtn = document.getElementById('kagemi-seq-skip-btn');
+        const eyeWrap = document.getElementById('kagemi-eye-loader-wrap');
 
         if (blackout) blackout.style.opacity = '0';
         if (titleCard) {
           titleCard.classList.remove('active', 'fade-out');
           titleCard.style.display = 'none';
         }
+        if (eyeWrap) {
+          eyeWrap.classList.remove('active');
+          eyeWrap.style.display = 'none';
+        }
         if (skipBtn) skipBtn.style.display = 'none';
+
+        // Restore normal in-game HUD & Menu button
+        const menuBtn = document.getElementById('k-menu-btn');
+        if (menuBtn) menuBtn.style.display = 'flex';
+        const bottomHud = document.getElementById('kagemi-bottom-hud');
+        if (bottomHud) bottomHud.style.display = 'flex';
+
+        // Seamless handover to walk mode at exact spawn position & orientation
+        const spawnX = -32984, spawnZ = 2089, spawnY = -5908.37;
+        yaw = this.targetYaw;
+        pitch = this.targetPitch;
+        pl.yawS = yaw;
+        pl.pitchS = pitch;
+        cam.position.set(spawnX, spawnY + pl.eye, spawnZ);
+        cam.rotation.set(pitch, yaw, 0, 'YXZ');
+        cam.fov = 55;
+        cam.updateProjectionMatrix();
+
+        P0.set(spawnX, spawnY, spawnZ);
+        pl.vel.set(0, 0, 0);
+
+        setMode('walk');
+        playGenshinChime(true);
+        updateBottomHud();
+      }
+
+      skip() {
+        kagemiAudio.stopAllSfx();
+        stopKagemiEyeLoader();
+        this.complete();
+      }
+
+      start() {
+        this.startSequence('world');
+      }
+    }
 
         // Restore normal in-game HUD & Menu button
         const menuBtn = document.getElementById('k-menu-btn');
@@ -8206,6 +8903,26 @@ totalEmissiveRadiance*=rTm;`);
             cam.fov = val;
             cam.updateProjectionMatrix();
           }
+        };
+      }
+
+      // Choice modal button: Enter Kagemi World (Game-like 3D Experience)
+      const btnEnterWorld = document.getElementById('k-btn-enter-world');
+      if (btnEnterWorld) {
+        btnEnterWorld.onclick = (e) => {
+          if (e) { e.preventDefault(); e.stopPropagation(); }
+          grantAudioPermission();
+          landingSequenceManager.startSequence('world');
+        };
+      }
+
+      // Choice modal button: Skip to Home Page (Direct to Anime Streaming)
+      const btnSkipHome = document.getElementById('k-btn-skip-home');
+      if (btnSkipHome) {
+        btnSkipHome.onclick = (e) => {
+          if (e) { e.preventDefault(); e.stopPropagation(); }
+          grantAudioPermission();
+          landingSequenceManager.startSequence('home');
         };
       }
 
