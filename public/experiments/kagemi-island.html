@@ -6069,6 +6069,106 @@ totalEmissiveRadiance*=rTm;`);
         targetPos: V(3727, 1380, 446), // Elevated in open night sky above portal arch to keep vortex clear
         maxDist: 90,
         minDist: 8
+      },
+      {
+        id: 'azure_reeds',
+        name: 'Azure Featherspire Reeds',
+        category: 'REGIONAL SPECIALTY',
+        targetPos: V(-7576, -450, 1571),
+        getTargetPos: (cam) => {
+          const candidates = [
+            V(-7576, -450, 1571),
+            V(-1401, 80, -1490),
+            V(-1093, 80, 2350)
+          ];
+          const camFw = new THREE.Vector3();
+          cam.getWorldDirection(camFw);
+          let best = candidates[0];
+          let maxDot = -Infinity;
+          for (let i = 0; i < candidates.length; i++) {
+            const dir = candidates[i].clone().sub(cam.position).normalize();
+            const dot = camFw.dot(dir);
+            if (dot > maxDot) { maxDot = dot; best = candidates[i]; }
+          }
+          return best;
+        },
+        maxDist: 30,
+        minDist: 1.0
+      },
+      {
+        id: 'violet_lilies',
+        name: 'Violet Whispering Lilies',
+        category: 'REGIONAL SPECIALTY',
+        targetPos: V(-7727, -520, 1617),
+        getTargetPos: (cam) => {
+          const candidates = [
+            V(-7727, -520, 1617),
+            V(-1941, -127, -1665),
+            V(-964, -182, -138)
+          ];
+          const camFw = new THREE.Vector3();
+          cam.getWorldDirection(camFw);
+          let best = candidates[0];
+          let maxDot = -Infinity;
+          for (let i = 0; i < candidates.length; i++) {
+            const dir = candidates[i].clone().sub(cam.position).normalize();
+            const dot = camFw.dot(dir);
+            if (dot > maxDot) { maxDot = dot; best = candidates[i]; }
+          }
+          return best;
+        },
+        maxDist: 30,
+        minDist: 1.0
+      },
+      {
+        id: 'portal_white_plumes',
+        name: 'Silverfrost Celestial Plumes',
+        category: 'CELESTIAL FLORA',
+        targetPos: V(2780, 120, -440),
+        getTargetPos: (cam) => {
+          const candidates = [
+            V(2780, 120, -440),
+            V(2750, 120, 1190)
+          ];
+          const camFw = new THREE.Vector3();
+          cam.getWorldDirection(camFw);
+          let best = candidates[0];
+          let maxDot = -Infinity;
+          for (let i = 0; i < candidates.length; i++) {
+            const dir = candidates[i].clone().sub(cam.position).normalize();
+            const dot = camFw.dot(dir);
+            if (dot > maxDot) { maxDot = dot; best = candidates[i]; }
+          }
+          return best;
+        },
+        maxDist: 35,
+        minDist: 1.5
+      },
+      {
+        id: 'portal_starbloom',
+        name: 'Astral Starbloom Grass',
+        category: 'CELESTIAL FLORA',
+        targetPos: V(2820, -80, 410),
+        getTargetPos: (cam) => {
+          const candidates = [
+            V(2820, -80, 410),
+            V(2480, -90, 410),
+            V(2843, -150, 1200),
+            V(2868, -150, -600)
+          ];
+          const camFw = new THREE.Vector3();
+          cam.getWorldDirection(camFw);
+          let best = candidates[0];
+          let maxDot = -Infinity;
+          for (let i = 0; i < candidates.length; i++) {
+            const dir = candidates[i].clone().sub(cam.position).normalize();
+            const dot = camFw.dot(dir);
+            if (dot > maxDot) { maxDot = dot; best = candidates[i]; }
+          }
+          return best;
+        },
+        maxDist: 28,
+        minDist: 1.0
       }
     ];
 
@@ -6278,7 +6378,7 @@ totalEmissiveRadiance*=rTm;`);
           return;
         }
 
-        const pPos = poi.targetPos || (typeof poi.getTargetPos === 'function' ? poi.getTargetPos(cam) : V(0,0,0));
+        const pPos = (typeof poi.getTargetPos === 'function') ? poi.getTargetPos(cam) : (poi.targetPos || V(0,0,0));
         
         // Strict camera-space test: must be in front of near plane
         _poiCamPos.copy(pPos).applyMatrix4(cam.matrixWorldInverse);
