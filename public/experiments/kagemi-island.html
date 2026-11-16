@@ -779,7 +779,7 @@
       box-shadow: 0 0 10px rgba(229, 196, 126, 0.9);
     }
     .g-poi-card {
-      display: flex;
+      display: none;
       flex-direction: column;
       align-items: center;
       background: rgba(10, 14, 26, 0.90);
@@ -6016,11 +6016,11 @@ totalEmissiveRadiance*=rTm;`);
       },
       {
         id: 'torii_gate',
-        name: 'Torii of Ascendance',
-        category: 'SACRED ARCHWAY',
-        targetPos: V(1397, 2400, 381), // Directly on the Torii arch crossbeam
+        name: 'Grand Shrine Gate',
+        category: 'SACRED GATEWAY',
+        targetPos: V(1397, 2650, 381), // Directly atop the Grand Torii Gate crossbeam arch
         maxDist: 60,
-        minDist: 4
+        minDist: 16
       },
       {
         id: 'grand_sakura',
@@ -6039,12 +6039,28 @@ totalEmissiveRadiance*=rTm;`);
         minDist: 1.5
       },
       {
+        id: 'portal_tree_left',
+        name: 'Twin Guardian Willows • North',
+        category: 'CELESTIAL FLORA',
+        targetPos: V(3274, 850, -370), // Directly atop the northern guardian willow canopy
+        maxDist: 45,
+        minDist: 2
+      },
+      {
+        id: 'portal_tree_right',
+        name: 'Twin Guardian Willows • South',
+        category: 'CELESTIAL FLORA',
+        targetPos: V(3326, 850, 1287), // Directly atop the southern guardian willow canopy
+        maxDist: 45,
+        minDist: 2
+      },
+      {
         id: 'mana_portal',
         name: 'Astral Gateway to Kagemi',
         category: 'CELESTIAL REALM',
-        targetPos: V(3727, 650, 446), // Directly centered on the glowing Mana Portal
+        targetPos: V(3727, 1380, 446), // Elevated in open night sky above portal arch to keep vortex clear
         maxDist: 90,
-        minDist: 4
+        minDist: 8
       }
     ];
 
@@ -6247,6 +6263,13 @@ totalEmissiveRadiance*=rTm;`);
           return;
         }
 
+        // Hide torii gate marker once player reaches/passes the gate entrance
+        if (poi.id === 'torii_gate' && cam.position.x > 700) {
+          poi.el.style.display = 'none';
+          poi.screenDist = 9999;
+          return;
+        }
+
         const pPos = poi.targetPos || (typeof poi.getTargetPos === 'function' ? poi.getTargetPos(cam) : V(0,0,0));
         
         // Strict camera-space test: must be in front of near plane
@@ -6294,20 +6317,18 @@ totalEmissiveRadiance*=rTm;`);
         }
       });
 
-      // Render: Display active landmarks in view; closest to crosshair is focused
+      // Render: ONLY display landmark marker when it is actively focused (closest to crosshair in gaze cone)
+      const maxFocusDist = Math.min(w, h) * 0.42; // Must be within active forward gaze cone
+      const hasValidFocus = closestPoi && minCenterDist <= maxFocusDist;
+
       GENSHIN_LANDMARKS.forEach(poi => {
         if (!poi.el) return;
-        if (poi.screenDist !== 9999 && poi.distM <= (poi.maxDist || 45)) {
+        const isFocused = hasValidFocus && (poi === closestPoi) && poi.screenDist !== 9999 && poi.distM <= (poi.maxDist || 45);
+        if (isFocused) {
           poi.el.style.display = 'flex';
           poi.el.style.left = poi.sx + 'px';
           poi.el.style.top = poi.sy + 'px';
-
-          const isFocused = (closestPoi && poi === closestPoi);
-          if (isFocused) {
-            poi.el.classList.add('focused');
-          } else {
-            poi.el.classList.remove('focused');
-          }
+          poi.el.classList.add('focused');
 
           const cardDist = poi.el.querySelector('.g-poi-dist-val');
           if (cardDist) {
