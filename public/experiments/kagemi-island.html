@@ -779,11 +779,11 @@
       box-shadow: 0 0 10px rgba(229, 196, 126, 0.9);
     }
     .g-poi-card {
-      display: none;
+      display: flex;
       flex-direction: column;
       align-items: center;
-      background: rgba(10, 14, 26, 0.88);
-      border: 1px solid rgba(229, 196, 126, 0.4);
+      background: rgba(10, 14, 26, 0.90);
+      border: 1px solid rgba(229, 196, 126, 0.45);
       border-radius: 4px;
       padding: 2px 7px;
       margin-top: 3px;
@@ -792,11 +792,15 @@
       -webkit-backdrop-filter: blur(8px);
       white-space: nowrap;
       transition: all 0.15s ease;
+      opacity: 0.82;
+      transform: scale(0.94);
     }
     .g-poi-node.focused .g-poi-card {
       display: flex !important;
-      border-color: rgba(229, 196, 126, 0.85);
-      box-shadow: 0 3px 14px rgba(0, 0, 0, 0.85), 0 0 8px rgba(229, 196, 126, 0.25);
+      opacity: 1;
+      transform: scale(1.04);
+      border-color: rgba(229, 196, 126, 0.9);
+      box-shadow: 0 3px 14px rgba(0, 0, 0, 0.85), 0 0 10px rgba(229, 196, 126, 0.35);
     }
     .g-poi-category {
       font-size: 7px;
@@ -1584,6 +1588,7 @@
     const COARSE = matchMedia('(pointer:coarse)').matches || innerWidth < 820; let GX = -1700; let bridgeKick = 0, bridgeY = 0, bridgeV = 0, rtFlip = 0, tunnelFx = null; const UT = { value: 0 }, UPL = { value: new THREE.Vector3(0, -1e5, 0) }, URIP = { value: 0 }, dioFol = []; const dprMax = Math.min(devicePixelRatio, COARSE ? 1.5 : 2); let dprCur = dprMax; const ren = new THREE.WebGLRenderer({ antialias: !COARSE, powerPreference: 'high-performance' }); ren.setPixelRatio(dprCur); ren.outputEncoding = THREE.sRGBEncoding; ren.physicallyCorrectLights = true;
     ren.setClearColor(0x03040c); document.getElementById('c').appendChild(ren.domElement);
     const scene = new THREE.Scene(), cam = new THREE.PerspectiveCamera(55, 1, 40, 1000000);
+    window.scene = scene; window.cam = cam;
     const PI = Math.PI, U = V(0, 1, 0), rb = () => Math.random() - .5, IC = V(897, 0, 66); let ts = 0; const fxs = []; let env0 = null;
     // purple night environment used for reflections (metals, crystals) and soft ambient light
     {
@@ -5104,7 +5109,7 @@ totalEmissiveRadiance*=rTm;`);
       ctx.fillStyle = '#ffffff';
       ctx.font = '900 64px system-ui, -apple-system, sans-serif';
       ctx.textAlign = 'left';
-      ctx.fillText('🔥  TOP AIRING BROADCASTS', 90, animeY);
+      ctx.fillText('TOP AIRING BROADCASTS', 90, animeY);
       ctx.fillStyle = '#94a3b8';
       ctx.font = '28px system-ui, -apple-system, sans-serif';
       ctx.fillText('Most streamed releases across Kagemi this week', 90, animeY + 54);
@@ -5114,22 +5119,16 @@ totalEmissiveRadiance*=rTm;`);
       ctx.textAlign = 'right';
       ctx.fillText('BROWSE ALL (15,000+) >', W - 90, animeY + 32);
 
-      const animeList = [
-        { rank: '#1', title: 'Solo Leveling: Arise', score: '★ 9.8', audio: 'SUB & DUB', theme1: '#3b0764', theme2: '#090514', sigil: '⚔️' },
-        { rank: '#2', title: 'Demon Slayer: Hashira', score: '★ 9.6', audio: 'SUB & DUB', theme1: '#991b1b', theme2: '#180505', sigil: '🔥' },
-        { rank: '#3', title: 'The Apothecary Diaries', score: '★ 9.5', audio: 'SUB & DUB', theme1: '#065f46', theme2: '#04160e', sigil: '🍃' },
-        { rank: '#4', title: 'Bleach: Thousand-Year', score: '★ 9.7', audio: 'SUB & DUB', theme1: '#581c87', theme2: '#0e061c', sigil: '⚡' },
-        { rank: '#5', title: 'Frieren: Beyond Journey', score: '★ 9.9', audio: 'SUB & DUB', theme1: '#155e75', theme2: '#05141a', sigil: '✨' },
-        { rank: '#6', title: 'Jujutsu Kaisen: Shibuya', score: '★ 9.8', audio: 'SUB & DUB', theme1: '#3730a3', theme2: '#080718', sigil: '👁️' }
-      ];
-
+      // Card layout constants
       const aW = (W - 180 - 5 * 24) / 6;
       const aH = 920;
-      animeList.forEach((a, i) => {
+
+      // Real Anime Cards Renderer (Initial Sleek Gradient + Asynchronous Poster Image Loading)
+      function drawAnimeCard(item, i, coverImg = null) {
         const ax = 90 + i * (aW + 24);
         const ay = animeY + 110;
 
-        // Card Container
+        // Card Container Box
         ctx.fillStyle = '#0b0f19';
         ctx.beginPath();
         ctx.roundRect(ax, ay, aW, aH, 24);
@@ -5138,64 +5137,114 @@ totalEmissiveRadiance*=rTm;`);
         ctx.lineWidth = 1.5;
         ctx.stroke();
 
-        // Illustrated Poster Artwork Canvas Area
-        const artGrad = ctx.createLinearGradient(ax, ay, ax, ay + 580);
-        artGrad.addColorStop(0, a.theme1);
-        artGrad.addColorStop(0.7, a.theme2);
-        artGrad.addColorStop(1, '#000000');
-        ctx.fillStyle = artGrad;
-        ctx.beginPath();
-        ctx.roundRect(ax + 3, ay + 3, aW - 6, 574, 22);
-        ctx.fill();
+        const px = ax + 3, py = ay + 3, pw = aW - 6, ph = 574;
 
-        // Character sigil emblem
-        ctx.fillStyle = 'rgba(255, 255, 255, 0.9)';
-        ctx.font = '108px system-ui, -apple-system, sans-serif';
+        if (coverImg && coverImg.complete && coverImg.naturalWidth > 0) {
+          ctx.save();
+          ctx.beginPath();
+          ctx.roundRect(px, py, pw, ph, 22);
+          ctx.clip();
+
+          // Cover fit preserving aspect ratio
+          const imgAspect = coverImg.naturalWidth / coverImg.naturalHeight;
+          const targetAspect = pw / ph;
+          let sx = 0, sy = 0, sw = coverImg.naturalWidth, sh = coverImg.naturalHeight;
+          if (imgAspect > targetAspect) {
+            sw = coverImg.naturalHeight * targetAspect;
+            sx = (coverImg.naturalWidth - sw) / 2;
+          } else {
+            sh = coverImg.naturalWidth / targetAspect;
+            sy = (coverImg.naturalHeight - sh) / 2;
+          }
+          ctx.drawImage(coverImg, sx, sy, sw, sh, px, py, pw, ph);
+
+          // Deep bottom gradient vignette for crisp legibility
+          const vig = ctx.createLinearGradient(px, py + ph * 0.45, px, py + ph);
+          vig.addColorStop(0, 'rgba(11, 15, 25, 0)');
+          vig.addColorStop(0.7, 'rgba(11, 15, 25, 0.85)');
+          vig.addColorStop(1, '#0b0f19');
+          ctx.fillStyle = vig;
+          ctx.fillRect(px, py + ph * 0.45, pw, ph * 0.55);
+          ctx.restore();
+        } else {
+          // Polished dark atmospheric gradient while loading
+          const themes = [
+            ['#2e1065', '#090514'], ['#450a0a', '#180505'], ['#022c22', '#04160e'],
+            ['#3b0764', '#0e061c'], ['#083344', '#05141a'], ['#1e1b4b', '#080718']
+          ];
+          const [t1, t2] = themes[i % themes.length];
+          const artGrad = ctx.createLinearGradient(ax, ay, ax, ay + 580);
+          artGrad.addColorStop(0, t1);
+          artGrad.addColorStop(0.7, t2);
+          artGrad.addColorStop(1, '#000000');
+          ctx.fillStyle = artGrad;
+          ctx.beginPath();
+          ctx.roundRect(px, py, pw, ph, 22);
+          ctx.fill();
+        }
+
+        // Rank Badge Top-Left
+        ctx.fillStyle = 'rgba(0, 0, 0, 0.82)';
+        ctx.beginPath();
+        ctx.roundRect(ax + 18, ay + 18, 76, 42, 12);
+        ctx.fill();
+        ctx.fillStyle = '#ffffff';
+        ctx.font = 'bold 22px monospace';
         ctx.textAlign = 'center';
-        ctx.fillText(a.sigil, ax + aW / 2, ay + 320);
+        ctx.fillText('#' + (i + 1), ax + 56, ay + 47);
 
-        // Rank Badge
-        ctx.fillStyle = 'rgba(0, 0, 0, 0.85)';
+        // Quality Pill Top-Right
+        ctx.fillStyle = 'rgba(147, 51, 234, 0.35)';
         ctx.beginPath();
-        ctx.roundRect(ax + 20, ay + 20, 84, 46, 12);
+        ctx.roundRect(ax + aW - 100, ay + 18, 82, 42, 12);
         ctx.fill();
-        ctx.fillStyle = '#ffffff';
-        ctx.font = 'bold 24px monospace';
-        ctx.fillText(a.rank, ax + 62, ay + 52);
-
-        // Quality Pill
-        ctx.fillStyle = 'rgba(124, 58, 237, 0.9)';
-        ctx.beginPath();
-        ctx.roundRect(ax + aW - 115, ay + 20, 95, 46, 12);
-        ctx.fill();
-        ctx.fillStyle = '#ffffff';
-        ctx.font = '900 20px monospace';
-        ctx.fillText('1080p', ax + aW - 68, ay + 52);
+        ctx.strokeStyle = '#c084fc';
+        ctx.lineWidth = 1;
+        ctx.stroke();
+        ctx.fillStyle = '#f3e8ff';
+        ctx.font = '900 19px monospace';
+        ctx.fillText('1080p', ax + aW - 59, ay + 46);
 
         // Title
         ctx.textAlign = 'left';
         ctx.fillStyle = '#ffffff';
-        ctx.font = 'bold 28px system-ui, -apple-system, sans-serif';
-        ctx.fillText(a.title, ax + 22, ay + 650);
+        ctx.font = 'bold 26px system-ui, -apple-system, sans-serif';
+        const displayTitle = item.title || 'Ascending Chronicles';
+        const titleLine = displayTitle.length > 24 ? displayTitle.slice(0, 22) + '...' : displayTitle;
+        ctx.fillText(titleLine, ax + 22, ay + 648);
 
-        // Metadata row
+        // Metadata row (Score + Audio)
         ctx.fillStyle = '#facc15';
-        ctx.font = 'bold 24px system-ui, -apple-system, sans-serif';
-        ctx.fillText(a.score, ax + 22, ay + 710);
+        ctx.font = 'bold 23px system-ui, -apple-system, sans-serif';
+        ctx.fillText(item.score || '★ 9.7', ax + 22, ay + 704);
         ctx.fillStyle = '#94a3b8';
-        ctx.font = '22px monospace';
-        ctx.fillText('• ' + a.audio, ax + 115, ay + 710);
+        ctx.font = '20px monospace';
+        ctx.fillText('• ' + (item.audio || 'SUB & DUB'), ax + 115, ay + 704);
 
-        // Play Button
-        ctx.fillStyle = '#7c3aed';
+        // Action Play Button
+        const btnGrad = ctx.createLinearGradient(ax + 22, ay + 760, ax + aW - 22, ay + 846);
+        btnGrad.addColorStop(0, '#9333ea');
+        btnGrad.addColorStop(1, '#7c3aed');
+        ctx.fillStyle = btnGrad;
         ctx.beginPath();
-        ctx.roundRect(ax + 22, ay + 770, aW - 44, 86, 43);
+        ctx.roundRect(ax + 22, ay + 760, aW - 44, 86, 43);
         ctx.fill();
         ctx.fillStyle = '#ffffff';
-        ctx.font = 'bold 28px system-ui, -apple-system, sans-serif';
+        ctx.font = 'bold 26px system-ui, -apple-system, sans-serif';
         ctx.textAlign = 'center';
-        ctx.fillText('▶   PLAY', ax + aW / 2, ay + 824);
-      });
+        ctx.fillText('▶   PLAY', ax + aW / 2, ay + 814);
+      }
+
+      // Initial baseline anime data while fetching live AniList
+      let currentAnimeList = [
+        { title: 'Solo Leveling: Arise', score: '★ 9.8', audio: 'TV • SUB & DUB' },
+        { title: 'Demon Slayer: Hashira', score: '★ 9.7', audio: 'TV • SUB & DUB' },
+        { title: 'The Apothecary Diaries', score: '★ 9.6', audio: 'TV • SUB & DUB' },
+        { title: 'Bleach: Thousand-Year', score: '★ 9.8', audio: 'TV • SUB & DUB' },
+        { title: 'Frieren: Beyond Journey', score: '★ 9.9', audio: 'TV • SUB & DUB' },
+        { title: 'Jujutsu Kaisen: Shibuya', score: '★ 9.8', audio: 'TV • SUB & DUB' }
+      ];
+      currentAnimeList.forEach((a, i) => drawAnimeCard(a, i));
 
       // =======================================================================
       // VIEWPORT 4: VERTICAL MINI-DRAMAS & SHORTS (y: 4420 .. 5700)
@@ -5204,99 +5253,208 @@ totalEmissiveRadiance*=rTm;`);
       ctx.fillStyle = '#f43f5e';
       ctx.font = 'bold 24px monospace';
       ctx.textAlign = 'left';
-      ctx.fillText('🔥  35,000+ UNLOCKED TITLES', 90, shortsY);
+      ctx.fillText('35,000+ UNLOCKED TITLES', 90, shortsY);
       ctx.fillStyle = '#ffffff';
       ctx.font = '900 64px system-ui, -apple-system, sans-serif';
       ctx.fillText('VERTICAL MINI-DRAMAS & SHORTS', 90, shortsY + 68);
 
       ctx.fillStyle = '#94a3b8';
       ctx.font = '28px system-ui, -apple-system, sans-serif';
-      ctx.fillText('Reels & TikTok format. High-octane micro-series designed for immersive vertical playback.', 90, shortsY + 118);
+      ctx.fillText('High-octane reels format. Seamless 1-minute episodes designed for immersive vertical playback.', 90, shortsY + 118);
 
       ctx.fillStyle = '#f43f5e';
       ctx.font = 'bold 26px system-ui, -apple-system, sans-serif';
       ctx.textAlign = 'right';
       ctx.fillText('EXPLORE SHORTS FEED >', W - 90, shortsY + 68);
 
-      const shortsList = [
-        { title: 'God of War: Wife Protector', eps: '40 eps', lang: 'Hindi & Eng Dub', rating: '★ 9.0', grad1: '#4c0519', grad2: '#831843', icon: '👑' },
-        { title: 'The Hidden Billionaire Heir', eps: '60 eps', lang: 'English Dub', rating: '★ 9.2', grad1: '#78350f', grad2: '#b45309', icon: '💼' },
-        { title: 'Rise of the Martial Emperor', eps: '80 eps', lang: 'English Dub', rating: '★ 9.4', grad1: '#581c87', grad2: '#7e22ce', icon: '🐉' },
-        { title: "Alpha's Destined Royal Luna", eps: '50 eps', lang: 'English Dub', rating: '★ 9.1', grad1: '#0c4a6e', grad2: '#0284c7', icon: '🐺' }
-      ];
-
-      const sW = (W - 180 - 3 * 34) / 4;
+      const sW = (W - 180 - 5 * 24) / 6;
       const sH = 920;
-      shortsList.forEach((s, i) => {
-        const sx = 90 + i * (sW + 34);
+
+      function drawShortCard(item, i, coverImg = null) {
+        const sx = 90 + i * (sW + 24);
         const sy = shortsY + 170;
 
         // 9:16 Vertical Card Box
         ctx.fillStyle = '#0b0e17';
         ctx.beginPath();
-        ctx.roundRect(sx, sy, sW, sH, 26);
+        ctx.roundRect(sx, sy, sW, sH, 24);
         ctx.fill();
         ctx.strokeStyle = 'rgba(255, 255, 255, 0.12)';
         ctx.lineWidth = 1.5;
         ctx.stroke();
 
-        // Vertical Poster Art Gradient Area
-        const sGrad = ctx.createLinearGradient(sx, sy, sx, sy + 640);
-        sGrad.addColorStop(0, s.grad1);
-        sGrad.addColorStop(0.65, s.grad2);
-        sGrad.addColorStop(1, '#05070c');
-        ctx.fillStyle = sGrad;
-        ctx.beginPath();
-        ctx.roundRect(sx + 3, sy + 3, sW - 6, 634, 24);
-        ctx.fill();
+        const px = sx + 3, py = sy + 3, pw = sW - 6, ph = 620;
 
-        // Icon
-        ctx.fillStyle = '#ffffff';
-        ctx.font = '112px system-ui, -apple-system, sans-serif';
-        ctx.textAlign = 'center';
-        ctx.fillText(s.icon, sx + sW / 2, sy + 340);
+        if (coverImg && coverImg.complete && coverImg.naturalWidth > 0) {
+          ctx.save();
+          ctx.beginPath();
+          ctx.roundRect(px, py, pw, ph, 22);
+          ctx.clip();
 
-        // Language Badge Top-Left
+          const imgAspect = coverImg.naturalWidth / coverImg.naturalHeight;
+          const targetAspect = pw / ph;
+          let isx = 0, isy = 0, isw = coverImg.naturalWidth, ish = coverImg.naturalHeight;
+          if (imgAspect > targetAspect) {
+            isw = coverImg.naturalHeight * targetAspect;
+            isx = (coverImg.naturalWidth - isw) / 2;
+          } else {
+            ish = coverImg.naturalWidth / targetAspect;
+            isy = (coverImg.naturalHeight - ish) / 2;
+          }
+          ctx.drawImage(coverImg, isx, isy, isw, ish, px, py, pw, ph);
+
+          const sVig = ctx.createLinearGradient(px, py + ph * 0.45, px, py + ph);
+          sVig.addColorStop(0, 'rgba(11, 14, 23, 0)');
+          sVig.addColorStop(0.75, 'rgba(11, 14, 23, 0.88)');
+          sVig.addColorStop(1, '#0b0e17');
+          ctx.fillStyle = sVig;
+          ctx.fillRect(px, py + ph * 0.45, pw, ph * 0.55);
+          ctx.restore();
+        } else {
+          const sThemes = [
+            ['#4c0519', '#1a0309'], ['#78350f', '#1f0d03'], ['#3b0764', '#0d0217'],
+            ['#0c4a6e', '#03141e'], ['#14532d', '#05190d'], ['#312e81', '#0b0a24']
+          ];
+          const [g1, g2] = sThemes[i % sThemes.length];
+          const sGrad = ctx.createLinearGradient(sx, sy, sx, sy + 640);
+          sGrad.addColorStop(0, g1);
+          sGrad.addColorStop(0.65, g2);
+          sGrad.addColorStop(1, '#05070c');
+          ctx.fillStyle = sGrad;
+          ctx.beginPath();
+          ctx.roundRect(px, py, pw, ph, 22);
+          ctx.fill();
+        }
+
+        // Language / Dub Badge
         ctx.fillStyle = 'rgba(0, 0, 0, 0.82)';
         ctx.beginPath();
-        ctx.roundRect(sx + 24, sy + 24, 210, 46, 23);
+        ctx.roundRect(sx + 16, sy + 16, 140, 38, 12);
         ctx.fill();
         ctx.fillStyle = '#f43f5e';
-        ctx.font = 'bold 21px monospace';
-        ctx.fillText(s.lang, sx + 129, sy + 55);
+        ctx.font = 'bold 18px monospace';
+        ctx.textAlign = 'center';
+        ctx.fillText(item.lang || 'English Sub', sx + 86, sy + 41);
 
-        // Eps Badge Top-Right
+        // Episodes Pill
         ctx.fillStyle = 'rgba(0, 0, 0, 0.82)';
         ctx.beginPath();
-        ctx.roundRect(sx + sW - 130, sy + 24, 106, 46, 23);
+        ctx.roundRect(sx + sW - 96, sy + 16, 80, 38, 12);
         ctx.fill();
         ctx.fillStyle = '#ffffff';
-        ctx.fillText(s.eps, sx + sW - 77, sy + 55);
+        ctx.font = 'bold 18px monospace';
+        ctx.fillText(item.eps || '60 eps', sx + sW - 56, sy + 41);
 
         // Title
         ctx.textAlign = 'left';
         ctx.fillStyle = '#ffffff';
-        ctx.font = 'bold 32px system-ui, -apple-system, sans-serif';
-        ctx.fillText(s.title, sx + 28, sy + 710);
+        ctx.font = 'bold 26px system-ui, -apple-system, sans-serif';
+        const rawTitle = item.title || 'Destined Sovereign';
+        const shortTitle = rawTitle.length > 24 ? rawTitle.slice(0, 22) + '...' : rawTitle;
+        ctx.fillText(shortTitle, sx + 20, sy + 685);
 
-        // Rating & CTA
+        // Rating & Format
         ctx.fillStyle = '#facc15';
-        ctx.font = 'bold 24px system-ui, -apple-system, sans-serif';
-        ctx.fillText(s.rating, sx + 28, sy + 765);
+        ctx.font = 'bold 22px system-ui, -apple-system, sans-serif';
+        ctx.fillText(item.rating || '★ 9.2', sx + 20, sy + 735);
         ctx.fillStyle = '#94a3b8';
-        ctx.font = '24px system-ui, -apple-system, sans-serif';
-        ctx.fillText('• Micro-Series', sx + 120, sy + 765);
+        ctx.font = '20px system-ui, -apple-system, sans-serif';
+        ctx.fillText('• Drama Short', sx + 105, sy + 735);
 
-        // Watch button
+        // Watch Button
         ctx.fillStyle = '#e11d48';
         ctx.beginPath();
-        ctx.roundRect(sx + 28, sy + 810, sW - 56, 76, 38);
+        ctx.roundRect(sx + 20, sy + 785, sW - 40, 76, 38);
         ctx.fill();
         ctx.fillStyle = '#ffffff';
-        ctx.font = 'bold 26px system-ui, -apple-system, sans-serif';
+        ctx.font = 'bold 24px system-ui, -apple-system, sans-serif';
         ctx.textAlign = 'center';
-        ctx.fillText('▶   Watch Episode 1', sx + sW / 2, sy + 858);
-      });
+        ctx.fillText('▶   Watch Ep 1', sx + sW / 2, sy + 832);
+      }
+
+      let currentShortsList = [
+        { title: 'God of War: Wife Protector', eps: '40 eps', lang: 'English Sub', rating: '★ 9.0' },
+        { title: 'The Hidden Billionaire Heir', eps: '60 eps', lang: 'English Sub', rating: '★ 9.2' },
+        { title: 'Rise of Martial Emperor', eps: '80 eps', lang: 'English Sub', rating: '★ 9.4' },
+        { title: "Alpha's Royal Luna", eps: '50 eps', lang: 'English Sub', rating: '★ 9.1' },
+        { title: 'Prisoner of Love', eps: '78 eps', lang: 'English Sub', rating: '★ 9.6' },
+        { title: 'The Return of the Young Master', eps: '64 eps', lang: 'English Sub', rating: '★ 9.3' }
+      ];
+      currentShortsList.forEach((s, i) => drawShortCard(s, i));
+
+      // Asynchronous Authentic Data & Full Poster Artwork Loader
+      async function fetchRealLandingData() {
+        try {
+          // 1. Fetch real top airing / popular anime from /api/anime/anilist
+          const animePromise = fetch('/api/anime/anilist', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              query: `query { Page(page: 1, perPage: 6) { media(type: ANIME, status: RELEASING, sort: POPULARITY_DESC) { id title { english romaji } coverImage { large extraLarge } averageScore format } } }`
+            })
+          }).then(r => r.json()).catch(err => { console.warn('AniList live fetch:', err); return null; });
+
+          // 2. Fetch real curated vertical shorts from /api/shorts/feed?limit=6
+          const shortsPromise = fetch('/api/shorts/feed?limit=6')
+            .then(r => r.json())
+            .catch(err => { console.warn('Shorts live fetch:', err); return null; });
+
+          const [animeRes, shortsRes] = await Promise.all([animePromise, shortsPromise]);
+          const realMedia = animeRes?.data?.Page?.media;
+          const realShorts = shortsRes?.items;
+
+          if (Array.isArray(realMedia) && realMedia.length > 0) {
+            realMedia.slice(0, 6).forEach((m, idx) => {
+              const item = {
+                title: m.title?.english || m.title?.romaji || 'Anime Series',
+                score: '★ ' + (m.averageScore ? (m.averageScore / 10).toFixed(1) : '9.6'),
+                audio: (m.format || 'TV') + ' • SUB & DUB'
+              };
+              drawAnimeCard(item, idx, null);
+
+              const coverUrl = m.coverImage?.extraLarge || m.coverImage?.large;
+              if (coverUrl) {
+                const img = new Image();
+                img.crossOrigin = 'anonymous';
+                img.onload = () => {
+                  drawAnimeCard(item, idx, img);
+                  if (kagemiScreenTex) kagemiScreenTex.needsUpdate = true;
+                };
+                // Proxy external CDN cover through same-origin next/image with standard q=75 for clean CORS & no 400
+                img.src = '/_next/image?url=' + encodeURIComponent(coverUrl) + '&w=384&q=75';
+              }
+            });
+          }
+
+          if (Array.isArray(realShorts) && realShorts.length > 0) {
+            realShorts.slice(0, 6).forEach((s, idx) => {
+              const item = {
+                title: s.title || 'Vertical Drama',
+                eps: (s.totalEpisodes || 40) + ' eps',
+                lang: s.language || 'English Sub',
+                rating: '★ ' + (s.rating || '9.0')
+              };
+              drawShortCard(item, idx, null);
+
+              if (s.cover) {
+                const img = new Image();
+                img.crossOrigin = 'anonymous';
+                img.onload = () => {
+                  drawShortCard(item, idx, img);
+                  if (kagemiScreenTex) kagemiScreenTex.needsUpdate = true;
+                };
+                // Proxy external CDN cover through same-origin next/image with standard q=75 for clean CORS & no 400
+                img.src = '/_next/image?url=' + encodeURIComponent(s.cover) + '&w=384&q=75';
+              }
+            });
+          }
+        } catch (err) {
+          console.warn('fetchRealLandingData exception:', err);
+        }
+      }
+
+      // Trigger asynchronous live data fetch
+      setTimeout(fetchRealLandingData, 100);
 
       // =======================================================================
       // VIEWPORT 5: PLATFORM ARCHITECTURE, COMMUNITY & FOOTER (y: 5820 .. 7200)
@@ -5781,92 +5939,112 @@ totalEmissiveRadiance*=rTm;`);
 
     
     
-    // Genshin Impact In-World Landmark POI Registry
-    // Accurate, fixed 3D coordinates with authentic Genshin-styled names and categories
+            // Genshin Impact In-World Landmark POI Registry
+    // Every marker is anchored directly onto its physical 3D mesh surface/top (zero empty space)
     const GENSHIN_LANDMARKS = [
       {
         id: 'flowers',
-        name: 'Luminous Glaze Lily',
+        name: 'Luminous Glaze Lilies',
         category: 'REGIONAL SPECIALTY',
-        targetPos: V(-31250, -5840, 3350)
+        targetPos: V(-31200, -5715, 3370), // Directly atop the glowing blue blossom cluster
+        maxDist: 32,
+        minDist: 1.5
       },
       {
         id: 'atelier',
         name: 'Sanctuary Atelier',
         category: 'DOMAIN OF STORIES',
-        targetPos: V(-31000, -5730, 4050)
-      },
-      {
-        id: 'stepping_stones',
-        name: 'Moonlit Stepping Stones',
-        category: 'SACRED PATHWAY',
-        targetPos: V(-31650, -5930, 1820)
-      },
-      {
-        id: 'spring',
-        name: 'Spring of Celestial Echoes',
-        category: 'SACRED WATERS',
-        targetPos: V(-28909, -5920, 985)
-      },
-      {
-        id: 'waterfall',
-        name: 'Veil of Azure Mist',
-        category: 'MANA CATARACT',
-        targetPos: V(-29211, -5880, -1088)
-      },
-      {
-        id: 'bridge_lamps_lower',
-        name: 'Twin Guiding Lanterns',
-        category: 'WAYPOINT BEACON',
-        targetPos: V(-27611, -5280, 1690)
+        targetPos: V(-31000, -4400, 4050), // Crowning the top stone arch header of the monolith stele
+        maxDist: 40,
+        minDist: 8
       },
       {
         id: 'bridge',
         name: 'Bridge of Boundless Clouds',
         category: 'CELESTIAL CROSSING',
-        targetPos: V(-21581, -2650, 1369)
+        targetPos: V(-27611, -4850, 1381), // Directly atop the wooden entrance post framing the bridge
+        maxDist: 45,
+        minDist: 2
       },
       {
-        id: 'bridge_lamps_upper',
-        name: 'Brazier Pillars of the Crossing',
+        id: 'brazier_left',
+        name: 'Guiding Brazier • North',
         category: 'SACRED BEACON',
-        targetPos: V(-14528, -200, 1118)
+        targetPos: V(-14518, -180, 308), // Directly atop the left stone lantern roof
+        maxDist: 35,
+        minDist: 1.5
+      },
+      {
+        id: 'brazier_right',
+        name: 'Guiding Brazier • South',
+        category: 'SACRED BEACON',
+        targetPos: V(-14538, -70, 1928), // Directly atop the right stone lantern roof
+        maxDist: 35,
+        minDist: 1.5
       },
       {
         id: 'ancient_maple',
         name: 'Ancient Whispering Maple',
         category: 'SACRED FLORA',
-        targetPos: V(-10393, 250, -3166)
-      },
-      {
-        id: 'sanctuary_altar',
-        name: 'Altar of Silent Oaths',
-        category: 'SANCTUARY',
-        targetPos: V(-8389, -240, 3255)
+        targetPos: V(-10418, -250, -3047), // Directly on the ancient maple trunk root
+        maxDist: 50,
+        minDist: 2
       },
       {
         id: 'treasure_chest',
         name: 'Gilded Relic Casket',
-        category: 'TREASURE',
-        targetPos: V(-10866, -420, -2491)
+        category: 'PRECIOUS CHEST',
+        targetPos: V(-10866, -110, -2491), // Directly atop the treasure chest lid
+        maxDist: 30,
+        minDist: 1.2
+      },
+      {
+        id: 'sanctuary_pavilion',
+        name: 'Pavilion of Whispering Shadows',
+        category: 'SANCTUARY RESIDENCE',
+        targetPos: V(-8431, 250, 3296), // Directly atop the pavilion entrance archway
+        maxDist: 45,
+        minDist: 3
+      },
+      {
+        id: 'sanctuary_altar',
+        name: 'Altar of Eternal Embers',
+        category: 'SACRED HEARTH',
+        targetPos: V(-8389, -100, 3255), // Directly atop the burning shrine altar brazier
+        maxDist: 30,
+        minDist: 1.5
       },
       {
         id: 'torii_gate',
         name: 'Torii of Ascendance',
         category: 'SACRED ARCHWAY',
-        targetPos: V(1397, 850, 381)
+        targetPos: V(1397, 2400, 381), // Directly on the Torii arch crossbeam
+        maxDist: 60,
+        minDist: 4
       },
       {
-        id: 'portal_trees',
-        name: 'Twin Guardian Willows',
-        category: 'CELESTIAL FLORA',
-        targetPos: V(3292, 550, 452)
+        id: 'grand_sakura',
+        name: 'Sacred Frostbloom Sakura',
+        category: 'SACRED FLORA',
+        targetPos: V(842, 1200, -3282), // Directly on the cherry blossom tree trunk
+        maxDist: 50,
+        minDist: 3
+      },
+      {
+        id: 'summit_lanterns',
+        name: 'Celestial Summit Lantern',
+        category: 'SACRED BEACON',
+        targetPos: V(1278, 2620, -289), // Directly atop the summit stone lantern roof
+        maxDist: 40,
+        minDist: 1.5
       },
       {
         id: 'mana_portal',
         name: 'Astral Gateway to Kagemi',
         category: 'CELESTIAL REALM',
-        targetPos: V(3514, 752, 437)
+        targetPos: V(3727, 650, 446), // Directly centered on the glowing Mana Portal
+        maxDist: 90,
+        minDist: 4
       }
     ];
 
@@ -6053,44 +6231,73 @@ totalEmissiveRadiance*=rTm;`);
         kagemiScreenFrame.position.y = 780;
       }
 
-      // 2. Project Landmark POI Markers: Only show when closer (<= 65m), only focused shows card
-      const MAX_POI_DIST = 65;
+      // 2. Project Landmark POI Markers: Anchored precisely on physical mesh surfaces
+      const _poiCamPos = new THREE.Vector3();
+      const onBridgeNow = (cam.position.x < -13270 + GX && cam.position.x > -25400 + GX);
       let closestPoi = null;
-      let minCenterDist = Math.min(w, h) * 0.28;
+      let minCenterDist = 9999;
 
       GENSHIN_LANDMARKS.forEach(poi => {
         if (!poi.el) return;
+        
+        // Hide bridge entrance marker while walking on the bridge
+        if (poi.id === 'bridge' && onBridgeNow) {
+          poi.el.style.display = 'none';
+          poi.screenDist = 9999;
+          return;
+        }
+
         const pPos = poi.targetPos || (typeof poi.getTargetPos === 'function' ? poi.getTargetPos(cam) : V(0,0,0));
-        _poiScr.copy(pPos).project(cam);
-        const behind = _poiScr.z >= 1.0 || pPos.clone().sub(cam.position).dot(_camFwd) < 0.2;
+        
+        // Strict camera-space test: must be in front of near plane
+        _poiCamPos.copy(pPos).applyMatrix4(cam.matrixWorldInverse);
+        if (_poiCamPos.z >= -10) {
+          poi.el.style.display = 'none';
+          poi.screenDist = 9999;
+          return;
+        }
+
         const distUnits = cam.position.distanceTo(pPos);
         const distM = Math.max(1, Math.round(distUnits / 100));
 
-        // ONLY show when closer (<= 18m) and in front
-        if (behind || mode === 'tunnel' || distM > MAX_POI_DIST) {
+        // Strict distance filtering per landmark
+        const maxD = poi.maxDist || 45;
+        const minD = poi.minDist || 1.5;
+        if (distM > maxD || distM < minD || mode === 'tunnel') {
           poi.el.style.display = 'none';
           poi.screenDist = 9999;
           poi.distM = distM;
-        } else {
-          const sx = Math.max(50, Math.min(w - 50, (_poiScr.x * 0.5 + 0.5) * w));
-          const sy = Math.max(35, Math.min(h - 60, (-(_poiScr.y * 0.5) + 0.5) * h));
-          poi.sx = sx; poi.sy = sy;
-          const distCenter = Math.hypot(sx - w / 2, sy - h / 2);
-          poi.screenDist = distCenter;
-          poi.distM = distM;
+          return;
+        }
 
-          if (distCenter < minCenterDist) {
-            minCenterDist = distCenter;
-            closestPoi = poi;
-          }
+        // Project into screen space
+        _poiScr.copy(pPos).project(cam);
+        const inFrustum = (_poiScr.x >= -0.88 && _poiScr.x <= 0.88 && _poiScr.y >= -0.85 && _poiScr.y <= 0.85 && _poiScr.z >= -1.0 && _poiScr.z < 1.0);
+
+        if (!inFrustum) {
+          poi.el.style.display = 'none';
+          poi.screenDist = 9999;
+          poi.distM = distM;
+          return;
+        }
+
+        const sx = (_poiScr.x * 0.5 + 0.5) * w;
+        const sy = (-(_poiScr.y * 0.5) + 0.5) * h;
+        poi.sx = sx; poi.sy = sy;
+        const distCenter = Math.hypot(sx - w / 2, sy - h / 2);
+        poi.screenDist = distCenter;
+        poi.distM = distM;
+
+        if (distCenter < minCenterDist) {
+          minCenterDist = distCenter;
+          closestPoi = poi;
         }
       });
 
-      // Render: Only the focused landmark displays its small elegant card!
-      // Other nearby landmarks only show a minimal 7px diamond beacon.
+      // Render: Display active landmarks in view; closest to crosshair is focused
       GENSHIN_LANDMARKS.forEach(poi => {
         if (!poi.el) return;
-        if (poi.screenDist !== 9999 && poi.distM <= MAX_POI_DIST) {
+        if (poi.screenDist !== 9999 && poi.distM <= (poi.maxDist || 45)) {
           poi.el.style.display = 'flex';
           poi.el.style.left = poi.sx + 'px';
           poi.el.style.top = poi.sy + 'px';
@@ -6098,10 +6305,13 @@ totalEmissiveRadiance*=rTm;`);
           const isFocused = (closestPoi && poi === closestPoi);
           if (isFocused) {
             poi.el.classList.add('focused');
-            const cardDist = poi.el.querySelector('.g-poi-dist-val');
-            if (cardDist) cardDist.textContent = poi.distM + 'm';
           } else {
             poi.el.classList.remove('focused');
+          }
+
+          const cardDist = poi.el.querySelector('.g-poi-dist-val');
+          if (cardDist) {
+            cardDist.textContent = poi.distM >= 1000 ? (poi.distM / 1000).toFixed(1) + 'km' : poi.distM + 'm';
           }
         } else {
           poi.el.style.display = 'none';
