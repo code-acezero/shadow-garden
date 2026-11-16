@@ -1668,6 +1668,7 @@
       color: #f1f5f9;
       font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
       user-select: none;
+      overscroll-behavior: contain;
     }
     .k-side-panel.open {
       transform: translateX(0);
@@ -1728,6 +1729,7 @@
       display: flex;
       flex-direction: column;
       gap: 24px;
+      overscroll-behavior: contain;
     }
     .k-panel-body::-webkit-scrollbar {
       width: 6px;
@@ -1900,6 +1902,7 @@
       flex-direction: column;
       gap: 4px;
       padding-right: 4px;
+      overscroll-behavior: contain;
     }
     .k-playlist-list::-webkit-scrollbar {
       width: 4px;
@@ -3110,11 +3113,12 @@
     function audioTick() {
       const ac = S.ac; if (!ac || !S.on) return; if (!S.hum) S.mkHum(); const t = ac.currentTime, l = ac.listener, fw = cam.getWorldDirection(V(0, 0, 0)), up = V(0, 1, 0).applyQuaternion(cam.quaternion), p = cam.position;
       if (l.positionX) { l.positionX.value = p.x; l.positionY.value = p.y; l.positionZ.value = p.z; l.forwardX.value = fw.x; l.forwardY.value = fw.y; l.forwardZ.value = fw.z; l.upX.value = up.x; l.upY.value = up.y; l.upZ.value = up.z } else { l.setPosition(p.x, p.y, p.z); l.setOrientation(fw.x, fw.y, fw.z, up.x, up.y, up.z) }
-      const spd = mode === 'walk' ? Math.hypot(pl.vel.x, pl.vel.z) : mode === 'fpv' ? drn.v.length() : 0, alt = sm(300, 4500, p.y), wf = mode === 'fpv' ? 1 : .3;
+      const isDroneSound = mode === 'fpv' || (mode === 'landing_sequence' && typeof landingSequenceManager !== 'undefined' && landingSequenceManager.stage === 'drone_orbit');
+      const spd = mode === 'walk' ? Math.hypot(pl.vel.x, pl.vel.z) : isDroneSound ? drn.v.length() : 0, alt = sm(300, 4500, p.y), wf = isDroneSound ? 1 : .3;
       S.wind.g.gain.setTargetAtTime(0.015 + 0.01 * Math.sin(ts * 0.13), t, .3);
       S.wind.b.frequency.setTargetAtTime(180 + 80 * Math.sin(ts * 0.15), t, .3);
       S.breath.g.gain.setTargetAtTime(0, t, .05); // muted breath noise
-      S.motor.g.gain.setTargetAtTime(mode === 'fpv' ? .03 + .02 * sm(0, 5000, spd) : 0, t, .1); S.motor.o.frequency.setTargetAtTime(150 + spd * .045, t, .08);
+      S.motor.g.gain.setTargetAtTime(isDroneSound ? .03 + .02 * sm(0, 5000, spd) : 0, t, .1); S.motor.o.frequency.setTargetAtTime(150 + spd * .045, t, .08);
       if (S.hum) {
         S.hum.g.gain.setTargetAtTime(.004 + .28 * suc, t, .15);
         S.hum.o1.frequency.setTargetAtTime(42 + 48 * suc, t, .2);
@@ -3182,21 +3186,53 @@
       drn.wps = w
     }
     function fpv(d) {
-      d = Math.min(d, .05); const D_ = drn, k = r => 1 - Math.exp(-r * d); if (D_.wi >= D_.wps.length) newLeg();
-      const tg = D_.wps[D_.wi], to = tg.clone().sub(D_.p), dist = to.length(), spd = D_.v.length(); if (dist < Math.max(450, spd * .2)) D_.wi++;
+      d = Math.min(d, .05); const D_ = drn, k = r => 1 - Math.exp(-r * d);
+      if (D_.wi >= D_.wps.length) {
+        if (mode === 'landing_sequence') {
+          if (typeof landingSequenceManager !== 'undefined') landingSequenceManager.complete();
+          return;
+        }
+        newLeg();
+      }
+      const tg = D_.wps[D_.wi], to = tg.clone().sub(D_.p), dist = to.length(), spd = D_.v.length();
+      if (mode === 'landing_sequence' && D_.wi === D_.wps.length - 1) {
+        if (dist < 260) {
+          if (typeof landingSequenceManager !== 'undefined') landingSequenceManager.complete();
+          return;
+        }
+      } else {
+        if (dist < Math.max(450, spd * .2)) D_.wi++;
+      }
       const dirT = to.normalize(); let sp = D_.speed * (1 + Math.max(0, -D_.v.y) * .0003); const ang = spd > 50 ? D_.v.angleTo(dirT) : 0; sp *= 1 - .35 * sm(.4, 2, ang);
-      const des = dirT.multiplyScalar(sp), vo = D_.v.clone(); D_.v.x += (des.x - D_.v.x) * k(1.4); D_.v.y += (des.y - D_.v.y) * k(1.4); D_.v.z += (des.z - D_.v.z) * k(1.4);
-      D_.v.x += tnz(ts * .7) * 60 * d; D_.v.y += tnz(ts * .9 + 4) * 40 * d; D_.v.z += tnz(ts * .6 + 9) * 60 * d;
-      const gy = groundAt(D_.p.x, D_.p.z, D_.p.y + 3000); if (gy !== null && D_.p.y < gy + 380) D_.v.y += (gy + 380 - D_.p.y) * 8 * d + 300 * d;
+      const des = dirT.multiplyScalar(sp), vo = D_.v.clone(); D_.v.x += (des.x - D_.v.x) * k(1.8); D_.v.y += (des.y - D_.v.y) * k(1.8); D_.v.z += (des.z - D_.v.z) * k(1.8);
+      D_.v.x += tnz(ts * .7) * 45 * d; D_.v.y += tnz(ts * .9 + 4) * 30 * d; D_.v.z += tnz(ts * .6 + 9) * 45 * d;
+      const gy = groundAt(D_.p.x, D_.p.z, D_.p.y + 3000);
+      if (gy !== null && D_.p.y < gy + 450) {
+        D_.v.y += (gy + 450 - D_.p.y) * 12 * d + 400 * d;
+        if (D_.p.y < gy + 120) {
+          D_.p.y = gy + 120;
+          if (D_.v.y < 0) D_.v.y = 0;
+        }
+      }
       for (const q of pillars) { const dx = D_.p.x - q.x, dz = D_.p.z - q.z, r = Math.hypot(dx, dz) + 1e-6; if (r < 1050 && D_.p.y < 5400) { const f = (1050 - r) / 1050 * 14000 * d; D_.v.x += dx / r * f; D_.v.z += dz / r * f } }
+      // Monolith obstacle avoidance
+      const dMx = D_.p.x - (-31000), dMz = D_.p.z - 4050, rM = Math.hypot(dMx, dMz) + 1e-6;
+      if (rM < 2200 && D_.p.y < -3000) {
+        const f = (2200 - rM) / 2200 * 18000 * d;
+        D_.v.x += (dMx / rM) * f;
+        D_.v.z += (dMz / rM) * f;
+      }
       D_.p.addScaledVector(D_.v, d);
       const sH = Math.hypot(D_.v.x, D_.v.z); let ly = D_.yaw, lp = 0;
       if (D_.look) { const ld = D_.look.clone().sub(D_.p); ly = Math.atan2(-ld.x, -ld.z); lp = Math.atan2(ld.y, Math.hypot(ld.x, ld.z)) } else { if (sH > 150) ly = Math.atan2(-D_.v.x, -D_.v.z); lp = Math.atan2(D_.v.y, Math.max(sH, 1)) * .85 }
       let ye = ly - D_.yaw; ye = Math.atan2(Math.sin(ye), Math.cos(ye)); D_.yr += (clampv(ye * (D_.look ? 1.6 : 2.6), -2.4, 2.4) - D_.yr) * k(6); D_.yaw += D_.yr * d; D_.pitch += (lp - D_.pitch) * k(3.5);
       const aF = D_.v.clone().sub(vo).dot(V(-Math.sin(D_.yaw), 0, -Math.cos(D_.yaw))) / d; D_.roll += (clampv(D_.yr * .5, -1.2, 1.2) - D_.roll) * k(4.5);
-      D_.nextSpin -= d; if (D_.spin < 0 && D_.nextSpin <= 0 && D_.leg !== 'orbit' && spd > 2500) { D_.spin = 0; D_.sdir = Math.random() < .5 ? 1 : -1 }
+      if (mode !== 'landing_sequence') {
+        D_.nextSpin -= d; if (D_.spin < 0 && D_.nextSpin <= 0 && D_.leg !== 'orbit' && spd > 2500) { D_.spin = 0; D_.sdir = Math.random() < .5 ? 1 : -1 }
+      }
       let rs = 0; if (D_.spin >= 0) { D_.spin += d / 1.4; rs = ease(Math.min(D_.spin, 1)) * 2 * PI * D_.sdir; if (D_.spin >= 1) { D_.spin = -1; D_.nextSpin = 9 + Math.random() * 12 } }
-      const tmx = 1 + spd / 3000, vib = .0014 * tmx, fv = 92 + 14 * sm(0, 5000, spd); if (Math.abs(cam.fov - fv) > .02) { cam.fov += (fv - cam.fov) * k(3); cam.updateProjectionMatrix() }
+      const tmx = 1 + spd / 3000, vib = (mode === 'landing_sequence' ? .0008 : .0014) * tmx, fv = 92 + 14 * sm(0, 5000, spd);
+      if (Math.abs(cam.fov - fv) > .02) { cam.fov += (fv - cam.fov) * k(3); cam.updateProjectionMatrix() }
       cam.position.set(D_.p.x + Math.sin(ts * 53) * 1.2 * tmx, D_.p.y + Math.sin(ts * 47) * 1.2 * tmx, D_.p.z + Math.cos(ts * 61) * 1.2 * tmx);
       cam.rotation.set(clampv(D_.pitch - clampv(aF * .00004, -.12, .12) + .09 + Math.sin(ts * 43) * vib, -1.4, 1.4), D_.yaw + Math.sin(ts * 39) * vib, D_.roll + rs + Math.sin(ts * 37) * vib, 'YXZ')
     }
@@ -6855,7 +6891,7 @@ totalEmissiveRadiance*=rTm;`);
 
       // Mouse Wheel Free Smooth Damped Scrolling (Zero CPU Re-renders!)
       window.addEventListener('wheel', (e) => {
-        if (!cam || isLandingMenuOpen || isPortalToastOpen || mode !== 'walk') return;
+        if (!cam || isLandingMenuOpen || isPortalToastOpen || isSideMenuOpen || (e.target && e.target.closest('#k-side-panel')) || mode !== 'walk') return;
         const dToKiosk = cam.position.distanceTo(new THREE.Vector3(-31000, -5860, 4050));
         if (dToKiosk < 4200) {
           kagemiTargetScrollY = Math.max(0, Math.min(kagemiMaxScroll, kagemiTargetScrollY + e.deltaY * 2.2));
@@ -7667,44 +7703,79 @@ totalEmissiveRadiance*=rTm;`);
     class LandingSequenceManager {
       constructor() {
         this.active = false;
-        this.stage = 'idle'; // 'title', 'drone_orbit', 'smooth_landing'
+        this.stage = 'idle'; // 'title', 'drone_orbit'
         this.stageElapsed = 0;
         this.totalElapsed = 0;
 
-        // Key Points in 3D Space
-        this.archipelagoCenter = new THREE.Vector3(-15000, -1000, 1500);
+        // Island 1 Walk Spawn Position & Target Orientation
         this.walkSpawnPos = new THREE.Vector3(-32984, -5908.37 + pl.eye, 2089);
+        this.walkSpawnFloor = new THREE.Vector3(-32984, -5908.37, 2089);
         this.targetYaw = -1.466368;
         this.targetPitch = -0.1262;
 
-        // Dynamic trajectory parameters generated randomly on each run
-        this.startAngle = 0;
-        this.orbitDir = 1;
-        this.totalSweep = 0;
-        this.startRadius = 28000;
-        this.startAltitude = 6500;
-        this.orbitDuration = 8.5;
-        this.landingDuration = 2.8;
-        this.orbitEndPos = new THREE.Vector3();
+        this.titleDuration = 3.2;
+      }
+
+      generateEntryWaypoints(startAng) {
+        const Cx = -15000, Cz = 500;
+        const targetX = -36500, targetZ = 2089;
+        const thetaEnd = Math.atan2(targetZ - Cz, targetX - Cx);
+
+        let dCCW = (thetaEnd - startAng) % (Math.PI * 2);
+        if (dCCW <= 0.001) dCCW += Math.PI * 2;
+        let dCW = (startAng - thetaEnd) % (Math.PI * 2);
+        if (dCW <= 0.001) dCW += Math.PI * 2;
+
+        let orbitDir, sweep;
+        if (dCCW < Math.PI * 0.6) {
+          orbitDir = -1;
+          sweep = dCW;
+        } else if (dCW < Math.PI * 0.6) {
+          orbitDir = 1;
+          sweep = dCCW;
+        } else {
+          if (dCCW <= dCW) {
+            orbitDir = 1; sweep = dCCW;
+          } else {
+            orbitDir = -1; sweep = dCW;
+          }
+        }
+
+        const R_start = 19500 + Math.random() * 2000;
+        const R_end = Math.hypot(targetX - Cx, targetZ - Cz);
+        const Y_start = 5800 + Math.random() * 800;
+        const Y_end = -2200;
+
+        const N = 8;
+        const wps = [];
+        for (let i = 0; i < N; i++) {
+          const u = i / (N - 1);
+          const theta = startAng + orbitDir * sweep * u;
+          const r = R_start * (1 - u) + R_end * u;
+          const y = Y_start * (1 - u) + Y_end * u;
+          wps.push(V(Cx + Math.cos(theta) * r, y, Cz + Math.sin(theta) * r));
+        }
+
+        // Island 1 rear open-air corridor into spawn point (completely clear of all obstacles)
+        wps.push(
+          V(-35000, -3600, 2089),
+          V(-34000, -4500, 2089),
+          V(-33350, -5080, 2089),
+          V(-32984, -5258.37, 2089)
+        );
+
+        return wps;
       }
 
       start() {
         this.active = true;
         this.stageElapsed = 0;
         this.totalElapsed = 0;
-        landingShake = 0;
 
         // Ensure audio is initialized and unlocked
         kagemiAudio.init();
         audioInit();
         if (S.ac && S.ac.state === 'suspended') S.ac.resume();
-
-        // Random starting point & random orbit direction & sweep angle
-        this.startAngle = Math.random() * Math.PI * 2;
-        this.orbitDir = Math.random() < 0.5 ? 1 : -1;
-        this.totalSweep = this.orbitDir * (Math.PI * 1.25 + Math.random() * Math.PI * 0.45);
-        this.startRadius = 26000 + Math.random() * 6000;
-        this.startAltitude = 5800 + Math.random() * 1600;
 
         // Close side menu if open
         closeSideMenu();
@@ -7719,6 +7790,26 @@ totalEmissiveRadiance*=rTm;`);
         const skipBtn = document.getElementById('kagemi-seq-skip-btn');
         if (skipBtn) skipBtn.style.display = 'flex';
 
+        // Generate full collision-free FPV flight path starting from random angle
+        const startAng = Math.random() * Math.PI * 2;
+        const wps = this.generateEntryWaypoints(startAng);
+
+        // Initialize actual FPV drone state
+        drn.p.copy(wps[0]);
+        const dir0 = wps[1].clone().sub(wps[0]).normalize();
+        drn.v.copy(dir0).multiplyScalar(6200);
+        drn.speed = 6800;
+        drn.yaw = Math.atan2(-dir0.x, -dir0.z);
+        drn.pitch = Math.asin(dir0.y);
+        drn.roll = 0;
+        drn.yr = 0;
+        drn.spin = -1;
+        drn.nextSpin = 99999; // no barrel rolls during intro
+        drn.wps = wps;
+        drn.wi = 1;
+        drn.leg = 'entry';
+        drn.look = null;
+
         // Set mode
         setMode('landing_sequence');
 
@@ -7729,7 +7820,6 @@ totalEmissiveRadiance*=rTm;`);
       setStage(newStage) {
         this.stage = newStage;
         this.stageElapsed = 0;
-        console.log('[Landing Sequence Stage]:', newStage);
 
         const blackout = document.getElementById('kagemi-cinematic-blackout');
         const titleCard = document.getElementById('kagemi-cinematic-title');
@@ -7754,13 +7844,10 @@ totalEmissiveRadiance*=rTm;`);
             }
           }, 600);
 
-          // Position camera at random starting point already
-          const startX = this.archipelagoCenter.x + Math.cos(this.startAngle) * this.startRadius;
-          const startZ = this.archipelagoCenter.z + Math.sin(this.startAngle) * this.startRadius;
-          cam.position.set(startX, this.startAltitude, startZ);
-          cam.lookAt(this.archipelagoCenter);
-          cam.rotation.z = 0;
-          cam.fov = 75;
+          // Position camera at drone start position looking along initial flight path
+          cam.position.copy(drn.p);
+          cam.rotation.set(drn.pitch, drn.yaw, 0, 'YXZ');
+          cam.fov = 85;
           cam.updateProjectionMatrix();
 
         } else if (newStage === 'drone_orbit') {
@@ -7772,24 +7859,6 @@ totalEmissiveRadiance*=rTm;`);
               titleCard.style.display = 'none';
             }, 1000);
           }
-          kagemiAudio.playSfx('drone', 0.55, true);
-
-        } else if (newStage === 'smooth_landing') {
-          // Store end of orbit position to smoothly interpolate from
-          this.orbitEndPos.copy(cam.position);
-          // Fade drone sound
-          const droneSfx = kagemiAudio.sfxPool.get('drone');
-          if (droneSfx) {
-            let curV = droneSfx.volume;
-            const fadeInterval = setInterval(() => {
-              curV = Math.max(0, curV - 0.05);
-              droneSfx.volume = curV;
-              if (curV <= 0) {
-                clearInterval(fadeInterval);
-                kagemiAudio.stopSfx('drone');
-              }
-            }, 100);
-          }
         }
       }
 
@@ -7799,93 +7868,39 @@ totalEmissiveRadiance*=rTm;`);
         this.totalElapsed += d;
         const t = this.stageElapsed;
 
-        switch (this.stage) {
-          case 'title': {
-            const startX = this.archipelagoCenter.x + Math.cos(this.startAngle) * this.startRadius;
-            const startZ = this.archipelagoCenter.z + Math.sin(this.startAngle) * this.startRadius;
-            cam.position.set(startX, this.startAltitude, startZ);
-            cam.lookAt(this.archipelagoCenter);
-            if (t >= (this.titleDuration || 3.2)) {
-              this.setStage('drone_orbit');
-            }
-            break;
+        if (this.stage === 'title') {
+          cam.position.copy(drn.p);
+          cam.rotation.set(drn.pitch, drn.yaw, 0, 'YXZ');
+          if (t >= this.titleDuration) {
+            this.setStage('drone_orbit');
+          }
+        } else if (this.stage === 'drone_orbit') {
+          // Drive using the actual FPV drone physics engine!
+          fpv(d);
+
+          // Dynamic speed modulation for cinematic touchdown approach
+          const rem = drn.wps.length - 1 - drn.wi;
+          if (rem > 4) drn.speed = 6800;
+          else if (rem === 4) drn.speed = 5200;
+          else if (rem === 3) drn.speed = 3600;
+          else if (rem === 2) drn.speed = 2200;
+          else if (rem === 1) drn.speed = 1200;
+          else drn.speed = 600;
+
+          // When on final corridor approach, smoothly level roll and blend to target walk orientation
+          if (rem <= 2) {
+            drn.roll *= (1 - 4 * d);
+            let dy = this.targetYaw - drn.yaw;
+            while (dy < -Math.PI) dy += Math.PI * 2;
+            while (dy > Math.PI) dy -= Math.PI * 2;
+            drn.yaw += dy * (1 - Math.exp(-3.5 * d));
+            drn.pitch += (this.targetPitch - drn.pitch) * (1 - Math.exp(-3.5 * d));
           }
 
-          case 'drone_orbit': {
-            const p = Math.min(1.0, t / this.orbitDuration);
-            // Smooth ease in-out
-            const ease = 0.5 - 0.5 * Math.cos(p * Math.PI);
-
-            // Current orbit parameters
-            const curAngle = this.startAngle + this.totalSweep * ease;
-            const curRadius = this.startRadius * (1 - ease) + 11500 * ease;
-            const curAlt = this.startAltitude * (1 - ease) + (-2000) * ease;
-
-            const cx = this.archipelagoCenter.x + Math.cos(curAngle) * curRadius;
-            const cz = this.archipelagoCenter.z + Math.sin(curAngle) * curRadius;
-            cam.position.set(cx, curAlt, cz);
-
-            // Look target sweeps from archipelago center towards Island 1 starting area
-            const lookTarget = this.archipelagoCenter.clone().lerp(this.walkSpawnPos, ease * 0.75);
-            lookTarget.y += 400;
-            cam.lookAt(lookTarget);
-
-            // Dynamic FPV drone banking into turns
-            const rollBank = -this.orbitDir * 0.22 * Math.sin(p * Math.PI);
-            cam.rotation.z += rollBank;
-
-            // FOV eases from 75 down to 70
-            cam.fov = 75 - ease * 5;
-            cam.updateProjectionMatrix();
-
-            if (p >= 1.0) {
-              this.setStage('smooth_landing');
-            }
-            break;
-          }
-
-          case 'smooth_landing': {
-            const p = Math.min(1.0, t / this.landingDuration);
-            // Buttery smooth deceleration (quartic ease-out)
-            const ease = 1 - Math.pow(1 - p, 3.5);
-
-            // Position smoothly glides to walkSpawnPos with gentle arc
-            const pStart = this.orbitEndPos;
-            const pEnd = this.walkSpawnPos;
-            const pCtrl = new THREE.Vector3(
-              (pStart.x + pEnd.x) * 0.5,
-              Math.max(pStart.y, pEnd.y + 1200),
-              (pStart.z + pEnd.z) * 0.5
-            );
-
-            // Quadratic bezier interpolation: (1-e)^2*P0 + 2(1-e)e*P1 + e^2*P2
-            const e1 = 1 - ease;
-            const bx = e1 * e1 * pStart.x + 2 * e1 * ease * pCtrl.x + ease * ease * pEnd.x;
-            const by = e1 * e1 * pStart.y + 2 * e1 * ease * pCtrl.y + ease * ease * pEnd.y;
-            const bz = e1 * e1 * pStart.z + 2 * e1 * ease * pCtrl.z + ease * ease * pEnd.z;
-            cam.position.set(bx, by, bz);
-
-            // Smoothly align yaw and pitch to exact walk mode initial orientation
-            const currentDir = cam.getWorldDirection(new THREE.Vector3());
-            const curYaw = Math.atan2(-currentDir.x, -currentDir.z);
-            const curPitch = Math.asin(currentDir.y);
-
-            let dYaw = this.targetYaw - curYaw;
-            while (dYaw < -Math.PI) dYaw += Math.PI * 2;
-            while (dYaw > Math.PI) dYaw -= Math.PI * 2;
-            const factor = ease * 0.2 + (p > 0.65 ? (p - 0.65) / 0.35 * 0.8 : 0);
-            const nextYaw = curYaw + dYaw * Math.min(1.0, factor);
-            const nextPitch = curPitch + (this.targetPitch - curPitch) * Math.min(1.0, factor);
-
-            // Level out bank roll to 0
-            cam.rotation.set(nextPitch, nextYaw, 0, 'YXZ');
-            cam.fov = 70;
-            cam.updateProjectionMatrix();
-
-            if (p >= 1.0) {
-              this.complete();
-            }
-            break;
+          // Check for landing completion
+          const distToSpawn = drn.p.distanceTo(this.walkSpawnPos);
+          if ((rem === 0 && distToSpawn < 260) || this.totalElapsed > 22) {
+            this.complete();
           }
         }
       }
@@ -7909,9 +7924,7 @@ totalEmissiveRadiance*=rTm;`);
         const bottomHud = document.getElementById('kagemi-bottom-hud');
         if (bottomHud) bottomHud.style.display = 'flex';
 
-        kagemiAudio.stopSfx('drone');
-
-        // Land the player cleanly in walk mode on Island 1 starting point
+        // Set player walk mode position and orientation
         const spawnX = -32984, spawnZ = 2089, spawnY = -5908.37;
         yaw = -1.466368;
         pitch = -0.1262;
@@ -7958,7 +7971,13 @@ totalEmissiveRadiance*=rTm;`);
       isSideMenuOpen = true;
       const panel = document.getElementById('k-side-panel');
       const backdrop = document.getElementById('k-side-backdrop');
-      if (panel) panel.classList.add('open');
+      if (panel) {
+        panel.classList.add('open');
+        if (!panel._wheelBound) {
+          panel._wheelBound = true;
+          panel.addEventListener('wheel', (e) => { e.stopPropagation(); }, { passive: true });
+        }
+      }
       if (backdrop) backdrop.classList.add('open');
       if (document.exitPointerLock) document.exitPointerLock();
       renderPlaylist();
