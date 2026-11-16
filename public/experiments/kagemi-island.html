@@ -1438,7 +1438,767 @@
       background: #050508;
     }
 
-  </style>
+  
+    /* =========================================================================
+       CINEMATIC BLACKOUT & INTRO SEQUENCE STYLING
+       ========================================================================= */
+    #kagemi-cinematic-blackout {
+      position: fixed;
+      inset: 0;
+      z-index: 99990;
+      background: #000000;
+      pointer-events: none;
+      opacity: 1;
+      transition: opacity 1.4s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+    #kagemi-cinematic-title {
+      position: fixed;
+      inset: 0;
+      z-index: 99995;
+      background: transparent;
+      display: none;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      pointer-events: none;
+      overflow: hidden;
+      user-select: none;
+      opacity: 0;
+      transform: scale(1.08);
+      filter: blur(8px);
+      transition: opacity 1.0s cubic-bezier(0.16, 1, 0.3, 1), transform 1.2s cubic-bezier(0.16, 1, 0.3, 1), filter 1.0s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+    #kagemi-cinematic-title.active {
+      opacity: 1;
+      transform: scale(1.0);
+      filter: blur(0px);
+    }
+    .k-title-glow-sphere {
+      position: absolute;
+      width: 800px;
+      height: 420px;
+      border-radius: 50%;
+      background: radial-gradient(circle, rgba(168, 85, 247, 0.38) 0%, rgba(124, 58, 237, 0.16) 45%, transparent 75%);
+      filter: blur(80px);
+      pointer-events: none;
+      transform: scale(0.9);
+      animation: kGlowBreath 4.4s ease-in-out forwards;
+    }
+    @keyframes kGlowBreath {
+      0% { opacity: 0; transform: scale(0.8); }
+      22% { opacity: 1; transform: scale(1.05); }
+      72% { opacity: 0.85; transform: scale(1.0); }
+      100% { opacity: 0; transform: scale(0.92); }
+    }
+    .k-title-content {
+      position: relative;
+      z-index: 2;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      padding: 0 24px;
+    }
+    .k-title-eyebrow {
+      font-size: 13px;
+      font-weight: 700;
+      letter-spacing: 0.32em;
+      color: rgba(192, 132, 252, 0.85);
+      text-transform: uppercase;
+      margin-bottom: 12px;
+      text-shadow: 0 0 20px rgba(168, 85, 247, 0.6);
+    }
+    .k-title-h1 {
+      font-size: clamp(54px, 12vw, 136px);
+      font-weight: 900;
+      letter-spacing: 0.38em;
+      margin-left: 0.38em;
+      text-transform: uppercase;
+      margin: 0;
+      line-height: 1;
+      background: linear-gradient(
+        110deg,
+        #a855f7 0%,
+        #c084fc 18%,
+        #f5d0fe 32%,
+        #ffffff 45%,
+        #e9d5ff 55%,
+        #a855f7 68%,
+        #ffffff 82%,
+        #7c3aed 100%
+      );
+      background-size: 260% 100%;
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      animation: kPurpleShimmerSweep 3.2s cubic-bezier(0.2, 0.8, 0.2, 1) infinite;
+      filter: drop-shadow(0 0 35px rgba(147, 51, 234, 0.75)) drop-shadow(0 0 70px rgba(124, 58, 237, 0.45));
+      text-align: center;
+      user-select: none;
+    }
+    .k-title-kanji {
+      font-size: 22px;
+      letter-spacing: 0.6em;
+      color: rgba(255, 255, 255, 0.82);
+      margin-top: 14px;
+      text-shadow: 0 0 16px rgba(168, 85, 247, 0.6);
+    }
+    .k-title-sub {
+      font-size: 11px;
+      letter-spacing: 0.28em;
+      color: rgba(226, 232, 240, 0.65);
+      margin-top: 8px;
+      text-transform: uppercase;
+    }
+    @keyframes kPurpleShimmerSweep {
+      0% { background-position: 160% 0; }
+      100% { background-position: -160% 0; }
+    }
+    @keyframes kCinematicTitleZoomFade {
+      0% { opacity: 0; transform: scale(1.15); filter: blur(14px); }
+      22% { opacity: 1; transform: scale(1.05); filter: blur(0px); }
+      72% { opacity: 1; transform: scale(1.00); filter: blur(0px); }
+      100% { opacity: 0; transform: scale(0.96); filter: blur(8px); pointer-events: none; }
+    }
+
+    /* Floating Skip to Walk Button */
+    .k-seq-skip-btn {
+      position: fixed;
+      top: 22px;
+      right: 22px;
+      z-index: 99998;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 10px 20px;
+      background: rgba(14, 16, 32, 0.85);
+      border: 1px solid rgba(168, 85, 247, 0.45);
+      border-radius: 999px;
+      color: #f1f5f9;
+      font: 600 13px system-ui, sans-serif;
+      letter-spacing: 0.05em;
+      backdrop-filter: blur(12px);
+      cursor: pointer;
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
+      transition: all 0.2s ease;
+    }
+    .k-seq-skip-btn:hover {
+      background: rgba(28, 32, 60, 0.95);
+      border-color: rgba(192, 132, 252, 0.7);
+      transform: translateY(-1px);
+    }
+
+    /* =========================================================================
+       TOP-LEFT FLOATING MENU TOGGLE BUTTON
+       ========================================================================= */
+    .k-menu-toggle-btn {
+      position: fixed;
+      top: calc(18px + env(safe-area-inset-top, 0px));
+      left: calc(18px + env(safe-area-inset-left, 0px));
+      z-index: 99800;
+      display: flex;
+      align-items: center;
+      gap: 9px;
+      background: rgba(10, 12, 26, 0.82);
+      border: 1px solid rgba(168, 85, 247, 0.35);
+      border-radius: 999px;
+      padding: 9px 18px;
+      color: #f1f5f9;
+      font: 600 13px system-ui, sans-serif;
+      letter-spacing: 0.06em;
+      backdrop-filter: blur(14px);
+      cursor: pointer;
+      box-shadow: 0 4px 22px rgba(0, 0, 0, 0.45);
+      transition: all 0.22s ease;
+      user-select: none;
+    }
+    .k-menu-toggle-btn:hover {
+      background: rgba(24, 28, 56, 0.92);
+      border-color: rgba(192, 132, 252, 0.65);
+      transform: translateY(-1px);
+      box-shadow: 0 6px 26px rgba(168, 85, 247, 0.25);
+    }
+    .k-key-badge {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      background: rgba(255, 255, 255, 0.12);
+      border: 1px solid rgba(255, 255, 255, 0.22);
+      border-radius: 5px;
+      padding: 1px 7px;
+      font-size: 11px;
+      font-family: monospace;
+      font-weight: 700;
+      color: #c084fc;
+    }
+
+    /* =========================================================================
+       COLLAPSIBLE GAME SIDE PANEL (LEFT DRAWER)
+       ========================================================================= */
+    .k-side-backdrop {
+      position: fixed;
+      inset: 0;
+      z-index: 99890;
+      background: rgba(4, 6, 14, 0.55);
+      backdrop-filter: blur(4px);
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.32s ease;
+    }
+    .k-side-backdrop.open {
+      opacity: 1;
+      pointer-events: auto;
+    }
+
+    .k-side-panel {
+      position: fixed;
+      top: 0;
+      bottom: 0;
+      left: 0;
+      width: min(440px, 94vw);
+      z-index: 99900;
+      background: rgba(9, 10, 20, 0.95);
+      border-right: 1px solid rgba(168, 85, 247, 0.25);
+      box-shadow: 16px 0 44px rgba(0, 0, 0, 0.7);
+      backdrop-filter: blur(28px);
+      display: flex;
+      flex-direction: column;
+      transform: translateX(-100%);
+      transition: transform 0.38s cubic-bezier(0.16, 1, 0.3, 1);
+      color: #f1f5f9;
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      user-select: none;
+    }
+    .k-side-panel.open {
+      transform: translateX(0);
+    }
+
+    /* Panel Header */
+    .k-panel-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 22px 24px 18px 24px;
+      border-bottom: 1px solid rgba(168, 85, 247, 0.16);
+      background: rgba(14, 16, 32, 0.6);
+    }
+    .k-brand-badge {
+      font-size: 16px;
+      font-weight: 800;
+      letter-spacing: 0.14em;
+      color: #ffffff;
+      text-transform: uppercase;
+      text-shadow: 0 0 16px rgba(168, 85, 247, 0.5);
+    }
+    .k-brand-sub {
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: 0.08em;
+      color: #a855f7;
+      text-transform: uppercase;
+      margin-top: 3px;
+    }
+    .k-panel-close-btn {
+      width: 36px;
+      height: 36px;
+      border-radius: 50%;
+      background: rgba(255, 255, 255, 0.06);
+      border: 1px solid rgba(168, 85, 247, 0.3);
+      color: #cbd5e1;
+      font-size: 16px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      padding: 0;
+    }
+    .k-panel-close-btn:hover {
+      background: rgba(168, 85, 247, 0.25);
+      color: #ffffff;
+      border-color: #c084fc;
+      transform: scale(1.08);
+    }
+
+    /* Panel Body (Scrollable) */
+    .k-panel-body {
+      flex: 1;
+      overflow-y: auto;
+      padding: 20px 24px 40px 24px;
+      display: flex;
+      flex-direction: column;
+      gap: 24px;
+    }
+    .k-panel-body::-webkit-scrollbar {
+      width: 6px;
+    }
+    .k-panel-body::-webkit-scrollbar-thumb {
+      background: rgba(168, 85, 247, 0.3);
+      border-radius: 999px;
+    }
+    .k-panel-body::-webkit-scrollbar-thumb:hover {
+      background: rgba(168, 85, 247, 0.5);
+    }
+
+    /* Generic Section */
+    .k-panel-section {
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+    }
+    .k-sec-heading {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.07);
+      padding-bottom: 8px;
+    }
+    .k-sec-title {
+      font-size: 12px;
+      font-weight: 700;
+      letter-spacing: 0.12em;
+      color: #c084fc;
+      text-transform: uppercase;
+    }
+    .k-sec-status {
+      font-size: 11px;
+      font-family: monospace;
+      color: #94a3b8;
+    }
+
+    /* BGM Music Player / Jukebox */
+    .k-now-playing-card {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      background: rgba(18, 20, 38, 0.85);
+      border: 1px solid rgba(168, 85, 247, 0.25);
+      border-radius: 14px;
+      padding: 14px 16px;
+    }
+    .k-track-icon {
+      width: 40px;
+      height: 40px;
+      border-radius: 10px;
+      background: linear-gradient(135deg, rgba(124, 58, 237, 0.4), rgba(168, 85, 247, 0.2));
+      border: 1px solid rgba(168, 85, 247, 0.4);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 18px;
+      color: #e9d5ff;
+      flex-shrink: 0;
+    }
+    .k-track-meta {
+      flex: 1;
+      min-width: 0;
+    }
+    .k-track-title {
+      font-size: 14px;
+      font-weight: 700;
+      color: #ffffff;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .k-track-sub {
+      font-size: 11px;
+      color: #94a3b8;
+      margin-top: 3px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    /* Scrubber Progress Bar */
+    .k-scrubber-wrap {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+    .k-scrubber-slider {
+      width: 100%;
+      height: 5px;
+      accent-color: #a855f7;
+      cursor: pointer;
+    }
+    .k-scrubber-times {
+      display: flex;
+      justify-content: space-between;
+      font-size: 11px;
+      font-family: monospace;
+      color: #64748b;
+    }
+
+    /* Player Button Row */
+    .k-player-btn-row {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 14px;
+    }
+    .k-icon-btn {
+      width: 38px;
+      height: 38px;
+      border-radius: 50%;
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid rgba(168, 85, 247, 0.25);
+      color: #cbd5e1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      padding: 0;
+    }
+    .k-icon-btn:hover {
+      background: rgba(168, 85, 247, 0.25);
+      border-color: #c084fc;
+      color: #ffffff;
+      transform: scale(1.08);
+    }
+    .k-icon-btn.active {
+      background: rgba(168, 85, 247, 0.35);
+      border-color: #c084fc;
+      color: #c084fc;
+    }
+    .k-main-play-btn {
+      width: 46px;
+      height: 46px;
+      background: linear-gradient(135deg, #7c3aed, #a855f7);
+      border: none;
+      color: #ffffff;
+      font-size: 18px;
+      box-shadow: 0 4px 18px rgba(124, 58, 237, 0.45);
+    }
+    .k-main-play-btn:hover {
+      background: linear-gradient(135deg, #8b5cf6, #c084fc);
+      transform: scale(1.1);
+      box-shadow: 0 6px 22px rgba(168, 85, 247, 0.6);
+    }
+
+    /* Scrollable Playlist Container */
+    .k-playlist-container {
+      background: rgba(14, 16, 30, 0.7);
+      border: 1px solid rgba(168, 85, 247, 0.16);
+      border-radius: 12px;
+      padding: 12px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+    .k-playlist-title {
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: 0.12em;
+      color: #94a3b8;
+    }
+    .k-playlist-list {
+      max-height: 190px;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      padding-right: 4px;
+    }
+    .k-playlist-list::-webkit-scrollbar {
+      width: 4px;
+    }
+    .k-playlist-list::-webkit-scrollbar-thumb {
+      background: rgba(168, 85, 247, 0.25);
+      border-radius: 999px;
+    }
+    .k-playlist-item {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 8px 10px;
+      border-radius: 8px;
+      font-size: 12px;
+      color: #cbd5e1;
+      cursor: pointer;
+      transition: background 0.18s, color 0.18s;
+    }
+    .k-playlist-item:hover {
+      background: rgba(168, 85, 247, 0.16);
+      color: #ffffff;
+    }
+    .k-playlist-item.active {
+      background: rgba(124, 58, 237, 0.28);
+      border: 1px solid rgba(168, 85, 247, 0.35);
+      color: #ffffff;
+      font-weight: 600;
+    }
+    .k-pl-idx {
+      font-family: monospace;
+      font-size: 11px;
+      color: #64748b;
+      min-width: 20px;
+    }
+    .k-playlist-item.active .k-pl-idx {
+      color: #c084fc;
+    }
+    .k-pl-title {
+      flex: 1;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .k-pl-playing-icon {
+      font-size: 11px;
+      color: #c084fc;
+      opacity: 0;
+    }
+    .k-playlist-item.active .k-pl-playing-icon {
+      opacity: 1;
+    }
+
+    /* Settings Rows & Sliders */
+    .k-setting-field {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+    .k-setting-top {
+      display: flex;
+      justify-content: space-between;
+      font-size: 13px;
+      color: #e2e8f0;
+      font-weight: 500;
+    }
+    .k-setting-top span:last-child {
+      font-family: monospace;
+      color: #c084fc;
+      font-weight: 700;
+    }
+    .k-slider {
+      width: 100%;
+      height: 6px;
+      accent-color: #a855f7;
+      background: rgba(255, 255, 255, 0.1);
+      border-radius: 999px;
+      cursor: pointer;
+    }
+    .k-scale-pills {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 8px;
+    }
+    .k-scale-pill {
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid rgba(168, 85, 247, 0.25);
+      border-radius: 8px;
+      padding: 8px 4px;
+      color: #cbd5e1;
+      font-size: 12px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      text-align: center;
+    }
+    .k-scale-pill:hover {
+      background: rgba(168, 85, 247, 0.18);
+      border-color: #a855f7;
+      color: #ffffff;
+    }
+    .k-scale-pill.active {
+      background: #7c3aed;
+      border-color: #c084fc;
+      color: #ffffff;
+      box-shadow: 0 2px 10px rgba(124, 58, 237, 0.4);
+    }
+
+    /* Action Buttons in Settings */
+    .k-grid-buttons {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+    }
+    .k-grid-btn {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid rgba(168, 85, 247, 0.25);
+      border-radius: 10px;
+      padding: 10px 14px;
+      color: #e2e8f0;
+      font-size: 12px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+    .k-grid-btn:hover {
+      background: rgba(168, 85, 247, 0.2);
+      border-color: #c084fc;
+      color: #ffffff;
+      transform: translateY(-1px);
+    }
+    .k-grid-wide {
+      grid-column: span 2;
+    }
+    .k-panel-action-btn {
+      width: 100%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      background: rgba(255, 255, 255, 0.06);
+      border: 1px solid rgba(168, 85, 247, 0.25);
+      border-radius: 10px;
+      padding: 10px 14px;
+      color: #e2e8f0;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+    .k-panel-action-btn:hover {
+      background: rgba(168, 85, 247, 0.22);
+      border-color: #c084fc;
+      color: #ffffff;
+    }
+
+    /* Controls Guide */
+    .k-guide-rows {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+    .k-guide-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 6px 0;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+      font-size: 12px;
+    }
+    .k-guide-row kbd {
+      background: rgba(255, 255, 255, 0.08);
+      border: 1px solid rgba(255, 255, 255, 0.16);
+      border-radius: 4px;
+      padding: 2px 7px;
+      font-size: 11px;
+      font-family: monospace;
+      color: #c084fc;
+      margin-right: 4px;
+    }
+    .k-guide-row span {
+      color: #cbd5e1;
+    }
+
+    /* About This Realm & Atrax Credit */
+    .k-about-card {
+      background: rgba(18, 20, 36, 0.6);
+      border: 1px solid rgba(168, 85, 247, 0.16);
+      border-radius: 12px;
+      padding: 16px;
+    }
+    .k-about-desc {
+      font-size: 12px;
+      line-height: 1.6;
+      color: #94a3b8;
+      margin: 0;
+    }
+    .k-author-credit {
+      margin-top: 14px;
+      padding-top: 12px;
+      border-top: 1px solid rgba(255, 255, 255, 0.06);
+      font-size: 11px;
+      font-family: monospace;
+      letter-spacing: 0.08em;
+      color: #c084fc;
+      text-transform: uppercase;
+      text-align: right;
+    }
+
+    /* =========================================================================
+       SLEEK BOTTOM HUD (NO OVERLAYS CONSTRAINING 3D VIEW)
+       ========================================================================= */
+    .kagemi-bottom-hud {
+      position: fixed;
+      bottom: calc(18px + env(safe-area-inset-bottom, 0px));
+      left: 50%;
+      transform: translateX(-50%);
+      z-index: 9000;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 8px;
+      pointer-events: none;
+      user-select: none;
+    }
+    .k-hud-msg {
+      background: rgba(10, 12, 24, 0.82);
+      border: 1px solid rgba(168, 85, 247, 0.3);
+      border-radius: 999px;
+      padding: 5px 16px;
+      font-size: 12px;
+      color: #e2e8f0;
+      backdrop-filter: blur(12px);
+      box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4);
+      display: none;
+    }
+    .k-hud-controls-bar {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      background: rgba(8, 10, 20, 0.78);
+      border: 1px solid rgba(168, 85, 247, 0.22);
+      border-radius: 999px;
+      padding: 6px 16px;
+      backdrop-filter: blur(14px);
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.45);
+      font-size: 12px;
+      color: #cbd5e1;
+      pointer-events: auto;
+    }
+    .k-hud-chip {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+    }
+    .k-hud-chip kbd {
+      background: rgba(255, 255, 255, 0.1);
+      border: 1px solid rgba(255, 255, 255, 0.18);
+      border-radius: 4px;
+      padding: 1px 5px;
+      font-size: 10px;
+      font-family: monospace;
+      color: #c084fc;
+    }
+    .k-hud-sep {
+      color: rgba(255, 255, 255, 0.2);
+    }
+    .k-hud-menu-btn {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      background: rgba(124, 58, 237, 0.25);
+      border: 1px solid rgba(168, 85, 247, 0.45);
+      border-radius: 999px;
+      padding: 3px 10px;
+      color: #ffffff;
+      font-size: 11px;
+      font-weight: 700;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+    .k-hud-menu-btn:hover {
+      background: #7c3aed;
+      border-color: #c084fc;
+      transform: scale(1.05);
+    }
+    .k-hud-menu-btn kbd {
+      background: rgba(255, 255, 255, 0.2);
+      border-radius: 3px;
+      padding: 0 4px;
+      font-family: monospace;
+      font-size: 10px;
+    }
+
+</style>
 </head>
 
 <body>
@@ -1446,16 +2206,22 @@
   <!-- Whiteout transition flash overlay -->
   <div id="kagemi-whiteout-overlay"></div>
 
-    <!-- Cinematic Title Card Overlay (Non-blocking, over live 3D world) -->
-  <div id="kagemi-cinematic-title" class="kagemi-cinematic-intro">
+    <!-- Pure Black Screen Overlay for Cinematic Intro -->
+  <div id="kagemi-cinematic-blackout"></div>
+
+  <!-- Cinematic Title Card Overlay -->
+  <div id="kagemi-cinematic-title" class="kagemi-cinematic-intro" style="display:none;">
     <div class="k-title-glow-sphere"></div>
     <div class="k-title-content">
+      <div class="k-title-eyebrow">CELESTIAL ARCHIPELAGO</div>
       <h1 class="k-title-h1">KAGEMI</h1>
+      <div class="k-title-kanji">影 見 島</div>
+      <div class="k-title-sub">A SACRED REALM IN THE SHADOWS</div>
     </div>
   </div>
 
-  <!-- Floating Skip to Island Button -->
-  <button id="kagemi-seq-skip-btn" style="display:none;" title="Skip cinematic sequence">
+  <!-- Floating Skip to Walk Button -->
+  <button id="kagemi-seq-skip-btn" class="k-seq-skip-btn" style="display:none;" title="Skip cinematic sequence">
     <span>Skip to Walk</span>
     <span>⏭</span>
   </button>
@@ -1480,20 +2246,200 @@
     <span id="k-bgm-title">Now Playing: Hiisi Island Night</span>
   </div>
 
-  <div id="t">The shrine gate leads straight to the mana portal</div>
-  <div id="ui">
-    <button id="btn-landing-seq" title="Play Authentic Cinematic Landing Sequence">🎬 Landing Sequence</button>
-    <button id="fl">Flyover</button>
-    <button id="wk" class="on">Walk</button>
-    <button id="fo">Free look</button>
-    <button id="fp">FPV</button>
-    <button id="al">Alignment line</button>
-    <button id="btn-bgm-toggle" title="Toggle Background Music">♫ Music: On</button>
-    <button id="btn-bgm-next" title="Next BGM Track">⏭</button>
-    <button id="sn">SFX: On</button>
-    <button id="hw" hidden>Hold to walk</button>
+  <!-- Top-Left Floating Menu Toggle Button -->
+  <button id="k-menu-btn" class="k-menu-toggle-btn" title="Open Realm Settings & Jukebox (Key: M)">
+    <svg viewBox="0 0 24 24" width="18" height="18" stroke="currentColor" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <line x1="3" y1="12" x2="21" y2="12"></line>
+      <line x1="3" y1="6" x2="21" y2="6"></line>
+      <line x1="3" y1="18" x2="21" y2="18"></line>
+    </svg>
+    <span>MENU</span>
+    <kbd class="k-key-badge">M</kbd>
+  </button>
+
+  <!-- Side Panel Backdrop -->
+  <div id="k-side-backdrop" class="k-side-backdrop"></div>
+
+  <!-- Collapsible Left Game Side Panel -->
+  <aside id="k-side-panel" class="k-side-panel" aria-label="Game Pause & Settings Menu">
+    <div class="k-panel-header">
+      <div class="k-panel-brand">
+        <div class="k-brand-badge">KAGEMI SANCTUARY</div>
+        <div class="k-brand-sub">REALM & SYSTEM CONTROLS</div>
+      </div>
+      <button id="k-panel-close-btn" class="k-panel-close-btn" title="Close Menu (Esc or M)">✕</button>
+    </div>
+
+    <div class="k-panel-body">
+      <!-- Section 1: BGM Music Player & Jukebox -->
+      <section class="k-panel-section k-player-section">
+        <div class="k-sec-heading">
+          <span class="k-sec-title">♫ BGM JUKEBOX</span>
+          <span id="k-player-status" class="k-sec-status">Playing</span>
+        </div>
+
+        <div class="k-now-playing-card">
+          <div class="k-track-icon">♫</div>
+          <div class="k-track-meta">
+            <div id="k-player-title" class="k-track-title">Hiisi Island Night</div>
+            <div id="k-player-sub" class="k-track-sub">Track 1 of 14 · Atmospheric BGM</div>
+          </div>
+        </div>
+
+        <div class="k-scrubber-wrap">
+          <input type="range" id="k-player-scrubber" min="0" max="100" value="0" step="0.1" class="k-slider k-scrubber-slider">
+          <div class="k-scrubber-times">
+            <span id="k-player-cur-time">0:00</span>
+            <span id="k-player-dur-time">0:00</span>
+          </div>
+        </div>
+
+        <div class="k-player-btn-row">
+          <button id="k-player-shuffle" class="k-icon-btn" title="Toggle Shuffle Mode">
+            <svg viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" fill="none" stroke-width="2">
+              <polyline points="16 3 21 3 21 8"></polyline>
+              <line x1="4" y1="20" x2="21" y2="3"></line>
+              <polyline points="21 16 21 21 16 21"></polyline>
+              <line x1="15" y1="15" x2="21" y2="21"></line>
+              <line x1="4" y1="4" x2="9" y2="9"></line>
+            </svg>
+          </button>
+          <button id="k-player-prev" class="k-icon-btn" title="Previous Track">
+            <svg viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" fill="none" stroke-width="2">
+              <polygon points="19 20 9 12 19 4 19 20"></polygon>
+              <line x1="5" y1="19" x2="5" y2="5"></line>
+            </svg>
+          </button>
+          <button id="k-player-playpause" class="k-icon-btn k-main-play-btn" title="Play / Pause">
+            <span id="k-playpause-icon">⏸</span>
+          </button>
+          <button id="k-player-next" class="k-icon-btn" title="Next Track">
+            <svg viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" fill="none" stroke-width="2">
+              <polygon points="5 4 15 12 5 20 5 4"></polygon>
+              <line x1="19" y1="5" x2="19" y2="19"></line>
+            </svg>
+          </button>
+        </div>
+
+        <div class="k-playlist-container">
+          <div class="k-playlist-title">PLAYLIST (14 TRACKS)</div>
+          <div id="k-playlist-list" class="k-playlist-list"></div>
+        </div>
+      </section>
+
+      <!-- Section 2: Sound Settings -->
+      <section class="k-panel-section">
+        <div class="k-sec-heading">
+          <span class="k-sec-title">SOUND SETTINGS</span>
+        </div>
+        <div class="k-setting-field">
+          <div class="k-setting-top">
+            <span>BGM Master Volume</span>
+            <span id="k-bgm-vol-disp">35%</span>
+          </div>
+          <input type="range" id="k-bgm-vol-slider" min="0" max="100" value="35" class="k-slider">
+        </div>
+        <div class="k-setting-field">
+          <div class="k-setting-top">
+            <span>SFX & Ambience</span>
+            <span id="k-sfx-vol-disp">60%</span>
+          </div>
+          <input type="range" id="k-sfx-vol-slider" min="0" max="100" value="60" class="k-slider">
+        </div>
+        <button id="k-mute-toggle-btn" class="k-panel-action-btn">
+          <span id="k-mute-btn-icon">🔊</span>
+          <span id="k-mute-btn-text">Mute All Audio</span>
+        </button>
+      </section>
+
+      <!-- Section 3: Graphics & Resolution Settings -->
+      <section class="k-panel-section">
+        <div class="k-sec-heading">
+          <span class="k-sec-title">RESOLUTION & GRAPHICS</span>
+        </div>
+        <div class="k-setting-field">
+          <div class="k-setting-top">
+            <span>Resolution Scale</span>
+            <span id="k-res-disp">1.0x (Native)</span>
+          </div>
+          <div class="k-scale-pills">
+            <button class="k-scale-pill" data-scale="0.7">0.7x</button>
+            <button class="k-scale-pill" data-scale="0.85">0.85x</button>
+            <button class="k-scale-pill active" data-scale="1.0">1.0x</button>
+            <button class="k-scale-pill" data-scale="1.25">1.25x</button>
+          </div>
+        </div>
+        <div class="k-setting-field">
+          <div class="k-setting-top">
+            <span>Field of View (FOV)</span>
+            <span id="k-fov-disp">70°</span>
+          </div>
+          <input type="range" id="k-fov-slider" min="45" max="85" value="70" class="k-slider">
+        </div>
+        <div class="k-grid-buttons">
+          <button id="k-btn-fullscreen" class="k-grid-btn">
+            <span>⛶</span>
+            <span>Fullscreen</span>
+          </button>
+          <button id="k-btn-replay-intro" class="k-grid-btn">
+            <span>🎬</span>
+            <span>Replay Intro</span>
+          </button>
+          <button id="k-btn-respawn" class="k-grid-btn k-grid-wide">
+            <span>↺</span>
+            <span>Respawn at Shrine Gate</span>
+          </button>
+        </div>
+      </section>
+
+      <!-- Section 4: Full Guide on How to Control -->
+      <section class="k-panel-section">
+        <div class="k-sec-heading">
+          <span class="k-sec-title">CONTROLS GUIDE</span>
+        </div>
+        <div class="k-guide-rows">
+          <div class="k-guide-row"><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd><span>Walk & Explore Island</span></div>
+          <div class="k-guide-row"><kbd>Shift</kbd><span>Hold to Sprint</span></div>
+          <div class="k-guide-row"><kbd>Space</kbd><span>Jump & Vault Steps</span></div>
+          <div class="k-guide-row"><kbd>Mouse Look</kbd><span>Click viewport to lock & look</span></div>
+          <div class="k-guide-row"><kbd>Esc</kbd><span>Release cursor from viewport</span></div>
+          <div class="k-guide-row"><kbd>M</kbd><span>Open or Close this Menu</span></div>
+          <div class="k-guide-row"><kbd>Left Click</kbd><span>Interact & focus landmark markers</span></div>
+        </div>
+      </section>
+
+      <!-- Section 5: World Lore & Purpose Disclaimer + Developer Credit -->
+      <section class="k-panel-section k-about-card">
+        <div class="k-sec-heading">
+          <span class="k-sec-title">ABOUT THIS REALM</span>
+        </div>
+        <p class="k-about-desc">
+          Kagemi Island is an ethereal 3D sandbox created purely for fun and atmospheric exploration — a special mini-game leisure experience. It is non-essential and optional to the main archive.
+        </p>
+        <div class="k-author-credit">
+          <span>Developed by atrax</span>
+        </div>
+      </section>
+    </div>
+  </aside>
+
+  <!-- Sleek Bottom HUD for Guides & Messages -->
+  <div id="kagemi-bottom-hud" class="kagemi-bottom-hud">
+    <div id="k-hud-message" class="k-hud-msg"></div>
+    <div class="k-hud-controls-bar">
+      <span class="k-hud-chip"><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> Move</span>
+      <span class="k-hud-sep">·</span>
+      <span class="k-hud-chip"><kbd>Shift</kbd> Sprint</span>
+      <span class="k-hud-sep">·</span>
+      <span class="k-hud-chip"><kbd>Space</kbd> Jump</span>
+      <span class="k-hud-sep">·</span>
+      <span class="k-hud-chip"><kbd>Mouse</kbd> Look</span>
+      <span class="k-hud-sep">·</span>
+      <button id="k-hud-menu-pill" class="k-hud-menu-btn" title="Toggle System Menu (Key: M)">
+        <kbd>M</kbd> Menu
+      </button>
+    </div>
   </div>
-  <div id="hint"></div>
   <div id="ld">Loading the floating island…</div>
   
   <!-- Genshin Impact Quest Tracker (Top-Left HUD) -->
@@ -2255,22 +3201,48 @@
       cam.rotation.set(clampv(D_.pitch - clampv(aF * .00004, -.12, .12) + .09 + Math.sin(ts * 43) * vib, -1.4, 1.4), D_.yaw + Math.sin(ts * 39) * vib, D_.roll + rs + Math.sin(ts * 37) * vib, 'YXZ')
     }
 
+    function updateBottomHud(customMessage = null) {
+      const msgEl = document.getElementById('k-hud-message');
+      if (!msgEl) return;
+      if (customMessage) {
+        msgEl.textContent = customMessage;
+        msgEl.style.display = 'block';
+      } else {
+        msgEl.style.display = 'none';
+        msgEl.textContent = '';
+      }
+    }
+
     function updateHint() {
       if (mode === 'walk') {
-        $('hint').textContent = isPointerLocked
-          ? 'Mouse look active · WASD walk · Shift sprint · Space jump · Esc to unlock mouse'
-          : 'Click anywhere to lock mouse look · WASD walk · Drag to look · Arrow keys turn';
-      } else if (mode === 'fpv') {
-        $('hint').textContent = 'FPV drone: autonomous cinematic flight · pick Walk, Free look or Replay to take control';
+        updateBottomHud(isPointerLocked ? '' : 'Click screen to lock camera & look freely');
+      } else if (mode === 'landing_sequence') {
+        updateBottomHud('Press [Space] or [Esc] to skip intro');
       } else {
-        $('hint').textContent = '';
+        updateBottomHud('');
       }
     }
 
     function setMode(m) {
-      mode = m; ctl.enabled = m === 'orbit'; $('fo').classList.toggle('on', m === 'orbit'); $('wk').classList.toggle('on', m === 'walk'); $('fl').classList.toggle('on', m === 'seq'); $('hw').hidden = m !== 'walk'; if (m !== 'tunnel' && tunnelRoot && tunnelRoot.visible) { tunnelRoot.visible = false; if (islandRoot) islandRoot.visible = true; if (dioramaRoot) dioramaRoot.visible = true;
-      if (kagemiTerminalGroup) kagemiTerminalGroup.visible = true; if (tunnelLight) tunnelLight.intensity = 0; if (tunnelTrailLight) tunnelTrailLight.intensity = 0; }
-      $('fp').classList.toggle('on', m === 'fpv'); updateHint(); if (m !== 'walk' && m !== 'fpv' && cam.fov !== 55) { cam.fov = 55; cam.updateProjectionMatrix() }
+      mode = m; ctl.enabled = m === 'orbit';
+      $('fo')?.classList.toggle('on', m === 'orbit');
+      $('wk')?.classList.toggle('on', m === 'walk');
+      $('fl')?.classList.toggle('on', m === 'seq');
+      if ($('hw')) $('hw').hidden = m !== 'walk';
+      if (m !== 'tunnel' && tunnelRoot && tunnelRoot.visible) {
+        tunnelRoot.visible = false;
+        if (islandRoot) islandRoot.visible = true;
+        if (dioramaRoot) dioramaRoot.visible = true;
+        if (kagemiTerminalGroup) kagemiTerminalGroup.visible = true;
+        if (tunnelLight) tunnelLight.intensity = 0;
+        if (tunnelTrailLight) tunnelTrailLight.intensity = 0;
+      }
+      $('fp')?.classList.toggle('on', m === 'fpv');
+      updateHint();
+      if (m !== 'walk' && m !== 'fpv' && cam.fov !== 55 && m !== 'landing_sequence') {
+        cam.fov = 55;
+        cam.updateProjectionMatrix();
+      }
       if (m === 'fpv') { drn.p.copy(cam.position); const dv = cam.getWorldDirection(V(0, 0, 0)); drn.v.copy(dv).multiplyScalar(1500); drn.yaw = Math.atan2(-dv.x, -dv.z); drn.pitch = Math.asin(dv.y); drn.roll = 0; drn.yr = 0; drn.spin = -1; drn.nextSpin = 6 + Math.random() * 6; drn.wps = []; drn.wi = 0 }
       if (m === 'walk') {
         const dr = cam.getWorldDirection(V(0, 0, 0)); yaw = Math.atan2(-dr.x, -dr.z); pitch = Math.asin(dr.y); pl.yawS = yaw; pl.pitchS = pitch;
@@ -2502,11 +3474,14 @@
         ren.autoClear = true;
       }
     }
-    $('fl').onclick = () => { t0 = performance.now(); setMode('seq') }; $('fo').onclick = () => setMode(mode === 'orbit' ? 'walk' : 'orbit'); $('wk').onclick = () => setMode('walk'); $('fp').onclick = () => setMode(mode === 'fpv' ? 'orbit' : 'fpv');
-    $('sn').onclick = () => { S.on = !S.on; $('sn').textContent = 'Sound: ' + (S.on ? 'on' : 'off'); if (S.on) { audioInit(); if (S.mg) S.mg.gain.value = .8; if (S.ac && S.ac.state === 'suspended') S.ac.resume() } else if (S.mg) S.mg.gain.value = 0 };
-    ['pointerdown', 'keydown'].forEach(ev => addEventListener(ev, () => { audioInit(); if (S.ac && S.ac.state === 'suspended') S.ac.resume() }));
-    $('al').onclick = e => { line.visible = !line.visible; e.target.classList.toggle('on', line.visible) };
-    $('hw').onpointerdown = () => { hold = true };
+    if ($('fl')) $('fl').onclick = () => { t0 = performance.now(); setMode('seq'); };
+    if ($('fo')) $('fo').onclick = () => setMode(mode === 'orbit' ? 'walk' : 'orbit');
+    if ($('wk')) $('wk').onclick = () => setMode('walk');
+    if ($('fp')) $('fp').onclick = () => setMode(mode === 'fpv' ? 'orbit' : 'fpv');
+    if ($('sn')) $('sn').onclick = () => { S.on = !S.on; if (S.on) { audioInit(); if (S.mg) S.mg.gain.value = .8; if (S.ac && S.ac.state === 'suspended') S.ac.resume(); } else if (S.mg) S.mg.gain.value = 0; };
+    ['pointerdown', 'keydown'].forEach(ev => addEventListener(ev, () => { audioInit(); if (S.ac && S.ac.state === 'suspended') S.ac.resume(); }));
+    if ($('al')) $('al').onclick = e => { line.visible = !line.visible; e.target.classList.toggle('on', line.visible); };
+    if ($('hw')) $('hw').onpointerdown = () => { hold = true; };
     let lastMouseX = null, lastMouseY = null, isMouseDown = false;
     function requestLock() {
       if (isPointerLocked) return;
@@ -2543,7 +3518,7 @@
     });
     addEventListener('keyup', e => keys.delete(e.key.toLowerCase()));
     addEventListener('pointerdown', e => {
-      if (isPortalToastOpen || isLandingMenuOpen || (e.target && (e.target.closest('#ui') || e.target.closest('button') || e.target.closest('#genshin-portal-msg-modal') || e.target.closest('#kagemi-landing-modal')))) return;
+      if (isPortalToastOpen || isLandingMenuOpen || isSideMenuOpen || (e.target && (e.target.closest('#k-side-panel') || e.target.closest('#k-menu-btn') || e.target.closest('#kagemi-bottom-hud') || e.target.closest('button') || e.target.closest('input') || e.target.closest('#genshin-portal-msg-modal') || e.target.closest('#kagemi-landing-modal')))) return;
       if (mode === 'walk') {
         isMouseDown = true;
         lastMouseX = e.clientX;
@@ -4751,18 +5726,12 @@ totalEmissiveRadiance*=rTm;`);
         setTimeout(() => { if (ld && ld.parentNode) ld.remove(); }, 650);
       }
 
-      // Cinematic Title Intro (Non-blocking, live over 3D world)
-      const titleCard = document.getElementById('kagemi-cinematic-title');
-      if (titleCard) {
-        titleCard.style.display = 'flex';
-        titleCard.classList.remove('kagemi-cinematic-intro');
-        void titleCard.offsetWidth; // trigger reflow
-        titleCard.classList.add('kagemi-cinematic-intro');
-        titleCard.addEventListener('animationend', (e) => {
-          if (e.target !== titleCard) return;
-          titleCard.style.display = 'none';
-        });
-      }
+      // Launch Cinematic Entry Sequence
+      setTimeout(() => {
+        if (typeof landingSequenceManager !== 'undefined') {
+          landingSequenceManager.start();
+        }
+      }, 50);
 
       // Initialize sound & BGM engine immediately with graceful user-gesture unlock
       kagemiAudio.init();
@@ -6518,10 +7487,11 @@ totalEmissiveRadiance*=rTm;`);
         this.toastTimer = null;
         this.fadeInterval = null;
         this.targetVol = 0.35;
+        this.sfxVol = 0.60;
+        this.isShuffle = false;
       }
 
       init() {
-        // Pre-create SFX Audio instances
         Object.entries(KAGEMI_SFX_FILES).forEach(([key, url]) => {
           try {
             const a = new Audio(url);
@@ -6531,13 +7501,27 @@ totalEmissiveRadiance*=rTm;`);
         });
       }
 
+      setBgmVolume(val) {
+        this.targetVol = Math.max(0, Math.min(1, val));
+        if (this.bgmAudio) {
+          this.bgmAudio.volume = this.targetVol;
+        }
+      }
+
+      setSfxVolume(val) {
+        this.sfxVol = Math.max(0, Math.min(1, val));
+        if (typeof S !== 'undefined' && S && S.mg) {
+          S.mg.gain.value = this.sfxVol * 0.8;
+        }
+      }
+
       playSfx(key, vol = 0.6, loop = false) {
         if (!this.sfxEnabled) return;
         const a = this.sfxPool.get(key);
         if (a) {
           try {
             a.currentTime = 0;
-            a.volume = vol;
+            a.volume = vol * (this.sfxVol / 0.6);
             a.loop = loop;
             const p = a.play();
             if (p && typeof p.catch === 'function') p.catch(() => {});
@@ -6580,6 +7564,18 @@ totalEmissiveRadiance*=rTm;`);
           a.preload = 'auto';
           a.volume = 0;
           a.onended = () => { this.nextBgm(); };
+          a.ontimeupdate = () => {
+            if (!isScrubbing && a.duration) {
+              const scrubber = document.getElementById('k-player-scrubber');
+              if (scrubber) scrubber.value = (a.currentTime / a.duration) * 100;
+              const curEl = document.getElementById('k-player-cur-time');
+              const durEl = document.getElementById('k-player-dur-time');
+              if (curEl) curEl.textContent = formatDuration(a.currentTime);
+              if (durEl) durEl.textContent = formatDuration(a.duration);
+            }
+          };
+          a.onplay = () => updateJukeboxUI();
+          a.onpause = () => updateJukeboxUI();
           this.bgmAudio = a;
 
           const p = a.play();
@@ -6589,7 +7585,7 @@ totalEmissiveRadiance*=rTm;`);
             });
           }
 
-          // Smooth 2s fade in
+          // Smooth 2s fade in to targetVol
           let v = 0;
           if (this.fadeInterval) clearInterval(this.fadeInterval);
           this.fadeInterval = setInterval(() => {
@@ -6600,7 +7596,7 @@ totalEmissiveRadiance*=rTm;`);
           }, 80);
 
           this.showToast(track.title);
-          this.updateToolbarLabel();
+          updateJukeboxUI();
         } catch(err) {
           console.warn('[BGM Play Error]:', err);
         }
@@ -6612,32 +7608,40 @@ totalEmissiveRadiance*=rTm;`);
       }
 
       nextBgm() {
+        if (this.isShuffle) {
+          this.playRandomBgm();
+          return;
+        }
         const nextIdx = (this.currentBgmIdx + 1) % KAGEMI_BGM_TRACKS.length;
         this.playBgm(nextIdx);
       }
 
-      toggleBgm() {
-        this.bgmEnabled = !this.bgmEnabled;
-        if (!this.bgmEnabled) {
-          if (this.bgmAudio) {
-            try { this.bgmAudio.pause(); } catch(e) {}
-          }
-        } else {
-          if (this.bgmAudio && this.bgmAudio.src) {
-            this.bgmAudio.play().catch(() => {});
-          } else {
-            this.playRandomBgm();
-          }
+      prevBgm() {
+        if (this.isShuffle) {
+          this.playRandomBgm();
+          return;
         }
-        this.updateToolbarLabel();
+        const prevIdx = (this.currentBgmIdx - 1 + KAGEMI_BGM_TRACKS.length) % KAGEMI_BGM_TRACKS.length;
+        this.playBgm(prevIdx);
       }
 
-      updateToolbarLabel() {
-        const btn = document.getElementById('btn-bgm-toggle');
-        if (btn) {
-          btn.textContent = this.bgmEnabled ? '♫ Music: On' : '♫ Music: Off';
-          btn.classList.toggle('on', this.bgmEnabled);
+      togglePlayPause() {
+        if (!this.bgmAudio) {
+          this.playRandomBgm();
+          return;
         }
+        if (this.bgmAudio.paused) {
+          this.bgmAudio.play().catch(() => {});
+          this.bgmEnabled = true;
+        } else {
+          this.bgmAudio.pause();
+          this.bgmEnabled = false;
+        }
+        updateJukeboxUI();
+      }
+
+      toggleBgm() {
+        this.togglePlayPause();
       }
 
       showToast(trackTitle) {
@@ -6658,41 +7662,58 @@ totalEmissiveRadiance*=rTm;`);
     const kagemiAudio = new KagemiAudioEngine();
     window.kagemiAudio = kagemiAudio;
 
-
-    /* =========================================================================
-       AUTHENTIC LANDING ANIMATION SEQUENCE CONTROLLER
-       ========================================================================= */
     let landingShake = 0;
 
     class LandingSequenceManager {
       constructor() {
         this.active = false;
-        this.stage = 'idle'; // 'title', 'flyover', 'drop', 'crouch', 'stand', 'confusion', 'walk', 'brace', 'push_suction', 'tunnel', 'arrival'
+        this.stage = 'idle'; // 'title', 'drone_orbit', 'smooth_landing'
         this.stageElapsed = 0;
         this.totalElapsed = 0;
-        this.walkBobT = 0;
-        this.swayAngle = 0;
-        this.savedCamPos = new THREE.Vector3();
-        this.savedCamLook = new THREE.Vector3();
 
         // Key Points in 3D Space
-        this.islandCenter = new THREE.Vector3(897, 0, 66);
-        this.dropTarget = new THREE.Vector3(-28500, -5820 + 90, 1600);
-        this.stairsFoot = null; // Calculated dynamically from PW.c
+        this.archipelagoCenter = new THREE.Vector3(-15000, -1000, 1500);
+        this.walkSpawnPos = new THREE.Vector3(-32984, -5908.37 + pl.eye, 2089);
+        this.targetYaw = -1.466368;
+        this.targetPitch = -0.1262;
+
+        // Dynamic trajectory parameters generated randomly on each run
+        this.startAngle = 0;
+        this.orbitDir = 1;
+        this.totalSweep = 0;
+        this.startRadius = 28000;
+        this.startAltitude = 6500;
+        this.orbitDuration = 8.5;
+        this.landingDuration = 2.8;
+        this.orbitEndPos = new THREE.Vector3();
       }
 
       start() {
         this.active = true;
         this.stageElapsed = 0;
         this.totalElapsed = 0;
-        this.walkBobT = 0;
-        this.swayAngle = 0;
         landingShake = 0;
 
         // Ensure audio is initialized and unlocked
         kagemiAudio.init();
         audioInit();
         if (S.ac && S.ac.state === 'suspended') S.ac.resume();
+
+        // Random starting point & random orbit direction & sweep angle
+        this.startAngle = Math.random() * Math.PI * 2;
+        this.orbitDir = Math.random() < 0.5 ? 1 : -1;
+        this.totalSweep = this.orbitDir * (Math.PI * 1.25 + Math.random() * Math.PI * 0.45);
+        this.startRadius = 26000 + Math.random() * 6000;
+        this.startAltitude = 5800 + Math.random() * 1600;
+
+        // Close side menu if open
+        closeSideMenu();
+
+        // Hide normal in-game HUD & Menu button during cinematic sequence
+        const menuBtn = document.getElementById('k-menu-btn');
+        if (menuBtn) menuBtn.style.display = 'none';
+        const bottomHud = document.getElementById('kagemi-bottom-hud');
+        if (bottomHud) bottomHud.style.display = 'none';
 
         // Show skip button
         const skipBtn = document.getElementById('kagemi-seq-skip-btn');
@@ -6701,7 +7722,7 @@ totalEmissiveRadiance*=rTm;`);
         // Set mode
         setMode('landing_sequence');
 
-        // Phase 1: Title Card Intro
+        // Phase 1: Title Card on Pure Black Screen
         this.setStage('title');
       }
 
@@ -6710,69 +7731,65 @@ totalEmissiveRadiance*=rTm;`);
         this.stageElapsed = 0;
         console.log('[Landing Sequence Stage]:', newStage);
 
+        const blackout = document.getElementById('kagemi-cinematic-blackout');
         const titleCard = document.getElementById('kagemi-cinematic-title');
-        const braceModal = document.getElementById('kagemi-brace-modal');
-        const whiteout = document.getElementById('kagemi-whiteout-overlay');
 
         if (newStage === 'title') {
+          if (blackout) {
+            blackout.style.transition = 'none';
+            blackout.style.opacity = '1';
+            void blackout.offsetWidth;
+            blackout.style.transition = 'opacity 1.4s cubic-bezier(0.16, 1, 0.3, 1)';
+          }
           if (titleCard) {
             titleCard.style.display = 'flex';
-            titleCard.classList.remove('kagemi-cinematic-intro');
+            titleCard.classList.remove('active');
             void titleCard.offsetWidth;
-            titleCard.classList.add('kagemi-cinematic-intro');
-            titleCard.addEventListener('animationend', () => {
-              titleCard.style.display = 'none';
-            }, { once: true });
+            titleCard.classList.add('active');
           }
-          kagemiAudio.playSfx('title', 0.8);
-          // Start BGM swelling in
+          kagemiAudio.playSfx('title', 0.85);
           setTimeout(() => {
             if (!kagemiAudio.bgmAudio || kagemiAudio.bgmAudio.paused) {
               kagemiAudio.playRandomBgm();
             }
-          }, 800);
-        } else if (newStage === 'flyover') {
+          }, 600);
+
+          // Position camera at random starting point already
+          const startX = this.archipelagoCenter.x + Math.cos(this.startAngle) * this.startRadius;
+          const startZ = this.archipelagoCenter.z + Math.sin(this.startAngle) * this.startRadius;
+          cam.position.set(startX, this.startAltitude, startZ);
+          cam.lookAt(this.archipelagoCenter);
+          cam.rotation.z = 0;
+          cam.fov = 75;
+          cam.updateProjectionMatrix();
+
+        } else if (newStage === 'drone_orbit') {
+          // Dissolve black screen to reveal glorious archipelago
+          if (blackout) blackout.style.opacity = '0';
           if (titleCard) {
-            titleCard.style.opacity = '0';
-            setTimeout(() => { titleCard.style.display = 'none'; titleCard.classList.remove('active'); }, 800);
+            titleCard.classList.remove('active');
+            setTimeout(() => {
+              titleCard.style.display = 'none';
+            }, 1000);
           }
-          kagemiAudio.playSfx('drone', 0.5, true);
-        } else if (newStage === 'drop') {
-          kagemiAudio.stopSfx('drone');
-          kagemiAudio.playSfx('drone', 0.75, false);
-        } else if (newStage === 'crouch') {
-          landingShake = 3.5;
-          kagemiAudio.playSfx('door', 0.6); // Impact thud
-          playGenshinChime(true);
-        } else if (newStage === 'stand') {
-          landingShake = 0;
-        } else if (newStage === 'walk') {
-          // Footsteps will play during walk update
-        } else if (newStage === 'brace') {
-          if (document.exitPointerLock) document.exitPointerLock();
-          if (braceModal) braceModal.classList.add('active');
-          playGenshinChime(true);
-        } else if (newStage === 'push_suction') {
-          if (braceModal) braceModal.classList.remove('active');
-          kagemiAudio.playSfx('door', 0.8);
-          kagemiAudio.playSfx('portal', 0.8, true);
-          kagemiAudio.playSfx('glitch', 0.7, true);
-          landingShake = 5.0;
-        } else if (newStage === 'tunnel') {
-          kagemiAudio.stopSfx('portal');
-          kagemiAudio.stopSfx('glitch');
-          kagemiAudio.playSfx('tunnel', 0.8, true);
-          landingShake = 0;
-          enterTunnel();
-        } else if (newStage === 'arrival') {
-          kagemiAudio.stopSfx('tunnel');
-          kagemiAudio.playSfx('destination', 0.9);
-          if (whiteout) {
-            whiteout.style.opacity = '1';
-            setTimeout(() => { whiteout.style.opacity = '0'; }, 300);
+          kagemiAudio.playSfx('drone', 0.55, true);
+
+        } else if (newStage === 'smooth_landing') {
+          // Store end of orbit position to smoothly interpolate from
+          this.orbitEndPos.copy(cam.position);
+          // Fade drone sound
+          const droneSfx = kagemiAudio.sfxPool.get('drone');
+          if (droneSfx) {
+            let curV = droneSfx.volume;
+            const fadeInterval = setInterval(() => {
+              curV = Math.max(0, curV - 0.05);
+              droneSfx.volume = curV;
+              if (curV <= 0) {
+                clearInterval(fadeInterval);
+                kagemiAudio.stopSfx('drone');
+              }
+            }, 100);
           }
-          exitTunnel();
-          this.complete();
         }
       }
 
@@ -6780,198 +7797,93 @@ totalEmissiveRadiance*=rTm;`);
         if (!this.active) return;
         this.stageElapsed += d;
         this.totalElapsed += d;
-
-        // Apply camera shake if active
-        if (landingShake > 0) {
-          landingShake = Math.max(0, landingShake - d * 2.5);
-          cam.position.x += (Math.random() - 0.5) * landingShake * 35;
-          cam.position.y += (Math.random() - 0.5) * landingShake * 25;
-          cam.position.z += (Math.random() - 0.5) * landingShake * 35;
-        }
-
         const t = this.stageElapsed;
 
         switch (this.stage) {
           case 'title': {
-            // Position camera high above looking down at the island diorama
-            cam.position.set(-16000, 4200, 8000);
-            cam.lookAt(this.islandCenter);
-            if (t >= 3.2) {
-              this.setStage('flyover');
+            const startX = this.archipelagoCenter.x + Math.cos(this.startAngle) * this.startRadius;
+            const startZ = this.archipelagoCenter.z + Math.sin(this.startAngle) * this.startRadius;
+            cam.position.set(startX, this.startAltitude, startZ);
+            cam.lookAt(this.archipelagoCenter);
+            if (t >= (this.titleDuration || 3.2)) {
+              this.setStage('drone_orbit');
             }
             break;
           }
 
-          case 'flyover': {
-            const flyDuration = 8.5;
-            const p = Math.min(1.0, t / flyDuration);
-            const easeOut = 1 - Math.pow(1 - p, 3);
+          case 'drone_orbit': {
+            const p = Math.min(1.0, t / this.orbitDuration);
+            // Smooth ease in-out
+            const ease = 0.5 - 0.5 * Math.cos(p * Math.PI);
 
-            // Orbit 1.25 laps around island center
-            const angle = easeOut * 2.5 * Math.PI - 1.2;
-            const radius = 16000 * (1 - easeOut) + 8500 * easeOut;
-            const alt = 4200 * (1 - easeOut) + 1400 * easeOut;
+            // Current orbit parameters
+            const curAngle = this.startAngle + this.totalSweep * ease;
+            const curRadius = this.startRadius * (1 - ease) + 11500 * ease;
+            const curAlt = this.startAltitude * (1 - ease) + (-2000) * ease;
 
-            const cx = this.islandCenter.x + Math.sin(angle) * radius;
-            const cz = this.islandCenter.z + Math.cos(angle) * radius;
+            const cx = this.archipelagoCenter.x + Math.cos(curAngle) * curRadius;
+            const cz = this.archipelagoCenter.z + Math.sin(curAngle) * curRadius;
+            cam.position.set(cx, curAlt, cz);
 
-            cam.position.set(cx, alt, cz);
-            cam.lookAt(this.islandCenter.x, 300, this.islandCenter.z);
-            cam.fov = 70 - easeOut * 15;
+            // Look target sweeps from archipelago center towards Island 1 starting area
+            const lookTarget = this.archipelagoCenter.clone().lerp(this.walkSpawnPos, ease * 0.75);
+            lookTarget.y += 400;
+            cam.lookAt(lookTarget);
+
+            // Dynamic FPV drone banking into turns
+            const rollBank = -this.orbitDir * 0.22 * Math.sin(p * Math.PI);
+            cam.rotation.z += rollBank;
+
+            // FOV eases from 75 down to 70
+            cam.fov = 75 - ease * 5;
             cam.updateProjectionMatrix();
 
             if (p >= 1.0) {
-              this.setStage('drop');
+              this.setStage('smooth_landing');
             }
             break;
           }
 
-          case 'drop': {
-            const dropDur = 1.6;
-            const p = Math.min(1.0, t / dropDur);
-            // Accelerate downward (quadratic ease-in)
-            const easeIn = p * p;
+          case 'smooth_landing': {
+            const p = Math.min(1.0, t / this.landingDuration);
+            // Buttery smooth deceleration (quartic ease-out)
+            const ease = 1 - Math.pow(1 - p, 3.5);
 
-            const startY = 3200;
-            const targetY = -5820 + 90;
-            const currentY = startY * (1 - easeIn) + targetY * easeIn;
+            // Position smoothly glides to walkSpawnPos with gentle arc
+            const pStart = this.orbitEndPos;
+            const pEnd = this.walkSpawnPos;
+            const pCtrl = new THREE.Vector3(
+              (pStart.x + pEnd.x) * 0.5,
+              Math.max(pStart.y, pEnd.y + 1200),
+              (pStart.z + pEnd.z) * 0.5
+            );
 
-            cam.position.set(-28500, currentY, 1600);
-            cam.lookAt(-25000, currentY - 100, 1500);
+            // Quadratic bezier interpolation: (1-e)^2*P0 + 2(1-e)e*P1 + e^2*P2
+            const e1 = 1 - ease;
+            const bx = e1 * e1 * pStart.x + 2 * e1 * ease * pCtrl.x + ease * ease * pEnd.x;
+            const by = e1 * e1 * pStart.y + 2 * e1 * ease * pCtrl.y + ease * ease * pEnd.y;
+            const bz = e1 * e1 * pStart.z + 2 * e1 * ease * pCtrl.z + ease * ease * pEnd.z;
+            cam.position.set(bx, by, bz);
+
+            // Smoothly align yaw and pitch to exact walk mode initial orientation
+            const currentDir = cam.getWorldDirection(new THREE.Vector3());
+            const curYaw = Math.atan2(-currentDir.x, -currentDir.z);
+            const curPitch = Math.asin(currentDir.y);
+
+            let dYaw = this.targetYaw - curYaw;
+            while (dYaw < -Math.PI) dYaw += Math.PI * 2;
+            while (dYaw > Math.PI) dYaw -= Math.PI * 2;
+            const factor = ease * 0.2 + (p > 0.65 ? (p - 0.65) / 0.35 * 0.8 : 0);
+            const nextYaw = curYaw + dYaw * Math.min(1.0, factor);
+            const nextPitch = curPitch + (this.targetPitch - curPitch) * Math.min(1.0, factor);
+
+            // Level out bank roll to 0
+            cam.rotation.set(nextPitch, nextYaw, 0, 'YXZ');
+            cam.fov = 70;
+            cam.updateProjectionMatrix();
 
             if (p >= 1.0) {
-              this.setStage('crouch');
-            }
-            break;
-          }
-
-          case 'crouch': {
-            // Hits ground impact
-            const crouchDur = 1.0;
-            cam.position.set(-28500, -5820 + 25, 1600);
-            cam.lookAt(-26000, -5820 + 10, 1500);
-
-            if (t >= crouchDur) {
-              this.setStage('stand');
-            }
-            break;
-          }
-
-          case 'stand': {
-            // Smoothly raise camera to standing eye height
-            const standDur = 1.2;
-            const p = Math.min(1.0, t / standDur);
-            const ease = p * p * (3 - 2 * p);
-
-            const crouchY = -5820 + 25;
-            const standY = -5820 + 90;
-            const currentY = crouchY * (1 - ease) + standY * ease;
-
-            cam.position.set(-28500, currentY, 1600);
-            cam.lookAt(-24000, currentY, 1500);
-
-            if (p >= 1.0) {
-              this.setStage('confusion');
-            }
-            break;
-          }
-
-          case 'confusion': {
-            // Sway head left and right taking in the scenery
-            const confDur = 2.2;
-            this.swayAngle += d * 2.5;
-            const yawOffset = Math.sin(this.swayAngle) * 0.45;
-
-            const lookTarget = new THREE.Vector3(-24000, -5820 + 90, 1500);
-            lookTarget.z += Math.sin(this.swayAngle) * 3500;
-
-            cam.position.set(-28500, -5820 + 90, 1600);
-            cam.lookAt(lookTarget);
-
-            if (t >= confDur) {
-              this.setStage('walk');
-            }
-            break;
-          }
-
-          case 'walk': {
-            // Strides smoothly forward along the bridge and approach path
-            const walkDur = 4.5;
-            const p = Math.min(1.0, t / walkDur);
-            const ease = p * p * (3 - 2 * p);
-
-            this.walkBobT += d * 7.0;
-            const headBob = Math.sin(this.walkBobT) * 7.0;
-            const headSway = Math.sin(this.walkBobT * 0.5) * 5.0;
-
-            // Advance from small island lawn to in front of shrine stairs
-            const startX = -28500, startZ = 1600, startY = -5820 + 90;
-            const targetX = PW ? (PW.c.x - 2200) : -800;
-            const targetZ = PW ? PW.c.z : 400;
-            const targetY = PW ? (PW.c.y + 60) : 760;
-
-            const curX = startX * (1 - ease) + targetX * ease;
-            const curY = startY * (1 - ease) + targetY * ease + headBob;
-            const curZ = startZ * (1 - ease) + targetZ * ease + headSway;
-
-            cam.position.set(curX, curY, curZ);
-            const lookAtTarget = PW ? PW.c.clone().setY(PW.c.y + 120) : at(0, 700);
-            cam.lookAt(lookAtTarget);
-
-            // Play procedural footstep tick
-            if (Math.sin(this.walkBobT) > 0.95 && !this.justStepped) {
-              this.justStepped = true;
-              if (typeof S !== 'undefined' && S.thud) S.thud(120, 0.08, 0.25, 0);
-            } else if (Math.sin(this.walkBobT) < 0.2) {
-              this.justStepped = false;
-            }
-
-            if (p >= 1.0) {
-              this.setStage('brace');
-            }
-            break;
-          }
-
-          case 'brace': {
-            // Camera waits at the foot of the stairs looking at the portal
-            if (PW) {
-              cam.position.set(PW.c.x - 2200, PW.c.y + 60, PW.c.z);
-              cam.lookAt(PW.c.x, PW.c.y + 120, PW.c.z);
-            }
-            break;
-          }
-
-          case 'push_suction': {
-            // Rapid surge forward into the water vortex!
-            const surgeDur = 2.4;
-            const p = Math.min(1.0, t / surgeDur);
-            const easeIn = p * p * p;
-
-            if (PW) {
-              const startX = PW.c.x - 2200;
-              const targetX = PW.c.x + 80;
-              const curX = startX * (1 - easeIn) + targetX * easeIn;
-
-              cam.position.set(curX, PW.c.y + 50, PW.c.z);
-              cam.lookAt(PW.c.x + 500, PW.c.y + 50, PW.c.z);
-            }
-
-            // Whiteout swells at the end of suction
-            const whiteout = document.getElementById('kagemi-whiteout-overlay');
-            if (whiteout && p > 0.6) {
-              whiteout.style.opacity = ((p - 0.6) / 0.4).toFixed(2);
-            }
-
-            if (p >= 1.0) {
-              this.setStage('tunnel');
-            }
-            break;
-          }
-
-          case 'tunnel': {
-            // tunnelTick handles rendering; after 4.5s transition to arrival
-            if (t >= 4.5) {
-              this.setStage('arrival');
+              this.complete();
             }
             break;
           }
@@ -6982,31 +7894,37 @@ totalEmissiveRadiance*=rTm;`);
         this.active = false;
         this.stage = 'idle';
 
-        // Hide sequence overlays
+        // Hide overlays
+        const blackout = document.getElementById('kagemi-cinematic-blackout');
         const titleCard = document.getElementById('kagemi-cinematic-title');
-        const braceModal = document.getElementById('kagemi-brace-modal');
         const skipBtn = document.getElementById('kagemi-seq-skip-btn');
-        const whiteout = document.getElementById('kagemi-whiteout-overlay');
 
-        if (titleCard) { titleCard.style.display = 'none'; titleCard.classList.remove('active'); }
-        if (braceModal) { braceModal.classList.remove('active'); }
-        if (skipBtn) { skipBtn.style.display = 'none'; }
-        if (whiteout) { whiteout.style.opacity = '0'; }
+        if (blackout) blackout.style.opacity = '0';
+        if (titleCard) { titleCard.classList.remove('active'); titleCard.style.display = 'none'; }
+        if (skipBtn) skipBtn.style.display = 'none';
 
-        // Land the player cleanly in front of the sacred shrine on the island
-        if (PW) {
-          cam.position.copy(at(-2400, 700));
-          cam.lookAt(at(0, 700));
-          const g0 = groundAt(cam.position.x, cam.position.z, cam.position.y + 500);
-          if (g0 !== null) cam.position.y = g0 + pl.eye;
-          P0.copy(cam.position);
-          pl.vel.set(0, 0, 0);
-        } else {
-          setMode('walk');
-        }
+        // Restore normal in-game HUD & Menu button
+        const menuBtn = document.getElementById('k-menu-btn');
+        if (menuBtn) menuBtn.style.display = 'flex';
+        const bottomHud = document.getElementById('kagemi-bottom-hud');
+        if (bottomHud) bottomHud.style.display = 'flex';
+
+        kagemiAudio.stopSfx('drone');
+
+        // Land the player cleanly in walk mode on Island 1 starting point
+        const spawnX = -32984, spawnZ = 2089, spawnY = -5908.37;
+        yaw = -1.466368;
+        pitch = -0.1262;
+        pl.yawS = yaw;
+        pl.pitchS = pitch;
+        cam.position.set(spawnX, spawnY + pl.eye, spawnZ);
+        cam.rotation.set(pitch, yaw, 0, 'YXZ');
+        P0.set(spawnX, spawnY, spawnZ);
+        pl.vel.set(0, 0, 0);
 
         setMode('walk');
         playGenshinChime(true);
+        updateBottomHud();
       }
 
       skip() {
@@ -7020,24 +7938,275 @@ totalEmissiveRadiance*=rTm;`);
     window.startLandingSequence = () => landingSequenceManager.start();
     window.skipLandingSequence = () => landingSequenceManager.skip();
 
+    /* =========================================================================
+       SIDE PANEL, BGM JUKEBOX & SETTINGS EVENT CONTROLLERS
+       ========================================================================= */
+    let isSideMenuOpen = false;
+    let isScrubbing = false;
+    let isAudioMuted = false;
+    let preMuteBgm = 0.35;
+    let preMuteSfx = 0.60;
+
+    function formatDuration(sec) {
+      if (!sec || isNaN(sec)) return '0:00';
+      const m = Math.floor(sec / 60);
+      const s = Math.floor(sec % 60);
+      return m + ':' + (s < 10 ? '0' : '') + s;
+    }
+
+    function openSideMenu() {
+      isSideMenuOpen = true;
+      const panel = document.getElementById('k-side-panel');
+      const backdrop = document.getElementById('k-side-backdrop');
+      if (panel) panel.classList.add('open');
+      if (backdrop) backdrop.classList.add('open');
+      if (document.exitPointerLock) document.exitPointerLock();
+      renderPlaylist();
+      updateJukeboxUI();
+    }
+
+    function closeSideMenu() {
+      isSideMenuOpen = false;
+      const panel = document.getElementById('k-side-panel');
+      const backdrop = document.getElementById('k-side-backdrop');
+      if (panel) panel.classList.remove('open');
+      if (backdrop) backdrop.classList.remove('open');
+    }
+
+    function toggleSideMenu() {
+      if (isSideMenuOpen) closeSideMenu();
+      else openSideMenu();
+    }
+
+    function renderPlaylist() {
+      const listEl = document.getElementById('k-playlist-list');
+      if (!listEl) return;
+      listEl.innerHTML = '';
+      KAGEMI_BGM_TRACKS.forEach((track, i) => {
+        const item = document.createElement('div');
+        item.className = 'k-playlist-item' + (kagemiAudio.currentBgmIdx === i ? ' active' : '');
+        item.dataset.index = i;
+        item.innerHTML = `
+          <span class="k-pl-idx">${String(i + 1).padStart(2, '0')}</span>
+          <span class="k-pl-title" title="${track.title}">${track.title}</span>
+          <span class="k-pl-playing-icon">♫</span>
+        `;
+        item.onclick = (e) => {
+          e.stopPropagation();
+          kagemiAudio.playBgm(i);
+          renderPlaylist();
+        };
+        listEl.appendChild(item);
+      });
+    }
+
+    function updateJukeboxUI() {
+      const titleEl = document.getElementById('k-player-title');
+      const subEl = document.getElementById('k-player-sub');
+      const statusEl = document.getElementById('k-player-status');
+      const playIcon = document.getElementById('k-playpause-icon');
+
+      const idx = kagemiAudio.currentBgmIdx;
+      if (idx >= 0 && idx < KAGEMI_BGM_TRACKS.length) {
+        const track = KAGEMI_BGM_TRACKS[idx];
+        if (titleEl) titleEl.textContent = track.title;
+        if (subEl) subEl.textContent = `Track ${idx + 1} of ${KAGEMI_BGM_TRACKS.length} · Atmospheric BGM`;
+      }
+
+      const isPlaying = kagemiAudio.bgmAudio && !kagemiAudio.bgmAudio.paused;
+      if (statusEl) statusEl.textContent = isPlaying ? 'Playing' : 'Paused';
+      if (playIcon) playIcon.textContent = isPlaying ? '⏸' : '▶';
+
+      // Update active highlight in playlist
+      document.querySelectorAll('.k-playlist-item').forEach(item => {
+        item.classList.toggle('active', parseInt(item.dataset.index) === idx);
+      });
+    }
+
+    function setResolutionScale(scale) {
+      if (typeof ren !== 'undefined' && ren) {
+        ren.setPixelRatio(window.devicePixelRatio * scale);
+        ren.setSize(window.innerWidth, window.innerHeight);
+      }
+      document.querySelectorAll('.k-scale-pill').forEach(btn => {
+        btn.classList.toggle('active', parseFloat(btn.dataset.scale) === scale);
+      });
+      const disp = document.getElementById('k-res-disp');
+      if (disp) {
+        const label = scale === 1.0 ? '1.0x (Native)' : scale === 0.7 ? '0.7x (Performance)' : scale === 0.85 ? '0.85x (Balanced)' : '1.25x (Ultra)';
+        disp.textContent = label;
+      }
+    }
 
     function bindGenshinEvents() {
-      
-      // Landing Sequence & BGM Event Listeners
-      const btnLandingSeq = document.getElementById('btn-landing-seq');
-      if (btnLandingSeq) {
-        btnLandingSeq.onclick = () => {
+      // Menu toggle button
+      const menuBtn = document.getElementById('k-menu-btn');
+      if (menuBtn) menuBtn.onclick = () => toggleSideMenu();
+
+      const hudMenuPill = document.getElementById('k-hud-menu-pill');
+      if (hudMenuPill) hudMenuPill.onclick = () => toggleSideMenu();
+
+      const closeBtn = document.getElementById('k-panel-close-btn');
+      if (closeBtn) closeBtn.onclick = () => closeSideMenu();
+
+      const backdrop = document.getElementById('k-side-backdrop');
+      if (backdrop) backdrop.onclick = () => closeSideMenu();
+
+      // Skip intro button
+      const skipBtn = document.getElementById('kagemi-seq-skip-btn');
+      if (skipBtn) {
+        skipBtn.onclick = () => landingSequenceManager.skip();
+      }
+
+      // Jukebox Controls
+      const btnShuffle = document.getElementById('k-player-shuffle');
+      if (btnShuffle) {
+        btnShuffle.onclick = () => {
+          kagemiAudio.isShuffle = !kagemiAudio.isShuffle;
+          btnShuffle.classList.toggle('active', kagemiAudio.isShuffle);
+        };
+      }
+
+      const btnPrev = document.getElementById('k-player-prev');
+      if (btnPrev) btnPrev.onclick = () => kagemiAudio.prevBgm();
+
+      const btnPlayPause = document.getElementById('k-player-playpause');
+      if (btnPlayPause) btnPlayPause.onclick = () => kagemiAudio.togglePlayPause();
+
+      const btnNext = document.getElementById('k-player-next');
+      if (btnNext) btnNext.onclick = () => kagemiAudio.nextBgm();
+
+      // Scrubber range slider
+      const scrubber = document.getElementById('k-player-scrubber');
+      if (scrubber) {
+        scrubber.oninput = () => {
+          isScrubbing = true;
+          if (kagemiAudio.bgmAudio && kagemiAudio.bgmAudio.duration) {
+            const curEl = document.getElementById('k-player-cur-time');
+            if (curEl) curEl.textContent = formatDuration((scrubber.value / 100) * kagemiAudio.bgmAudio.duration);
+          }
+        };
+        scrubber.onchange = () => {
+          if (kagemiAudio.bgmAudio && kagemiAudio.bgmAudio.duration) {
+            kagemiAudio.bgmAudio.currentTime = (scrubber.value / 100) * kagemiAudio.bgmAudio.duration;
+          }
+          isScrubbing = false;
+        };
+      }
+
+      // Audio volume sliders
+      const bgmSlider = document.getElementById('k-bgm-vol-slider');
+      if (bgmSlider) {
+        bgmSlider.oninput = () => {
+          const v = parseInt(bgmSlider.value) / 100;
+          kagemiAudio.setBgmVolume(v);
+          const disp = document.getElementById('k-bgm-vol-disp');
+          if (disp) disp.textContent = Math.round(v * 100) + '%';
+        };
+      }
+
+      const sfxSlider = document.getElementById('k-sfx-vol-slider');
+      if (sfxSlider) {
+        sfxSlider.oninput = () => {
+          const v = parseInt(sfxSlider.value) / 100;
+          kagemiAudio.setSfxVolume(v);
+          const disp = document.getElementById('k-sfx-vol-disp');
+          if (disp) disp.textContent = Math.round(v * 100) + '%';
+        };
+      }
+
+      // Mute audio button
+      const muteBtn = document.getElementById('k-mute-toggle-btn');
+      if (muteBtn) {
+        muteBtn.onclick = () => {
+          isAudioMuted = !isAudioMuted;
+          if (isAudioMuted) {
+            preMuteBgm = kagemiAudio.targetVol;
+            preMuteSfx = kagemiAudio.sfxVol || 0.6;
+            kagemiAudio.setBgmVolume(0);
+            kagemiAudio.setSfxVolume(0);
+            document.getElementById('k-mute-btn-icon').textContent = '🔇';
+            document.getElementById('k-mute-btn-text').textContent = 'Unmute Audio';
+            if (bgmSlider) bgmSlider.value = 0;
+            if (sfxSlider) sfxSlider.value = 0;
+            document.getElementById('k-bgm-vol-disp').textContent = '0%';
+            document.getElementById('k-sfx-vol-disp').textContent = '0%';
+          } else {
+            kagemiAudio.setBgmVolume(preMuteBgm);
+            kagemiAudio.setSfxVolume(preMuteSfx);
+            document.getElementById('k-mute-btn-icon').textContent = '🔊';
+            document.getElementById('k-mute-btn-text').textContent = 'Mute All Audio';
+            if (bgmSlider) bgmSlider.value = Math.round(preMuteBgm * 100);
+            if (sfxSlider) sfxSlider.value = Math.round(preMuteSfx * 100);
+            document.getElementById('k-bgm-vol-disp').textContent = Math.round(preMuteBgm * 100) + '%';
+            document.getElementById('k-sfx-vol-disp').textContent = Math.round(preMuteSfx * 100) + '%';
+          }
+        };
+      }
+
+      // Resolution Scale Pills
+      document.querySelectorAll('.k-scale-pill').forEach(btn => {
+        btn.onclick = () => {
+          const scale = parseFloat(btn.dataset.scale);
+          setResolutionScale(scale);
+        };
+      });
+
+      // FOV Slider
+      const fovSlider = document.getElementById('k-fov-slider');
+      if (fovSlider) {
+        fovSlider.oninput = () => {
+          const val = parseFloat(fovSlider.value);
+          const disp = document.getElementById('k-fov-disp');
+          if (disp) disp.textContent = val + '°';
+          if (cam) {
+            cam.fov = val;
+            cam.updateProjectionMatrix();
+          }
+        };
+      }
+
+      // Fullscreen Button
+      const btnFs = document.getElementById('k-btn-fullscreen');
+      if (btnFs) {
+        btnFs.onclick = () => {
+          if (!document.fullscreenElement) {
+            document.documentElement.requestFullscreen().catch(() => {});
+          } else {
+            document.exitFullscreen().catch(() => {});
+          }
+        };
+      }
+
+      // Replay Intro Button
+      const btnReplay = document.getElementById('k-btn-replay-intro');
+      if (btnReplay) {
+        btnReplay.onclick = () => {
+          closeSideMenu();
           landingSequenceManager.start();
         };
       }
 
-      const skipBtn = document.getElementById('kagemi-seq-skip-btn');
-      if (skipBtn) {
-        skipBtn.onclick = () => {
-          landingSequenceManager.skip();
+      // Respawn at Shrine Gate Button
+      const btnRespawn = document.getElementById('k-btn-respawn');
+      if (btnRespawn) {
+        btnRespawn.onclick = () => {
+          closeSideMenu();
+          const spawnX = -32984, spawnZ = 2089, spawnY = -5908.37;
+          yaw = -1.466368; pitch = -0.1262;
+          pl.yawS = yaw; pl.pitchS = pitch;
+          cam.position.set(spawnX, spawnY + pl.eye, spawnZ);
+          cam.rotation.set(pitch, yaw, 0, 'YXZ');
+          P0.set(spawnX, spawnY, spawnZ);
+          pl.vel.set(0, 0, 0);
+          setMode('walk');
+          playGenshinChime(true);
+          updateBottomHud('Returned to Shrine Gate');
+          setTimeout(() => updateBottomHud(''), 3000);
         };
       }
 
+      // Dimension alert brace modal
       const braceOk = document.getElementById('k-brace-ok-btn');
       if (braceOk) {
         const handleBrace = (e) => {
@@ -7049,33 +8218,7 @@ totalEmissiveRadiance*=rTm;`);
         braceOk.ontouchstart = handleBrace;
       }
 
-      const titleCard = document.getElementById('kagemi-cinematic-title');
-      if (titleCard) {
-        titleCard.onclick = () => {
-          if (!landingSequenceManager.active || landingSequenceManager.stage === 'title' || landingSequenceManager.stage === 'idle') {
-            landingSequenceManager.start();
-            landingSequenceManager.setStage('flyover');
-          }
-        };
-      }
-
-      const btnBgmToggle = document.getElementById('btn-bgm-toggle');
-      if (btnBgmToggle) {
-        btnBgmToggle.onclick = () => {
-          kagemiAudio.toggleBgm();
-        };
-      }
-
-      const btnBgmNext = document.getElementById('btn-bgm-next');
-      if (btnBgmNext) {
-        btnBgmNext.onclick = () => {
-          kagemiAudio.nextBgm();
-        };
-      }
-
-      const menuClose = document.getElementById('g-menu-close-btn');
-      if (menuClose) menuClose.onclick = () => closeKagemiMenu();
-
+      // Portal ok button
       const portalOk = document.getElementById('g-portal-toast-ok-btn');
       if (portalOk) {
         const handleOk = (e) => {
@@ -7091,26 +8234,33 @@ totalEmissiveRadiance*=rTm;`);
         portalOk.ontouchstart = handleOk;
       }
 
-      const portalModal = document.getElementById('genshin-portal-msg-modal');
-      if (portalModal) {
-        portalModal.addEventListener('click', (e) => {
-          if (e.target === portalModal || e.target.id === 'g-portal-toast-ok-btn' || (e.target.closest && e.target.closest('#g-portal-toast-ok-btn'))) {
-            closePortalToast();
-          }
-        });
-      }
+      const menuClose = document.getElementById('g-menu-close-btn');
+      if (menuClose) menuClose.onclick = () => closeKagemiMenu();
 
+      // Keyboard shortcuts
       window.addEventListener('keydown', (e) => {
-        if (e.key === 'Escape' || ((e.key === 'Enter' || e.key === ' ') && isPortalToastOpen)) {
-          if (isPortalToastOpen) {
+        if (e.key === 'm' || e.key === 'M') {
+          if (!isLandingMenuOpen && !isPortalToastOpen) {
             e.preventDefault();
-            e.stopPropagation();
+            toggleSideMenu();
+          }
+        } else if (e.key === 'Escape') {
+          if (isSideMenuOpen) {
+            e.preventDefault();
+            closeSideMenu();
+          } else if (landingSequenceManager.active) {
+            landingSequenceManager.skip();
+          } else if (isPortalToastOpen) {
+            e.preventDefault();
             closePortalToast();
           } else if (isLandingMenuOpen) {
             closeKagemiMenu();
           }
+        } else if (e.key === ' ' && landingSequenceManager.active) {
+          e.preventDefault();
+          landingSequenceManager.skip();
         } else if (e.key === 'f' || e.key === 'F') {
-          if (isNearTerminal && !isLandingMenuOpen && !isPortalToastOpen) {
+          if (isNearTerminal && !isLandingMenuOpen && !isPortalToastOpen && !isSideMenuOpen) {
             e.preventDefault();
             openKagemiMenu();
           }
