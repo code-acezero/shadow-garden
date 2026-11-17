@@ -213,17 +213,17 @@ export const EYES: Eye[] = [
   E({ // Sharingan, one tomoe: nervous scan
     spin: 140, twitch: true, base: sharinganBase, rot: <Tomoe n={1} />,
     keys: [[0, {}], [500, { lx: -48 }], [1100, { lx: 48, ly: 4 }],
-      [1700, { lx: 0, ly: 0, tilt: 0.5, brow: -0.2, open: 0.9, pupil: 0.8, spin: 1.8 }], [2300, RST]],
+    [1700, { lx: 0, ly: 0, tilt: 0.5, brow: -0.2, open: 0.9, pupil: 0.8, spin: 1.8 }], [2300, RST]],
   }),
   E({ // Sharingan, two tomoe: tracking
     spin: 190, twitch: true, base: sharinganBase, rot: <Tomoe n={2} />,
     keys: [[0, {}], [350, { ly: -14, lx: -20 }], [800, { lx: 36, ly: -6 }], [1250, { lx: 30, ly: 10 }],
-      [1700, { lx: 0, ly: 0, open: 0.82, tilt: 0.6, pupil: 0.75, spin: 2.2, brow: -0.3 }], [2400, RST]],
+    [1700, { lx: 0, ly: 0, open: 0.82, tilt: 0.6, pupil: 0.75, spin: 2.2, brow: -0.3 }], [2400, RST]],
   }),
   E({ // Sharingan, three tomoe: fast saccades then lock-on
     spin: 240, twitch: true, base: sharinganBase, rot: <Tomoe n={3} />,
     keys: [[0, {}], [250, { lx: -50 }], [500, { lx: 50 }], [750, { lx: -30, ly: -8 }], [1000, { lx: 34, ly: 6 }],
-      [1450, { lx: 0, ly: 0, open: 0.78, tilt: 0.85, brow: -0.5, pupil: 0.7, spin: 2.8, zoom: 0.05 }], [2300, RST]],
+    [1450, { lx: 0, ly: 0, open: 0.78, tilt: 0.85, brow: -0.5, pupil: 0.7, spin: 2.8, zoom: 0.05 }], [2300, RST]],
   }),
   E({ // Mangekyō (Itachi): calm, heavy-lidded
     spin: 200, twitch: true, base: mangekyoBase,
@@ -234,13 +234,13 @@ export const EYES: Eye[] = [
     spin: -220, twitch: true, base: mangekyoBase,
     rot: <path d={blades(3, 22, 78, 0.45, 0.82, 1)} fill={BLK} />,
     keys: [[0, { open: 0.9 }], [500, { lx: -30 }], [1100, { lx: 0, open: 0.3, raise: 1, arc: 0.85, brow: 0.4 }],
-      [1900, { open: 0.3, raise: 1, arc: 0.85, brow: 0.4 }], [2400, RST]],
+    [1900, { open: 0.3, raise: 1, arc: 0.85, brow: 0.4 }], [2400, RST]],
   }),
   E({ // Mangekyō (Sasuke): glare
     spin: 210, twitch: true, base: mangekyoBase, rot: <path d={blades(3, 24, 74, 0.95, 0.75, 0.85)} fill={BLK} />,
     keys: [[0, {}], [500, { ly: 8, open: 0.9, tilt: 0.3 }],
-      [1200, { ly: -2, open: 0.72, tilt: 0.95, brow: -0.6, pupil: 0.8, zoom: 0.04 }],
-      [1900, { vein: 0.8 }], [2500, RST]],
+    [1200, { ly: -2, open: 0.72, tilt: 0.95, brow: -0.6, pupil: 0.8, zoom: 0.04 }],
+    [1900, { vein: 0.8 }], [2500, RST]],
   }),
   E({ // Eternal Mangekyō: dutch-angle stare
     spin: -260, twitch: true, base: mangekyoBase,
@@ -249,7 +249,7 @@ export const EYES: Eye[] = [
       <path d={blades(3, 24, 56, -0.9, 0.42, 1.2, Math.PI / 3)} fill={BLK} />
     </>),
     keys: [[0, {}], [600, { lx: -24, roll: -2 }], [1500, { lx: 24, roll: 2, pupil: 1.15 }],
-      [2100, { lx: 0, roll: 0, open: 0.8, tilt: 0.7, vein: 1, pupil: 0.8, zoom: 0.06, shake: 0.4 }], [2800, RST]],
+    [2100, { lx: 0, roll: 0, open: 0.8, tilt: 0.7, vein: 1, pupil: 0.8, zoom: 0.06, shake: 0.4 }], [2800, RST]],
   }),
   E({ // Rinnegan: rings light up in waves, then a shockwave
     spin: 40,
@@ -260,7 +260,7 @@ export const EYES: Eye[] = [
     </>),
     rot: <circle r={73} fill="none" stroke="#3d2670" strokeWidth={2.2} strokeDasharray="1.5 7" />,
     keys: [[0, { open: 0.85 }], [700, { ly: -12, open: 0.9, brow: 0.15 }], [1400, { ly: 2, open: 1, zoom: 0.09, shake: 1 }],
-      [1750, { shake: 0, zoom: 0.02 }], [2500, RST]],
+    [1750, { shake: 0, zoom: 0.02 }], [2500, RST]],
   }),
   E({ // Byakugan: veins swell, 360° scan
     sclera: "#f1eef9", veins: "#6a5fa8", spin: 0,
@@ -270,7 +270,7 @@ export const EYES: Eye[] = [
       <circle r={13} fill="none" stroke="#b9b2e0" strokeOpacity={0.7} strokeWidth={1.6} />
     </>),
     keys: [[0, {}], [300, { lx: -55, ly: -6, vein: 0.4 }], [700, { lx: 50, ly: 6, vein: 0.8 }], [1100, { lx: -20, ly: -14, vein: 1 }],
-      [1500, { lx: 30, ly: 10 }], [1900, { lx: 0, ly: 0, open: 0.85, tilt: 0.4, brow: -0.3 }], [2600, RST]],
+    [1500, { lx: 30, ly: 10 }], [1900, { lx: 0, ly: 0, open: 0.85, tilt: 0.4, brow: -0.3 }], [2600, RST]],
   }),
   E({ // Six Eyes: blindfold drops
     spin: 18, base: (<>
@@ -290,7 +290,7 @@ export const EYES: Eye[] = [
       <Slit rx={5.5} ry={30} />
     </>),
     keys: [[0, { open: 0.85, tilt: 0.5 }], [500, { lx: -20, open: 0.9, tilt: 0.6 }], [1100, { lx: 0, open: 1, tilt: 0.7, brow: -0.2 }],
-      [1600, { ex: 1, tilt: 0.8, zoom: -0.07 }], [2500, { ex: 1 }], [3000, RST]],
+    [1600, { ex: 1, tilt: 0.8, zoom: -0.07 }], [2500, { ex: 1 }], [3000, RST]],
   }),
   E({ // Mushoku Tensei demon eye: eyeballs roll
     spin: 70,
@@ -304,9 +304,9 @@ export const EYES: Eye[] = [
       <circle r={66} strokeDasharray="3 6" strokeOpacity={0.8} />
     </g>),
     keys: [[0, { open: 1.05, brow: 0.4 }], [250, { lx: -40, ly: -8 }], [450, { ly: -18, lx: -20 }], [650, { lx: 0, ly: -22 }],
-      [850, { lx: 30, ly: -16 }], [1050, { lx: 46, ly: -2 }], [1250, { lx: 30, ly: 14 }], [1450, { lx: 0, ly: 18 }],
-      [1650, { lx: -30, ly: 12 }], [1850, { lx: -44, ly: 0 }], [2050, { lx: -24, ly: -16 }], [2250, { lx: 0, ly: -22 }],
-      [2650, { lx: 0, ly: 0, pupil: 0.6, spin: 2, open: 0.85, tilt: 0.4, brow: 0 }], [3100, RST]],
+    [850, { lx: 30, ly: -16 }], [1050, { lx: 46, ly: -2 }], [1250, { lx: 30, ly: 14 }], [1450, { lx: 0, ly: 18 }],
+    [1650, { lx: -30, ly: 12 }], [1850, { lx: -44, ly: 0 }], [2050, { lx: -24, ly: -16 }], [2250, { lx: 0, ly: -22 }],
+    [2650, { lx: 0, ly: 0, pupil: 0.6, spin: 2, open: 0.85, tilt: 0.4, brow: 0 }], [3100, RST]],
   }),
   E({ // Shinigami eyes (Light): wide-eyed, then the smirk
     spin: -28, veins: "#c4162b", sclera: "#f6e9ea",
@@ -318,7 +318,7 @@ export const EYES: Eye[] = [
     </>),
     rot: <path d={ring(72, 55, 61, 70)} stroke="#1a0005" strokeOpacity={0.85} strokeWidth={1.5} strokeLinecap="round" fill="none" />,
     keys: [[0, {}], [400, { open: 1.12, brow: 0.7, pupil: 0.55 }], [1000, { open: 1.12, brow: 0.8, pupil: 0.35 }],
-      [1500, { open: 0.7, brow: -0.4, tilt: 0.8, raise: 0.5, pupil: 0.5, arc: 0.1 }], [2100, { lx: 30 }], [2600, RST]],
+    [1500, { open: 0.7, brow: -0.4, tilt: 0.8, raise: 0.5, pupil: 0.5, arc: 0.1 }], [2100, { lx: 30 }], [2600, RST]],
   }),
   E({ // Cyborg scan: black sclera, HUD reticle pupil
     sclera: "#1a1521", spin: -40,
@@ -333,7 +333,7 @@ export const EYES: Eye[] = [
       <circle r={66} strokeDasharray="2 10" strokeOpacity={0.6} />
     </g>),
     keys: [[0, {}], [400, { lx: -50, ly: -6 }], [900, { lx: 52, ly: 4 }], [1400, { lx: -20, ly: 12 }],
-      [1900, { lx: 0, ly: 0, pupil: 0.55, spin: 2.4, zoom: 0.05 }], [2500, RST]],
+    [1900, { lx: 0, ly: 0, pupil: 0.55, spin: 2.4, zoom: 0.05 }], [2500, RST]],
   }),
   E({ // Vampire: sideways glance, hunger
     sclera: "#f2e9ec", base: (<>
@@ -343,7 +343,7 @@ export const EYES: Eye[] = [
       </ellipse>
     </>),
     keys: [[0, {}], [400, { lx: -36, tilt: 0.2 }], [1000, { lx: 34, ly: -4, open: 0.9, tilt: 0.5, pupil: 0.55 }],
-      [1600, { lx: 0, ly: 0, open: 0.8, tilt: 0.7, raise: 0.4, pupil: 1.4, brow: -0.2 }], [2300, RST]],
+    [1600, { lx: 0, ly: 0, open: 0.8, tilt: 0.7, raise: 0.4, pupil: 1.4, brow: -0.2 }], [2300, RST]],
   }),
   E({ // Ghoul (Kaneki): twitch, spreading veins
     sclera: "#1a1521", veins: "#8a0f22", base: (<>
@@ -352,8 +352,8 @@ export const EYES: Eye[] = [
       <circle data-r="pupil" transform="scale(1)" r={11} fill="#050001"><animate attributeName="r" values="11;8;11" dur="1.7s" repeatCount="indefinite" /></circle>
     </>),
     keys: [[0, { open: 0.85 }], [400, { open: 0.55, tilt: 0.3, shake: 0.5 }], [700, { open: 0.9, shake: 0, vein: 0.4 }],
-      [1000, { open: 0.5, shake: 0.6, vein: 0.7 }], [1400, { open: 1.1, brow: 0.6, pupil: 0.45, vein: 1, shake: 0, zoom: 0.05 }],
-      [2200, { zoom: 0.05 }], [2800, RST]],
+    [1000, { open: 0.5, shake: 0.6, vein: 0.7 }], [1400, { open: 1.1, brow: 0.6, pupil: 0.45, vein: 1, shake: 0, zoom: 0.05 }],
+    [2200, { zoom: 0.05 }], [2800, RST]],
   }),
   E({ // Hollow: eyes snap wide, then a grin
     sclera: "#1a1521", base: (<>
@@ -362,7 +362,7 @@ export const EYES: Eye[] = [
       <Pupil r={10} />
     </>),
     keys: [[0, { open: 0.7 }], [500, { open: 1.15, pupil: 0.7, brow: 0.5 }], [1100, { arc: 0.15, raise: 0.3, tilt: 0.6, brow: -0.2, open: 1 }],
-      [1800, { lx: 0 }], [2400, RST]],
+    [1800, { lx: 0 }], [2400, RST]],
   }),
 ];
 
@@ -372,8 +372,8 @@ function Unit({ eye, side, u, F }: { eye: Eye; side: "L" | "R"; u: "m" | "x"; F:
   const P = (r: string, s = ""): Record<string, any> => ({ "data-r": r, "data-u": u, "data-s": s, [ATTR[r]]: U[r + s] ?? F.m[r + s] });
   const t =
     u === "m"
-      ? L ? "translate(430 78) scale(-1 1)" : "translate(450 78)"
-      : L ? "translate(334 254.6) scale(-0.52 0.52)" : "translate(546 254.6) scale(0.52)";
+      ? L ? "translate(385 78) scale(-1 1)" : "translate(495 78)"
+      : L ? "translate(289 254.6) scale(-0.52 0.52)" : "translate(591 254.6) scale(0.52)";
   return (
     <g transform={t} display={u === "x" && !eye.four ? "none" : undefined}>
       <clipPath id={id}><path {...P("clip")} /></clipPath>
@@ -474,6 +474,7 @@ export default function EyeLoader({
         o = 1 + (to - 1) * easeIn(q);
         p = reduce ? REST : e.tl[e.tl.length - 1].p;
         target = 0.04;
+        if (q >= 1) { i = (i + 1) % N; setIdx(i); from = to; phase = "open"; t0 = now; }
         if (q >= 1) {
           completedCycles.current++;
           if (maxCycles && completedCycles.current >= maxCycles) {
@@ -501,53 +502,53 @@ export default function EyeLoader({
     return () => cancelAnimationFrame(raf);
   }, [preview, speed, maxCycles, initialEye]);
 
-  const G = (r: string, s = "", u: "m" | "x" = "m"): Record<string, any> => ({
-    "data-r": r, "data-u": u, "data-s": s, [ATTR[r]]: F0[u][r + s],
-  });
+const G = (r: string, s = "", u: "m" | "x" = "m"): Record<string, any> => ({
+  "data-r": r, "data-u": u, "data-s": s, [ATTR[r]]: F0[u][r + s],
+});
 
-  return (
-    <div
-      ref={rootR}
-      role="status"
-      aria-live="polite"
-      className={className}
-      style={{
-        display: "grid", placeItems: "center",
-        ...(fullscreen ? { position: "fixed", inset: 0, zIndex: 50, background: "#000" } : null),
-      }}
+return (
+  <div
+    ref={rootR}
+    role="status"
+    aria-live="polite"
+    className={className}
+    style={{
+      display: "grid", placeItems: "center",
+      ...(fullscreen ? { position: "fixed", inset: 0, zIndex: 50, background: "#000" } : null),
+    }}
+  >
+    <svg
+      ref={svgR}
+      viewBox={`0 0 ${W} ${H}`}
+      width={size}
+      style={{ display: "block", maxWidth: "94vw", height: "auto", overflow: "hidden" }}
+      aria-hidden
     >
-      <svg
-        ref={svgR}
-        viewBox={`0 0 ${W} ${H}`}
-        width={size}
-        style={{ display: "block", maxWidth: "94vw", height: "auto", overflow: "hidden" }}
-        aria-hidden
-      >
-        <defs>
-          {Object.entries(GRADS).map(([id, [a, b, c]]) => (
-            <radialGradient key={id} id={`eyl-${id}`}>
-              <stop offset="0" stopColor={a} /><stop offset=".55" stopColor={b} /><stop offset="1" stopColor={c} />
-            </radialGradient>
-          ))}
-          <radialGradient id="eyl-lum"><stop offset="0" stopColor="#f3e8ff" stopOpacity=".9" /><stop offset="1" stopColor="#b79cf0" stopOpacity="0" /></radialGradient>
-          <radialGradient id="eyl-ball" gradientUnits="userSpaceOnUse" cx={CX} cy={CY} r={190}>
-            <stop offset=".55" stopColor="#000" stopOpacity="0" /><stop offset="1" stopColor="#000" stopOpacity=".38" />
+      <defs>
+        {Object.entries(GRADS).map(([id, [a, b, c]]) => (
+          <radialGradient key={id} id={`eyl-${id}`}>
+            <stop offset="0" stopColor={a} /><stop offset=".55" stopColor={b} /><stop offset="1" stopColor={c} />
           </radialGradient>
-          <linearGradient id="eyl-shade" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0" stopColor="#000" stopOpacity=".42" /><stop offset="1" stopColor="#000" stopOpacity="0" />
-          </linearGradient>
-        </defs>
+        ))}
+        <radialGradient id="eyl-lum"><stop offset="0" stopColor="#f3e8ff" stopOpacity=".9" /><stop offset="1" stopColor="#b79cf0" stopOpacity="0" /></radialGradient>
+        <radialGradient id="eyl-ball" gradientUnits="userSpaceOnUse" cx={CX} cy={CY} r={190}>
+          <stop offset=".55" stopColor="#000" stopOpacity="0" /><stop offset="1" stopColor="#000" stopOpacity=".38" />
+        </radialGradient>
+        <linearGradient id="eyl-shade" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0" stopColor="#000" stopOpacity=".42" /><stop offset="1" stopColor="#000" stopOpacity="0" />
+        </linearGradient>
+      </defs>
 
-        <g {...G("cam")}>
-          <g {...G("fade")}>
-            <Unit eye={eye} side="R" u="m" F={F0} />
-            <Unit eye={eye} side="L" u="m" F={F0} />
-            <Unit eye={eye} side="R" u="x" F={F0} />
-            <Unit eye={eye} side="L" u="x" F={F0} />
-          </g>
+      <g {...G("cam")}>
+        <g {...G("fade")}>
+          <Unit eye={eye} side="R" u="m" F={F0} />
+          <Unit eye={eye} side="L" u="m" F={F0} />
+          <Unit eye={eye} side="R" u="x" F={F0} />
+          <Unit eye={eye} side="L" u="x" F={F0} />
         </g>
-      </svg>
-      <span style={{ position: "absolute", width: 1, height: 1, overflow: "hidden", clip: "rect(0 0 0 0)" }}>{label}</span>
-    </div>
-  );
+      </g>
+    </svg>
+    <span style={{ position: "absolute", width: 1, height: 1, overflow: "hidden", clip: "rect(0 0 0 0)" }}>{label}</span>
+  </div>
+);
 }

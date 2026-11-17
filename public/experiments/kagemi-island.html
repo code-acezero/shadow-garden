@@ -1567,171 +1567,183 @@
     /* =========================================================================
        ENTRY SEQUENCE PARTITION & CHOICE MODAL (Kagemi World vs Home Page)
        ========================================================================= */
+    /* =========================================================================
+       GENSHIN IMPACT STYLE ENTRY CHOICE MODAL
+       ========================================================================= */
     #kagemi-entry-choice-modal {
       position: fixed;
       inset: 0;
       z-index: 99999;
-      background: rgba(4, 4, 7, 0.82);
-      backdrop-filter: blur(20px);
-      -webkit-backdrop-filter: blur(20px);
+      background: rgba(4, 4, 8, 0.86);
+      backdrop-filter: blur(24px);
+      -webkit-backdrop-filter: blur(24px);
       display: flex;
       align-items: center;
       justify-content: center;
       opacity: 0;
       pointer-events: none;
-      transition: opacity 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+      transition: opacity 0.35s cubic-bezier(0.16, 1, 0.3, 1);
     }
     #kagemi-entry-choice-modal.active {
       opacity: 1;
       pointer-events: auto;
     }
+    @keyframes k-shadow-spin {
+      100% { transform: rotate(360deg); }
+    }
     .k-choice-card {
+      position: relative;
       width: 92vw;
-      max-width: 520px;
-      background: rgba(11, 11, 18, 0.94);
-      border: 1px solid rgba(168, 85, 247, 0.28);
-      border-radius: 24px;
-      padding: 36px 28px;
-      box-shadow: 0 30px 80px -15px rgba(0, 0, 0, 0.85), 0 0 50px rgba(147, 51, 234, 0.18);
+      max-width: 440px;
+      background: radial-gradient(circle at 50% 0%, #1c1c28 0%, #101119 100%);
+      border: 1px solid rgba(218, 194, 145, 0.45);
+      border-radius: 20px;
+      padding: 30px 24px 26px;
+      box-shadow: 0 30px 90px rgba(0, 0, 0, 0.9), 0 0 36px rgba(218, 194, 145, 0.12), inset 0 1px 0 rgba(255, 255, 255, 0.15);
       display: flex;
       flex-direction: column;
       align-items: center;
       text-align: center;
       transform: scale(0.96);
-      transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+      transition: transform 0.35s cubic-bezier(0.16, 1, 0.3, 1);
     }
     #kagemi-entry-choice-modal.active .k-choice-card {
       transform: scale(1);
     }
-    .k-choice-emblem {
-      width: 44px;
-      height: 44px;
-      border-radius: 14px;
-      background: rgba(168, 85, 247, 0.15);
-      border: 1px solid rgba(168, 85, 247, 0.35);
+    .k-corner-diamond {
+      position: absolute;
+      color: rgba(218, 194, 145, 0.45);
+      font-size: 10px;
+      user-select: none;
+      line-height: 1;
+    }
+    .k-corner-diamond.tl { top: 8px; left: 8px; }
+    .k-corner-diamond.tr { top: 8px; right: 8px; }
+    .k-corner-diamond.bl { bottom: 8px; left: 8px; }
+    .k-corner-diamond.br { bottom: 8px; right: 8px; }
+
+    .k-choice-logo-wrap {
       display: flex;
       align-items: center;
       justify-content: center;
-      color: #c084fc;
       margin-bottom: 12px;
-      box-shadow: 0 0 20px rgba(168, 85, 247, 0.25);
     }
     .k-choice-brand {
-      font-size: 18px;
+      font-size: 17px;
       font-weight: 900;
-      letter-spacing: 0.34em;
-      margin-left: 0.34em;
+      letter-spacing: 0.38em;
+      margin-left: 0.38em;
       text-transform: uppercase;
-      color: #ffffff;
+      color: #f5f0e6;
       line-height: 1.2;
+      font-family: inherit;
     }
     .k-choice-kanji {
       font-size: 11px;
-      letter-spacing: 0.25em;
-      margin-left: 0.25em;
-      color: rgba(192, 132, 252, 0.85);
+      letter-spacing: 0.35em;
+      margin-left: 0.35em;
+      color: #d3bc8e;
       text-transform: uppercase;
       margin-top: 4px;
-      margin-bottom: 16px;
-      font-family: monospace;
-    }
-    .k-choice-heading {
-      font-size: 20px;
-      font-weight: 700;
-      color: #ffffff;
-      margin: 0 0 8px 0;
-      letter-spacing: -0.01em;
-    }
-    .k-choice-desc {
-      font-size: 13px;
-      color: #94a3b8;
-      line-height: 1.5;
-      margin: 0;
-      max-width: 420px;
+      margin-bottom: 20px;
+      font-family: 'Cinzel', 'Noto Serif JP', serif, monospace;
     }
     .k-choice-actions {
       display: flex;
       flex-direction: column;
       gap: 12px;
       width: 100%;
-      margin-top: 24px;
     }
     .k-choice-btn {
       display: flex;
       align-items: center;
-      gap: 16px;
-      padding: 16px 20px;
-      border-radius: 18px;
+      gap: 14px;
+      padding: 14px 18px;
+      border-radius: 14px;
       cursor: pointer;
       text-align: left;
-      transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+      transition: all 0.22s cubic-bezier(0.16, 1, 0.3, 1);
       font-family: inherit;
       position: relative;
-      overflow: hidden;
+      border: 1px solid transparent;
+      user-select: none;
     }
     .k-choice-btn-primary {
-      background: linear-gradient(135deg, rgba(147, 51, 234, 0.18) 0%, rgba(91, 33, 182, 0.25) 100%);
-      border: 1px solid rgba(168, 85, 247, 0.45);
-      color: #ffffff;
+      background: linear-gradient(135deg, rgba(218, 194, 145, 0.16) 0%, rgba(180, 145, 95, 0.08) 100%);
+      border-color: rgba(218, 194, 145, 0.48);
+      color: #fbf9f4;
+      box-shadow: 0 4px 20px rgba(218, 194, 145, 0.08);
     }
     .k-choice-btn-primary:hover {
-      background: linear-gradient(135deg, rgba(147, 51, 234, 0.28) 0%, rgba(91, 33, 182, 0.38) 100%);
-      border-color: rgba(192, 132, 252, 0.75);
+      background: linear-gradient(135deg, rgba(218, 194, 145, 0.26) 0%, rgba(180, 145, 95, 0.16) 100%);
+      border-color: rgba(235, 215, 175, 0.85);
       transform: translateY(-2px);
-      box-shadow: 0 10px 30px -5px rgba(168, 85, 247, 0.35);
+      box-shadow: 0 6px 24px rgba(218, 194, 145, 0.2);
     }
     .k-choice-btn-secondary {
-      background: rgba(255, 255, 255, 0.04);
-      border: 1px solid rgba(255, 255, 255, 0.12);
-      color: #e2e8f0;
+      background: rgba(255, 255, 255, 0.03);
+      border-color: rgba(255, 255, 255, 0.14);
+      color: #eaeaf2;
     }
     .k-choice-btn-secondary:hover {
-      background: rgba(255, 255, 255, 0.08);
-      border-color: rgba(255, 255, 255, 0.25);
+      background: rgba(255, 255, 255, 0.07);
+      border-color: rgba(255, 255, 255, 0.32);
       transform: translateY(-2px);
-      box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.5);
+      box-shadow: 0 6px 20px rgba(0, 0, 0, 0.4);
       color: #ffffff;
     }
-    .k-choice-btn-icon {
-      width: 42px;
-      height: 42px;
-      border-radius: 12px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
+    .k-choice-btn-bullet {
+      font-size: 13px;
       flex-shrink: 0;
+      transition: transform 0.2s ease;
     }
-    .k-icon-compass {
-      background: rgba(168, 85, 247, 0.2);
-      border: 1px solid rgba(168, 85, 247, 0.4);
-      color: #d8b4fe;
+    .k-choice-btn-primary .k-choice-btn-bullet {
+      color: #d3bc8e;
     }
-    .k-icon-tv {
-      background: rgba(255, 255, 255, 0.08);
-      border: 1px solid rgba(255, 255, 255, 0.15);
-      color: #cbd5e1;
+    .k-choice-btn-secondary .k-choice-btn-bullet {
+      color: #94a3b8;
+    }
+    .k-choice-btn:hover .k-choice-btn-bullet {
+      transform: scale(1.18);
     }
     .k-choice-btn-body {
       flex: 1;
       min-width: 0;
     }
     .k-choice-btn-title {
-      font-size: 15px;
+      font-size: 14px;
       font-weight: 700;
       color: #ffffff;
-      line-height: 1.3;
+      line-height: 1.25;
+      letter-spacing: 0.02em;
     }
     .k-choice-btn-subtitle {
-      font-size: 12px;
-      color: #94a3b8;
-      line-height: 1.4;
+      font-size: 11px;
+      line-height: 1.35;
       margin-top: 2px;
+      letter-spacing: 0.01em;
+    }
+    .k-choice-btn-primary .k-choice-btn-subtitle {
+      color: #c2b090;
+    }
+    .k-choice-btn-secondary .k-choice-btn-subtitle {
+      color: #8b92a4;
     }
     .k-choice-btn-arrow {
-      color: #a855f7;
-      opacity: 0.7;
+      font-size: 14px;
+      opacity: 0.65;
       transition: transform 0.2s ease, opacity 0.2s ease;
       flex-shrink: 0;
+    }
+    .k-choice-btn-primary .k-choice-btn-arrow {
+      color: #d3bc8e;
+    }
+    .k-choice-btn-secondary .k-choice-btn-arrow {
+      color: #94a3b8;
+    }
+    .k-choice-btn:hover .k-choice-btn-arrow {
+      opacity: 1;
+      transform: translateX(3px);
     }
     .k-choice-btn:hover .k-choice-btn-arrow {
       opacity: 1;
@@ -2477,60 +2489,79 @@
     </button>
   </div>
 
-  <!-- Entry Choice Modal (Partition 1: Kagemi World vs Partition 2: Skip to Home Page) -->
+  <!-- Entry Choice Modal (Genshin Impact Style: Partition 1: Kagemi World vs Partition 2: Skip to Home Page) -->
   <div id="kagemi-entry-choice-modal" style="display:none;">
     <div class="k-choice-card">
-      <div class="k-choice-emblem">
-        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-          <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+      <div class="k-corner-diamond tl">❖</div>
+      <div class="k-corner-diamond tr">❖</div>
+      <div class="k-corner-diamond bl">❖</div>
+      <div class="k-corner-diamond br">❖</div>
+
+      <!-- Site Authentic Logo (ShadowLogo) -->
+      <div class="k-choice-logo-wrap">
+        <svg viewBox="0 0 32 32" class="k-shadow-logo-svg" style="width: 48px; height: 48px; animation: k-shadow-spin 11s linear infinite; filter: drop-shadow(0 2px 8px rgba(124, 58, 237, 0.45));">
+          <defs>
+            <linearGradient id="k_white_metal" x1="10%" y1="0%" x2="90%" y2="100%">
+              <stop offset="0%" stop-color="#ffffff"/>
+              <stop offset="35%" stop-color="#f8fafc"/>
+              <stop offset="70%" stop-color="#f1f5f9"/>
+              <stop offset="100%" stop-color="#e2e8f0"/>
+            </linearGradient>
+            <linearGradient id="k_violet_metal" x1="0%" y1="0%" x2="100%" y2="100%">
+              <stop offset="0%" stop-color="#d8b4fe"/>
+              <stop offset="30%" stop-color="#a855f7"/>
+              <stop offset="65%" stop-color="#7c3aed"/>
+              <stop offset="100%" stop-color="#4c1d95"/>
+            </linearGradient>
+            <linearGradient id="k_rim_metal" x1="0%" y1="0%" x2="100%" y2="100%">
+              <stop offset="0%" stop-color="#ffffff" stop-opacity="0.9"/>
+              <stop offset="40%" stop-color="#c084fc" stop-opacity="0.8"/>
+              <stop offset="75%" stop-color="#9333ea" stop-opacity="0.85"/>
+              <stop offset="100%" stop-color="#e9d5ff" stop-opacity="0.9"/>
+            </linearGradient>
+            <linearGradient id="k_specular" x1="0%" y1="0%" x2="0%" y2="100%">
+              <stop offset="0%" stop-color="#ffffff" stop-opacity="0.4"/>
+              <stop offset="50%" stop-color="#ffffff" stop-opacity="0.08"/>
+              <stop offset="100%" stop-color="#ffffff" stop-opacity="0"/>
+            </linearGradient>
+          </defs>
+          <path d="M16 30 C23.732 30 30 23.732 30 16 S23.732 2 16 2 C12.134 2 8.634 3.567 6.1 6.1 A13.96 13.96 0 0 0 2 16 c0 7.732 6.268 14 14 14 Z" fill="url(#k_white_metal)"/>
+          <path d="M16 2 A14 14 0 0 0 16 30 A7 7 0 0 1 16 16 A7 7 0 0 0 16 2 Z" fill="url(#k_violet_metal)"/>
+          <circle cx="16" cy="9" r="2.2" fill="url(#k_white_metal)"/>
+          <circle cx="15.3" cy="8.3" r="0.7" fill="#ffffff"/>
+          <circle cx="16" cy="23" r="2.2" fill="url(#k_violet_metal)"/>
+          <circle cx="15.3" cy="22.3" r="0.7" fill="#f3e8ff"/>
+          <ellipse cx="16" cy="11" rx="10" ry="6" fill="url(#k_specular)" pointer-events="none"/>
+          <circle cx="16" cy="16" r="14" fill="none" stroke="url(#k_rim_metal)" stroke-width="1.2"/>
         </svg>
       </div>
+
       <div class="k-choice-brand">K A G E M I</div>
-      <div class="k-choice-kanji">影 見 島 • CELESTIAL REALM</div>
-      <h2 class="k-choice-heading">Choose Your Experience</h2>
-      <p class="k-choice-desc">Explore our interactive 3D celestial sanctuary or proceed directly to the anime streaming platform.</p>
+      <div class="k-choice-kanji">影 見 島</div>
 
       <div class="k-choice-actions">
         <!-- Option 1: Enter Kagemi World (Game-like 3D Experience) -->
         <button id="k-btn-enter-world" class="k-choice-btn k-choice-btn-primary">
-          <div class="k-choice-btn-icon k-icon-compass">
-            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <circle cx="12" cy="12" r="10"/><polygon points="16.24 7.76 14.12 14.12 7.76 16.24 9.88 9.88 16.24 7.76"/>
-            </svg>
-          </div>
+          <span class="k-choice-btn-bullet">❖</span>
           <div class="k-choice-btn-body">
             <div class="k-choice-btn-title">Enter Kagemi World</div>
-            <div class="k-choice-btn-subtitle">3D celestial sanctuary • Game-like exploration</div>
+            <div class="k-choice-btn-subtitle">3D Celestial Sanctuary</div>
           </div>
-          <div class="k-choice-btn-arrow">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
-          </div>
+          <span class="k-choice-btn-arrow">→</span>
         </button>
 
         <!-- Option 2: Skip to Home Page (Direct to Anime Streaming) -->
         <button id="k-btn-skip-home" class="k-choice-btn k-choice-btn-secondary">
-          <div class="k-choice-btn-icon k-icon-tv">
-            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <rect width="20" height="15" x="2" y="7" rx="2" ry="2"/><polyline points="17 2 12 7 7 2"/>
-            </svg>
-          </div>
+          <span class="k-choice-btn-bullet">✦</span>
           <div class="k-choice-btn-body">
             <div class="k-choice-btn-title">Skip to Home Page</div>
-            <div class="k-choice-btn-subtitle">Stream 15,000+ anime & donghua • Direct catalog</div>
+            <div class="k-choice-btn-subtitle">Streaming Platform</div>
           </div>
-          <div class="k-choice-btn-arrow">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
-          </div>
+          <span class="k-choice-btn-arrow">→</span>
         </button>
       </div>
-
-      <div class="k-choice-footer">
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="k-choice-audio-icon">
-          <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14"/>
-        </svg>
-        <span>Audio permission is automatically enabled upon selecting either realm.</span>
-      </div>
     </div>
+  </div>
   </div>
 
   <!-- Floating Skip to Walk Button -->
@@ -2789,24 +2820,6 @@
     <div id="g-poi-markers-list"></div>
   </div>
 
-  <!-- Original Kagemi Landing Component Live Portal Modal -->
-  <div id="kagemi-landing-modal" role="dialog" aria-modal="true" style="display:none;">
-    <div class="kagemi-modal-container">
-      <div class="kagemi-modal-header">
-        <div class="kagemi-modal-brand">
-          <div class="kagemi-modal-logo">🛡️</div>
-          <div>
-            <div class="kagemi-modal-title">KAGEMI SANCTUARY</div>
-            <div class="kagemi-modal-subtitle">Original Streaming Portal • Live Next.js Component</div>
-          </div>
-        </div>
-        <button id="g-menu-close-btn" class="kagemi-modal-close" onclick="closeKagemiMenu()">✕ Return to Island (Esc)</button>
-      </div>
-      <div class="kagemi-modal-iframe-wrap">
-        <iframe id="kagemi-live-frame" src="/?embed=1" title="Kagemi Landing Page" allow="autoplay; fullscreen; clipboard-write; encrypted-media"></iframe>
-      </div>
-    </div>
-  </div>
 
   <!-- Full Detailed Portal Message Modal (#genshin-portal-msg-modal) -->
   <div id="genshin-portal-msg-modal" role="dialog" aria-modal="true" style="display:none;">
@@ -6076,10 +6089,13 @@ totalEmissiveRadiance*=rTm;`);
       let initWarmFrames = 0;
       function prewarmAndStartIntro() {
         initWarmFrames++;
-        if (initWarmFrames < 16) {
+        if (initWarmFrames < 16 || typeof landingSequenceManager === 'undefined') {
           requestAnimationFrame(prewarmAndStartIntro);
         } else {
-          if (typeof landingSequenceManager !== 'undefined') {
+          const urlParams = new URLSearchParams(window.location.search);
+          if (urlParams.get('directWorld') === '1') {
+            landingSequenceManager.startSequence('world');
+          } else {
             landingSequenceManager.showInitialChoicePopup();
           }
         }
@@ -7518,31 +7534,14 @@ totalEmissiveRadiance*=rTm;`);
     }
   
 
-        // Modal Control Functions (Instant, Pure Native HTML/CSS Landing Page - Zero Lag, No Iframe)
+    // Navigate directly to landing page on URL level (zero iframe, zero modal wrapper)
     function openKagemiMenu() {
-      if (isLandingMenuOpen) return;
-      isLandingMenuOpen = true;
-      const modal = document.getElementById('kagemi-landing-modal');
-      const frame = document.getElementById('kagemi-live-frame');
-      if (frame && (!frame.src || frame.src === 'about:blank' || !frame.src.includes('embed=1'))) {
-        frame.src = '/?embed=1';
-      }
-      if (modal) {
-        modal.style.display = 'flex';
-        modal.classList.add('active');
-      }
       playGenshinChime(true);
-      if (document.exitPointerLock) document.exitPointerLock();
+      window.location.href = '/?fromKagemi=1';
     }
 
     function closeKagemiMenu() {
-      if (!isLandingMenuOpen) return;
       isLandingMenuOpen = false;
-      const modal = document.getElementById('kagemi-landing-modal');
-      if (modal) {
-        modal.classList.remove('active');
-        modal.style.display = 'none';
-      }
     }
 
     function openPortalToast() {
@@ -8229,8 +8228,8 @@ totalEmissiveRadiance*=rTm;`);
 
           <g data-r="cam" data-u="m">
             <g data-r="fade" data-u="m">
-              <!-- Right Eye -->
-              <g transform="translate(450 78)">
+              <!-- Right Eye (Increased eye separation) -->
+              <g transform="translate(495 78)">
                 <g clip-path="url(#eyl-c-mR)">
                   <rect width="400" height="244" fill="${eyeData.sclera}" />
                   <g data-r="iris" data-u="m" data-s="R">
@@ -8245,8 +8244,8 @@ totalEmissiveRadiance*=rTm;`);
                 </g>
               </g>
 
-              <!-- Left Eye -->
-              <g transform="translate(430 78) scale(-1 1)">
+              <!-- Left Eye (Increased eye separation) -->
+              <g transform="translate(385 78) scale(-1 1)">
                 <g clip-path="url(#eyl-c-mL)">
                   <rect width="400" height="244" fill="${eyeData.sclera}" />
                   <g data-r="iris" data-u="m" data-s="L">
@@ -8462,7 +8461,7 @@ totalEmissiveRadiance*=rTm;`);
         // Play gentle title sound
         kagemiAudio.playSfx('title', 0.85);
 
-        // After title shimmer holds, fade out title card and launch EyeLoader!
+        // After title shimmer holds, fade out title card
         setTimeout(() => {
           if (titleCard) {
             titleCard.classList.remove('active');
@@ -8470,7 +8469,13 @@ totalEmissiveRadiance*=rTm;`);
           }
           setTimeout(() => {
             if (titleCard) titleCard.style.display = 'none';
-            this.playEyeLoaderSequence();
+            if (this.destination === 'world') {
+              // User requirement: When enter kagemi world, DON'T show eye loader!
+              this.launchWorldFlyover();
+            } else {
+              // Skip to Home Page plays eye loader before transitioning
+              this.playEyeLoaderSequence();
+            }
           }, 600);
         }, 2200);
       }
@@ -8514,7 +8519,7 @@ totalEmissiveRadiance*=rTm;`);
           // 2nd PARTITION: Skips the Kagemi 3D world and shows the main landing page normally!
           this.active = false;
           this.stage = 'idle';
-          window.location.href = '/?skipIntro=1';
+          window.location.href = '/?fromKagemi=1';
         } else {
           // 1st PARTITION: Enter Kagemi World 3D Flyover!
           this.launchWorldFlyover();
@@ -8633,37 +8638,6 @@ totalEmissiveRadiance*=rTm;`);
 
       start() {
         this.startSequence('world');
-      }
-    }
-
-        // Restore normal in-game HUD & Menu button
-        const menuBtn = document.getElementById('k-menu-btn');
-        if (menuBtn) menuBtn.style.display = 'flex';
-        const bottomHud = document.getElementById('kagemi-bottom-hud');
-        if (bottomHud) bottomHud.style.display = 'flex';
-
-        // Seamless handover to walk mode at exact spawn position & orientation
-        const spawnX = -32984, spawnZ = 2089, spawnY = -5908.37;
-        yaw = this.targetYaw;
-        pitch = this.targetPitch;
-        pl.yawS = yaw;
-        pl.pitchS = pitch;
-        cam.position.set(spawnX, spawnY + pl.eye, spawnZ);
-        cam.rotation.set(pitch, yaw, 0, 'YXZ');
-        cam.fov = 55;
-        cam.updateProjectionMatrix();
-
-        P0.set(spawnX, spawnY, spawnZ);
-        pl.vel.set(0, 0, 0);
-
-        setMode('walk');
-        playGenshinChime(true);
-        updateBottomHud();
-      }
-
-      skip() {
-        kagemiAudio.stopAllSfx();
-        this.complete();
       }
     }
 

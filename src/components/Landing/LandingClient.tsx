@@ -26,6 +26,7 @@ import { getRandomAvatar, getRandomGuestName } from '@/components/User/AvatarSel
 import { Capacitor } from '@capacitor/core';
 import { formatAnimeTitle, slugifyTitle, cn } from '@/lib/utils';
 import EyeLoader from './EyeLoader';
+import ShadowLogo from '@/components/UIx/ShadowLogo';
 
 // Dynamic 3D WebGL Portal with safe fallback
 const ShadowGardenPortal = dynamic(
@@ -90,11 +91,24 @@ export default function LandingClient() {
     new URLSearchParams(window.location.search).get('embed') === '1'
   );
 
-  // Adaptive UI state: returning/skip users get instant UI, first-time users see intro
+  const [fromKagemi, setFromKagemi] = useState(() => {
+    if (typeof window !== 'undefined') {
+      const searchParams = new URLSearchParams(window.location.search);
+      return searchParams.get('fromKagemi') === '1';
+    }
+    return false;
+  });
+
+  // Adaptive UI state: returning/skip/kagemi users get instant UI, first-time users see intro
   const [showLandingUI, setShowLandingUI] = useState(() => {
     if (typeof window !== 'undefined') {
       const searchParams = new URLSearchParams(window.location.search);
-      if (window.self !== window.top || searchParams.get('embed') === '1' || searchParams.get('skipIntro') === '1') {
+      if (
+        window.self !== window.top || 
+        searchParams.get('embed') === '1' || 
+        searchParams.get('skipIntro') === '1' ||
+        searchParams.get('fromKagemi') === '1'
+      ) {
         return true;
       }
       const hasAudio = localStorage.getItem('shadow_audio_permitted') === 'true' || localStorage.getItem('guild_audio_permit') === 'true';
@@ -285,7 +299,7 @@ export default function LandingClient() {
   const handleSelectWorld = useCallback((e?: React.MouseEvent) => {
     if (e) { e.preventDefault(); e.stopPropagation(); }
     initializeAudio();
-    router.push('/experiments/kagemi-island.html');
+    router.push('/experiments/kagemi-island.html?directWorld=1');
   }, [initializeAudio, router]);
 
   const handleSelectHome = useCallback((e?: React.MouseEvent) => {
@@ -391,68 +405,82 @@ export default function LandingClient() {
         </div>
       )}
 
+      {/* SLIM, SLEEK RETURN TO KAGEMI WORLD BUTTON */}
+      {showLandingUI && (
+        <motion.div
+          initial={{ opacity: 0, y: -8 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.3 }}
+          className="fixed top-4 right-4 z-50 pointer-events-auto"
+        >
+          <a
+            href="/experiments/kagemi-island.html"
+            className="flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-[#12121c]/80 hover:bg-[#1a1a28]/95 text-zinc-300 hover:text-white border border-[#d3bc8e]/35 hover:border-[#d3bc8e]/80 backdrop-blur-md text-xs font-medium tracking-wide transition-all shadow-[0_4px_20px_rgba(0,0,0,0.5)] active:scale-95 group"
+            title="Return to 3D Kagemi Island"
+          >
+            <span className="text-[#d3bc8e] group-hover:rotate-45 transition-transform duration-300 text-[10px]">❖</span>
+            <span className="font-sans text-[11px] tracking-wider uppercase font-semibold">Return to Kagemi</span>
+          </a>
+        </motion.div>
+      )}
+
       {/* FULL-SCREEN ENTRY SEQUENCE CONTROLLER (Choice Popup -> Title Intro -> EyeLoader -> Reveal UI) */}
       {!showLandingUI && !isEmbedded && (
         <div className="fixed inset-0 z-[99999] bg-black flex items-center justify-center pointer-events-auto">
           {entryStage === 'choice' && (
             <motion.div
-              initial={{ opacity: 0, scale: 0.95 }}
+              initial={{ opacity: 0, scale: 0.96 }}
               animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0, scale: 0.95 }}
-              transition={{ duration: 0.3 }}
-              className="w-[92vw] max-w-[520px] rounded-3xl bg-[#0b0b12]/95 border border-purple-500/30 p-7 sm:p-9 shadow-[0_30px_80px_-15px_rgba(0,0,0,0.85),0_0_50px_rgba(147,51,234,0.18)] flex flex-col items-center text-center"
+              exit={{ opacity: 0, scale: 0.96 }}
+              transition={{ duration: 0.25 }}
+              className="relative w-[92vw] max-w-[440px] rounded-[20px] bg-gradient-to-b from-[#1c1c28]/95 to-[#101119]/98 border border-[#d3bc8e]/45 p-6 sm:p-7 shadow-[0_30px_90px_rgba(0,0,0,0.9),0_0_36px_rgba(218,194,145,0.12),inset_0_1px_0_rgba(255,255,255,0.15)] flex flex-col items-center text-center backdrop-blur-2xl"
             >
-              <div className="w-11 h-11 rounded-2xl bg-purple-600/20 border border-purple-500/40 flex items-center justify-center text-purple-300 mb-3 shadow-[0_0_20px_rgba(168,85,247,0.25)]">
-                <Shield className="w-5 h-5 text-purple-400" />
+              {/* Corner Diamond Ornaments */}
+              <div className="absolute top-2 left-2 text-[#d3bc8e]/40 text-[10px] select-none">❖</div>
+              <div className="absolute top-2 right-2 text-[#d3bc8e]/40 text-[10px] select-none">❖</div>
+              <div className="absolute bottom-2 left-2 text-[#d3bc8e]/40 text-[10px] select-none">❖</div>
+              <div className="absolute bottom-2 right-2 text-[#d3bc8e]/40 text-[10px] select-none">❖</div>
+
+              {/* Site Authentic Logo */}
+              <div className="mb-3">
+                <ShadowLogo size="w-12 h-12" />
               </div>
-              <div className="text-lg font-black tracking-[0.34em] ml-[0.34em] uppercase text-white leading-tight font-lemon">
+
+              {/* Brand Title */}
+              <div className="text-base font-extrabold tracking-[0.38em] ml-[0.38em] uppercase text-[#f5f0e6] leading-tight font-lemon">
                 KAGEMI
               </div>
-              <div className="text-[11px] font-mono tracking-[0.25em] ml-[0.25em] text-purple-300/80 uppercase mt-1 mb-4">
-                影見島 • CELESTIAL REALM
+              <div className="text-[11px] tracking-[0.35em] ml-[0.35em] text-[#d3bc8e] uppercase mt-1 mb-5 font-serif">
+                影 見 島
               </div>
-              <h2 className="text-xl font-bold text-white mb-2 tracking-tight">
-                Choose Your Experience
-              </h2>
-              <p className="text-xs text-zinc-400 max-w-sm mb-6 leading-relaxed">
-                Explore our interactive 3D celestial sanctuary or proceed directly to the anime streaming platform.
-              </p>
 
+              {/* Destination Cards */}
               <div className="flex flex-col gap-3 w-full">
-                {/* Option 1: Enter Kagemi World */}
+                {/* Option 1: Enter Kagemi World (Genshin Gold Style) */}
                 <button
                   onClick={handleSelectWorld}
-                  className="flex items-center gap-4 p-4 rounded-2xl bg-gradient-to-r from-purple-950/40 to-indigo-950/40 border border-purple-500/45 hover:border-purple-400 hover:from-purple-950/60 hover:to-indigo-950/60 text-left transition-all duration-200 group active:scale-[0.98] shadow-[0_10px_30px_-5px_rgba(168,85,247,0.25)] cursor-pointer"
+                  className="flex items-center gap-3.5 px-4 py-3.5 rounded-xl bg-gradient-to-r from-[#d3bc8e]/16 to-[#bfa068]/08 border border-[#d3bc8e]/48 hover:border-[#e4c896]/90 hover:from-[#d3bc8e]/26 hover:to-[#bfa068]/16 text-left transition-all duration-200 group active:scale-[0.98] shadow-[0_4px_20px_rgba(218,194,145,0.08)] cursor-pointer"
                 >
-                  <div className="w-11 h-11 rounded-xl bg-purple-600/20 border border-purple-500/40 flex items-center justify-center text-purple-300 flex-shrink-0 group-hover:scale-105 transition-transform">
-                    <Compass className="w-5 h-5 text-purple-400" />
-                  </div>
+                  <span className="text-[#d3bc8e] text-sm group-hover:scale-115 transition-transform flex-shrink-0">❖</span>
                   <div className="flex-1 min-w-0">
-                    <div className="text-sm font-bold text-white">Enter Kagemi World</div>
-                    <div className="text-xs text-zinc-400 mt-0.5">3D celestial sanctuary • Game-like exploration</div>
+                    <div className="text-sm font-bold text-[#fbf9f4] tracking-wide">Enter Kagemi World</div>
+                    <div className="text-[11px] text-[#c2b090] mt-0.5">3D Celestial Sanctuary</div>
                   </div>
-                  <ArrowRight className="w-4 h-4 text-purple-400 opacity-70 group-hover:opacity-100 group-hover:translate-x-1 transition-all flex-shrink-0" />
+                  <span className="text-sm text-[#d3bc8e] opacity-70 group-hover:opacity-100 group-hover:translate-x-1 transition-all flex-shrink-0">→</span>
                 </button>
 
-                {/* Option 2: Skip to Home Page */}
+                {/* Option 2: Skip to Home Page (Genshin Crystal Style) */}
                 <button
                   onClick={handleSelectHome}
-                  className="flex items-center gap-4 p-4 rounded-2xl bg-white/[0.04] border border-white/10 hover:border-white/25 hover:bg-white/[0.08] text-left transition-all duration-200 group active:scale-[0.98] cursor-pointer"
+                  className="flex items-center gap-3.5 px-4 py-3.5 rounded-xl bg-white/[0.03] border border-white/14 hover:border-white/30 hover:bg-white/[0.07] text-left transition-all duration-200 group active:scale-[0.98] cursor-pointer"
                 >
-                  <div className="w-11 h-11 rounded-xl bg-white/10 border border-white/15 flex items-center justify-center text-zinc-300 flex-shrink-0 group-hover:scale-105 transition-transform">
-                    <Tv className="w-5 h-5 text-zinc-300" />
-                  </div>
+                  <span className="text-zinc-400 text-sm group-hover:scale-115 transition-transform flex-shrink-0">✦</span>
                   <div className="flex-1 min-w-0">
-                    <div className="text-sm font-bold text-white">Skip to Home Page</div>
-                    <div className="text-xs text-zinc-400 mt-0.5">Stream 15,000+ anime & donghua • Direct catalog</div>
+                    <div className="text-sm font-bold text-[#eaeaf2] tracking-wide">Skip to Home Page</div>
+                    <div className="text-[11px] text-[#8b92a4] mt-0.5">Streaming Platform</div>
                   </div>
-                  <ArrowRight className="w-4 h-4 text-zinc-400 opacity-70 group-hover:opacity-100 group-hover:translate-x-1 transition-all flex-shrink-0" />
+                  <span className="text-sm text-zinc-400 opacity-60 group-hover:opacity-100 group-hover:translate-x-1 transition-all flex-shrink-0">→</span>
                 </button>
-              </div>
-
-              <div className="flex items-center gap-2 mt-5 text-[11px] text-zinc-500 text-center">
-                <Zap className="w-3.5 h-3.5 text-purple-400 flex-shrink-0" />
-                <span>Audio permission is automatically enabled upon selecting either realm.</span>
               </div>
             </motion.div>
           )}
