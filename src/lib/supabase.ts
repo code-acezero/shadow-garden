@@ -1,4 +1,4 @@
-import { createClient } from '@supabase/supabase-js';
+import { createClient, SupabaseClient } from '@supabase/supabase-js';
 
 // Singleton instance container
 let supabaseInstance: any = null;
@@ -10,10 +10,10 @@ let supabaseInstance: any = null;
  */
 export const getSupabaseBrowserClient = () => {
   if (!supabaseInstance) {
-    const url = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
-    const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '';
+    const url = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://placeholder.supabase.co';
+    const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || 'placeholder-key';
 
-    if (!url || !key) {
+    if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) {
       if (process.env.NODE_ENV === 'development') {
         console.warn('⚠️ Missing Supabase env variables: NEXT_PUBLIC_SUPABASE_URL or NEXT_PUBLIC_SUPABASE_ANON_KEY');
       }
@@ -24,6 +24,14 @@ export const getSupabaseBrowserClient = () => {
   return supabaseInstance;
 };
 
-// Export singleton directly. 
-// Note: This is safe because we are strictly using this as a browser client.
-export const supabase = getSupabaseBrowserClient();
+// Lazy proxy prevents build-time static evaluation crashes when env vars are not set during Vercel build
+export const supabase: any = new Proxy({} as any, {
+  get(_target, prop) {
+    const client = getSupabaseBrowserClient();
+    const val = client[prop];
+    if (typeof val === 'function') {
+      return val.bind(client);
+    }
+    return val;
+  }
+});

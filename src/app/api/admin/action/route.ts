@@ -3,6 +3,9 @@ import { supabaseAdmin } from '@/lib/supabaseAdmin';
 import { createClient } from '@supabase/supabase-js';
 import crypto from 'crypto';
 
+export const runtime = 'nodejs';
+export const dynamic = 'force-dynamic';
+
 // The sacred Guild Master ID
 const GUILD_MASTER_ID = '8a63216a-bc69-4b08-b5ea-a43f2c8c6b1f';
 const ALPHA_UUID = '5d38da6e-b568-4499-ab67-f588354add5d';
