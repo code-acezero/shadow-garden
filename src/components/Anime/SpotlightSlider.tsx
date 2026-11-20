@@ -15,7 +15,7 @@ import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/context/AuthContext';
 import { useUserData } from '@/context/UserDataContext';
 import AuthModal from '@/components/Auth/AuthModal';
-import { cn } from '@/lib/utils';
+import { cn, getSafeImageUrl } from '@/lib/utils';
 import {
   DropdownMenu, 
   DropdownMenuContent, 
@@ -304,7 +304,7 @@ export default function SpotlightSlider({ animes }: { animes: SpotlightAnime[] }
 
   if (validAnimes.length === 0) return null;
 
-  const displayImage = current.cover || current.banner || current.poster || current.image;
+  const displayImage = getSafeImageUrl(current.cover || current.banner || current.poster || current.image);
   const displayTitle = typeof current.title === 'object' 
     ? (current.title?.english || current.title?.userPreferred || "Unknown") 
     : (current.title || "Unknown");

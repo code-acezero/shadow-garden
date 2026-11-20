@@ -28,19 +28,6 @@ import { formatAnimeTitle, slugifyTitle, cn } from '@/lib/utils';
 import EyeLoader from './EyeLoader';
 import ShadowLogo from '@/components/UIx/ShadowLogo';
 
-// Dynamic 3D WebGL Portal with safe fallback
-const ShadowGardenPortal = dynamic(
-  () =>
-    import('@/components/Portal/ShadowGardenPortal').catch((err) => {
-      console.warn('[Landing] Chunk load failed for ShadowGardenPortal, self-healing:', err);
-      return { default: () => null };
-    }),
-  { 
-    ssr: false, 
-    loading: () => null 
-  }
-);
-
 // High-resolution thematic backgrounds
 const HERO_BG_IMAGES = [
   "/images/index/bg-1.jpg", 
@@ -49,37 +36,6 @@ const HERO_BG_IMAGES = [
   "/images/index/bg-4.jpg", 
   "/images/index/bg-5.jpg"
 ];
-
-// Error Boundary for 3D Portal
-interface PortalErrorBoundaryProps {
-  children: React.ReactNode;
-  onError?: () => void;
-}
-
-interface PortalErrorBoundaryState {
-  hasError: boolean;
-}
-
-class PortalErrorBoundary extends React.Component<PortalErrorBoundaryProps, PortalErrorBoundaryState> {
-  constructor(props: PortalErrorBoundaryProps) {
-    super(props);
-    this.state = { hasError: false };
-  }
-
-  static getDerivedStateFromError(): PortalErrorBoundaryState {
-    return { hasError: true };
-  }
-
-  componentDidCatch(error: any, errorInfo: any) {
-    console.warn("Portal 3D scene caught by boundary, falling back gracefully:", error, errorInfo);
-    this.props.onError?.();
-  }
-
-  render() {
-    if (this.state.hasError) return null;
-    return this.props.children;
-  }
-}
 
 export default function LandingClient() {
   const router = useRouter();
@@ -119,7 +75,6 @@ export default function LandingClient() {
   });
 
   const [entryStage, setEntryStage] = useState<'choice' | 'title' | 'eyeloader' | 'ready'>('choice');
-  const [triggerEntry, setTriggerEntry] = useState(false);
   const [bgImage, setBgImage] = useState(HERO_BG_IMAGES[0]);
   const [installPrompt, setInstallPrompt] = useState<any>(null);
   
@@ -139,11 +94,6 @@ export default function LandingClient() {
       ...CURATED_ENGLISH_DRAMAS.slice(0, 2),
       ...CURATED_HINDI_DRAMAS.slice(0, 2)
     ];
-  }, []);
-
-  // When 3D portal intro finishes or scene is ready, reveal landing UI smoothly
-  const handleSceneReady = useCallback(() => {
-    setShowLandingUI(true);
   }, []);
 
   // Title shimmer timer: advance to EyeLoader after 2.4s
@@ -299,7 +249,7 @@ export default function LandingClient() {
   const handleSelectWorld = useCallback((e?: React.MouseEvent) => {
     if (e) { e.preventDefault(); e.stopPropagation(); }
     initializeAudio();
-    router.push('/experiments/kagemi-island.html?directWorld=1');
+    router.push('/kagemi?directWorld=1');
   }, [initializeAudio, router]);
 
   const handleSelectHome = useCallback((e?: React.MouseEvent) => {
@@ -308,48 +258,14 @@ export default function LandingClient() {
     setEntryStage('title');
   }, [initializeAudio]);
 
-  const handlePortalComplete = useCallback(() => { 
-    if (typeof window !== 'undefined') {
-      localStorage.setItem('sg_portal_seen', 'true');
-      localStorage.setItem('shadow_apk_intro_completed', 'true');
-    }
-    router.push('/home'); 
-  }, [router]);
-
-  /**
-   * Triggers the full 3D interactive transmigration sequence:
-   * 1. Fades out the landing page UI overlay
-   * 2. Sets triggerEntry=true to launch performEntrySequence() in ShadowGardenPortal
-   * 3. Plays Drop -> Crouch -> Stand -> Confusion -> Walk -> Dimension Alert BracePopup -> Push -> Suction -> Wormhole Tunnel -> Arrival -> /home
-   */
   const handleEnterClick = useCallback((e?: React.MouseEvent) => { 
     if (e) {
       e.preventDefault();
       e.stopPropagation();
     }
     initializeAudio();
-
-    // Check if user has explicitly chosen 'always skip'
-    const isAlwaysSkip = typeof window !== 'undefined' && localStorage.getItem('anim_never_ask') === 'true';
-    if (isAlwaysSkip) {
-      handlePortalComplete();
-      return;
-    }
-
-    // Smoothly dissolve the landing UI to unveil the full-screen 3D Portal sequence
-    setShowLandingUI(false);
-    setTriggerEntry(true); 
-  }, [initializeAudio, handlePortalComplete]);
-
-  // Extended safety timeout during 3D sequence (allowing full drop -> brace popup -> tunnel walkthrough)
-  useEffect(() => {
-    if (triggerEntry) {
-      const timer = setTimeout(() => {
-        handlePortalComplete();
-      }, 35000); // 35s safety net
-      return () => clearTimeout(timer);
-    }
-  }, [triggerEntry, handlePortalComplete]);
+    router.push('/home'); 
+  }, [initializeAudio, router]);
 
   const handleInstallClick = async () => {
     if (!installPrompt) return;
@@ -367,44 +283,6 @@ export default function LandingClient() {
   return (
     <main className="relative min-h-screen w-full bg-[#050508] text-white selection:bg-purple-900/40 selection:text-white overflow-x-hidden">
       
-      {/* 3D PORTAL ENGINE (Background ambience during browsing, Full-Screen 100% focus during entry sequence - Skipped when embedded) */}
-      {!isEmbedded && (
-        <PortalErrorBoundary onError={() => {
-          setShowLandingUI(true);
-          if (triggerEntry) handlePortalComplete();
-        }}>
-          <div 
-            className={cn(
-              "fixed inset-0 transition-all duration-1000",
-              triggerEntry 
-                ? "z-[99990] opacity-100 pointer-events-auto bg-black" 
-                : "z-0 opacity-40 pointer-events-auto mix-blend-screen"
-            )}
-          >
-            <Suspense fallback={null}>
-              <ShadowGardenPortal 
-                startTransition={triggerEntry}
-                onComplete={handlePortalComplete}
-                onSceneReady={handleSceneReady}
-              />
-            </Suspense>
-          </div>
-        </PortalErrorBoundary>
-      )}
-
-      {/* SKIP ANIMATION CONTROLLER (Prominently available whenever entry transition is running) */}
-      {triggerEntry && (
-        <div className="fixed top-6 right-6 z-[100000] pointer-events-auto">
-          <button
-            onClick={() => handlePortalComplete()}
-            className="px-5 py-2.5 rounded-full bg-black/85 hover:bg-black text-white border border-purple-500/50 hover:border-purple-400 backdrop-blur-xl text-xs font-mono font-bold tracking-widest uppercase transition-all shadow-[0_0_30px_rgba(168,85,247,0.4)] flex items-center gap-2 cursor-pointer active:scale-95"
-          >
-            <span>Skip To Home</span>
-            <ArrowRight className="w-4 h-4 text-purple-400" />
-          </button>
-        </div>
-      )}
-
       {/* SLIM, SLEEK RETURN TO KAGEMI WORLD BUTTON */}
       {showLandingUI && (
         <motion.div
@@ -414,7 +292,7 @@ export default function LandingClient() {
           className="fixed top-4 right-4 z-50 pointer-events-auto"
         >
           <a
-            href="/experiments/kagemi-island.html"
+            href="/kagemi?directWorld=1"
             className="flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-[#12121c]/80 hover:bg-[#1a1a28]/95 text-zinc-300 hover:text-white border border-[#d3bc8e]/35 hover:border-[#d3bc8e]/80 backdrop-blur-md text-xs font-medium tracking-wide transition-all shadow-[0_4px_20px_rgba(0,0,0,0.5)] active:scale-95 group"
             title="Return to 3D Kagemi Island"
           >
@@ -469,15 +347,15 @@ export default function LandingClient() {
                   <span className="text-sm text-[#d3bc8e] opacity-70 group-hover:opacity-100 group-hover:translate-x-1 transition-all flex-shrink-0">→</span>
                 </button>
 
-                {/* Option 2: Skip to Home Page (Genshin Crystal Style) */}
+                {/* Option 2: Skip to Landing Page (Genshin Crystal Style) */}
                 <button
                   onClick={handleSelectHome}
                   className="flex items-center gap-3.5 px-4 py-3.5 rounded-xl bg-white/[0.03] border border-white/14 hover:border-white/30 hover:bg-white/[0.07] text-left transition-all duration-200 group active:scale-[0.98] cursor-pointer"
                 >
                   <span className="text-zinc-400 text-sm group-hover:scale-115 transition-transform flex-shrink-0">✦</span>
                   <div className="flex-1 min-w-0">
-                    <div className="text-sm font-bold text-[#eaeaf2] tracking-wide">Skip to Home Page</div>
-                    <div className="text-[11px] text-[#8b92a4] mt-0.5">Streaming Platform</div>
+                    <div className="text-sm font-bold text-[#eaeaf2] tracking-wide">Skip to Landing Page</div>
+                    <div className="text-[11px] text-[#8b92a4] mt-0.5">Stream 15,000+ Anime • Direct Catalog</div>
                   </div>
                   <span className="text-sm text-zinc-400 opacity-60 group-hover:opacity-100 group-hover:translate-x-1 transition-all flex-shrink-0">→</span>
                 </button>
@@ -531,7 +409,7 @@ export default function LandingClient() {
 
       {/* LANDING PAGE INTERFACE (Fades in on mount/intro complete, dissolves when portal entry begins) */}
       <AnimatePresence mode="wait">
-        {showLandingUI && !triggerEntry && (
+        {showLandingUI && (
           <motion.div
             key="landing-ui"
             initial={{ opacity: 0 }}

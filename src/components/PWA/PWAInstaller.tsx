@@ -46,10 +46,10 @@ export default function PWAInstaller() {
         console.warn('[PWA] ServiceWorker registration failed:', err);
       });
 
-      // Reload when new SW activates and claims clients
+      // Reload when new SW activates and claims clients (production only, never interrupt dev sessions)
       let refreshing = false;
       navigator.serviceWorker.addEventListener('controllerchange', () => {
-        if (!refreshing) {
+        if (!refreshing && process.env.NODE_ENV !== 'development') {
           refreshing = true;
           console.log('[PWA] New Service Worker activated. Refreshing page...');
           window.location.reload();

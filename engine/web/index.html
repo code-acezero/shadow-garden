@@ -1,0 +1,316 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Kagemi Go Engine — Live High-Speed Testbed</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
+  <style>
+    body { background: #070709; color: #f3f4f6; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
+    ::-webkit-scrollbar { width: 6px; }
+    ::-webkit-scrollbar-thumb { background: #26262b; border-radius: 4px; }
+  </style>
+</head>
+<body class="min-h-screen pb-16">
+
+  <!-- Header Bar -->
+  <header class="sticky top-0 z-40 bg-[#0c0d12]/90 backdrop-blur-md border-b border-white/10 px-4 sm:px-8 py-3">
+    <div class="max-w-7xl mx-auto flex items-center justify-between flex-wrap gap-3">
+      <div class="flex items-center gap-3">
+        <div class="w-8 h-8 rounded-lg bg-gradient-to-tr from-purple-600 to-indigo-500 flex items-center justify-center font-black text-white text-sm shadow-lg shadow-purple-500/20">
+          Go
+        </div>
+        <div>
+          <h1 class="text-base font-bold text-white tracking-wide">Kagemi Go High-Speed Engine</h1>
+          <p class="text-[11px] text-zinc-400">Single Binary • Zero Memory Lag • Native HLS Stream Proxy</p>
+        </div>
+      </div>
+
+      <!-- Real-Time Metrics Bar -->
+      <div id="metricsBar" class="flex items-center gap-3 text-xs bg-white/5 border border-white/10 rounded-full px-4 py-1.5">
+        <div class="flex items-center gap-1.5">
+          <span class="w-2 h-2 rounded-full bg-emerald-400"></span>
+          <span class="text-zinc-400">RAM:</span>
+          <span id="metricRAM" class="font-mono font-semibold text-emerald-300">-- MB</span>
+        </div>
+        <span class="text-zinc-600">•</span>
+        <div class="flex items-center gap-1.5">
+          <span class="text-zinc-400">Goroutines:</span>
+          <span id="metricGoroutines" class="font-mono font-semibold text-purple-300">--</span>
+        </div>
+        <span class="text-zinc-600">•</span>
+        <div class="flex items-center gap-1.5">
+          <span class="text-zinc-400">Feed Latency:</span>
+          <span id="metricLatency" class="font-mono font-semibold text-sky-300">-- ms</span>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <!-- Main Container -->
+  <main class="max-w-7xl mx-auto px-4 sm:px-8 pt-6">
+
+    <!-- Search & Filter Controls -->
+    <div class="flex items-center justify-between gap-3 flex-wrap mb-6">
+      <!-- Tabs -->
+      <div class="flex items-center gap-1.5 bg-white/5 p-1 rounded-xl border border-white/10">
+        <button onclick="setCategory('trending')" id="tab-trending" class="tab-btn px-4 py-1.5 rounded-lg text-xs font-semibold bg-white/10 text-white shadow">All Trending</button>
+        <button onclick="setCategory('billionaire-ceo')" id="tab-billionaire-ceo" class="tab-btn px-4 py-1.5 rounded-lg text-xs font-semibold text-zinc-400 hover:text-white">Western CEO</button>
+        <button onclick="setCategory('revenge')" id="tab-revenge" class="tab-btn px-4 py-1.5 rounded-lg text-xs font-semibold text-zinc-400 hover:text-white">Revenge</button>
+        <button onclick="setCategory('romance')" id="tab-romance" class="tab-btn px-4 py-1.5 rounded-lg text-xs font-semibold text-zinc-400 hover:text-white">Romance</button>
+      </div>
+
+      <!-- Search Input -->
+      <div class="relative w-full sm:w-80">
+        <input 
+          id="searchInput" 
+          type="text" 
+          placeholder="Search HepDrama & Narto..." 
+          onkeydown="if(event.key==='Enter') doSearch()"
+          class="w-full bg-[#12131a] border border-white/10 rounded-xl px-3.5 py-2 text-xs text-white placeholder-zinc-500 focus:outline-none focus:border-purple-500"
+        />
+        <button onclick="doSearch()" class="absolute right-2 top-1.5 px-2.5 py-1 text-[11px] font-semibold bg-purple-600 text-white rounded-lg hover:bg-purple-500">
+          Search
+        </button>
+      </div>
+    </div>
+
+    <!-- Live Status / Result Info -->
+    <div class="flex items-center justify-between mb-4">
+      <h2 id="sectionTitle" class="text-sm font-semibold text-zinc-300">Unified Multi-Source Feed</h2>
+      <span id="itemCount" class="text-xs text-zinc-500 font-mono">Loading...</span>
+    </div>
+
+    <!-- Cards Grid -->
+    <div id="cardsGrid" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3 sm:gap-4">
+      <!-- Dynamic cards rendered by JS -->
+    </div>
+  </main>
+
+  <!-- Video Player Modal -->
+  <div id="playerModal" class="fixed inset-0 z-50 bg-black/90 backdrop-blur-md hidden flex items-center justify-center p-3 sm:p-6">
+    <div class="relative w-full max-w-sm sm:max-w-md bg-[#111219] rounded-2xl border border-white/15 overflow-hidden shadow-2xl flex flex-col">
+      <!-- Modal Top Bar -->
+      <div class="flex items-center justify-between px-4 py-3 border-b border-white/10 bg-[#161722]">
+        <div class="truncate mr-2">
+          <h3 id="playerTitle" class="text-xs font-bold text-white truncate">Episode Playback</h3>
+          <p id="playerSubtitle" class="text-[10px] text-zinc-400 font-mono">Live Go HLS Proxy Stream</p>
+        </div>
+        <button onclick="closePlayer()" class="w-7 h-7 rounded-full bg-white/10 text-white flex items-center justify-center text-xs font-bold hover:bg-white/20">✕</button>
+      </div>
+
+      <!-- Video Element -->
+      <div class="relative aspect-[9/16] bg-black w-full flex items-center justify-center">
+        <video id="videoElement" class="w-full h-full object-contain" controls autoplay playsinline></video>
+        <div id="videoLoader" class="absolute inset-0 flex items-center justify-center bg-black/60 hidden">
+          <div class="w-8 h-8 border-2 border-purple-500 border-t-transparent rounded-full animate-spin"></div>
+        </div>
+      </div>
+
+      <!-- Episode Switcher Drawer -->
+      <div class="p-3 bg-[#13141e] border-t border-white/10 max-h-36 overflow-y-auto">
+        <div class="text-[10px] font-semibold text-zinc-400 mb-2 uppercase tracking-wider">Episodes</div>
+        <div id="episodeButtons" class="grid grid-cols-5 gap-1.5">
+          <!-- Rendered dynamically -->
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    let currentCategory = 'trending';
+    let currentHls = null;
+
+    async function updateMetrics() {
+      try {
+        const res = await fetch('/api/metrics');
+        const data = await res.json();
+        document.getElementById('metricRAM').textContent = data.alloc_mb.toFixed(1) + ' MB';
+        document.getElementById('metricGoroutines').textContent = data.goroutines;
+      } catch (e) {}
+    }
+
+    async function loadFeed(category = 'trending') {
+      const grid = document.getElementById('cardsGrid');
+      const countEl = document.getElementById('itemCount');
+      countEl.textContent = 'Fetching from Go...';
+      
+      const t0 = performance.now();
+      try {
+        const res = await fetch(`/api/shorts/feed?category=${encodeURIComponent(category)}`);
+        const latency = Math.round(performance.now() - t0);
+        document.getElementById('metricLatency').textContent = latency + ' ms';
+
+        const data = await res.json();
+        const items = data.items || [];
+        countEl.textContent = `${items.length} titles available (loaded in ${latency}ms)`;
+
+        grid.innerHTML = items.map(item => `
+          <div onclick="openPlayer('${item.id}', '${escapeHtml(item.title)}')" class="cursor-pointer group flex flex-col">
+            <div class="relative aspect-[9/16] rounded-xl overflow-hidden bg-zinc-900 border border-white/5 transition-transform duration-300 group-hover:scale-[1.03] group-hover:border-purple-500/40 shadow-lg">
+              <img src="${item.cover}" alt="${escapeHtml(item.title)}" class="w-full h-full object-cover filter brightness-95 group-hover:brightness-105" loading="lazy" />
+              <div class="absolute inset-0 bg-gradient-to-t from-black/85 via-transparent to-transparent pointer-events-none"></div>
+              
+              <!-- Badges -->
+              <div class="absolute top-2 left-2 flex items-center gap-1">
+                <span class="px-2 py-0.5 text-[8.5px] font-bold rounded-full bg-black/70 backdrop-blur-md text-purple-300 border border-purple-500/30">
+                  ${item.sourceName || item.source}
+                </span>
+              </div>
+              <div class="absolute bottom-2 right-2 px-2 py-0.5 rounded-full bg-black/70 text-[9.5px] font-mono text-zinc-300 border border-white/10">
+                ${item.totalEpisodes} Eps
+              </div>
+            </div>
+            <h3 class="mt-2 text-xs font-semibold text-zinc-200 line-clamp-2 leading-snug group-hover:text-purple-300 transition-colors">
+              ${escapeHtml(item.title)}
+            </h3>
+            <span class="text-[10px] text-zinc-500 mt-0.5">${item.language || 'English Dub'}</span>
+          </div>
+        `).join('');
+
+        updateMetrics();
+      } catch (err) {
+        countEl.textContent = 'Failed to load feed: ' + err.message;
+      }
+    }
+
+    async function doSearch() {
+      const q = document.getElementById('searchInput').value.trim();
+      if (!q) return loadFeed(currentCategory);
+
+      const grid = document.getElementById('cardsGrid');
+      const countEl = document.getElementById('itemCount');
+      document.getElementById('sectionTitle').textContent = `Search Results: "${q}"`;
+      countEl.textContent = 'Searching...';
+
+      const t0 = performance.now();
+      try {
+        const res = await fetch(`/api/shorts/search?q=${encodeURIComponent(q)}`);
+        const latency = Math.round(performance.now() - t0);
+        document.getElementById('metricLatency').textContent = latency + ' ms';
+
+        const data = await res.json();
+        const items = data.items || [];
+        countEl.textContent = `${items.length} matches (searched in ${latency}ms)`;
+
+        grid.innerHTML = items.map(item => `
+          <div onclick="openPlayer('${item.id}', '${escapeHtml(item.title)}')" class="cursor-pointer group flex flex-col">
+            <div class="relative aspect-[9/16] rounded-xl overflow-hidden bg-zinc-900 border border-white/5 transition-transform duration-300 group-hover:scale-[1.03] shadow-lg">
+              <img src="${item.cover}" alt="${escapeHtml(item.title)}" class="w-full h-full object-cover" loading="lazy" />
+              <div class="absolute inset-0 bg-gradient-to-t from-black/85 via-transparent to-transparent pointer-events-none"></div>
+              <div class="absolute top-2 left-2">
+                <span class="px-2 py-0.5 text-[8.5px] font-bold rounded-full bg-black/70 text-purple-300 border border-purple-500/30">
+                  ${item.sourceName || item.source}
+                </span>
+              </div>
+              <div class="absolute bottom-2 right-2 px-2 py-0.5 rounded-full bg-black/70 text-[9.5px] font-mono text-zinc-300">
+                ${item.totalEpisodes} Eps
+              </div>
+            </div>
+            <h3 class="mt-2 text-xs font-semibold text-zinc-200 line-clamp-2">${escapeHtml(item.title)}</h3>
+          </div>
+        `).join('');
+      } catch (e) {
+        countEl.textContent = 'Search failed';
+      }
+    }
+
+    function setCategory(cat) {
+      currentCategory = cat;
+      document.querySelectorAll('.tab-btn').forEach(b => {
+        b.className = 'tab-btn px-4 py-1.5 rounded-lg text-xs font-semibold text-zinc-400 hover:text-white';
+      });
+      document.getElementById('tab-' + cat).className = 'tab-btn px-4 py-1.5 rounded-lg text-xs font-semibold bg-white/10 text-white shadow';
+      document.getElementById('sectionTitle').textContent = cat === 'trending' ? 'Unified Multi-Source Feed' : `Category: ${cat}`;
+      loadFeed(cat);
+    }
+
+    async function openPlayer(id, title) {
+      const modal = document.getElementById('playerModal');
+      const titleEl = document.getElementById('playerTitle');
+      const loader = document.getElementById('videoLoader');
+      const epButtons = document.getElementById('episodeButtons');
+      const video = document.getElementById('videoElement');
+
+      titleEl.textContent = title;
+      modal.classList.remove('hidden');
+      loader.classList.remove('hidden');
+      epButtons.innerHTML = '<span class="text-xs text-zinc-500 col-span-5">Loading episodes...</span>';
+
+      try {
+        const res = await fetch(`/api/shorts/${encodeURIComponent(id)}`);
+        const data = await res.json();
+        const drama = data.drama;
+        if (!drama || !drama.episodes || drama.episodes.length === 0) {
+          alert('No playable episodes found.');
+          closePlayer();
+          return;
+        }
+
+        epButtons.innerHTML = drama.episodes.slice(0, 50).map(ep => `
+          <button onclick="playStream('${ep.streamUrl}', ${ep.episodeNumber})" class="h-7 rounded bg-white/5 border border-white/10 text-[10px] font-bold text-zinc-300 hover:bg-purple-600 hover:text-white">
+            ${ep.episodeNumber}
+          </button>
+        `).join('');
+
+        playStream(drama.episodes[0].streamUrl, 1);
+      } catch (e) {
+        alert('Failed to load drama details: ' + e.message);
+        closePlayer();
+      }
+    }
+
+    function playStream(streamUrl, epNum) {
+      const video = document.getElementById('videoElement');
+      const loader = document.getElementById('videoLoader');
+      loader.classList.remove('hidden');
+
+      if (currentHls) {
+        currentHls.destroy();
+        currentHls = null;
+      }
+
+      if (Hls.isSupported()) {
+        const hls = new Hls({ enableWorker: true, lowLatencyMode: true });
+        hls.loadSource(streamUrl);
+        hls.attachMedia(video);
+        hls.on(Hls.Events.MANIFEST_PARSED, () => {
+          loader.classList.add('hidden');
+          video.play().catch(() => {});
+        });
+        hls.on(Hls.Events.ERROR, (event, data) => {
+          if (data.fatal) {
+            console.error('HLS Fatal Error:', data);
+            loader.classList.add('hidden');
+          }
+        });
+        currentHls = hls;
+      } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
+        video.src = streamUrl;
+        video.play().catch(() => {});
+        loader.classList.add('hidden');
+      }
+    }
+
+    function closePlayer() {
+      const modal = document.getElementById('playerModal');
+      const video = document.getElementById('videoElement');
+      video.pause();
+      if (currentHls) {
+        currentHls.destroy();
+        currentHls = null;
+      }
+      modal.classList.add('hidden');
+    }
+
+    function escapeHtml(str) {
+      return (str || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+    }
+
+    // Initial boot
+    loadFeed();
+    setInterval(updateMetrics, 2000);
+  </script>
+</body>
+</html>

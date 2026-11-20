@@ -28,7 +28,7 @@ import { ALL_ATELIER_STORE_FRAMES, ATELIER_CATEGORIES } from '@/lib/atelierFrame
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator } from '@/components/ui/dropdown-menu';
 import UserTitleBadge from '@/components/ui/UserTitleBadge';
 import { getFrameForTitle, isGuildMaster } from '@/lib/userTitles';
-import { getAvailableTitles, getEquippedTitle, getTitleDefinition, getNextMilestone, ALL_TITLES, TitleDefinition } from '@/lib/userTitles';
+import { getAvailableTitles, getEquippedTitle, getTitleDefinition, getNextMilestone, ALL_TITLES, TitleDefinition, isUserAdWhitelisted } from '@/lib/userTitles';
 import { ProfilePageSkeleton } from '@/components/UIx/SkeletonLoaders';
 import Footer from '@/components/Anime/Footer';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -2493,28 +2493,33 @@ export default function ProfilePage() {
                                                 </div>
 
                                                 {/* Sleek, Monochromatic Active Title & Milestone Strip */}
-                                                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 px-3.5 py-2.5 rounded-xl bg-white/[0.03] border border-white/[0.08] mb-3 text-xs">
-                                                    <div className="flex items-center gap-2 min-w-0">
-                                                        <span className="text-[10px] font-bold uppercase tracking-wider text-zinc-500 shrink-0">Active:</span>
-                                                        <span className="text-sm font-bold text-white truncate font-mono">({currentEquippedTitle})</span>
-                                                        <span className="text-[11px] text-zinc-500 font-medium truncate hidden sm:inline">
-                                                            • {getTitleDefinition(currentEquippedTitle).category === 'level' ? `Lv. ${getTitleDefinition(currentEquippedTitle).minLevel || 1} Rank` : getTitleDefinition(currentEquippedTitle).category === 'staff' ? (currentEquippedTitle.toLowerCase() === 'shadow' ? 'Apex Guild Master' : 'Staff Rank') : getTitleDefinition(currentEquippedTitle).category === 'former' ? 'Bestowed Legacy' : 'Honorary Title'}
-                                                        </span>
-                                                    </div>
-                                                    <div className="flex items-center gap-2 text-zinc-400 text-[11px] shrink-0">
-                                                        <span className="text-[10px] font-bold uppercase tracking-wider text-zinc-500">Next Milestone:</span>
-                                                        {milestoneInfo.nextTitle ? (
-                                                            <span className="font-semibold text-zinc-300">
-                                                                <span className="text-zinc-200 font-bold">({milestoneInfo.nextTitle.title})</span> at Lv. {milestoneInfo.nextTitle.minLevel}
-                                                                <span className="text-zinc-500 font-normal ml-1">({milestoneInfo.levelsRemaining} lvls to go)</span>
-                                                            </span>
-                                                        ) : (
-                                                            <span className="text-zinc-200 font-semibold">
-                                                                Supreme Level 100 Achieved
-                                                            </span>
-                                                        )}
-                                                    </div>
-                                                </div>
+                                                {(() => {
+                                                    const activeTitleDef = getTitleDefinition(currentEquippedTitle, profile);
+                                                    return (
+                                                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 px-3.5 py-2.5 rounded-xl bg-white/[0.03] border border-white/[0.08] mb-3 text-xs">
+                                                            <div className="flex items-center gap-2 min-w-0">
+                                                                <span className="text-[10px] font-bold uppercase tracking-wider text-zinc-500 shrink-0">Active:</span>
+                                                                <span className={`text-sm font-bold truncate font-mono ${isUserAdWhitelisted(profile) ? 'text-purple-400 font-bold drop-shadow-[0_0_8px_rgba(168,85,247,0.7)]' : activeTitleDef.badgeStyle.bracketColor}`}>({currentEquippedTitle})</span>
+                                                                <span className="text-[11px] text-zinc-500 font-medium truncate hidden sm:inline">
+                                                                    • {activeTitleDef.category === 'level' ? `Lv. ${activeTitleDef.minLevel || 1} Rank` : activeTitleDef.category === 'staff' ? (currentEquippedTitle.toLowerCase() === 'shadow' ? 'Apex Guild Master' : 'Staff Rank') : activeTitleDef.category === 'former' ? 'Bestowed Legacy' : 'Honorary Title'}
+                                                                </span>
+                                                            </div>
+                                                            <div className="flex items-center gap-2 text-zinc-400 text-[11px] shrink-0">
+                                                                <span className="text-[10px] font-bold uppercase tracking-wider text-zinc-500">Next Milestone:</span>
+                                                                {milestoneInfo.nextTitle ? (
+                                                                    <span className="font-semibold text-zinc-300">
+                                                                        <span className="text-zinc-200 font-bold">({milestoneInfo.nextTitle.title})</span> at Lv. {milestoneInfo.nextTitle.minLevel}
+                                                                        <span className="text-zinc-500 font-normal ml-1">({milestoneInfo.levelsRemaining} lvls to go)</span>
+                                                                    </span>
+                                                                ) : (
+                                                                    <span className="text-zinc-200 font-semibold">
+                                                                        Supreme Level 100 Achieved
+                                                                    </span>
+                                                                )}
+                                                            </div>
+                                                        </div>
+                                                    );
+                                                })()}
 
                                                 {/* Filter Tabs for Unlocked Titles (2% Thicker & Balanced Pill Buttons) */}
                                                 <div className="flex items-center justify-center flex-wrap gap-2 py-1 my-3 text-xs w-full">
@@ -2579,9 +2584,14 @@ export default function ProfilePage() {
                                                                 </div>
 
                                                                 <div className="my-2 flex flex-col items-center text-center w-full">
-                                                                    <div className="text-sm font-bold text-zinc-100 tracking-tight">
-                                                                        ({t.title})
-                                                                    </div>
+                                                                    {(() => {
+                                                                        const cardTitleDef = getTitleDefinition(t.title, profile);
+                                                                        return (
+                                                                            <div className={`text-sm font-bold tracking-tight ${cardTitleDef.badgeStyle.bracketColor}`}>
+                                                                                ({t.title})
+                                                                            </div>
+                                                                        );
+                                                                    })()}
                                                                     <p className="text-[11px] text-zinc-400 line-clamp-2 mt-1 leading-snug text-center max-w-[220px]">
                                                                         {t.description}
                                                                     </p>

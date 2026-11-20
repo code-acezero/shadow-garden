@@ -1,5 +1,5 @@
 import React from 'react';
-import { getEquippedTitle, getTitleDefinition } from '@/lib/userTitles';
+import { getEquippedTitle, getTitleDefinition, isUserAdWhitelisted } from '@/lib/userTitles';
 
 export interface UserTitleProfile {
   id?: string;
@@ -64,14 +64,20 @@ export function UserTitleBadge({
   const title = getEquippedTitle(user);
   if (!title) return null;
 
-  const titleDef = getTitleDefinition(title);
+  const titleDef = getTitleDefinition(title, user);
   const isShadow = title === 'Shadow' || title === 'Guild Master';
+  const isWhitelisted = isUserAdWhitelisted(user);
 
   if (variant === 'badge') {
+    const badgeBg = isWhitelisted ? 'bg-purple-950/70' : titleDef.badgeStyle.badgeBg;
+    const badgeText = isWhitelisted ? 'text-purple-300 font-bold' : titleDef.badgeStyle.badgeText;
+    const badgeBorder = isWhitelisted ? 'border-purple-500/50' : titleDef.badgeStyle.badgeBorder;
+    const glow = isWhitelisted ? 'rgba(168,85,247,0.5)' : titleDef.badgeStyle.glow;
+
     return (
       <span
-        className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] uppercase font-black tracking-wider border backdrop-blur-sm ${titleDef.badgeStyle.badgeBg} ${titleDef.badgeStyle.badgeText} ${titleDef.badgeStyle.badgeBorder} ${className}`}
-        style={titleDef.badgeStyle.glow ? { boxShadow: `0 0 12px ${titleDef.badgeStyle.glow}` } : undefined}
+        className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] uppercase font-black tracking-wider border backdrop-blur-sm ${badgeBg} ${badgeText} ${badgeBorder} ${className}`}
+        style={glow ? { boxShadow: `0 0 12px ${glow}` } : undefined}
       >
         <UserOnlinePulse user={user} />
         {title}
@@ -80,9 +86,9 @@ export function UserTitleBadge({
   }
 
   if (variant === 'text') {
-    const colorClass = isShadow
-      ? 'text-amber-400 font-black drop-shadow-[0_0_10px_rgba(168,85,247,0.8)]'
-      : titleDef.badgeStyle.bracketColor;
+    const colorClass = isWhitelisted
+      ? 'text-purple-400 font-bold drop-shadow-[0_0_8px_rgba(168,85,247,0.7)]'
+      : (isShadow ? 'text-amber-400 font-black drop-shadow-[0_0_10px_rgba(168,85,247,0.8)]' : titleDef.badgeStyle.bracketColor);
 
     return (
       <span className={`inline-flex items-center ${colorClass} ${className}`}>
@@ -93,11 +99,15 @@ export function UserTitleBadge({
   }
 
   // Default: 'bracket' style: (Shadow)
+  // Whitelisted users (and auto-whitelisted admins/mods) receive royal purple title color across the entire realm
   const hasExplicitSize = /\btext-(xs|sm|base|lg|xl|2xl|3xl|\[\d+px\])\b/.test(className);
   const sizeClass = hasExplicitSize ? '' : 'text-[11px]';
+  const bracketColorClass = isWhitelisted
+    ? 'text-purple-400 font-bold drop-shadow-[0_0_8px_rgba(168,85,247,0.7)]'
+    : (isShadow ? 'text-amber-400 font-black drop-shadow-[0_0_10px_rgba(168,85,247,0.8)]' : titleDef.badgeStyle.bracketColor);
 
   return (
-    <span className={`inline-flex items-center gap-0.5 ${sizeClass} ${titleDef.badgeStyle.bracketColor} ${className}`}>
+    <span className={`inline-flex items-center gap-0.5 ${sizeClass} ${bracketColorClass} ${className}`}>
       <UserOnlinePulse user={user} />
       ({title})
     </span>

@@ -1353,9 +1353,19 @@ const OmniPlayer = forwardRef<OmniPlayerRef, OmniPlayerProps>(({
     if (!videoRef.current) return;
     if (videoRef.current.paused) {
       adManager.triggerFirstPlay(episodeId || title || 'episode');
-      videoRef.current.play();
+      videoRef.current.play().then(() => {
+        setIsPlaying(true);
+      }).catch((err) => {
+        console.warn('Autoplay with audio blocked, trying muted fallback:', err);
+        if (videoRef.current) {
+          videoRef.current.muted = true;
+          setIsMuted(true);
+          videoRef.current.play().then(() => setIsPlaying(true)).catch(() => {});
+        }
+      });
     } else {
       videoRef.current.pause();
+      setIsPlaying(false);
       if (canSaveRef.current) onInteract?.();
     }
   }, [episodeId, title, onInteract]);
@@ -1890,14 +1900,16 @@ const OmniPlayer = forwardRef<OmniPlayerRef, OmniPlayerProps>(({
 
   const handleMouseDown = (e: React.MouseEvent) => {
     controlsWereHiddenAtStartRef.current = !showControlsRef.current;
+    if ((e.target as HTMLElement).closest('[data-ad-overlay="true"]')) return;
     if (showControlsRef.current) {
-      if ((e.target as HTMLElement).closest('button') || (e.target as HTMLElement).closest('input')) return;
+      if ((e.target as HTMLElement).closest('button') || (e.target as HTMLElement).closest('input') || (e.target as HTMLElement).closest('[data-player-control="true"]')) return;
     }
     startLongPress();
   };
   const handleMouseUp = () => endLongPress();
 
   const handleGesture = (e: React.MouseEvent) => {
+    if ((e.target as HTMLElement).closest('[data-ad-overlay="true"]')) return;
     // 1. If controls were hidden when tap started, tap MUST reveal UI and NOT immediately hide!
     if (!showControlsRef.current || controlsWereHiddenAtStartRef.current) {
       controlsWereHiddenAtStartRef.current = false;
@@ -1907,7 +1919,7 @@ const OmniPlayer = forwardRef<OmniPlayerRef, OmniPlayerProps>(({
     }
 
     // 2. When controls are showing, ignore clicks on interactive elements
-    if ((e.target as HTMLElement).closest('button') || (e.target as HTMLElement).closest('input') || (e.target as HTMLElement).closest('[role="menu"]') || (e.target as HTMLElement).closest('[data-player-menu="true"]') || (e.target as HTMLElement).closest('.absolute.bottom-12') || (e.target as HTMLElement).closest('.absolute.bottom-16') || (e.target as HTMLElement).closest('[class*="group/seek"]') || (e.target as HTMLElement).closest('[class*="bg-black/60"]')) return;
+    if ((e.target as HTMLElement).closest('button') || (e.target as HTMLElement).closest('input') || (e.target as HTMLElement).closest('[data-player-control="true"]') || (e.target as HTMLElement).closest('[role="menu"]') || (e.target as HTMLElement).closest('[data-player-menu="true"]') || (e.target as HTMLElement).closest('.absolute.bottom-12') || (e.target as HTMLElement).closest('.absolute.bottom-16') || (e.target as HTMLElement).closest('[class*="group/seek"]') || (e.target as HTMLElement).closest('[class*="bg-black/60"]')) return;
     if (activeMenu !== 'none') { setActiveMenu('none'); return; }
 
     const now = Date.now();
@@ -2442,8 +2454,8 @@ const OmniPlayer = forwardRef<OmniPlayerRef, OmniPlayerProps>(({
       {/* Center Controls Cluster (Play/Pause flanked by Mobile Quick Seek -10s / +10s) */}
       <div
         className={cn(
-          "absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-40 flex items-center justify-center gap-6 sm:gap-8 md:gap-0 transition-[opacity,visibility] duration-300",
-          (showControls && !showEndingOverlay) ? "opacity-100 pointer-events-auto visible" : "opacity-0 pointer-events-none invisible"
+          "absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-[65] flex items-center justify-center gap-6 sm:gap-8 md:gap-0 transition-[opacity,visibility] duration-300 pointer-events-auto",
+          (showControls && !showEndingOverlay) ? "opacity-100 visible" : "opacity-0 pointer-events-none invisible"
         )}
         style={{
           top: '50%',
@@ -2471,25 +2483,33 @@ const OmniPlayer = forwardRef<OmniPlayerRef, OmniPlayerProps>(({
               </div>
             </button>
 
-            <div
-              onClick={(e) => { e.stopPropagation(); togglePlay(); }}
+            <button
+              type="button"
+              data-player-control="true"
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                togglePlay();
+              }}
               style={{
                 width: `${playBtnSize}px`,
                 height: `${playBtnSize}px`,
               }}
-              className={cn("group/playbtn relative aspect-square rounded-full shrink-0 flex items-center justify-center cursor-pointer active:scale-95 transition-all duration-300", showControls ? "opacity-100 scale-100 hover:scale-110 pointer-events-auto" : "opacity-0 scale-150 pointer-events-none")}
+              className={cn("group/playbtn relative aspect-square rounded-full shrink-0 flex items-center justify-center cursor-pointer active:scale-95 transition-all duration-300 border-0 outline-none focus:outline-none p-0 bg-transparent", showControls ? "opacity-100 scale-100 hover:scale-110 pointer-events-auto" : "opacity-0 scale-150 pointer-events-none")}
+              aria-label={isPlaying ? "Pause video" : "Play video"}
+              title={isPlaying ? "Pause (Space)" : "Play (Space)"}
             >
               {/* Glowing Liquid Glass Background */}
-              <div className="absolute inset-0 rounded-full bg-white/25 backdrop-blur-2xl border border-white/40 shadow-[0_0_30px_rgba(255,255,255,0.3),inset_0_2px_4px_rgba(255,255,255,0.6)] group-hover/playbtn:bg-white/40 group-hover/playbtn:border-white/60 group-hover/playbtn:shadow-[0_0_45px_rgba(255,255,255,0.6)] transition-all duration-500 overflow-hidden">
+              <div className="absolute inset-0 rounded-full bg-white/25 backdrop-blur-2xl border border-white/40 shadow-[0_0_30px_rgba(255,255,255,0.3),inset_0_2px_4px_rgba(255,255,255,0.6)] group-hover/playbtn:bg-white/40 group-hover/playbtn:border-white/60 group-hover/playbtn:shadow-[0_0_45px_rgba(255,255,255,0.6)] transition-all duration-500 overflow-hidden pointer-events-none">
                 {/* Glass Shine */}
                 <div className="absolute inset-0 bg-gradient-to-b from-white/70 to-transparent opacity-50 -translate-y-[40%] rounded-[100%] pointer-events-none" />
               </div>
               {isPlaying ? (
-                <Pause fill="white" className="w-[44%] h-[44%] relative z-10 text-white drop-shadow-[0_2px_8px_rgba(0,0,0,0.8)] transition-transform duration-300 group-hover/playbtn:scale-110" />
+                <Pause fill="white" className="w-[44%] h-[44%] relative z-10 text-white drop-shadow-[0_2px_8px_rgba(0,0,0,0.8)] transition-transform duration-300 group-hover/playbtn:scale-110 pointer-events-none" />
               ) : (
-                <Play fill="white" className="ml-1 w-[44%] h-[44%] relative z-10 text-white drop-shadow-[0_2px_8px_rgba(0,0,0,0.8)] transition-transform duration-300 group-hover/playbtn:scale-110" />
+                <Play fill="white" className="ml-1 w-[44%] h-[44%] relative z-10 text-white drop-shadow-[0_2px_8px_rgba(0,0,0,0.8)] transition-transform duration-300 group-hover/playbtn:scale-110 pointer-events-none" />
               )}
-            </div>
+            </button>
 
             {/* Mobile Quick Fast-Forward 10s (Hidden on desktop to preserve desktop UI) */}
             <button
@@ -2512,7 +2532,7 @@ const OmniPlayer = forwardRef<OmniPlayerRef, OmniPlayerProps>(({
         )}
       </div>
 
-      <div style={{ pointerEvents: (showControls && !showEndingOverlay) ? 'auto' : 'none' }} className={cn("absolute inset-0 bg-gradient-to-t from-black/90 via-transparent to-transparent flex flex-col justify-end px-3 pb-2 md:px-5 md:pb-3 transition-[opacity,visibility] duration-300 z-[60]", (showControls && !showEndingOverlay) ? "opacity-100 pointer-events-auto visible" : "opacity-0 pointer-events-none invisible")}>
+      <div style={{ pointerEvents: 'none' }} className={cn("absolute inset-0 bg-gradient-to-t from-black/90 via-transparent to-transparent flex flex-col justify-end px-3 pb-2 md:px-5 md:pb-3 transition-[opacity,visibility] duration-300 z-[60] pointer-events-none", (showControls && !showEndingOverlay) ? "opacity-100 visible" : "opacity-0 invisible")}>
         {(() => {
           const isTouchOnly = typeof window !== 'undefined' && !window.matchMedia('(hover: hover) and (pointer: fine)').matches;
           // Seek preview should ONLY show when directly interacting with the seekbar:

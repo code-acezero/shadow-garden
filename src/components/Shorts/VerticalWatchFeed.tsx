@@ -5,10 +5,10 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { motion, AnimatePresence, LayoutGroup } from 'framer-motion';
 import Hls from 'hls.js';
-import { 
-  Play, Pause, Volume2, Volume1, VolumeX, ArrowLeft, 
-  Layers, Heart, Share2, FastForward, Rewind, 
-  RotateCcw, RotateCw, Flame, AlertCircle, Loader2, Check, Subtitles, 
+import {
+  Play, Pause, Volume2, Volume1, VolumeX, ArrowLeft,
+  Layers, Heart, Share2, FastForward, Rewind,
+  RotateCcw, RotateCw, Flame, AlertCircle, Loader2, Check, Subtitles,
   Maximize, Minimize, Settings, ChevronLeft, ChevronRight, ChevronUp, ChevronDown,
   Star, LockOpen, Search, PictureInPicture2, Repeat, Repeat1,
   HelpCircle, X, Grid, LayoutGrid, List, MessageSquare,
@@ -22,11 +22,11 @@ import { ShortDramaDetail, ShortDramaEpisode, ShortDramaItem } from '@/lib/short
 import EpisodeDrawerModal from './EpisodeDrawerModal';
 import ShadowComments from '@/components/Comments/ShadowComments';
 import Footer from '@/components/Anime/Footer';
-import { 
-  ATRAX_BUBBLY_SPRING, 
-  ATRAX_CAPSULE_SPRING, 
+import {
+  ATRAX_BUBBLY_SPRING,
+  ATRAX_CAPSULE_SPRING,
   ATRAX_GENTLE_SPRING,
-  atraxSquishTapVariants, 
+  atraxSquishTapVariants,
   atraxChipTapVariants,
   atraxJellyWobbleVariants,
   atraxBubblePopVariants
@@ -48,8 +48,18 @@ const QUALITY_OPTIONS = ['Auto (1080p)', '1080p FHD', '720p HD', '480p SD'];
 const getProxiedUrl = (rawUrl: string): string => {
   if (!rawUrl) return '';
   if (rawUrl.startsWith('/api/proxy') || rawUrl.startsWith('blob:') || rawUrl.startsWith('data:')) return rawUrl;
+  if (rawUrl.startsWith('/api/shorts/stream')) return rawUrl;
   if (rawUrl.startsWith('http://') || rawUrl.startsWith('https://')) {
-    return `/api/proxy?url=${encodeURIComponent(rawUrl)}`;
+    let referer = '';
+    const lower = rawUrl.toLowerCase();
+    if (lower.includes('hepdrama') || lower.includes('dramabox') || lower.includes('goodshort') || lower.includes('shorttv') || lower.includes('volcengine')) {
+      referer = '&referer=' + encodeURIComponent('https://hepdrama.com/');
+    } else if (lower.includes('narto') || lower.includes('voddrama')) {
+      referer = '&referer=' + encodeURIComponent('https://narto-drama.com/');
+    } else if (lower.includes('dramadunyam')) {
+      referer = '&referer=' + encodeURIComponent('https://dramadunyam.com/');
+    }
+    return `/api/proxy?url=${encodeURIComponent(rawUrl)}${referer}`;
   }
   return rawUrl;
 };
@@ -69,11 +79,11 @@ const EpisodeButton = React.memo(({ epNum, isCurrent, isPlayed, viewMode, onClic
       className={cn(
         "relative select-none border transition-all duration-150 group",
         viewMode === 'grid' ? "h-7 w-full rounded-md flex items-center justify-center text-[10px] font-bold" :
-        viewMode === 'compact' ? "aspect-square rounded-md flex items-center justify-center text-[9px] font-bold" :
-        "w-full h-7 rounded-md flex items-center px-2.5 text-xs font-semibold text-left",
+          viewMode === 'compact' ? "aspect-square rounded-md flex items-center justify-center text-[9px] font-bold" :
+            "w-full h-7 rounded-md flex items-center px-2.5 text-xs font-semibold text-left",
         isCurrent ? "bg-primary border-primary text-white font-black z-10 shadow-[0_0_12px_rgba(220,38,38,0.5)]" :
-        isPlayed ? "bg-[#14261c]/90 border-emerald-800/50 text-emerald-300/80 hover:bg-[#1a3325] hover:border-emerald-600/60 hover:text-emerald-100 shadow-[inset_0_0_10px_rgba(16,185,129,0.06)]" :
-        "bg-transparent border-zinc-800 text-zinc-400 hover:text-white hover:border-zinc-700 hover:bg-zinc-900/60"
+          isPlayed ? "bg-[#14261c]/90 border-emerald-800/50 text-emerald-300/80 hover:bg-[#1a3325] hover:border-emerald-600/60 hover:text-emerald-100 shadow-[inset_0_0_10px_rgba(16,185,129,0.06)]" :
+            "bg-transparent border-zinc-800 text-zinc-400 hover:text-white hover:border-zinc-700 hover:bg-zinc-900/60"
       )}
     >
       {/* Active Micro-Equalizer Indicator for Grid & Compact Modes */}
@@ -192,7 +202,7 @@ export default function VerticalWatchFeed({
   const toggleAspectFit = useCallback(() => {
     setAspectFit(prev => {
       const next = prev === 'contain' ? 'cover' : 'contain';
-      try { localStorage.setItem('shadow_shorts_aspect_fit', next); } catch {}
+      try { localStorage.setItem('shadow_shorts_aspect_fit', next); } catch { }
       return next;
     });
   }, []);
@@ -212,7 +222,7 @@ export default function VerticalWatchFeed({
     setCcPositionY(val);
     try {
       localStorage.setItem('shadow_shorts_cc_pos_y', String(val));
-    } catch {}
+    } catch { }
   }, []);
 
   const [isFullscreen, setIsFullscreen] = useState<boolean>(false);
@@ -240,7 +250,7 @@ export default function VerticalWatchFeed({
           const parsed: number[] = JSON.parse(stored);
           if (Array.isArray(parsed)) parsed.forEach(n => set.add(n));
         }
-      } catch {}
+      } catch { }
     }
     return set;
   });
@@ -327,7 +337,7 @@ export default function VerticalWatchFeed({
       const next = new Set(prev).add(currentEpNum);
       try {
         localStorage.setItem(`shadow_played_eps_${drama.id}`, JSON.stringify(Array.from(next)));
-      } catch {}
+      } catch { }
       return next;
     });
   }, [currentEpNum, drama.id]);
@@ -352,18 +362,64 @@ export default function VerticalWatchFeed({
     return ['Mini-Drama', 'Time Travel', 'Court Intrigue', 'Historical Romance', 'Comedy'];
   }, [drama.tags]);
 
+  // Detect genuine source studio / platform (DramaBox, GoodShort, ShortTV, ReelShort, MoboReels, etc.)
+  const genuineStudio = useMemo(() => {
+    const textToScan = [
+      drama.sourceName,
+      drama.title,
+      drama.description,
+      ...(drama.tags || []),
+      drama.firstEpisodeStream,
+      ...(drama.episodes || []).slice(0, 3).map(e => e.streamUrl || '')
+    ].filter(Boolean).join(' ').toLowerCase();
+
+    if (textToScan.includes('dramabox') || textToScan.includes('hwztvideo')) return 'DramaBox';
+    if (textToScan.includes('goodshort') || textToScan.includes('goodbos')) return 'GoodShort';
+    if (textToScan.includes('shorttv') || textToScan.includes('volcengine')) return 'ShortTV';
+    if (textToScan.includes('reelshort') || textToScan.includes('crazymaple')) return 'ReelShort';
+    if (textToScan.includes('moboreels') || textToScan.includes('mobo')) return 'MoboReels';
+    if (textToScan.includes('kalostv') || textToScan.includes('kalos')) return 'Kalos TV';
+    if (textToScan.includes('topshort')) return 'TopShort';
+    if (textToScan.includes('netshort')) return 'NetShort';
+    if (textToScan.includes('meloshort') || textToScan.includes('melolo')) return 'MeloShort';
+    if (textToScan.includes('flickreel')) return 'FlickReels';
+    if (textToScan.includes('anyreel')) return 'AnyReel';
+    if (textToScan.includes('sereal')) return 'Sereal';
+
+    // If sourceName is already a legitimate platform name (not HepDrama / Narto / DramaDünyam)
+    if (drama.sourceName) {
+      const s = drama.sourceName.trim();
+      const sLower = s.toLowerCase();
+      if (!['hepdrama', 'narto drama', 'narto', 'dramadünyam', 'dramadunyam', 'maccms', 'curated', 'source'].includes(sLower)) {
+        return s;
+      }
+    }
+    return 'DramaBox';
+  }, [drama]);
+
   const cleanTags = useMemo(() => {
-    return displayTags
+    const aggregatorBlocklist = ['hepdrama', 'narto drama', 'narto', 'dramadünyam', 'dramadunyam', 'maccms', 'source'];
+    const filtered = displayTags
       .map(t => t.replace(/^#/, '').trim())
       .filter(t => {
         const lower = t.toLowerCase();
-        return !lower.includes('dub') && !lower.includes('sub');
+        if (lower.includes('dub') || lower.includes('sub')) return false;
+        if (aggregatorBlocklist.some(term => lower.includes(term))) return false;
+        return true;
       });
-  }, [displayTags]);
+
+    // If a genuine studio was detected, prepend it as the primary tag
+    if (genuineStudio && !filtered.some(t => t.toLowerCase() === genuineStudio.toLowerCase())) {
+      return [genuineStudio, ...filtered];
+    }
+    return filtered.length > 0 ? filtered : ['DramaBox', 'Mini-Drama', 'Romance'];
+  }, [displayTags, genuineStudio]);
 
   const displayLanguage = useMemo(() => {
-    if (drama.language?.toLowerCase().includes('hindi')) return 'Hindi Dub 🇮🇳';
-    return 'English Sub 🇺🇸';
+    const lang = (drama.language || '').toLowerCase().trim();
+    if (lang.includes('hindi')) return 'Hindi Dub';
+    if (lang.includes('english dub') || lang === 'dub' || lang.includes('dub')) return 'English Dub';
+    return 'English Sub';
   }, [drama.language]);
 
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -465,7 +521,7 @@ export default function VerticalWatchFeed({
   const displayedEpisodes = useMemo(() => {
     if (episodeSearch.trim()) {
       const q = episodeSearch.toLowerCase();
-      return drama.episodes.filter(ep => 
+      return drama.episodes.filter(ep =>
         ep.episodeNumber.toString().includes(q) ||
         ep.title.toLowerCase().includes(q)
       );
@@ -551,7 +607,7 @@ export default function VerticalWatchFeed({
             setCommentsCount(count);
           }
         }
-      } catch {}
+      } catch { }
     };
     fetchCount();
 
@@ -676,7 +732,7 @@ export default function VerticalWatchFeed({
           if (local[drama.id] && isMounted) {
             setWatchlistStatus(local[drama.id].status || 'watching');
           }
-        } catch {}
+        } catch { }
         return;
       }
       try {
@@ -758,7 +814,7 @@ export default function VerticalWatchFeed({
       supabase.from('watchlist').update({
         last_episode_number: currentEpNum,
         updated_at: new Date().toISOString()
-      }).eq('user_id', user.id).eq('anime_id', drama.id).then(() => {});
+      }).eq('user_id', user.id).eq('anime_id', drama.id).then(() => { });
     }
   }, [currentEpNum, watchlistStatus, user, drama.id]);
 
@@ -786,7 +842,7 @@ export default function VerticalWatchFeed({
         is_completed: isEpCompleted
       };
       localStorage.setItem('shadow_continue_watching', JSON.stringify(local));
-    } catch {}
+    } catch { }
 
     if (user && supabase) {
       const entry = sanitizeContinueWatchingEntry({
@@ -913,7 +969,18 @@ export default function VerticalWatchFeed({
     const rawStreamUrl = currentEpisode.streamUrl;
     // Route through /api/proxy to handle CORS, referer spoofing, and M3U8 sub-playlist rewriting
     const streamUrl = getProxiedUrl(rawStreamUrl);
-    const isHls = rawStreamUrl.includes('.m3u8');
+    const isHls = currentEpisode.type === 'hls' ||
+      rawStreamUrl.includes('.m3u8') ||
+      rawStreamUrl.includes('/api/shorts/stream') ||
+      rawStreamUrl.includes('/hls/') ||
+      rawStreamUrl.includes('hepdrama') ||
+      rawStreamUrl.includes('narto') ||
+      rawStreamUrl.includes('dramadunyam') ||
+      rawStreamUrl.includes('goodshort') ||
+      rawStreamUrl.includes('goodbos') ||
+      rawStreamUrl.includes('dramabox') ||
+      rawStreamUrl.includes('voddrama') ||
+      rawStreamUrl.includes('shorttv');
 
     if (hlsRef.current) {
       hlsRef.current.destroy();
@@ -931,7 +998,7 @@ export default function VerticalWatchFeed({
         directFallbackAttemptedRef.current = true;
         video.src = rawStreamUrl;
         video.load();
-        video.play().catch(() => {});
+        video.play().catch(() => { });
         return;
       }
       setIsLoadingVideo(false);
@@ -1029,6 +1096,20 @@ export default function VerticalWatchFeed({
               hls.recoverMediaError();
               break;
             default:
+              if (data.details === Hls.ErrorDetails.MANIFEST_PARSING_ERROR || data.details === Hls.ErrorDetails.MANIFEST_LOAD_ERROR) {
+                hls.destroy();
+                hlsRef.current = null;
+                video.src = streamUrl;
+                video.load();
+                video.play().then(() => {
+                  setIsPlaying(true);
+                  setIsLoadingVideo(false);
+                }).catch(() => {
+                  setIsPlaying(false);
+                  setIsLoadingVideo(false);
+                });
+                return;
+              }
               setIsLoadingVideo(false);
               setVideoError('Video stream unavailable. Retrying...');
               hls.destroy();
@@ -1128,7 +1209,7 @@ export default function VerticalWatchFeed({
     if (!video) return;
     hasUserInteractedRef.current = true;
     if (video.paused) {
-      video.play().then(() => setIsPlaying(true)).catch(() => {});
+      video.play().then(() => setIsPlaying(true)).catch(() => { });
       setCenterActionAnim('play');
     } else {
       video.pause();
@@ -1187,7 +1268,7 @@ export default function VerticalWatchFeed({
           const video = videoRef.current;
           if (video) {
             if (video.paused) {
-              video.play().then(() => setIsPlaying(true)).catch(() => {});
+              video.play().then(() => setIsPlaying(true)).catch(() => { });
               setCenterActionAnim('play');
             } else {
               video.pause();
@@ -1215,7 +1296,7 @@ export default function VerticalWatchFeed({
     setIsMuted(nextMute);
     try {
       localStorage.setItem('shadow_shorts_muted', String(nextMute));
-    } catch {}
+    } catch { }
     if (!nextMute && volume === 0) {
       video.volume = 0.5;
       setVolume(0.5);
@@ -1244,7 +1325,7 @@ export default function VerticalWatchFeed({
 
     if (!isFs) {
       if (el.requestFullscreen) {
-        el.requestFullscreen().catch(() => {});
+        el.requestFullscreen().catch(() => { });
       } else if ((el as any).webkitRequestFullscreen) {
         (el as any).webkitRequestFullscreen();
       } else if (videoRef.current && (videoRef.current as any).webkitEnterFullscreen) {
@@ -1252,55 +1333,9 @@ export default function VerticalWatchFeed({
       }
     } else {
       if (document.exitFullscreen) {
-        document.exitFullscreen().catch(() => {});
+        document.exitFullscreen().catch(() => { });
       } else if ((document as any).webkitExitFullscreen) {
         (document as any).webkitExitFullscreen();
-      }
-    }
-  };
-
-  // Dedicated 16:9 Landscape Fullscreen Toggle
-  const toggleLandscapeFullscreen = () => {
-    const isFs = !!(document.fullscreenElement || (document as any).webkitFullscreenElement);
-    const el = (typeof window !== 'undefined' && window.innerWidth < 1024)
-      ? (mobileContainerRef.current || videoRef.current)
-      : (playerFrameRef.current || videoRef.current);
-
-    if (!el) return;
-
-    if (!isFs) {
-      if (el.requestFullscreen) {
-        el.requestFullscreen().then(() => {
-          setIsFullscreen(true);
-          try {
-            if (screen.orientation && (screen.orientation as any).lock) {
-              (screen.orientation as any).lock('landscape').catch(() => {});
-            }
-          } catch {}
-        }).catch(() => {
-          if (videoRef.current && (videoRef.current as any).webkitEnterFullscreen) {
-            (videoRef.current as any).webkitEnterFullscreen();
-          }
-        });
-      } else if ((el as any).webkitRequestFullscreen) {
-        (el as any).webkitRequestFullscreen();
-        setIsFullscreen(true);
-      } else if (videoRef.current && (videoRef.current as any).webkitEnterFullscreen) {
-        (videoRef.current as any).webkitEnterFullscreen();
-      }
-    } else {
-      if (document.exitFullscreen) {
-        document.exitFullscreen().then(() => {
-          setIsFullscreen(false);
-          try {
-            if (screen.orientation && (screen.orientation as any).unlock) {
-              (screen.orientation as any).unlock();
-            }
-          } catch {}
-        }).catch(() => {});
-      } else if ((document as any).webkitExitFullscreen) {
-        (document as any).webkitExitFullscreen();
-        setIsFullscreen(false);
       }
     }
   };
@@ -1432,13 +1467,13 @@ export default function VerticalWatchFeed({
           text: `Watch ${drama.title} Episode ${currentEpNum} in HD vertical format on Kagemi!`,
           url: window.location.href
         });
-      } catch {}
+      } catch { }
     } else {
       try {
         await navigator.clipboard.writeText(window.location.href);
         setShowShareToast(true);
         setTimeout(() => setShowShareToast(false), 2500);
-      } catch {}
+      } catch { }
     }
   };
 
@@ -1464,446 +1499,304 @@ export default function VerticalWatchFeed({
       {/* ========================================================================= */}
       {!isDesktop && (
         <div ref={mobileContainerRef} className="lg:hidden fixed inset-0 z-40 bg-black flex flex-col justify-between overflow-hidden select-none">
-        
-        {/* Fullscreen Reel Video Viewport (Stays full-bleed in background, like YouTube Shorts) */}
-        <div 
-          onTouchStart={handleTouchStart}
-          onTouchEnd={handleTouchEnd}
-          onClick={(e) => {
-            if (isCommentsDrawerOpen) {
-              closeCommentsDrawer();
-              return;
-            }
-            if (isMoreMenuOpen) {
-              setIsMoreMenuOpen(false);
-              return;
-            }
-            handleTapOrDoubleTap(e);
-          }}
-          className="relative w-full h-full flex items-center justify-center bg-black cursor-pointer overflow-hidden origin-top"
-        >
-          <video
-            ref={videoRef}
-            playsInline
-            muted={isMuted}
-            poster={currentPoster}
-            onTimeUpdate={() => {
-              if (videoRef.current) {
-                const cur = videoRef.current.currentTime;
-                const dur = videoRef.current.duration || 0;
-                setProgress(cur);
-                setDuration(dur);
-                updateActiveCue();
-                syncContinueWatching(cur, dur > 0 && cur >= dur * 0.9);
+
+          {/* Fullscreen Reel Video Viewport (Stays full-bleed in background, like YouTube Shorts) */}
+          <div
+            onTouchStart={handleTouchStart}
+            onTouchEnd={handleTouchEnd}
+            onClick={(e) => {
+              if (isCommentsDrawerOpen) {
+                closeCommentsDrawer();
+                return;
               }
-            }}
-            onLoadedMetadata={() => {
-              const video = videoRef.current;
-              if (video && video.videoWidth > 0 && video.videoHeight > 0) {
-                const ratio = video.videoWidth / video.videoHeight;
-                setVideoAspectRatio(ratio);
-                setIsLandscapeVideo(ratio >= 1.25);
+              if (isMoreMenuOpen) {
+                setIsMoreMenuOpen(false);
+                return;
               }
+              handleTapOrDoubleTap(e);
             }}
-            onEnded={() => {
-              syncContinueWatching(duration, true);
-              if (isLooping) {
+            className="relative w-full h-full flex items-center justify-center bg-black cursor-pointer overflow-hidden origin-top"
+          >
+            <video
+              ref={videoRef}
+              playsInline
+              muted={isMuted}
+              poster={currentPoster}
+              onTimeUpdate={() => {
                 if (videoRef.current) {
-                  videoRef.current.currentTime = 0;
-                  videoRef.current.play();
+                  const cur = videoRef.current.currentTime;
+                  const dur = videoRef.current.duration || 0;
+                  setProgress(cur);
+                  setDuration(dur);
+                  updateActiveCue();
+                  syncContinueWatching(cur, dur > 0 && cur >= dur * 0.9);
                 }
-              } else if (autoAdvance) {
-                goToNextEpisode();
-              }
-            }}
-            onWaiting={() => setIsLoadingVideo(true)}
-            onPlaying={() => {
-              setIsLoadingVideo(false);
-              setIsPlaying(true);
-            }}
-            onLoadedData={() => {
-              setIsLoadingVideo(false);
-              setVideoError(null);
-            }}
-            onCanPlay={() => {
-              setIsLoadingVideo(false);
-              setVideoError(null);
-            }}
-            onError={() => {
-              setIsLoadingVideo(false);
-              setVideoError('Unable to load video stream. Tap Reload to retry.');
-            }}
-            className={cn(
-              "w-full h-full transition-all duration-300 pointer-events-none",
-              aspectFit === 'cover' ? "object-cover" : "object-contain"
+              }}
+              onLoadedMetadata={() => {
+                const video = videoRef.current;
+                if (video && video.videoWidth > 0 && video.videoHeight > 0) {
+                  const ratio = video.videoWidth / video.videoHeight;
+                  setVideoAspectRatio(ratio);
+                  setIsLandscapeVideo(ratio >= 1.25);
+                }
+              }}
+              onEnded={() => {
+                syncContinueWatching(duration, true);
+                if (isLooping) {
+                  if (videoRef.current) {
+                    videoRef.current.currentTime = 0;
+                    videoRef.current.play();
+                  }
+                } else if (autoAdvance) {
+                  goToNextEpisode();
+                }
+              }}
+              onWaiting={() => setIsLoadingVideo(true)}
+              onPlaying={() => {
+                setIsLoadingVideo(false);
+                setIsPlaying(true);
+              }}
+              onLoadedData={() => {
+                setIsLoadingVideo(false);
+                setVideoError(null);
+              }}
+              onCanPlay={() => {
+                setIsLoadingVideo(false);
+                setVideoError(null);
+              }}
+              onError={() => {
+                setIsLoadingVideo(false);
+                setVideoError('Unable to load video stream. Tap Reload to retry.');
+              }}
+              className={cn(
+                "w-full h-full transition-all duration-300 pointer-events-none",
+                (isFullscreen || isLandscapeVideo) ? "object-contain" : (aspectFit === 'cover' ? "object-cover" : "object-contain")
+              )}
+            />
+
+            {/* Poster image preview backdrop while video is loading/buffering */}
+            {currentPoster && isLoadingVideo && (
+              <div className="absolute inset-0 z-10 pointer-events-none overflow-hidden flex items-center justify-center bg-black">
+                <img
+                  src={currentPoster}
+                  alt={drama.title}
+                  referrerPolicy="no-referrer"
+                  className="w-full h-full object-cover filter blur-sm opacity-60 scale-105 transition-opacity duration-300"
+                />
+                <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-black/30" />
+              </div>
             )}
-          />
 
-          {/* Poster image preview backdrop while video is loading/buffering */}
-          {currentPoster && isLoadingVideo && (
-            <div className="absolute inset-0 z-10 pointer-events-none overflow-hidden flex items-center justify-center bg-black">
-              <img
-                src={currentPoster}
-                alt={drama.title}
-                referrerPolicy="no-referrer"
-                className="w-full h-full object-cover filter blur-sm opacity-60 scale-105 transition-opacity duration-300"
-              />
-              <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-black/30" />
-            </div>
-          )}
+            {/* Double Tap Burst Heart Animation */}
+            <AnimatePresence>
+              {doubleTapHeart && (
+                <motion.div
+                  initial={{ scale: 0, opacity: 0 }}
+                  animate={{ scale: 1.4, opacity: 1 }}
+                  exit={{ scale: 2, opacity: 0 }}
+                  transition={ATRAX_BUBBLY_SPRING}
+                  className="absolute z-50 pointer-events-none"
+                >
+                  <Heart className="w-24 h-24 text-rose-500 fill-rose-500 drop-shadow-[0_10px_25px_rgba(244,63,94,0.6)]" />
+                </motion.div>
+              )}
+            </AnimatePresence>
 
-          {/* Double Tap Burst Heart Animation */}
+            {/* Single-Tap Center Action Animation (Play / Pause ripple pop) */}
+            <AnimatePresence>
+              {centerActionAnim && (
+                <motion.div
+                  key={`center-anim-${centerAnimKey}`}
+                  initial={{ scale: 0.4, opacity: 0 }}
+                  animate={{ scale: [0.4, 1.2, 1], opacity: [0, 1, 0] }}
+                  exit={{ opacity: 0 }}
+                  transition={{ duration: 0.65, times: [0, 0.4, 1] }}
+                  className="absolute w-20 h-20 rounded-full bg-black/75 backdrop-blur-xl border border-white/30 text-white flex items-center justify-center z-50 pointer-events-none shadow-[0_0_35px_rgba(0,0,0,0.8)]"
+                >
+                  {centerActionAnim === 'play' ? (
+                    <Play className="w-10 h-10 ml-1 fill-white text-white drop-shadow-md" />
+                  ) : (
+                    <Pause className="w-10 h-10 fill-white text-white drop-shadow-md" />
+                  )}
+                </motion.div>
+              )}
+            </AnimatePresence>
+
+            {/* Big Center Play Button when Paused */}
+            <AnimatePresence>
+              {!isPlaying && !isLoadingVideo && !centerActionAnim && (
+                <motion.button
+                  initial={{ scale: 0.7, opacity: 0 }}
+                  animate={{ scale: 1, opacity: 1 }}
+                  exit={{ scale: 0.8, opacity: 0 }}
+                  transition={ATRAX_BUBBLY_SPRING}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    togglePlayPause();
+                  }}
+                  className="absolute w-16 h-16 rounded-full bg-black/60 backdrop-blur-xl border border-white/20 text-white flex items-center justify-center z-30 shadow-2xl pointer-events-auto hover:scale-105 active:scale-95 transition-transform"
+                  aria-label="Play Video"
+                >
+                  <Play className="w-7 h-7 ml-1 fill-white" />
+                </motion.button>
+              )}
+            </AnimatePresence>
+
+            {/* Mobile Loading Spinner */}
+            {isLoadingVideo && !videoError && (
+              <div className="absolute inset-0 flex items-center justify-center bg-black/40 backdrop-blur-sm z-30 pointer-events-none">
+                <div className="w-12 h-12 rounded-full border-2 border-primary border-t-transparent animate-spin" />
+              </div>
+            )}
+
+            {/* Mobile Error Banner with Retry */}
+            {videoError && !isLoadingVideo && (
+              <div className="absolute inset-x-6 top-1/2 -translate-y-1/2 p-4 rounded-2xl bg-black/90 backdrop-blur-xl border border-red-500/40 text-center z-40 shadow-2xl pointer-events-auto">
+                <AlertCircle className="w-7 h-7 text-red-400 mx-auto mb-2" />
+                <p className="text-xs text-white font-medium mb-3">{videoError}</p>
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setVideoError(null);
+                    setIsLoadingVideo(true);
+                    selectEpisode(currentEpNum);
+                  }}
+                  className="px-4 py-1.5 rounded-full bg-primary hover:bg-primary/90 text-white text-xs font-bold shadow-lg transition-transform active:scale-95"
+                >
+                  Reload Stream
+                </button>
+              </div>
+            )}
+
+            {/* Mobile Flash Pill Feedback */}
+            <AnimatePresence>
+              {flashFeedback && (
+                <motion.div
+                  initial={{ scale: 0.8, opacity: 0, y: -10 }}
+                  animate={{ scale: 1, opacity: 1, y: 0 }}
+                  exit={{ scale: 0.9, opacity: 0 }}
+                  transition={ATRAX_BUBBLY_SPRING}
+                  className="absolute top-16 px-4 py-1.5 rounded-full bg-black/85 backdrop-blur-xl border border-white/20 text-white text-xs font-mono font-bold tracking-wider z-50 pointer-events-none shadow-2xl"
+                >
+                  {flashFeedback}
+                </motion.div>
+              )}
+            </AnimatePresence>
+
+            {/* Subtitles Overlay on Mobile (Golden Ratio phi ~ 1.618 Position & Sizing) */}
+            {isCcActive && currentSubtitleCue && (
+              <div
+                className="absolute left-0 right-0 flex justify-center text-center pointer-events-none z-30 transition-all duration-150 px-4"
+                style={{ bottom: `calc(34% + ${-ccPositionY}px)` }}
+              >
+                <motion.div
+                  key={currentSubtitleCue}
+                  initial={{ opacity: 0, scale: 0.96 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  exit={{ opacity: 0 }}
+                  transition={{ duration: 0.15 }}
+                  style={{
+                    backgroundColor: ccBgEnabled ? (ccStyle === 'box' ? `rgba(69, 26, 3, ${ccBgOpacity})` : `rgba(0, 0, 0, ${ccBgOpacity})`) : 'transparent',
+                    borderColor: ccBgEnabled && ccBgOpacity > 0 ? `rgba(255, 255, 255, ${Math.min(0.25, ccBgOpacity * 0.3)})` : 'transparent',
+                    backdropFilter: ccBgEnabled && ccBgOpacity > 0 ? `blur(${Math.max(4, Math.round(ccBgOpacity * 24))}px)` : 'none',
+                    WebkitBackdropFilter: ccBgEnabled && ccBgOpacity > 0 ? `blur(${Math.max(4, Math.round(ccBgOpacity * 24))}px)` : 'none',
+                    boxShadow: ccBgEnabled && ccBgOpacity > 0.1 ? '0 4px 24px rgba(0,0,0,0.45)' : 'none',
+                  }}
+                  className={cn(
+                    "py-2 px-[14px] rounded-2xl max-w-[76%] font-medium tracking-wide leading-[1.618] transition-all",
+                    ccBgEnabled && ccBgOpacity > 0 && "border",
+                    ccSize === 'sm' && "text-[13px] leading-[1.618]",
+                    ccSize === 'base' && "text-[15px] leading-[1.618]",
+                    ccSize === 'lg' && "text-[18px] leading-[1.618] font-bold",
+                    (!ccBgEnabled || ccBgOpacity === 0)
+                      ? "text-white [text-shadow:0_2px_4px_rgba(0,0,0,0.95),0_0_2px_#000,-1px_-1px_0_#000,1px_-1px_0_#000,-1px_1px_0_#000,1px_1px_0_#000]"
+                      : ccStyle === 'glass'
+                        ? "text-white [text-shadow:0_1px_3px_rgba(0,0,0,0.9),0_0_2px_rgba(0,0,0,0.9)]"
+                        : ccStyle === 'box'
+                          ? "text-amber-200 [text-shadow:0_1px_3px_rgba(0,0,0,0.9)]"
+                          : "text-white [-webkit-text-stroke:0.75px_black] [text-shadow:0_1px_4px_#000]"
+                  )}
+                >
+                  {currentSubtitleCue}
+                </motion.div>
+              </div>
+            )}
+          </div>
+
+          {/* OVERLAY CONTROLS (Fade out in Clear Mode, Tap screen to reveal) */}
           <AnimatePresence>
-            {doubleTapHeart && (
-              <motion.div
-                initial={{ scale: 0, opacity: 0 }}
-                animate={{ scale: 1.4, opacity: 1 }}
-                exit={{ scale: 2, opacity: 0 }}
-                transition={ATRAX_BUBBLY_SPRING}
-                className="absolute z-50 pointer-events-none"
-              >
-                <Heart className="w-24 h-24 text-rose-500 fill-rose-500 drop-shadow-[0_10px_25px_rgba(244,63,94,0.6)]" />
-              </motion.div>
-            )}
-          </AnimatePresence>
+            {mobileUiVisible && (
+              <>
+                {/* Mobile Top Overlay: Back, Title & Episode Numbers ONLY */}
+                <motion.div
+                  initial={{ opacity: 0, y: -24 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -24 }}
+                  transition={{ duration: 0.2 }}
+                  className="absolute top-0 inset-x-0 p-3 pt-3 z-40 bg-gradient-to-b from-black/85 via-black/40 to-transparent flex items-center justify-between pointer-events-auto"
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  <Link href="/shorts">
+                    <button
+                      className="w-9 h-9 rounded-full bg-black/60 backdrop-blur-md border border-white/20 text-white flex items-center justify-center hover:bg-black/80 transition-colors"
+                      aria-label="Back to Shorts"
+                    >
+                      <ArrowLeft className="w-4 h-4" />
+                    </button>
+                  </Link>
 
-          {/* Single-Tap Center Action Animation (Play / Pause ripple pop) */}
-          <AnimatePresence>
-            {centerActionAnim && (
-              <motion.div
-                key={`center-anim-${centerAnimKey}`}
-                initial={{ scale: 0.4, opacity: 0 }}
-                animate={{ scale: [0.4, 1.2, 1], opacity: [0, 1, 0] }}
-                exit={{ opacity: 0 }}
-                transition={{ duration: 0.65, times: [0, 0.4, 1] }}
-                className="absolute w-20 h-20 rounded-full bg-black/75 backdrop-blur-xl border border-white/30 text-white flex items-center justify-center z-50 pointer-events-none shadow-[0_0_35px_rgba(0,0,0,0.8)]"
-              >
-                {centerActionAnim === 'play' ? (
-                  <Play className="w-10 h-10 ml-1 fill-white text-white drop-shadow-md" />
-                ) : (
-                  <Pause className="w-10 h-10 fill-white text-white drop-shadow-md" />
-                )}
-              </motion.div>
-            )}
-          </AnimatePresence>
+                  <div className="flex flex-col items-center max-w-[210px] sm:max-w-[280px] text-center">
+                    <span className="text-xs font-bold text-white truncate w-full tracking-wide">
+                      {drama.title}
+                    </span>
+                    <span className="text-[11px] text-primary font-mono font-bold mt-0.5">
+                      Episode {currentEpNum} of {drama.totalEpisodes}
+                    </span>
+                  </div>
 
-          {/* Big Center Play Button when Paused */}
-          <AnimatePresence>
-            {!isPlaying && !isLoadingVideo && !centerActionAnim && (
-              <motion.button
-                initial={{ scale: 0.7, opacity: 0 }}
-                animate={{ scale: 1, opacity: 1 }}
-                exit={{ scale: 0.8, opacity: 0 }}
-                transition={ATRAX_BUBBLY_SPRING}
-                onClick={(e) => {
-                  e.stopPropagation();
-                  togglePlayPause();
-                }}
-                className="absolute w-16 h-16 rounded-full bg-black/60 backdrop-blur-xl border border-white/20 text-white flex items-center justify-center z-30 shadow-2xl pointer-events-auto hover:scale-105 active:scale-95 transition-transform"
-                aria-label="Play Video"
-              >
-                <Play className="w-7 h-7 ml-1 fill-white" />
-              </motion.button>
-            )}
-          </AnimatePresence>
-
-          {/* Mobile Loading Spinner */}
-          {isLoadingVideo && !videoError && (
-            <div className="absolute inset-0 flex items-center justify-center bg-black/40 backdrop-blur-sm z-30 pointer-events-none">
-              <div className="w-12 h-12 rounded-full border-2 border-primary border-t-transparent animate-spin" />
-            </div>
-          )}
-
-          {/* Mobile Error Banner with Retry */}
-          {videoError && !isLoadingVideo && (
-            <div className="absolute inset-x-6 top-1/2 -translate-y-1/2 p-4 rounded-2xl bg-black/90 backdrop-blur-xl border border-red-500/40 text-center z-40 shadow-2xl pointer-events-auto">
-              <AlertCircle className="w-7 h-7 text-red-400 mx-auto mb-2" />
-              <p className="text-xs text-white font-medium mb-3">{videoError}</p>
-              <button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  setVideoError(null);
-                  setIsLoadingVideo(true);
-                  selectEpisode(currentEpNum);
-                }}
-                className="px-4 py-1.5 rounded-full bg-primary hover:bg-primary/90 text-white text-xs font-bold shadow-lg transition-transform active:scale-95"
-              >
-                Reload Stream
-              </button>
-            </div>
-          )}
-
-          {/* Mobile Flash Pill Feedback */}
-          <AnimatePresence>
-            {flashFeedback && (
-              <motion.div
-                initial={{ scale: 0.8, opacity: 0, y: -10 }}
-                animate={{ scale: 1, opacity: 1, y: 0 }}
-                exit={{ scale: 0.9, opacity: 0 }}
-                transition={ATRAX_BUBBLY_SPRING}
-                className="absolute top-16 px-4 py-1.5 rounded-full bg-black/85 backdrop-blur-xl border border-white/20 text-white text-xs font-mono font-bold tracking-wider z-50 pointer-events-none shadow-2xl"
-              >
-                {flashFeedback}
-              </motion.div>
-            )}
-          </AnimatePresence>
-
-          {/* Subtitles Overlay on Mobile (Golden Ratio phi ~ 1.618 Position & Sizing) */}
-          {isCcActive && currentSubtitleCue && (
-            <div 
-              className="absolute left-0 right-0 flex justify-center text-center pointer-events-none z-30 transition-all duration-150 px-4"
-              style={{ bottom: `calc(34% + ${-ccPositionY}px)` }}
-            >
-              <motion.div
-                key={currentSubtitleCue}
-                initial={{ opacity: 0, scale: 0.96 }}
-                animate={{ opacity: 1, scale: 1 }}
-                exit={{ opacity: 0 }}
-                transition={{ duration: 0.15 }}
-                style={{
-                  backgroundColor: ccBgEnabled ? (ccStyle === 'box' ? `rgba(69, 26, 3, ${ccBgOpacity})` : `rgba(0, 0, 0, ${ccBgOpacity})`) : 'transparent',
-                  borderColor: ccBgEnabled && ccBgOpacity > 0 ? `rgba(255, 255, 255, ${Math.min(0.25, ccBgOpacity * 0.3)})` : 'transparent',
-                  backdropFilter: ccBgEnabled && ccBgOpacity > 0 ? `blur(${Math.max(4, Math.round(ccBgOpacity * 24))}px)` : 'none',
-                  WebkitBackdropFilter: ccBgEnabled && ccBgOpacity > 0 ? `blur(${Math.max(4, Math.round(ccBgOpacity * 24))}px)` : 'none',
-                  boxShadow: ccBgEnabled && ccBgOpacity > 0.1 ? '0 4px 24px rgba(0,0,0,0.45)' : 'none',
-                }}
-                className={cn(
-                  "py-2 px-[14px] rounded-2xl max-w-[76%] font-medium tracking-wide leading-[1.618] transition-all",
-                  ccBgEnabled && ccBgOpacity > 0 && "border",
-                  ccSize === 'sm' && "text-[13px] leading-[1.618]",
-                  ccSize === 'base' && "text-[15px] leading-[1.618]",
-                  ccSize === 'lg' && "text-[18px] leading-[1.618] font-bold",
-                  (!ccBgEnabled || ccBgOpacity === 0)
-                    ? "text-white [text-shadow:0_2px_4px_rgba(0,0,0,0.95),0_0_2px_#000,-1px_-1px_0_#000,1px_-1px_0_#000,-1px_1px_0_#000,1px_1px_0_#000]"
-                    : ccStyle === 'glass'
-                      ? "text-white [text-shadow:0_1px_3px_rgba(0,0,0,0.9),0_0_2px_rgba(0,0,0,0.9)]"
-                      : ccStyle === 'box'
-                        ? "text-amber-200 [text-shadow:0_1px_3px_rgba(0,0,0,0.9)]"
-                        : "text-white [-webkit-text-stroke:0.75px_black] [text-shadow:0_1px_4px_#000]"
-                )}
-              >
-                {currentSubtitleCue}
-              </motion.div>
-            </div>
-          )}
-        </div>
-
-        {/* OVERLAY CONTROLS (Fade out in Clear Mode, Tap screen to reveal) */}
-        <AnimatePresence>
-          {mobileUiVisible && (
-            <>
-              {/* Mobile Top Overlay: Back, Title & Episode Numbers ONLY */}
-              <motion.div 
-                initial={{ opacity: 0, y: -24 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -24 }}
-                transition={{ duration: 0.2 }}
-                className="absolute top-0 inset-x-0 p-3 pt-3 z-40 bg-gradient-to-b from-black/85 via-black/40 to-transparent flex items-center justify-between pointer-events-auto"
-                onClick={(e) => e.stopPropagation()}
-              >
-                <Link href="/shorts">
-                  <button 
-                    className="w-9 h-9 rounded-full bg-black/60 backdrop-blur-md border border-white/20 text-white flex items-center justify-center hover:bg-black/80 transition-colors"
-                    aria-label="Back to Shorts"
-                  >
-                    <ArrowLeft className="w-4 h-4" />
-                  </button>
-                </Link>
-
-                <div className="flex flex-col items-center max-w-[210px] sm:max-w-[280px] text-center">
-                  <span className="text-xs font-bold text-white truncate w-full tracking-wide">
-                    {drama.title}
-                  </span>
-                  <span className="text-[11px] text-primary font-mono font-bold mt-0.5">
-                    Episode {currentEpNum} of {drama.totalEpisodes}
-                  </span>
-                </div>
-
-                {/* Top Right Controls: 16:9 Fullscreen Toggle (when video is landscape) + Sound Mute Toggle */}
-                <div className="flex items-center gap-1.5">
-                  {/* Quick Sound / Mute Toggle Button in Top Right */}
-                  <motion.button 
-                    variants={atraxSquishTapVariants}
-                    initial="initial"
-                    whileTap="tap"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      resetMobileInactivityTimer();
-                      toggleMute();
-                    }}
-                    className={cn(
-                      "w-9 h-9 rounded-full flex items-center justify-center backdrop-blur-md border transition-all active:scale-95",
-                      isMuted 
-                        ? "bg-amber-500/20 border-amber-500/40 text-amber-300" 
-                        : "bg-black/60 border-white/20 text-white hover:bg-black/80"
-                    )}
-                    aria-label={isMuted ? "Unmute audio" : "Mute audio"}
-                    title={isMuted ? "Unmute audio" : "Mute audio"}
-                  >
-                    {isMuted ? (
-                      <VolumeX className="w-4 h-4 text-amber-400" />
-                    ) : (
-                      <Volume2 className="w-4 h-4 text-white" />
-                    )}
-                  </motion.button>
-                </div>
-              </motion.div>
-
-              {/* Mobile Right Floating Action Stack (100% YouTube Shorts faithful sizing & typography) */}
-              <motion.div 
-                initial={{ opacity: 0, x: 24 }}
-                animate={{ opacity: isMobileOverlayDimmed ? 0 : 1, x: isMobileOverlayDimmed ? 24 : 0 }}
-                exit={{ opacity: 0, x: 24 }}
-                transition={{ duration: 0.2 }}
-                className={cn(
-                  "absolute right-2 sm:right-3.5 bottom-20 z-40 flex flex-col items-center gap-2.5 sm:gap-3 select-none transition-all",
-                  isMobileOverlayDimmed ? "pointer-events-none" : "pointer-events-auto"
-                )}
-                onClick={(e) => e.stopPropagation()}
-              >
-                {/* 1. Episode Drawer Trigger (Drama Series feature) */}
-                <div className="flex flex-col items-center group">
-                  <motion.button
-                    variants={atraxSquishTapVariants}
-                    initial="initial"
-                    whileTap="tap"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      resetMobileInactivityTimer();
-                      setIsDrawerOpen(true);
-                    }}
-                    className="w-11 h-11 sm:w-12 sm:h-12 rounded-full bg-black/40 hover:bg-black/60 active:scale-90 text-white flex items-center justify-center backdrop-blur-md border border-white/10 shadow-lg transition-all"
-                    title="Episodes List"
-                    aria-label="Open Episodes List"
-                  >
-                    <Layers className="w-5 h-5 sm:w-6 sm:h-6 text-white drop-shadow-[0_1px_2px_rgba(0,0,0,0.8)]" />
-                  </motion.button>
-                  <span className="text-[11px] font-medium text-white drop-shadow-[0_1px_3px_rgba(0,0,0,0.9)] text-center mt-1 select-none tracking-tight">
-                    Ep {currentEpNum}
-                  </span>
-                </div>
-
-                {/* 2. YouTube Shorts Like (Thumbs Up) */}
-                <div className="flex flex-col items-center group">
-                  <motion.button
-                    variants={atraxJellyWobbleVariants}
-                    initial="initial"
-                    whileTap="tap"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      resetMobileInactivityTimer();
-                      toggleLike();
-                    }}
-                    className={cn(
-                      "w-11 h-11 sm:w-12 sm:h-12 rounded-full flex items-center justify-center backdrop-blur-md shadow-lg transition-all active:scale-90",
-                      isLiked 
-                        ? "bg-white/20 text-white border border-white/30" 
-                        : "bg-black/40 hover:bg-black/60 text-white border border-white/10"
-                    )}
-                    title={isLiked ? "Unlike" : "Like"}
-                    aria-label="Like Video"
-                  >
-                    <svg viewBox="0 0 24 24" className="w-5 h-5 sm:w-6 sm:h-6 drop-shadow-[0_1px_2px_rgba(0,0,0,0.8)]" fill={isLiked ? "currentColor" : "none"} stroke="currentColor" strokeWidth={isLiked ? 0 : 2} strokeLinecap="round" strokeLinejoin="round">
-                      {isLiked ? (
-                        <path d="M3 21h4V11H3v10zm17.77-10c0-.55-.45-1-1-1h-4.23l1.52-4.94c.32-1.03-.52-2.06-1.68-2.06-.58 0-1.14.24-1.52.65L8 11.66V21h9.43c1.06 0 1.98-.74 2.19-1.78l1.38-6.91c.05-.26.08-.53.08-.77 0-.18-.04-.37-.09-.54H20.77z" fill="currentColor" />
-                      ) : (
-                        <path d="M14 9V5a3 3 0 0 0-3-3l-4 9v11h11.28a2 2 0 0 0 2-1.7l1.38-9a2 2 0 0 0-2-2.3zM7 22H4a2 2 0 0 1-2-2v-7a2 2 0 0 1 2-2h3" />
+                  {/* Top Right Controls: 16:9 Fullscreen Toggle (when video is landscape) + Sound Mute Toggle */}
+                  <div className="flex items-center gap-1.5">
+                    {/* Quick Sound / Mute Toggle Button in Top Right */}
+                    <motion.button
+                      variants={atraxSquishTapVariants}
+                      initial="initial"
+                      whileTap="tap"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        resetMobileInactivityTimer();
+                        toggleMute();
+                      }}
+                      className={cn(
+                        "w-9 h-9 rounded-full flex items-center justify-center backdrop-blur-md border transition-all active:scale-95",
+                        isMuted
+                          ? "bg-amber-500/20 border-amber-500/40 text-amber-300"
+                          : "bg-black/60 border-white/20 text-white hover:bg-black/80"
                       )}
-                    </svg>
-                  </motion.button>
-                  <span className="text-[11px] font-medium text-white drop-shadow-[0_1px_3px_rgba(0,0,0,0.9)] text-center mt-1 select-none tracking-tight">
-                    {formattedLikeCount}
-                  </span>
-                </div>
-
-                {/* 3. YouTube Shorts Dislike (Thumbs Down) */}
-                <div className="flex flex-col items-center group">
-                  <motion.button
-                    variants={atraxSquishTapVariants}
-                    initial="initial"
-                    whileTap="tap"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      resetMobileInactivityTimer();
-                      toggleDislike();
-                    }}
-                    className={cn(
-                      "w-11 h-11 sm:w-12 sm:h-12 rounded-full flex items-center justify-center backdrop-blur-md shadow-lg transition-all active:scale-90",
-                      isDisliked 
-                        ? "bg-white/20 text-white border border-white/30" 
-                        : "bg-black/40 hover:bg-black/60 text-white border border-white/10"
-                    )}
-                    title={isDisliked ? "Remove Dislike" : "Dislike"}
-                    aria-label="Dislike Video"
-                  >
-                    <svg viewBox="0 0 24 24" className="w-5 h-5 sm:w-6 sm:h-6 drop-shadow-[0_1px_2px_rgba(0,0,0,0.8)]" fill={isDisliked ? "currentColor" : "none"} stroke="currentColor" strokeWidth={isDisliked ? 0 : 2} strokeLinecap="round" strokeLinejoin="round">
-                      {isDisliked ? (
-                        <path d="M17 3h4v10h-4V3zM3.23 13c0 .55.45 1 1 1h4.23l-1.52 4.94c-.32 1.03.52 2.06 1.68 2.06.58 0 1.14-.24 1.52-.65L16 13.34V3H6.57c-1.06 0-1.98.74-2.19 1.78L3 11.69c-.05.26-.08.53-.08.77 0 .18.04.37.09.54H3.23z" fill="currentColor" />
+                      aria-label={isMuted ? "Unmute audio" : "Mute audio"}
+                      title={isMuted ? "Unmute audio" : "Mute audio"}
+                    >
+                      {isMuted ? (
+                        <VolumeX className="w-4 h-4 text-amber-400" />
                       ) : (
-                        <path d="M10 15v4a3 3 0 0 0 3 3l4-9V2H5.72a2 2 0 0 0-2 1.7l-1.38 9a2 2 0 0 0 2 2.3zm7-13h3a2 2 0 0 1 2 2v7a2 2 0 0 1-2 2h-3" />
+                        <Volume2 className="w-4 h-4 text-white" />
                       )}
-                    </svg>
-                  </motion.button>
-                  <span className="text-[11px] font-medium text-white drop-shadow-[0_1px_3px_rgba(0,0,0,0.9)] text-center mt-1 select-none tracking-tight">
-                    Dislike
-                  </span>
-                </div>
+                    </motion.button>
+                  </div>
+                </motion.div>
 
-                {/* 4. YouTube Shorts Comments Bubble */}
-                <div className="flex flex-col items-center group">
-                  <motion.button
-                    variants={atraxSquishTapVariants}
-                    initial="initial"
-                    whileTap="tap"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      resetMobileInactivityTimer();
-                      openCommentsDrawer();
-                    }}
-                    className={cn(
-                      "w-11 h-11 sm:w-12 sm:h-12 rounded-full flex items-center justify-center backdrop-blur-md border shadow-lg transition-all active:scale-90",
-                      isCommentsDrawerOpen
-                        ? "bg-white/20 border-white/30 text-white"
-                        : "bg-black/40 hover:bg-black/60 border-white/10 text-white"
-                    )}
-                    title="Comments"
-                    aria-label="Open Comments"
-                  >
-                    <svg viewBox="0 0 24 24" className="w-5 h-5 sm:w-6 sm:h-6 drop-shadow-[0_1px_2px_rgba(0,0,0,0.8)]" fill="currentColor">
-                      <path d="M18 4H6C4.9 4 4 4.9 4 6v14l4-4h10c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 10H7.2L6 15.2V6h12v8z"/>
-                    </svg>
-                  </motion.button>
-                  <span className="text-[11px] font-medium text-white drop-shadow-[0_1px_3px_rgba(0,0,0,0.9)] text-center mt-1 select-none tracking-tight">
-                    {commentsCount > 0 ? (commentsCount >= 1000 ? `${(commentsCount / 1000).toFixed(1)}K` : String(commentsCount)) : "Comments"}
-                  </span>
-                </div>
-
-                {/* 5. YouTube Shorts Curved Share Arrow */}
-                <div className="flex flex-col items-center group">
-                  <motion.button
-                    variants={atraxSquishTapVariants}
-                    initial="initial"
-                    whileTap="tap"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      resetMobileInactivityTimer();
-                      handleShare();
-                    }}
-                    className="w-11 h-11 sm:w-12 sm:h-12 rounded-full bg-black/40 hover:bg-black/60 active:scale-90 text-white flex items-center justify-center backdrop-blur-md border border-white/10 shadow-lg transition-all"
-                    title="Share"
-                    aria-label="Share Video"
-                  >
-                    <svg viewBox="0 0 24 24" className="w-5 h-5 sm:w-6 sm:h-6 drop-shadow-[0_1px_2px_rgba(0,0,0,0.8)]" fill="currentColor">
-                      <path d="M14 9V5l7 7-7 7v-4.1c-5 0-8.5 1.6-11 5.1 1-5 4-10 11-11z"/>
-                    </svg>
-                  </motion.button>
-                  <span className="text-[11px] font-medium text-white drop-shadow-[0_1px_3px_rgba(0,0,0,0.9)] text-center mt-1 select-none tracking-tight">
-                    Share
-                  </span>
-                </div>
-
-                {/* 5b. 16:9 Landscape Fullscreen Toggle (Directly above More 3-dot Menu) */}
-                {isLandscapeVideo && (
+                {/* Mobile Right Floating Action Stack (100% YouTube Shorts faithful sizing & typography) */}
+                <motion.div
+                  initial={{ opacity: 0, x: 24 }}
+                  animate={{ opacity: isMobileOverlayDimmed ? 0 : 1, x: isMobileOverlayDimmed ? 24 : 0 }}
+                  exit={{ opacity: 0, x: 24 }}
+                  transition={{ duration: 0.2 }}
+                  className={cn(
+                    "absolute right-2 sm:right-3.5 bottom-20 z-40 flex flex-col items-center gap-2.5 sm:gap-3 select-none transition-all",
+                    isMobileOverlayDimmed ? "pointer-events-none" : "pointer-events-auto"
+                  )}
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  {/* 1. Episode Drawer Trigger (Drama Series feature) */}
                   <div className="flex flex-col items-center group">
                     <motion.button
                       variants={atraxSquishTapVariants}
@@ -1912,137 +1805,247 @@ export default function VerticalWatchFeed({
                       onClick={(e) => {
                         e.stopPropagation();
                         resetMobileInactivityTimer();
-                        toggleLandscapeFullscreen();
+                        setIsDrawerOpen(true);
+                      }}
+                      className="w-11 h-11 sm:w-12 sm:h-12 rounded-full bg-black/40 hover:bg-black/60 active:scale-90 text-white flex items-center justify-center backdrop-blur-md border border-white/10 shadow-lg transition-all"
+                      title="Episodes List"
+                      aria-label="Open Episodes List"
+                    >
+                      <Layers className="w-5 h-5 sm:w-6 sm:h-6 text-white drop-shadow-[0_1px_2px_rgba(0,0,0,0.8)]" />
+                    </motion.button>
+                    <span className="text-[11px] font-medium text-white drop-shadow-[0_1px_3px_rgba(0,0,0,0.9)] text-center mt-1 select-none tracking-tight">
+                      Ep {currentEpNum}
+                    </span>
+                  </div>
+
+                  {/* 2. YouTube Shorts Like (Thumbs Up) */}
+                  <div className="flex flex-col items-center group">
+                    <motion.button
+                      variants={atraxJellyWobbleVariants}
+                      initial="initial"
+                      whileTap="tap"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        resetMobileInactivityTimer();
+                        toggleLike();
                       }}
                       className={cn(
                         "w-11 h-11 sm:w-12 sm:h-12 rounded-full flex items-center justify-center backdrop-blur-md shadow-lg transition-all active:scale-90",
-                        isFullscreen
-                          ? "bg-cyan-500 text-black border border-cyan-400"
+                        isLiked
+                          ? "bg-white/20 text-white border border-white/30"
                           : "bg-black/40 hover:bg-black/60 text-white border border-white/10"
                       )}
-                      title={isFullscreen ? "Exit Fullscreen" : "16:9 Fullscreen"}
-                      aria-label="16:9 Fullscreen"
+                      title={isLiked ? "Unlike" : "Like"}
+                      aria-label="Like Video"
                     >
-                      {isFullscreen ? (
-                        <Minimize className="w-5 h-5 sm:w-6 sm:h-6 text-current drop-shadow-[0_1px_2px_rgba(0,0,0,0.8)]" />
-                      ) : (
-                        <Maximize className="w-5 h-5 sm:w-6 sm:h-6 text-current drop-shadow-[0_1px_2px_rgba(0,0,0,0.8)]" />
-                      )}
+                      <svg viewBox="0 0 24 24" className="w-5 h-5 sm:w-6 sm:h-6 drop-shadow-[0_1px_2px_rgba(0,0,0,0.8)]" fill={isLiked ? "currentColor" : "none"} stroke="currentColor" strokeWidth={isLiked ? 0 : 2} strokeLinecap="round" strokeLinejoin="round">
+                        {isLiked ? (
+                          <path d="M3 21h4V11H3v10zm17.77-10c0-.55-.45-1-1-1h-4.23l1.52-4.94c.32-1.03-.52-2.06-1.68-2.06-.58 0-1.14.24-1.52.65L8 11.66V21h9.43c1.06 0 1.98-.74 2.19-1.78l1.38-6.91c.05-.26.08-.53.08-.77 0-.18-.04-.37-.09-.54H20.77z" fill="currentColor" />
+                        ) : (
+                          <path d="M14 9V5a3 3 0 0 0-3-3l-4 9v11h11.28a2 2 0 0 0 2-1.7l1.38-9a2 2 0 0 0-2-2.3zM7 22H4a2 2 0 0 1-2-2v-7a2 2 0 0 1 2-2h3" />
+                        )}
+                      </svg>
                     </motion.button>
                     <span className="text-[11px] font-medium text-white drop-shadow-[0_1px_3px_rgba(0,0,0,0.9)] text-center mt-1 select-none tracking-tight">
-                      {isFullscreen ? "Exit" : "16:9"}
+                      {formattedLikeCount}
                     </span>
                   </div>
-                )}
 
-                {/* 6. YouTube Shorts Style More Menu (...) Trigger */}
-                <div className="flex flex-col items-center group">
-                  <motion.button
-                    variants={atraxSquishTapVariants}
-                    initial="initial"
-                    whileTap="tap"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      resetMobileInactivityTimer();
-                      setIsMoreMenuOpen(true);
-                    }}
-                    className={cn(
-                      "w-11 h-11 sm:w-12 sm:h-12 rounded-full flex items-center justify-center backdrop-blur-md shadow-lg transition-all active:scale-90",
-                      isMoreMenuOpen 
-                        ? "bg-white/20 text-white border border-white/30" 
-                        : "bg-black/40 hover:bg-black/60 text-white border border-white/10"
-                    )}
-                    title="More Options"
-                    aria-label="Open More Options Menu"
-                  >
-                    <MoreVertical className="w-5 h-5 sm:w-6 sm:h-6 text-white drop-shadow-[0_1px_2px_rgba(0,0,0,0.8)]" />
-                  </motion.button>
-                  <span className="text-[11px] font-medium text-white drop-shadow-[0_1px_3px_rgba(0,0,0,0.9)] text-center mt-1 select-none tracking-tight">
-                    More
-                  </span>
-                </div>
-              </motion.div>
+                  {/* 3. YouTube Shorts Dislike (Thumbs Down) */}
+                  <div className="flex flex-col items-center group">
+                    <motion.button
+                      variants={atraxSquishTapVariants}
+                      initial="initial"
+                      whileTap="tap"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        resetMobileInactivityTimer();
+                        toggleDislike();
+                      }}
+                      className={cn(
+                        "w-11 h-11 sm:w-12 sm:h-12 rounded-full flex items-center justify-center backdrop-blur-md shadow-lg transition-all active:scale-90",
+                        isDisliked
+                          ? "bg-white/20 text-white border border-white/30"
+                          : "bg-black/40 hover:bg-black/60 text-white border border-white/10"
+                      )}
+                      title={isDisliked ? "Remove Dislike" : "Dislike"}
+                      aria-label="Dislike Video"
+                    >
+                      <svg viewBox="0 0 24 24" className="w-5 h-5 sm:w-6 sm:h-6 drop-shadow-[0_1px_2px_rgba(0,0,0,0.8)]" fill={isDisliked ? "currentColor" : "none"} stroke="currentColor" strokeWidth={isDisliked ? 0 : 2} strokeLinecap="round" strokeLinejoin="round">
+                        {isDisliked ? (
+                          <path d="M17 3h4v10h-4V3zM3.23 13c0 .55.45 1 1 1h4.23l-1.52 4.94c-.32 1.03.52 2.06 1.68 2.06.58 0 1.14-.24 1.52-.65L16 13.34V3H6.57c-1.06 0-1.98.74-2.19 1.78L3 11.69c-.05.26-.08.53-.08.77 0 .18.04.37.09.54H3.23z" fill="currentColor" />
+                        ) : (
+                          <path d="M10 15v4a3 3 0 0 0 3 3l4-9V2H5.72a2 2 0 0 0-2 1.7l-1.38 9a2 2 0 0 0 2 2.3zm7-13h3a2 2 0 0 1 2 2v7a2 2 0 0 1-2 2h-3" />
+                        )}
+                      </svg>
+                    </motion.button>
+                    <span className="text-[11px] font-medium text-white drop-shadow-[0_1px_3px_rgba(0,0,0,0.9)] text-center mt-1 select-none tracking-tight">
+                      Dislike
+                    </span>
+                  </div>
 
-              {/* Mobile Bottom Scrubber & Navigation (Positioned flush at bottom, NO overlapping) */}
-              <motion.div 
-                initial={{ opacity: 0, y: 24 }}
-                animate={{ opacity: isMobileOverlayDimmed ? 0 : 1, y: isMobileOverlayDimmed ? 24 : 0 }}
-                exit={{ opacity: 0, y: 24 }}
-                transition={{ duration: 0.2 }}
-                className={cn(
-                  "absolute bottom-0 inset-x-0 p-3 pb-3 z-40 bg-gradient-to-t from-black/95 via-black/60 to-transparent flex flex-col gap-2 transition-all",
-                  isMobileOverlayDimmed ? "pointer-events-none" : "pointer-events-auto"
-                )}
-                onClick={(e) => e.stopPropagation()}
-              >
-                {/* Scrubber row */}
-                <div className="flex items-center gap-2 text-[10px] text-white/90 font-mono [text-shadow:0_1px_3px_rgba(0,0,0,0.9)]">
-                  <span className="w-8 text-right select-none">{formatTime(progress)}</span>
-                  <div className="relative flex-1 flex items-center h-4 cursor-pointer">
-                    {/* Background Base Track */}
-                    <div className="absolute inset-x-0 h-1 rounded-full bg-white/20 overflow-hidden pointer-events-none">
-                      {/* Filled Progress Bar */}
-                      <div 
-                        className="h-full bg-primary rounded-full transition-all duration-75"
-                        style={{ width: `${Math.min(100, Math.max(0, (progress / (duration || 1)) * 100))}%` }}
+                  {/* 4. YouTube Shorts Comments Bubble */}
+                  <div className="flex flex-col items-center group">
+                    <motion.button
+                      variants={atraxSquishTapVariants}
+                      initial="initial"
+                      whileTap="tap"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        resetMobileInactivityTimer();
+                        openCommentsDrawer();
+                      }}
+                      className={cn(
+                        "w-11 h-11 sm:w-12 sm:h-12 rounded-full flex items-center justify-center backdrop-blur-md border shadow-lg transition-all active:scale-90",
+                        isCommentsDrawerOpen
+                          ? "bg-white/20 border-white/30 text-white"
+                          : "bg-black/40 hover:bg-black/60 border-white/10 text-white"
+                      )}
+                      title="Comments"
+                      aria-label="Open Comments"
+                    >
+                      <svg viewBox="0 0 24 24" className="w-5 h-5 sm:w-6 sm:h-6 drop-shadow-[0_1px_2px_rgba(0,0,0,0.8)]" fill="currentColor">
+                        <path d="M18 4H6C4.9 4 4 4.9 4 6v14l4-4h10c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 10H7.2L6 15.2V6h12v8z" />
+                      </svg>
+                    </motion.button>
+                    <span className="text-[11px] font-medium text-white drop-shadow-[0_1px_3px_rgba(0,0,0,0.9)] text-center mt-1 select-none tracking-tight">
+                      {commentsCount > 0 ? (commentsCount >= 1000 ? `${(commentsCount / 1000).toFixed(1)}K` : String(commentsCount)) : "Comments"}
+                    </span>
+                  </div>
+
+                  {/* 5. YouTube Shorts Curved Share Arrow */}
+                  <div className="flex flex-col items-center group">
+                    <motion.button
+                      variants={atraxSquishTapVariants}
+                      initial="initial"
+                      whileTap="tap"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        resetMobileInactivityTimer();
+                        handleShare();
+                      }}
+                      className="w-11 h-11 sm:w-12 sm:h-12 rounded-full bg-black/40 hover:bg-black/60 active:scale-90 text-white flex items-center justify-center backdrop-blur-md border border-white/10 shadow-lg transition-all"
+                      title="Share"
+                      aria-label="Share Video"
+                    >
+                      <svg viewBox="0 0 24 24" className="w-5 h-5 sm:w-6 sm:h-6 drop-shadow-[0_1px_2px_rgba(0,0,0,0.8)]" fill="currentColor">
+                        <path d="M14 9V5l7 7-7 7v-4.1c-5 0-8.5 1.6-11 5.1 1-5 4-10 11-11z" />
+                      </svg>
+                    </motion.button>
+                    <span className="text-[11px] font-medium text-white drop-shadow-[0_1px_3px_rgba(0,0,0,0.9)] text-center mt-1 select-none tracking-tight">
+                      Share
+                    </span>
+                  </div>
+
+
+                  {/* 6. YouTube Shorts Style More Menu (...) Trigger */}
+                  <div className="flex flex-col items-center group">
+                    <motion.button
+                      variants={atraxSquishTapVariants}
+                      initial="initial"
+                      whileTap="tap"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        resetMobileInactivityTimer();
+                        setIsMoreMenuOpen(true);
+                      }}
+                      className={cn(
+                        "w-11 h-11 sm:w-12 sm:h-12 rounded-full flex items-center justify-center backdrop-blur-md shadow-lg transition-all active:scale-90",
+                        isMoreMenuOpen
+                          ? "bg-white/20 text-white border border-white/30"
+                          : "bg-black/40 hover:bg-black/60 text-white border border-white/10"
+                      )}
+                      title="More Options"
+                      aria-label="Open More Options Menu"
+                    >
+                      <MoreVertical className="w-5 h-5 sm:w-6 sm:h-6 text-white drop-shadow-[0_1px_2px_rgba(0,0,0,0.8)]" />
+                    </motion.button>
+                    <span className="text-[11px] font-medium text-white drop-shadow-[0_1px_3px_rgba(0,0,0,0.9)] text-center mt-1 select-none tracking-tight">
+                      More
+                    </span>
+                  </div>
+                </motion.div>
+
+                {/* Mobile Bottom Scrubber & Navigation (Positioned flush at bottom, NO overlapping) */}
+                <motion.div
+                  initial={{ opacity: 0, y: 24 }}
+                  animate={{ opacity: isMobileOverlayDimmed ? 0 : 1, y: isMobileOverlayDimmed ? 24 : 0 }}
+                  exit={{ opacity: 0, y: 24 }}
+                  transition={{ duration: 0.2 }}
+                  className={cn(
+                    "absolute bottom-0 inset-x-0 p-3 pb-3 z-40 bg-gradient-to-t from-black/95 via-black/60 to-transparent flex flex-col gap-2 transition-all",
+                    isMobileOverlayDimmed ? "pointer-events-none" : "pointer-events-auto"
+                  )}
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  {/* Scrubber row */}
+                  <div className="flex items-center gap-2 text-[10px] text-white/90 font-mono [text-shadow:0_1px_3px_rgba(0,0,0,0.9)]">
+                    <span className="w-8 text-right select-none">{formatTime(progress)}</span>
+                    <div className="relative flex-1 flex items-center h-4 cursor-pointer">
+                      {/* Background Base Track */}
+                      <div className="absolute inset-x-0 h-1 rounded-full bg-white/20 overflow-hidden pointer-events-none">
+                        {/* Filled Progress Bar */}
+                        <div
+                          className="h-full bg-primary rounded-full transition-all duration-75"
+                          style={{ width: `${Math.min(100, Math.max(0, (progress / (duration || 1)) * 100))}%` }}
+                        />
+                      </div>
+
+                      {/* Native transparent input for touch seeking */}
+                      <input
+                        type="range"
+                        min={0}
+                        max={duration || 100}
+                        step={0.1}
+                        value={progress}
+                        onChange={(e) => {
+                          resetMobileInactivityTimer();
+                          handleSeek(e);
+                        }}
+                        className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-20"
+                        aria-label="Seek Video"
+                      />
+
+                      {/* Scrubber Thumb */}
+                      <div
+                        className="absolute top-1/2 -translate-y-1/2 -translate-x-1/2 w-3.5 h-3.5 rounded-full bg-primary border-2 border-white shadow-md pointer-events-none z-10"
+                        style={{ left: `${Math.min(100, Math.max(0, (progress / (duration || 1)) * 100))}%` }}
                       />
                     </div>
-
-                    {/* Native transparent input for touch seeking */}
-                    <input
-                      type="range"
-                      min={0}
-                      max={duration || 100}
-                      step={0.1}
-                      value={progress}
-                      onChange={(e) => {
-                        resetMobileInactivityTimer();
-                        handleSeek(e);
-                      }}
-                      className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-20"
-                      aria-label="Seek Video"
-                    />
-
-                    {/* Scrubber Thumb */}
-                    <div 
-                      className="absolute top-1/2 -translate-y-1/2 -translate-x-1/2 w-3.5 h-3.5 rounded-full bg-primary border-2 border-white shadow-md pointer-events-none z-10"
-                      style={{ left: `${Math.min(100, Math.max(0, (progress / (duration || 1)) * 100))}%` }}
-                    />
+                    <span className="w-8 text-left select-none">{formatTime(duration)}</span>
                   </div>
-                  <span className="w-8 text-left select-none">{formatTime(duration)}</span>
-                </div>
 
-                {/* Episode Navigation Buttons */}
-                <div className="flex items-center justify-between">
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      resetMobileInactivityTimer();
-                      goToPrevEpisode();
-                    }}
-                    disabled={currentEpNum <= 1}
-                    className="px-3.5 py-1 rounded-full bg-white/10 hover:bg-white/20 border border-white/15 text-xs font-bold disabled:opacity-30 transition-colors"
-                  >
-                    Prev Ep
-                  </button>
-                  <span className="text-[10px] text-slate-400 font-medium select-none">Swipe Up for Next</span>
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      resetMobileInactivityTimer();
-                      goToNextEpisode();
-                    }}
-                    disabled={currentEpNum >= drama.totalEpisodes}
-                    className="px-3.5 py-1 rounded-full bg-primary hover:bg-primary/90 border border-primary text-white text-xs font-bold shadow-[0_0_12px_rgba(220,38,38,0.5)] disabled:opacity-30 transition-colors"
-                  >
-                    Next Ep
-                  </button>
-                </div>
-              </motion.div>
-            </>
-          )}
-        </AnimatePresence>
-      </div>
+                  {/* Episode Navigation Buttons */}
+                  <div className="flex items-center justify-between">
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        resetMobileInactivityTimer();
+                        goToPrevEpisode();
+                      }}
+                      disabled={currentEpNum <= 1}
+                      className="px-3.5 py-1 rounded-full bg-white/10 hover:bg-white/20 border border-white/15 text-xs font-bold disabled:opacity-30 transition-colors"
+                    >
+                      Prev Ep
+                    </button>
+                    <span className="text-[10px] text-slate-400 font-medium select-none">Swipe Up for Next</span>
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        resetMobileInactivityTimer();
+                        goToNextEpisode();
+                      }}
+                      disabled={currentEpNum >= drama.totalEpisodes}
+                      className="px-3.5 py-1 rounded-full bg-primary hover:bg-primary/90 border border-primary text-white text-xs font-bold shadow-[0_0_12px_rgba(220,38,38,0.5)] disabled:opacity-30 transition-colors"
+                    >
+                      Next Ep
+                    </button>
+                  </div>
+                </motion.div>
+              </>
+            )}
+          </AnimatePresence>
+        </div>
       )}
 
       {/* ========================================================================= */}
@@ -2051,18 +2054,18 @@ export default function VerticalWatchFeed({
       {/* ========================================================================= */}
       {isDesktop && (
         <div className="hidden lg:flex flex-col w-full h-screen max-h-screen pt-[52px] pb-[84px] overflow-hidden">
-          
+
           {/* Main Desktop 3-Column Layout: fills full width, zero top gap, symmetrically parallel */}
           <div className="relative z-10 w-full h-full px-2 sm:px-3 flex flex-row gap-2.5 justify-between items-stretch overflow-hidden">
-            
+
             {/* ========================================================================= */}
             {/* COLUMN 1 (LEFT): Drama Info & More Like This (Zero Gap, 2D Flat)          */}
             {/* ========================================================================= */}
             <section className="flex-1 min-w-[320px] max-w-[560px] 2xl:max-w-[640px] h-full overflow-y-auto custom-scrollbar flex flex-col border border-zinc-800 rounded-xl bg-transparent divide-y divide-zinc-800 order-1">
-              
+
               {/* 1. Drama Header & Meta Info Block (Clean, Modern Hero Card with Poster) */}
               <div className="p-4 sm:p-5 flex flex-col gap-3.5 bg-transparent">
-                
+
                 {/* Top Action Row: Back to Shorts & Controls */}
                 <div className="flex items-center justify-between gap-2 pb-3 border-b border-zinc-800/80">
                   <Link
@@ -2114,8 +2117,8 @@ export default function VerticalWatchFeed({
                       onClick={toggleLike}
                       className={cn(
                         "p-1.5 rounded-lg border transition-all",
-                        isLiked 
-                          ? "bg-rose-500/10 border-rose-500/30 text-rose-500" 
+                        isLiked
+                          ? "bg-rose-500/10 border-rose-500/30 text-rose-500"
                           : "bg-zinc-900/40 border-zinc-800/80 text-zinc-400 hover:text-white hover:bg-zinc-800"
                       )}
                       title={isLiked ? "Unlike" : "Add to Favorites"}
@@ -2154,7 +2157,7 @@ export default function VerticalWatchFeed({
                       loading="eager"
                     />
                     <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent pointer-events-none" />
-                    
+
                     {/* Rating Badge on Poster */}
                     {drama.rating && (
                       <div className="absolute top-1.5 left-1.5 px-1.5 py-0.5 rounded bg-black/85 backdrop-blur-md border border-amber-500/30 text-amber-400 text-[10px] font-bold font-mono flex items-center gap-1 shadow-md">
@@ -2253,7 +2256,7 @@ export default function VerticalWatchFeed({
                             loading="lazy"
                           />
                           <div className="absolute inset-0 bg-gradient-to-t from-black via-black/20 to-transparent pointer-events-none" />
-                          
+
                           <div className="absolute top-1.5 left-1.5">
                             <span className="px-1.5 py-0.5 rounded text-[8px] font-bold bg-primary text-white">
                               {rec.language}
@@ -2280,9 +2283,9 @@ export default function VerticalWatchFeed({
             {/* COLUMN 2 (CENTER): Fixed 9:16 Vertical Player (2D Flat, Symmetrical)      */}
             {/* ========================================================================= */}
             <section className="shrink-0 flex flex-col items-center justify-center h-full relative z-20 order-2">
-              
+
               {/* 9:16 Video Player Container (Strict vertical aspect ratio, 2D flat, Auto-fit on Fullscreen) */}
-              <div 
+              <div
                 ref={playerFrameRef}
                 onMouseMove={resetControlsTimer}
                 onMouseEnter={resetControlsTimer}
@@ -2294,12 +2297,17 @@ export default function VerticalWatchFeed({
                 className={cn(
                   "relative bg-black flex flex-col select-none mx-auto transition-all duration-150",
                   isFullscreen
-                    ? "fixed inset-0 w-screen h-screen max-w-none max-h-none rounded-none border-none aspect-auto overflow-hidden z-[9999]"
-                    : isLandscapeVideo
-                      ? "h-full max-h-[82vh] aspect-video w-auto rounded-xl border border-zinc-800 overflow-hidden group shadow-2xl"
-                      : "h-full aspect-[9/16] w-auto max-h-full rounded-xl border border-zinc-800 overflow-hidden group"
+                    ? "fixed inset-0 w-screen h-screen max-w-none max-h-none rounded-none border-none aspect-auto overflow-hidden z-[9999] flex items-center justify-center"
+                    : "h-full aspect-[9/16] w-auto max-h-full rounded-xl border border-zinc-800 overflow-hidden group shadow-2xl"
                 )}
               >
+                {/* 9:16 Portrait Viewport Stage (Guarantees 16:9 and all video streams stay cleanly contained within 9:16 portrait ratio) */}
+                <div className={cn(
+                  "relative flex flex-col select-none mx-auto overflow-hidden bg-black transition-all duration-150",
+                  isFullscreen
+                    ? "h-full max-h-screen aspect-[9/16] w-auto max-w-[calc(100vh*9/16)]"
+                    : "w-full h-full"
+                )}>
                 {/* Top Video Badges (Hover Only) */}
                 <div className={cn(
                   "absolute inset-x-2.5 z-30 flex items-center justify-between pointer-events-none transition-opacity duration-200",
@@ -2323,7 +2331,7 @@ export default function VerticalWatchFeed({
                 </div>
 
                 {/* Video Player */}
-                <div 
+                <div
                   onClick={togglePlayPause}
                   className="relative w-full h-full flex items-center justify-center cursor-pointer bg-black overflow-hidden"
                 >
@@ -2382,7 +2390,7 @@ export default function VerticalWatchFeed({
                     }}
                     className={cn(
                       "w-full h-full transition-all duration-150",
-                      isFullscreen
+                      (isFullscreen || isLandscapeVideo)
                         ? "object-contain"
                         : (aspectFit === 'cover' ? "object-cover" : "object-contain")
                     )}
@@ -2403,12 +2411,12 @@ export default function VerticalWatchFeed({
 
                   {/* Subtitles Overlay (Golden Ratio phi ~ 1.618 Focal Placement: 38.2% from bottom, leading-1.618) */}
                   {isCcActive && currentSubtitleCue && (
-                    <div 
+                    <div
                       className="absolute inset-x-0 flex justify-center text-center pointer-events-none z-20 transition-all duration-150 px-4"
-                      style={{ 
-                        bottom: isFullscreen 
-                          ? `calc(23.6% + ${-ccPositionY}px)` 
-                          : `calc(38.2% + ${-ccPositionY}px)` 
+                      style={{
+                        bottom: isFullscreen
+                          ? `calc(23.6% + ${-ccPositionY}px)`
+                          : `calc(38.2% + ${-ccPositionY}px)`
                       }}
                     >
                       <motion.div
@@ -2547,7 +2555,7 @@ export default function VerticalWatchFeed({
                   </button>
 
                   {/* Volume / Mute with Hover Slider */}
-                  <div 
+                  <div
                     className="relative flex items-center"
                     onMouseEnter={() => setIsVolumeHovered(true)}
                     onMouseLeave={() => setIsVolumeHovered(false)}
@@ -2605,22 +2613,6 @@ export default function VerticalWatchFeed({
                     <Settings className="w-4 h-4" />
                   </button>
 
-                  {/* 16:9 Landscape Fullscreen Pill Button */}
-                  {isLandscapeVideo && (
-                    <button
-                      onClick={toggleLandscapeFullscreen}
-                      className={cn(
-                        "h-8 px-2.5 rounded-lg border flex items-center gap-1.5 transition-all shadow-md text-[10px] font-black uppercase tracking-wider active:scale-95",
-                        isFullscreen
-                          ? "bg-cyan-500 text-black border-cyan-400 font-black"
-                          : "bg-cyan-950/80 border-cyan-500/40 text-cyan-300 hover:bg-cyan-900/90 hover:text-white"
-                      )}
-                      title="16:9 Fullscreen Mode"
-                    >
-                      <Maximize className="w-3.5 h-3.5" />
-                      <span>16:9</span>
-                    </button>
-                  )}
 
                   {/* Fullscreen */}
                   <button
@@ -2633,7 +2625,7 @@ export default function VerticalWatchFeed({
                 </div>
 
                 {/* Bottom Control Suite: Timeline Progress Bar (Hover Only, Transparent Blurred Floating Controls) */}
-                <div 
+                <div
                   className={cn(
                     "absolute bottom-0 inset-x-0 p-3 pt-8 pb-3 z-30 bg-gradient-to-t from-black/80 via-black/30 to-transparent flex flex-col gap-2 transition-opacity duration-200 pointer-events-auto",
                     controlsVisible ? "opacity-100 pointer-events-auto" : "opacity-0 pointer-events-none group-hover:opacity-100 group-hover:pointer-events-auto"
@@ -2647,7 +2639,7 @@ export default function VerticalWatchFeed({
                         {/* Background Base Track */}
                         <div className="absolute inset-x-0 h-1 group-hover/slider:h-1.5 rounded-full bg-white/20 transition-all overflow-hidden pointer-events-none">
                           {/* Filled Progress Bar */}
-                          <div 
+                          <div
                             className="h-full bg-primary rounded-full transition-all duration-75"
                             style={{ width: `${Math.min(100, Math.max(0, (progress / (duration || 1)) * 100))}%` }}
                           />
@@ -2666,7 +2658,7 @@ export default function VerticalWatchFeed({
                         />
 
                         {/* Visible Scrubber Thumb following the fill */}
-                        <div 
+                        <div
                           className="absolute top-1/2 -translate-y-1/2 -translate-x-1/2 w-3.5 h-3.5 rounded-full bg-primary border-2 border-white shadow-[0_0_8px_rgba(220,38,38,0.7)] pointer-events-none transition-transform group-hover/slider:scale-125 z-10"
                           style={{ left: `${Math.min(100, Math.max(0, (progress / (duration || 1)) * 100))}%` }}
                         />
@@ -2717,7 +2709,7 @@ export default function VerticalWatchFeed({
                           <Subtitles className="w-3.5 h-3.5 text-primary" />
                           <span>Closed Captions</span>
                         </span>
-                        <button 
+                        <button
                           onClick={() => setShowCcModal(false)}
                           className="p-1 rounded text-zinc-400 hover:text-white transition-colors"
                         >
@@ -2892,7 +2884,7 @@ export default function VerticalWatchFeed({
                                 onClick={() => {
                                   const next = !ccBgEnabled;
                                   setCcBgEnabled(next);
-                                  try { localStorage.setItem('shadow_shorts_cc_bg', String(next)); } catch {}
+                                  try { localStorage.setItem('shadow_shorts_cc_bg', String(next)); } catch { }
                                 }}
                                 className={cn(
                                   "w-7 h-3.5 rounded-full p-0.5 transition-colors border flex items-center",
@@ -2919,7 +2911,7 @@ export default function VerticalWatchFeed({
                                   onChange={(e) => {
                                     const val = parseFloat(e.target.value);
                                     setCcBgOpacity(val);
-                                    try { localStorage.setItem('shadow_shorts_cc_opacity', String(val)); } catch {}
+                                    try { localStorage.setItem('shadow_shorts_cc_opacity', String(val)); } catch { }
                                   }}
                                   className="w-full h-1 bg-zinc-800 rounded-full appearance-none cursor-pointer accent-primary"
                                 />
@@ -2929,7 +2921,7 @@ export default function VerticalWatchFeed({
                                       key={preset}
                                       onClick={() => {
                                         setCcBgOpacity(preset);
-                                        try { localStorage.setItem('shadow_shorts_cc_opacity', String(preset)); } catch {}
+                                        try { localStorage.setItem('shadow_shorts_cc_opacity', String(preset)); } catch { }
                                       }}
                                       className={cn(
                                         "py-0.5 rounded border transition-colors",
@@ -3020,7 +3012,7 @@ export default function VerticalWatchFeed({
                           <Settings className="w-3.5 h-3.5 text-primary" />
                           <span>Playback Settings</span>
                         </span>
-                        <button 
+                        <button
                           onClick={() => setShowSettingsMenu(false)}
                           className="p-1 rounded text-zinc-400 hover:text-white"
                         >
@@ -3175,6 +3167,7 @@ export default function VerticalWatchFeed({
                     </motion.div>
                   )}
                 </AnimatePresence>
+                </div>
               </div>
             </section>
 
@@ -3182,10 +3175,10 @@ export default function VerticalWatchFeed({
             {/* COLUMN 3 (RIGHT): Episodes & Comments Directly Underneath (Zero Gap, 2D)  */}
             {/* ========================================================================= */}
             <section className="flex-1 min-w-[320px] max-w-[560px] 2xl:max-w-[640px] h-full overflow-y-auto custom-scrollbar flex flex-col border border-zinc-800 rounded-xl bg-transparent divide-y divide-zinc-800 order-3">
-              
+
               {/* Block 1: Episodes Block (All Episodes in 1 Tab) */}
               <div className="flex flex-col bg-transparent shrink-0">
-                
+
                 {/* Episodes Block Header */}
                 <div className="p-3.5 sm:p-4 flex items-center justify-between border-b border-zinc-800 bg-transparent shrink-0">
                   <div className="flex items-center gap-2.5">
@@ -3242,7 +3235,7 @@ export default function VerticalWatchFeed({
                 </div>
 
                 {/* Episodes Grid Scroll Area (All Episodes in 1 Tab) */}
-                <div 
+                <div
                   ref={episodesContainerRef}
                   className="max-h-[280px] 2xl:max-h-[340px] overflow-y-auto p-2.5 custom-scrollbar overflow-x-hidden"
                 >
@@ -3250,8 +3243,8 @@ export default function VerticalWatchFeed({
                     className={cn(
                       "grid transition-all",
                       epViewMode === 'grid' ? "grid-cols-5 sm:grid-cols-6 md:grid-cols-7 xl:grid-cols-8 gap-1.5" :
-                      epViewMode === 'compact' ? "grid-cols-8 sm:grid-cols-10 xl:grid-cols-12 gap-1" :
-                      "grid-cols-1 gap-1.5"
+                        epViewMode === 'compact' ? "grid-cols-8 sm:grid-cols-10 xl:grid-cols-12 gap-1" :
+                          "grid-cols-1 gap-1.5"
                     )}
                   >
                     {displayedEpisodes.map((ep) => {
@@ -3282,9 +3275,9 @@ export default function VerticalWatchFeed({
 
               {/* Block 2: Comments Section Directly Under Episodes (Zero Gap) */}
               <div className="p-3.5 sm:p-4 flex flex-col gap-3 bg-transparent">
-                <ShadowComments 
-                  episodeId={`shorts-${drama.id}-ep-${currentEpNum}`} 
-                  compact={true} 
+                <ShadowComments
+                  episodeId={`shorts-${drama.id}-ep-${currentEpNum}`}
+                  compact={true}
                   themeColor="shorts"
                 />
               </div>
@@ -3388,7 +3381,7 @@ export default function VerticalWatchFeed({
             {/* Slide-up Sheet with Dynamic Height Snap Points */}
             <motion.div
               initial={{ y: '100%' }}
-              animate={{ 
+              animate={{
                 y: 0,
                 height: commentsSnapState === 'full' ? '92vh' : '60vh'
               }}
@@ -3398,7 +3391,7 @@ export default function VerticalWatchFeed({
               onClick={(e) => e.stopPropagation()}
             >
               {/* Drag Handle & Gesture Header Area (Swipe up for full screen, swipe down to collapse/close) */}
-              <div 
+              <div
                 className="w-full pt-2.5 pb-1 px-4 flex flex-col items-center touch-none cursor-grab active:cursor-grabbing select-none shrink-0 bg-zinc-950/90"
                 onTouchStart={(e) => {
                   commentsTouchStartY.current = e.touches[0].clientY;
@@ -3418,18 +3411,18 @@ export default function VerticalWatchFeed({
                 }}
               >
                 {/* Pull Handle Pill */}
-                <div 
+                <div
                   onClick={() => setCommentsSnapState(prev => prev === 'full' ? 'half' : 'full')}
-                  className="w-12 h-1.5 bg-zinc-600/80 hover:bg-zinc-400 rounded-full mx-auto transition-colors cursor-pointer" 
+                  className="w-12 h-1.5 bg-zinc-600/80 hover:bg-zinc-400 rounded-full mx-auto transition-colors cursor-pointer"
                   title={commentsSnapState === 'full' ? "Tap to collapse" : "Tap to expand"}
                 />
               </div>
 
               {/* Comments Content Scrollable Area */}
               <div className="flex-1 overflow-y-auto custom-scrollbar px-3 py-2">
-                <ShadowComments 
-                  episodeId={`shorts-${drama.id}-ep-${currentEpNum}`} 
-                  compact={true} 
+                <ShadowComments
+                  episodeId={`shorts-${drama.id}-ep-${currentEpNum}`}
+                  compact={true}
                   onClose={closeCommentsDrawer}
                   onToggleSnap={() => setCommentsSnapState(prev => prev === 'full' ? 'half' : 'full')}
                   isSnappedFull={commentsSnapState === 'full'}
@@ -3466,9 +3459,9 @@ export default function VerticalWatchFeed({
             >
               {/* Drag Handle & Header */}
               <div className="w-full pt-3 pb-2 px-5 flex flex-col items-center shrink-0 border-b border-zinc-800/80 bg-zinc-950/80">
-                <div 
+                <div
                   onClick={() => setIsMoreMenuOpen(false)}
-                  className="w-12 h-1.5 bg-zinc-700/80 hover:bg-zinc-500 rounded-full mx-auto mb-3 cursor-pointer transition-colors" 
+                  className="w-12 h-1.5 bg-zinc-700/80 hover:bg-zinc-500 rounded-full mx-auto mb-3 cursor-pointer transition-colors"
                 />
                 <div className="w-full flex items-center justify-between">
                   <div className="flex flex-col min-w-0 pr-3">
@@ -3492,30 +3485,6 @@ export default function VerticalWatchFeed({
 
               {/* Scrollable Options Body */}
               <div className="flex-1 overflow-y-auto custom-scrollbar p-4 space-y-4">
-                {/* 16:9 Landscape Fullscreen Action Banner */}
-                {isLandscapeVideo && (
-                  <button
-                    onClick={() => {
-                      setIsMoreMenuOpen(false);
-                      toggleLandscapeFullscreen();
-                    }}
-                    className="w-full flex items-center justify-between p-3 rounded-2xl bg-cyan-950/60 border border-cyan-500/40 text-cyan-300 hover:bg-cyan-900/80 transition-all text-left shadow-lg active:scale-98"
-                  >
-                    <div className="flex items-center gap-2.5">
-                      <div className="w-8 h-8 rounded-xl bg-cyan-500/20 flex items-center justify-center shrink-0">
-                        <Maximize className="w-4 h-4 text-cyan-400" />
-                      </div>
-                      <div className="flex flex-col">
-                        <span className="text-xs font-bold text-white">16:9 Landscape Fullscreen</span>
-                        <span className="text-[10px] text-cyan-400/80">Rotate and expand to true 16:9 view</span>
-                      </div>
-                    </div>
-                    <span className="text-[10px] font-black uppercase tracking-wider px-2.5 py-1 rounded-full bg-cyan-500 text-black">
-                      Expand
-                    </span>
-                  </button>
-                )}
-
                 {/* Quick Action Grid: Watchlist & Aspect Ratio */}
                 <div className="grid grid-cols-2 gap-2.5">
                   {/* Save to Watchlist */}
@@ -3528,8 +3497,8 @@ export default function VerticalWatchFeed({
                     }}
                     className={cn(
                       "flex items-center gap-2.5 p-3 rounded-2xl border transition-all text-left",
-                      watchlistStatus 
-                        ? "bg-primary/15 border-primary/40 text-primary" 
+                      watchlistStatus
+                        ? "bg-primary/15 border-primary/40 text-primary"
                         : "bg-zinc-900/80 border-zinc-800/80 hover:bg-zinc-850 text-zinc-200"
                     )}
                   >
@@ -3731,8 +3700,8 @@ export default function VerticalWatchFeed({
                       onClick={toggleMute}
                       className={cn(
                         "px-2.5 py-1 rounded-lg text-[11px] font-bold border transition-colors",
-                        isMuted 
-                          ? "bg-amber-500/20 border-amber-500/40 text-amber-300" 
+                        isMuted
+                          ? "bg-amber-500/20 border-amber-500/40 text-amber-300"
                           : "bg-zinc-800 border-zinc-700 text-zinc-300 hover:text-white"
                       )}
                     >

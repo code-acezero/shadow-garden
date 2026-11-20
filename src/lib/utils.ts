@@ -311,7 +311,12 @@ export function getSafeImageUrl(url?: string | null): string {
     if (trimmed.startsWith('/api/proxy') || trimmed.startsWith('/images/')) return trimmed;
     
     // Domains known to fail client-side router DNS resolution or have strict hotlink policies
-    if (trimmed.includes('cdn.anipixcdn.co') || trimmed.includes('anipixcdn.co')) {
+    if (
+        trimmed.includes('s4.anilist.co') ||
+        trimmed.includes('anilistcdn') ||
+        trimmed.includes('cdn.anipixcdn.co') || 
+        trimmed.includes('anipixcdn.co')
+    ) {
         return `/api/proxy?url=${encodeURIComponent(trimmed)}`;
     }
     

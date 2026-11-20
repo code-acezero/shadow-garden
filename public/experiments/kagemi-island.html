@@ -2550,12 +2550,12 @@
           <span class="k-choice-btn-arrow">→</span>
         </button>
 
-        <!-- Option 2: Skip to Home Page (Direct to Anime Streaming) -->
+        <!-- Option 2: Skip to Landing Page (Direct to Anime Streaming & Catalog) -->
         <button id="k-btn-skip-home" class="k-choice-btn k-choice-btn-secondary">
           <span class="k-choice-btn-bullet">✦</span>
           <div class="k-choice-btn-body">
-            <div class="k-choice-btn-title">Skip to Home Page</div>
-            <div class="k-choice-btn-subtitle">Streaming Platform</div>
+            <div class="k-choice-btn-title">Skip to Landing Page</div>
+            <div class="k-choice-btn-subtitle">Stream 15,000+ Anime · Direct Catalog</div>
           </div>
           <span class="k-choice-btn-arrow">→</span>
         </button>
@@ -4502,32 +4502,40 @@ void main(){
     }
 
     function exitTunnel() {
-      uFlash = 1.35;
+      uFlash = 2.0;
       if (S.tunnelExit) S.tunnelExit();
       if (S.ac) {
         const now = S.ac.currentTime;
-        if (S.wind && S.wind.g) S.wind.g.gain.setValueAtTime(0.02, now);
-        if (S.wind && S.wind.b) S.wind.b.frequency.setValueAtTime(250, now);
+        if (S.wind && S.wind.g) S.wind.g.gain.setValueAtTime(0.00, now + 0.3);
         if (S.tunnelOsc && S.tunnelOsc.gain) S.tunnelOsc.gain.gain.setValueAtTime(0, now);
         if (S.vortex && S.vortex.g) S.vortex.g.gain.setValueAtTime(0, now);
       }
-      if (tunnelFx) tunnelFx.m.visible = false; if (gapBridge) gapBridge.visible = true; if (dioramaSplashPoints) dioramaSplashPoints.visible = true; if (dioramaMist) dioramaMist.visible = true;
-      if (islandRoot) islandRoot.visible = true;
-      if (dioramaRoot) dioramaRoot.visible = true;
-      if (tunnelRoot) tunnelRoot.visible = false;
-      if (tunnelLight) tunnelLight.intensity = 0;
-      if (tunnelTrailLight) tunnelTrailLight.intensity = 0;
-      if (tunnelExitLight) tunnelExitLight.intensity = 0;
-      baseFov = 55; cam.fov = baseFov; cam.updateProjectionMatrix();
-      if (PW) {
-        cam.position.copy(at(-2500, 700));
-        cam.lookAt(at(0, 700));
-        const g0 = groundAt(cam.position.x, cam.position.z, cam.position.y + 500);
-        if (g0 !== null) cam.position.y = g0 + pl.eye;
-        P0.copy(cam.position);
-        pl.vel.set(0, 0, 0);
+      if (typeof kagemiAudio !== 'undefined' && kagemiAudio && kagemiAudio.bgmAudio) {
+        const fadeInterval = setInterval(() => {
+          if (kagemiAudio.bgmAudio.volume > 0.05) {
+            kagemiAudio.bgmAudio.volume = Math.max(0, kagemiAudio.bgmAudio.volume - 0.08);
+          } else {
+            kagemiAudio.bgmAudio.pause();
+            clearInterval(fadeInterval);
+          }
+        }, 50);
       }
-      setMode('walk');
+
+      // Blinding white flash overlay reveals the home page as the flash reaches peak and fades
+      let flashEl = document.getElementById('k-portal-exit-flash');
+      if (!flashEl) {
+        flashEl = document.createElement('div');
+        flashEl.id = 'k-portal-exit-flash';
+        flashEl.style.cssText = 'position:fixed;inset:0;background:#ffffff;z-index:9999999;opacity:0;pointer-events:none;transition:opacity 0.4s cubic-bezier(0.16, 1, 0.3, 1);';
+        document.body.appendChild(flashEl);
+      }
+      void flashEl.offsetWidth;
+      flashEl.style.opacity = '1';
+
+      // As the last white flash blooms and begins fading out, navigate to home page!
+      setTimeout(() => {
+        window.location.href = '/home';
+      }, 420);
     }
 
     function tunnelTick(d) {

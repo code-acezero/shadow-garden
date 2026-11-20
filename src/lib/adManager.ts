@@ -48,6 +48,7 @@ export interface AdsConfig {
   // Anti-Adblock & Exemptions
   antiAdblockEnabled: boolean;
   vipExempt: boolean;
+  adWhitelist: string[];
 }
 
 export const DEFAULT_ADS_CONFIG: AdsConfig = {
@@ -95,6 +96,7 @@ export const DEFAULT_ADS_CONFIG: AdsConfig = {
   // Protection
   antiAdblockEnabled: true,
   vipExempt: true,              // Donators, VIPs, Admins see 0 ads
+  adWhitelist: [],              // Whitelisted user IDs, usernames, or emails
 };
 
 const STORAGE_KEY = 'shadow_ads_config';
@@ -179,25 +181,74 @@ export const adManager = {
   },
 
   /**
-   * Checks if current user is exempt from ads
+   * Retrieves active ad whitelist
    */
-  isExempt(): boolean {
+  getWhitelist(): string[] {
+    const config = this.getConfig();
+    return Array.isArray(config.adWhitelist) ? config.adWhitelist : [];
+  },
+
+  /**
+   * Adds user identifier (username, email, or user ID) to whitelist
+   */
+  async addToWhitelist(userIdentifier: string): Promise<boolean> {
+    const clean = userIdentifier.trim().toLowerCase();
+    if (!clean) return false;
+    const current = this.getWhitelist();
+    if (current.some(item => item.toLowerCase() === clean)) return true;
+    const next = [...current, clean];
+    return this.saveConfig({ adWhitelist: next });
+  },
+
+  /**
+   * Removes user identifier from whitelist
+   */
+  async removeFromWhitelist(userIdentifier: string): Promise<boolean> {
+    const clean = userIdentifier.trim().toLowerCase();
+    const current = this.getWhitelist();
+    const next = current.filter(item => item.toLowerCase() !== clean);
+    return this.saveConfig({ adWhitelist: next });
+  },
+
+  /**
+   * Checks if a user is exempt from ads / ad breaks.
+   * Admins and mods are automatically whitelisted.
+   * Whitelisted users see ZERO ads and ZERO ad breaks.
+   */
+  isExempt(userProfile?: any): boolean {
     if (typeof window === 'undefined') return false;
     const config = this.getConfig();
     if (!config.enabled) return true;
 
-    if (config.vipExempt) {
-      if (localStorage.getItem('sg_ad_free') === 'true') return true;
+    if (localStorage.getItem('sg_ad_free') === 'true') return true;
+
+    let p = userProfile;
+    if (!p) {
       try {
-        const userProfile = localStorage.getItem('shadow_user_profile');
-        if (userProfile) {
-          const p = JSON.parse(userProfile);
-          if (p?.role === 'admin' || p?.role === 'moderator' || p?.is_vip || p?.is_donator) {
-            return true;
-          }
-        }
+        const stored = localStorage.getItem('shadow_user_profile') || localStorage.getItem('user_profile');
+        if (stored) p = JSON.parse(stored);
       } catch {}
     }
+
+    if (p) {
+      // 1. Admins, mods, and masters are automatically whitelisted
+      const role = (p.role || '').toLowerCase();
+      if (role === 'admin' || role === 'moderator' || role === 'master' || role === 'leader') {
+        return true;
+      }
+      if (p.is_vip || p.is_donator || p.is_ad_whitelisted || p.ad_free) {
+        return true;
+      }
+
+      // 2. Check Ad Whitelist by user ID, username, or email
+      const whitelist = this.getWhitelist().map(w => w.toLowerCase());
+      if (whitelist.length > 0) {
+        if (p.id && whitelist.includes(String(p.id).toLowerCase())) return true;
+        if (p.username && whitelist.includes(String(p.username).toLowerCase())) return true;
+        if (p.email && whitelist.includes(String(p.email).toLowerCase())) return true;
+      }
+    }
+
     return false;
   },
 

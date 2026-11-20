@@ -512,6 +512,19 @@ export const ALL_TITLES: TitleDefinition[] = [
       badgeBorder: 'border-emerald-500/40',
     },
   },
+  {
+    id: 'supporter',
+    title: 'Supporter',
+    category: 'special',
+    description: 'Ad-free patron and distinguished realm supporter.',
+    badgeStyle: {
+      bracketColor: 'text-purple-400 font-bold drop-shadow-[0_0_8px_rgba(168,85,247,0.7)]',
+      badgeBg: 'bg-purple-950/60',
+      badgeText: 'text-purple-300',
+      badgeBorder: 'border-purple-500/50',
+      glow: 'rgba(168,85,247,0.5)',
+    },
+  },
 ];
 
 // Helper to filter out meaningless titles
@@ -608,6 +621,40 @@ export async function addFormerTitle(profileId: string, titleName: string): Prom
   }
 }
 
+/**
+ * Checks if a user is ad-whitelisted.
+ * Admins and moderators are automatically whitelisted.
+ * Whitelisted users receive the 'Supporter' title and a purple title color.
+ */
+export function isUserAdWhitelisted(profile?: any): boolean {
+  if (!profile || typeof profile !== 'object') return false;
+
+  // 1. Admins, mods, and masters are automatically whitelisted
+  const role = (profile.role || '').toLowerCase();
+  if (role === 'admin' || role === 'moderator' || role === 'master' || role === 'leader') {
+    return true;
+  }
+  if (profile.is_ad_whitelisted || profile.ad_whitelisted || profile.is_vip || profile.is_donator) {
+    return true;
+  }
+
+  // 2. Check Whitelist from localStorage / site_config
+  if (typeof window !== 'undefined') {
+    try {
+      const storedConfig = localStorage.getItem('shadow_ads_config');
+      if (storedConfig) {
+        const parsed = JSON.parse(storedConfig);
+        const list: string[] = Array.isArray(parsed.adWhitelist) ? parsed.adWhitelist : [];
+        const lowerList = list.map(item => String(item).toLowerCase().trim());
+        if (profile.id && lowerList.includes(String(profile.id).toLowerCase())) return true;
+        if (profile.username && lowerList.includes(String(profile.username).toLowerCase())) return true;
+        if (profile.email && lowerList.includes(String(profile.email).toLowerCase())) return true;
+      }
+    } catch {}
+  }
+  return false;
+}
+
 // ── 2. Determine All Titles Available to User ─────────────────────────────────
 export function getAvailableTitles(profile: any): TitleDefinition[] {
   if (!profile || typeof profile !== 'object') {
@@ -627,6 +674,14 @@ export function getAvailableTitles(profile: any): TitleDefinition[] {
   for (const t of ALL_TITLES) {
     if (t.category === 'level' && t.minLevel !== undefined && level >= t.minLevel) {
       available.push(t);
+    }
+  }
+
+  // 1b. Whitelisted / Supporter Users: unlock "Supporter" title!
+  if (isUserAdWhitelisted(profile)) {
+    const supporterTitle = ALL_TITLES.find(t => t.id === 'supporter');
+    if (supporterTitle && !available.some(a => a.id === supporterTitle.id)) {
+      available.push(supporterTitle);
     }
   }
 
@@ -824,25 +879,49 @@ export function getEquippedTitle(profile?: any): string {
 }
 
 // ── 5. Get Title Definition by Title String or ID ─────────────────────────────
-export function getTitleDefinition(titleOrId?: string | null): TitleDefinition {
-  if (!titleOrId) return ALL_TITLES[0];
-  const clean = titleOrId.trim().toLowerCase();
-  const match = ALL_TITLES.find(t => t.id === clean || t.title.toLowerCase() === clean);
-  if (match) return match;
+export function getTitleDefinition(titleOrId?: string | null, userProfile?: any): TitleDefinition {
+  let baseDef: TitleDefinition;
 
-  // Fallback ad-hoc definition
-  return {
-    id: clean,
-    title: titleOrId.trim(),
-    category: clean.startsWith('former') ? 'former' : 'special',
-    description: clean.startsWith('former') ? 'Honorary former title permanently preserved in your vault.' : 'Honored Title',
-    badgeStyle: {
-      bracketColor: clean.startsWith('former') ? 'text-amber-300 font-bold' : 'text-purple-400 font-bold',
-      badgeBg: clean.startsWith('former') ? 'bg-amber-950/40' : 'bg-purple-950/40',
-      badgeText: clean.startsWith('former') ? 'text-amber-200' : 'text-purple-200',
-      badgeBorder: clean.startsWith('former') ? 'border-amber-500/40' : 'border-purple-500/40',
-    },
-  };
+  if (!titleOrId) {
+    baseDef = ALL_TITLES[0];
+  } else {
+    const clean = titleOrId.trim().toLowerCase();
+    const match = ALL_TITLES.find(t => t.id === clean || t.title.toLowerCase() === clean);
+    if (match) {
+      baseDef = match;
+    } else {
+      // Fallback ad-hoc definition
+      baseDef = {
+        id: clean,
+        title: titleOrId.trim(),
+        category: clean.startsWith('former') ? 'former' : 'special',
+        description: clean.startsWith('former') ? 'Honorary former title permanently preserved in your vault.' : 'Honored Title',
+        badgeStyle: {
+          bracketColor: clean.startsWith('former') ? 'text-amber-300 font-bold' : 'text-purple-400 font-bold',
+          badgeBg: clean.startsWith('former') ? 'bg-amber-950/40' : 'bg-purple-950/40',
+          badgeText: clean.startsWith('former') ? 'text-amber-200' : 'text-purple-200',
+          badgeBorder: clean.startsWith('former') ? 'border-amber-500/40' : 'border-purple-500/40',
+        },
+      };
+    }
+  }
+
+  // If user is whitelisted / supporter, their title color is ALWAYS PURPLE no matter which title is active!
+  if (userProfile && isUserAdWhitelisted(userProfile)) {
+    return {
+      ...baseDef,
+      badgeStyle: {
+        ...baseDef.badgeStyle,
+        bracketColor: 'text-purple-400 font-bold drop-shadow-[0_0_8px_rgba(168,85,247,0.7)]',
+        badgeBg: 'bg-purple-950/60',
+        badgeText: 'text-purple-300',
+        badgeBorder: 'border-purple-500/50',
+        glow: 'rgba(168,85,247,0.5)',
+      }
+    };
+  }
+
+  return baseDef;
 }
 
 // ── 6. Next Milestone Progress Calculator ─────────────────────────────────────

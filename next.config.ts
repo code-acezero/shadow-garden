@@ -6,10 +6,15 @@ const withBundleAnalyzer = createBundleAnalyzer({
 });
 
 const nextConfig: NextConfig = {
+  output: process.env.STANDALONE === "true" ? "standalone" : undefined,
   reactStrictMode: false,
   typescript: {
     // Keep ignoring pre-existing build-time type issues when bundling
     ignoreBuildErrors: true,
+  },
+  experimental: {
+    cpus: 4,
+    workerThreads: false,
   },
   turbopack: {
     resolveAlias: {

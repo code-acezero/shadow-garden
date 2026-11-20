@@ -2,10 +2,11 @@
 
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { 
-  DollarSign, Shield, Zap, Sliders, Play, RotateCcw, 
-  ExternalLink, CheckCircle2, AlertTriangle, Radio, 
-  Layers, Bell, Globe, Save, Loader2, Info, Eye, BarChart3
+import {
+  DollarSign, Shield, Zap, Sliders, Play, RotateCcw,
+  ExternalLink, CheckCircle2, AlertTriangle, Radio,
+  Layers, Bell, Globe, Save, Loader2, Info, Eye, BarChart3,
+  ShieldCheck, UserPlus, UserCheck, Trash2, Users, Search
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -32,6 +33,10 @@ export default function AdsMonetizationPanel({ onNotify }: AdsMonetizationPanelP
   // Revenue Estimator State
   const [estVisitors, setEstVisitors] = useState(5000);
   const [trafficTier, setTrafficTier] = useState<'tier1' | 'tier2' | 'tier3'>('tier2');
+
+  // Ad Whitelist & Supporter Management State
+  const [newWhitelistUser, setNewWhitelistUser] = useState('');
+  const [whitelistSearch, setWhitelistSearch] = useState('');
 
   useEffect(() => {
     // Initial load and sync
@@ -87,10 +92,34 @@ export default function AdsMonetizationPanel({ onNotify }: AdsMonetizationPanelP
     onNotify?.("Cooldown Reset", "Local browser ad cooldown has been reset to 0.", "system");
   };
 
+  const handleAddWhitelist = async () => {
+    const clean = newWhitelistUser.trim();
+    if (!clean) return;
+    const currentList = Array.isArray(config.adWhitelist) ? config.adWhitelist : [];
+    if (currentList.some(item => item.toLowerCase() === clean.toLowerCase())) {
+      onNotify?.("Already Whitelisted", `${clean} is already on the ad exemption list.`, "system");
+      setNewWhitelistUser('');
+      return;
+    }
+    const updated = [...currentList, clean];
+    handleChange('adWhitelist', updated);
+    await adManager.addToWhitelist(clean);
+    setNewWhitelistUser('');
+    onNotify?.("User Whitelisted", `${clean} is now exempt from ads and awarded the purple Supporter title.`, "success");
+  };
+
+  const handleRemoveWhitelist = async (identifier: string) => {
+    const currentList = Array.isArray(config.adWhitelist) ? config.adWhitelist : [];
+    const updated = currentList.filter(item => item.toLowerCase() !== identifier.toLowerCase());
+    handleChange('adWhitelist', updated);
+    await adManager.removeFromWhitelist(identifier);
+    onNotify?.("User Removed", `${identifier} removed from ad whitelist.`, "system");
+  };
+
   // Calculations for Revenue Estimator (Adsterra Global Rates)
   // Tier 1 (US/UK/CA/AU): CPM ~$5-12; Tier 2 (EU/SEA/BR): CPM ~$2-4; Tier 3 (Global): CPM ~$0.8-1.5
   const cpmMultiplier = trafficTier === 'tier1' ? 7.5 : trafficTier === 'tier2' ? 3.0 : 1.2;
-  
+
   // Video streams: Average anime viewer watches 1.8 episodes per visit
   // With 2 ads per episode (First Play + Mid-roll), plus episode switches (~0.8 per visit)
   const episodesPerVisitor = 1.8;
@@ -132,15 +161,15 @@ export default function AdsMonetizationPanel({ onNotify }: AdsMonetizationPanelP
         <div className="flex items-center gap-3 relative z-10 w-full md:w-auto justify-between md:justify-end">
           <div className="flex items-center gap-3 bg-black/40 border border-white/[0.08] px-3.5 py-1.5 rounded-xl">
             <span className="text-xs font-semibold text-zinc-300">Master Switch</span>
-            <Switch 
-              checked={config.enabled} 
+            <Switch
+              checked={config.enabled}
               onCheckedChange={(val) => handleChange('enabled', val)}
               className="data-[state=checked]:bg-emerald-500"
             />
           </div>
-          <Button 
-            onClick={handleSave} 
-            disabled={loading} 
+          <Button
+            onClick={handleSave}
+            disabled={loading}
             className="bg-emerald-600 hover:bg-emerald-500 text-white font-semibold rounded-xl px-5 h-9 text-xs gap-2 shadow-md shadow-emerald-900/20"
           >
             {loading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Save size={14} />}
@@ -341,9 +370,9 @@ export default function AdsMonetizationPanel({ onNotify }: AdsMonetizationPanelP
                     Fires Adsterra Smartlink in background on initial episode play click. Capped to 1 per episode.
                   </p>
                 </div>
-                <Switch 
-                  checked={config.smartlinkOnFirstPlay} 
-                  onCheckedChange={(v) => handleChange('smartlinkOnFirstPlay', v)} 
+                <Switch
+                  checked={config.smartlinkOnFirstPlay}
+                  onCheckedChange={(v) => handleChange('smartlinkOnFirstPlay', v)}
                   className="data-[state=checked]:bg-primary-600"
                 />
               </div>
@@ -359,9 +388,9 @@ export default function AdsMonetizationPanel({ onNotify }: AdsMonetizationPanelP
                     Pauses playback after middle part with sleek intermission prompt. Resumes immediately on click.
                   </p>
                 </div>
-                <Switch 
-                  checked={config.smartlinkOnMidRoll} 
-                  onCheckedChange={(v) => handleChange('smartlinkOnMidRoll', v)} 
+                <Switch
+                  checked={config.smartlinkOnMidRoll}
+                  onCheckedChange={(v) => handleChange('smartlinkOnMidRoll', v)}
                   className="data-[state=checked]:bg-primary-600"
                 />
               </div>
@@ -405,9 +434,9 @@ export default function AdsMonetizationPanel({ onNotify }: AdsMonetizationPanelP
                     Fires direct link in background tab when user clicks an episode tile to switch episodes or anime.
                   </p>
                 </div>
-                <Switch 
-                  checked={config.smartlinkOnEpisodeClick} 
-                  onCheckedChange={(v) => handleChange('smartlinkOnEpisodeClick', v)} 
+                <Switch
+                  checked={config.smartlinkOnEpisodeClick}
+                  onCheckedChange={(v) => handleChange('smartlinkOnEpisodeClick', v)}
                   className="data-[state=checked]:bg-emerald-500"
                 />
               </div>
@@ -468,9 +497,9 @@ export default function AdsMonetizationPanel({ onNotify }: AdsMonetizationPanelP
                   <h4 className={cn("text-xs font-bold", isLight ? "text-zinc-900" : "text-white")}>Social Bar (In-Page Push)</h4>
                   <p className={cn("text-[10px]", isLight ? "text-zinc-600" : "text-zinc-500")}>Floating notification banner with high CTR.</p>
                 </div>
-                <Switch 
-                  checked={config.socialBarEnabled} 
-                  onCheckedChange={(v) => handleChange('socialBarEnabled', v)} 
+                <Switch
+                  checked={config.socialBarEnabled}
+                  onCheckedChange={(v) => handleChange('socialBarEnabled', v)}
                   className="data-[state=checked]:bg-emerald-500"
                 />
               </div>
@@ -489,9 +518,9 @@ export default function AdsMonetizationPanel({ onNotify }: AdsMonetizationPanelP
                   <h4 className={cn("text-xs font-bold", isLight ? "text-zinc-900" : "text-white")}>Native Banners</h4>
                   <p className={cn("text-[10px]", isLight ? "text-zinc-600" : "text-zinc-500")}>Integrated dark glassmorphic cards.</p>
                 </div>
-                <Switch 
-                  checked={config.nativeBannerEnabled} 
-                  onCheckedChange={(v) => handleChange('nativeBannerEnabled', v)} 
+                <Switch
+                  checked={config.nativeBannerEnabled}
+                  onCheckedChange={(v) => handleChange('nativeBannerEnabled', v)}
                   className="data-[state=checked]:bg-emerald-500"
                 />
               </div>
@@ -500,23 +529,23 @@ export default function AdsMonetizationPanel({ onNotify }: AdsMonetizationPanelP
                 <div className={cn("space-y-2 pt-2 border-t", isLight ? "border-black/5" : "border-white/5")}>
                   <div className="flex items-center justify-between text-xs">
                     <span className={isLight ? "text-zinc-700" : "text-zinc-400"}>Below Video Player (Watch Page)</span>
-                    <Switch 
-                      checked={config.showOnWatchPage} 
-                      onCheckedChange={(v) => handleChange('showOnWatchPage', v)} 
+                    <Switch
+                      checked={config.showOnWatchPage}
+                      onCheckedChange={(v) => handleChange('showOnWatchPage', v)}
                     />
                   </div>
                   <div className="flex items-center justify-between text-xs">
                     <span className={isLight ? "text-zinc-700" : "text-zinc-400"}>Download Gateway Page</span>
-                    <Switch 
-                      checked={config.showOnDownloadPage} 
-                      onCheckedChange={(v) => handleChange('showOnDownloadPage', v)} 
+                    <Switch
+                      checked={config.showOnDownloadPage}
+                      onCheckedChange={(v) => handleChange('showOnDownloadPage', v)}
                     />
                   </div>
                   <div className="flex items-center justify-between text-xs">
                     <span className={isLight ? "text-zinc-700" : "text-zinc-400"}>OtakuVerse Community</span>
-                    <Switch 
-                      checked={config.showOnOtakuVerse} 
-                      onCheckedChange={(v) => handleChange('showOnOtakuVerse', v)} 
+                    <Switch
+                      checked={config.showOnOtakuVerse}
+                      onCheckedChange={(v) => handleChange('showOnOtakuVerse', v)}
                     />
                   </div>
                 </div>
@@ -530,9 +559,9 @@ export default function AdsMonetizationPanel({ onNotify }: AdsMonetizationPanelP
                   <h4 className={cn("text-xs font-bold", isLight ? "text-zinc-900" : "text-white")}>Popunder (On Click)</h4>
                   <p className={cn("text-[10px]", isLight ? "text-zinc-600" : "text-zinc-500")}>Highest revenue, but potentially disruptive.</p>
                 </div>
-                <Switch 
-                  checked={config.popunderEnabled} 
-                  onCheckedChange={(v) => handleChange('popunderEnabled', v)} 
+                <Switch
+                  checked={config.popunderEnabled}
+                  onCheckedChange={(v) => handleChange('popunderEnabled', v)}
                   className="data-[state=checked]:bg-amber-500"
                 />
               </div>
@@ -565,9 +594,9 @@ export default function AdsMonetizationPanel({ onNotify }: AdsMonetizationPanelP
                   <h4 className={cn("text-xs font-bold", isLight ? "text-zinc-900" : "text-white")}>Smartlink on Downloads</h4>
                   <p className={cn("text-[10px]", isLight ? "text-zinc-600" : "text-zinc-500")}>Trigger direct link when user reveals download links or downloads.</p>
                 </div>
-                <Switch 
-                  checked={config.smartlinkOnDownload} 
-                  onCheckedChange={(v) => handleChange('smartlinkOnDownload', v)} 
+                <Switch
+                  checked={config.smartlinkOnDownload}
+                  onCheckedChange={(v) => handleChange('smartlinkOnDownload', v)}
                   className="data-[state=checked]:bg-emerald-500"
                 />
               </div>
@@ -603,9 +632,9 @@ export default function AdsMonetizationPanel({ onNotify }: AdsMonetizationPanelP
                   <h4 className={cn("text-xs font-bold", isLight ? "text-zinc-900" : "text-white")}>VIP &amp; Moderator Exemption</h4>
                   <p className={cn("text-[10px]", isLight ? "text-zinc-600" : "text-zinc-500")}>Admins, Moderators, Donators and VIP role holders see 0 ads.</p>
                 </div>
-                <Switch 
-                  checked={config.vipExempt} 
-                  onCheckedChange={(v) => handleChange('vipExempt', v)} 
+                <Switch
+                  checked={config.vipExempt}
+                  onCheckedChange={(v) => handleChange('vipExempt', v)}
                   className="data-[state=checked]:bg-emerald-500"
                 />
               </div>
@@ -619,15 +648,15 @@ export default function AdsMonetizationPanel({ onNotify }: AdsMonetizationPanelP
                   </span>
                 </div>
                 <div className="flex gap-2 pt-1">
-                  <Button 
-                    onClick={handleTestSmartlink} 
+                  <Button
+                    onClick={handleTestSmartlink}
                     className="flex-1 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-bold h-9 gap-1.5 shadow-sm"
                   >
                     <ExternalLink size={12} /> Test Smartlink
                   </Button>
-                  <Button 
-                    onClick={handleResetCooldown} 
-                    variant="ghost" 
+                  <Button
+                    onClick={handleResetCooldown}
+                    variant="ghost"
                     className={cn(
                       "rounded-xl text-xs font-bold h-9 gap-1.5 border",
                       isLight ? "bg-black/5 hover:bg-black/10 text-zinc-700 border-black/10" : "bg-white/5 hover:bg-white/10 text-zinc-300 border-white/10"
@@ -639,6 +668,167 @@ export default function AdsMonetizationPanel({ onNotify }: AdsMonetizationPanelP
               </div>
             </div>
           </div>
+        </div>
+      </div>
+
+      {/* ========================================================================= */}
+      {/* SECTION C: Ad Whitelist & Supporter Pass Management */}
+      {/* ========================================================================= */}
+      <div className={cn(
+        "border p-6 md:p-8 rounded-2xl space-y-6 shadow-xl transition-colors",
+        isLight ? "bg-white/80 border-black/10 text-zinc-900" : "bg-zinc-900/30 border-white/5 text-white"
+      )}>
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-4 border-b border-inherit/40">
+          <div className="space-y-1">
+            <div className="flex items-center gap-2.5">
+              <ShieldCheck className="text-purple-400 shrink-0" size={22} />
+              <h3 className={cn("text-lg font-bold tracking-tight", isLight ? "text-zinc-900" : "text-white")}>
+                Ad Whitelist &amp; Supporter Management
+              </h3>
+              <Badge className="bg-purple-950/60 text-purple-300 border-purple-500/40 text-[10px] font-mono">
+                Zero Ads • Purple Title
+              </Badge>
+            </div>
+            <p className={cn("text-xs leading-relaxed max-w-2xl", isLight ? "text-zinc-600" : "text-zinc-400")}>
+              Whitelisted users receive 0 ads or ad breaks and unlock the distinguished <span className="text-purple-400 font-bold font-mono">Supporter</span> title in their profile. Their title badge is prominently displayed in royal purple across the entire realm, no matter which title is active.
+            </p>
+          </div>
+
+          <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-purple-950/30 border border-purple-500/30 text-purple-300 text-xs shrink-0 font-medium">
+            <Shield size={14} className="text-purple-400 shrink-0" />
+            <span>Admins &amp; Moderators are automatically whitelisted</span>
+          </div>
+        </div>
+
+        {/* Add User Bar */}
+        <div className="space-y-3">
+          <label className="text-xs font-bold uppercase tracking-wider text-zinc-400 flex items-center gap-1.5">
+            <UserPlus size={14} className="text-purple-400" />
+            <span>Add User to Whitelist</span>
+          </label>
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
+            <div className="relative flex-1">
+              <Input
+                value={newWhitelistUser}
+                onChange={(e) => setNewWhitelistUser(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    e.preventDefault();
+                    handleAddWhitelist();
+                  }
+                }}
+                placeholder="Enter Username, Email, or User UUID..."
+                className={cn(
+                  "rounded-xl text-xs font-mono h-10 px-3.5",
+                  isLight ? "bg-black/[0.03] border-black/10 text-zinc-900 placeholder:text-zinc-400" : "bg-black/40 border-white/10 text-white placeholder:text-zinc-600"
+                )}
+              />
+            </div>
+            <Button
+              onClick={handleAddWhitelist}
+              disabled={!newWhitelistUser.trim()}
+              className="bg-purple-600 hover:bg-purple-500 disabled:opacity-50 text-white font-bold rounded-xl px-5 h-10 text-xs gap-1.5 shrink-0 shadow-md shadow-purple-900/20"
+            >
+              <UserPlus size={14} />
+              <span>Add to Whitelist</span>
+            </Button>
+          </div>
+          <p className="text-[11px] text-zinc-500">
+            Accepts exact usernames, registered emails, or Supabase user IDs. Case-insensitive.
+          </p>
+        </div>
+
+        {/* Whitelist Members Table / List */}
+        <div className="space-y-3 pt-2">
+          <div className="flex items-center justify-between gap-3 flex-wrap">
+            <div className="flex items-center gap-2">
+              <Users size={15} className="text-purple-400" />
+              <h4 className={cn("text-xs font-bold uppercase tracking-wider", isLight ? "text-zinc-700" : "text-zinc-300")}>
+                Whitelisted Accounts ({Array.isArray(config.adWhitelist) ? config.adWhitelist.length : 0})
+              </h4>
+            </div>
+
+            {Array.isArray(config.adWhitelist) && config.adWhitelist.length > 4 && (
+              <div className="relative w-48 sm:w-64">
+                <Search size={12} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-zinc-500" />
+                <Input
+                  value={whitelistSearch}
+                  onChange={(e) => setWhitelistSearch(e.target.value)}
+                  placeholder="Filter accounts..."
+                  className="rounded-lg text-[11px] h-7 pl-7 bg-black/20 border-white/5"
+                />
+              </div>
+            )}
+          </div>
+
+          {(() => {
+            const list = Array.isArray(config.adWhitelist) ? config.adWhitelist : [];
+            const filtered = list.filter(item =>
+              !whitelistSearch.trim() || item.toLowerCase().includes(whitelistSearch.toLowerCase().trim())
+            );
+
+            if (list.length === 0) {
+              return (
+                <div className={cn(
+                  "p-8 rounded-2xl border text-center space-y-2",
+                  isLight ? "bg-black/[0.02] border-black/5" : "bg-black/20 border-white/5"
+                )}>
+                  <p className="text-xs text-zinc-400 font-medium">
+                    No custom accounts added yet.
+                  </p>
+                  <p className="text-[11px] text-zinc-500">
+                    Add standard users above to exempt them from all ads and grant them the purple Supporter title.
+                  </p>
+                </div>
+              );
+            }
+
+            if (filtered.length === 0) {
+              return (
+                <div className="p-4 rounded-xl border border-white/5 bg-black/20 text-center text-xs text-zinc-500">
+                  No accounts match &quot;{whitelistSearch}&quot;.
+                </div>
+              );
+            }
+
+            return (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-2.5 max-h-[360px] overflow-y-auto scrollbar-thin scrollbar-thumb-zinc-700 pr-1">
+                {filtered.map((item) => (
+                  <div
+                    key={item}
+                    className={cn(
+                      "p-3 rounded-xl border flex items-center justify-between gap-3 transition-colors",
+                      isLight ? "bg-black/[0.02] border-black/5 hover:bg-black/[0.04]" : "bg-black/30 border-white/5 hover:bg-black/40"
+                    )}
+                  >
+                    <div className="flex items-center gap-2.5 min-w-0">
+                      <div className="w-7 h-7 rounded-lg bg-purple-950/60 border border-purple-500/40 text-purple-300 flex items-center justify-center shrink-0">
+                        <UserCheck size={14} />
+                      </div>
+                      <div className="min-w-0">
+                        <span className={cn("text-xs font-mono font-bold block truncate", isLight ? "text-zinc-900" : "text-white")}>
+                          {item}
+                        </span>
+                        <span className="text-[10px] text-purple-400 font-medium">
+                          Ad-Free • Supporter Title (Purple)
+                        </span>
+                      </div>
+                    </div>
+
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => handleRemoveWhitelist(item)}
+                      title={`Remove ${item} from whitelist`}
+                      className="h-7 w-7 p-0 rounded-lg text-zinc-500 hover:text-rose-400 hover:bg-rose-500/10 shrink-0 cursor-pointer"
+                    >
+                      <Trash2 size={13} />
+                    </Button>
+                  </div>
+                ))}
+              </div>
+            );
+          })()}
         </div>
       </div>
 

@@ -181,17 +181,18 @@ function ShortsDiscoveryContent() {
       const res = await fetch(`/api/shorts/feed?category=${tab}&page=${pageNum}`);
       const data = await res.json();
 
-      if (data.success && Array.isArray(data.items)) {
+      const items = Array.isArray(data.items) ? data.items : (Array.isArray(data) ? data : []);
+      if (items.length > 0 || data.success) {
         if (append) {
           setDramas(prev => {
             const seen = new Set(prev.map(d => d.id));
-            const newItems = data.items.filter((d: ShortDramaItem) => !seen.has(d.id));
+            const newItems = items.filter((d: ShortDramaItem) => !seen.has(d.id));
             return [...prev, ...newItems];
           });
         } else {
-          setDramas(data.items);
+          setDramas(items);
         }
-        setHasMore(data.hasMore ?? false);
+        setHasMore(data.hasMore ?? (items.length >= 10));
         setPage(pageNum);
       }
     } catch (err) {
@@ -228,10 +229,11 @@ function ShortsDiscoveryContent() {
       try {
         const res = await fetch(`/api/shorts/search?q=${encodeURIComponent(searchQuery.trim())}`);
         const data = await res.json();
-        if (data.success && Array.isArray(data.items)) {
+        const items = Array.isArray(data.items) ? data.items : (Array.isArray(data) ? data : []);
+        if (items.length > 0 || data.success) {
           // Merge local matches with API items, deduplicating
           const seen = new Set<string>();
-          const combined = [...localMatches, ...data.items].filter(item => {
+          const combined = [...localMatches, ...items].filter(item => {
             if (seen.has(item.id)) return false;
             seen.add(item.id);
             return true;

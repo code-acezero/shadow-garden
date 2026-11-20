@@ -56,7 +56,29 @@ const REFERER_MAP: Record<string, string> = {
     'gemma416okl': 'https://hdmoviesnow.com/',
     'hutro433fil': 'https://slast430did.com/',
     'hdmoviesnow': 'https://hdmoviesnow.com/',
-    'hdmoviescloud': 'https://hdmoviesnow.com/'
+    'hdmoviescloud': 'https://hdmoviesnow.com/',
+
+    // --- Shorts & Vertical Drama CDNs ---
+    'volcengine': 'https://hepdrama.com/',
+    'shorttv': 'https://hepdrama.com/',
+    'hepdrama': 'https://hepdrama.com/',
+    'dramabox': 'https://hepdrama.com/',
+    'dramaboxdb': 'https://hepdrama.com/',
+    'hwztvideo': 'https://hepdrama.com/',
+    'goodshort': 'https://hepdrama.com/',
+    'goodbos': 'https://hepdrama.com/',
+    'reelshort': 'https://hepdrama.com/',
+    'moboreels': 'https://hepdrama.com/',
+    'kalostv': 'https://hepdrama.com/',
+    'topshort': 'https://hepdrama.com/',
+    'netshort': 'https://hepdrama.com/',
+    'narto': 'https://narto-drama.com/',
+    'nartodrama': 'https://narto-drama.com/',
+    'cdn.narto-drama': 'https://narto-drama.com/',
+    'voddrama': 'https://narto-drama.com/',
+    'videoint': 'https://narto-drama.com/',
+    'dramadunyam': 'https://dramadunyam.com/',
+    'dramaflix': 'https://dramadunyam.com/'
 };
 
 const DEFAULT_REFERER = "https://megacloud.blog/";

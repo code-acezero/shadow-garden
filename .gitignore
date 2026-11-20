@@ -48,3 +48,10 @@ next-env.d.ts
 
 # Logs
 *.log
+
+# Compiled binaries
+*.exe
+*.dll
+*.so
+*.dylib
+

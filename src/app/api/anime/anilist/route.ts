@@ -6,6 +6,7 @@ import {
   isAniListRateLimited, 
   setAniListRateLimit 
 } from '@/lib/anilistDiskCache';
+import { resilientDispatcher } from '@/app/api/proxy/fetchWithCustomReferer';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -27,11 +28,12 @@ async function executeAniListFetch(bodyString: string, authHeader?: string | nul
   }
 
   try {
-    const res = await fetch(ANILIST_GRAPHQL_ENDPOINT, {
+    const res = await (fetch as any)(ANILIST_GRAPHQL_ENDPOINT, {
       method: 'POST',
       headers,
       body: bodyString,
       signal: controller.signal,
+      dispatcher: resilientDispatcher,
     });
     clearTimeout(timer);
 

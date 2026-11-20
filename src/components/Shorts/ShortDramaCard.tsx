@@ -31,31 +31,55 @@ export default function ShortDramaCard({
   const [showMenu, setShowMenu] = useState(false);
   const [copied, setCopied] = useState(false);
 
-  // Deduplicate and filter out language-like tags that already appear in the card
+  // Detect genuine source studio / platform (DramaBox, GoodShort, ShortTV, ReelShort, MoboReels, etc.)
   const cleanTag = useMemo(() => {
-    if (!drama.tags || !Array.isArray(drama.tags)) return null;
-    const langLower = (drama.language || '').toLowerCase().trim();
+    const textToScan = [
+      drama.sourceName,
+      drama.title,
+      drama.description,
+      ...(drama.tags || []),
+      drama.firstEpisodeStream
+    ].filter(Boolean).join(' ').toLowerCase();
 
-    const seen = new Set<string>();
-    const uniqueTags: string[] = [];
+    // Check against genuine studio signatures
+    if (textToScan.includes('dramabox') || textToScan.includes('hwztvideo')) return 'DramaBox';
+    if (textToScan.includes('goodshort') || textToScan.includes('goodbos')) return 'GoodShort';
+    if (textToScan.includes('shorttv') || textToScan.includes('volcengine')) return 'ShortTV';
+    if (textToScan.includes('reelshort') || textToScan.includes('crazymaple')) return 'ReelShort';
+    if (textToScan.includes('moboreels') || textToScan.includes('mobo')) return 'MoboReels';
+    if (textToScan.includes('kalostv') || textToScan.includes('kalos')) return 'Kalos TV';
+    if (textToScan.includes('topshort')) return 'TopShort';
+    if (textToScan.includes('netshort')) return 'NetShort';
+    if (textToScan.includes('meloshort') || textToScan.includes('melolo')) return 'MeloShort';
+    if (textToScan.includes('flickreel')) return 'FlickReels';
+    if (textToScan.includes('anyreel')) return 'AnyReel';
+    if (textToScan.includes('sereal')) return 'Sereal';
 
-    for (const rawTag of drama.tags) {
-      const tag = String(rawTag).trim();
-      const lower = tag.toLowerCase();
-      if (!lower || seen.has(lower)) continue;
-      seen.add(lower);
-
-      // Skip redundant tags that duplicate language, dub, or sub
-      if (lower === langLower) continue;
-      if (lower.includes('hindi') && langLower.includes('hindi')) continue;
-      if (lower.includes('english') && langLower.includes('english')) continue;
-      if (['dub', 'sub', 'hindi dub', 'english dub', 'raw'].includes(lower)) continue;
-
-      uniqueTags.push(tag);
+    // If sourceName is already a legitimate platform name (not HepDrama / Narto / DramaDünyam)
+    if (drama.sourceName) {
+      const s = drama.sourceName.trim();
+      const sLower = s.toLowerCase();
+      if (!['hepdrama', 'narto drama', 'narto', 'dramadünyam', 'dramadunyam', 'maccms', 'curated', 'source'].includes(sLower)) {
+        return s;
+      }
     }
 
-    return uniqueTags[0] || null;
-  }, [drama.tags, drama.language]);
+    if (!drama.tags || !Array.isArray(drama.tags)) return 'DramaBox';
+    const langLower = (drama.language || '').toLowerCase().trim();
+    const aggregatorBlocklist = ['hepdrama', 'narto drama', 'narto', 'dramadünyam', 'dramadunyam', 'maccms', 'source'];
+
+    for (const rawTag of drama.tags) {
+      const tag = String(rawTag).replace(/^#/, '').trim();
+      const lower = tag.toLowerCase();
+      if (!lower) continue;
+      if (lower === langLower) continue;
+      if (lower.includes('hindi') || lower.includes('english') || ['dub', 'sub', 'hindi dub', 'english dub', 'raw'].includes(lower)) continue;
+      if (aggregatorBlocklist.some(term => lower.includes(term))) continue;
+      return tag;
+    }
+
+    return 'DramaBox';
+  }, [drama.tags, drama.language, drama.sourceName, drama.title, drama.description, drama.firstEpisodeStream]);
 
   // Fallback cover if image fails
   const posterSrc = drama.poster || drama.cover;
@@ -131,8 +155,13 @@ export default function ShortDramaCard({
 
             {/* Top Bar: Clean Rounded Badges & Sleek Bookmark */}
             <div className="absolute top-2 left-2 right-2 flex items-center justify-between z-10">
-              {/* Language Tag */}
-              <div className="flex items-center gap-1">
+              {/* Language Tag & Studio/Source Tag */}
+              <div className="flex items-center gap-1 flex-wrap">
+                {drama.sourceName && (
+                  <span className="px-2 py-0.5 text-[8.5px] font-medium rounded-full bg-black/60 backdrop-blur-md text-purple-300 border border-purple-500/25 tracking-wide">
+                    {drama.sourceName}
+                  </span>
+                )}
                 {isHindi && (
                   <span className="px-2 py-0.5 text-[9px] font-medium rounded-full bg-black/60 backdrop-blur-md text-amber-300 border border-amber-500/25 uppercase tracking-wide">
                     Hindi Dub

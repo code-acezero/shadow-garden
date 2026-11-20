@@ -115,6 +115,17 @@ export default function WelcomeModal() {
               Grant Access
             </button>
 
+            {/* Dismiss option */}
+            <button
+              onClick={() => {
+                localStorage.setItem("guild_audio_permit", "true");
+                setIsOpen(false);
+              }}
+              className="mt-3 text-[10px] text-zinc-500 hover:text-zinc-300 uppercase tracking-widest font-mono transition-colors"
+            >
+              Continue Silently
+            </button>
+
           </motion.div>
         </motion.div>
       )}

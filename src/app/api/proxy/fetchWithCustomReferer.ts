@@ -1,21 +1,50 @@
 import { Agent } from 'undici';
 import dns from 'node:dns';
 
-// Fallback to high-reliability public resolvers (Google / Cloudflare) if local router DNS fails or times out
-const resolver = new dns.promises.Resolver();
-try {
-  resolver.setServers(['8.8.8.8', '1.1.1.1', '8.8.4.4', '1.0.0.1']);
-} catch {}
-
 const dnsCache = new Map<string, { address: string; family: number; expires: number }>();
 
-function resilientLookup(hostname: string, options: any, callback: any) {
+async function dohResolve(hostname: string): Promise<string | null> {
+  // Query Cloudflare DoH directly via IP 1.1.1.1 to avoid needing DNS to resolve the DNS server itself
+  try {
+    const res = await fetch(`https://1.1.1.1/dns-query?name=${encodeURIComponent(hostname)}&type=A`, {
+      headers: { 'Accept': 'application/dns-json' },
+      signal: AbortSignal.timeout(2500)
+    });
+    const json: any = await res.json();
+    if (json.Answer && json.Answer.length > 0) {
+      const aRecord = json.Answer.find((a: any) => a.type === 1);
+      return aRecord ? aRecord.data : json.Answer[0].data;
+    }
+  } catch {}
+
+  try {
+    const res = await fetch(`https://cloudflare-dns.com/dns-query?name=${encodeURIComponent(hostname)}&type=A`, {
+      headers: { 'Accept': 'application/dns-json' },
+      signal: AbortSignal.timeout(2500)
+    });
+    const json: any = await res.json();
+    if (json.Answer && json.Answer.length > 0) {
+      const aRecord = json.Answer.find((a: any) => a.type === 1);
+      return aRecord ? aRecord.data : json.Answer[0].data;
+    }
+  } catch {}
+
+  return null;
+}
+
+export function resilientLookup(hostname: string, options: any, callback: any) {
   if (typeof options === 'function') {
     callback = options;
     options = {};
   }
   const isAll = !!(options && options.all);
 
+  // Fast path for loopback / local addresses
+  if (hostname === 'localhost' || hostname === '127.0.0.1' || hostname === '::1' || hostname === '0.0.0.0') {
+    return dns.lookup(hostname, options, callback);
+  }
+
+  // Check in-memory cache
   const cached = dnsCache.get(hostname);
   if (cached && Date.now() < cached.expires) {
     if (isAll) {
@@ -24,15 +53,15 @@ function resilientLookup(hostname: string, options: any, callback: any) {
     return callback(null, cached.address, cached.family);
   }
 
-  resolver.resolve4(hostname)
-    .then(ips => {
-      if (ips && ips.length > 0) {
-        const ip = ips[0];
-        dnsCache.set(hostname, { address: ip, family: 4, expires: Date.now() + 5 * 60 * 1000 });
+  // DoH resolution first (guaranteed immune to ISP UDP 53 blocking)
+  dohResolve(hostname)
+    .then(dohIp => {
+      if (dohIp) {
+        dnsCache.set(hostname, { address: dohIp, family: 4, expires: Date.now() + 15 * 60 * 1000 });
         if (isAll) {
-          return callback(null, [{ address: ip, family: 4 }]);
+          return callback(null, [{ address: dohIp, family: 4 }]);
         }
-        return callback(null, ip, 4);
+        return callback(null, dohIp, 4);
       }
       dns.lookup(hostname, options, callback);
     })
@@ -42,7 +71,7 @@ function resilientLookup(hostname: string, options: any, callback: any) {
 }
 
 // Bypass SSL certificate issues and DNS resolution failures for upstream scrapers and CDNs
-const dispatcher = new Agent({
+export const resilientDispatcher = new Agent({
   connect: {
     rejectUnauthorized: false,
     lookup: resilientLookup
@@ -51,7 +80,7 @@ const dispatcher = new Agent({
 
 export async function fetchWithCustomReferer(url: string, refererUrl?: string, range?: string | null) {
   if (!url) throw new Error("URL is required");
-  
+
   try {
     const isMangaDex = url.includes('mangadex.org') || (refererUrl && refererUrl.includes('mangadex.org'));
     const headers: Record<string, string> = {
@@ -76,7 +105,7 @@ export async function fetchWithCustomReferer(url: string, refererUrl?: string, r
     const response = await (fetch as any)(url, {
       headers,
       redirect: 'follow',
-      dispatcher,
+      dispatcher: resilientDispatcher,
     });
 
     return response;
